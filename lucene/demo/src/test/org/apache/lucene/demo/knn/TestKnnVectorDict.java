@@ -20,8 +20,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestKnnVectorDict extends LuceneTestCase {
 

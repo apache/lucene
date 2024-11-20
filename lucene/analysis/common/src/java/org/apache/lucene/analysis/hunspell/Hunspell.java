@@ -17,7 +17,8 @@
 package org.apache.lucene.analysis.hunspell;
 
 import static org.apache.lucene.analysis.hunspell.Dictionary.FLAG_UNSET;
-import static org.apache.lucene.analysis.hunspell.TimeoutPolicy.*;
+import static org.apache.lucene.analysis.hunspell.TimeoutPolicy.NO_TIMEOUT;
+import static org.apache.lucene.analysis.hunspell.TimeoutPolicy.RETURN_PARTIAL_RESULT;
 import static org.apache.lucene.analysis.hunspell.WordContext.COMPOUND_BEGIN;
 import static org.apache.lucene.analysis.hunspell.WordContext.COMPOUND_END;
 import static org.apache.lucene.analysis.hunspell.WordContext.COMPOUND_MIDDLE;
@@ -25,14 +26,8 @@ import static org.apache.lucene.analysis.hunspell.WordContext.COMPOUND_RULE_END;
 import static org.apache.lucene.analysis.hunspell.WordContext.SIMPLE_WORD;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
 
@@ -52,7 +47,6 @@ import org.apache.lucene.util.IntsRef;
  */
 public class Hunspell {
   static final long SUGGEST_TIME_LIMIT = 250;
-
   final Dictionary dictionary;
   final Stemmer stemmer;
   private final TimeoutPolicy policy;
@@ -71,10 +65,12 @@ public class Hunspell {
     this.dictionary = dictionary;
     this.policy = policy;
     this.checkCanceled = checkCanceled;
-    stemmer = new Stemmer(dictionary);
+    this.stemmer = new Stemmer(dictionary);
   }
 
-  /** @return whether the given word's spelling is considered correct according to Hunspell rules */
+  /**
+   * @return whether the given word's spelling is considered correct according to Hunspell rules
+   */
   public boolean spell(String word) {
     checkCanceled.run();
     if (word.isEmpty()) return true;
@@ -136,7 +132,7 @@ public class Hunspell {
   Boolean checkSimpleWord(char[] wordChars, int length, WordCase originalCase) {
     Root<CharsRef> entry = findStem(wordChars, 0, length, originalCase, SIMPLE_WORD);
     if (entry != null) {
-      return !dictionary.hasFlag(entry.entryId, dictionary.forbiddenword);
+      return !dictionary.hasFlag(entry.entryId(), dictionary.forbiddenword);
     }
 
     return null;
@@ -164,10 +160,10 @@ public class Hunspell {
     return false;
   }
 
-  private Root<CharsRef> findStem(
+  Root<CharsRef> findStem(
       char[] wordChars, int offset, int length, WordCase originalCase, WordContext context) {
     checkCanceled.run();
-    boolean checkCase = context != COMPOUND_MIDDLE && context != COMPOUND_END;
+    WordCase toCheck = context != COMPOUND_MIDDLE && context != COMPOUND_END ? originalCase : null;
     @SuppressWarnings({"rawtypes", "unchecked"})
     Root<CharsRef>[] result = new Root[1];
     stemmer.doStem(
@@ -175,8 +171,8 @@ public class Hunspell {
         offset,
         length,
         context,
-        (stem, formID, morphDataId) -> {
-          if (checkCase && !acceptCase(originalCase, formID, stem)) {
+        (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
+          if (!acceptCase(toCheck, formID, stem)) {
             return dictionary.hasFlag(formID, Dictionary.HIDDEN_FLAG);
           }
           if (acceptsStem(formID)) {
@@ -233,7 +229,7 @@ public class Hunspell {
           stem = findStem(word.chars, word.offset, breakPos + 1, originalCase, context);
         }
         if (stem != null
-            && !dictionary.hasFlag(stem.entryId, dictionary.forbiddenword)
+            && !dictionary.hasFlag(stem.entryId(), dictionary.forbiddenword)
             && (prev == null || prev.mayCompound(stem, breakPos, originalCase))) {
           CompoundPart part = new CompoundPart(prev, word, breakPos, stem, null);
           if (checkCompoundsAfter(originalCase, part)) {
@@ -278,7 +274,7 @@ public class Hunspell {
     Root<CharsRef> lastRoot =
         findStem(word.chars, breakOffset, remainingLength, originalCase, COMPOUND_END);
     if (lastRoot != null
-        && !dictionary.hasFlag(lastRoot.entryId, dictionary.forbiddenword)
+        && !dictionary.hasFlag(lastRoot.entryId(), dictionary.forbiddenword)
         && !(dictionary.checkCompoundDup && prev.root.equals(lastRoot))
         && !hasForceUCaseProblem(lastRoot, originalCase, word.chars)
         && prev.mayCompound(lastRoot, remainingLength, originalCase)) {
@@ -292,7 +288,7 @@ public class Hunspell {
   private boolean hasForceUCaseProblem(Root<?> root, WordCase originalCase, char[] wordChars) {
     if (originalCase == WordCase.TITLE || originalCase == WordCase.UPPER) return false;
     if (originalCase == null && Character.isUpperCase(wordChars[0])) return false;
-    return dictionary.hasFlag(root.entryId, dictionary.forceUCase);
+    return dictionary.hasFlag(root.entryId(), dictionary.forceUCase);
   }
 
   /**
@@ -307,10 +303,53 @@ public class Hunspell {
    * Dictionary#lookupEntries}.
    */
   public List<String> getRoots(String word) {
-    return stemmer.stem(word).stream()
-        .map(CharsRef::toString)
-        .distinct()
-        .collect(Collectors.toList());
+    return stemmer.stem(word).stream().map(CharsRef::toString).distinct().toList();
+  }
+
+  /**
+   * @return all possible analyses of the given word with stems, prefixes, suffixed and
+   *     morphological data. Note that the order of the returned objects might not correspond to the
+   *     *.dic file order!
+   */
+  public List<AffixedWord> analyzeSimpleWord(String word) {
+    List<AffixedWord> result = new ArrayList<>();
+    stemmer.analyze(
+        word.toCharArray(),
+        word.length(),
+        (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
+          List<AffixedWord.Affix> prefixes = new ArrayList<>();
+          List<AffixedWord.Affix> suffixes = new ArrayList<>();
+          if (outerPrefix >= 0) prefixes.add(new AffixedWord.Affix(dictionary, outerPrefix));
+          if (innerPrefix >= 0) prefixes.add(new AffixedWord.Affix(dictionary, innerPrefix));
+          if (outerSuffix >= 0) suffixes.add(new AffixedWord.Affix(dictionary, outerSuffix));
+          if (innerSuffix >= 0) suffixes.add(new AffixedWord.Affix(dictionary, innerSuffix));
+
+          DictEntry entry = dictionary.dictEntry(stem.toString(), formID, morphDataId);
+          result.add(new AffixedWord(word, entry, prefixes, suffixes));
+          return true;
+        });
+    return result;
+  }
+
+  /**
+   * Generate all word forms for all dictionary entries with the given root word. The result order
+   * is stable but not specified. This is equivalent to "unmunch" from the "hunspell-tools" package.
+   *
+   * @see WordFormGenerator for finer-grained APIs
+   */
+  public List<AffixedWord> getAllWordForms(String root) {
+    return new WordFormGenerator(dictionary).getAllWordForms(root, checkCanceled);
+  }
+
+  /**
+   * Given a list of words, try to produce a smaller set of dictionary entries (with some flags)
+   * that would generate these words. This is equivalent to "munch" from the "hunspell-tools"
+   * package.
+   *
+   * @see WordFormGenerator#compress for more details and control
+   */
+  public EntrySuggestion compress(List<String> words) {
+    return new WordFormGenerator(dictionary).compress(words, Set.of(), checkCanceled);
   }
 
   private class CompoundPart {
@@ -399,14 +438,15 @@ public class Hunspell {
       char[] wordChars, int offset, int length, List<IntsRef> words) {
     if (words.size() >= 100) return false;
 
+    checkCanceled.run();
+
     int limit = length - dictionary.compoundMin + 1;
     for (int breakPos = dictionary.compoundMin; breakPos < limit; breakPos++) {
-      checkCanceled.run();
       IntsRef forms = dictionary.lookupWord(wordChars, offset, breakPos);
       if (forms != null) {
         words.add(forms);
 
-        if (dictionary.compoundRules.stream().anyMatch(r -> r.mayMatch(words))) {
+        if (mayHaveCompoundRule(words)) {
           if (checkLastCompoundPart(wordChars, offset + breakPos, length - breakPos, words)) {
             return true;
           }
@@ -423,15 +463,29 @@ public class Hunspell {
     return false;
   }
 
+  private boolean mayHaveCompoundRule(List<IntsRef> words) {
+    for (CompoundRule rule : dictionary.compoundRules) {
+      if (rule.mayMatch(words)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private boolean checkLastCompoundPart(
       char[] wordChars, int start, int length, List<IntsRef> words) {
     IntsRef ref = new IntsRef(new int[1], 0, 1);
     words.add(ref);
 
     Stemmer.RootProcessor stopOnMatching =
-        (stem, formID, morphDataId) -> {
+        (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
           ref.ints[0] = formID;
-          return dictionary.compoundRules.stream().noneMatch(r -> r.fullyMatches(words));
+          for (CompoundRule r : dictionary.compoundRules) {
+            if (r.fullyMatches(words)) {
+              return false;
+            }
+          }
+          return true;
         };
     boolean found = !stemmer.doStem(wordChars, start, length, COMPOUND_RULE_END, stopOnMatching);
     words.remove(words.size() - 1);
@@ -515,6 +569,7 @@ public class Hunspell {
    * @return suggestions for the given misspelled word
    * @throws SuggestionTimeoutException if the computation takes too long and {@link
    *     TimeoutPolicy#THROW_EXCEPTION} was specified in the constructor
+   * @see Suggester for finer-grained APIs and performance optimizations
    */
   public List<String> suggest(String word) throws SuggestionTimeoutException {
     return suggest(word, SUGGEST_TIME_LIMIT);
@@ -526,148 +581,19 @@ public class Hunspell {
    *     TimeoutPolicy}'s effects (exception or partial result) may kick in
    * @throws SuggestionTimeoutException if the computation takes too long and {@link
    *     TimeoutPolicy#THROW_EXCEPTION} was specified in the constructor
+   * @see Suggester for finer-grained APIs and performance optimizations
    */
   public List<String> suggest(String word, long timeLimitMs) throws SuggestionTimeoutException {
-    checkCanceled.run();
-    if (word.length() >= 100) return Collections.emptyList();
+    Suggester suggester = new Suggester(dictionary);
+    if (policy == NO_TIMEOUT) return suggester.suggestNoTimeout(word, checkCanceled);
 
-    if (dictionary.needsInputCleaning(word)) {
-      word = dictionary.cleanInput(word, new StringBuilder()).toString();
-    }
-
-    WordCase wordCase = WordCase.caseOf(word);
-    if (dictionary.forceUCase != FLAG_UNSET && wordCase == WordCase.LOWER) {
-      String title = dictionary.toTitleCase(word);
-      if (spell(title)) {
-        return Collections.singletonList(title);
-      }
-    }
-
-    LinkedHashSet<String> suggestions = new LinkedHashSet<>();
-    Runnable checkCanceled =
-        policy == NO_TIMEOUT
-            ? this.checkCanceled
-            : checkTimeLimit(word, wordCase, suggestions, timeLimitMs);
     try {
-      doSuggest(word, wordCase, suggestions, checkCanceled);
+      return suggester.suggestWithTimeout(word, timeLimitMs, checkCanceled);
     } catch (SuggestionTimeoutException e) {
       if (policy == RETURN_PARTIAL_RESULT) {
-        return postprocess(word, wordCase, suggestions);
+        return e.getPartialResult();
       }
       throw e;
     }
-
-    return postprocess(word, wordCase, suggestions);
-  }
-
-  private void doSuggest(
-      String word, WordCase wordCase, LinkedHashSet<String> suggestions, Runnable checkCanceled) {
-    Hunspell suggestionSpeller =
-        new Hunspell(dictionary, policy, checkCanceled) {
-          @Override
-          boolean acceptsStem(int formID) {
-            return !dictionary.hasFlag(formID, dictionary.noSuggest)
-                && !dictionary.hasFlag(formID, dictionary.subStandard);
-          }
-        };
-    ModifyingSuggester modifier = new ModifyingSuggester(suggestionSpeller, suggestions);
-    boolean hasGoodSuggestions = modifier.suggest(word, wordCase);
-
-    if (!hasGoodSuggestions && dictionary.maxNGramSuggestions > 0) {
-      suggestions.addAll(
-          new GeneratingSuggester(suggestionSpeller)
-              .suggest(dictionary.toLowerCase(word), wordCase, suggestions));
-    }
-
-    if (word.contains("-") && suggestions.stream().noneMatch(s -> s.contains("-"))) {
-      suggestions.addAll(modifyChunksBetweenDashes(word));
-    }
-  }
-
-  private Runnable checkTimeLimit(
-      String word, WordCase wordCase, Set<String> suggestions, long timeLimitMs) {
-    return new Runnable() {
-      final long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeLimitMs);
-      int invocationCounter = 100;
-
-      @Override
-      public void run() {
-        checkCanceled.run();
-        if (--invocationCounter <= 0) {
-          if (System.nanoTime() - deadline > 0) {
-            stop();
-          }
-          invocationCounter = 100;
-        }
-      }
-
-      private void stop() {
-        List<String> partialResult =
-            policy == RETURN_PARTIAL_RESULT ? null : postprocess(word, wordCase, suggestions);
-        String message = "Time limit of " + timeLimitMs + "ms exceeded for " + word;
-        throw new SuggestionTimeoutException(message, partialResult);
-      }
-    };
-  }
-
-  private List<String> postprocess(String word, WordCase wordCase, Collection<String> suggestions) {
-    Set<String> result = new LinkedHashSet<>();
-    for (String candidate : suggestions) {
-      result.add(adjustSuggestionCase(candidate, wordCase, word));
-      if (wordCase == WordCase.UPPER && dictionary.checkSharpS && candidate.contains("ß")) {
-        result.add(candidate);
-      }
-    }
-    return result.stream().map(this::cleanOutput).collect(Collectors.toList());
-  }
-
-  private String adjustSuggestionCase(String candidate, WordCase originalCase, String original) {
-    if (originalCase == WordCase.UPPER) {
-      String upper = candidate.toUpperCase(Locale.ROOT);
-      if (upper.contains(" ") || spell(upper)) {
-        return upper;
-      }
-    }
-    if (Character.isUpperCase(original.charAt(0))) {
-      String title = Character.toUpperCase(candidate.charAt(0)) + candidate.substring(1);
-      if (title.contains(" ") || spell(title)) {
-        return title;
-      }
-    }
-    return candidate;
-  }
-
-  private List<String> modifyChunksBetweenDashes(String word) {
-    List<String> result = new ArrayList<>();
-    int chunkStart = 0;
-    while (chunkStart < word.length()) {
-      int chunkEnd = word.indexOf('-', chunkStart);
-      if (chunkEnd < 0) {
-        chunkEnd = word.length();
-      }
-
-      if (chunkEnd > chunkStart) {
-        String chunk = word.substring(chunkStart, chunkEnd);
-        if (!spell(chunk)) {
-          for (String chunkSug : suggest(chunk)) {
-            String replaced = word.substring(0, chunkStart) + chunkSug + word.substring(chunkEnd);
-            if (spell(replaced)) {
-              result.add(replaced);
-            }
-          }
-        }
-      }
-
-      chunkStart = chunkEnd + 1;
-    }
-    return result;
-  }
-
-  private String cleanOutput(String s) {
-    if (dictionary.oconv == null) return s;
-
-    StringBuilder sb = new StringBuilder(s);
-    dictionary.oconv.applyMappings(sb);
-    return sb.toString();
   }
 }

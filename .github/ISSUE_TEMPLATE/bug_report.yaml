@@ -1,0 +1,15 @@
+name: Bug Report
+description: File a bug report
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Version and environment details
+      placeholder: Specify what Lucene version you are using and/or environment details (e.g., OS and JVM runtime)

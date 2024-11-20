@@ -128,7 +128,7 @@ public final class PagedBytes implements Accountable {
         b.length = block[offset];
         b.offset = offset + 1;
       } else {
-        b.length = ((block[offset] & 0x7f) << 8) | (block[1 + offset] & 0xff);
+        b.length = ((short) BitUtil.VH_BE_SHORT.get(block, offset)) & 0x7FFF;
         b.offset = offset + 2;
         assert b.length > 0;
       }
@@ -250,7 +250,6 @@ public final class PagedBytes implements Accountable {
   @Override
   public long ramBytesUsed() {
     long size = BASE_RAM_BYTES_USED + RamUsageEstimator.shallowSizeOf(blocks);
-    ;
     if (numBlocks > 0) {
       size += (numBlocks - 1) * bytesUsedPerBlock;
       size += RamUsageEstimator.sizeOf(blocks[numBlocks - 1]);
@@ -285,8 +284,8 @@ public final class PagedBytes implements Accountable {
     if (bytes.length < 128) {
       currentBlock[upto++] = (byte) bytes.length;
     } else {
-      currentBlock[upto++] = (byte) (0x80 | (bytes.length >> 8));
-      currentBlock[upto++] = (byte) (bytes.length & 0xff);
+      BitUtil.VH_BE_SHORT.set(currentBlock, upto, (short) (bytes.length | 0x8000));
+      upto += 2;
     }
     System.arraycopy(bytes.bytes, bytes.offset, currentBlock, upto, bytes.length);
     upto += bytes.length;

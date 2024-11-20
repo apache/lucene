@@ -18,11 +18,11 @@ package org.apache.lucene.document;
 
 import static org.apache.lucene.geo.XYEncodingUtils.decode;
 
-import java.util.Arrays;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
+import org.apache.lucene.geo.Geometry;
 import org.apache.lucene.geo.XYEncodingUtils;
 import org.apache.lucene.geo.XYGeometry;
 import org.apache.lucene.index.PointValues.Relation;
@@ -33,20 +33,22 @@ import org.apache.lucene.util.NumericUtils;
  * the specified array of {@link XYGeometry}.
  *
  * <p>The field must be indexed using {@link XYShape#createIndexableFields} added per document.
+ *
+ * @lucene.internal
  */
 final class XYShapeQuery extends SpatialQuery {
-  final XYGeometry[] geometries;
-  private final Component2D component2D;
 
   /** Creates a query that matches all indexed shapes to the provided polygons */
   XYShapeQuery(String field, QueryRelation queryRelation, XYGeometry... geometries) {
-    super(field, queryRelation);
-    this.component2D = XYGeometry.create(geometries);
-    this.geometries = geometries.clone();
+    super(field, queryRelation, geometries);
   }
 
   @Override
-  protected SpatialVisitor getSpatialVisitor() {
+  protected Component2D createComponent2D(Geometry... geometries) {
+    return XYGeometry.create((XYGeometry[]) geometries);
+  }
+
+  static SpatialVisitor getSpatialVisitor(Component2D component2D) {
     return new SpatialVisitor() {
       @Override
       protected Relation relate(byte[] minTriangle, byte[] maxTriangle) {
@@ -191,33 +193,7 @@ final class XYShapeQuery extends SpatialQuery {
   }
 
   @Override
-  public String toString(String field) {
-    final StringBuilder sb = new StringBuilder();
-    sb.append(getClass().getSimpleName());
-    sb.append(':');
-    if (this.field.equals(field) == false) {
-      sb.append(" field=");
-      sb.append(this.field);
-      sb.append(':');
-    }
-    sb.append("[");
-    for (int i = 0; i < geometries.length; i++) {
-      sb.append(geometries[i].toString());
-      sb.append(',');
-    }
-    sb.append(']');
-    return sb.toString();
-  }
-
-  @Override
-  protected boolean equalsTo(Object o) {
-    return super.equalsTo(o) && Arrays.equals(geometries, ((XYShapeQuery) o).geometries);
-  }
-
-  @Override
-  public int hashCode() {
-    int hash = super.hashCode();
-    hash = 31 * hash + Arrays.hashCode(geometries);
-    return hash;
+  protected SpatialVisitor getSpatialVisitor() {
+    return getSpatialVisitor(queryComponent2D);
   }
 }

@@ -19,11 +19,11 @@ package org.apache.lucene.analysis.ja;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.cjk.CJKWidthFilter;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.IOUtils;
 
 /** Tests for {@link TestJapaneseReadingFormFilter} */
@@ -88,6 +88,11 @@ public class TestJapaneseReadingFormFilter extends BaseTokenStreamTestCase {
     a.close();
   }
 
+  public void testKatakanaReadingsHiragana() throws IOException {
+    assertAnalyzesTo(
+        katakanaAnalyzer, "が ぎ ぐ げ ご ぁ ゔ", new String[] {"ガ", "ギ", "グ", "ゲ", "ゴ", "ァ", "ヴ"});
+  }
+
   public void testRomajiReadings() throws IOException {
     assertAnalyzesTo(
         romajiAnalyzer,
@@ -113,6 +118,11 @@ public class TestJapaneseReadingFormFilter extends BaseTokenStreamTestCase {
         "今夜はﾛﾊﾞｰﾄ先生と話した",
         new String[] {"kon'ya", "ha", "robato", "sensei", "to", "hanashi", "ta"});
     a.close();
+  }
+
+  public void testRomajiReadingsHiragana() throws IOException {
+    assertAnalyzesTo(
+        romajiAnalyzer, "が ぎ ぐ げ ご ぁ ゔ", new String[] {"ga", "gi", "gu", "ge", "go", "a", "v"});
   }
 
   public void testRandomData() throws IOException {

@@ -56,7 +56,7 @@ your applications.</p>
 "http://www.apache.org/dyn/closer.cgi/lucene/java/">download</a> the latest
 Lucene distribution and then extract it to a working directory.</p>
 <p>You need four JARs: the Lucene JAR, the queryparser JAR, the common analysis JAR, and the Lucene
-demo JAR. You should see the Lucene JAR file in the core/ directory you created
+demo JAR. You should see the Lucene JAR file in the modules/ directory you created
 when you extracted the archive -- it should be named something like
 <span class="codefrag">lucene-core-{version}.jar</span>. You should also see
 files called <span class="codefrag">lucene-queryparser-{version}.jar</span>,
@@ -215,6 +215,17 @@ by score (i.e. relevance).</p>
         a more complete set of embeddings is needed to get reasonable results.
     </p>
 </div>
+<h2 id="Faceting" class="boxed">Working with facets</h2>
+<div class="section">
+    <p>Lucene also provides aggregation capabilities over the index, e.g. counting results across a category
+        (<a href="src-html/org/apache/lucene/demo/facet/SimpleFacetsExample.html">SimpleFacetsExample</a>),
+        computing expressions (<a href=
+        "src-html/org/apache/lucene/demo/facet/ExpressionAggregationFacetsExample.html">
+        ExpressionAggregationFacetsExample</a>), dynamic ranges (<a href=
+        "src-html/org/apache/lucene/demo/facet/DynamicRangeFacetsExample.html">DynamicRangeFacetsExample</a>).
+        For more details, see the dedicated
+        <a href="org/apache/lucene/demo/facet/package-summary.html">faceting guide</a>.
+    </p>
+</div>
 </body>
 </html>
-

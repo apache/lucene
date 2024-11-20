@@ -22,8 +22,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.ProcessBuilder.Redirect;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,11 +29,11 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.lucene.store.BaseDirectoryWrapper;
-import org.apache.lucene.util.Constants;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SuppressForbidden;
-import org.apache.lucene.util.TestUtil;
 
 /**
  * Runs TestNRTThreads in a separate process, crashes the JRE in the middle of execution, then runs
@@ -57,7 +55,8 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
     if (System.getProperty("tests.crashmode") == null) {
       // try up to 10 times to create an index
       for (int i = 0; i < 10; i++) {
-        forkTest();
+        final int crashDelayMs = TestUtil.nextInt(random(), 3000, 4000);
+        forkTest(crashDelayMs);
         // if we succeeded in finding an index, we are done.
         if (checkIndexes(tempDir)) return;
       }
@@ -68,33 +67,17 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
       // assumeFalse("does not support PreFlex, see LUCENE-3992",
       //    Codec.getDefault().getName().equals("Lucene4x"));
 
-      // we are the fork, setup a crashing thread
-      final int crashTime = TestUtil.nextInt(random(), 3000, 4000);
-      Thread t =
-          new Thread() {
-            @Override
-            public void run() {
-              try {
-                Thread.sleep(crashTime);
-              } catch (
-                  @SuppressWarnings("unused")
-                  InterruptedException e) {
-              }
-              crashJRE();
-            }
-          };
-      t.setPriority(Thread.MAX_PRIORITY);
-      t.start();
-      // run the test until we crash.
-      for (int i = 0; i < 1000; i++) {
+      // Effectively an endless loop until the process is killed from the outside.
+      for (int i = 0; i < Integer.MAX_VALUE; i++) {
         super.testNRTThreads();
       }
     }
   }
 
   /** fork ourselves in a new jvm. sets -Dtests.crashmode=true */
-  @SuppressForbidden(reason = "ProcessBuilder requires java.io.File for CWD")
-  public void forkTest() throws Exception {
+  @SuppressForbidden(
+      reason = "ProcessBuilder requires java.io.File for setting ProcessBuilder.directory")
+  public void forkTest(int crashDelayMs) throws Exception {
     List<String> cmd = new ArrayList<>();
     cmd.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
     cmd.add("-Xmx512m");
@@ -104,8 +87,7 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
     cmd.add("-DtempDir=" + tempDir);
     cmd.add("-Dtests.seed=" + SeedUtils.formatSeed(random().nextLong()));
     cmd.add("-ea");
-    cmd.add("-cp");
-    cmd.add(System.getProperty("java.class.path"));
+    cmd.addAll(getJvmForkArguments());
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(getClass().getName());
     ProcessBuilder pb =
@@ -114,12 +96,21 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
             .redirectInput(Redirect.INHERIT)
             .redirectErrorStream(true);
     Process p = pb.start();
-
     // We pump everything to stderr.
     PrintStream childOut = System.err;
     Thread stdoutPumper = ThreadPumper.start(p.getInputStream(), childOut);
-    if (VERBOSE) childOut.println(">>> Begin subprocess output");
-    p.waitFor();
+    try {
+      if (VERBOSE) childOut.println(">>> Begin subprocess output");
+      if (p.waitFor(crashDelayMs, TimeUnit.MILLISECONDS)) {
+        // This means the process has exited before the timeout. This is odd because it should
+        // run in an endless loop?
+        throw new AssertionError("Subprocess has exited unexpectedly.");
+      }
+    } finally {
+      // Try to kill the process and wait until it terminates. destroyForcibly is a no-op in case
+      // the process is not alive, so no need for additional checks.
+      p.destroyForcibly().waitFor();
+    }
     stdoutPumper.join();
     if (VERBOSE) childOut.println("<<< End subprocess output");
   }
@@ -140,7 +131,7 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
                   }
                 }
               } catch (IOException e) {
-                System.err.println("Couldn't pipe from the forked process: " + e.toString());
+                System.err.println("Couldn't pipe from the forked process: " + e);
               }
             }
           };
@@ -185,38 +176,5 @@ public class TestIndexWriterOnJRECrash extends TestNRTThreads {
           }
         });
     return found.get();
-  }
-
-  /** currently, this only works/tested on Sun and IBM. */
-  @SuppressForbidden(reason = "We need Unsafe to actually crush :-)")
-  public void crashJRE() {
-    final String vendor = Constants.JAVA_VENDOR;
-    final boolean supportsUnsafeNpeDereference =
-        vendor.startsWith("Oracle") || vendor.startsWith("Sun") || vendor.startsWith("Apple");
-
-    try {
-      if (supportsUnsafeNpeDereference) {
-        try {
-          Class<?> clazz = Class.forName("sun.misc.Unsafe");
-          Field field = clazz.getDeclaredField("theUnsafe");
-          field.setAccessible(true);
-          Object o = field.get(null);
-          Method m = clazz.getMethod("putAddress", long.class, long.class);
-          m.invoke(o, 0L, 0L);
-        } catch (Throwable e) {
-          System.out.println("Couldn't kill the JVM via Unsafe.");
-          e.printStackTrace(System.out);
-        }
-      }
-
-      // Fallback attempt to Runtime.halt();
-      Runtime.getRuntime().halt(-1);
-    } catch (Exception e) {
-      System.out.println("Couldn't kill the JVM.");
-      e.printStackTrace(System.out);
-    }
-
-    // We couldn't get the JVM to crash for some reason.
-    fail();
   }
 }

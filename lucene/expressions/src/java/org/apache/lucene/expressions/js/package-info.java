@@ -30,7 +30,7 @@
  *   <li>Common mathematic functions: <code>abs ceil exp floor ln log10 logn max min sqrt pow</code>
  *   <li>Trigonometric library functions: <code>
  *       acosh acos asinh asin atanh atan atan2 cosh cos sinh sin tanh tan</code>
- *   <li>Distance functions: <code>haversin</code>
+ *   <li>Distance functions: <code>haversin</code> <code>haversinMeters</code>
  *   <li>Miscellaneous functions: <code>min, max</code>
  *   <li>Arbitrary external variables - see {@link org.apache.lucene.expressions.Bindings}
  * </ul>

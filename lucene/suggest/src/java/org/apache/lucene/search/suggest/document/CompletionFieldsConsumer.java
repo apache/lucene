@@ -163,19 +163,7 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
     }
   }
 
-  private static class CompletionMetaData {
-    private final long filePointer;
-    private final long minWeight;
-    private final long maxWeight;
-    private final byte type;
-
-    private CompletionMetaData(long filePointer, long minWeight, long maxWeight, byte type) {
-      this.filePointer = filePointer;
-      this.minWeight = minWeight;
-      this.maxWeight = maxWeight;
-      this.type = type;
-    }
-  }
+  private record CompletionMetaData(long filePointer, long minWeight, long maxWeight, byte type) {}
 
   // builds an FST based on the terms written
   private static class CompletionTermWriter {
@@ -190,7 +178,7 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final NRTSuggesterBuilder builder;
 
-    public CompletionTermWriter() {
+    public CompletionTermWriter() throws IOException {
       builder = new NRTSuggesterBuilder();
       first = true;
     }
@@ -223,7 +211,7 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
           ByteArrayDataInput input =
               new ByteArrayDataInput(payload.bytes, payload.offset, payload.length);
           int len = input.readVInt();
-          scratch.grow(len);
+          scratch.growNoCopy(len);
           scratch.setLength(len);
           input.readBytes(scratch.bytes(), 0, scratch.length());
           long weight = input.readVInt() - 1;

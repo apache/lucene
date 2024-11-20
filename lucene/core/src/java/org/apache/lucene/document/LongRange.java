@@ -127,20 +127,12 @@ public class LongRange extends Field {
   }
 
   /**
-   * encode the ranges into a sortable byte array ({@code Double.NaN} not allowed)
+   * encode the ranges into a sortable byte array
    *
    * <p>example for 4 dimensions (8 bytes per dimension value): minD1 ... minD4 | maxD1 ... maxD4
    */
-  static void verifyAndEncode(long[] min, long[] max, byte[] bytes) {
+  public static void verifyAndEncode(long[] min, long[] max, byte[] bytes) {
     for (int d = 0, i = 0, j = min.length * BYTES; d < min.length; ++d, i += BYTES, j += BYTES) {
-      if (Double.isNaN(min[d])) {
-        throw new IllegalArgumentException(
-            "invalid min value (" + Double.NaN + ")" + " in LongRange");
-      }
-      if (Double.isNaN(max[d])) {
-        throw new IllegalArgumentException(
-            "invalid max value (" + Double.NaN + ")" + " in LongRange");
-      }
       if (min[d] > max[d]) {
         throw new IllegalArgumentException(
             "min value (" + min[d] + ") is greater than max value (" + max[d] + ")");

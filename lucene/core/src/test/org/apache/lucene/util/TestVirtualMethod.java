@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
+
 public class TestVirtualMethod extends LuceneTestCase {
   private static final VirtualMethod<Base> publicTestMethod =
       new VirtualMethod<>(Base.class, "publicTest", String.class);

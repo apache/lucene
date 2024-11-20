@@ -30,13 +30,14 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.English;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.English;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** Tests IndexSearcher's searchAfter() method */
 public class TestSearchAfter extends LuceneTestCase {
@@ -228,60 +229,54 @@ public class TestSearchAfter extends LuceneTestCase {
               + pageSize);
     }
     final boolean doScores;
-    final TopDocsCollector<?> allCollector;
+    final CollectorManager<?, ? extends TopDocs> allManager;
     if (sort == null) {
-      allCollector = TopScoreDocCollector.create(maxDoc, null, Integer.MAX_VALUE);
+      allManager = new TopScoreDocCollectorManager(maxDoc, null, Integer.MAX_VALUE);
       doScores = false;
     } else if (sort == Sort.RELEVANCE) {
-      allCollector = TopFieldCollector.create(sort, maxDoc, Integer.MAX_VALUE);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE);
       doScores = true;
     } else {
-      allCollector = TopFieldCollector.create(sort, maxDoc, Integer.MAX_VALUE);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE);
       doScores = random().nextBoolean();
     }
-    searcher.search(query, allCollector);
-    all = allCollector.topDocs();
+    all = searcher.search(query, allManager);
     if (doScores) {
       TopFieldCollector.populateScores(all.scoreDocs, searcher, query);
     }
 
     if (VERBOSE) {
-      System.out.println("  all.totalHits.value=" + all.totalHits.value);
+      System.out.println("  all.totalHits.value()=" + all.totalHits.value());
       int upto = 0;
+      StoredFields storedFields = searcher.storedFields();
       for (ScoreDoc scoreDoc : all.scoreDocs) {
         System.out.println(
             "    hit "
                 + (upto++)
                 + ": id="
-                + searcher.doc(scoreDoc.doc).get("id")
+                + storedFields.document(scoreDoc.doc).get("id")
                 + " "
                 + scoreDoc);
       }
     }
     int pageStart = 0;
     ScoreDoc lastBottom = null;
-    while (pageStart < all.totalHits.value) {
+    while (pageStart < all.totalHits.value()) {
       TopDocs paged;
-      final TopDocsCollector<?> pagedCollector;
+      final CollectorManager<?, ? extends TopDocs> pagedManager;
       if (sort == null) {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
-        pagedCollector = TopScoreDocCollector.create(pageSize, lastBottom, Integer.MAX_VALUE);
+        pagedManager = new TopScoreDocCollectorManager(pageSize, lastBottom, Integer.MAX_VALUE);
       } else {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
-        if (sort == Sort.RELEVANCE) {
-          pagedCollector =
-              TopFieldCollector.create(sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
-        } else {
-          pagedCollector =
-              TopFieldCollector.create(sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
-        }
+        pagedManager =
+            new TopFieldCollectorManager(sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
       }
-      searcher.search(query, pagedCollector);
-      paged = pagedCollector.topDocs();
+      paged = searcher.search(query, pagedManager);
       if (doScores) {
         TopFieldCollector.populateScores(paged.scoreDocs, searcher, query);
       }
@@ -301,14 +296,17 @@ public class TestSearchAfter extends LuceneTestCase {
   }
 
   void assertPage(int pageStart, TopDocs all, TopDocs paged) throws IOException {
-    assertEquals(all.totalHits.value, paged.totalHits.value);
+    assertEquals(all.totalHits.value(), paged.totalHits.value());
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < paged.scoreDocs.length; i++) {
       ScoreDoc sd1 = all.scoreDocs[pageStart + i];
       ScoreDoc sd2 = paged.scoreDocs[i];
       if (VERBOSE) {
         System.out.println("    hit " + (pageStart + i));
-        System.out.println("      expected id=" + searcher.doc(sd1.doc).get("id") + " " + sd1);
-        System.out.println("        actual id=" + searcher.doc(sd2.doc).get("id") + " " + sd2);
+        System.out.println(
+            "      expected id=" + storedFields.document(sd1.doc).get("id") + " " + sd1);
+        System.out.println(
+            "        actual id=" + storedFields.document(sd2.doc).get("id") + " " + sd2);
       }
       assertEquals(sd1.doc, sd2.doc);
       assertEquals(sd1.score, sd2.score, 0f);

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.perfield;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 
 import java.io.IOException;
@@ -23,30 +24,36 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.asserting.AssertingCodec;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
-import org.apache.lucene.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomCodec;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.index.RandomCodec;
+import org.apache.lucene.tests.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
@@ -62,6 +69,40 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
     return codec;
+  }
+
+  public void testMissingFieldReturnsNoResults() throws IOException {
+    try (Directory directory = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(
+          new AssertingCodec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return TestUtil.getDefaultKnnVectorsFormat();
+            }
+          });
+      try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
+        Document doc = new Document();
+        doc.add(newTextField("id", "1", Field.Store.YES));
+        iwriter.addDocument(doc);
+      }
+
+      try (IndexReader ireader = DirectoryReader.open(directory)) {
+        LeafReader reader = ireader.leaves().get(0).reader();
+        TopDocs hits =
+            reader.searchNearestVectors(
+                "missing_field",
+                new float[] {1, 2, 3},
+                10,
+                reader.getLiveDocs(),
+                Integer.MAX_VALUE);
+        assertEquals(0, hits.scoreDocs.length);
+        hits =
+            reader.searchNearestVectors(
+                "id", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+        assertEquals(0, hits.scoreDocs.length);
+      }
+    }
   }
 
   public void testTwoFieldsTwoFormats() throws IOException {
@@ -87,12 +128,12 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
         Document doc = new Document();
         doc.add(newTextField("id", "1", Field.Store.YES));
-        doc.add(new KnnVectorField("field1", new float[] {1, 2, 3}));
+        doc.add(new KnnFloatVectorField("field1", new float[] {1, 2, 3}));
         iwriter.addDocument(doc);
 
         doc.clear();
         doc.add(newTextField("id", "2", Field.Store.YES));
-        doc.add(new KnnVectorField("field2", new float[] {4, 5, 6}));
+        doc.add(new KnnFloatVectorField("field2", new float[] {4, 5, 6}));
         iwriter.addDocument(doc);
       }
 
@@ -104,11 +145,13 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       try (IndexReader ireader = DirectoryReader.open(directory)) {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
-            reader.searchNearestVectors("field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs());
+            reader.searchNearestVectors(
+                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
-            reader.searchNearestVectors("field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs());
+            reader.searchNearestVectors(
+                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }
@@ -123,20 +166,27 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         for (int i = 0; i < 3; i++) {
           Document doc = new Document();
           doc.add(newTextField("id", "1", Field.Store.YES));
-          doc.add(new KnnVectorField("field", new float[] {1, 2, 3}));
+          doc.add(new KnnFloatVectorField("field1", new float[] {1, 2, 3}));
+          doc.add(new KnnFloatVectorField("field2", new float[] {1, 2, 3}));
           iw.addDocument(doc);
           iw.commit();
         }
       }
 
       IndexWriterConfig newConfig = newIndexWriterConfig(new MockAnalyzer(random()));
-      WriteRecordingKnnVectorsFormat newFormat =
+      WriteRecordingKnnVectorsFormat format1 =
+          new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
+      WriteRecordingKnnVectorsFormat format2 =
           new WriteRecordingKnnVectorsFormat(TestUtil.getDefaultKnnVectorsFormat());
       newConfig.setCodec(
           new AssertingCodec() {
             @Override
             public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return newFormat;
+              if ("field1".equals(field)) {
+                return format1;
+              } else {
+                return format2;
+              }
             }
           });
 
@@ -145,7 +195,52 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
       }
 
       // Check that the new format was used while merging
-      MatcherAssert.assertThat(newFormat.fieldsWritten, equalTo(Set.of("field")));
+      MatcherAssert.assertThat(format1.fieldsWritten, contains("field1"));
+      MatcherAssert.assertThat(format2.fieldsWritten, contains("field2"));
+    }
+  }
+
+  public void testMaxDimensionsPerFieldFormat() throws IOException {
+    try (Directory directory = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+      KnnVectorsFormat format1 =
+          new KnnVectorsFormatMaxDims32(new Lucene99HnswVectorsFormat(16, 100));
+      KnnVectorsFormat format2 = new Lucene99HnswVectorsFormat(16, 100);
+      iwc.setCodec(
+          new AssertingCodec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              if ("field1".equals(field)) {
+                return format1;
+              } else {
+                return format2;
+              }
+            }
+          });
+      try (IndexWriter writer = new IndexWriter(directory, iwc)) {
+        Document doc1 = new Document();
+        doc1.add(new KnnFloatVectorField("field1", new float[33]));
+        Exception exc =
+            expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
+        assertTrue(exc.getMessage().contains("vector's dimensions must be <= [32]"));
+
+        Document doc2 = new Document();
+        doc2.add(new KnnFloatVectorField("field1", new float[32]));
+        doc2.add(new KnnFloatVectorField("field2", new float[33]));
+        writer.addDocument(doc2);
+      }
+
+      // Check that the vectors were written
+      try (IndexReader reader = DirectoryReader.open(directory)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query query1 = new KnnFloatVectorQuery("field1", new float[32], 10);
+        TopDocs topDocs1 = searcher.search(query1, 1);
+        assertEquals(1, topDocs1.scoreDocs.length);
+
+        Query query2 = new KnnFloatVectorQuery("field2", new float[33], 10);
+        TopDocs topDocs2 = searcher.search(query2, 1);
+        assertEquals(1, topDocs2.scoreDocs.length);
+      }
     }
   }
 
@@ -163,10 +258,22 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
       KnnVectorsWriter writer = delegate.fieldsWriter(state);
       return new KnnVectorsWriter() {
+
         @Override
-        public void writeField(FieldInfo fieldInfo, VectorValues values) throws IOException {
+        public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          writer.writeField(fieldInfo, values);
+          return writer.addField(fieldInfo);
+        }
+
+        @Override
+        public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+          writer.flush(maxDoc, sortMap);
+        }
+
+        @Override
+        public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+          fieldsWritten.add(fieldInfo.name);
+          writer.mergeOneField(fieldInfo, mergeState);
         }
 
         @Override
@@ -178,12 +285,46 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         public void close() throws IOException {
           writer.close();
         }
+
+        @Override
+        public long ramBytesUsed() {
+          return writer.ramBytesUsed();
+        }
       };
     }
 
     @Override
     public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
       return delegate.fieldsReader(state);
+    }
+
+    @Override
+    public int getMaxDimensions(String fieldName) {
+      return KnnVectorsFormat.DEFAULT_MAX_DIMENSIONS;
+    }
+  }
+
+  private static class KnnVectorsFormatMaxDims32 extends KnnVectorsFormat {
+    private final KnnVectorsFormat delegate;
+
+    public KnnVectorsFormatMaxDims32(KnnVectorsFormat delegate) {
+      super(delegate.getName());
+      this.delegate = delegate;
+    }
+
+    @Override
+    public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
+      return delegate.fieldsWriter(state);
+    }
+
+    @Override
+    public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
+      return delegate.fieldsReader(state);
+    }
+
+    @Override
+    public int getMaxDimensions(String fieldName) {
+      return 32;
     }
   }
 }

@@ -27,6 +27,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.spatial.prefix.AbstractVisitingPrefixTreeQuery;
@@ -96,8 +97,8 @@ public class IntersectsRPTVerifyQuery extends Query {
 
     return new ConstantScoreWeight(this, boost) {
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        // Compute approx & exact
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        Scorer s;
         final IntersectsDifferentiatingQuery.IntersectsDifferentiatingVisitor result =
             intersectsDiffQuery.compute(context);
         if (result.approxDocIdSet == null) {
@@ -112,7 +113,7 @@ public class IntersectsRPTVerifyQuery extends Query {
           // If both sets are the same, there's nothing to verify; we needn't return a
           // TwoPhaseIterator
           if (result.approxDocIdSet == result.exactDocIdSet) {
-            return new ConstantScoreScorer(this, score(), scoreMode, approxDISI);
+            s = new ConstantScoreScorer(score(), scoreMode, approxDISI);
           }
           exactIterator = result.exactDocIdSet.iterator();
           assert exactIterator != null;
@@ -142,11 +143,14 @@ public class IntersectsRPTVerifyQuery extends Query {
 
               @Override
               public float matchCost() {
-                return 100; // TODO: use cost of exactIterator.advance() and predFuncValues.cost()
+                return 100; // TODO: use cost of exactIterator.advance() and
+                // predFuncValues.cost()
               }
             };
 
-        return new ConstantScoreScorer(this, score(), scoreMode, twoPhaseIterator);
+        s = new ConstantScoreScorer(score(), scoreMode, twoPhaseIterator);
+        final Scorer scorer = s;
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

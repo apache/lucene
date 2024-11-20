@@ -18,9 +18,10 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestBufferedIndexInput extends LuceneTestCase {
 
@@ -142,6 +143,170 @@ public class TestBufferedIndexInput extends LuceneTestCase {
         });
   }
 
+  // Test that when reading backwards, we page backwards rather than refilling
+  // on every call
+  public void testBackwardsByteReads() throws IOException {
+    MyBufferedIndexInput input = new MyBufferedIndexInput(1024 * 8);
+    for (int i = 2048; i > 0; i -= random().nextInt(16)) {
+      assertEquals(byten(i), input.readByte(i));
+    }
+    assertEquals(3, input.readCount);
+  }
+
+  public void testBackwardsShortReads() throws IOException {
+    MyBufferedIndexInput input = new MyBufferedIndexInput(1024 * 8);
+    ByteBuffer bb = ByteBuffer.allocate(2);
+    bb.order(ByteOrder.LITTLE_ENDIAN);
+    for (int i = 2048; i > 0; i -= (random().nextInt(16) + 1)) {
+      bb.clear();
+      bb.put(byten(i));
+      bb.put(byten(i + 1));
+      assertEquals(bb.getShort(0), input.readShort(i));
+    }
+    // readCount can be three or four, depending on whether or not we had to adjust the bufferStart
+    // to include a whole short
+    assertTrue(
+        "Expected 4 or 3, got " + input.readCount, input.readCount == 4 || input.readCount == 3);
+  }
+
+  public void testBackwardsIntReads() throws IOException {
+    MyBufferedIndexInput input = new MyBufferedIndexInput(1024 * 8);
+    ByteBuffer bb = ByteBuffer.allocate(4);
+    bb.order(ByteOrder.LITTLE_ENDIAN);
+    for (int i = 2048; i > 0; i -= (random().nextInt(16) + 3)) {
+      bb.clear();
+      bb.put(byten(i));
+      bb.put(byten(i + 1));
+      bb.put(byten(i + 2));
+      bb.put(byten(i + 3));
+      assertEquals(bb.getInt(0), input.readInt(i));
+    }
+    // readCount can be three or four, depending on whether or not we had to adjust the bufferStart
+    // to include a whole int
+    assertTrue(
+        "Expected 4 or 3, got " + input.readCount, input.readCount == 4 || input.readCount == 3);
+  }
+
+  public void testBackwardsLongReads() throws IOException {
+    MyBufferedIndexInput input = new MyBufferedIndexInput(1024 * 8);
+    ByteBuffer bb = ByteBuffer.allocate(8);
+    bb.order(ByteOrder.LITTLE_ENDIAN);
+    for (int i = 2048; i > 0; i -= (random().nextInt(16) + 7)) {
+      bb.clear();
+      bb.put(byten(i));
+      bb.put(byten(i + 1));
+      bb.put(byten(i + 2));
+      bb.put(byten(i + 3));
+      bb.put(byten(i + 4));
+      bb.put(byten(i + 5));
+      bb.put(byten(i + 6));
+      bb.put(byten(i + 7));
+      assertEquals(bb.getLong(0), input.readLong(i));
+    }
+    // readCount can be three or four, depending on whether or not we had to adjust the bufferStart
+    // to include a whole long
+    assertTrue(
+        "Expected 4 or 3, got " + input.readCount, input.readCount == 4 || input.readCount == 3);
+  }
+
+  public void testReadFloats() throws IOException {
+    final int length = 1024 * 8;
+    MyBufferedIndexInput input = new MyBufferedIndexInput(length);
+    ByteBuffer bb = ByteBuffer.allocate(Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    final int bufferLength = 128;
+    float[] floatBuffer = new float[bufferLength];
+
+    for (int alignment = 0; alignment < Float.BYTES; alignment++) {
+      input.seek(0);
+      for (int i = 0; i < alignment; i++) {
+        input.readByte();
+      }
+      final int bulkReads = length / (bufferLength * Float.BYTES) - 1;
+      for (int i = 0; i < bulkReads; i++) {
+        int pos = alignment + i * bufferLength * Float.BYTES;
+        final int floatOffset = random().nextInt(3);
+        input.skipBytes(floatOffset * Float.BYTES);
+        input.readFloats(floatBuffer, floatOffset, bufferLength - floatOffset);
+        for (int idx = floatOffset; idx < bufferLength; idx++) {
+          final int offset = pos + idx * Float.BYTES;
+          bb.position(0)
+              .put(byten(offset))
+              .put(byten(offset + 1))
+              .put(byten(offset + 2))
+              .put(byten(offset + 3));
+          assertEquals(
+              Float.floatToRawIntBits(bb.getFloat(0)), Float.floatToRawIntBits(floatBuffer[idx]));
+        }
+      }
+    }
+  }
+
+  public void testReadInts() throws IOException {
+    final int length = 1024 * 8;
+    MyBufferedIndexInput input = new MyBufferedIndexInput(length);
+    ByteBuffer bb = ByteBuffer.allocate(Integer.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    final int bufferLength = 128;
+    int[] intBuffer = new int[bufferLength];
+
+    for (int alignment = 0; alignment < Integer.BYTES; alignment++) {
+      input.seek(0);
+      for (int i = 0; i < alignment; i++) {
+        input.readByte();
+      }
+      final int bulkReads = length / (bufferLength * Integer.BYTES) - 1;
+      for (int i = 0; i < bulkReads; i++) {
+        int pos = alignment + i * bufferLength * Integer.BYTES;
+        final int intOffset = random().nextInt(3);
+        input.skipBytes(intOffset * Integer.BYTES);
+        input.readInts(intBuffer, intOffset, bufferLength - intOffset);
+        for (int idx = intOffset; idx < bufferLength; idx++) {
+          final int offset = pos + idx * Integer.BYTES;
+          bb.position(0)
+              .put(byten(offset))
+              .put(byten(offset + 1))
+              .put(byten(offset + 2))
+              .put(byten(offset + 3));
+          assertEquals(bb.getInt(0), intBuffer[idx]);
+        }
+      }
+    }
+  }
+
+  public void testReadLongs() throws IOException {
+    final int length = 1024 * 8;
+    MyBufferedIndexInput input = new MyBufferedIndexInput(length);
+    ByteBuffer bb = ByteBuffer.allocate(Long.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+    final int bufferLength = 128;
+    long[] longBuffer = new long[bufferLength];
+
+    for (int alignment = 0; alignment < Long.BYTES; alignment++) {
+      input.seek(0);
+      for (int i = 0; i < alignment; i++) {
+        input.readByte();
+      }
+      final int bulkReads = length / (bufferLength * Long.BYTES) - 1;
+      for (int i = 0; i < bulkReads; i++) {
+        int pos = alignment + i * bufferLength * Long.BYTES;
+        final int longOffset = random().nextInt(3);
+        input.skipBytes(longOffset * Long.BYTES);
+        input.readLongs(longBuffer, longOffset, bufferLength - longOffset);
+        for (int idx = longOffset; idx < bufferLength; idx++) {
+          final int offset = pos + idx * Long.BYTES;
+          bb.position(0)
+              .put(byten(offset))
+              .put(byten(offset + 1))
+              .put(byten(offset + 2))
+              .put(byten(offset + 3))
+              .put(byten(offset + 4))
+              .put(byten(offset + 5))
+              .put(byten(offset + 6))
+              .put(byten(offset + 7));
+          assertEquals(bb.getLong(0), longBuffer[idx]);
+        }
+      }
+    }
+  }
+
   // byten emulates a file - byten(n) returns the n'th byte in that file.
   // MyBufferedIndexInput reads this "file".
   private static byte byten(long n) {
@@ -150,7 +315,8 @@ public class TestBufferedIndexInput extends LuceneTestCase {
 
   private static class MyBufferedIndexInput extends BufferedIndexInput {
     private long pos;
-    private long len;
+    private final long len;
+    private long readCount = 0;
 
     public MyBufferedIndexInput(long len) {
       super("MyBufferedIndexInput(len=" + len + ")", BufferedIndexInput.BUFFER_SIZE);
@@ -164,14 +330,15 @@ public class TestBufferedIndexInput extends LuceneTestCase {
     }
 
     @Override
-    protected void readInternal(ByteBuffer b) throws IOException {
+    protected void readInternal(ByteBuffer b) {
+      readCount++;
       while (b.hasRemaining()) {
         b.put(byten(pos++));
       }
     }
 
     @Override
-    protected void seekInternal(long pos) throws IOException {
+    protected void seekInternal(long pos) {
       this.pos = pos;
     }
 

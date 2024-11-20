@@ -18,10 +18,10 @@ package org.apache.lucene.analysis.tr;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Test the Turkish lowercase filter. */
 public class TestTurkishLowerCaseFilter extends BaseTokenStreamTestCase {

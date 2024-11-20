@@ -17,9 +17,12 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.function.Function;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.TimSorter;
+import org.apache.lucene.util.Version;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -28,7 +31,7 @@ import org.apache.lucene.util.packed.PackedLongValues;
  *
  * @lucene.experimental
  */
-final class Sorter {
+public final class Sorter {
   final Sort sort;
 
   /** Creates a new Sorter to sort the index with {@code sort} */
@@ -44,20 +47,23 @@ final class Sorter {
    * A permutation of doc IDs. For every document ID between <code>0</code> and {@link
    * IndexReader#maxDoc()}, <code>oldToNew(newToOld(docID))</code> must return <code>docID</code>.
    */
-  abstract static class DocMap {
+  public abstract static class DocMap {
+
+    /** Sole constructor. */
+    protected DocMap() {}
 
     /** Given a doc ID from the original index, return its ordinal in the sorted index. */
-    abstract int oldToNew(int docID);
+    public abstract int oldToNew(int docID);
 
     /** Given the ordinal of a doc ID, return its doc ID in the original index. */
-    abstract int newToOld(int docID);
+    public abstract int newToOld(int docID);
 
     /**
      * Return the number of documents in this map. This must be equal to the {@link
      * org.apache.lucene.index.LeafReader#maxDoc() number of documents} of the {@link
      * org.apache.lucene.index.LeafReader} which is sorted.
      */
-    abstract int size();
+    public abstract int size();
   }
 
   /** Check consistency of a {@link DocMap}, useful for assertions. */
@@ -203,13 +209,33 @@ final class Sorter {
     SortField[] fields = sort.getSort();
     final IndexSorter.DocComparator[] comparators = new IndexSorter.DocComparator[fields.length];
 
+    Function<IndexSorter.DocComparator, IndexSorter.DocComparator> comparatorWrapper = in -> in;
+    LeafMetaData metaData = reader.getMetaData();
+    FieldInfos fieldInfos = reader.getFieldInfos();
+    if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
+      BitSet parents =
+          BitSet.of(reader.getNumericDocValues(fieldInfos.getParentField()), reader.maxDoc());
+      comparatorWrapper =
+          in ->
+              (docID1, docID2) ->
+                  in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
+    }
+    if (metaData.hasBlocks()
+        && fieldInfos.getParentField() == null
+        && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
+      throw new CorruptIndexException(
+          "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
+              + metaData.createdVersionMajor(),
+          "Sorter");
+    }
+
     for (int i = 0; i < fields.length; i++) {
       IndexSorter sorter = fields[i].getIndexSorter();
       if (sorter == null) {
         throw new IllegalArgumentException(
             "Cannot use sortfield + " + fields[i] + " to sort indexes");
       }
-      comparators[i] = sorter.getDocComparator(reader, reader.maxDoc());
+      comparators[i] = comparatorWrapper.apply(sorter.getDocComparator(reader, reader.maxDoc()));
     }
     return sort(reader.maxDoc(), comparators);
   }

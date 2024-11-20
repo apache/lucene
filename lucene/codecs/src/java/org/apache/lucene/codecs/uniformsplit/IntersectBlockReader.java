@@ -27,10 +27,10 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Transition;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 
 /**
  * The "intersect" {@link TermsEnum} response to {@link
@@ -72,8 +72,8 @@ public class IntersectBlockReader extends BlockReader {
    */
   protected final int NUM_CONSECUTIVELY_REJECTED_TERMS_THRESHOLD = 4;
 
-  protected final Automaton automaton;
-  protected final ByteRunAutomaton runAutomaton;
+  protected final TransitionAccessor transitionAccessor;
+  protected final ByteRunnable byteRunnable;
   protected final boolean finite;
   protected final BytesRef commonSuffix; // maybe null
   protected final int minTermLength;
@@ -81,15 +81,19 @@ public class IntersectBlockReader extends BlockReader {
 
   /** Set this when our current mode is seeking to this term. Set to null after. */
   protected BytesRef seekTerm;
+
   /** Number of bytes accepted by the automaton when validating the current term. */
   protected int numMatchedBytes;
+
   /**
    * Automaton states reached when validating the current term, from 0 to {@link #numMatchedBytes} -
    * 1.
    */
   protected int[] states;
+
   /** Block iteration order determined when scanning the terms in the current block. */
   protected BlockIteration blockIteration;
+
   /**
    * Counter of the number of consecutively rejected terms. Depending on {@link
    * #NUM_CONSECUTIVELY_REJECTED_TERMS_THRESHOLD}, this may trigger a jump to a block away.
@@ -106,8 +110,8 @@ public class IntersectBlockReader extends BlockReader {
       BlockDecoder blockDecoder)
       throws IOException {
     super(dictionaryBrowserSupplier, blockInput, postingsReader, fieldMetadata, blockDecoder);
-    automaton = compiled.automaton;
-    runAutomaton = compiled.runAutomaton;
+    this.byteRunnable = compiled.getByteRunnable();
+    this.transitionAccessor = compiled.getTransitionAccessor();
     finite = compiled.finite;
     commonSuffix = compiled.commonSuffixRef;
     minTermLength = getMinTermLength();
@@ -136,16 +140,16 @@ public class IntersectBlockReader extends BlockReader {
     int state = 0;
     Transition t = null;
     while (true) {
-      if (runAutomaton.isAccept(state)) {
+      if (byteRunnable.isAccept(state)) {
         // The common prefix reaches a final state. So common prefix and common suffix overlap.
         // Min term length is the max between common prefix and common suffix lengths.
         return Math.max(commonPrefixLength, commonSuffixLength);
       }
-      if (automaton.getNumTransitions(state) == 1) {
+      if (transitionAccessor.getNumTransitions(state) == 1) {
         if (t == null) {
           t = new Transition();
         }
-        automaton.getTransition(state, 0, t);
+        transitionAccessor.getTransition(state, 0, t);
         if (t.min == t.max) {
           state = t.dest;
           commonPrefixLength++;
@@ -230,10 +234,10 @@ public class IntersectBlockReader extends BlockReader {
         int state = states[index];
         while (true) {
           if (index == lineTerm.length) {
-            if (runAutomaton.isAccept(state)) {
+            if (byteRunnable.isAccept(state)) {
               // The automaton accepts the current term. Record the number of matched bytes and
               // return the term.
-              assert runAutomaton.run(lineTerm.bytes, 0, lineTerm.length);
+              assert byteRunnable.run(lineTerm.bytes, 0, lineTerm.length);
               numMatchedBytes = index;
               if (numConsecutivelyRejectedTerms > 0) {
                 numConsecutivelyRejectedTerms = 0;
@@ -243,7 +247,7 @@ public class IntersectBlockReader extends BlockReader {
             }
             break;
           }
-          state = runAutomaton.step(state, lineTerm.bytes[index] & 0xff);
+          state = byteRunnable.step(state, lineTerm.bytes[index] & 0xff);
           if (state == -1) {
             // The automaton rejects the current term.
             break;
@@ -254,7 +258,7 @@ public class IntersectBlockReader extends BlockReader {
       }
       // The current term is not accepted by the automaton.
       // Still record the reached automaton state to start the next term steps from there.
-      assert !runAutomaton.run(lineTerm.bytes, 0, lineTerm.length);
+      assert !byteRunnable.run(lineTerm.bytes, 0, lineTerm.length);
       numMatchedBytes = index;
       // If the number of consecutively rejected terms reaches the threshold,
       // then determine whether it is worthwhile to jump to a block away.
@@ -366,7 +370,7 @@ public class IntersectBlockReader extends BlockReader {
   protected class AutomatonNextTermCalculator {
     // for path tracking: each short records gen when we last
     // visited the state; we use gens to avoid having to clear
-    protected final short[] visited;
+    protected short[] visited;
     protected short curGen;
     // the reference used for seeking forwards through the term dictionary
     protected final BytesRefBuilder seekBytesRef = new BytesRefBuilder();
@@ -380,19 +384,22 @@ public class IntersectBlockReader extends BlockReader {
     protected final IntsRefBuilder savedStates = new IntsRefBuilder();
 
     protected AutomatonNextTermCalculator(CompiledAutomaton compiled) {
-      visited = compiled.finite ? null : new short[runAutomaton.getSize()];
+      visited = compiled.finite ? null : new short[byteRunnable.getSize()];
     }
 
     /** Records the given state has been visited. */
-    protected void setVisited(int state) {
-      if (!finite) {
+    private void setVisited(int state) {
+      if (finite == false) {
+        if (state >= visited.length) {
+          visited = ArrayUtil.grow(visited, state + 1);
+        }
         visited[state] = curGen;
       }
     }
 
     /** Indicates whether the given state has been visited. */
-    protected boolean isVisited(int state) {
-      return !finite && visited[state] == curGen;
+    private boolean isVisited(int state) {
+      return !finite && state < visited.length && visited[state] == curGen;
     }
 
     /** True if the current state of the automata is best iterated linearly (without seeking). */
@@ -400,13 +407,15 @@ public class IntersectBlockReader extends BlockReader {
       return linear && term.compareTo(linearUpperBound) < 0;
     }
 
-    /** @see org.apache.lucene.index.FilteredTermsEnum#nextSeekTerm(BytesRef) */
+    /**
+     * @see org.apache.lucene.index.FilteredTermsEnum#nextSeekTerm(BytesRef)
+     */
     protected BytesRef nextSeekTerm(final BytesRef term) {
       // System.out.println("ATE.nextSeekTerm term=" + term);
       if (term == null) {
         assert seekBytesRef.length() == 0;
         // return the empty term, as it's valid
-        if (runAutomaton.isAccept(0)) {
+        if (byteRunnable.isAccept(0)) {
           return seekBytesRef.get();
         }
       } else {
@@ -433,13 +442,13 @@ public class IntersectBlockReader extends BlockReader {
       int maxInterval = 0xff;
       // System.out.println("setLinear pos=" + position + " seekbytesRef=" + seekBytesRef);
       for (int i = 0; i < position; i++) {
-        state = runAutomaton.step(state, seekBytesRef.byteAt(i) & 0xff);
+        state = byteRunnable.step(state, seekBytesRef.byteAt(i) & 0xff);
         assert state >= 0 : "state=" + state;
       }
-      final int numTransitions = automaton.getNumTransitions(state);
-      automaton.initTransition(state, transition);
+      final int numTransitions = transitionAccessor.getNumTransitions(state);
+      transitionAccessor.initTransition(state, transition);
       for (int i = 0; i < numTransitions; i++) {
-        automaton.getNextTransition(transition);
+        transitionAccessor.getNextTransition(transition);
         if (transition.min <= (seekBytesRef.byteAt(position) & 0xff)
             && (seekBytesRef.byteAt(position) & 0xff) <= transition.max) {
           maxInterval = transition.max;
@@ -484,7 +493,7 @@ public class IntersectBlockReader extends BlockReader {
         // walk the automaton until a character is rejected.
         for (state = savedStates.intAt(pos); pos < seekBytesRef.length(); pos++) {
           setVisited(state);
-          int nextState = runAutomaton.step(state, seekBytesRef.byteAt(pos) & 0xff);
+          int nextState = byteRunnable.step(state, seekBytesRef.byteAt(pos) & 0xff);
           if (nextState == -1) break;
           savedStates.setIntAt(pos + 1, nextState);
           // we found a loop, record it for faster enumeration
@@ -502,8 +511,8 @@ public class IntersectBlockReader extends BlockReader {
           /* no more solutions exist from this useful portion, backtrack */
           if ((pos = backtrack(pos)) < 0) /* no more solutions at all */ return false;
           final int newState =
-              runAutomaton.step(savedStates.intAt(pos), seekBytesRef.byteAt(pos) & 0xff);
-          if (newState >= 0 && runAutomaton.isAccept(newState))
+              byteRunnable.step(savedStates.intAt(pos), seekBytesRef.byteAt(pos) & 0xff);
+          if (newState >= 0 && byteRunnable.isAccept(newState))
             /* String is good to go as-is */
             return true;
           /* else advance further */
@@ -548,35 +557,33 @@ public class IntersectBlockReader extends BlockReader {
       seekBytesRef.setLength(position);
       setVisited(state);
 
-      final int numTransitions = automaton.getNumTransitions(state);
-      automaton.initTransition(state, transition);
+      final int numTransitions = transitionAccessor.getNumTransitions(state);
+      transitionAccessor.initTransition(state, transition);
       // find the minimal path (lexicographic order) that is >= c
 
       for (int i = 0; i < numTransitions; i++) {
-        automaton.getNextTransition(transition);
+        transitionAccessor.getNextTransition(transition);
         if (transition.max >= c) {
           int nextChar = Math.max(c, transition.min);
           // append either the next sequential char, or the minimum transition
-          seekBytesRef.grow(seekBytesRef.length() + 1);
           seekBytesRef.append((byte) nextChar);
           state = transition.dest;
           /*
            * as long as is possible, continue down the minimal path in
            * lexicographic order. if a loop or accept state is encountered, stop.
            */
-          while (!isVisited(state) && !runAutomaton.isAccept(state)) {
+          while (!isVisited(state) && !byteRunnable.isAccept(state)) {
             setVisited(state);
             /*
              * Note: we work with a DFA with no transitions to dead states.
              * so the below is ok, if it is not an accept state,
              * then there MUST be at least one transition.
              */
-            automaton.initTransition(state, transition);
-            automaton.getNextTransition(transition);
+            transitionAccessor.initTransition(state, transition);
+            transitionAccessor.getNextTransition(transition);
             state = transition.dest;
 
             // append the minimum transition
-            seekBytesRef.grow(seekBytesRef.length() + 1);
             seekBytesRef.append((byte) transition.min);
 
             // we found a loop, record it for faster enumeration

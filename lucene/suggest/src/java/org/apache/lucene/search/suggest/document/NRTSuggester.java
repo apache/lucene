@@ -27,7 +27,6 @@ import org.apache.lucene.search.suggest.analyzing.FSTUtil;
 import org.apache.lucene.search.suggest.document.CompletionPostingsFormat.FSTLoadMode;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
-import org.apache.lucene.store.ByteBufferIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
@@ -147,10 +146,13 @@ public final class NRTSuggester implements Accountable {
 
     final CharsRefBuilder spare = new CharsRefBuilder();
 
-    Comparator<Pair<Long, BytesRef>> comparator = getComparator();
     Util.TopNSearcher<Pair<Long, BytesRef>> searcher =
-        new Util.TopNSearcher<Pair<Long, BytesRef>>(
-            fst, topN, queueSize, comparator, new ScoringPathComparator(scorer)) {
+        new Util.TopNSearcher<>(
+            fst,
+            topN,
+            queueSize,
+            (o1, o2) -> Long.compare(o1.output1, o2.output1),
+            new ScoringPathComparator(scorer)) {
 
           private final ByteArrayDataInput scratchInput = new ByteArrayDataInput();
 
@@ -217,7 +219,7 @@ public final class NRTSuggester implements Accountable {
               collector.seenSurfaceForms.add(key);
             }
             try {
-              float score = scorer.score(decode(path.output.output1), path.boost);
+              float score = scorer.score((float) decode(path.output.output1), path.boost);
               collector.collect(docID, spare.toCharsRef(), path.context, score);
               return true;
             } catch (IOException e) {
@@ -227,8 +229,8 @@ public final class NRTSuggester implements Accountable {
         };
 
     for (FSTUtil.Path<Pair<Long, BytesRef>> path : prefixPaths) {
-      scorer.weight.setNextMatch(path.input.get());
-      BytesRef output = path.output.output2;
+      scorer.weight.setNextMatch(path.input().get());
+      BytesRef output = path.output().output2;
       int payload = -1;
       if (collector.doSkipDuplicates()) {
         for (int j = 0; j < output.length; j++) {
@@ -242,10 +244,10 @@ public final class NRTSuggester implements Accountable {
       }
 
       searcher.addStartPaths(
-          path.fstNode,
-          path.output,
+          path.fstNode(),
+          path.output(),
           false,
-          path.input,
+          path.input(),
           scorer.weight.boost(),
           scorer.weight.context(),
           payload);
@@ -262,32 +264,18 @@ public final class NRTSuggester implements Accountable {
    * Compares partial completion paths using {@link CompletionScorer#score(float, float)}, breaks
    * ties comparing path inputs
    */
-  private static class ScoringPathComparator
+  private record ScoringPathComparator(CompletionScorer scorer)
       implements Comparator<Util.FSTPath<Pair<Long, BytesRef>>> {
-    private final CompletionScorer scorer;
-
-    public ScoringPathComparator(CompletionScorer scorer) {
-      this.scorer = scorer;
-    }
 
     @Override
     public int compare(
         Util.FSTPath<Pair<Long, BytesRef>> first, Util.FSTPath<Pair<Long, BytesRef>> second) {
       int cmp =
           Float.compare(
-              scorer.score(decode(second.output.output1), second.boost),
-              scorer.score(decode(first.output.output1), first.boost));
+              scorer.score((float) decode(second.output.output1), second.boost),
+              scorer.score((float) decode(first.output.output1), first.boost));
       return (cmp != 0) ? cmp : first.input.get().compareTo(second.input.get());
     }
-  }
-
-  private static Comparator<Pair<Long, BytesRef>> getComparator() {
-    return new Comparator<Pair<Long, BytesRef>>() {
-      @Override
-      public int compare(Pair<Long, BytesRef> o1, Pair<Long, BytesRef> o2) {
-        return Long.compare(o1.output1, o2.output1);
-      }
-    };
   }
 
   /**
@@ -304,7 +292,7 @@ public final class NRTSuggester implements Accountable {
    */
   private int getMaxTopNSearcherQueueSize(
       int topN, int numDocs, double liveDocsRatio, boolean filterEnabled) {
-    long maxQueueSize = topN * maxAnalyzedPathsPerOutput;
+    long maxQueueSize = topN * (long) maxAnalyzedPathsPerOutput;
     // liveDocRatio can be at most 1.0 (if no docs were deleted)
     assert liveDocsRatio <= 1.0d;
     maxQueueSize = (long) (maxQueueSize / liveDocsRatio);
@@ -325,7 +313,9 @@ public final class NRTSuggester implements Accountable {
       case OFF_HEAP:
         return true;
       case AUTO:
-        return input instanceof ByteBufferIndexInput;
+        // TODO: Make this less hacky to maybe expose "off-heap" feature using a marker interface on
+        // the IndexInput
+        return input.getClass().getName().contains(".MemorySegmentIndexInput");
       default:
         throw new IllegalStateException("unknown enum constant: " + fstLoadMode);
     }
@@ -337,25 +327,15 @@ public final class NRTSuggester implements Accountable {
    */
   public static NRTSuggester load(IndexInput input, FSTLoadMode fstLoadMode) throws IOException {
     final FST<Pair<Long, BytesRef>> fst;
+    PairOutputs<Long, BytesRef> outputs =
+        new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
     if (shouldLoadFSTOffHeap(input, fstLoadMode)) {
-      OffHeapFSTStore store = new OffHeapFSTStore();
-      IndexInput clone = input.clone();
-      clone.seek(input.getFilePointer());
-      fst =
-          new FST<>(
-              clone,
-              clone,
-              new PairOutputs<>(
-                  PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton()),
-              store);
-      input.seek(clone.getFilePointer() + store.size());
+      final FST.FSTMetadata<Pair<Long, BytesRef>> fstMetadata = FST.readMetadata(input, outputs);
+      OffHeapFSTStore store = new OffHeapFSTStore(input, input.getFilePointer(), fstMetadata);
+      fst = FST.fromFSTReader(fstMetadata, store);
+      input.skipBytes(store.size());
     } else {
-      fst =
-          new FST<>(
-              input,
-              input,
-              new PairOutputs<>(
-                  PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton()));
+      fst = new FST<>(FST.readMetadata(input, outputs), input);
     }
 
     /* read some meta info */

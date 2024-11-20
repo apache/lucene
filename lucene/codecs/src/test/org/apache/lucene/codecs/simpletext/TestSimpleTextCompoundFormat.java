@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.simpletext;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseCompoundFormatTestCase;
+import org.apache.lucene.tests.index.BaseCompoundFormatTestCase;
 
 public class TestSimpleTextCompoundFormat extends BaseCompoundFormatTestCase {
   private final Codec codec = new SimpleTextCodec();

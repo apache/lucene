@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.hu;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestHungarianAnalyzer extends BaseTokenStreamTestCase {
   /** This test fails with NPE when the stopwords file is missing in classpath */

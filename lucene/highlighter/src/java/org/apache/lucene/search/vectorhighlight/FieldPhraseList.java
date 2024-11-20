@@ -205,17 +205,23 @@ public class FieldPhraseList {
       return text.toString();
     }
 
-    /** @return the termsOffsets */
+    /**
+     * @return the termsOffsets
+     */
     public List<Toffs> getTermsOffsets() {
       return termsOffsets;
     }
 
-    /** @return the boost */
+    /**
+     * @return the boost
+     */
     public float getBoost() {
       return boost;
     }
 
-    /** @return the termInfos */
+    /**
+     * @return the termInfos
+     */
     public List<TermInfo> getTermsInfos() {
       return termsInfos;
     }
@@ -323,7 +329,9 @@ public class FieldPhraseList {
       return sb.toString();
     }
 
-    /** @return the seqnum */
+    /**
+     * @return the seqnum
+     */
     public int getSeqnum() {
       return seqnum;
     }

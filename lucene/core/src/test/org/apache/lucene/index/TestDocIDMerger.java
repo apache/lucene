@@ -20,9 +20,9 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestDocIDMerger extends LuceneTestCase {
 
@@ -60,16 +60,7 @@ public class TestDocIDMerger extends LuceneTestCase {
     for (int i = 0; i < subCount; i++) {
       int maxDoc = TestUtil.nextInt(random(), 1, 1000);
       final int docBase = valueStart;
-      subs.add(
-          new TestSubUnsorted(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  return docBase + docID;
-                }
-              },
-              maxDoc,
-              valueStart));
+      subs.add(new TestSubUnsorted(docID -> docBase + docID, maxDoc, valueStart));
       valueStart += maxDoc;
     }
 
@@ -167,15 +158,12 @@ public class TestDocIDMerger extends LuceneTestCase {
       final int[] docMap = completedSubs.get(i);
       subs.add(
           new TestSubSorted(
-              new MergeState.DocMap() {
-                @Override
-                public int get(int docID) {
-                  int mapped = docMap[docID];
-                  if (liveDocs == null || liveDocs.get(mapped)) {
-                    return mapped;
-                  } else {
-                    return -1;
-                  }
+              docID -> {
+                int mapped = docMap[docID];
+                if (liveDocs == null || liveDocs.get(mapped)) {
+                  return mapped;
+                } else {
+                  return -1;
                 }
               },
               docMap.length,

@@ -16,10 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_MASK;
-import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SHIFT;
-import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
-
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.util.ByteBlockPool.DirectAllocator;
@@ -48,7 +44,7 @@ public final class BytesRefHash implements Accountable {
 
   // the following fields are needed by comparator,
   // so package private to prevent access$-methods:
-  final ByteBlockPool pool;
+  final BytesRefBlockPool pool;
   int[] bytesStart;
 
   private int hashSize;
@@ -58,7 +54,7 @@ public final class BytesRefHash implements Accountable {
   private int lastCount = -1;
   private int[] ids;
   private final BytesStartArray bytesStartArray;
-  private Counter bytesUsed;
+  private final Counter bytesUsed;
 
   /**
    * Creates a new {@link BytesRefHash} with a {@link ByteBlockPool} using a {@link
@@ -78,14 +74,14 @@ public final class BytesRefHash implements Accountable {
     hashSize = capacity;
     hashHalfSize = hashSize >> 1;
     hashMask = hashSize - 1;
-    this.pool = pool;
+    this.pool = new BytesRefBlockPool(pool);
     ids = new int[hashSize];
     Arrays.fill(ids, -1);
     this.bytesStartArray = bytesStartArray;
     bytesStart = bytesStartArray.init();
-    bytesUsed =
-        bytesStartArray.bytesUsed() == null ? Counter.newCounter() : bytesStartArray.bytesUsed();
-    bytesUsed.addAndGet(hashSize * Integer.BYTES);
+    final Counter bytesUsed = bytesStartArray.bytesUsed();
+    this.bytesUsed = bytesUsed == null ? Counter.newCounter() : bytesUsed;
+    bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
   }
 
   /**
@@ -110,7 +106,7 @@ public final class BytesRefHash implements Accountable {
   public BytesRef get(int bytesID, BytesRef ref) {
     assert bytesStart != null : "bytesStart is null - not initialized";
     assert bytesID < bytesStart.length : "bytesID exceeds byteStart len: " + bytesStart.length;
-    pool.setBytesRef(ref, bytesStart[bytesID]);
+    pool.fillBytesRef(ref, bytesStart[bytesID]);
     return ref;
   }
 
@@ -149,9 +145,62 @@ public final class BytesRefHash implements Accountable {
    */
   public int[] sort() {
     final int[] compact = compact();
-    new StringMSBRadixSorter() {
+    assert count * 2 <= compact.length : "We need load factor <= 0.5f to speed up this sort";
+    final int tmpOffset = count;
+    new StringSorter(BytesRefComparator.NATURAL) {
 
-      BytesRef scratch = new BytesRef();
+      @Override
+      protected Sorter radixSorter(BytesRefComparator cmp) {
+        return new MSBStringRadixSorter(cmp) {
+
+          private int k;
+
+          @Override
+          protected void buildHistogram(
+              int prefixCommonBucket,
+              int prefixCommonLen,
+              int from,
+              int to,
+              int k,
+              int[] histogram) {
+            this.k = k;
+            histogram[prefixCommonBucket] = prefixCommonLen;
+            Arrays.fill(
+                compact, tmpOffset + from - prefixCommonLen, tmpOffset + from, prefixCommonBucket);
+            for (int i = from; i < to; ++i) {
+              int b = getBucket(i, k);
+              compact[tmpOffset + i] = b;
+              histogram[b]++;
+            }
+          }
+
+          @Override
+          protected boolean shouldFallback(int from, int to, int l) {
+            // We lower the fallback threshold because the bucket cache speeds up the reorder
+            return to - from <= LENGTH_THRESHOLD / 2 || l >= LEVEL_THRESHOLD;
+          }
+
+          private void swapBucketCache(int i, int j) {
+            swap(i, j);
+            int tmp = compact[tmpOffset + i];
+            compact[tmpOffset + i] = compact[tmpOffset + j];
+            compact[tmpOffset + j] = tmp;
+          }
+
+          @Override
+          protected void reorder(int from, int to, int[] startOffsets, int[] endOffsets, int k) {
+            assert this.k == k;
+            for (int i = 0; i < HISTOGRAM_SIZE; ++i) {
+              final int limit = endOffsets[i];
+              for (int h1 = startOffsets[i]; h1 < limit; h1 = startOffsets[i]) {
+                final int b = compact[tmpOffset + from + h1];
+                final int h2 = startOffsets[b]++;
+                swapBucketCache(from + h1, from + h2);
+              }
+            }
+          }
+        };
+      }
 
       @Override
       protected void swap(int i, int j) {
@@ -161,30 +210,12 @@ public final class BytesRefHash implements Accountable {
       }
 
       @Override
-      protected BytesRef get(int i) {
-        pool.setBytesRef(scratch, bytesStart[compact[i]]);
-        return scratch;
+      protected void get(BytesRefBuilder builder, BytesRef result, int i) {
+        pool.fillBytesRef(result, bytesStart[compact[i]]);
       }
     }.sort(0, count);
+    Arrays.fill(compact, tmpOffset, compact.length, -1);
     return compact;
-  }
-
-  private boolean equals(int id, BytesRef b) {
-    final int textStart = bytesStart[id];
-    final byte[] bytes = pool.buffers[textStart >> BYTE_BLOCK_SHIFT];
-    int pos = textStart & BYTE_BLOCK_MASK;
-    final int length;
-    final int offset;
-    if ((bytes[pos] & 0x80) == 0) {
-      // length is 1 byte
-      length = bytes[pos];
-      offset = pos + 1;
-    } else {
-      // length is 2 bytes
-      length = (bytes[pos] & 0x7f) + ((bytes[pos + 1] & 0xff) << 7);
-      offset = pos + 2;
-    }
-    return Arrays.equals(bytes, offset, offset + length, b.bytes, b.offset, b.offset + b.length);
   }
 
   private boolean shrink(int targetSize) {
@@ -195,7 +226,7 @@ public final class BytesRefHash implements Accountable {
       newSize /= 2;
     }
     if (newSize != hashSize) {
-      bytesUsed.addAndGet(Integer.BYTES * -(hashSize - newSize));
+      bytesUsed.addAndGet(Integer.BYTES * (long) -(hashSize - newSize));
       hashSize = newSize;
       ids = new int[hashSize];
       Arrays.fill(ids, -1);
@@ -212,7 +243,7 @@ public final class BytesRefHash implements Accountable {
     lastCount = count;
     count = 0;
     if (resetPool) {
-      pool.reset(false, false); // we don't need to 0-fill the buffers
+      pool.reset();
     }
     bytesStart = bytesStartArray.clear();
     if (lastCount != -1 && shrink(lastCount)) {
@@ -230,7 +261,7 @@ public final class BytesRefHash implements Accountable {
   public void close() {
     clear(true);
     ids = null;
-    bytesUsed.addAndGet(Integer.BYTES * -hashSize);
+    bytesUsed.addAndGet(Integer.BYTES * (long) -hashSize);
   }
 
   /**
@@ -245,48 +276,18 @@ public final class BytesRefHash implements Accountable {
    */
   public int add(BytesRef bytes) {
     assert bytesStart != null : "Bytesstart is null - not initialized";
-    final int length = bytes.length;
     // final position
     final int hashPos = findHash(bytes);
     int e = ids[hashPos];
 
     if (e == -1) {
       // new entry
-      final int len2 = 2 + bytes.length;
-      if (len2 + pool.byteUpto > BYTE_BLOCK_SIZE) {
-        if (len2 > BYTE_BLOCK_SIZE) {
-          throw new MaxBytesLengthExceededException(
-              "bytes can be at most " + (BYTE_BLOCK_SIZE - 2) + " in length; got " + bytes.length);
-        }
-        pool.nextBuffer();
-      }
-      final byte[] buffer = pool.buffer;
-      final int bufferUpto = pool.byteUpto;
       if (count >= bytesStart.length) {
         bytesStart = bytesStartArray.grow();
         assert count < bytesStart.length + 1 : "count: " + count + " len: " + bytesStart.length;
       }
+      bytesStart[count] = pool.addBytesRef(bytes);
       e = count++;
-
-      bytesStart[e] = bufferUpto + pool.byteOffset;
-
-      // We first encode the length, followed by the
-      // bytes. Length is encoded as vInt, but will consume
-      // 1 or 2 bytes at most (we reject too-long terms,
-      // above).
-      if (length < 128) {
-        // 1 byte to store length
-        buffer[bufferUpto] = (byte) length;
-        pool.byteUpto += length + 1;
-        assert length >= 0 : "Length must be positive: " + length;
-        System.arraycopy(bytes.bytes, bytes.offset, buffer, bufferUpto + 1, length);
-      } else {
-        // 2 byte to store length
-        buffer[bufferUpto] = (byte) (0x80 | (length & 0x7f));
-        buffer[bufferUpto + 1] = (byte) ((length >> 7) & 0xff);
-        pool.byteUpto += length + 2;
-        System.arraycopy(bytes.bytes, bytes.offset, buffer, bufferUpto + 2, length);
-      }
       assert ids[hashPos] == -1;
       ids[hashPos] = e;
 
@@ -316,14 +317,14 @@ public final class BytesRefHash implements Accountable {
     // final position
     int hashPos = code & hashMask;
     int e = ids[hashPos];
-    if (e != -1 && !equals(e, bytes)) {
+    if (e != -1 && pool.equals(bytesStart[e], bytes) == false) {
       // Conflict; use linear probe to find an open slot
       // (see LUCENE-5604):
       do {
         code++;
         hashPos = code & hashMask;
         e = ids[hashPos];
-      } while (e != -1 && !equals(e, bytes));
+      } while (e != -1 && pool.equals(bytesStart[e], bytes) == false);
     }
 
     return hashPos;
@@ -374,7 +375,7 @@ public final class BytesRefHash implements Accountable {
    */
   private void rehash(final int newSize, boolean hashOnData) {
     final int newMask = newSize - 1;
-    bytesUsed.addAndGet(Integer.BYTES * (newSize));
+    bytesUsed.addAndGet(Integer.BYTES * (long) newSize);
     final int[] newHash = new int[newSize];
     Arrays.fill(newHash, -1);
     for (int i = 0; i < hashSize; i++) {
@@ -382,20 +383,7 @@ public final class BytesRefHash implements Accountable {
       if (e0 != -1) {
         int code;
         if (hashOnData) {
-          final int off = bytesStart[e0];
-          final int start = off & BYTE_BLOCK_MASK;
-          final byte[] bytes = pool.buffers[off >> BYTE_BLOCK_SHIFT];
-          final int len;
-          int pos;
-          if ((bytes[start] & 0x80) == 0) {
-            // length is 1 byte
-            len = bytes[start];
-            pos = start + 1;
-          } else {
-            len = (bytes[start] & 0x7f) + ((bytes[start + 1] & 0xff) << 7);
-            pos = start + 2;
-          }
-          code = doHash(bytes, pos, len);
+          code = pool.hash(bytesStart[e0]);
         } else {
           code = bytesStart[e0];
         }
@@ -415,14 +403,14 @@ public final class BytesRefHash implements Accountable {
     }
 
     hashMask = newMask;
-    bytesUsed.addAndGet(Integer.BYTES * (-ids.length));
+    bytesUsed.addAndGet(Integer.BYTES * (long) -ids.length);
     ids = newHash;
     hashSize = newSize;
     hashHalfSize = newSize / 2;
   }
 
   // TODO: maybe use long?  But our keys are typically short...
-  private int doHash(byte[] bytes, int offset, int length) {
+  static int doHash(byte[] bytes, int offset, int length) {
     return StringHelper.murmurhash3_x86_32(bytes, offset, length, StringHelper.GOOD_FAST_HASH_SEED);
   }
 
@@ -437,7 +425,7 @@ public final class BytesRefHash implements Accountable {
 
     if (ids == null) {
       ids = new int[hashSize];
-      bytesUsed.addAndGet(Integer.BYTES * hashSize);
+      bytesUsed.addAndGet(Integer.BYTES * (long) hashSize);
     }
   }
 

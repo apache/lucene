@@ -16,12 +16,15 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
-import org.apache.lucene.util.BytesRef;
-
-/** @lucene.experimental */
+/**
+ * This class holds constants used by the directory taxonomy implementations.
+ *
+ * @lucene.experimental
+ */
 abstract class Consts {
+  /** The name of the field containing the full path of a taxonomy document. */
   static final String FULL = "$full_path$";
-  static final String FIELD_PAYLOADS = "$payloads$";
-  static final String PAYLOAD_PARENT = "p";
-  static final BytesRef PAYLOAD_PARENT_BYTES_REF = new BytesRef(PAYLOAD_PARENT);
+
+  /** The name of the field containing the ordinal of the parent of a taxonomy document. */
+  static final String FIELD_PARENT_ORDINAL_NDV = "$parent_ndv$";
 }

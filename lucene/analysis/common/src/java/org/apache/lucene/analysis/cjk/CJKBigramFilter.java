@@ -26,6 +26,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Forms bigrams of CJK terms that are generated from StandardTokenizer or ICUTokenizer.
@@ -47,19 +48,24 @@ import org.apache.lucene.util.ArrayUtil;
  *
  * <p>In all cases, all non-CJK input is passed thru unmodified.
  */
+@IgnoreRandomChains(reason = "LUCENE-8092: doesn't handle graph inputs")
 public final class CJKBigramFilter extends TokenFilter {
   // configuration
   /** bigram flag for Han Ideographs */
   public static final int HAN = 1;
+
   /** bigram flag for Hiragana */
   public static final int HIRAGANA = 2;
+
   /** bigram flag for Katakana */
   public static final int KATAKANA = 4;
+
   /** bigram flag for Hangul */
   public static final int HANGUL = 8;
 
   /** when we emit a bigram, it's then marked as this type */
   public static final String DOUBLE_TYPE = "<DOUBLE>";
+
   /** when we emit a unigram, it's then marked as this type */
   public static final String SINGLE_TYPE = "<SINGLE>";
 

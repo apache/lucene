@@ -19,6 +19,7 @@ import com.vladsch.flexmark.ast.Heading;
 import com.vladsch.flexmark.ext.abbreviation.AbbreviationExtension;
 import com.vladsch.flexmark.ext.attributes.AttributesExtension;
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension;
+import com.vladsch.flexmark.ext.tables.TablesExtension;
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.parser.ParserEmulationProfile;
@@ -33,10 +34,11 @@ buildscript {
   }
 
   dependencies {
-    classpath "com.vladsch.flexmark:flexmark:${scriptDepVersions['flexmark']}"
-    classpath "com.vladsch.flexmark:flexmark-ext-abbreviation:${scriptDepVersions['flexmark']}"
-    classpath "com.vladsch.flexmark:flexmark-ext-attributes:${scriptDepVersions['flexmark']}"
-    classpath "com.vladsch.flexmark:flexmark-ext-autolink:${scriptDepVersions['flexmark']}"
+    classpath deps.flexmark.core
+    classpath deps.flexmark.ext.abbreviation
+    classpath deps.flexmark.ext.attributes
+    classpath deps.flexmark.ext.autolink
+    classpath deps.flexmark.ext.tables
   }
 }
 
@@ -101,11 +103,18 @@ class MarkdownFilter extends FilterReader {
     // first replace LUCENE and SOLR issue numbers with a markdown link
     markdownSource = markdownSource.replaceAll(/(?s)\b(LUCENE|SOLR)\-\d+\b/,
       '[$0](https://issues.apache.org/jira/browse/$0)');
+    markdownSource = markdownSource.replaceAll(/(?s)\b(GITHUB#|GH-)(\d+)\b/,
+      '[$0](https://github.com/apache/lucene/issues/$2)');
   
     // convert the markdown
     MutableDataSet options = new MutableDataSet();
     options.setFrom(ParserEmulationProfile.MARKDOWN);
-    options.set(Parser.EXTENSIONS, [ AbbreviationExtension.create(), AutolinkExtension.create(), AttributesExtension.create() ]);
+    options.set(Parser.EXTENSIONS, [
+      AbbreviationExtension.create(),
+      AutolinkExtension.create(),
+      AttributesExtension.create(),
+      TablesExtension.create(),
+    ]);
     options.set(HtmlRenderer.RENDER_HEADER_ID, true);
     options.set(HtmlRenderer.MAX_TRAILING_BLANK_LINES, 0);
     Document parsed = Parser.builder(options).build().parse(markdownSource);

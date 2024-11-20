@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -33,27 +32,70 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.docvalues.FloatDocValues;
-import org.apache.lucene.queries.function.valuesource.*;
-import org.apache.lucene.search.CheckHits;
+import org.apache.lucene.queries.function.valuesource.BytesRefFieldSource;
+import org.apache.lucene.queries.function.valuesource.ConstValueSource;
+import org.apache.lucene.queries.function.valuesource.DivFloatFunction;
+import org.apache.lucene.queries.function.valuesource.DocFreqValueSource;
+import org.apache.lucene.queries.function.valuesource.DoubleConstValueSource;
+import org.apache.lucene.queries.function.valuesource.DoubleFieldSource;
+import org.apache.lucene.queries.function.valuesource.FloatFieldSource;
+import org.apache.lucene.queries.function.valuesource.IDFValueSource;
+import org.apache.lucene.queries.function.valuesource.IfFunction;
+import org.apache.lucene.queries.function.valuesource.IntFieldSource;
+import org.apache.lucene.queries.function.valuesource.JoinDocFreqValueSource;
+import org.apache.lucene.queries.function.valuesource.LinearFloatFunction;
+import org.apache.lucene.queries.function.valuesource.LiteralValueSource;
+import org.apache.lucene.queries.function.valuesource.LongFieldSource;
+import org.apache.lucene.queries.function.valuesource.MaxDocValueSource;
+import org.apache.lucene.queries.function.valuesource.MaxFloatFunction;
+import org.apache.lucene.queries.function.valuesource.MinFloatFunction;
+import org.apache.lucene.queries.function.valuesource.MultiBoolFunction;
+import org.apache.lucene.queries.function.valuesource.MultiFloatFunction;
+import org.apache.lucene.queries.function.valuesource.MultiFunction;
+import org.apache.lucene.queries.function.valuesource.MultiValuedDoubleFieldSource;
+import org.apache.lucene.queries.function.valuesource.MultiValuedFloatFieldSource;
+import org.apache.lucene.queries.function.valuesource.MultiValuedIntFieldSource;
+import org.apache.lucene.queries.function.valuesource.MultiValuedLongFieldSource;
+import org.apache.lucene.queries.function.valuesource.NormValueSource;
+import org.apache.lucene.queries.function.valuesource.NumDocsValueSource;
+import org.apache.lucene.queries.function.valuesource.PowFloatFunction;
+import org.apache.lucene.queries.function.valuesource.ProductFloatFunction;
+import org.apache.lucene.queries.function.valuesource.QueryValueSource;
+import org.apache.lucene.queries.function.valuesource.RangeMapFloatFunction;
+import org.apache.lucene.queries.function.valuesource.ReciprocalFloatFunction;
+import org.apache.lucene.queries.function.valuesource.ScaleFloatFunction;
+import org.apache.lucene.queries.function.valuesource.SumFloatFunction;
+import org.apache.lucene.queries.function.valuesource.SumTotalTermFreqValueSource;
+import org.apache.lucene.queries.function.valuesource.TFValueSource;
+import org.apache.lucene.queries.function.valuesource.TermFreqValueSource;
+import org.apache.lucene.queries.function.valuesource.TotalTermFreqValueSource;
 import org.apache.lucene.search.DoubleValuesSource;
+import org.apache.lucene.search.FilterScorer;
+import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSelector.Type;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NumericUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -338,42 +380,66 @@ public class TestValueSources extends LuceneTestCase {
     ValueSource vs =
         new MaxFloatFunction(
             new ValueSource[] {new ConstValueSource(1f), new ConstValueSource(2f)});
-
-    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
 
     // as long as one value exists, then max exists
-    vs = new MaxFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2F)});
+    vs = new MaxFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f)});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
+
     vs =
         new MaxFloatFunction(
-            new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2F), BOGUS_DOUBLE_VS});
+            new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f), BOGUS_DOUBLE_VS});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
+
     // if none exist, then max doesn't exist
     vs = new MaxFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, BOGUS_INT_VS, BOGUS_DOUBLE_VS});
     assertNoneExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
+
+    // if no values exist should return 0f even if value returned is non zero
+    vs =
+        new MaxFloatFunction(
+            new ValueSource[] {
+              new SumFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(42)})
+            });
+    assertNoneExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
   }
 
   public void testMinFloat() throws Exception {
     ValueSource vs =
         new MinFloatFunction(
             new ValueSource[] {new ConstValueSource(1f), new ConstValueSource(2f)});
-
-    assertHits(new FunctionQuery(vs), new float[] {1f, 1f});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {1f, 1f});
 
     // as long as one value exists, then min exists
-    vs = new MinFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2F)});
-    assertHits(new FunctionQuery(vs), new float[] {2F, 2F});
+    vs = new MinFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f)});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
+
     vs =
         new MinFloatFunction(
-            new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2F), BOGUS_DOUBLE_VS});
+            new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(2f), BOGUS_DOUBLE_VS});
     assertAllExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {2f, 2f});
 
     // if none exist, then min doesn't exist
     vs = new MinFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, BOGUS_INT_VS, BOGUS_DOUBLE_VS});
     assertNoneExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
+
+    // if no values exist should return 0f even if value returned is non zero
+    vs =
+        new MinFloatFunction(
+            new ValueSource[] {
+              new SumFloatFunction(new ValueSource[] {BOGUS_FLOAT_VS, new ConstValueSource(42)})
+            });
+    assertNoneExist(vs);
+    assertHits(new FunctionQuery(vs), new float[] {0f, 0f});
   }
 
   public void testNorm() throws Exception {
@@ -674,14 +740,81 @@ public class TestValueSources extends LuceneTestCase {
     }
   }
 
-  public void testWrappingAsDoubleValues() throws IOException {
+  public void testWrappingAsDoubleValues() throws Exception {
+
+    class AssertScoreComputedOnceQuery extends Query {
+
+      private final Query in;
+
+      public AssertScoreComputedOnceQuery(Query query) {
+        in = query;
+      }
+
+      @Override
+      public String toString(String field) {
+        return in.toString(field);
+      }
+
+      @Override
+      public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+          throws IOException {
+        return new FilterWeight(in.createWeight(searcher, scoreMode, boost)) {
+          @Override
+          public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+            final var subScorer = in.scorer(context);
+            if (subScorer == null) {
+              return null;
+            }
+            final var scorer =
+                new FilterScorer(subScorer) {
+                  int lastDocId = -1;
+
+                  @Override
+                  public float score() throws IOException {
+                    assertTrue("shouldn't re-compute score", lastDocId != docID());
+                    this.lastDocId = docID();
+                    return in.score();
+                  }
+
+                  @Override
+                  public float getMaxScore(int upTo) throws IOException {
+                    return in.getMaxScore(upTo);
+                  }
+                };
+            return new DefaultScorerSupplier(scorer);
+          }
+        };
+      }
+
+      @Override
+      public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+        var rewrite = in.rewrite(indexSearcher);
+        return rewrite == in ? this : new AssertScoreComputedOnceQuery(rewrite);
+      }
+
+      @Override
+      public void visit(QueryVisitor visitor) {
+        in.visit(visitor);
+      }
+
+      @Override
+      public boolean equals(Object obj) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int hashCode() {
+        return in.hashCode();
+      }
+    }
 
     FunctionScoreQuery q =
         FunctionScoreQuery.boostByValue(
-            new TermQuery(new Term("f", "t")),
+            new AssertScoreComputedOnceQuery(new TermQuery(new Term("text", "test"))),
             new DoubleFieldSource("double").asDoubleValuesSource());
 
-    searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE, 1);
+    var topFieldDocs = searcher.search(q, 1);
+    assertTrue(topFieldDocs.scoreDocs.length > 0);
 
     // assert that the query has not cached a reference to the IndexSearcher
     FunctionScoreQuery.MultiplicativeBoostValuesSource source1 =
@@ -689,6 +822,50 @@ public class TestValueSources extends LuceneTestCase {
     ValueSource.WrappedDoubleValuesSource source2 =
         (ValueSource.WrappedDoubleValuesSource) source1.boost;
     assertNull(source2.searcher);
+  }
+
+  /** Tests "scorer" key-value inside the Map context to ValueSource */
+  public void testScorerContext() throws IOException {
+    // a VS that yields the score
+    class ScoreValueSource extends ValueSource {
+      @Override
+      public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
+          throws IOException {
+        var scorer = (Scorable) context.get("scorer");
+        assertNotNull(scorer);
+        return new FloatDocValues(this) {
+          @Override
+          public float floatVal(int doc) throws IOException {
+            return scorer.score();
+          }
+        };
+      }
+
+      @Override
+      public boolean equals(Object o) {
+        return this == o; // just for a test
+      }
+
+      @Override
+      public int hashCode() {
+        return 0; // just for a test
+      }
+
+      @Override
+      public String description() {
+        return "score";
+      }
+    }
+
+    var plainQ = new TermQuery(new Term("text", "test"));
+    float origScore = searcher.search(plainQ, 1).scoreDocs[0].score;
+
+    // boosts the score by the value source (which is the score), thus score^2
+    var scoreSquaredQ =
+        FunctionScoreQuery.boostByValue(plainQ, new ScoreValueSource().asDoubleValuesSource());
+    var topFieldDocs = searcher.search(scoreSquaredQ, 1);
+    assertTrue(topFieldDocs.scoreDocs.length > 0);
+    assertEquals(origScore * origScore, topFieldDocs.scoreDocs[0].score, 0.00001);
   }
 
   public void testBuildingFromDoubleValues() throws Exception {
@@ -706,6 +883,7 @@ public class TestValueSources extends LuceneTestCase {
   void assertAllExist(ValueSource vs) {
     assertExists(ALL_EXIST_VS, vs);
   }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the {@link
    * ValueSource} is <b>false</b>.
@@ -713,6 +891,7 @@ public class TestValueSources extends LuceneTestCase {
   void assertNoneExist(ValueSource vs) {
     assertExists(NONE_EXIST_VS, vs);
   }
+
   /**
    * Asserts that for every doc, the {@link FunctionValues#exists} value from the <code>actual
    * </code> {@link ValueSource} matches the {@link FunctionValues#exists} value from the <code>
@@ -800,8 +979,13 @@ public class TestValueSources extends LuceneTestCase {
     }
   }
 
-  /** @see ExistsValueSource */
+  /**
+   * @see ExistsValueSource
+   */
   private static final ValueSource ALL_EXIST_VS = new ExistsValueSource(true);
-  /** @see ExistsValueSource */
+
+  /**
+   * @see ExistsValueSource
+   */
   private static final ValueSource NONE_EXIST_VS = new ExistsValueSource(false);
 }

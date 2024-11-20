@@ -405,20 +405,25 @@ public class Lucene84PostingsFormat extends PostingsFormat {
   public static final class IntBlockTermState extends BlockTermState {
     /** file pointer to the start of the doc ids enumeration, in {@link #DOC_EXTENSION} file */
     public long docStartFP;
+
     /** file pointer to the start of the positions enumeration, in {@link #POS_EXTENSION} file */
     public long posStartFP;
+
     /** file pointer to the start of the payloads enumeration, in {@link #PAY_EXTENSION} file */
     public long payStartFP;
+
     /**
      * file offset for the start of the skip list, relative to docStartFP, if there are more than
      * {@link ForUtil#BLOCK_SIZE} docs; otherwise -1
      */
     public long skipOffset;
+
     /**
      * file offset for the last position in the last block, if there are more than {@link
      * ForUtil#BLOCK_SIZE} positions; otherwise -1
      */
     public long lastPosBlockOffset;
+
     /**
      * docid when there is a single pulsed posting, otherwise -1. freq is always implicitly
      * totalTermFreq in this case.

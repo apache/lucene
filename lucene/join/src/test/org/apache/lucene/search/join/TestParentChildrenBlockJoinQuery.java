@@ -26,7 +26,6 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -37,7 +36,8 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestParentChildrenBlockJoinQuery extends LuceneTestCase {
 
@@ -46,7 +46,9 @@ public class TestParentChildrenBlockJoinQuery extends LuceneTestCase {
     int maxChildDocsPerParent = 8 + random().nextInt(8);
 
     Directory dir = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
     for (int i = 0; i < numParentDocs; i++) {
       int numChildDocs = random().nextInt(maxChildDocsPerParent);
       List<Document> docs = new ArrayList<>(numChildDocs + 1);
@@ -89,11 +91,11 @@ public class TestParentChildrenBlockJoinQuery extends LuceneTestCase {
       ParentChildrenBlockJoinQuery parentChildrenBlockJoinQuery =
           new ParentChildrenBlockJoinQuery(parentFilter, childQuery, parentScoreDoc.doc);
       TopDocs topDocs = searcher.search(parentChildrenBlockJoinQuery, maxChildDocsPerParent);
-      assertEquals(expectedChildDocs, topDocs.totalHits.value);
+      assertEquals(expectedChildDocs, topDocs.totalHits.value());
       if (expectedChildDocs > 0) {
         for (int i = 0; i < topDocs.scoreDocs.length; i++) {
           ScoreDoc childScoreDoc = topDocs.scoreDocs[i];
-          assertEquals(expectedChildDocs - i, childScoreDoc.score, 0);
+          assertEquals((float) expectedChildDocs - i, childScoreDoc.score, 0.f);
         }
       }
     }

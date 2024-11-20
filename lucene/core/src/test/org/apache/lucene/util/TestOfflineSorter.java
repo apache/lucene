@@ -30,12 +30,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.CorruptingIndexOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.tests.store.CorruptingIndexOutput;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.OfflineSorter.BufferSize;
 import org.apache.lucene.util.OfflineSorter.ByteSequencesWriter;
 import org.apache.lucene.util.OfflineSorter.SortInfo;
@@ -88,7 +90,6 @@ public class TestOfflineSorter extends LuceneTestCase {
     }
   }
 
-  @Slow
   public void testIntermediateMerges() throws Exception {
     // Sort 20 mb worth of data with 1mb buffer, binary merging.
     try (Directory dir = newFSDirectory(createTempDir())) {
@@ -113,7 +114,6 @@ public class TestOfflineSorter extends LuceneTestCase {
     }
   }
 
-  @Slow
   public void testSmallRandom() throws Exception {
     // Sort 20 mb worth of data with 1mb buffer.
     try (Directory dir = newFSDirectory(createTempDir())) {

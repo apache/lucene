@@ -20,7 +20,13 @@ import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WO
 
 import java.io.StringReader;
 import java.text.DateFormat;
-import java.util.*;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
@@ -30,9 +36,22 @@ import org.apache.lucene.queryparser.charstream.CharStream;
 import org.apache.lucene.queryparser.charstream.FastCharStream;
 import org.apache.lucene.queryparser.classic.QueryParser.Operator;
 import org.apache.lucene.queryparser.flexible.standard.CommonQueryParserConfiguration;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher.TooManyClauses;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MultiPhraseQuery;
+import org.apache.lucene.search.MultiTermQuery;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TermRangeQuery;
+import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.QueryBuilder;
@@ -57,13 +76,15 @@ public abstract class QueryParserBase extends QueryBuilder
   // the nested class:
   /** Alternative form of QueryParser.Operator.AND */
   public static final Operator AND_OPERATOR = Operator.AND;
+
   /** Alternative form of QueryParser.Operator.OR */
   public static final Operator OR_OPERATOR = Operator.OR;
 
   /** The actual operator that parser uses to combine query terms */
   Operator operator = OR_OPERATOR;
 
-  MultiTermQuery.RewriteMethod multiTermRewriteMethod = MultiTermQuery.CONSTANT_SCORE_REWRITE;
+  MultiTermQuery.RewriteMethod multiTermRewriteMethod =
+      MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE;
   boolean allowLeadingWildcard = false;
 
   protected String field;
@@ -128,12 +149,16 @@ public abstract class QueryParserBase extends QueryBuilder
     }
   }
 
-  /** @return Returns the default field. */
+  /**
+   * @return Returns the default field.
+   */
   public String getField() {
     return field;
   }
 
-  /** @see #setAutoGeneratePhraseQueries(boolean) */
+  /**
+   * @see #setAutoGeneratePhraseQueries(boolean)
+   */
   public final boolean getAutoGeneratePhraseQueries() {
     return autoGeneratePhraseQueries;
   }
@@ -209,7 +234,9 @@ public abstract class QueryParserBase extends QueryBuilder
     this.allowLeadingWildcard = allowLeadingWildcard;
   }
 
-  /** @see #setAllowLeadingWildcard(boolean) */
+  /**
+   * @see #setAllowLeadingWildcard(boolean)
+   */
   @Override
   public boolean getAllowLeadingWildcard() {
     return allowLeadingWildcard;
@@ -219,8 +246,8 @@ public abstract class QueryParserBase extends QueryBuilder
    * Sets the boolean operator of the QueryParser. In default mode (<code>OR_OPERATOR</code>) terms
    * without any modifiers are considered optional: for example <code>capital of Hungary</code> is
    * equal to <code>capital OR of OR Hungary</code>.<br>
-   * In <code>AND_OPERATOR</code> mode terms are considered to be in conjunction: the above
-   * mentioned query is parsed as <code>capital AND of AND Hungary</code>
+   * In <code>AND_OPERATOR</code> mode terms are considered to be in conjunction: the
+   * above-mentioned query is parsed as <code>capital AND of AND Hungary</code>
    */
   public void setDefaultOperator(Operator op) {
     this.operator = op;
@@ -231,21 +258,14 @@ public abstract class QueryParserBase extends QueryBuilder
     return operator;
   }
 
-  /**
-   * By default QueryParser uses {@link
-   * org.apache.lucene.search.MultiTermQuery#CONSTANT_SCORE_REWRITE} when creating a {@link
-   * PrefixQuery}, {@link WildcardQuery} or {@link TermRangeQuery}. This implementation is generally
-   * preferable because it a) Runs faster b) Does not have the scarcity of terms unduly influence
-   * score c) avoids any {@link TooManyClauses} exception. However, if your application really needs
-   * to use the old-fashioned {@link BooleanQuery} expansion rewriting and the above points are not
-   * relevant then use this to change the rewrite method.
-   */
   @Override
   public void setMultiTermRewriteMethod(MultiTermQuery.RewriteMethod method) {
     multiTermRewriteMethod = method;
   }
 
-  /** @see #setMultiTermRewriteMethod */
+  /**
+   * @see #setMultiTermRewriteMethod
+   */
   @Override
   public MultiTermQuery.RewriteMethod getMultiTermRewriteMethod() {
     return multiTermRewriteMethod;
@@ -351,17 +371,17 @@ public abstract class QueryParserBase extends QueryBuilder
     if (clauses.size() > 0 && conj == CONJ_AND) {
       BooleanClause c = clauses.get(clauses.size() - 1);
       if (!c.isProhibited())
-        clauses.set(clauses.size() - 1, new BooleanClause(c.getQuery(), Occur.MUST));
+        clauses.set(clauses.size() - 1, new BooleanClause(c.query(), Occur.MUST));
     }
 
     if (clauses.size() > 0 && operator == AND_OPERATOR && conj == CONJ_OR) {
       // If this term is introduced by OR, make the preceding term optional,
       // unless it's prohibited (that means we leave -a OR b but +a OR b-->a OR b)
       // notice if the input is a OR b, first term is parsed as required; without
-      // this modification a OR b would parsed as +a OR b
+      // this modification a OR b would be parsed as +a OR b
       BooleanClause c = clauses.get(clauses.size() - 1);
       if (!c.isProhibited())
-        clauses.set(clauses.size() - 1, new BooleanClause(c.getQuery(), Occur.SHOULD));
+        clauses.set(clauses.size() - 1, new BooleanClause(c.query(), Occur.SHOULD));
     }
 
     // We might have been passed a null query; the term might have been
@@ -408,7 +428,7 @@ public abstract class QueryParserBase extends QueryBuilder
     if (q instanceof BooleanQuery) {
       allNestedTermQueries = true;
       for (BooleanClause clause : ((BooleanQuery) q).clauses()) {
-        if (!(clause.getQuery() instanceof TermQuery)) {
+        if (!(clause.query() instanceof TermQuery)) {
           allNestedTermQueries = false;
           break;
         }
@@ -421,7 +441,7 @@ public abstract class QueryParserBase extends QueryBuilder
           operator == OR_OPERATOR ? BooleanClause.Occur.SHOULD : BooleanClause.Occur.MUST;
       if (q instanceof BooleanQuery) {
         for (BooleanClause clause : ((BooleanQuery) q).clauses()) {
-          clauses.add(newBooleanClause(clause.getQuery(), occur));
+          clauses.add(newBooleanClause(clause.query(), occur));
         }
       } else {
         clauses.add(newBooleanClause(q, occur));
@@ -541,9 +561,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new PrefixQuery instance
    */
   protected Query newPrefixQuery(Term prefix) {
-    PrefixQuery query = new PrefixQuery(prefix);
-    query.setRewriteMethod(multiTermRewriteMethod);
-    return query;
+    return new PrefixQuery(prefix, multiTermRewriteMethod);
   }
 
   /**
@@ -553,9 +571,13 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new RegexpQuery instance
    */
   protected Query newRegexpQuery(Term regexp) {
-    RegexpQuery query = new RegexpQuery(regexp, RegExp.ALL, determinizeWorkLimit);
-    query.setRewriteMethod(multiTermRewriteMethod);
-    return query;
+    return new RegexpQuery(
+        regexp,
+        RegExp.ALL,
+        0,
+        RegexpQuery.DEFAULT_PROVIDER,
+        determinizeWorkLimit,
+        multiTermRewriteMethod);
   }
 
   /**
@@ -601,11 +623,8 @@ public abstract class QueryParserBase extends QueryBuilder
       end = getAnalyzer().normalize(field, part2);
     }
 
-    final TermRangeQuery query =
-        new TermRangeQuery(field, start, end, startInclusive, endInclusive);
-
-    query.setRewriteMethod(multiTermRewriteMethod);
-    return query;
+    return new TermRangeQuery(
+        field, start, end, startInclusive, endInclusive, multiTermRewriteMethod);
   }
 
   /**
@@ -624,9 +643,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new WildcardQuery instance
    */
   protected Query newWildcardQuery(Term t) {
-    WildcardQuery query = new WildcardQuery(t, determinizeWorkLimit);
-    query.setRewriteMethod(multiTermRewriteMethod);
-    return query;
+    return new WildcardQuery(t, determinizeWorkLimit, multiTermRewriteMethod);
   }
 
   /**
@@ -642,7 +659,7 @@ public abstract class QueryParserBase extends QueryBuilder
    *     disallow
    */
   protected Query getBooleanQuery(List<BooleanClause> clauses) throws ParseException {
-    if (clauses.size() == 0) {
+    if (clauses.isEmpty()) {
       return null; // all clause words were filtered away by the analyzer.
     }
     BooleanQuery.Builder query = newBooleanQuery();
@@ -810,23 +827,38 @@ public abstract class QueryParserBase extends QueryBuilder
     return q;
   }
 
-  Query handleBareFuzzy(String qfield, Token fuzzySlop, String termImage) throws ParseException {
-    Query q;
-    float fms = fuzzyMinSim;
+  /**
+   * Determines the similarity distance for the given fuzzy token and term string.
+   *
+   * <p>The default implementation uses the string image of the {@code fuzzyToken} in an attempt to
+   * parse it to a primitive float value. Otherwise, the {@linkplain #getFuzzyMinSim() minimal
+   * similarity} distance is returned. Subclasses can override this method to return a similarity
+   * distance, say based on the {@code termStr}, if the {@code fuzzyToken} does not specify a
+   * distance.
+   *
+   * @param fuzzyToken The Fuzzy token
+   * @param termStr The Term string
+   * @return The similarity distance
+   */
+  protected float getFuzzyDistance(Token fuzzyToken, String termStr) {
     try {
-      fms = Float.parseFloat(fuzzySlop.image.substring(1));
+      return Float.parseFloat(fuzzyToken.image.substring(1));
     } catch (
         @SuppressWarnings("unused")
         Exception ignored) {
     }
+    return fuzzyMinSim;
+  }
+
+  Query handleBareFuzzy(String qfield, Token fuzzySlop, String termImage) throws ParseException {
+    float fms = getFuzzyDistance(fuzzySlop, termImage);
     if (fms < 0.0f) {
       throw new ParseException(
           "Minimum similarity for a FuzzyQuery has to be between 0.0f and 1.0f !");
     } else if (fms >= 1.0f && fms != (int) fms) {
       throw new ParseException("Fractional edit distances are not allowed!");
     }
-    q = getFuzzyQuery(qfield, termImage, fms);
-    return q;
+    return getFuzzyQuery(qfield, termImage, fms);
   }
 
   // extracted from the .jj grammar
@@ -870,8 +902,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * Returns a String where the escape char has been removed, or kept only once if there was a
    * double escape.
    *
-   * <p>Supports escaped unicode characters, e. g. translates <code>\\u0041</code> to <code>A</code>
-   * .
+   * <p>Supports escaped Unicode characters, e.g. translates {@code \u005Cu0041} to {@code A}.
    */
   String discardEscapeChar(String input) throws ParseException {
     // Create char array to hold unescaped char sequence
@@ -887,7 +918,7 @@ public abstract class QueryParserBase extends QueryBuilder
     boolean lastCharWasEscapeChar = false;
 
     // The multiplier the current unicode digit must be multiplied with.
-    // E. g. the first digit must be multiplied with 16^3, the second with 16^2...
+    // E.g. the first digit must be multiplied with 16^3, the second with 16^2...
     int codePointMultiplier = 0;
 
     // Used to calculate the codepoint of the escaped unicode character
@@ -923,7 +954,7 @@ public abstract class QueryParserBase extends QueryBuilder
     }
 
     if (codePointMultiplier > 0) {
-      throw new ParseException("Truncated unicode escape sequence.");
+      throw new ParseException("Truncated Unicode escape sequence.");
     }
 
     if (lastCharWasEscapeChar) {
@@ -934,7 +965,7 @@ public abstract class QueryParserBase extends QueryBuilder
   }
 
   /** Returns the numeric value of the hexadecimal character */
-  static final int hexToInt(char c) throws ParseException {
+  static int hexToInt(char c) throws ParseException {
     if ('0' <= c && c <= '9') {
       return c - '0';
     } else if ('a' <= c && c <= 'f') {

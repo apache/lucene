@@ -23,9 +23,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 import org.junit.Test;
 
@@ -131,6 +131,7 @@ public class TestOneMergeWrappingMergePolicy extends LuceneTestCase {
                 TestUtil.randomSimpleString(random()), // name
                 random().nextInt(), // maxDoc
                 random().nextBoolean(), // isCompoundFile
+                false,
                 null, // codec
                 Collections.emptyMap(), // diagnostics
                 TestUtil.randomSimpleString( // id

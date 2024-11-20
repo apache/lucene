@@ -24,8 +24,8 @@ package org.apache.lucene.util;
 public abstract class RollingBuffer<T extends RollingBuffer.Resettable> {
 
   /** Implement to reset an instance */
-  public static interface Resettable {
-    public void reset();
+  public interface Resettable {
+    void reset();
   }
 
   @SuppressWarnings("unchecked")

@@ -17,11 +17,12 @@
 package org.apache.lucene.document;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.XYPolygon;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * random cartesian bounding box, line, and polygon query tests for random indexed arrays of
@@ -50,11 +51,9 @@ public class TestXYMultiPolygonShapeQueries extends BaseXYShapeTestCase {
     List<Field> allFields = new ArrayList<>();
     for (XYPolygon polygon : polygons) {
       Field[] fields = XYShape.createIndexableFields(name, polygon);
-      for (Field field : fields) {
-        allFields.add(field);
-      }
+      Collections.addAll(allFields, fields);
     }
-    return allFields.toArray(new Field[allFields.size()]);
+    return allFields.toArray(new Field[0]);
   }
 
   @Override
@@ -62,7 +61,7 @@ public class TestXYMultiPolygonShapeQueries extends BaseXYShapeTestCase {
     return new MultiPolygonValidator(ENCODER);
   }
 
-  protected class MultiPolygonValidator extends Validator {
+  protected static class MultiPolygonValidator extends Validator {
     TestXYPolygonShapeQueries.PolygonValidator POLYGONVALIDATOR;
 
     MultiPolygonValidator(Encoder encoder) {
@@ -111,7 +110,6 @@ public class TestXYMultiPolygonShapeQueries extends BaseXYShapeTestCase {
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {

@@ -16,12 +16,8 @@
  */
 package org.apache.lucene.document;
 
-import java.io.IOException;
-import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.Query;
 
@@ -48,9 +44,27 @@ public class SortedNumericDocValuesField extends Field {
   /** Type for sorted numeric DocValues. */
   public static final FieldType TYPE = new FieldType();
 
+  private static final FieldType INDEXED_TYPE;
+
   static {
     TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
     TYPE.freeze();
+
+    INDEXED_TYPE = new FieldType(TYPE);
+    INDEXED_TYPE.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
+    INDEXED_TYPE.freeze();
+  }
+
+  /**
+   * Creates a new {@link SortedNumericDocValuesField} with the specified 64-bit long value that
+   * also creates a {@link FieldType#docValuesSkipIndexType() skip index}.
+   *
+   * @param name field name
+   * @param value 64-bit long value
+   * @throws IllegalArgumentException if the field name is null
+   */
+  public static SortedNumericDocValuesField indexedField(String name, long value) {
+    return new SortedNumericDocValuesField(name, value, INDEXED_TYPE);
   }
 
   /**
@@ -61,8 +75,12 @@ public class SortedNumericDocValuesField extends Field {
    * @throws IllegalArgumentException if the field name is null
    */
   public SortedNumericDocValuesField(String name, long value) {
-    super(name, TYPE);
-    fieldsData = Long.valueOf(value);
+    this(name, Long.valueOf(value), TYPE);
+  }
+
+  private SortedNumericDocValuesField(String name, Long value, FieldType fieldType) {
+    super(name, fieldType);
+    fieldsData = value;
   }
 
   /**
@@ -81,20 +99,31 @@ public class SortedNumericDocValuesField extends Field {
    * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
    * in an {@link IndexOrDocValuesQuery}, alongside a range query that executes on points, such as
    * {@link LongPoint#newRangeQuery}.
+   *
+   * @see IntField#newRangeQuery
+   * @see LongField#newRangeQuery
+   * @see FloatField#newRangeQuery
+   * @see DoubleField#newRangeQuery
    */
   public static Query newSlowRangeQuery(String field, long lowerValue, long upperValue) {
-    return new SortedNumericDocValuesRangeQuery(field, lowerValue, upperValue) {
-      @Override
-      SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException {
-        FieldInfo info = reader.getFieldInfos().fieldInfo(field);
-        if (info == null) {
-          // Queries have some optimizations when one sub scorer returns null rather
-          // than a scorer that does not match any documents
-          return null;
-        }
-        return DocValues.getSortedNumeric(reader, field);
-      }
-    };
+    return new SortedNumericDocValuesRangeQuery(field, lowerValue, upperValue);
+  }
+
+  /**
+   * Create a query matching any of the specified values.
+   *
+   * <p><b>NOTE</b>: Such queries cannot efficiently advance to the next match, which makes them
+   * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
+   * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on points, such as
+   * {@link LongPoint#newSetQuery}.
+   *
+   * @see IntField#newSetQuery
+   * @see LongField#newSetQuery
+   * @see FloatField#newSetQuery
+   * @see DoubleField#newSetQuery
+   */
+  public static Query newSlowSetQuery(String field, long... values) {
+    return new SortedNumericDocValuesSetQuery(field, values.clone());
   }
 
   /**
@@ -106,6 +135,11 @@ public class SortedNumericDocValuesField extends Field {
    * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
    * in an {@link IndexOrDocValuesQuery}, alongside a range query that executes on points, such as
    * {@link LongPoint#newExactQuery}.
+   *
+   * @see IntField#newExactQuery
+   * @see LongField#newExactQuery
+   * @see FloatField#newExactQuery
+   * @see DoubleField#newExactQuery
    */
   public static Query newSlowExactQuery(String field, long value) {
     return newSlowRangeQuery(field, value, value);

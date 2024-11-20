@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Queue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.util.Accountable;
@@ -84,7 +85,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     this.perThreadPool = documentsWriter.perThreadPool;
     this.flushPolicy = config.getFlushPolicy();
     this.config = config;
-    this.hardMaxBytesPerDWPT = config.getRAMPerThreadHardLimitMB() * 1024 * 1024;
+    this.hardMaxBytesPerDWPT = config.getRAMPerThreadHardLimitMB() * 1024L * 1024L;
     this.documentsWriter = documentsWriter;
   }
 
@@ -184,8 +185,33 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     return true;
   }
 
-  DocumentsWriterPerThread doAfterDocument(DocumentsWriterPerThread perThread, boolean isUpdate) {
+  /**
+   * Return the smallest number of bytes that we would like to make sure to not miss from the global
+   * RAM accounting.
+   */
+  private long ramBufferGranularity() {
+    double ramBufferSizeMB = config.getRAMBufferSizeMB();
+    if (ramBufferSizeMB == IndexWriterConfig.DISABLE_AUTO_FLUSH) {
+      ramBufferSizeMB = config.getRAMPerThreadHardLimitMB();
+    }
+    // No more than ~0.1% of the RAM buffer size.
+    long granularity = (long) (ramBufferSizeMB * 1024.d);
+    // Or 16kB, so that with e.g. 64 active DWPTs, we'd never be missing more than 64*16kB = 1MB in
+    // the global RAM buffer accounting.
+    granularity = Math.min(granularity, 16 * 1024L);
+    return granularity;
+  }
+
+  DocumentsWriterPerThread doAfterDocument(DocumentsWriterPerThread perThread) {
     final long delta = perThread.getCommitLastBytesUsedDelta();
+    // in order to prevent contention in the case of many threads indexing small documents
+    // we skip ram accounting unless the DWPT accumulated enough ram to be worthwhile
+    if (config.getMaxBufferedDocs() == IndexWriterConfig.DISABLE_AUTO_FLUSH
+        && delta < ramBufferGranularity()) {
+      // Skip accounting for now, we'll come back to it later when the delta is bigger
+      return null;
+    }
+
     synchronized (this) {
       // we need to commit this under lock but calculate it outside of the lock to minimize the time
       // this lock is held
@@ -207,11 +233,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         } else {
           activeBytes += delta;
           assert updatePeaks(delta);
-          if (isUpdate) {
-            flushPolicy.onUpdate(this, perThread);
-          } else {
-            flushPolicy.onInsert(this, perThread);
-          }
+          flushPolicy.onChange(this, perThread);
           if (!perThread.isFlushPending() && perThread.ramBytesUsed() > hardMaxBytesPerDWPT) {
             // Safety check to prevent a single DWPT exceeding its RAM limit. This
             // is super important since we can not address more than 2048 MB per DWPT
@@ -311,7 +333,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
               String.format(
                   Locale.ROOT,
                   "done stalling flushes for %.1f msec: netBytes: %.1f MB flushBytes: %.1f MB fullFlush: %b",
-                  (System.nanoTime() - stallStartNS) / 1000000.,
+                  (System.nanoTime() - stallStartNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
                   netBytes() / 1024. / 1024.,
                   getFlushingBytes() / 1024. / 1024.,
                   fullFlush));
@@ -461,7 +483,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
   synchronized void doOnDelete() {
     // pass null this is a global delete no update
-    flushPolicy.onDelete(this, null);
+    flushPolicy.onChange(this, null);
   }
 
   /**
@@ -485,6 +507,14 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
   public boolean getAndResetApplyAllDeletes() {
     return flushDeletes.getAndSet(false);
+  }
+
+  /**
+   * Check whether deletes need to be applied. This can be used as a pre-flight check before calling
+   * {@link #getAndResetApplyAllDeletes()} to make sure that a single thread applies deletes.
+   */
+  public boolean getApplyAllDeletes() {
+    return flushDeletes.get();
   }
 
   public void setApplyAllDeletes() {
@@ -540,10 +570,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         // Insert a gap in seqNo of current active thread count, in the worst case each of those
         // threads now have one operation in flight.  It's fine
         // if we have some sequence numbers that were never assigned:
-        DocumentsWriterDeleteQueue newQueue =
-            documentsWriter.deleteQueue.advanceQueue(perThreadPool.size());
-        seqNo = documentsWriter.deleteQueue.getMaxSeqNo();
-        documentsWriter.resetDeleteQueue(newQueue);
+        seqNo = documentsWriter.resetDeleteQueue(perThreadPool.size());
       } finally {
         perThreadPool.unlockNewWriters();
       }
@@ -723,7 +750,9 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
 
   synchronized DocumentsWriterPerThread findLargestNonPendingWriter() {
     DocumentsWriterPerThread maxRamUsingWriter = null;
-    long maxRamSoFar = 0;
+    // Note: should be initialized to -1 since some DWPTs might return 0 if their RAM usage has not
+    // been committed yet.
+    long maxRamSoFar = -1;
     int count = 0;
     for (DocumentsWriterPerThread next : perThreadPool) {
       if (next.isFlushPending() == false && next.getNumDocsInRAM() > 0) {

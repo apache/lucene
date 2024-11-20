@@ -18,10 +18,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.util.Objects;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
@@ -30,7 +27,7 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsFormat;
-import org.apache.lucene.document.StoredField;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
@@ -50,9 +47,9 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             public void close() throws IOException {}
 
             @Override
-            public void compress(byte[] bytes, int off, int len, DataOutput out)
+            public void compress(ByteBuffersDataInput buffersInput, DataOutput out)
                 throws IOException {
-              out.writeBytes(bytes, off, len);
+              out.copyBytes(buffersInput, buffersInput.length());
             }
           };
         }
@@ -64,7 +61,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             public void decompress(
                 DataInput in, int originalLength, int offset, int length, BytesRef bytes)
                 throws IOException {
-              bytes.bytes = ArrayUtil.grow(bytes.bytes, length);
+              bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, length);
               in.skipBytes(offset);
               in.readBytes(bytes.bytes, 0, length);
               bytes.offset = 0;
@@ -104,15 +101,13 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
     // Don't pull a merge instance, since merge instances optimize for
     // sequential access while we consume stored fields in random order here.
     StoredFieldsWriter sortWriter =
-        codec
-            .storedFieldsFormat()
-            .fieldsWriter(state.directory, state.segmentInfo, IOContext.DEFAULT);
+        codec.storedFieldsFormat().fieldsWriter(state.directory, state.segmentInfo, state.context);
     try {
       reader.checkIntegrity();
       CopyVisitor visitor = new CopyVisitor(sortWriter);
       for (int docID = 0; docID < state.segmentInfo.maxDoc(); docID++) {
         sortWriter.startDocument();
-        reader.visitDocument(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
+        reader.document(sortMap == null ? docID : sortMap.newToOld(docID), visitor);
         sortWriter.finishDocument();
       }
       sortWriter.finish(state.segmentInfo.maxDoc());
@@ -135,109 +130,53 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
   }
 
   /** A visitor that copies every field it sees in the provided {@link StoredFieldsWriter}. */
-  private static class CopyVisitor extends StoredFieldVisitor implements IndexableField {
+  private static class CopyVisitor extends StoredFieldVisitor {
     final StoredFieldsWriter writer;
-    BytesRef binaryValue;
-    String stringValue;
-    Number numericValue;
-    FieldInfo currentField;
 
     CopyVisitor(StoredFieldsWriter writer) {
       this.writer = writer;
     }
 
     @Override
+    public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
+      writer.writeField(fieldInfo, value, length);
+    }
+
+    @Override
     public void binaryField(FieldInfo fieldInfo, byte[] value) throws IOException {
-      reset(fieldInfo);
       // TODO: can we avoid new BR here?
-      binaryValue = new BytesRef(value);
-      write();
+      writer.writeField(fieldInfo, new BytesRef(value));
     }
 
     @Override
     public void stringField(FieldInfo fieldInfo, String value) throws IOException {
-      reset(fieldInfo);
-      stringValue = Objects.requireNonNull(value, "String value should not be null");
-      write();
+      writer.writeField(
+          fieldInfo, Objects.requireNonNull(value, "String value should not be null"));
     }
 
     @Override
     public void intField(FieldInfo fieldInfo, int value) throws IOException {
-      reset(fieldInfo);
-      numericValue = value;
-      write();
+      writer.writeField(fieldInfo, value);
     }
 
     @Override
     public void longField(FieldInfo fieldInfo, long value) throws IOException {
-      reset(fieldInfo);
-      numericValue = value;
-      write();
+      writer.writeField(fieldInfo, value);
     }
 
     @Override
     public void floatField(FieldInfo fieldInfo, float value) throws IOException {
-      reset(fieldInfo);
-      numericValue = value;
-      write();
+      writer.writeField(fieldInfo, value);
     }
 
     @Override
     public void doubleField(FieldInfo fieldInfo, double value) throws IOException {
-      reset(fieldInfo);
-      numericValue = value;
-      write();
+      writer.writeField(fieldInfo, value);
     }
 
     @Override
     public Status needsField(FieldInfo fieldInfo) throws IOException {
       return Status.YES;
-    }
-
-    @Override
-    public String name() {
-      return currentField.name;
-    }
-
-    @Override
-    public IndexableFieldType fieldType() {
-      return StoredField.TYPE;
-    }
-
-    @Override
-    public BytesRef binaryValue() {
-      return binaryValue;
-    }
-
-    @Override
-    public String stringValue() {
-      return stringValue;
-    }
-
-    @Override
-    public Number numericValue() {
-      return numericValue;
-    }
-
-    @Override
-    public Reader readerValue() {
-      return null;
-    }
-
-    @Override
-    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-      return null;
-    }
-
-    void reset(FieldInfo field) {
-      currentField = field;
-      binaryValue = null;
-      stringValue = null;
-      numericValue = null;
-    }
-
-    void write() throws IOException {
-      writer.writeField(currentField, this);
     }
   }
 }

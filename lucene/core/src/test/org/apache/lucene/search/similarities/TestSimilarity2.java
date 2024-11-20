@@ -25,7 +25,6 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -34,8 +33,9 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests against all the similarities we have */
 public class TestSimilarity2 extends LuceneTestCase {
@@ -90,7 +90,7 @@ public class TestSimilarity2 extends LuceneTestCase {
 
     for (Similarity sim : sims) {
       is.setSimilarity(sim);
-      assertEquals(0, is.search(new TermQuery(new Term("foo", "bar")), 10).totalHits.value);
+      assertEquals(0, is.search(new TermQuery(new Term("foo", "bar")), 10).totalHits.value());
     }
     ir.close();
     dir.close();
@@ -112,7 +112,7 @@ public class TestSimilarity2 extends LuceneTestCase {
       BooleanQuery.Builder query = new BooleanQuery.Builder();
       query.add(new TermQuery(new Term("foo", "bar")), BooleanClause.Occur.SHOULD);
       query.add(new TermQuery(new Term("bar", "baz")), BooleanClause.Occur.SHOULD);
-      assertEquals(1, is.search(query.build(), 10).totalHits.value);
+      assertEquals(1, is.search(query.build(), 10).totalHits.value());
     }
     ir.close();
     dir.close();
@@ -136,7 +136,7 @@ public class TestSimilarity2 extends LuceneTestCase {
       BooleanQuery.Builder query = new BooleanQuery.Builder();
       query.add(new TermQuery(new Term("foo", "bar")), BooleanClause.Occur.SHOULD);
       query.add(new TermQuery(new Term("foo", "baz")), BooleanClause.Occur.SHOULD);
-      assertEquals(1, is.search(query.build(), 10).totalHits.value);
+      assertEquals(1, is.search(query.build(), 10).totalHits.value());
     }
     ir.close();
     dir.close();
@@ -160,7 +160,7 @@ public class TestSimilarity2 extends LuceneTestCase {
       is.setSimilarity(sim);
       BooleanQuery.Builder query = new BooleanQuery.Builder();
       query.add(new TermQuery(new Term("foo", "bar")), BooleanClause.Occur.SHOULD);
-      assertEquals(1, is.search(query.build(), 10).totalHits.value);
+      assertEquals(1, is.search(query.build(), 10).totalHits.value());
     }
     ir.close();
     dir.close();
@@ -234,7 +234,7 @@ public class TestSimilarity2 extends LuceneTestCase {
       is.setSimilarity(sim);
       BooleanQuery.Builder query = new BooleanQuery.Builder();
       query.add(new TermQuery(new Term("foo", "bar")), BooleanClause.Occur.SHOULD);
-      assertEquals(1, is.search(query.build(), 10).totalHits.value);
+      assertEquals(1, is.search(query.build(), 10).totalHits.value());
     }
     ir.close();
     dir.close();
@@ -260,7 +260,7 @@ public class TestSimilarity2 extends LuceneTestCase {
       is.setSimilarity(sim);
       BooleanQuery.Builder query = new BooleanQuery.Builder();
       query.add(new TermQuery(new Term("foo", "bar")), BooleanClause.Occur.SHOULD);
-      assertEquals(1, is.search(query.build(), 10).totalHits.value);
+      assertEquals(1, is.search(query.build(), 10).totalHits.value());
     }
     ir.close();
     dir.close();

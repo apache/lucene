@@ -26,7 +26,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -37,6 +36,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
@@ -67,10 +67,10 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
       Query filtered =
           new BooleanQuery.Builder()
               .add(topLevel, BooleanClause.Occur.MUST)
-              .add(filterQuery(topGroups.groups[i].groupValue), BooleanClause.Occur.FILTER)
+              .add(filterQuery(topGroups.groups[i].groupValue()), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10);
-      assertScoreDocsEquals(topGroups.groups[i].scoreDocs, td.scoreDocs);
+      assertScoreDocsEquals(topGroups.groups[i].scoreDocs(), td.scoreDocs);
       if (i == 0) {
         assertEquals(td.scoreDocs[0].doc, topDoc.scoreDocs[0].doc);
         assertEquals(td.scoreDocs[0].score, topDoc.scoreDocs[0].score, 0);
@@ -105,10 +105,10 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
       Query filtered =
           new BooleanQuery.Builder()
               .add(topLevel, BooleanClause.Occur.MUST)
-              .add(filterQuery(topGroups.groups[i].groupValue), BooleanClause.Occur.FILTER)
+              .add(filterQuery(topGroups.groups[i].groupValue()), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10);
-      assertScoreDocsEquals(topGroups.groups[i].scoreDocs, td.scoreDocs);
+      assertScoreDocsEquals(topGroups.groups[i].scoreDocs(), td.scoreDocs);
       // The top group should have sort values equal to the sort values of the top doc of
       // a top-level search sorted by the same Sort; subsequent groups should have sort values
       // that compare lower than their predecessor.
@@ -116,7 +116,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
         assertSortsBefore(topGroups.groups[i - 1], topGroups.groups[i]);
       } else {
         assertArrayEquals(
-            ((FieldDoc) topDoc.scoreDocs[0]).fields, topGroups.groups[0].groupSortValues);
+            ((FieldDoc) topDoc.scoreDocs[0]).fields, topGroups.groups[0].groupSortValues());
       }
     }
 
@@ -148,19 +148,19 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
       // top score returned by a simple search with no grouping; subsequent groups should
       // all have equal or lower maxScores
       if (i == 0) {
-        assertEquals(topDoc.scoreDocs[0].score, topGroups.groups[0].maxScore, 0);
+        assertEquals(topDoc.scoreDocs[0].score, topGroups.groups[0].maxScore(), 0);
       } else {
-        assertTrue(topGroups.groups[i].maxScore <= topGroups.groups[i - 1].maxScore);
+        assertTrue(topGroups.groups[i].maxScore() <= topGroups.groups[i - 1].maxScore());
       }
       // Groups themselves are ordered by a defined Sort, and each should give the same result as
       // the top-level query, filtered by the group value, with the same Sort
       Query filtered =
           new BooleanQuery.Builder()
               .add(topLevel, BooleanClause.Occur.MUST)
-              .add(filterQuery(topGroups.groups[i].groupValue), BooleanClause.Occur.FILTER)
+              .add(filterQuery(topGroups.groups[i].groupValue()), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10, sort);
-      assertScoreDocsEquals(td.scoreDocs, topGroups.groups[i].scoreDocs);
+      assertScoreDocsEquals(td.scoreDocs, topGroups.groups[i].scoreDocs());
     }
 
     shard.close();
@@ -350,10 +350,11 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     assertEquals(singletonTopGroups.totalGroupCount, mergedTopGroups.totalGroupCount);
     assertEquals(singletonTopGroups.groups.length, mergedTopGroups.groups.length);
     for (int i = 0; i < singletonTopGroups.groups.length; i++) {
-      assertEquals(singletonTopGroups.groups[i].groupValue, mergedTopGroups.groups[i].groupValue);
       assertEquals(
-          singletonTopGroups.groups[i].scoreDocs.length,
-          mergedTopGroups.groups[i].scoreDocs.length);
+          singletonTopGroups.groups[i].groupValue(), mergedTopGroups.groups[i].groupValue());
+      assertEquals(
+          singletonTopGroups.groups[i].scoreDocs().length,
+          mergedTopGroups.groups[i].scoreDocs().length);
     }
 
     control.close();
@@ -379,8 +380,8 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
   }
 
   private void assertSortsBefore(GroupDocs<T> first, GroupDocs<T> second) {
-    Object[] groupSortValues = second.groupSortValues;
-    Object[] prevSortValues = first.groupSortValues;
+    Object[] groupSortValues = second.groupSortValues();
+    Object[] prevSortValues = first.groupSortValues();
     assertTrue(((BytesRef) prevSortValues[0]).compareTo((BytesRef) groupSortValues[0]) <= 0);
     if (prevSortValues[0].equals(groupSortValues[0])) {
       assertTrue((long) prevSortValues[1] <= (long) groupSortValues[1]);

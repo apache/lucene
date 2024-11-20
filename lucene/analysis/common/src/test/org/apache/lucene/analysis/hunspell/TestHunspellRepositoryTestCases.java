@@ -23,7 +23,6 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 import org.junit.Assert;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
@@ -42,7 +41,6 @@ public class TestHunspellRepositoryTestCases {
           "hu", // Hungarian is hard: a lot of its rules are hardcoded in Hunspell code, not aff/dic
           "morph", // we don't do morphological analysis yet
           "opentaal_keepcase", // Hunspell bug: https://github.com/hunspell/hunspell/issues/712
-          "forbiddenword", // needs https://github.com/hunspell/hunspell/pull/713 PR to be merged
           "nepali", // not supported yet
           "utf8_nonbmp", // code points not supported yet
           "phone" // not supported yet, used only for suggestions in en_ZA
@@ -73,7 +71,7 @@ public class TestHunspellRepositoryTestCases {
       }
     }
 
-    return names.stream().map(s -> new Object[] {s, tests.resolve(s)}).collect(Collectors.toList());
+    return names.stream().map(s -> new Object[] {s, tests.resolve(s)}).toList();
   }
 
   @Test

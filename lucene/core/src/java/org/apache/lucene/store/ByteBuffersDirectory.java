@@ -25,7 +25,6 @@ import java.nio.file.NoSuchFileException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -36,7 +35,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.zip.CRC32;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.util.BitUtil;
 
 /**
  * A {@link ByteBuffer}-based {@link Directory} implementation that can be used to store index files
@@ -81,38 +79,6 @@ public final class ByteBuffersDirectory extends BaseDirectory {
 
   public static final BiFunction<String, ByteBuffersDataOutput, IndexInput> OUTPUT_AS_BYTE_ARRAY =
       OUTPUT_AS_ONE_BUFFER;
-
-  public static final BiFunction<String, ByteBuffersDataOutput, IndexInput>
-      OUTPUT_AS_MANY_BUFFERS_LUCENE =
-          (fileName, output) -> {
-            List<ByteBuffer> bufferList = output.toBufferList();
-            bufferList.add(ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN));
-
-            int chunkSizePower;
-            int blockSize = ByteBuffersDataInput.determineBlockPage(bufferList);
-            if (blockSize == 0) {
-              chunkSizePower = 30;
-            } else {
-              chunkSizePower =
-                  Integer.numberOfTrailingZeros(BitUtil.nextHighestPowerOfTwo(blockSize));
-            }
-
-            String inputName =
-                String.format(
-                    Locale.ROOT,
-                    "%s (file=%s)",
-                    ByteBuffersDirectory.class.getSimpleName(),
-                    fileName);
-
-            ByteBufferGuard guard =
-                new ByteBufferGuard("none", (String resourceDescription, ByteBuffer b) -> {});
-            return ByteBufferIndexInput.newInstance(
-                inputName,
-                bufferList.toArray(new ByteBuffer[bufferList.size()]),
-                output.size(),
-                chunkSizePower,
-                guard);
-          };
 
   private final Function<String, String> tempFileName =
       new Function<String, String>() {

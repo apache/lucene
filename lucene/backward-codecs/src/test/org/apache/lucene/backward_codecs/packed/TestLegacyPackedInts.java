@@ -22,12 +22,14 @@ import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.RamUsageTester;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedInts.Reader;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLegacyPackedInts extends LuceneTestCase {
 
   public void testPackedInts() throws IOException {
@@ -85,10 +87,10 @@ public class TestLegacyPackedInts extends LuceneTestCase {
                 r.get(i));
           }
           in.close();
-          final long expectedBytesUsed = RamUsageTester.sizeOf(r);
+          final long expectedBytesUsed = RamUsageTester.ramUsed(r);
           final long computedBytesUsed = r.ramBytesUsed();
           assertEquals(
-              r.getClass() + "expected " + expectedBytesUsed + ", got: " + computedBytesUsed,
+              r.getClass() + " expected " + expectedBytesUsed + ", got: " + computedBytesUsed,
               expectedBytesUsed,
               computedBytesUsed);
         }

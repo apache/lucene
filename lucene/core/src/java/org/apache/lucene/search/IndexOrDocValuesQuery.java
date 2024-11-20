@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
@@ -42,6 +41,12 @@ import org.apache.lucene.index.LeafReaderContext;
  * when we need a good lead iterator that will be almost entirely consumed; and doc values
  * otherwise, ie. in the case that another part of the query is already leading iteration but we
  * still need the ability to verify that some documents match.
+ *
+ * <p>Some field types that work well with {@link IndexOrDocValuesQuery} are {@link
+ * org.apache.lucene.document.IntField}, {@link org.apache.lucene.document.LongField}, {@link
+ * org.apache.lucene.document.FloatField}, {@link org.apache.lucene.document.DoubleField}, and
+ * {@link org.apache.lucene.document.KeywordField}. These fields provide both an indexed structure
+ * and doc values.
  *
  * <p><b>NOTE</b>This query currently only works well with point range/exact queries and their
  * equivalent doc values queries.
@@ -80,7 +85,11 @@ public final class IndexOrDocValuesQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return indexQuery.toString(field);
+    return "IndexOrDocValuesQuery(indexQuery="
+        + indexQuery.toString(field)
+        + ", dvQuery="
+        + dvQuery.toString(field)
+        + ")";
   }
 
   @Override
@@ -101,9 +110,13 @@ public final class IndexOrDocValuesQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    Query indexRewrite = indexQuery.rewrite(reader);
-    Query dvRewrite = dvQuery.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    Query indexRewrite = indexQuery.rewrite(indexSearcher);
+    Query dvRewrite = dvQuery.rewrite(indexSearcher);
+    if (indexRewrite.getClass() == MatchAllDocsQuery.class
+        || dvRewrite.getClass() == MatchAllDocsQuery.class) {
+      return new MatchAllDocsQuery();
+    }
     if (indexQuery != indexRewrite || dvQuery != dvRewrite) {
       return new IndexOrDocValuesQuery(indexRewrite, dvRewrite);
     }
@@ -136,10 +149,12 @@ public final class IndexOrDocValuesQuery extends Query {
       }
 
       @Override
-      public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-        // Bulk scorers need to consume the entire set of docs, so using an
-        // index structure should perform better
-        return indexWeight.bulkScorer(context);
+      public int count(LeafReaderContext context) throws IOException {
+        final int count = indexWeight.count(context);
+        if (count != -1) {
+          return count;
+        }
+        return dvWeight.count(context);
       }
 
       @Override
@@ -165,19 +180,17 @@ public final class IndexOrDocValuesQuery extends Query {
           }
 
           @Override
+          public BulkScorer bulkScorer() throws IOException {
+            // Bulk scorers need to consume the entire set of docs, so using an
+            // index structure should perform better
+            return indexScorerSupplier.bulkScorer();
+          }
+
+          @Override
           public long cost() {
             return indexScorerSupplier.cost();
           }
         };
-      }
-
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
       }
 
       @Override

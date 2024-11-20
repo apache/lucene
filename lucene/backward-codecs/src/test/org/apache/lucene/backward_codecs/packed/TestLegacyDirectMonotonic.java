@@ -26,11 +26,13 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.LongValues;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLegacyDirectMonotonic extends LuceneTestCase {
 
   public void testValidation() {
@@ -257,7 +259,7 @@ public class TestLegacyDirectMonotonic extends LuceneTestCase {
     }
 
     try (IndexInput metaIn = EndiannessReverserUtil.openInput(dir, "meta", IOContext.READONCE);
-        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.READ)) {
+        IndexInput dataIn = EndiannessReverserUtil.openInput(dir, "data", IOContext.DEFAULT)) {
       LegacyDirectMonotonicReader.Meta meta =
           LegacyDirectMonotonicReader.loadMeta(metaIn, array.length, blockShift);
       LegacyDirectMonotonicReader reader =

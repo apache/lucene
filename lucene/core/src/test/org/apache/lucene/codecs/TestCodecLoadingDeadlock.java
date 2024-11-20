@@ -16,11 +16,16 @@
  */
 package org.apache.lucene.codecs;
 
+import com.carrotsearch.randomizedtesting.LifecycleScope;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
+import com.carrotsearch.randomizedtesting.RandomizedTest;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -31,7 +36,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,9 +48,10 @@ import org.junit.runner.RunWith;
 
 @RunWith(RandomizedRunner.class)
 public class TestCodecLoadingDeadlock extends Assert {
-  private static int MAX_TIME_SECONDS = 30;
+  private static final int MAX_TIME_SECONDS = 30;
 
   @Test
+  @SuppressForbidden(reason = "Uses Path.toFile because ProcessBuilder requires it.")
   public void testDeadlock() throws Exception {
     // pick random codec names for stress test in separate process:
     final Random rnd = RandomizedContext.current().getRandom();
@@ -57,26 +65,31 @@ public class TestCodecLoadingDeadlock extends Assert {
         new ArrayList<>(avail = DocValuesFormat.availableDocValuesFormats())
             .get(rnd.nextInt(avail.size()));
 
-    System.out.println(
-        String.format(Locale.ROOT, "codec: %s, pf: %s, dvf: %s", codecName, pfName, dvfName));
+    System.out.printf(Locale.ROOT, "codec: %s, pf: %s, dvf: %s%n", codecName, pfName, dvfName);
+
+    List<String> args = new ArrayList<>();
+    args.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
+    args.addAll(LuceneTestCase.getJvmForkArguments());
+    args.addAll(List.of(getClass().getName(), codecName, pfName, dvfName));
 
     // Fork a separate JVM to reinitialize classes.
+    final Path output = RandomizedTest.newTempFile(LifecycleScope.TEST);
     final Process p =
-        new ProcessBuilder(
-                Paths.get(System.getProperty("java.home"), "bin", "java").toString(),
-                "-cp",
-                System.getProperty("java.class.path"),
-                getClass().getName(),
-                codecName,
-                pfName,
-                dvfName)
-            .inheritIO()
-            .start();
-    if (p.waitFor(MAX_TIME_SECONDS * 2, TimeUnit.SECONDS)) {
-      assertEquals("Process died abnormally?", 0, p.waitFor());
-    } else {
-      p.destroyForcibly().waitFor();
-      fail("Process did not exit after 60 secs?");
+        new ProcessBuilder(args).redirectErrorStream(true).redirectOutput(output.toFile()).start();
+    boolean success = false;
+    try {
+      if (p.waitFor(MAX_TIME_SECONDS * 2, TimeUnit.SECONDS)) {
+        assertEquals("Process died abnormally?", 0, p.waitFor());
+        success = true;
+      } else {
+        p.destroyForcibly().waitFor();
+        fail("Process did not exit after 60 secs?");
+      }
+    } finally {
+      if (!success) {
+        System.out.println("Subprocess emitted the following output:");
+        System.out.write(Files.readAllBytes(output));
+      }
     }
   }
 

@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.search.suggest.tst;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 
 /**
  * Ternary Search Trie implementation.
@@ -125,9 +126,9 @@ public class TSTAutocomplete {
     }
     p = p.eqKid;
 
-    Stack<TernaryTreeNode> st = new Stack<>();
+    ArrayDeque<TernaryTreeNode> st = new ArrayDeque<>();
     st.push(p);
-    while (!st.empty()) {
+    while (!st.isEmpty()) {
       TernaryTreeNode top = st.peek();
       st.pop();
       if (top.token != null) {

@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -31,13 +30,15 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestTermScorer extends LuceneTestCase {
   protected Directory directory;
@@ -122,7 +123,9 @@ public class TestTermScorer extends LuceneTestCase {
             return ScoreMode.COMPLETE;
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     assertTrue("docs Size: " + docs.size() + " is not: " + 2, docs.size() == 2);
     TestHit doc0 = docs.get(0);
     TestHit doc5 = docs.get(1);
@@ -241,13 +244,14 @@ public class TestTermScorer extends LuceneTestCase {
     for (int iter = 0; iter < 15; ++iter) {
       Query query = new TermQuery(new Term("foo", Integer.toString(iter)));
 
-      TopScoreDocCollector collector1 =
-          TopScoreDocCollector.create(10, null, Integer.MAX_VALUE); // COMPLETE
-      TopScoreDocCollector collector2 = TopScoreDocCollector.create(10, null, 1); // TOP_SCORES
+      TopScoreDocCollectorManager completeManager =
+          new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      TopScoreDocCollectorManager topScoresManager =
+          new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
 
-      searcher.search(query, collector1);
-      searcher.search(query, collector2);
-      CheckHits.checkEqual(query, collector1.topDocs().scoreDocs, collector2.topDocs().scoreDocs);
+      TopDocs complete = searcher.search(query, completeManager);
+      TopDocs topScores = searcher.search(query, topScoresManager);
+      CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);
 
       int filterTerm = random().nextInt(15);
       Query filteredQuery =
@@ -256,11 +260,11 @@ public class TestTermScorer extends LuceneTestCase {
               .add(new TermQuery(new Term("foo", Integer.toString(filterTerm))), Occur.FILTER)
               .build();
 
-      collector1 = TopScoreDocCollector.create(10, null, Integer.MAX_VALUE); // COMPLETE
-      collector2 = TopScoreDocCollector.create(10, null, 1); // TOP_SCORES
-      searcher.search(filteredQuery, collector1);
-      searcher.search(filteredQuery, collector2);
-      CheckHits.checkEqual(query, collector1.topDocs().scoreDocs, collector2.topDocs().scoreDocs);
+      completeManager = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+      topScoresManager = new TopScoreDocCollectorManager(10, 1); // TOP_SCORES
+      complete = searcher.search(filteredQuery, completeManager);
+      topScores = searcher.search(filteredQuery, topScoresManager);
+      CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);
     }
     reader.close();
     dir.close();

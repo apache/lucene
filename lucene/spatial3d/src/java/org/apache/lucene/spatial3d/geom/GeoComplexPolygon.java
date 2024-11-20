@@ -769,7 +769,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
       final Plane p, final GeoPoint[] notablePoints, final Membership... bounds) {
     // Create the intersector
     final EdgeIterator intersector = new IntersectorEdgeIterator(p, notablePoints, bounds);
-    // First, compute the bounds for the the plane
+    // First, compute the bounds for the plane
     final XYZBounds xyzBounds = new XYZBounds();
     p.recordBounds(planetModel, xyzBounds, bounds);
     for (final GeoPoint point : notablePoints) {
@@ -806,7 +806,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
   public boolean intersects(GeoShape geoShape) {
     // Create the intersector
     final EdgeIterator intersector = new IntersectorShapeIterator(geoShape);
-    // First, compute the bounds for the the plane
+    // First, compute the bounds for the plane
     final XYZBounds xyzBounds = new XYZBounds();
     geoShape.getBounds(xyzBounds);
 
@@ -1120,12 +1120,12 @@ class GeoComplexPolygon extends GeoBasePolygon {
    * into the traversal method of a tree, and each edge that matches will cause this object to be
    * called.
    */
-  private static interface EdgeIterator {
+  private interface EdgeIterator {
     /**
      * @param edge is the edge that matched.
      * @return true if the iteration should continue, false otherwise.
      */
-    public boolean matches(final Edge edge);
+    boolean matches(final Edge edge);
   }
 
   /**
@@ -1133,12 +1133,16 @@ class GeoComplexPolygon extends GeoBasePolygon {
    * implementing this interface into the traversal method of a tree, and each edge that matches
    * will cause this object to be called.
    */
-  private static interface CountingEdgeIterator extends EdgeIterator {
-    /** @return the number of edges that were crossed. */
-    public int getCrossingCount();
+  private interface CountingEdgeIterator extends EdgeIterator {
+    /**
+     * @return the number of edges that were crossed.
+     */
+    int getCrossingCount();
 
-    /** @return true if the endpoint was on an edge. */
-    public boolean isOnEdge();
+    /**
+     * @return true if the endpoint was on an edge.
+     */
+    boolean isOnEdge();
   }
 
   /**
@@ -2301,11 +2305,13 @@ class GeoComplexPolygon extends GeoBasePolygon {
    * to numerical issues.
    */
   private static final double DELTA_DISTANCE = Vector.MINIMUM_RESOLUTION;
+
   /**
    * This is the maximum number of iterations. If we get this high, effectively the planes are
    * parallel, and we treat that as a crossing.
    */
   private static final int MAX_ITERATIONS = 100;
+
   /**
    * This is the amount off of the envelope plane that we count as "enough" for a valid crossing
    * assessment.

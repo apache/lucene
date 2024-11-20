@@ -476,7 +476,8 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
           }
         }
         maxUncompressedBlockLength = Math.max(maxUncompressedBlockLength, uncompressedBlockLength);
-        LZ4.compress(block, 0, uncompressedBlockLength, data, ht);
+        LZ4.compress(
+            block, 0, uncompressedBlockLength, EndiannessReverserUtil.wrapDataOutput(data), ht);
         numDocsInCurrentBlock = 0;
         // Ensure initialized with zeroes because full array is always written
         Arrays.fill(docLengths, 0);
@@ -847,7 +848,8 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
     int uncompressedLength = bufferedOutput.getPosition();
     data.writeVInt(uncompressedLength);
     long before = data.getFilePointer();
-    LZ4.compress(termsDictBuffer, 0, uncompressedLength, data, ht);
+    LZ4.compress(
+        termsDictBuffer, 0, uncompressedLength, EndiannessReverserUtil.wrapDataOutput(data), ht);
     int compressedLength = (int) (data.getFilePointer() - before);
     // Block length will be used for creating buffer for decompression, one corner case is that
     // compressed length might be bigger than un-compressed length, so just return the bigger one.
@@ -957,11 +959,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
     long numOrds = 0;
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       numDocsWithField++;
-      for (long ord = values.nextOrd();
-          ord != SortedSetDocValues.NO_MORE_ORDS;
-          ord = values.nextOrd()) {
-        numOrds++;
-      }
+      numOrds += values.docValueCount();
     }
 
     if (numDocsWithField == numOrds) {
@@ -1003,10 +1001,8 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
     LegacyDirectWriter writer = LegacyDirectWriter.getInstance(data, numOrds, numberOfBitsPerOrd);
     values = valuesProducer.getSortedSet(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      for (long ord = values.nextOrd();
-          ord != SortedSetDocValues.NO_MORE_ORDS;
-          ord = values.nextOrd()) {
-        writer.add(ord);
+      for (int i = 0; i < values.docValueCount(); i++) {
+        writer.add(values.nextOrd());
       }
     }
     writer.finish();
@@ -1024,11 +1020,7 @@ final class Lucene80DocValuesConsumer extends DocValuesConsumer {
     addressesWriter.add(addr);
     values = valuesProducer.getSortedSet(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      values.nextOrd();
-      addr++;
-      while (values.nextOrd() != SortedSetDocValues.NO_MORE_ORDS) {
-        addr++;
-      }
+      addr += values.docValueCount();
       addressesWriter.add(addr);
     }
     addressesWriter.finish();

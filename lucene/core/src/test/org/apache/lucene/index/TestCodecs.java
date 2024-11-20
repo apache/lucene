@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
@@ -33,12 +32,13 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 import org.junit.BeforeClass;
 
@@ -106,13 +106,16 @@ public class TestCodecs extends LuceneTestCase {
                     storePayloads,
                     indexOptions,
                     DocValuesType.NONE,
+                    DocValuesSkipIndexType.NONE,
                     -1,
                     new HashMap<>(),
                     0,
                     0,
                     0,
                     0,
+                    VectorEncoding.FLOAT32,
                     VectorSimilarityFunction.EUCLIDEAN,
+                    false,
                     false));
       }
       this.terms = terms;
@@ -228,7 +231,8 @@ public class TestCodecs extends LuceneTestCase {
       terms[i] = new TermData(text, docs, null);
     }
 
-    final FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    final FieldInfos.Builder builder =
+        new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, null));
 
     final FieldData field = new FieldData("field", builder, terms, true, false);
     final FieldData[] fields = new FieldData[] {field};
@@ -242,6 +246,7 @@ public class TestCodecs extends LuceneTestCase {
             Version.LATEST,
             SEGMENT,
             10000,
+            false,
             false,
             codec,
             Collections.emptyMap(),
@@ -290,7 +295,8 @@ public class TestCodecs extends LuceneTestCase {
   }
 
   public void testRandomPostings() throws Throwable {
-    final FieldInfos.Builder builder = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null));
+    final FieldInfos.Builder builder =
+        new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, null));
 
     final FieldData[] fields = new FieldData[NUM_FIELDS];
     for (int i = 0; i < NUM_FIELDS; i++) {
@@ -320,6 +326,7 @@ public class TestCodecs extends LuceneTestCase {
             Version.LATEST,
             SEGMENT,
             10000,
+            false,
             false,
             codec,
             Collections.emptyMap(),

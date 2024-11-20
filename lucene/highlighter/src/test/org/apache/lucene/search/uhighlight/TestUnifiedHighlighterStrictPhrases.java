@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.uhighlight;
 
+import com.carrotsearch.randomizedtesting.annotations.Name;
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
 import java.util.Collection;
@@ -24,13 +25,10 @@ import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanMultiTermQueryWrapper;
 import org.apache.lucene.queries.spans.SpanNearQuery;
@@ -56,23 +54,19 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.uhighlight.UnifiedHighlighter.HighlightFlag;
-import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.QueryBuilder;
 import org.junit.After;
 import org.junit.Before;
 
 // TODO rename to reflect position sensitivity
-public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
+public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestBase {
 
-  final FieldType fieldType;
-
-  Directory dir;
-  MockAnalyzer indexAnalyzer;
   RandomIndexWriter indexWriter;
   IndexSearcher searcher;
   UnifiedHighlighter highlighter;
+  UnifiedHighlighter.Builder uhBuilder;
   IndexReader indexReader;
 
   // Is it okay if a match (identified by offset pair) appears multiple times in the passage?
@@ -80,26 +74,26 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
   @ParametersFactory
   public static Iterable<Object[]> parameters() {
-    return UHTestHelper.parametersFactoryList();
+    return parametersFactoryList();
   }
 
-  public TestUnifiedHighlighterStrictPhrases(FieldType fieldType) {
-    this.fieldType = fieldType;
+  public TestUnifiedHighlighterStrictPhrases(@Name("fieldType") FieldType fieldType) {
+    super(fieldType);
   }
 
   @Before
-  public void doBefore() throws IOException {
-    indexAnalyzer =
-        new MockAnalyzer(
-            random(), MockTokenizer.SIMPLE, true); // whitespace, punctuation, lowercase
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
     indexAnalyzer.setPositionIncrementGap(3); // more than default
-    dir = newDirectory();
-    indexWriter = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    indexWriter = newIndexOrderPreservingWriter();
   }
 
   @After
-  public void doAfter() throws IOException {
-    IOUtils.close(indexReader, indexWriter, dir);
+  @Override
+  public void tearDown() throws Exception {
+    IOUtils.close(indexReader, indexWriter);
+    super.tearDown();
   }
 
   private Document newDoc(String... bodyVals) {
@@ -113,41 +107,42 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
   private void initReaderSearcherHighlighter() throws IOException {
     indexReader = indexWriter.getReader();
     searcher = newSearcher(indexReader);
+    uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     highlighter =
         TestUnifiedHighlighter.randomUnifiedHighlighter(
-            searcher,
-            indexAnalyzer,
-            EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.MULTI_TERM_QUERY),
-            true);
+            uhBuilder, EnumSet.of(HighlightFlag.PHRASES, HighlightFlag.MULTI_TERM_QUERY), true);
     // intercept the formatter in order to check constraints on the passage.
     final PassageFormatter defaultFormatter = highlighter.getFormatter(null);
-    highlighter.setFormatter(
-        new PassageFormatter() {
-          @Override
-          public Object format(Passage[] passages, String content) {
-            boolean thisDupMatchAllowed = dupMatchAllowed.getAndSet(true);
-            for (Passage passage : passages) {
-              String prevPair = "";
-              for (int i = 0; i < passage.getNumMatches(); i++) {
-                // pad each to make comparable
-                String pair =
-                    String.format(
-                        Locale.ROOT,
-                        "%03d-%03d",
-                        passage.getMatchStarts()[i],
-                        passage.getMatchEnds()[i]);
-                int cmp = prevPair.compareTo(pair);
-                if (cmp == 0) {
-                  assertTrue("dup match in passage at offset " + pair, thisDupMatchAllowed);
-                } else if (cmp > 0) {
-                  fail("bad match order in passage at offset " + pair);
-                }
-                prevPair = pair;
-              }
-            }
-            return defaultFormatter.format(passages, content);
-          }
-        });
+    highlighter =
+        uhBuilder
+            .withFormatter(
+                new PassageFormatter() {
+                  @Override
+                  public Object format(Passage[] passages, String content) {
+                    boolean thisDupMatchAllowed = dupMatchAllowed.getAndSet(true);
+                    for (Passage passage : passages) {
+                      String prevPair = "";
+                      for (int i = 0; i < passage.getNumMatches(); i++) {
+                        // pad each to make comparable
+                        String pair =
+                            String.format(
+                                Locale.ROOT,
+                                "%03d-%03d",
+                                passage.getMatchStarts()[i],
+                                passage.getMatchEnds()[i]);
+                        int cmp = prevPair.compareTo(pair);
+                        if (cmp == 0) {
+                          assertTrue("dup match in passage at offset " + pair, thisDupMatchAllowed);
+                        } else if (cmp > 0) {
+                          fail("bad match order in passage at offset " + pair);
+                        }
+                        prevPair = pair;
+                      }
+                    }
+                    return defaultFormatter.format(passages, content);
+                  }
+                })
+            .build();
   }
 
   private PhraseQuery newPhraseQuery(String field, String phrase) {
@@ -188,13 +183,15 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
   }
 
   public void testWithSameTermQuery() throws IOException {
-    indexWriter.addDocument(newDoc("Yin yang, yin gap yang"));
+    indexWriter.addDocument(newDoc("Yin yang loooooooooong, yin gap yang yong"));
     initReaderSearcherHighlighter();
 
     BooleanQuery query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("body", "yin")), BooleanClause.Occur.MUST)
-            .add(newPhraseQuery("body", "yin yang"), BooleanClause.Occur.MUST)
+            .add(new TermQuery(new Term("body", "yang")), BooleanClause.Occur.MUST)
+            .add(new TermQuery(new Term("body", "loooooooooong")), BooleanClause.Occur.MUST)
+            .add(newPhraseQuery("body", "yin\\ yang\\ loooooooooong"), BooleanClause.Occur.MUST)
             // add queries for other fields; we shouldn't highlight these because of that.
             .add(new TermQuery(new Term("title", "yang")), BooleanClause.Occur.SHOULD)
             .build();
@@ -204,9 +201,15 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
         false); // We don't want duplicates from "Yin" being in TermQuery & PhraseQuery.
     String[] snippets = highlighter.highlight("body", query, topDocs);
     if (highlighter.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES)) {
-      assertArrayEquals(new String[] {"<b>Yin yang</b>, <b>yin</b> gap yang"}, snippets);
+      assertArrayEquals(
+          new String[] {"<b>Yin yang loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong"},
+          snippets);
     } else {
-      assertArrayEquals(new String[] {"<b>Yin</b> <b>yang</b>, <b>yin</b> gap yang"}, snippets);
+      assertArrayEquals(
+          new String[] {
+            "<b>Yin</b> <b>yang</b> <b>loooooooooong</b>, <b>yin</b> gap <b>yang</b> yong"
+          },
+          snippets);
     }
   }
 
@@ -315,8 +318,10 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
     }
 
     // do again, this time with MTQ disabled.  We should only find "alpha bravo".
-    highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHandleMultiTermQuery(false); // disable but leave phrase processing enabled
+    highlighter =
+        UnifiedHighlighter.builder(searcher, indexAnalyzer)
+            .withHandleMultiTermQuery(false) // disable but leave phrase processing enabled
+            .build();
 
     topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     snippets = highlighter.highlight("body", query, topDocs);
@@ -361,8 +366,10 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
     }
 
     // do again, this time with MTQ disabled.  We should only find "alpha bravo".
-    highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHandleMultiTermQuery(false); // disable but leave phrase processing enabled
+    highlighter =
+        UnifiedHighlighter.builder(searcher, indexAnalyzer)
+            .withHandleMultiTermQuery(false) // disable but leave phrase processing enabled
+            .build();
 
     topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     snippets = highlighter.highlight("body", query, topDocs);
@@ -408,8 +415,10 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
     }
 
     // do again, this time with MTQ disabled.
-    highlighter = new UnifiedHighlighter(searcher, indexAnalyzer);
-    highlighter.setHandleMultiTermQuery(false); // disable but leave phrase processing enabled
+    highlighter =
+        UnifiedHighlighter.builder(searcher, indexAnalyzer)
+            .withHandleMultiTermQuery(false) // disable but leave phrase processing enabled
+            .build();
 
     topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     snippets = highlighter.highlight("body", query, topDocs);
@@ -467,7 +476,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
             .add(phraseQuery, BooleanClause.Occur.MUST) // must match and it will
             .build();
     topDocs = searcher.search(query, 10);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     snippets = highlighter.highlight("body", query, topDocs, 2);
     if (highlighter.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES)) {
       assertEquals("one <b>bravo</b> <b>three</b>... four <b>bravo</b> six", snippets[0]);
@@ -480,7 +489,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
     indexWriter.addDocument(
         newDoc("alpha bravo charlie - gap alpha bravo")); // hyphen is at char 21
     initReaderSearcherHighlighter();
-    highlighter.setMaxLength(21);
+    highlighter = uhBuilder.withMaxLength(21).build();
 
     BooleanQuery query =
         new BooleanQuery.Builder()
@@ -494,7 +503,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
 
     final boolean weightMatches =
         highlighter.getFlags("body").contains(HighlightFlag.WEIGHT_MATCHES);
-    if (fieldType == UHTestHelper.reanalysisType || weightMatches) {
+    if (fieldType == reanalysisType || weightMatches) {
       if (weightMatches) {
         assertArrayEquals(new String[] {"<b>alpha bravo</b> charlie -"}, snippets);
       } else {
@@ -527,8 +536,10 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
   }
 
   public void testMatchNoDocsQuery() throws IOException {
-    highlighter = new UnifiedHighlighter(null, indexAnalyzer);
-    highlighter.setHighlightPhrasesStrictly(true);
+    highlighter =
+        UnifiedHighlighter.builderWithoutSearcher(indexAnalyzer)
+            .withHighlightPhrasesStrictly(true)
+            .build();
     String content = "whatever";
     Object o = highlighter.highlightWithoutSearcher("body", new MatchNoDocsQuery(), content, 1);
     assertEquals(content, o);
@@ -540,24 +551,31 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
             "There is no accord and satisfaction with this - Consideration of the accord is arbitrary."));
     initReaderSearcherHighlighter();
 
-    highlighter =
-        new UnifiedHighlighter(searcher, indexAnalyzer) {
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer).withHighlightPhrasesStrictly(true);
+    UnifiedHighlighter.Builder builder =
+        new UnifiedHighlighter.Builder(searcher, indexAnalyzer) {
           @Override
-          protected Set<HighlightFlag> getFlags(String field) {
-            final Set<HighlightFlag> flags = super.getFlags(field);
-            flags.remove(HighlightFlag.WEIGHT_MATCHES); // unsupported
-            return flags;
-          }
+          public UnifiedHighlighter build() {
+            return new UnifiedHighlighter(uhBuilder) {
+              @Override
+              protected Set<HighlightFlag> getFlags(String field) {
+                final Set<HighlightFlag> flags = super.getFlags(field);
+                flags.remove(HighlightFlag.WEIGHT_MATCHES); // unsupported
+                return flags;
+              }
 
-          @Override
-          protected Collection<Query> preSpanQueryRewrite(Query query) {
-            if (query instanceof MyQuery) {
-              return Collections.singletonList(((MyQuery) query).wrapped);
-            }
-            return null;
+              @Override
+              protected Collection<Query> preSpanQueryRewrite(Query query) {
+                if (query instanceof MyQuery) {
+                  return Collections.singletonList(((MyQuery) query).wrapped);
+                }
+                return null;
+              }
+            };
           }
         };
-    highlighter.setHighlightPhrasesStrictly(true);
+    highlighter = builder.build();
 
     BooleanQuery.Builder bqBuilder = new BooleanQuery.Builder();
     Query phraseQuery =
@@ -576,7 +594,7 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
             .add(proximityBoostingQuery, BooleanClause.Occur.SHOULD)
             .build();
     TopDocs topDocs = searcher.search(totalQuery, 10, Sort.INDEXORDER);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     String[] snippets = highlighter.highlight("body", totalQuery, topDocs);
     assertArrayEquals(
         new String[] {
@@ -641,8 +659,8 @@ public class TestUnifiedHighlighterStrictPhrases extends LuceneTestCase {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-      Query newWrapped = wrapped.rewrite(reader);
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      Query newWrapped = wrapped.rewrite(indexSearcher);
       if (newWrapped != wrapped) {
         return new MyQuery(newWrapped);
       }

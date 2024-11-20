@@ -89,10 +89,16 @@ public class FSTDictionary implements IndexDictionary {
       isFSTOnHeap = true;
     }
     PositiveIntOutputs fstOutputs = PositiveIntOutputs.getSingleton();
-    FST<Long> fst =
-        isFSTOnHeap
-            ? new FST<>(fstDataInput, fstDataInput, fstOutputs)
-            : new FST<>(fstDataInput, fstDataInput, fstOutputs, new OffHeapFSTStore());
+    FST.FSTMetadata<Long> metadata = FST.readMetadata(fstDataInput, fstOutputs);
+    FST<Long> fst;
+    if (isFSTOnHeap) {
+      fst = new FST<>(metadata, fstDataInput);
+    } else {
+      final IndexInput indexInput = (IndexInput) fstDataInput;
+      fst =
+          FST.fromFSTReader(
+              metadata, new OffHeapFSTStore(indexInput, indexInput.getFilePointer(), metadata));
+    }
     return new FSTDictionary(fst);
   }
 
@@ -171,9 +177,9 @@ public class FSTDictionary implements IndexDictionary {
     protected final FSTCompiler<Long> fstCompiler;
     protected final IntsRefBuilder scratchInts;
 
-    public Builder() {
+    public Builder() throws IOException {
       PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-      fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
       scratchInts = new IntsRefBuilder();
     }
 
@@ -184,7 +190,8 @@ public class FSTDictionary implements IndexDictionary {
 
     @Override
     public FSTDictionary build() throws IOException {
-      return new FSTDictionary(fstCompiler.compile());
+      return new FSTDictionary(
+          FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     }
   }
 }

@@ -40,6 +40,7 @@ public class FieldHighlighter {
   protected final int maxPassages;
   protected final int maxNoHighlightPassages;
   protected final PassageFormatter passageFormatter;
+  protected final Comparator<Passage> passageSortComparator;
 
   public FieldHighlighter(
       String field,
@@ -48,7 +49,8 @@ public class FieldHighlighter {
       PassageScorer passageScorer,
       int maxPassages,
       int maxNoHighlightPassages,
-      PassageFormatter passageFormatter) {
+      PassageFormatter passageFormatter,
+      Comparator<Passage> passageSortComparator) {
     this.field = field;
     this.fieldOffsetStrategy = fieldOffsetStrategy;
     this.breakIterator = breakIterator;
@@ -56,6 +58,7 @@ public class FieldHighlighter {
     this.maxPassages = maxPassages;
     this.maxNoHighlightPassages = maxNoHighlightPassages;
     this.passageFormatter = passageFormatter;
+    this.passageSortComparator = passageSortComparator;
   }
 
   public String getField() {
@@ -191,8 +194,7 @@ public class FieldHighlighter {
     maybeAddPassage(passageQueue, passageScorer, passage, contentLength);
 
     Passage[] passages = passageQueue.toArray(new Passage[passageQueue.size()]);
-    // sort in ascending order
-    Arrays.sort(passages, Comparator.comparingInt(Passage::getStartOffset));
+    Arrays.sort(passages, passageSortComparator);
     return passages;
   }
 

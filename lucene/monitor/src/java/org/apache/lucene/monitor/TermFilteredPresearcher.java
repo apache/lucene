@@ -70,8 +70,8 @@ public class TermFilteredPresearcher extends Presearcher {
   private final Set<String> filterFields;
   private final List<CustomQueryHandler> queryHandlers = new ArrayList<>();
 
-  static final String ANYTOKEN_FIELD = "__anytokenfield";
-  static final String ANYTOKEN = "__ANYTOKEN__";
+  public static final String ANYTOKEN_FIELD = "__anytokenfield";
+  public static final String ANYTOKEN = "__ANYTOKEN__";
 
   /** Creates a new TermFilteredPresearcher using the default term weighting */
   public TermFilteredPresearcher() {
@@ -186,7 +186,7 @@ public class TermFilteredPresearcher extends Presearcher {
                 + field
                 + ":"
                 + Term.toString(term));
-      bq.add(new TermQuery(new Term(field, BytesRef.deepCopyOf(term))), BooleanClause.Occur.SHOULD);
+      bq.add(new TermQuery(new Term(field, term)), BooleanClause.Occur.SHOULD);
     }
 
     BooleanQuery built = bq.build();
@@ -202,7 +202,9 @@ public class TermFilteredPresearcher extends Presearcher {
     /** Add a term from this document */
     void addTerm(String field, BytesRef term) throws IOException;
 
-    /** @return the final Query */
+    /**
+     * @return the final Query
+     */
     Query build();
   }
 

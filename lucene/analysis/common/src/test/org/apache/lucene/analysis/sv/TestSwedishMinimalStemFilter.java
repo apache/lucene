@@ -16,13 +16,15 @@
  */
 package org.apache.lucene.analysis.sv;
 
-import static org.apache.lucene.analysis.VocabularyAssert.assertVocabulary;
+import static org.apache.lucene.tests.analysis.VocabularyAssert.assertVocabulary;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Simple tests for {@link SwedishMinimalStemFilter} */
 public class TestSwedishMinimalStemFilter extends BaseTokenStreamTestCase {

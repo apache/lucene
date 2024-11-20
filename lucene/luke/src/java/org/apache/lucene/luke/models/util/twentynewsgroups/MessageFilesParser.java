@@ -28,7 +28,8 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.logging.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.lucene.luke.util.LoggerFactory;
 
 /**
@@ -53,13 +54,11 @@ public class MessageFilesParser extends SimpleFileVisitor<Path> {
       if (attr.isRegularFile()) {
         Message message = parse(file);
         if (message != null) {
-          messages.add(parse(file));
+          messages.add(message);
         }
       }
-    } catch (
-        @SuppressWarnings("unused")
-        IOException e) {
-      log.warn("Invalid file? {}", file);
+    } catch (IOException e) {
+      log.log(Level.WARNING, "Invalid file? " + file, e);
     }
     return FileVisitResult.CONTINUE;
   }
@@ -69,7 +68,7 @@ public class MessageFilesParser extends SimpleFileVisitor<Path> {
       String line = br.readLine();
 
       Message message = new Message();
-      while (!line.equals("")) {
+      while (!line.isEmpty()) {
         String[] ary = line.split(":", 2);
         if (ary.length < 2) {
           line = br.readLine();

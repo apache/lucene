@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.benchmark.byTask.feeds;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,7 +37,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.IOUtils;
 
 /** Tests the functionality of {@link DocMaker}. */
 public class TestDocMaker extends BenchmarkTestCase {
@@ -90,7 +91,7 @@ public class TestDocMaker extends BenchmarkTestCase {
     IndexReader reader = DirectoryReader.open(runData.getDirectory());
     IndexSearcher searcher = newSearcher(reader);
     TopDocs td = searcher.search(new TermQuery(new Term("key", "value")), 10);
-    assertEquals(numExpectedResults, td.totalHits.value);
+    assertEquals(numExpectedResults, td.totalHits.value());
     reader.close();
   }
 
@@ -164,8 +165,8 @@ public class TestDocMaker extends BenchmarkTestCase {
     // DocMaker did not close its ContentSource if resetInputs was called twice,
     // leading to a file handle leak.
     Path f = getWorkDir().resolve("docMakerLeak.txt");
-    PrintStream ps = new PrintStream(Files.newOutputStream(f), true, IOUtils.UTF_8);
-    ps.println("one title\t" + System.currentTimeMillis() + "\tsome content");
+    PrintStream ps = new PrintStream(Files.newOutputStream(f), true, UTF_8);
+    ps.println("one title\t" + random().nextLong() + "\tsome content");
     ps.close();
 
     Properties props = new Properties();

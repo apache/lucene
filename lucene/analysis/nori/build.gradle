@@ -20,9 +20,9 @@ apply plugin: 'java-library'
 description = 'Korean Morphological Analyzer'
 
 dependencies {
-  api project(':lucene:core')
-  api project(':lucene:analysis:common')
-  
-  testImplementation project(':lucene:test-framework')
+  moduleApi project(':lucene:core')
+  moduleApi project(':lucene:analysis:common')
+
+  moduleTestImplementation project(':lucene:test-framework')
 }
 

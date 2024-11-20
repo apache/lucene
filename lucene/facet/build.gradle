@@ -20,13 +20,11 @@ apply plugin: 'java-library'
 
 description = 'Faceted indexing and search capabilities'
 
-dependencies { 
-  api project(':lucene:core')
+dependencies {
+  moduleApi project(':lucene:core')
 
-  implementation 'com.carrotsearch:hppc'
-
-  testImplementation project(':lucene:test-framework')
-  testImplementation project(':lucene:queries')
+  moduleTestImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:queries')
   // Required for opening older indexes for backward compatibility tests
-  testImplementation project(':lucene:backward-codecs')
+  moduleTestImplementation project(':lucene:backward-codecs')
 }

@@ -17,18 +17,18 @@
 package org.apache.lucene.index;
 
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.SortedDocValuesField;
-import org.apache.lucene.store.BaseDirectoryWrapper;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Monster;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.TimeUnits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.Monster;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
-import org.apache.lucene.util.TestUtil;
-import org.apache.lucene.util.TimeUnits;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 @TimeoutSuite(millis = 80 * TimeUnits.HOUR) // effectively no limit
@@ -84,7 +84,7 @@ public class Test2BSortedDocValuesOrds extends LuceneTestCase {
     int counter = 0;
     for (LeafReaderContext context : r.leaves()) {
       LeafReader reader = context.reader();
-      BinaryDocValues dv = DocValues.getBinary(reader, "dv");
+      SortedDocValues dv = DocValues.getSorted(reader, "dv");
       for (int i = 0; i < reader.maxDoc(); i++) {
         assertEquals(i, dv.nextDoc());
         bytes[0] = (byte) (counter >> 24);
@@ -92,7 +92,7 @@ public class Test2BSortedDocValuesOrds extends LuceneTestCase {
         bytes[2] = (byte) (counter >> 8);
         bytes[3] = (byte) counter;
         counter++;
-        final BytesRef term = dv.binaryValue();
+        final BytesRef term = dv.lookupOrd(dv.ordValue());
         assertEquals(data, term);
       }
     }

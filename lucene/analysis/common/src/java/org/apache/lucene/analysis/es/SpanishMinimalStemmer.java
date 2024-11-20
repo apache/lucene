@@ -21,10 +21,13 @@ package org.apache.lucene.analysis.es;
  * Minimal plural stemmer for Spanish.
  *
  * <p>This stemmer implements the "plurals" stemmer for spanish lanugage.
+ *
+ * @deprecated Use {@link SpanishPluralStemmer} instead.
  */
-public class SpanishMinimalStemmer {
+@Deprecated
+class SpanishMinimalStemmer {
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     if (len < 4 || s[len - 1] != 's') return len;
 
     for (int i = 0; i < len; i++)

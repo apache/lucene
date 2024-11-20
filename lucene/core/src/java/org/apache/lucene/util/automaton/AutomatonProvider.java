@@ -32,7 +32,7 @@ package org.apache.lucene.util.automaton;
 import java.io.IOException;
 
 /**
- * Automaton provider for <code>RegExp.</code> {@link RegExp#toAutomaton(AutomatonProvider,int)}
+ * Automaton provider for <code>RegExp.</code> {@link RegExp#toAutomaton(AutomatonProvider)}
  *
  * @lucene.experimental
  */
@@ -45,5 +45,5 @@ public interface AutomatonProvider {
    * @return automaton
    * @throws IOException if errors occur
    */
-  public Automaton getAutomaton(String name) throws IOException;
+  Automaton getAutomaton(String name) throws IOException;
 }

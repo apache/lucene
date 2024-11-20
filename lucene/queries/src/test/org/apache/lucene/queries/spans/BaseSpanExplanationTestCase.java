@@ -24,7 +24,7 @@ import static org.apache.lucene.queries.spans.SpanTestUtil.spanNotQuery;
 import static org.apache.lucene.queries.spans.SpanTestUtil.spanOrQuery;
 import static org.apache.lucene.queries.spans.SpanTestUtil.spanTermQuery;
 
-import org.apache.lucene.search.BaseExplanationTestCase;
+import org.apache.lucene.tests.search.BaseExplanationTestCase;
 
 public abstract class BaseSpanExplanationTestCase extends BaseExplanationTestCase {
 
@@ -52,6 +52,7 @@ public abstract class BaseSpanExplanationTestCase extends BaseExplanationTestCas
   public SpanQuery sor(String s, String m, String e) {
     return spanOrQuery(FIELD, s, m, e);
   }
+
   /** MACRO for SpanOrQuery containing two SpanQueries */
   public SpanQuery sor(SpanQuery s, SpanQuery m, SpanQuery e) {
     return spanOrQuery(s, m, e);
@@ -75,6 +76,7 @@ public abstract class BaseSpanExplanationTestCase extends BaseExplanationTestCas
   public SpanQuery snear(String s, String m, String e, int slop, boolean inOrder) {
     return snear(st(s), st(m), st(e), slop, inOrder);
   }
+
   /** MACRO for SpanNearQuery containing three SpanQueries */
   public SpanQuery snear(SpanQuery s, SpanQuery m, SpanQuery e, int slop, boolean inOrder) {
     if (inOrder) {

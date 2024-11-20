@@ -24,9 +24,10 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.tests.index.DocHelper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestSegmentReader extends LuceneTestCase {
@@ -41,7 +42,7 @@ public class TestSegmentReader extends LuceneTestCase {
     dir = newDirectory();
     DocHelper.setupDoc(testDoc);
     SegmentCommitInfo info = DocHelper.writeDoc(random(), dir, testDoc);
-    reader = new SegmentReader(info, Version.LATEST.major, IOContext.READ);
+    reader = new SegmentReader(info, Version.LATEST.major, IOContext.DEFAULT);
   }
 
   @Override
@@ -61,7 +62,7 @@ public class TestSegmentReader extends LuceneTestCase {
   public void testDocument() throws IOException {
     assertTrue(reader.numDocs() == 1);
     assertTrue(reader.maxDoc() >= 1);
-    Document result = reader.document(0);
+    Document result = reader.storedFields().document(0);
     assertTrue(result != null);
     // There are 2 unstored fields on the document that are not preserved across writing
     assertTrue(
@@ -89,7 +90,7 @@ public class TestSegmentReader extends LuceneTestCase {
       } else {
         notIndexedFieldNames.add(name);
       }
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         tvFieldNames.add(name);
       } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
         noTVFieldNames.add(name);
@@ -98,12 +99,12 @@ public class TestSegmentReader extends LuceneTestCase {
 
     assertTrue(allFieldNames.size() == DocHelper.all.size());
     for (String s : allFieldNames) {
-      assertTrue(DocHelper.nameValues.containsKey(s) == true || s.equals(""));
+      assertTrue(DocHelper.nameValues.containsKey(s) == true || s.isEmpty());
     }
 
     assertTrue(indexedFieldNames.size() == DocHelper.indexed.size());
     for (String s : indexedFieldNames) {
-      assertTrue(DocHelper.indexed.containsKey(s) == true || s.equals(""));
+      assertTrue(DocHelper.indexed.containsKey(s) == true || s.isEmpty());
     }
 
     assertTrue(notIndexedFieldNames.size() == DocHelper.unindexed.size());
@@ -185,7 +186,7 @@ public class TestSegmentReader extends LuceneTestCase {
   }
 
   public void testTermVectors() throws IOException {
-    Terms result = reader.getTermVectors(0).terms(DocHelper.TEXT_FIELD_2_KEY);
+    Terms result = reader.termVectors().get(0).terms(DocHelper.TEXT_FIELD_2_KEY);
     assertNotNull(result);
     assertEquals(3, result.size());
     TermsEnum termsEnum = result.iterator();
@@ -196,7 +197,7 @@ public class TestSegmentReader extends LuceneTestCase {
       assertTrue(freq > 0);
     }
 
-    Fields results = reader.getTermVectors(0);
+    Fields results = reader.termVectors().get(0);
     assertTrue(results != null);
     assertEquals("We do not have 3 term freq vectors", 3, results.size());
   }
@@ -207,25 +208,25 @@ public class TestSegmentReader extends LuceneTestCase {
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.document(-1);
+          reader.storedFields().document(-1);
         });
 
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.getTermVectors(-1);
+          reader.termVectors().get(-1);
         });
 
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.document(numDocs);
+          reader.storedFields().document(numDocs);
         });
 
     expectThrows(
         IndexOutOfBoundsException.class,
         () -> {
-          reader.getTermVectors(numDocs);
+          reader.termVectors().get(numDocs);
         });
   }
 }

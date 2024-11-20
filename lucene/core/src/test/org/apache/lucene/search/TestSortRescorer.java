@@ -24,12 +24,12 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestSortRescorer extends LuceneTestCase {
   IndexSearcher searcher;
@@ -84,19 +84,19 @@ public class TestSortRescorer extends LuceneTestCase {
 
     // Just first pass query
     TopDocs hits = searcher.search(query, 10);
-    assertEquals(3, hits.totalHits.value);
-    assertEquals("3", r.document(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", r.document(hits.scoreDocs[1].doc).get("id"));
-    assertEquals("2", r.document(hits.scoreDocs[2].doc).get("id"));
+    assertEquals(3, hits.totalHits.value());
+    assertEquals("3", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("2", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
 
     // Now, rescore:
     Sort sort = new Sort(new SortField("popularity", SortField.Type.INT, true));
     Rescorer rescorer = new SortRescorer(sort);
     hits = rescorer.rescore(searcher, hits, 10);
-    assertEquals(3, hits.totalHits.value);
-    assertEquals("2", r.document(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", r.document(hits.scoreDocs[1].doc).get("id"));
-    assertEquals("3", r.document(hits.scoreDocs[2].doc).get("id"));
+    assertEquals(3, hits.totalHits.value());
+    assertEquals("2", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("3", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
 
     String expl =
         rescorer
@@ -120,10 +120,10 @@ public class TestSortRescorer extends LuceneTestCase {
 
     // Just first pass query
     TopDocs hits = searcher.search(query, 10);
-    assertEquals(3, hits.totalHits.value);
-    assertEquals("3", r.document(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", r.document(hits.scoreDocs[1].doc).get("id"));
-    assertEquals("2", r.document(hits.scoreDocs[2].doc).get("id"));
+    assertEquals(3, hits.totalHits.value());
+    assertEquals("3", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("2", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
 
     DoubleValuesSource source = DoubleValuesSource.fromLongField("popularity");
 
@@ -131,10 +131,10 @@ public class TestSortRescorer extends LuceneTestCase {
     Sort sort = new Sort(source.getSortField(true));
     Rescorer rescorer = new SortRescorer(sort);
     hits = rescorer.rescore(searcher, hits, 10);
-    assertEquals(3, hits.totalHits.value);
-    assertEquals("2", r.document(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", r.document(hits.scoreDocs[1].doc).get("id"));
-    assertEquals("3", r.document(hits.scoreDocs[2].doc).get("id"));
+    assertEquals(3, hits.totalHits.value());
+    assertEquals("2", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("3", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
 
     String expl =
         rescorer
@@ -197,8 +197,8 @@ public class TestSortRescorer extends LuceneTestCase {
           @Override
           public int compare(Integer a, Integer b) {
             try {
-              int av = idToNum[Integer.parseInt(r.document(a).get("id"))];
-              int bv = idToNum[Integer.parseInt(r.document(b).get("id"))];
+              int av = idToNum[Integer.parseInt(r.storedFields().document(a).get("id"))];
+              int bv = idToNum[Integer.parseInt(r.storedFields().document(b).get("id"))];
               if (av < bv) {
                 return -reverseInt;
               } else if (bv < av) {

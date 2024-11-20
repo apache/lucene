@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.charfilter;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple tests to ensure this factory is working */
 public class TestHTMLStripCharFilterFactory extends BaseTokenStreamFactoryTestCase {

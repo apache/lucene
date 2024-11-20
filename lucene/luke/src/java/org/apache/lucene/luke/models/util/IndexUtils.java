@@ -34,19 +34,43 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.StreamSupport;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.codecs.CodecUtil;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.CheckIndex;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexCommit;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KeepOnlyLastCommitDeletionPolicy;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MultiBits;
+import org.apache.lucene.index.MultiDocValues;
+import org.apache.lucene.index.MultiReader;
+import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.NoDeletionPolicy;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.luke.util.LoggerFactory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.LockFactory;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -73,7 +97,7 @@ public final class IndexUtils {
     // find all valid index directories in this directory
     Files.walkFileTree(
         root,
-        new SimpleFileVisitor<Path>() {
+        new SimpleFileVisitor<>() {
           @Override
           public FileVisitResult preVisitDirectory(Path path, BasicFileAttributes attrs)
               throws IOException {
@@ -82,7 +106,7 @@ public final class IndexUtils {
               DirectoryReader dr = DirectoryReader.open(dir);
               readers.add(dr);
             } catch (IOException e) {
-              log.warn("Error opening directory", e);
+              log.log(Level.WARNING, "Error opening directory", e);
             }
             return FileVisitResult.CONTINUE;
           }
@@ -92,20 +116,29 @@ public final class IndexUtils {
       throw new RuntimeException("No valid directory at the location: " + indexPath);
     }
 
-    if (log.isInfoEnabled()) {
-      log.info(
-          String.format(
-              Locale.ENGLISH,
-              "IndexReaders (%d leaf readers) successfully opened. Index path=%s",
-              readers.size(),
-              indexPath));
-    }
+    log.info(
+        String.format(
+            Locale.ENGLISH,
+            "IndexReaders (%d leaf readers) successfully opened. Index path=%s",
+            readers.size(),
+            indexPath));
 
     if (readers.size() == 1) {
       return readers.get(0);
     } else {
-      return new MultiReader(readers.toArray(new IndexReader[readers.size()]));
+      return new MultiReader(readers.toArray(new IndexReader[0]));
     }
+  }
+
+  /**
+   * Returns supported {@link Directory} implementations.
+   *
+   * @return class names of supported directory implementation
+   */
+  public static String[] supportedDirectoryImpls() {
+    return new String[] {
+      FSDirectory.class.getName(), MMapDirectory.class.getName(), NIOFSDirectory.class.getName()
+    };
   }
 
   /**
@@ -121,11 +154,9 @@ public final class IndexUtils {
   public static Directory openDirectory(String dirPath, String dirImpl) throws IOException {
     final Path path = FileSystems.getDefault().getPath(Objects.requireNonNull(dirPath));
     Directory dir = openDirectory(path, dirImpl);
-    if (log.isInfoEnabled()) {
-      log.info(
-          String.format(
-              Locale.ENGLISH, "DirectoryReader successfully opened. Directory path=%s", dirPath));
-    }
+    log.info(
+        String.format(
+            Locale.ENGLISH, "DirectoryReader successfully opened. Directory path=%s", dirPath));
     return dir;
   }
 
@@ -148,7 +179,7 @@ public final class IndexUtils {
           dir = (Directory) constr.newInstance(path, null);
         }
       } catch (Exception e) {
-        log.warn("Invalid directory implementation class: {}", dirImpl, e);
+        log.log(Level.WARNING, "Invalid directory implementation class: " + dirImpl, e);
         throw new IllegalArgumentException("Invalid directory implementation class: " + dirImpl);
       }
     }
@@ -167,7 +198,7 @@ public final class IndexUtils {
         log.info("Directory successfully closed.");
       }
     } catch (IOException e) {
-      log.error("Error closing directory", e);
+      log.log(Level.SEVERE, "Error closing directory", e);
     }
   }
 
@@ -188,7 +219,7 @@ public final class IndexUtils {
         }
       }
     } catch (IOException e) {
-      log.error("Error closing index reader", e);
+      log.log(Level.SEVERE, "Error closing index reader", e);
     }
   }
 
@@ -310,16 +341,12 @@ public final class IndexUtils {
       @Override
       protected String doBody(String segmentFileName) throws IOException {
         String format = "unknown";
-        try (IndexInput in = dir.openInput(segmentFileName, IOContext.READ)) {
+        try (IndexInput in = dir.openInput(segmentFileName, IOContext.READONCE)) {
           if (CodecUtil.CODEC_MAGIC == CodecUtil.readBEInt(in)) {
             int actualVersion =
                 CodecUtil.checkHeaderNoMagic(
-                    in, "segments", SegmentInfos.VERSION_70, Integer.MAX_VALUE);
-            if (actualVersion == SegmentInfos.VERSION_70) {
-              format = "Lucene 7.0 or later";
-            } else if (actualVersion == SegmentInfos.VERSION_72) {
-              format = "Lucene 7.2 or later";
-            } else if (actualVersion == SegmentInfos.VERSION_74) {
+                    in, "segments", SegmentInfos.VERSION_74, Integer.MAX_VALUE);
+            if (actualVersion == SegmentInfos.VERSION_74) {
               format = "Lucene 7.4 or later";
             } else if (actualVersion == SegmentInfos.VERSION_86) {
               format = "Lucene 8.6 or later";
@@ -420,7 +447,7 @@ public final class IndexUtils {
   public static Collection<String> getFieldNames(IndexReader reader) {
     return StreamSupport.stream(getFieldInfos(reader).spliterator(), false)
         .map(f -> f.name)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   /**

@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.simpletext;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseStoredFieldsFormatTestCase;
+import org.apache.lucene.tests.index.BaseStoredFieldsFormatTestCase;
 
 public class TestSimpleTextStoredFieldsFormat extends BaseStoredFieldsFormatTestCase {
 

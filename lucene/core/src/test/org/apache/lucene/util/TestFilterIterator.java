@@ -17,14 +17,17 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeSet;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestFilterIterator extends LuceneTestCase {
 
-  private static final Set<String> set = new TreeSet<>(Arrays.asList("a", "b", "c"));
+  private static final Set<String> set =
+      Collections.unmodifiableSet(new TreeSet<>(Arrays.asList("a", "b", "c")));
 
   private static void assertNoMore(Iterator<?> it) {
     assertFalse(it.hasNext());

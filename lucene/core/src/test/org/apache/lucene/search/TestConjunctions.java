@@ -19,25 +19,26 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.RawTFSimilarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestConjunctions extends LuceneTestCase {
   Analyzer analyzer;
@@ -65,7 +66,7 @@ public class TestConjunctions extends LuceneTestCase {
     reader = writer.getReader();
     writer.close();
     searcher = newSearcher(reader);
-    searcher.setSimilarity(new TFSimilarity());
+    searcher.setSimilarity(new RawTFSimilarity());
   }
 
   static Document doc(String v1, String v2) {
@@ -80,7 +81,7 @@ public class TestConjunctions extends LuceneTestCase {
     bq.add(new TermQuery(new Term(F1, "nutch")), BooleanClause.Occur.MUST);
     bq.add(new TermQuery(new Term(F2, "is")), BooleanClause.Occur.MUST);
     TopDocs td = searcher.search(bq.build(), 3);
-    assertEquals(1, td.totalHits.value);
+    assertEquals(1, td.totalHits.value());
     assertEquals(3F, td.scoreDocs[0].score, 0.001F); // f1:nutch + f2:is + f2:is
   }
 
@@ -89,26 +90,6 @@ public class TestConjunctions extends LuceneTestCase {
     reader.close();
     dir.close();
     super.tearDown();
-  }
-
-  // Similarity that returns the TF as score
-  private static class TFSimilarity extends Similarity {
-
-    @Override
-    public long computeNorm(FieldInvertState state) {
-      return 1; // we dont care
-    }
-
-    @Override
-    public SimScorer scorer(
-        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
-      return new SimScorer() {
-        @Override
-        public float score(float freq, long norm) {
-          return freq;
-        }
-      };
-    }
   }
 
   public void testScorerGetChildren() throws Exception {
@@ -123,37 +104,58 @@ public class TestConjunctions extends LuceneTestCase {
     b.add(new TermQuery(new Term("field", "b")), BooleanClause.Occur.FILTER);
     Query q = b.build();
     IndexSearcher s = new IndexSearcher(r);
-    final boolean[] setScorerCalled = new boolean[1];
     s.search(
         q,
-        new SimpleCollector() {
+        new CollectorManager<TestCollector, Void>() {
           @Override
-          public void setScorer(Scorable s) throws IOException {
-            Collection<Scorer.ChildScorable> childScorers = s.getChildren();
-            setScorerCalled[0] = true;
-            assertEquals(2, childScorers.size());
-            Set<String> terms = new HashSet<>();
-            for (Scorer.ChildScorable childScorer : childScorers) {
-              Query query = ((Scorer) childScorer.child).getWeight().getQuery();
-              assertTrue(query instanceof TermQuery);
-              Term term = ((TermQuery) query).getTerm();
-              assertEquals("field", term.field());
-              terms.add(term.text());
-            }
-            assertEquals(2, terms.size());
-            assertTrue(terms.contains("a"));
-            assertTrue(terms.contains("b"));
+          public TestCollector newCollector() {
+            return new TestCollector();
           }
 
           @Override
-          public void collect(int doc) {}
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
+          public Void reduce(Collection<TestCollector> collectors) {
+            for (TestCollector collector : collectors) {
+              assertTrue(collector.setScorerCalled.get());
+            }
+            return null;
           }
         });
-    assertTrue(setScorerCalled[0]);
     IOUtils.close(r, w, dir);
+  }
+
+  private static class TestCollector extends SimpleCollector {
+    private final AtomicBoolean setScorerCalled = new AtomicBoolean(false);
+
+    @Override
+    public void setWeight(Weight weight) {
+      BooleanQuery query = (BooleanQuery) weight.getQuery();
+      List<BooleanClause> clauseList = query.clauses();
+      assertEquals(2, clauseList.size());
+      Set<String> terms = new HashSet<>();
+      for (BooleanClause clause : clauseList) {
+        assert (clause.query() instanceof TermQuery);
+        Term term = ((TermQuery) clause.query()).getTerm();
+        assertEquals("field", term.field());
+        terms.add(term.text());
+      }
+      assertEquals(2, terms.size());
+      assertTrue(terms.contains("a"));
+      assertTrue(terms.contains("b"));
+    }
+
+    @Override
+    public void setScorer(Scorable s) throws IOException {
+      Collection<Scorer.ChildScorable> childScorers = s.getChildren();
+      setScorerCalled.set(true);
+      assertEquals(2, childScorers.size());
+    }
+
+    @Override
+    public void collect(int doc) {}
+
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE;
+    }
   }
 }

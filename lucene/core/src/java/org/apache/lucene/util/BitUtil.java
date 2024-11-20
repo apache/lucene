@@ -16,8 +16,12 @@
  */
 package org.apache.lucene.util; // from org.apache.solr.util rev 555343
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
+
 /**
- * A variety of high efficiency bit twiddling routines.
+ * A variety of high efficiency bit twiddling routines and encoders for primitives.
  *
  * @lucene.internal
  */
@@ -25,57 +29,170 @@ public final class BitUtil {
 
   private BitUtil() {} // no instance
 
-  // The pop methods used to rely on bit-manipulation tricks for speed but it
-  // turns out that it is faster to use the Long.bitCount method (which is an
-  // intrinsic since Java 6u18) in a naive loop, see LUCENE-2221
+  /**
+   * Native byte order.
+   *
+   * <p>Warning: This constant is {@link ByteOrder#nativeOrder()} only in production environments,
+   * during testing we randomize it. If you need to communicate with native APIs (e.g., Java's
+   * Panama API), use {@link ByteOrder#nativeOrder()}.
+   */
+  public static final ByteOrder NATIVE_BYTE_ORDER = getNativeByteOrder();
 
-  /** Returns the number of set bits in an array of longs. */
-  public static long pop_array(long[] arr, int wordOffset, int numWords) {
-    long popCount = 0;
-    for (int i = wordOffset, end = wordOffset + numWords; i < end; ++i) {
-      popCount += Long.bitCount(arr[i]);
+  private static ByteOrder getNativeByteOrder() {
+    try {
+      var prop = System.getProperty("tests.seed");
+      if (prop != null) {
+        return (prop.hashCode() % 2 == 0) ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
+      }
+    } catch (
+        @SuppressWarnings("unused")
+        SecurityException se) {
+      // fall-through
     }
-    return popCount;
+    return ByteOrder.nativeOrder();
   }
 
   /**
-   * Returns the popcount or cardinality of the two sets after an intersection. Neither array is
-   * modified.
+   * A {@link VarHandle} to read/write little endian {@code short} from/to a byte array. Shape:
+   * {@code short vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, short
+   * val)}
    */
-  public static long pop_intersect(long[] arr1, long[] arr2, int wordOffset, int numWords) {
-    long popCount = 0;
-    for (int i = wordOffset, end = wordOffset + numWords; i < end; ++i) {
-      popCount += Long.bitCount(arr1[i] & arr2[i]);
-    }
-    return popCount;
-  }
+  public static final VarHandle VH_LE_SHORT =
+      MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
 
-  /** Returns the popcount or cardinality of the union of two sets. Neither array is modified. */
-  public static long pop_union(long[] arr1, long[] arr2, int wordOffset, int numWords) {
-    long popCount = 0;
-    for (int i = wordOffset, end = wordOffset + numWords; i < end; ++i) {
-      popCount += Long.bitCount(arr1[i] | arr2[i]);
-    }
-    return popCount;
-  }
+  /**
+   * A {@link VarHandle} to read/write little endian {@code int} from a byte array. Shape: {@code
+   * int vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, int val)}
+   */
+  public static final VarHandle VH_LE_INT =
+      MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
 
-  /** Returns the popcount or cardinality of {@code A & ~B}. Neither array is modified. */
-  public static long pop_andnot(long[] arr1, long[] arr2, int wordOffset, int numWords) {
-    long popCount = 0;
-    for (int i = wordOffset, end = wordOffset + numWords; i < end; ++i) {
-      popCount += Long.bitCount(arr1[i] & ~arr2[i]);
-    }
-    return popCount;
-  }
+  /**
+   * A {@link VarHandle} to read/write little endian {@code long} from a byte array. Shape: {@code
+   * long vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, long val)}
+   */
+  public static final VarHandle VH_LE_LONG =
+      MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 
-  /** Returns the popcount or cardinality of A ^ B Neither array is modified. */
-  public static long pop_xor(long[] arr1, long[] arr2, int wordOffset, int numWords) {
-    long popCount = 0;
-    for (int i = wordOffset, end = wordOffset + numWords; i < end; ++i) {
-      popCount += Long.bitCount(arr1[i] ^ arr2[i]);
-    }
-    return popCount;
-  }
+  /**
+   * A {@link VarHandle} to read/write little endian {@code float} from a byte array. Shape: {@code
+   * float vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, float val)}
+   */
+  public static final VarHandle VH_LE_FLOAT =
+      MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.LITTLE_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write little endian {@code double} from a byte array. Shape: {@code
+   * double vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, double val)}
+   */
+  public static final VarHandle VH_LE_DOUBLE =
+      MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.LITTLE_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code short} from/to a byte array. Shape:
+   * {@code short vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, short
+   * val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_SHORT =
+      MethodHandles.byteArrayViewVarHandle(short[].class, NATIVE_BYTE_ORDER);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code int} from a byte array. Shape: {@code
+   * int vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, int val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_INT =
+      MethodHandles.byteArrayViewVarHandle(int[].class, NATIVE_BYTE_ORDER);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code long} from a byte array. Shape: {@code
+   * long vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, long val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_LONG =
+      MethodHandles.byteArrayViewVarHandle(long[].class, NATIVE_BYTE_ORDER);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code float} from a byte array. Shape: {@code
+   * float vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, float val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_FLOAT =
+      MethodHandles.byteArrayViewVarHandle(float[].class, NATIVE_BYTE_ORDER);
+
+  /**
+   * A {@link VarHandle} to read/write native endian {@code double} from a byte array. Shape: {@code
+   * double vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, double val)}
+   *
+   * <p>Warning: This handle uses default order only in production environments, during testing we
+   * randomize it. If you need to communicate with native APIs (e.g., Java's Panama API), use {@link
+   * ByteOrder#nativeOrder()}.
+   */
+  public static final VarHandle VH_NATIVE_DOUBLE =
+      MethodHandles.byteArrayViewVarHandle(double[].class, NATIVE_BYTE_ORDER);
+
+  /**
+   * A {@link VarHandle} to read/write big endian {@code short} from a byte array. Shape: {@code
+   * short vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, short val)}
+   *
+   * @deprecated Better use little endian unless it is needed for backwards compatibility.
+   */
+  @Deprecated
+  public static final VarHandle VH_BE_SHORT =
+      MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.BIG_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write big endian {@code int} from a byte array. Shape: {@code int
+   * vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, int val)}
+   *
+   * @deprecated Better use little endian unless it is needed for backwards compatibility.
+   */
+  @Deprecated
+  public static final VarHandle VH_BE_INT =
+      MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.BIG_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write big endian {@code long} from a byte array. Shape: {@code long
+   * vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, long val)}
+   *
+   * @deprecated Better use little endian unless it is needed for backwards compatibility.
+   */
+  @Deprecated
+  public static final VarHandle VH_BE_LONG =
+      MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.BIG_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write big endian {@code float} from a byte array. Shape: {@code
+   * float vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, float val)}
+   *
+   * @deprecated Better use little endian unless it is needed for backwards compatibility.
+   */
+  @Deprecated
+  public static final VarHandle VH_BE_FLOAT =
+      MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.BIG_ENDIAN);
+
+  /**
+   * A {@link VarHandle} to read/write big endian {@code double} from a byte array. Shape: {@code
+   * double vh.get(byte[] arr, int ofs)} and {@code void vh.set(byte[] arr, int ofs, double val)}
+   *
+   * @deprecated Better use little endian unless it is needed for backwards compatibility.
+   */
+  @Deprecated
+  public static final VarHandle VH_BE_DOUBLE =
+      MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.BIG_ENDIAN);
 
   /**
    * returns the next highest power of two, or the current value if it's already a power of two or
@@ -185,5 +302,13 @@ public final class BitUtil {
   /** Decode a long previously encoded with {@link #zigZagEncode(long)}. */
   public static long zigZagDecode(long l) {
     return ((l >>> 1) ^ -(l & 1));
+  }
+
+  /**
+   * Return true if, and only if, the provided integer - treated as an unsigned integer - is either
+   * 0 or a power of two.
+   */
+  public static boolean isZeroOrPowerOfTwo(int x) {
+    return (x & (x - 1)) == 0;
   }
 }

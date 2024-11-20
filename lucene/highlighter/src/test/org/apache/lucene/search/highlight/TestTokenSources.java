@@ -19,10 +19,6 @@ package org.apache.lucene.search.highlight;
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -32,12 +28,10 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.BaseTermVectorsFormatTestCase;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -47,8 +41,14 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.index.BaseTermVectorsFormatTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.TestUtil;
 
 // LUCENE-2874
 
@@ -128,12 +128,12 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
       // new SpanTermQuery(new Term(FIELD, "fox")) }, 0, true);
 
       TopDocs hits = indexSearcher.search(query, 1);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(query));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals("<B>the fox</B> did not jump", highlighter.getBestFragment(tokenStream, TEXT));
     } finally {
       indexReader.close();
@@ -171,12 +171,12 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
       // new SpanTermQuery(new Term(FIELD, "fox")) }, 0, true);
 
       TopDocs hits = indexSearcher.search(query, 1);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(query));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals("<B>the fox</B> did not jump", highlighter.getBestFragment(tokenStream, TEXT));
     } finally {
       indexReader.close();
@@ -215,12 +215,12 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
               true);
 
       TopDocs hits = indexSearcher.search(phraseQuery, 1);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals("<B>the fox</B> did not jump", highlighter.getBestFragment(tokenStream, TEXT));
     } finally {
       indexReader.close();
@@ -260,12 +260,12 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
               true);
 
       TopDocs hits = indexSearcher.search(phraseQuery, 1);
-      assertEquals(1, hits.totalHits.value);
+      assertEquals(1, hits.totalHits.value());
       final Highlighter highlighter =
           new Highlighter(
               new SimpleHTMLFormatter(), new SimpleHTMLEncoder(), new QueryScorer(phraseQuery));
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertEquals("<B>the fox</B> did not jump", highlighter.getBestFragment(tokenStream, TEXT));
     } finally {
       indexReader.close();
@@ -292,7 +292,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
     try {
       assertEquals(1, indexReader.numDocs());
       final TokenStream tokenStream =
-          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.getTermVectors(0), -1);
+          TokenSources.getTermVectorTokenStreamOrNull(FIELD, indexReader.termVectors().get(0), -1);
       assertNull(tokenStream);
     } finally {
       indexReader.close();
@@ -337,7 +337,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
     assertEquals(1, reader.numDocs());
 
     TokenStream ts =
-        TokenSources.getTermVectorTokenStreamOrNull("field", reader.getTermVectors(0), -1);
+        TokenSources.getTermVectorTokenStreamOrNull("field", reader.termVectors().get(0), -1);
 
     CharTermAttribute termAtt = ts.getAttribute(CharTermAttribute.class);
     PositionIncrementAttribute posIncAtt = ts.getAttribute(PositionIncrementAttribute.class);
@@ -421,7 +421,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
     assertEquals(1, reader.numDocs());
 
     TokenStream vectorTokenStream =
-        TokenSources.getTermVectorTokenStreamOrNull("field", reader.getTermVectors(0), -1);
+        TokenSources.getTermVectorTokenStreamOrNull("field", reader.termVectors().get(0), -1);
 
     // sometimes check payloads
     PayloadAttribute payloadAttribute = null;
@@ -469,7 +469,7 @@ public class TestTokenSources extends BaseTokenStreamTestCase {
       reader = writer.getReader();
     }
     try {
-      Fields tvFields = reader.getTermVectors(0);
+      Fields tvFields = reader.termVectors().get(0);
       for (int maxStartOffset = -1; maxStartOffset <= TEXT.length(); maxStartOffset++) {
         TokenStream tvStream =
             TokenSources.getTokenStream("fld_tv", tvFields, TEXT, analyzer, maxStartOffset);

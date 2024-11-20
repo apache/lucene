@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.ga;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** Simple tests to ensure the Irish lowercase filter factory is working. */
 public class TestIrishLowerCaseFilterFactory extends BaseTokenStreamFactoryTestCase {

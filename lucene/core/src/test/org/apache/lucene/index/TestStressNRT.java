@@ -24,7 +24,6 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -34,8 +33,10 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestStressNRT extends LuceneTestCase {
   volatile DirectoryReader reader;
@@ -417,11 +418,11 @@ public class TestStressNRT extends LuceneTestCase {
                   Query q = new TermQuery(new Term("id", Integer.toString(id)));
                   TopDocs results = searcher.search(q, 10);
 
-                  if (results.totalHits.value == 0 && tombstones) {
+                  if (results.totalHits.value() == 0 && tombstones) {
                     // if we couldn't find the doc, look for its tombstone
                     q = new TermQuery(new Term("id", "-" + Integer.toString(id)));
                     results = searcher.search(q, 1);
-                    if (results.totalHits.value == 0) {
+                    if (results.totalHits.value() == 0) {
                       if (val == -1L) {
                         // expected... no doc was added yet
                         r.decRef();
@@ -437,14 +438,14 @@ public class TestStressNRT extends LuceneTestCase {
                     }
                   }
 
-                  if (results.totalHits.value == 0 && !tombstones) {
+                  if (results.totalHits.value() == 0 && !tombstones) {
                     // nothing to do - we can't tell anything from a deleted doc without tombstones
                   } else {
                     // we should have found the document, or its tombstone
-                    if (results.totalHits.value != 1) {
+                    if (results.totalHits.value() != 1) {
                       System.out.println("FAIL: hits id:" + id + " val=" + val);
                       for (ScoreDoc sd : results.scoreDocs) {
-                        final Document doc = r.document(sd.doc);
+                        final Document doc = r.storedFields().document(sd.doc);
                         System.out.println(
                             "  docID="
                                 + sd.doc
@@ -453,9 +454,9 @@ public class TestStressNRT extends LuceneTestCase {
                                 + " foundVal="
                                 + doc.get(field));
                       }
-                      fail("id=" + id + " reader=" + r + " totalHits=" + results.totalHits.value);
+                      fail("id=" + id + " reader=" + r + " totalHits=" + results.totalHits.value());
                     }
-                    Document doc = searcher.doc(results.scoreDocs[0].doc);
+                    Document doc = searcher.storedFields().document(results.scoreDocs[0].doc);
                     long foundVal = Long.parseLong(doc.get(field));
                     if (foundVal < Math.abs(val)) {
                       fail("foundVal=" + foundVal + " val=" + val + " id=" + id + " reader=" + r);

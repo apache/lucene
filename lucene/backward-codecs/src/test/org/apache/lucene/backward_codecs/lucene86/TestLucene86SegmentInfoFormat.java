@@ -19,19 +19,25 @@ package org.apache.lucene.backward_codecs.lucene86;
 
 import org.apache.lucene.backward_codecs.lucene87.Lucene87RWCodec;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseSegmentInfoFormatTestCase;
+import org.apache.lucene.tests.index.BaseSegmentInfoFormatTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.Version;
 
-@SuppressWarnings("deprecation")
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene86SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
 
   @Override
   protected Version[] getVersions() {
-    return new Version[] {Version.LUCENE_8_8_1};
+    return new Version[] {Version.fromBits(8, 8, 1)};
   }
 
   @Override
   protected Codec getCodec() {
     return new Lucene87RWCodec();
+  }
+
+  @Override
+  protected boolean supportsHasBlocks() {
+    return false;
   }
 }

@@ -18,11 +18,12 @@ package org.apache.lucene.facet.taxonomy;
 
 import java.util.Arrays;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
  * Add an instance of this to your {@link Document} to add a facet label associated with an int. Use
- * {@link TaxonomyFacetSumIntAssociations} to aggregate int values per facet label at search time.
+ * {@link TaxonomyFacetIntAssociations} to aggregate int values per facet label at search time.
  *
  * @lucene.experimental
  */
@@ -37,19 +38,13 @@ public class IntAssociationFacetField extends AssociationFacetField {
   public static BytesRef intToBytesRef(int v) {
     byte[] bytes = new byte[4];
     // big-endian:
-    bytes[0] = (byte) (v >> 24);
-    bytes[1] = (byte) (v >> 16);
-    bytes[2] = (byte) (v >> 8);
-    bytes[3] = (byte) v;
+    BitUtil.VH_BE_INT.set(bytes, 0, v);
     return new BytesRef(bytes);
   }
 
   /** Decodes a previously encoded {@code int}. */
   public static int bytesRefToInt(BytesRef b) {
-    return ((b.bytes[b.offset] & 0xFF) << 24)
-        | ((b.bytes[b.offset + 1] & 0xFF) << 16)
-        | ((b.bytes[b.offset + 2] & 0xFF) << 8)
-        | (b.bytes[b.offset + 3] & 0xFF);
+    return (int) BitUtil.VH_BE_INT.get(b.bytes, b.offset);
   }
 
   @Override

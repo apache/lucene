@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,12 +28,16 @@ import java.util.Objects;
  * threads accessing this object.
  */
 public final class FieldInfo {
+
   /** Field's name */
   public final String name;
+
   /** Internal field number */
   public final int number;
 
   private DocValuesType docValuesType = DocValuesType.NONE;
+
+  private final DocValuesSkipIndexType docValuesSkipIndex;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
@@ -41,7 +47,7 @@ public final class FieldInfo {
   private final IndexOptions indexOptions;
   private boolean storePayloads; // whether this field stores payloads together with term positions
 
-  private final Map<String, String> attributes;
+  private Map<String, String> attributes;
 
   private long dvGen;
 
@@ -56,10 +62,13 @@ public final class FieldInfo {
 
   // if it is a positive value, it means this field indexes vectors
   private final int vectorDimension;
+  private final VectorEncoding vectorEncoding;
   private final VectorSimilarityFunction vectorSimilarityFunction;
 
   // whether this field is used as the soft-deletes field
   private final boolean softDeletesField;
+
+  private final boolean isParentField;
 
   /**
    * Sole constructor.
@@ -74,19 +83,23 @@ public final class FieldInfo {
       boolean storePayloads,
       IndexOptions indexOptions,
       DocValuesType docValues,
+      DocValuesSkipIndexType docValuesSkipIndex,
       long dvGen,
       Map<String, String> attributes,
       int pointDimensionCount,
       int pointIndexDimensionCount,
       int pointNumBytes,
       int vectorDimension,
+      VectorEncoding vectorEncoding,
       VectorSimilarityFunction vectorSimilarityFunction,
-      boolean softDeletesField) {
+      boolean softDeletesField,
+      boolean isParentField) {
     this.name = Objects.requireNonNull(name);
     this.number = number;
     this.docValuesType =
         Objects.requireNonNull(
             docValues, "DocValuesType must not be null (field: \"" + name + "\")");
+    this.docValuesSkipIndex = docValuesSkipIndex;
     this.indexOptions =
         Objects.requireNonNull(
             indexOptions, "IndexOptions must not be null (field: \"" + name + "\")");
@@ -105,8 +118,10 @@ public final class FieldInfo {
     this.pointIndexDimensionCount = pointIndexDimensionCount;
     this.pointNumBytes = pointNumBytes;
     this.vectorDimension = vectorDimension;
+    this.vectorEncoding = vectorEncoding;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
+    this.isParentField = isParentField;
     this.checkConsistency();
   }
 
@@ -141,6 +156,15 @@ public final class FieldInfo {
 
     if (docValuesType == null) {
       throw new IllegalArgumentException("DocValuesType must not be null (field: '" + name + "')");
+    }
+    if (docValuesSkipIndex.isCompatibleWith(docValuesType) == false) {
+      throw new IllegalArgumentException(
+          "field '"
+              + name
+              + "' cannot have docValuesSkipIndexType="
+              + docValuesSkipIndex
+              + " with doc values type "
+              + docValuesType);
     }
     if (dvGen != -1 && docValuesType == DocValuesType.NONE) {
       throw new IllegalArgumentException(
@@ -202,6 +226,13 @@ public final class FieldInfo {
       throw new IllegalArgumentException(
           "vectorDimension must be >=0; got " + vectorDimension + " (field: '" + name + "')");
     }
+
+    if (softDeletesField && isParentField) {
+      throw new IllegalArgumentException(
+          "field can't be used as soft-deletes field and parent document field (field: '"
+              + name
+              + "')");
+    }
   }
 
   /**
@@ -218,6 +249,7 @@ public final class FieldInfo {
       verifySameStoreTermVectors(fieldName, this.storeTermVector, o.storeTermVector);
     }
     verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType);
+    verifySameDocValuesSkipIndex(fieldName, this.docValuesSkipIndex, o.docValuesSkipIndex);
     verifySamePointsOptions(
         fieldName,
         this.pointDimensionCount,
@@ -229,8 +261,10 @@ public final class FieldInfo {
     verifySameVectorOptions(
         fieldName,
         this.vectorDimension,
+        this.vectorEncoding,
         this.vectorSimilarityFunction,
         o.vectorDimension,
+        o.vectorEncoding,
         o.vectorSimilarityFunction);
   }
 
@@ -267,6 +301,26 @@ public final class FieldInfo {
               + docValuesType1
               + " to inconsistent doc values type="
               + docValuesType2);
+    }
+  }
+
+  /**
+   * Verify that the provided docValues type are the same
+   *
+   * @throws IllegalArgumentException if they are not the same
+   */
+  static void verifySameDocValuesSkipIndex(
+      String fieldName,
+      DocValuesSkipIndexType hasDocValuesSkipIndex1,
+      DocValuesSkipIndexType hasDocValuesSkipIndex2) {
+    if (hasDocValuesSkipIndex1 != hasDocValuesSkipIndex2) {
+      throw new IllegalArgumentException(
+          "cannot change field \""
+              + fieldName
+              + "\" from docValuesSkipIndexType="
+              + hasDocValuesSkipIndex1
+              + " to inconsistent docValuesSkipIndexType="
+              + hasDocValuesSkipIndex2);
     }
   }
 
@@ -347,19 +401,25 @@ public final class FieldInfo {
   static void verifySameVectorOptions(
       String fieldName,
       int vd1,
+      VectorEncoding ve1,
       VectorSimilarityFunction vsf1,
       int vd2,
+      VectorEncoding ve2,
       VectorSimilarityFunction vsf2) {
-    if (vd1 != vd2 || vsf1 != vsf2) {
+    if (vd1 != vd2 || vsf1 != vsf2 || ve1 != ve2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
               + "\" from vector dimension="
               + vd1
+              + ", vector encoding="
+              + ve1
               + ", vector similarity function="
               + vsf1
               + " to inconsistent vector dimension="
               + vd2
+              + ", vector encoding="
+              + ve2
               + ", vector similarity function="
               + vsf2);
     }
@@ -470,6 +530,11 @@ public final class FieldInfo {
     return vectorDimension;
   }
 
+  /** Returns the number of dimensions of the vector value */
+  public VectorEncoding getVectorEncoding() {
+    return vectorEncoding;
+  }
+
   /** Returns {@link VectorSimilarityFunction} for the field */
   public VectorSimilarityFunction getVectorSimilarityFunction() {
     return vectorSimilarityFunction;
@@ -527,6 +592,11 @@ public final class FieldInfo {
     return docValuesType;
   }
 
+  /** Returns true if, and only if, this field has a skip index. */
+  public DocValuesSkipIndexType docValuesSkipIndexType() {
+    return docValuesSkipIndex;
+  }
+
   /** Sets the docValues generation of this field. */
   void setDocValuesGen(long dvGen) {
     this.dvGen = dvGen;
@@ -575,7 +645,7 @@ public final class FieldInfo {
   }
 
   /** Returns true if any term vectors exist for this field. */
-  public boolean hasVectors() {
+  public boolean hasTermVectors() {
     return storeTermVector;
   }
 
@@ -585,7 +655,7 @@ public final class FieldInfo {
   }
 
   /** Get a codec attribute value, or null if it does not exist */
-  public String getAttribute(String key) {
+  public synchronized String getAttribute(String key) {
     return attributes.get(key);
   }
 
@@ -600,12 +670,17 @@ public final class FieldInfo {
    * If the value of the attributes for a same field is changed between the documents, the behaviour
    * after merge is undefined.
    */
-  public String putAttribute(String key, String value) {
-    return attributes.put(key, value);
+  public synchronized String putAttribute(String key, String value) {
+    HashMap<String, String> newMap = new HashMap<>(attributes);
+    String oldValue = newMap.put(key, value);
+    // This needs to be thread-safe as multiple threads may be updating (different) attributes
+    // concurrently due to concurrent merging.
+    attributes = Collections.unmodifiableMap(newMap);
+    return oldValue;
   }
 
   /** Returns internal codec attributes map. */
-  public Map<String, String> attributes() {
+  public synchronized Map<String, String> attributes() {
     return attributes;
   }
 
@@ -615,5 +690,13 @@ public final class FieldInfo {
    */
   public boolean isSoftDeletesField() {
     return softDeletesField;
+  }
+
+  /**
+   * Returns true if this field is configured and used as the parent document field field. See
+   * {@link IndexWriterConfig#setParentField(String)}
+   */
+  public boolean isParentField() {
+    return isParentField;
   }
 }

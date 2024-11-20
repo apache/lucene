@@ -28,11 +28,13 @@ import org.apache.lucene.index.TermState;
 public class BlockTermState extends OrdTermState {
   /** how many docs have this term */
   public int docFreq;
+
   /** total number of occurrences of this term */
   public long totalTermFreq;
 
   /** the term's ord in the current block */
   public int termBlockOrd;
+
   /** fp into the terms dict primary file (_X.tim) that holds this term */
   // TODO: update BTR to nuke this
   public long blockFilePointer;

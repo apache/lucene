@@ -57,7 +57,7 @@ public class FieldTermStack {
     // just return to make null snippet if un-matched fieldName specified when fieldMatch == true
     if (termSet == null) return;
 
-    final Fields vectors = reader.getTermVectors(docId);
+    final Fields vectors = reader.termVectors().get(docId);
     if (vectors == null) {
       // null snippet
       return;
@@ -130,17 +130,23 @@ public class FieldTermStack {
     }
   }
 
-  /** @return field name */
+  /**
+   * @return field name
+   */
   public String getFieldName() {
     return fieldName;
   }
 
-  /** @return the top TermInfo object of the stack */
+  /**
+   * @return the top TermInfo object of the stack
+   */
   public TermInfo pop() {
     return termList.poll();
   }
 
-  /** @param termInfo the TermInfo object to be put on the top of the stack */
+  /**
+   * @param termInfo the TermInfo object to be put on the top of the stack
+   */
   public void push(TermInfo termInfo) {
     termList.push(termInfo);
   }
@@ -184,6 +190,7 @@ public class FieldTermStack {
     void setNext(TermInfo next) {
       this.next = next;
     }
+
     /** Returns the next TermInfo at this same position. This is a circular list! */
     public TermInfo getNext() {
       return next;

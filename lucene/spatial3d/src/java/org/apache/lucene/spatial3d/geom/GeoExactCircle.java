@@ -34,12 +34,16 @@ import java.util.List;
 class GeoExactCircle extends GeoBaseCircle {
   /** Center of circle */
   protected final GeoPoint center;
+
   /** Radius of circle */
   protected final double radius;
+
   /** Actual accuracy */
   protected final double actualAccuracy;
+
   /** A point that is on the edge of the circle */
   protected final GeoPoint[] edgePoints;
+
   /** Slices of the circle */
   protected final List<CircleSlice> circleSlices;
 

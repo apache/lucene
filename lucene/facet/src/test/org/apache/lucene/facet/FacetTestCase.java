@@ -20,24 +20,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
-import org.apache.lucene.facet.taxonomy.CachedOrdinalsReader;
-import org.apache.lucene.facet.taxonomy.DocValuesOrdinalsReader;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.FastTaxonomyFacetCounts;
-import org.apache.lucene.facet.taxonomy.OrdinalsReader;
-import org.apache.lucene.facet.taxonomy.TaxonomyFacetCounts;
 import org.apache.lucene.facet.taxonomy.TaxonomyFacetLabels;
 import org.apache.lucene.facet.taxonomy.TaxonomyFacetLabels.FacetLabelReader;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public abstract class FacetTestCase extends LuceneTestCase {
 
@@ -49,18 +44,7 @@ public abstract class FacetTestCase extends LuceneTestCase {
   public Facets getTaxonomyFacetCounts(
       TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector c, String indexFieldName)
       throws IOException {
-    Facets facets;
-    if (random().nextBoolean()) {
-      facets = new FastTaxonomyFacetCounts(indexFieldName, taxoReader, config, c);
-    } else {
-      OrdinalsReader ordsReader = new DocValuesOrdinalsReader(indexFieldName);
-      if (random().nextBoolean()) {
-        ordsReader = new CachedOrdinalsReader(ordsReader);
-      }
-      facets = new TaxonomyFacetCounts(ordsReader, taxoReader, config, c);
-    }
-
-    return facets;
+    return new FastTaxonomyFacetCounts(indexFieldName, taxoReader, config, c);
   }
 
   /**
@@ -84,8 +68,8 @@ public abstract class FacetTestCase extends LuceneTestCase {
     TaxonomyFacetLabels taxoLabels =
         new TaxonomyFacetLabels(taxoReader, FacetsConfig.DEFAULT_INDEX_FIELD_NAME);
     for (MatchingDocs m : fc.getMatchingDocs()) {
-      FacetLabelReader facetLabelReader = taxoLabels.getFacetLabelReader(m.context);
-      DocIdSetIterator disi = m.bits.iterator();
+      FacetLabelReader facetLabelReader = taxoLabels.getFacetLabelReader(m.context());
+      DocIdSetIterator disi = m.bits().iterator();
       while (disi.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
         actualLabels.add(allFacetLabels(disi.docID(), dimension, facetLabelReader));
       }
@@ -100,7 +84,8 @@ public abstract class FacetTestCase extends LuceneTestCase {
    * @param docId docId for which facet labels are needed.
    * @param dimension Retain facet labels for supplied dimension only. A null value fetches all
    *     facet labels.
-   * @param facetLabelReader {@FacetLabelReader} instance use to get facet labels for input docId.
+   * @param facetLabelReader {@link FacetLabelReader} instance use to get facet labels for input
+   *     docId.
    * @return {@code List<FacetLabel>} containing matching facet labels.
    * @throws IOException when a low-level IO issue occurs while reading facet labels.
    */
@@ -193,12 +178,9 @@ public abstract class FacetTestCase extends LuceneTestCase {
               labelValues,
               i - numInRow,
               i,
-              new Comparator<LabelAndValue>() {
-                @Override
-                public int compare(LabelAndValue a, LabelAndValue b) {
-                  assert a.value.doubleValue() == b.value.doubleValue();
-                  return new BytesRef(a.label).compareTo(new BytesRef(b.label));
-                }
+              (a, b) -> {
+                assert a.value.doubleValue() == b.value.doubleValue();
+                return new BytesRef(a.label).compareTo(new BytesRef(b.label));
               });
         }
         numInRow = 1;
@@ -213,16 +195,13 @@ public abstract class FacetTestCase extends LuceneTestCase {
   protected void sortLabelValues(List<LabelAndValue> labelValues) {
     Collections.sort(
         labelValues,
-        new Comparator<LabelAndValue>() {
-          @Override
-          public int compare(LabelAndValue a, LabelAndValue b) {
-            if (a.value.doubleValue() > b.value.doubleValue()) {
-              return -1;
-            } else if (a.value.doubleValue() < b.value.doubleValue()) {
-              return 1;
-            } else {
-              return new BytesRef(a.label).compareTo(new BytesRef(b.label));
-            }
+        (a, b) -> {
+          if (a.value.doubleValue() > b.value.doubleValue()) {
+            return -1;
+          } else if (a.value.doubleValue() < b.value.doubleValue()) {
+            return 1;
+          } else {
+            return new BytesRef(a.label).compareTo(new BytesRef(b.label));
           }
         });
   }
@@ -230,16 +209,13 @@ public abstract class FacetTestCase extends LuceneTestCase {
   protected void sortFacetResults(List<FacetResult> results) {
     Collections.sort(
         results,
-        new Comparator<FacetResult>() {
-          @Override
-          public int compare(FacetResult a, FacetResult b) {
-            if (a.value.doubleValue() > b.value.doubleValue()) {
-              return -1;
-            } else if (b.value.doubleValue() > a.value.doubleValue()) {
-              return 1;
-            } else {
-              return 0;
-            }
+        (a, b) -> {
+          if (a.value.doubleValue() > b.value.doubleValue()) {
+            return -1;
+          } else if (b.value.doubleValue() > a.value.doubleValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
           }
         });
   }
@@ -269,14 +245,54 @@ public abstract class FacetTestCase extends LuceneTestCase {
     assertEquals(a.dim, b.dim);
     assertTrue(Arrays.equals(a.path, b.path));
     assertEquals(a.childCount, b.childCount);
-    assertEquals(a.value.floatValue(), b.value.floatValue(), a.value.floatValue() / 1e5);
+    assertNumericValuesEquals(a.value, b.value);
     assertEquals(a.labelValues.length, b.labelValues.length);
     for (int i = 0; i < a.labelValues.length; i++) {
       assertEquals(a.labelValues[i].label, b.labelValues[i].label);
-      assertEquals(
-          a.labelValues[i].value.floatValue(),
-          b.labelValues[i].value.floatValue(),
-          a.labelValues[i].value.floatValue() / 1e5);
+      assertNumericValuesEquals(a.labelValues[i].value, b.labelValues[i].value);
+    }
+  }
+
+  protected void assertNumericValuesEquals(Number a, Number b) {
+    assertTrue(a.getClass().isInstance(b));
+    if (a instanceof Float) {
+      assertEquals(a.floatValue(), b.floatValue(), a.floatValue() / 1e5);
+    } else if (a instanceof Double) {
+      assertEquals(a.doubleValue(), b.doubleValue(), a.doubleValue() / 1e5);
+    } else {
+      assertEquals(a, b);
+    }
+  }
+
+  protected void assertFacetResult(
+      FacetResult result,
+      String expectedDim,
+      String[] expectedPath,
+      int expectedChildCount,
+      Number expectedValue,
+      LabelAndValue... expectedChildren) {
+    assertEquals(expectedDim, result.dim);
+    assertArrayEquals(expectedPath, result.path);
+    assertEquals(expectedChildCount, result.childCount);
+    assertNumericValuesEquals(expectedValue, result.value);
+    assertEquals(expectedChildren.length, result.labelValues.length);
+    // assert children equal with no assumption of the children ordering
+    assertTrue(Arrays.asList(result.labelValues).containsAll(Arrays.asList(expectedChildren)));
+  }
+
+  protected void assertFacetResult(
+      FacetResult result,
+      String expectedDim,
+      String[] expectedPath,
+      int expectedChildCount,
+      Number expectedValue,
+      Map<String, Integer> countPerLabel,
+      LabelAndValue... expectedChildren) {
+    assertFacetResult(
+        result, expectedDim, expectedPath, expectedChildCount, expectedValue, expectedChildren);
+    assertEquals(result.labelValues.length, countPerLabel.size());
+    for (LabelAndValue lv : result.labelValues) {
+      assertEquals(lv.count, (int) countPerLabel.get(lv.label));
     }
   }
 }

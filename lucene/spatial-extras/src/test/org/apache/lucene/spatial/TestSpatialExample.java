@@ -41,7 +41,7 @@ import org.apache.lucene.spatial.query.SpatialArgsParser;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.distance.DistanceUtils;
 import org.locationtech.spatial4j.shape.Point;
@@ -155,7 +155,7 @@ public class TestSpatialExample extends LuceneTestCase {
       assertDocMatchedIds(indexSearcher, docs, 2);
       // Now, lets get the distance for the 1st doc via computing from stored point value:
       // (this computation is usually not redundant)
-      Document doc1 = indexSearcher.doc(docs.scoreDocs[0].doc);
+      Document doc1 = indexSearcher.storedFields().document(docs.scoreDocs[0].doc);
       String doc1Str = doc1.getField(strategy.getFieldName()).stringValue();
       // assume doc1Str is "x y" as written in newSampleDocument()
       int spaceIdx = doc1Str.indexOf(' ');
@@ -197,10 +197,16 @@ public class TestSpatialExample extends LuceneTestCase {
 
   private void assertDocMatchedIds(IndexSearcher indexSearcher, TopDocs docs, int... ids)
       throws IOException {
-    assert docs.totalHits.relation == Relation.EQUAL_TO;
-    int[] gotIds = new int[Math.toIntExact(docs.totalHits.value)];
+    assert docs.totalHits.relation() == Relation.EQUAL_TO;
+    int[] gotIds = new int[Math.toIntExact(docs.totalHits.value())];
     for (int i = 0; i < gotIds.length; i++) {
-      gotIds[i] = indexSearcher.doc(docs.scoreDocs[i].doc).getField("id").numericValue().intValue();
+      gotIds[i] =
+          indexSearcher
+              .storedFields()
+              .document(docs.scoreDocs[i].doc)
+              .getField("id")
+              .numericValue()
+              .intValue();
     }
     assertArrayEquals(ids, gotIds);
   }

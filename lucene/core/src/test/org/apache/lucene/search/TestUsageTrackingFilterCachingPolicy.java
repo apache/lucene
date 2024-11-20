@@ -21,11 +21,11 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
 
@@ -57,7 +57,7 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
   }
 
   public void testNeverCacheDocValuesFieldExistsFilter() throws IOException {
-    Query q = new DocValuesFieldExistsQuery("foo");
+    Query q = new FieldExistsQuery("foo");
     UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
     for (int i = 0; i < 1000; ++i) {
       policy.onUse(q);
@@ -75,11 +75,7 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
     IndexSearcher searcher = new IndexSearcher(reader);
     UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
     LRUQueryCache cache =
-        new LRUQueryCache(
-            10,
-            Long.MAX_VALUE,
-            new LRUQueryCache.MinSegmentSizePredicate(1, 0f),
-            Float.POSITIVE_INFINITY);
+        new LRUQueryCache(10, Long.MAX_VALUE, ctx -> true, Float.POSITIVE_INFINITY);
     searcher.setQueryCache(cache);
     searcher.setQueryCachingPolicy(policy);
 
@@ -137,8 +133,9 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(DummyQuery.this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          return new ConstantScoreScorer(this, score(), scoreMode, DocIdSetIterator.all(1));
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.all(1));
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

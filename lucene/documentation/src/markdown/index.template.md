@@ -68,4 +68,4 @@ ${projectList}
 
 ## Tools
 
-* Luke - Lucene Toolbox GUI tool: A Swing app for browsing documents, indexed terms and posting lists, searching an index, and so on. Type "/path/to/lucene-${project.version}/luke/luke.{sh|bat}" to launch Luke.
+* Luke - Lucene Toolbox GUI tool: A Swing app for browsing documents, indexed terms and posting lists, searching an index, and so on. Type "/path/to/lucene-${project.version}/bin/luke.{sh|cmd}" to launch Luke.

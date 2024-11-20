@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.AbstractCollection;
 import java.util.Arrays;
 import java.util.Collection;
@@ -31,6 +32,8 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PrefixCodedTerms;
 import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefIterator;
@@ -66,7 +69,6 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public abstract BytesRef next();
   }
-  ;
 
   /** The {@code packedPoints} iterator must be in sorted order. */
   protected PointInSetQuery(String field, int numDims, int bytesPerDim, Stream packedPoints) {
@@ -141,9 +143,8 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     // This is an inverted structure and should be used in the first pass:
 
     return new ConstantScoreWeight(this, boost) {
-
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
 
         PointValues values = reader.getPointValues(field);
@@ -171,29 +172,80 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                   + bytesPerDim);
         }
 
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
-
         if (numDims == 1) {
-
           // We optimize this common case, effectively doing a merge sort of the indexed values vs
           // the queried set:
-          values.intersect(new MergePointVisitor(sortedPackedPoints, result));
+          return new ScorerSupplier() {
+            long cost = -1; // calculate lazily, only once
 
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+              values.intersect(new MergePointVisitor(sortedPackedPoints.iterator(), result));
+              DocIdSetIterator iterator = result.build().iterator();
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
+            }
+
+            @Override
+            public long cost() {
+              try {
+                if (cost == -1) {
+                  // Computing the cost may be expensive, so only do it if necessary
+                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+                  cost =
+                      values.estimateDocCount(
+                          new MergePointVisitor(sortedPackedPoints.iterator(), result));
+                  assert cost >= 0;
+                }
+                return cost;
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            }
+          };
         } else {
           // NOTE: this is naive implementation, where for each point we re-walk the KD tree to
           // intersect.  We could instead do a similar
           // optimization as the 1D case, but I think it'd mean building a query-time KD tree so we
           // could efficiently intersect against the
           // index, which is probably tricky!
-          SinglePointVisitor visitor = new SinglePointVisitor(result);
-          TermIterator iterator = sortedPackedPoints.iterator();
-          for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {
-            visitor.setPoint(point);
-            values.intersect(visitor);
-          }
-        }
 
-        return new ConstantScoreScorer(this, score(), scoreMode, result.build().iterator());
+          return new ScorerSupplier() {
+            long cost = -1; // calculate lazily, only once
+
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+              SinglePointVisitor visitor = new SinglePointVisitor(result);
+              TermIterator iterator = sortedPackedPoints.iterator();
+              for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {
+                visitor.setPoint(point);
+                values.intersect(visitor);
+              }
+              return new ConstantScoreScorer(score(), scoreMode, result.build().iterator());
+            }
+
+            @Override
+            public long cost() {
+              try {
+                if (cost == -1) {
+                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+                  SinglePointVisitor visitor = new SinglePointVisitor(result);
+                  TermIterator iterator = sortedPackedPoints.iterator();
+                  cost = 0;
+                  for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {
+                    visitor.setPoint(point);
+                    cost += values.estimateDocCount(visitor);
+                  }
+                  assert cost >= 0;
+                }
+                return cost;
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            }
+          };
+        }
       }
 
       @Override
@@ -210,18 +262,15 @@ public abstract class PointInSetQuery extends Query implements Accountable {
   private class MergePointVisitor implements IntersectVisitor {
 
     private final DocIdSetBuilder result;
-    private TermIterator iterator;
+    private final TermIterator iterator;
     private BytesRef nextQueryPoint;
-    private final BytesRef scratch = new BytesRef();
-    private final PrefixCodedTerms sortedPackedPoints;
+    private final ByteArrayComparator comparator;
     private DocIdSetBuilder.BulkAdder adder;
 
-    public MergePointVisitor(PrefixCodedTerms sortedPackedPoints, DocIdSetBuilder result)
-        throws IOException {
+    public MergePointVisitor(TermIterator iterator, DocIdSetBuilder result) throws IOException {
       this.result = result;
-      this.sortedPackedPoints = sortedPackedPoints;
-      scratch.length = bytesPerDim;
-      this.iterator = this.sortedPackedPoints.iterator();
+      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+      this.iterator = iterator;
       nextQueryPoint = iterator.next();
     }
 
@@ -236,6 +285,11 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
 
     @Override
+    public void visit(DocIdSetIterator iterator) throws IOException {
+      adder.add(iterator);
+    }
+
+    @Override
     public void visit(int docID, byte[] packedValue) {
       if (matches(packedValue)) {
         visit(docID);
@@ -245,17 +299,13 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
       if (matches(packedValue)) {
-        int docID;
-        while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          visit(docID);
-        }
+        adder.add(iterator);
       }
     }
 
     private boolean matches(byte[] packedValue) {
-      scratch.bytes = packedValue;
       while (nextQueryPoint != null) {
-        int cmp = nextQueryPoint.compareTo(scratch);
+        int cmp = comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, packedValue, 0);
         if (cmp == 0) {
           return true;
         } else if (cmp < 0) {
@@ -272,15 +322,15 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
       while (nextQueryPoint != null) {
-        scratch.bytes = minPackedValue;
-        int cmpMin = nextQueryPoint.compareTo(scratch);
+        int cmpMin =
+            comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, minPackedValue, 0);
         if (cmpMin < 0) {
           // query point is before the start of this cell
           nextQueryPoint = iterator.next();
           continue;
         }
-        scratch.bytes = maxPackedValue;
-        int cmpMax = nextQueryPoint.compareTo(scratch);
+        int cmpMax =
+            comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, maxPackedValue, 0);
         if (cmpMax > 0) {
           // query point is after the end of this cell
           return Relation.CELL_OUTSIDE_QUERY;
@@ -289,7 +339,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
         if (cmpMin == 0 && cmpMax == 0) {
           // NOTE: we only hit this if we are on a cell whose min and max values are exactly equal
           // to our point,
-          // which can easily happen if many (> 1024) docs share this one value
+          // which can easily happen if many (> 512) docs share this one value
           return Relation.CELL_INSIDE_QUERY;
         } else {
           return Relation.CELL_CROSSES_QUERY;
@@ -307,11 +357,13 @@ public abstract class PointInSetQuery extends Query implements Accountable {
    */
   private class SinglePointVisitor implements IntersectVisitor {
 
+    private final ByteArrayComparator comparator;
     private final DocIdSetBuilder result;
     private final byte[] pointBytes;
     private DocIdSetBuilder.BulkAdder adder;
 
     public SinglePointVisitor(DocIdSetBuilder result) {
+      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
       this.result = result;
       this.pointBytes = new byte[bytesPerDim * numDims];
     }
@@ -333,6 +385,11 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
 
     @Override
+    public void visit(DocIdSetIterator iterator) throws IOException {
+      adder.add(iterator);
+    }
+
+    @Override
     public void visit(int docID, byte[] packedValue) {
       assert packedValue.length == pointBytes.length;
       if (Arrays.equals(packedValue, pointBytes)) {
@@ -346,10 +403,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
       assert packedValue.length == pointBytes.length;
       if (Arrays.equals(packedValue, pointBytes)) {
         // The point for this set of docs matches the point we are querying on
-        int docID;
-        while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          visit(docID);
-        }
+        adder.add(iterator);
       }
     }
 
@@ -361,26 +415,12 @@ public abstract class PointInSetQuery extends Query implements Accountable {
       for (int dim = 0; dim < numDims; dim++) {
         int offset = dim * bytesPerDim;
 
-        int cmpMin =
-            Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                pointBytes,
-                offset,
-                offset + bytesPerDim);
+        int cmpMin = comparator.compare(minPackedValue, offset, pointBytes, offset);
         if (cmpMin > 0) {
           return Relation.CELL_OUTSIDE_QUERY;
         }
 
-        int cmpMax =
-            Arrays.compareUnsigned(
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim,
-                pointBytes,
-                offset,
-                offset + bytesPerDim);
+        int cmpMax = comparator.compare(maxPackedValue, offset, pointBytes, offset);
         if (cmpMax < 0) {
           return Relation.CELL_OUTSIDE_QUERY;
         }

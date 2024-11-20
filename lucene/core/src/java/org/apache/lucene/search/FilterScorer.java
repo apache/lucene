@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.Unwrappable;
 
 /**
  * A {@code FilterScorer} contains another {@code Scorer}, which it uses as its basic source of
@@ -25,27 +26,15 @@ import java.io.IOException;
  * versions that pass all requests to the contained scorer. Subclasses of {@code FilterScorer} may
  * further override some of these methods and may also provide additional methods and fields.
  */
-public abstract class FilterScorer extends Scorer {
+public abstract class FilterScorer extends Scorer implements Unwrappable<Scorer> {
   protected final Scorer in;
-
-  /**
-   * Create a new FilterScorer
-   *
-   * @param in the {@link Scorer} to wrap
-   */
-  public FilterScorer(Scorer in) {
-    super(in.weight);
-    this.in = in;
-  }
 
   /**
    * Create a new FilterScorer with a specific weight
    *
    * @param in the {@link Scorer} to wrap
-   * @param weight a {@link Weight}
    */
-  public FilterScorer(Scorer in, Weight weight) {
-    super(weight);
+  public FilterScorer(Scorer in) {
     if (in == null) {
       throw new NullPointerException("wrapped Scorer must not be null");
     }
@@ -73,5 +62,10 @@ public abstract class FilterScorer extends Scorer {
   @Override
   public final TwoPhaseIterator twoPhaseIterator() {
     return in.twoPhaseIterator();
+  }
+
+  @Override
+  public Scorer unwrap() {
+    return in;
   }
 }

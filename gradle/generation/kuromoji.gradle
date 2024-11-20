@@ -19,7 +19,7 @@
 
 def recompileDictionary(project, dictionaryName, Closure closure) {
   project.javaexec {
-    main = "org.apache.lucene.analysis.ja.util.DictionaryBuilder"
+    main = "org.apache.lucene.analysis.ja.dict.DictionaryBuilder"
     classpath = project.sourceSets.main.runtimeClasspath
 
     jvmArgs '-Xmx1G'
@@ -30,10 +30,10 @@ def recompileDictionary(project, dictionaryName, Closure closure) {
 }
 
 configure(project(":lucene:analysis:kuromoji")) {
-  apply plugin: "de.undercouch.download"
+  apply plugin: deps.plugins.undercouch.download.get().pluginId
 
   plugins.withType(JavaPlugin) {
-    ext {
+    project.ext {
       targetDir = file("src/resources")
     }
 
@@ -73,7 +73,10 @@ configure(project(":lucene:analysis:kuromoji")) {
         // Apply patch via local git.
         project.quietExec {
           workingDir = unpackedDir
-          executable "git" // TODO: better use jgit to apply patch, this is not portable!!!
+          // TODO: Uwe says: better use jgit to apply patch, this is not portable!!!
+          // Dawid answers: (LUCENE-10215) jgit's patch was broken - would not handle binary patches
+          // Seems like this has been fixed: https://gerrit.googlesource.com/jgit/+/10ac4499115965ff10e547a0632c89873a06cf91
+          executable "git"
           args += [
               "apply",
               file("src/tools/patches/Noun.proper.csv.patch").absolutePath

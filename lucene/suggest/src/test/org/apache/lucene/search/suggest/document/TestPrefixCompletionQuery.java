@@ -20,14 +20,10 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.search.suggest.document.TestSuggestField.Entry;
 import static org.apache.lucene.search.suggest.document.TestSuggestField.assertSuggestions;
 import static org.apache.lucene.search.suggest.document.TestSuggestField.iwcWithSuggestField;
-import static org.hamcrest.core.IsEqual.equalTo;
 
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -36,15 +32,18 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.suggest.BitsProducer;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -194,9 +193,9 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
     // if at most half of the top scoring documents have been filtered out
     // the search should be admissible for a single segment
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-    assertTrue(suggest.totalHits.value >= 1);
-    assertThat(suggest.scoreLookupDocs()[0].key.toString(), equalTo("abc_" + topScore));
-    assertThat(suggest.scoreLookupDocs()[0].score, equalTo((float) topScore));
+    assertTrue(suggest.totalHits.value() >= 1);
+    assertEquals("abc_" + topScore, suggest.scoreLookupDocs()[0].key.toString());
+    assertEquals((float) topScore, suggest.scoreLookupDocs()[0].score, 0);
 
     filter = new NumericRangeBitsProducer("filter_int_fld", 0, 0);
     query = new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"), filter);
@@ -482,7 +481,7 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
 
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "app"));
-    assertEquals(0, indexSearcher.suggest(query, 3, false).totalHits.value);
+    assertEquals(0, indexSearcher.suggest(query, 3, false).totalHits.value());
 
     query = new PrefixCompletionQuery(analyzer, new Term("suggest_field2", "app"));
     assertSuggestions(indexSearcher.suggest(query, 3, false), new Entry("apples", 3));

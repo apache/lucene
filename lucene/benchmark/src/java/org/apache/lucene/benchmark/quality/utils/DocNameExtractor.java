@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.index.StoredFields;
 
 /** Utility: extract doc names from an index */
 public class DocNameExtractor {
@@ -41,34 +41,32 @@ public class DocNameExtractor {
   /**
    * Extract the name of the input doc from the index.
    *
-   * @param searcher access to the index.
+   * @param storedFields access to the index.
    * @param docid ID of doc whose name is needed.
    * @return the name of the input doc as extracted from the index.
    * @throws IOException if cannot extract the doc name from the index.
    */
-  public String docName(IndexSearcher searcher, int docid) throws IOException {
+  public String docName(StoredFields storedFields, int docid) throws IOException {
     final List<String> name = new ArrayList<>();
-    searcher
-        .getIndexReader()
-        .document(
-            docid,
-            new StoredFieldVisitor() {
-              @Override
-              public void stringField(FieldInfo fieldInfo, String value) {
-                name.add(Objects.requireNonNull(value, "String value should not be null"));
-              }
+    storedFields.document(
+        docid,
+        new StoredFieldVisitor() {
+          @Override
+          public void stringField(FieldInfo fieldInfo, String value) {
+            name.add(Objects.requireNonNull(value, "String value should not be null"));
+          }
 
-              @Override
-              public Status needsField(FieldInfo fieldInfo) {
-                if (!name.isEmpty()) {
-                  return Status.STOP;
-                } else if (fieldInfo.name.equals(docNameField)) {
-                  return Status.YES;
-                } else {
-                  return Status.NO;
-                }
-              }
-            });
+          @Override
+          public Status needsField(FieldInfo fieldInfo) {
+            if (!name.isEmpty()) {
+              return Status.STOP;
+            } else if (fieldInfo.name.equals(docNameField)) {
+              return Status.YES;
+            } else {
+              return Status.NO;
+            }
+          }
+        });
     if (name.size() != 0) {
       return name.get(0);
     } else {

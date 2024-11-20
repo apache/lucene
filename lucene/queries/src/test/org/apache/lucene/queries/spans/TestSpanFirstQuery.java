@@ -16,18 +16,20 @@
  */
 package org.apache.lucene.queries.spans;
 
-import static org.apache.lucene.queries.spans.SpanTestUtil.*;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanFirstQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanNotQuery;
+import static org.apache.lucene.queries.spans.SpanTestUtil.spanTermQuery;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.RegExp;
 
@@ -52,12 +54,12 @@ public class TestSpanFirstQuery extends LuceneTestCase {
 
     // user queries on "starts-with quick"
     SpanQuery sfq = spanFirstQuery(spanTermQuery("field", "quick"), 1);
-    assertEquals(1, searcher.search(sfq, 10).totalHits.value);
+    assertEquals(1, searcher.search(sfq, 10).totalHits.value());
 
     // user queries on "starts-with the quick"
     SpanQuery include = spanFirstQuery(spanTermQuery("field", "quick"), 2);
     sfq = spanNotQuery(include, sfq);
-    assertEquals(1, searcher.search(sfq, 10).totalHits.value);
+    assertEquals(1, searcher.search(sfq, 10).totalHits.value());
 
     writer.close();
     reader.close();

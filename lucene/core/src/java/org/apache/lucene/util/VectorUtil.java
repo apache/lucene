@@ -17,107 +17,116 @@
 
 package org.apache.lucene.util;
 
-/** Utilities for computations with numeric arrays */
+import java.util.stream.IntStream;
+import org.apache.lucene.internal.vectorization.VectorUtilSupport;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
+
+/**
+ * Utilities for computations with numeric arrays, especially algebraic operations like vector dot
+ * products. This class uses SIMD vectorization if the corresponding Java module is available and
+ * enabled. To enable vectorized code, pass {@code --add-modules jdk.incubator.vector} to Java's
+ * command line.
+ *
+ * <p>It will use CPU's <a href="https://en.wikipedia.org/wiki/Fused_multiply%E2%80%93add">FMA
+ * instructions</a> if it is known to perform faster than separate multiply+add. This requires at
+ * least Hotspot C2 enabled, which is the default for OpenJDK based JVMs.
+ *
+ * <p>To explicitly disable or enable FMA usage, pass the following system properties:
+ *
+ * <ul>
+ *   <li>{@code -Dlucene.useScalarFMA=(auto|true|false)} for scalar operations
+ *   <li>{@code -Dlucene.useVectorFMA=(auto|true|false)} for vectorized operations (with vector
+ *       incubator module)
+ * </ul>
+ *
+ * <p>The default is {@code auto}, which enables this for known CPU types and JVM settings. If
+ * Hotspot C2 is disabled, FMA and vectorization are <strong>not</strong> used.
+ *
+ * <p>Vectorization and FMA is only supported for Hotspot-based JVMs; it won't work on OpenJ9-based
+ * JVMs unless they provide {@link com.sun.management.HotSpotDiagnosticMXBean}. Please also make
+ * sure that you have the {@code jdk.management} module enabled in modularized applications.
+ */
 public final class VectorUtil {
+
+  private static final float EPSILON = 1e-4f;
+
+  private static final VectorUtilSupport IMPL =
+      VectorizationProvider.getInstance().getVectorUtilSupport();
 
   private VectorUtil() {}
 
   /**
-   * Returns the vector dot product of the two vectors. IllegalArgumentException is thrown if the
-   * vectors' dimensions differ.
+   * Returns the vector dot product of the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
   public static float dotProduct(float[] a, float[] b) {
     if (a.length != b.length) {
       throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float res = 0f;
-    /*
-     * If length of vector is larger than 8, we use unrolled dot product to accelerate the
-     * calculation.
-     */
-    int i;
-    for (i = 0; i < a.length % 8; i++) {
-      res += b[i] * a[i];
-    }
-    if (a.length < 8) {
-      return res;
-    }
-    for (; i + 31 < a.length; i += 32) {
-      res +=
-          b[i + 0] * a[i + 0]
-              + b[i + 1] * a[i + 1]
-              + b[i + 2] * a[i + 2]
-              + b[i + 3] * a[i + 3]
-              + b[i + 4] * a[i + 4]
-              + b[i + 5] * a[i + 5]
-              + b[i + 6] * a[i + 6]
-              + b[i + 7] * a[i + 7];
-      res +=
-          b[i + 8] * a[i + 8]
-              + b[i + 9] * a[i + 9]
-              + b[i + 10] * a[i + 10]
-              + b[i + 11] * a[i + 11]
-              + b[i + 12] * a[i + 12]
-              + b[i + 13] * a[i + 13]
-              + b[i + 14] * a[i + 14]
-              + b[i + 15] * a[i + 15];
-      res +=
-          b[i + 16] * a[i + 16]
-              + b[i + 17] * a[i + 17]
-              + b[i + 18] * a[i + 18]
-              + b[i + 19] * a[i + 19]
-              + b[i + 20] * a[i + 20]
-              + b[i + 21] * a[i + 21]
-              + b[i + 22] * a[i + 22]
-              + b[i + 23] * a[i + 23];
-      res +=
-          b[i + 24] * a[i + 24]
-              + b[i + 25] * a[i + 25]
-              + b[i + 26] * a[i + 26]
-              + b[i + 27] * a[i + 27]
-              + b[i + 28] * a[i + 28]
-              + b[i + 29] * a[i + 29]
-              + b[i + 30] * a[i + 30]
-              + b[i + 31] * a[i + 31];
-    }
-    for (; i + 7 < a.length; i += 8) {
-      res +=
-          b[i + 0] * a[i + 0]
-              + b[i + 1] * a[i + 1]
-              + b[i + 2] * a[i + 2]
-              + b[i + 3] * a[i + 3]
-              + b[i + 4] * a[i + 4]
-              + b[i + 5] * a[i + 5]
-              + b[i + 6] * a[i + 6]
-              + b[i + 7] * a[i + 7];
-    }
-    return res;
+    float r = IMPL.dotProduct(a, b);
+    assert Float.isFinite(r);
+    return r;
   }
 
   /**
-   * Returns the sum of squared differences of the two vectors. IllegalArgumentException is thrown
-   * if the vectors' dimensions differ.
+   * Returns the cosine similarity between the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
    */
-  public static float squareDistance(float[] v1, float[] v2) {
-    if (v1.length != v2.length) {
-      throw new IllegalArgumentException(
-          "vector dimensions differ: " + v1.length + "!=" + v2.length);
+  public static float cosine(float[] a, float[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    float squareSum = 0.0f;
-    int dim = v1.length;
-    for (int i = 0; i < dim; i++) {
-      float diff = v1[i] - v2[i];
-      squareSum += diff * diff;
+    float r = IMPL.cosine(a, b);
+    assert Float.isFinite(r);
+    return r;
+  }
+
+  /** Returns the cosine similarity between the two vectors. */
+  public static float cosine(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
     }
-    return squareSum;
+    return IMPL.cosine(a, b);
+  }
+
+  /**
+   * Returns the sum of squared differences of the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
+   */
+  public static float squareDistance(float[] a, float[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    float r = IMPL.squareDistance(a, b);
+    assert Float.isFinite(r);
+    return r;
+  }
+
+  /** Returns the sum of squared differences of the two vectors. */
+  public static int squareDistance(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.squareDistance(a, b);
   }
 
   /**
    * Modifies the argument to be unit length, dividing by its l2-norm. IllegalArgumentException is
    * thrown for zero vectors.
+   *
+   * @return the input array after normalization
    */
-  public static void l2normalize(float[] v) {
+  public static float[] l2normalize(float[] v) {
     l2normalize(v, true);
+    return v;
+  }
+
+  public static boolean isUnitVector(float[] v) {
+    double l1norm = IMPL.dotProduct(v, v);
+    return Math.abs(l1norm - 1.0d) <= EPSILON;
   }
 
   /**
@@ -125,25 +134,27 @@ public final class VectorUtil {
    *
    * @param v the vector to normalize
    * @param throwOnZero whether to throw an exception when <code>v</code> has all zeros
+   * @return the input array after normalization
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
-  public static void l2normalize(float[] v, boolean throwOnZero) {
-    double squareSum = 0.0f;
-    int dim = v.length;
-    for (float x : v) {
-      squareSum += x * x;
-    }
-    if (squareSum == 0) {
+  public static float[] l2normalize(float[] v, boolean throwOnZero) {
+    double l1norm = IMPL.dotProduct(v, v);
+    if (l1norm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
-        return;
+        return v;
       }
     }
-    double length = Math.sqrt(squareSum);
-    for (int i = 0; i < dim; i++) {
-      v[i] /= length;
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+      return v;
     }
+    int dim = v.length;
+    double l2norm = Math.sqrt(l1norm);
+    for (int i = 0; i < dim; i++) {
+      v[i] /= (float) l2norm;
+    }
+    return v;
   }
 
   /**
@@ -156,5 +167,156 @@ public final class VectorUtil {
     for (int i = 0; i < u.length; i++) {
       u[i] += v[i];
     }
+  }
+
+  /**
+   * Dot product computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the dot product of the two vectors
+   */
+  public static int dotProduct(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.dotProduct(a, b);
+  }
+
+  public static int int4DotProduct(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.int4DotProduct(a, false, b, false);
+  }
+
+  /**
+   * Dot product computed over int4 (values between [0,15]) bytes. The second vector is considered
+   * "packed" (i.e. every byte representing two values). The following packing is assumed:
+   *
+   * <pre class="prettyprint lang-java">
+   *   packed[0] = (raw[0] * 16) | raw[packed.length];
+   *   packed[1] = (raw[1] * 16) | raw[packed.length + 1];
+   *   ...
+   *   packed[packed.length - 1] = (raw[packed.length - 1] * 16) | raw[2 * packed.length - 1];
+   * </pre>
+   *
+   * @param unpacked the unpacked vector, of even length
+   * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
+   * @return the value of the dot product of the two vectors
+   */
+  public static int int4DotProductPacked(byte[] unpacked, byte[] packed) {
+    if (packed.length != ((unpacked.length + 1) >> 1)) {
+      throw new IllegalArgumentException(
+          "vector dimensions differ: " + unpacked.length + "!= 2 * " + packed.length);
+    }
+    return IMPL.int4DotProduct(unpacked, false, packed, true);
+  }
+
+  /**
+   * For xorBitCount we stride over the values as either 64-bits (long) or 32-bits (int) at a time.
+   * On ARM Long::bitCount is not vectorized, and therefore produces less than optimal code, when
+   * compared to Integer::bitCount. While Long::bitCount is optimal on x64. See
+   * https://bugs.openjdk.org/browse/JDK-8336000
+   */
+  static final boolean XOR_BIT_COUNT_STRIDE_AS_INT = Constants.OS_ARCH.equals("aarch64");
+
+  /**
+   * XOR bit count computed over signed bytes.
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the XOR bit count of the two vectors
+   */
+  public static int xorBitCount(byte[] a, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    if (XOR_BIT_COUNT_STRIDE_AS_INT) {
+      return xorBitCountInt(a, b);
+    } else {
+      return xorBitCountLong(a, b);
+    }
+  }
+
+  /** XOR bit count striding over 4 bytes at a time. */
+  static int xorBitCountInt(byte[] a, byte[] b) {
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & -Integer.BYTES; i < upperBound; i += Integer.BYTES) {
+      distance +=
+          Integer.bitCount(
+              (int) BitUtil.VH_NATIVE_INT.get(a, i) ^ (int) BitUtil.VH_NATIVE_INT.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
+  }
+
+  /** XOR bit count striding over 8 bytes at a time. */
+  static int xorBitCountLong(byte[] a, byte[] b) {
+    int distance = 0, i = 0;
+    for (final int upperBound = a.length & -Long.BYTES; i < upperBound; i += Long.BYTES) {
+      distance +=
+          Long.bitCount(
+              (long) BitUtil.VH_NATIVE_LONG.get(a, i) ^ (long) BitUtil.VH_NATIVE_LONG.get(b, i));
+    }
+    // tail:
+    for (; i < a.length; i++) {
+      distance += Integer.bitCount((a[i] ^ b[i]) & 0xFF);
+    }
+    return distance;
+  }
+
+  /**
+   * Dot product score computed over signed bytes, scaled to be in [0, 1].
+   *
+   * @param a bytes containing a vector
+   * @param b bytes containing another vector, of the same dimension
+   * @return the value of the similarity function applied to the two vectors
+   */
+  public static float dotProductScore(byte[] a, byte[] b) {
+    // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
+    float denom = (float) (a.length * (1 << 15));
+    return 0.5f + dotProduct(a, b) / denom;
+  }
+
+  /**
+   * @param vectorDotProductSimilarity the raw similarity between two vectors
+   * @return A scaled score preventing negative scores for maximum-inner-product
+   */
+  public static float scaleMaxInnerProductScore(float vectorDotProductSimilarity) {
+    if (vectorDotProductSimilarity < 0) {
+      return 1 / (1 + -1 * vectorDotProductSimilarity);
+    }
+    return vectorDotProductSimilarity + 1;
+  }
+
+  /**
+   * Checks if a float vector only has finite components.
+   *
+   * @param v bytes containing a vector
+   * @return the vector for call-chaining
+   * @throws IllegalArgumentException if any component of vector is not finite
+   */
+  public static float[] checkFinite(float[] v) {
+    for (int i = 0; i < v.length; i++) {
+      if (!Float.isFinite(v[i])) {
+        throw new IllegalArgumentException("non-finite value at vector[" + i + "]=" + v[i]);
+      }
+    }
+    return v;
+  }
+
+  /**
+   * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}
+   * exclusive, find the first array index whose value is greater than or equal to {@code target}.
+   * This index is guaranteed to be at least {@code from}. If there is no such array index, {@code
+   * to} is returned.
+   */
+  public static int findNextGEQ(int[] buffer, int target, int from, int to) {
+    assert IntStream.range(0, to - 1).noneMatch(i -> buffer[i] > buffer[i + 1]);
+    return IMPL.findNextGEQ(buffer, target, from, to);
   }
 }

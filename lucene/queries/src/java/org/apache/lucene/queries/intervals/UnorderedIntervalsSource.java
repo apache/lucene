@@ -27,13 +27,13 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.PriorityQueue;
 
-class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
+class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
 
   static IntervalsSource build(List<IntervalsSource> sources) {
     if (sources.size() == 1) {
       return sources.get(0);
     }
-    List<IntervalsSource> rewritten = deduplicate(flatten(sources));
+    List<IntervalsSource> rewritten = deduplicate(sources);
     if (rewritten.size() == 1) {
       return rewritten.get(0);
     }
@@ -55,25 +55,13 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
     return deduplicated;
   }
 
-  private static List<IntervalsSource> flatten(List<IntervalsSource> sources) {
-    List<IntervalsSource> flattened = new ArrayList<>();
-    for (IntervalsSource s : sources) {
-      if (s instanceof UnorderedIntervalsSource) {
-        flattened.addAll(((UnorderedIntervalsSource) s).subSources);
-      } else {
-        flattened.add(s);
-      }
-    }
-    return flattened;
-  }
-
   private UnorderedIntervalsSource(List<IntervalsSource> sources) {
-    super(sources, true);
+    super(sources);
   }
 
   @Override
-  protected IntervalIterator combine(List<IntervalIterator> iterators) {
-    return new UnorderedIntervalIterator(iterators);
+  protected IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch) {
+    return new UnorderedIntervalIterator(iterators, onMatch);
   }
 
   @Override
@@ -113,10 +101,11 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
 
     private final PriorityQueue<IntervalIterator> queue;
     private final IntervalIterator[] subIterators;
+    private final MatchCallback onMatch;
 
     int start = -1, end = -1, slop, queueEnd;
 
-    UnorderedIntervalIterator(List<IntervalIterator> subIterators) {
+    UnorderedIntervalIterator(List<IntervalIterator> subIterators, MatchCallback onMatch) {
       super(subIterators);
       this.queue =
           new PriorityQueue<IntervalIterator>(subIterators.size()) {
@@ -126,6 +115,7 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
             }
           };
       this.subIterators = new IntervalIterator[subIterators.size()];
+      this.onMatch = onMatch;
 
       for (int i = 0; i < subIterators.size(); i++) {
         this.subIterators[i] = subIterators.get(i);
@@ -169,6 +159,7 @@ class UnorderedIntervalsSource extends ConjunctionIntervalsSource {
         for (IntervalIterator it : subIterators) {
           slop -= it.width();
         }
+        onMatch.onMatch();
         if (queue.top().end() == end) {
           return start;
         }

@@ -20,6 +20,7 @@ import java.util.Arrays;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
+import org.apache.lucene.tests.search.BaseExplanationTestCase;
 
 /**
  * TestExplanations subclass that builds up super crazy complex queries on the assumption that if
@@ -75,7 +76,6 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
 
   public void testDMQ10() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
-    ;
     query.add(new TermQuery(new Term(FIELD, "yy")), Occur.SHOULD);
     TermQuery boostedQuery = new TermQuery(new Term(FIELD, "w5"));
     query.add(new BoostQuery(boostedQuery, 100), Occur.SHOULD);
@@ -99,7 +99,6 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
   public void testBQ12() throws Exception {
     // NOTE: using qtest not bqtest
     BooleanQuery.Builder query = new BooleanQuery.Builder();
-    ;
     query.add(new TermQuery(new Term(FIELD, "w1")), Occur.SHOULD);
     TermQuery boostedQuery = new TermQuery(new Term(FIELD, "w2"));
     query.add(new BoostQuery(boostedQuery, 0), Occur.SHOULD);
@@ -110,7 +109,6 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
   public void testBQ13() throws Exception {
     // NOTE: using qtest not bqtest
     BooleanQuery.Builder query = new BooleanQuery.Builder();
-    ;
     query.add(new TermQuery(new Term(FIELD, "w1")), Occur.SHOULD);
     TermQuery boostedQuery = new TermQuery(new Term(FIELD, "w5"));
     query.add(new BoostQuery(boostedQuery, 0), Occur.MUST_NOT);
@@ -121,7 +119,6 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
   public void testBQ18() throws Exception {
     // NOTE: using qtest not bqtest
     BooleanQuery.Builder query = new BooleanQuery.Builder();
-    ;
     TermQuery boostedQuery = new TermQuery(new Term(FIELD, "w1"));
     query.add(new BoostQuery(boostedQuery, 0), Occur.MUST);
     query.add(new TermQuery(new Term(FIELD, "w2")), Occur.SHOULD);
@@ -131,7 +128,6 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
 
   public void testBQ21() throws Exception {
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
-    ;
     builder.add(new TermQuery(new Term(FIELD, "w1")), Occur.MUST);
     builder.add(new TermQuery(new Term(FIELD, "w2")), Occur.SHOULD);
 
@@ -142,7 +138,6 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
 
   public void testBQ22() throws Exception {
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
-    ;
     TermQuery boostedQuery = new TermQuery(new Term(FIELD, "w1"));
     builder.add(new BoostQuery(boostedQuery, 0), Occur.MUST);
     builder.add(new TermQuery(new Term(FIELD, "w2")), Occur.SHOULD);

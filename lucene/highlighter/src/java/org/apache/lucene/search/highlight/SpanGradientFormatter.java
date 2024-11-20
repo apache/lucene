@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 package org.apache.lucene.search.highlight;
+
 /**
  * Formats text with different color intensity depending on the score of the term using the span
  * tag. GradientFormatter uses a bgcolor argument to the font tag which doesn't work in Mozilla,
@@ -34,7 +35,6 @@ public class SpanGradientFormatter extends GradientFormatter {
 
   @Override
   public String highlightTerm(String originalText, TokenGroup tokenGroup) {
-    if (tokenGroup.getTotalScore() == 0) return originalText;
     float score = tokenGroup.getTotalScore();
     if (score == 0) {
       return originalText;

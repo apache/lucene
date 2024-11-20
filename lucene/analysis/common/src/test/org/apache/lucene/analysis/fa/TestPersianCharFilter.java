@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.fa;
 
 import java.io.Reader;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 public class TestPersianCharFilter extends BaseTokenStreamTestCase {
   private Analyzer analyzer;

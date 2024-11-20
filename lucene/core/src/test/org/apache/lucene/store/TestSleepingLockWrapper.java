@@ -18,7 +18,8 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.store.BaseLockFactoryTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Simple tests for SleepingLockWrapper */
 public class TestSleepingLockWrapper extends BaseLockFactoryTestCase {

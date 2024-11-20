@@ -25,8 +25,10 @@ import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.NoMoreDataException;
 import org.apache.lucene.benchmark.byTask.stats.TaskStats;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.SuppressForbidden;
 
 /** Sequence of parallel or sequential tasks. */
+@SuppressForbidden(reason = "Thread sleep")
 public class TaskSequence extends PerfTask {
   public static int REPEAT_EXHAUST = -2;
   private ArrayList<PerfTask> tasks;
@@ -41,7 +43,7 @@ public class TaskSequence extends PerfTask {
   private boolean resetExhausted = false;
   private PerfTask[] tasksArray;
   private boolean anyExhaustibleTasks;
-  private boolean collapsable = false; // to not collapse external sequence named in alg.
+  private final boolean collapsable; // to not collapse external sequence named in alg.
 
   private boolean fixedTime; // true if we run for fixed time
   private double runTimeSec; // how long to run for
@@ -83,12 +85,16 @@ public class TaskSequence extends PerfTask {
     }
   }
 
-  /** @return Returns the parallel. */
+  /**
+   * @return Returns the parallel.
+   */
   public boolean isParallel() {
     return parallel;
   }
 
-  /** @return Returns the repetitions. */
+  /**
+   * @return Returns the repetitions.
+   */
   public int getRepetitions() {
     return repetitions;
   }
@@ -100,7 +106,9 @@ public class TaskSequence extends PerfTask {
     fixedTime = true;
   }
 
-  /** @param repetitions The repetitions to set. */
+  /**
+   * @param repetitions The repetitions to set.
+   */
   public void setRepetitions(int repetitions) throws Exception {
     fixedTime = false;
     this.repetitions = repetitions;
@@ -112,7 +120,9 @@ public class TaskSequence extends PerfTask {
     setSequenceName();
   }
 
-  /** @return Returns the parent. */
+  /**
+   * @return Returns the parent.
+   */
   public TaskSequence getParent() {
     return parent;
   }
@@ -484,7 +494,9 @@ public class TaskSequence extends PerfTask {
     return (perMin ? rate : 60 * rate);
   }
 
-  /** @param rate The rate to set. */
+  /**
+   * @param rate The rate to set.
+   */
   public void setRate(int rate, boolean perMin) {
     this.rate = rate;
     this.perMin = perMin;
@@ -511,7 +523,9 @@ public class TaskSequence extends PerfTask {
     return seqName; // override to include more info
   }
 
-  /** @return Returns the tasks. */
+  /**
+   * @return Returns the tasks.
+   */
   public ArrayList<PerfTask> getTasks() {
     return tasks;
   }

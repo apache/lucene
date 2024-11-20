@@ -51,7 +51,7 @@ import org.apache.lucene.util.CloseableThreadLocal;
  *     return new TokenStreamComponents(source, filter);
  *   }
  *   {@literal @Override}
- *   protected TokenStream normalize(TokenStream in) {
+ *   protected TokenStream normalize(String fieldName, TokenStream in) {
  *     // Assuming FooFilter is about normalization and BarFilter is about
  *     // stemming, only FooFilter should be applied
  *     return new FooFilter(in);
@@ -345,6 +345,7 @@ public abstract class Analyzer implements Closeable {
   public static final class TokenStreamComponents {
     /** Original source of the tokens. */
     protected final Consumer<Reader> source;
+
     /**
      * Sink tokenstream, such as the outer tokenfilter decorating the chain. This can be the source
      * if there are no filters.

@@ -19,10 +19,11 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
+import org.apache.lucene.store.DataInput;
 
 /**
  * Expert: provides a low-level means of accessing the stored field values in an index. See {@link
- * IndexReader#document(int, StoredFieldVisitor)}.
+ * StoredFields#document(int, StoredFieldVisitor)}.
  *
  * <p><b>NOTE</b>: a {@code StoredFieldVisitor} implementation should not try to load or visit other
  * stored documents in the same reader because the implementation of stored fields for most codecs
@@ -30,7 +31,7 @@ import org.apache.lucene.document.DocumentStoredFieldVisitor;
  *
  * <p>See {@link DocumentStoredFieldVisitor}, which is a <code>StoredFieldVisitor</code> that builds
  * the {@link Document} containing all stored fields. This is used by {@link
- * IndexReader#document(int)}.
+ * StoredFields#document(int)}.
  *
  * @lucene.experimental
  */
@@ -38,6 +39,19 @@ public abstract class StoredFieldVisitor {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected StoredFieldVisitor() {}
+
+  /**
+   * Expert: Process a binary field directly from the {@link DataInput}. Implementors of this method
+   * must read {@code length} bytes from the given {@link DataInput}. The default implementation
+   * reads all byes in a newly created byte array and calls {@link #binaryField(FieldInfo, byte[])}.
+   *
+   * @param value newly allocated byte array with the binary contents.
+   */
+  public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
+    final byte[] data = new byte[length];
+    value.readBytes(data, 0, length);
+    binaryField(fieldInfo, data);
+  }
 
   /**
    * Process a binary field.

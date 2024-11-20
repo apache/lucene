@@ -27,15 +27,16 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestQueryRescorer extends LuceneTestCase {
 
@@ -168,9 +169,9 @@ public class TestQueryRescorer extends LuceneTestCase {
     searcher.setSimilarity(new ClassicSimilarity());
 
     TopDocs hits = searcher.search(bq.build(), 10);
-    assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals(2, hits.totalHits.value());
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using PhraseQuery:
     PhraseQuery pq = new PhraseQuery(5, "field", "wizard", "oz");
@@ -178,9 +179,9 @@ public class TestQueryRescorer extends LuceneTestCase {
     TopDocs hits2 = QueryRescorer.rescore(searcher, hits, pq, 2.0, 10);
 
     // Resorting changed the order:
-    assertEquals(2, hits2.totalHits.value);
-    assertEquals("1", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
+    assertEquals(2, hits2.totalHits.value());
+    assertEquals("1", searcher.storedFields().document(hits2.scoreDocs[0].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits2.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();
@@ -211,16 +212,16 @@ public class TestQueryRescorer extends LuceneTestCase {
     searcher.setSimilarity(new ClassicSimilarity());
 
     TopDocs hits = searcher.search(bq.build(), 10);
-    assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals(2, hits.totalHits.value());
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using TermQuery on term that does not exist.
     TermQuery tq = new TermQuery(new Term("field", "gold"));
     TopDocs hits2 = QueryRescorer.rescore(searcher, hits, tq, 2.0, 10);
 
     // Just testing that null scorer is handled.
-    assertEquals(2, hits2.totalHits.value);
+    assertEquals(2, hits2.totalHits.value());
 
     r.close();
     dir.close();
@@ -249,9 +250,9 @@ public class TestQueryRescorer extends LuceneTestCase {
     IndexSearcher searcher = getSearcher(r);
 
     TopDocs hits = searcher.search(bq.build(), 10);
-    assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals(2, hits.totalHits.value());
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using PhraseQuery, but with an
     // opposite-world combine:
@@ -271,9 +272,9 @@ public class TestQueryRescorer extends LuceneTestCase {
         }.rescore(searcher, hits, 10);
 
     // Resorting didn't change the order:
-    assertEquals(2, hits2.totalHits.value);
-    assertEquals("0", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
+    assertEquals(2, hits2.totalHits.value());
+    assertEquals("0", searcher.storedFields().document(hits2.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits2.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();
@@ -302,9 +303,9 @@ public class TestQueryRescorer extends LuceneTestCase {
     IndexSearcher searcher = getSearcher(r);
 
     TopDocs hits = searcher.search(bq.build(), 10);
-    assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals(2, hits.totalHits.value());
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using PhraseQuery:
     PhraseQuery pq = new PhraseQuery("field", "wizard", "oz");
@@ -325,9 +326,9 @@ public class TestQueryRescorer extends LuceneTestCase {
     TopDocs hits2 = rescorer.rescore(searcher, hits, 10);
 
     // Resorting changed the order:
-    assertEquals(2, hits2.totalHits.value);
-    assertEquals("1", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
+    assertEquals(2, hits2.totalHits.value());
+    assertEquals("1", searcher.storedFields().document(hits2.scoreDocs[0].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits2.scoreDocs[1].doc).get("id"));
 
     int docID = hits2.scoreDocs[0].doc;
     Explanation explain = rescorer.explain(searcher, searcher.explain(bq.build(), docID), docID);
@@ -375,9 +376,9 @@ public class TestQueryRescorer extends LuceneTestCase {
     IndexSearcher searcher = getSearcher(r);
 
     TopDocs hits = searcher.search(bq.build(), 10);
-    assertEquals(2, hits.totalHits.value);
-    assertEquals("0", searcher.doc(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(hits.scoreDocs[1].doc).get("id"));
+    assertEquals(2, hits.totalHits.value());
+    assertEquals("0", searcher.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(hits.scoreDocs[1].doc).get("id"));
 
     // Now, resort using PhraseQuery, no slop:
     PhraseQuery pq = new PhraseQuery("field", "wizard", "oz");
@@ -385,9 +386,9 @@ public class TestQueryRescorer extends LuceneTestCase {
     TopDocs hits2 = QueryRescorer.rescore(searcher, hits, pq, 2.0, 10);
 
     // Resorting changed the order:
-    assertEquals(2, hits2.totalHits.value);
-    assertEquals("1", searcher.doc(hits2.scoreDocs[0].doc).get("id"));
-    assertEquals("0", searcher.doc(hits2.scoreDocs[1].doc).get("id"));
+    assertEquals(2, hits2.totalHits.value());
+    assertEquals("1", searcher.storedFields().document(hits2.scoreDocs[0].doc).get("id"));
+    assertEquals("0", searcher.storedFields().document(hits2.scoreDocs[1].doc).get("id"));
 
     r.close();
     dir.close();
@@ -445,8 +446,8 @@ public class TestQueryRescorer extends LuceneTestCase {
           @Override
           public int compare(Integer a, Integer b) {
             try {
-              int av = idToNum[Integer.parseInt(r.document(a).get("id"))];
-              int bv = idToNum[Integer.parseInt(r.document(b).get("id"))];
+              int av = idToNum[Integer.parseInt(r.storedFields().document(a).get("id"))];
+              int bv = idToNum[Integer.parseInt(r.storedFields().document(b).get("id"))];
               if (av < bv) {
                 return -reverseInt;
               } else if (bv < av) {
@@ -464,7 +465,7 @@ public class TestQueryRescorer extends LuceneTestCase {
     boolean fail = false;
     for (int i = 0; i < numHits; i++) {
       // System.out.println("expected=" + expected[i] + " vs " + hits2.scoreDocs[i].doc + " v=" +
-      // idToNum[Integer.parseInt(r.document(expected[i]).get("id"))]);
+      // idToNum[Integer.parseInt(r.storedFields().document(expected[i]).get("id"))]);
       if (expected[i].intValue() != hits2.scoreDocs[i].doc) {
         // System.out.println("  diff!");
         fail = true;
@@ -491,21 +492,11 @@ public class TestQueryRescorer extends LuceneTestCase {
         throws IOException {
 
       return new Weight(FixedScoreQuery.this) {
-
         @Override
-        public Scorer scorer(final LeafReaderContext context) throws IOException {
-
-          return new Scorer(this) {
-            int docID = -1;
-
-            @Override
-            public int docID() {
-              return docID;
-            }
-
-            @Override
-            public DocIdSetIterator iterator() {
-              return new DocIdSetIterator() {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorer =
+              new Scorer() {
+                int docID = -1;
 
                 @Override
                 public int docID() {
@@ -513,44 +504,57 @@ public class TestQueryRescorer extends LuceneTestCase {
                 }
 
                 @Override
-                public long cost() {
-                  return 1;
+                public DocIdSetIterator iterator() {
+                  return new DocIdSetIterator() {
+
+                    @Override
+                    public int docID() {
+                      return docID;
+                    }
+
+                    @Override
+                    public long cost() {
+                      return 1;
+                    }
+
+                    @Override
+                    public int nextDoc() {
+                      docID++;
+                      if (docID >= context.reader().maxDoc()) {
+                        return NO_MORE_DOCS;
+                      }
+                      return docID;
+                    }
+
+                    @Override
+                    public int advance(int target) {
+                      docID = target;
+                      return docID;
+                    }
+                  };
                 }
 
                 @Override
-                public int nextDoc() {
-                  docID++;
-                  if (docID >= context.reader().maxDoc()) {
-                    return NO_MORE_DOCS;
+                public float score() throws IOException {
+                  int num =
+                      idToNum[
+                          Integer.parseInt(
+                              context.reader().storedFields().document(docID).get("id"))];
+                  if (reverse) {
+                    // System.out.println("score doc=" + docID + " num=" + num);
+                    return num;
+                  } else {
+                    // System.out.println("score doc=" + docID + " num=" + -num);
+                    return 1f / (1 + num);
                   }
-                  return docID;
                 }
 
                 @Override
-                public int advance(int target) {
-                  docID = target;
-                  return docID;
+                public float getMaxScore(int upTo) throws IOException {
+                  return Float.POSITIVE_INFINITY;
                 }
               };
-            }
-
-            @Override
-            public float score() throws IOException {
-              int num = idToNum[Integer.parseInt(context.reader().document(docID).get("id"))];
-              if (reverse) {
-                // System.out.println("score doc=" + docID + " num=" + num);
-                return num;
-              } else {
-                // System.out.println("score doc=" + docID + " num=" + -num);
-                return 1f / (1 + num);
-              }
-            }
-
-            @Override
-            public float getMaxScore(int upTo) throws IOException {
-              return Float.POSITIVE_INFINITY;
-            }
-          };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

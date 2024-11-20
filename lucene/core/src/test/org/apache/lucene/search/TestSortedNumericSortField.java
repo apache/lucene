@@ -17,15 +17,17 @@
 package org.apache.lucene.search;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.FloatField;
+import org.apache.lucene.document.IntField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for SortedNumericSortField */
 public class TestSortedNumericSortField extends LuceneTestCase {
@@ -34,16 +36,23 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     IndexSearcher empty = newSearcher(new MultiReader());
     Query query = new TermQuery(new Term("contents", "foo"));
 
-    Sort sort = new Sort();
-    sort.setSort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG));
-    TopDocs td = empty.search(query, 10, sort, true);
-    assertEquals(0, td.totalHits.value);
+    TopDocs td =
+        empty.search(
+            query,
+            10,
+            new Sort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG)),
+            true);
+    assertEquals(0, td.totalHits.value());
 
     // for an empty index, any selector should work
     for (SortedNumericSelector.Type v : SortedNumericSelector.Type.values()) {
-      sort.setSort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG, false, v));
-      td = empty.search(query, 10, sort, true);
-      assertEquals(0, td.totalHits.value);
+      td =
+          empty.search(
+              query,
+              10,
+              new Sort(new SortedNumericSortField("sortednumeric", SortField.Type.LONG, false, v)),
+              true);
+      assertEquals(0, td.totalHits.value());
     }
   }
 
@@ -72,12 +81,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5, Store.NO));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
-    doc.add(new SortedNumericDocValuesField("value", 7));
+    doc.add(new IntField("value", 3, Store.NO));
+    doc.add(new IntField("value", 7, Store.NO));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
@@ -87,10 +96,10 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.INT));
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
     // 3 comes before 5
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -100,12 +109,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
-    doc.add(new SortedNumericDocValuesField("value", 7));
+    doc.add(new IntField("value", 3, Store.NO));
+    doc.add(new IntField("value", 7, Store.NO));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5, Store.NO));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
 
@@ -116,10 +125,10 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.INT, true));
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'baz'
-    assertEquals("2", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -129,12 +138,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5, Store.NO));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
-    doc.add(new SortedNumericDocValuesField("value", 7));
+    doc.add(new IntField("value", 3, Store.NO));
+    doc.add(new IntField("value", 7, Store.NO));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
@@ -149,12 +158,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(3, td.totalHits.value);
+    assertEquals(3, td.totalHits.value());
     // 3 comes before 5
     // null comes first
-    assertEquals("3", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("1", searcher.doc(td.scoreDocs[1].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -164,12 +173,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5, Store.NO));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
-    doc.add(new SortedNumericDocValuesField("value", 7));
+    doc.add(new IntField("value", 3, Store.NO));
+    doc.add(new IntField("value", 7, Store.NO));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
@@ -184,12 +193,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(3, td.totalHits.value);
+    assertEquals(3, td.totalHits.value());
     // 3 comes before 5
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
     // null comes last
-    assertEquals("3", searcher.doc(td.scoreDocs[2].doc).get("id"));
+    assertEquals("3", searcher.storedFields().document(td.scoreDocs[2].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -199,11 +208,11 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 5));
+    doc.add(new IntField("value", 5, Store.NO));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", 3));
+    doc.add(new IntField("value", 3, Store.NO));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
@@ -213,10 +222,10 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.INT));
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
     // 3 comes before 5
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -226,12 +235,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.floatToSortableInt(-3f)));
+    doc.add(new FloatField("value", -3f, Store.NO));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.floatToSortableInt(-5f)));
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.floatToSortableInt(7f)));
+    doc.add(new FloatField("value", -5f, Store.NO));
+    doc.add(new FloatField("value", 7f, Store.NO));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
@@ -241,10 +250,10 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.FLOAT));
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
     // -5 comes before -3
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();
@@ -254,12 +263,12 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.doubleToSortableLong(-3d)));
+    doc.add(new DoubleField("value", -3d, Field.Store.YES));
     doc.add(newStringField("id", "2", Field.Store.YES));
     writer.addDocument(doc);
     doc = new Document();
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.doubleToSortableLong(-5d)));
-    doc.add(new SortedNumericDocValuesField("value", NumericUtils.doubleToSortableLong(7d)));
+    doc.add(new DoubleField("value", -5d, Field.Store.YES));
+    doc.add(new DoubleField("value", 7d, Field.Store.YES));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
     IndexReader ir = writer.getReader();
@@ -269,10 +278,10 @@ public class TestSortedNumericSortField extends LuceneTestCase {
     Sort sort = new Sort(new SortedNumericSortField("value", SortField.Type.DOUBLE));
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
     // -5 comes before -3
-    assertEquals("1", searcher.doc(td.scoreDocs[0].doc).get("id"));
-    assertEquals("2", searcher.doc(td.scoreDocs[1].doc).get("id"));
+    assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
+    assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
 
     ir.close();
     dir.close();

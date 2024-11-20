@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 package org.apache.lucene.analysis.de;
+
 // This file is encoded in UTF-8
 
 import java.io.IOException;
 import java.io.Reader;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.LowerCaseFilter;
@@ -45,7 +45,14 @@ import org.apache.lucene.util.IOUtils;
  * <p><b>NOTE</b>: This class uses the same {@link org.apache.lucene.util.Version} dependent
  * settings as {@link StandardAnalyzer}.
  *
+ * <p><b>NOTE</b>: This class does not decompound nouns, additional data files are needed,
+ * incompatible with the Apache 2.0 License. You can find these data files and example code for
+ * decompounding <a
+ * href="https://github.com/uschindler/german-decompounder#lucene-api-example">here</a>.
+ *
  * @since 3.1
+ * @see <a
+ *     href="https://github.com/uschindler/german-decompounder">https://github.com/uschindler/german-decompounder</a>
  */
 public final class GermanAnalyzer extends StopwordAnalyzerBase {
 
@@ -68,8 +75,9 @@ public final class GermanAnalyzer extends StopwordAnalyzerBase {
       try {
         DEFAULT_SET =
             WordlistLoader.getSnowballWordSet(
-                IOUtils.getDecodingReader(
-                    SnowballFilter.class, DEFAULT_STOPWORD_FILE, StandardCharsets.UTF_8));
+                IOUtils.requireResourceNonNull(
+                    SnowballFilter.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                    DEFAULT_STOPWORD_FILE));
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)

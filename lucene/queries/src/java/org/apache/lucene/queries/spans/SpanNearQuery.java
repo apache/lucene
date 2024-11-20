@@ -23,7 +23,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -33,6 +32,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -239,15 +239,26 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
       }
       return true;
     }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Spans spans = getSpans(context, Postings.POSITIONS);
+      if (spans == null) {
+        return null;
+      }
+      final var scorer =
+          new SpanScorer(spans, getSimScorer(), context.reader().getNormValues(field));
+      return new DefaultScorerSupplier(scorer);
+    }
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     boolean actuallyRewritten = false;
     List<SpanQuery> rewrittenClauses = new ArrayList<>();
     for (int i = 0; i < clauses.size(); i++) {
       SpanQuery c = clauses.get(i);
-      SpanQuery query = (SpanQuery) c.rewrite(reader);
+      SpanQuery query = (SpanQuery) c.rewrite(indexSearcher);
       actuallyRewritten |= query != c;
       rewrittenClauses.add(query);
     }
@@ -260,7 +271,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
         throw new AssertionError(e);
       }
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override

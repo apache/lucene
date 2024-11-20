@@ -26,14 +26,14 @@ import java.util.Locale;
  * <p>The algorithm is based on the report "A Fast and Simple Stemming Algorithm for German Words"
  * by J&ouml;rg Caumanns (joerg.caumanns at isst.fhg.de).
  */
-public class GermanStemmer {
+class GermanStemmer {
   /** Buffer for the terms while stemming them. */
   private StringBuilder sb = new StringBuilder();
 
   /** Amount of characters that are removed with <code>substitute()</code> while stemming. */
   private int substCount = 0;
 
-  private static final Locale locale = new Locale("de", "DE");
+  private static final Locale locale = new Locale.Builder().setLanguageTag("de-DE").build();
 
   /**
    * Stemms the given term to an unique <code>discriminator</code>.

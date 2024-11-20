@@ -18,7 +18,7 @@
 package org.apache.lucene.misc.util;
 
 import org.apache.lucene.misc.CollectorMemoryTracker;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCollectorMemoryTracker extends LuceneTestCase {
   public void testAdditionsAndDeletions() {

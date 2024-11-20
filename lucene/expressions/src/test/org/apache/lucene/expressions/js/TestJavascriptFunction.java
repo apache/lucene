@@ -17,13 +17,12 @@
 package org.apache.lucene.expressions.js;
 
 import org.apache.lucene.expressions.Expression;
-import org.apache.lucene.util.LuceneTestCase;
 
-public class TestJavascriptFunction extends LuceneTestCase {
+public class TestJavascriptFunction extends CompilerTestCase {
   private static double DELTA = 0.0000001;
 
   private void assertEvaluatesTo(String expression, double expected) throws Exception {
-    Expression evaluator = JavascriptCompiler.compile(expression);
+    Expression evaluator = compile(expression);
     double actual = evaluator.evaluate(null);
     assertEquals(expected, actual, DELTA);
   }
@@ -158,7 +157,7 @@ public class TestJavascriptFunction extends LuceneTestCase {
   }
 
   public void testHaversinMethod() throws Exception {
-    assertEvaluatesTo("haversin(40.7143528,-74.0059731,40.759011,-73.9844722)", 5285.885589128259);
+    assertEvaluatesTo("haversin(40.7143528,-74.0059731,40.759011,-73.9844722)", 5.285885589128259);
   }
 
   public void testLnMethod() throws Exception {
@@ -264,5 +263,10 @@ public class TestJavascriptFunction extends LuceneTestCase {
     assertEvaluatesTo("tanh(0.5)", 0.46211715726);
     assertEvaluatesTo("tanh(-12.3456789)", -0.99999999996);
     assertEvaluatesTo("tanh(12.3456789)", 0.99999999996);
+  }
+
+  /** checks that dynamic constants work and only produce one entry in constant pool */
+  public void testSameFunction() throws Exception {
+    assertEvaluatesTo("sqrt(49) * sqrt(25)", 7 * 5);
   }
 }

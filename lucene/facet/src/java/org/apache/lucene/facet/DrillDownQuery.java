@@ -18,17 +18,17 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -56,7 +56,7 @@ public final class DrillDownQuery extends Query {
   private final List<BooleanQuery.Builder> dimQueries = new ArrayList<>();
   private final Map<String, Integer> drillDownDims = new LinkedHashMap<>();
   private final List<Query> builtDimQueries = new ArrayList<>();
-  private final Set<Integer> dirtyDimQueryIndex = new HashSet<>();
+  private final IntHashSet dirtyDimQueryIndex = new IntHashSet();
 
   /** Used by clone() and DrillSideways */
   DrillDownQuery(
@@ -100,8 +100,8 @@ public final class DrillDownQuery extends Query {
 
   /**
    * Creates a new {@code DrillDownQuery} over the given base query. Can be {@code null}, in which
-   * case the result {@link Query} from {@link #rewrite(IndexReader)} will be a pure browsing query,
-   * filtering on the added categories only.
+   * case the result {@link Query} from {@link Query#rewrite(IndexSearcher)} will be a pure browsing
+   * query, filtering on the added categories only.
    */
   public DrillDownQuery(FacetsConfig config, Query baseQuery) {
     this.baseQuery = baseQuery;
@@ -156,7 +156,7 @@ public final class DrillDownQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader r) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     BooleanQuery rewritten = getBooleanQuery();
     if (rewritten.clauses().isEmpty()) {
       return new MatchAllDocsQuery();
@@ -202,8 +202,8 @@ public final class DrillDownQuery extends Query {
    * @return The array of dimQueries
    */
   public Query[] getDrillDownQueries() {
-    for (Integer dirtyDimIndex : dirtyDimQueryIndex) {
-      builtDimQueries.set(dirtyDimIndex, this.dimQueries.get(dirtyDimIndex).build());
+    for (IntCursor dirtyDimIndex : dirtyDimQueryIndex) {
+      builtDimQueries.set(dirtyDimIndex.value, this.dimQueries.get(dirtyDimIndex.value).build());
     }
     dirtyDimQueryIndex.clear();
 

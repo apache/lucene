@@ -16,8 +16,14 @@
  */
 package org.apache.lucene.analysis;
 
-import java.util.*;
-import org.apache.lucene.util.LuceneTestCase;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.SuppressForbidden;
 
 public class TestCharArraySet extends LuceneTestCase {
@@ -30,12 +36,12 @@ public class TestCharArraySet extends LuceneTestCase {
 
   public void testRehash() throws Exception {
     CharArraySet cas = new CharArraySet(0, true);
-    for (int i = 0; i < TEST_STOP_WORDS.length; i++) {
-      cas.add(TEST_STOP_WORDS[i]);
+    for (String stopWord : TEST_STOP_WORDS) {
+      cas.add(stopWord);
     }
     assertEquals(TEST_STOP_WORDS.length, cas.size());
-    for (int i = 0; i < TEST_STOP_WORDS.length; i++) {
-      assertTrue(cas.contains(TEST_STOP_WORDS[i]));
+    for (String testStopWord : TEST_STOP_WORDS) {
+      assertTrue(cas.contains(testStopWord));
     }
   }
 
@@ -56,20 +62,14 @@ public class TestCharArraySet extends LuceneTestCase {
   @SuppressForbidden(reason = "Explicitly checking new Integers")
   public void testObjectContains() {
     CharArraySet set = new CharArraySet(10, true);
-    Integer val = Integer.valueOf(1);
-    @SuppressWarnings("all")
-    Integer val1 = new Integer(1);
-    // Verify explicitly the case of different Integer instances
-    assertNotSame(val, val1);
+    Integer val = 1;
     set.add(val);
     assertTrue(set.contains(val));
-    assertTrue(set.contains(val1)); // another integer
     assertTrue(set.contains("1"));
     assertTrue(set.contains(new char[] {'1'}));
     // test unmodifiable
     set = CharArraySet.unmodifiableSet(set);
     assertTrue(set.contains(val));
-    assertTrue(set.contains(val1)); // another integer
     assertTrue(set.contains("1"));
     assertTrue(set.contains(new char[] {'1'}));
   }
@@ -80,13 +80,13 @@ public class TestCharArraySet extends LuceneTestCase {
     assertEquals("Not all words added", TEST_STOP_WORDS.length, set.size());
     set.clear();
     assertEquals("not empty", 0, set.size());
-    for (int i = 0; i < TEST_STOP_WORDS.length; i++) {
-      assertFalse(set.contains(TEST_STOP_WORDS[i]));
+    for (String testStopWord : TEST_STOP_WORDS) {
+      assertFalse(set.contains(testStopWord));
     }
     set.addAll(Arrays.asList(TEST_STOP_WORDS));
     assertEquals("Not all words added", TEST_STOP_WORDS.length, set.size());
-    for (int i = 0; i < TEST_STOP_WORDS.length; i++) {
-      assertTrue(set.contains(TEST_STOP_WORDS[i]));
+    for (String testStopWord : TEST_STOP_WORDS) {
+      assertTrue(set.contains(testStopWord));
     }
   }
 
@@ -118,7 +118,7 @@ public class TestCharArraySet extends LuceneTestCase {
         "Test String has been added to unmodifiable set", unmodifiableSet.contains(NOT_IN_SET));
     assertEquals("Size of unmodifiable set has changed", size, unmodifiableSet.size());
 
-    expectThrows(UnsupportedOperationException.class, () -> unmodifiableSet.clear());
+    expectThrows(UnsupportedOperationException.class, unmodifiableSet::clear);
     assertFalse("Changed unmodifiable set", unmodifiableSet.contains(NOT_IN_SET));
     assertEquals("Size of unmodifiable set has changed", size, unmodifiableSet.size());
 
@@ -149,31 +149,27 @@ public class TestCharArraySet extends LuceneTestCase {
     assertFalse(
         "Test String has been added to unmodifiable set", unmodifiableSet.contains(NOT_IN_SET));
 
-    for (int i = 0; i < TEST_STOP_WORDS.length; i++) {
-      assertTrue(set.contains(TEST_STOP_WORDS[i]));
-      assertTrue(unmodifiableSet.contains(TEST_STOP_WORDS[i]));
+    for (String testStopWord : TEST_STOP_WORDS) {
+      assertTrue(set.contains(testStopWord));
+      assertTrue(unmodifiableSet.contains(testStopWord));
     }
   }
 
   public void testUnmodifiableSet() {
     CharArraySet set = new CharArraySet(10, true);
     set.addAll(Arrays.asList(TEST_STOP_WORDS));
-    set.add(Integer.valueOf(1));
+    set.add(1);
     final int size = set.size();
     set = CharArraySet.unmodifiableSet(set);
     assertEquals("Set size changed due to unmodifiableSet call", size, set.size());
     for (String stopword : TEST_STOP_WORDS) {
       assertTrue(set.contains(stopword));
     }
-    assertTrue(set.contains(Integer.valueOf(1)));
+    assertTrue(set.contains(1));
     assertTrue(set.contains("1"));
     assertTrue(set.contains(new char[] {'1'}));
 
-    expectThrows(
-        NullPointerException.class,
-        () -> {
-          CharArraySet.unmodifiableSet(null);
-        });
+    expectThrows(NullPointerException.class, () -> CharArraySet.unmodifiableSet(null));
   }
 
   public void testSupplementaryChars() {
@@ -186,17 +182,13 @@ public class TestCharArraySet extends LuceneTestCase {
     String[] lowerArr =
         new String[] {"abc\ud801\udc44", "\ud801\udc44\ud801\udc44cde", "a\ud801\udc44b"};
     CharArraySet set = new CharArraySet(Arrays.asList(TEST_STOP_WORDS), true);
-    for (String upper : upperArr) {
-      set.add(upper);
-    }
+    Collections.addAll(set, upperArr);
     for (int i = 0; i < upperArr.length; i++) {
       assertTrue(String.format(Locale.ROOT, missing, upperArr[i]), set.contains(upperArr[i]));
       assertTrue(String.format(Locale.ROOT, missing, lowerArr[i]), set.contains(lowerArr[i]));
     }
     set = new CharArraySet(Arrays.asList(TEST_STOP_WORDS), false);
-    for (String upper : upperArr) {
-      set.add(upper);
-    }
+    Collections.addAll(set, upperArr);
     for (int i = 0; i < upperArr.length; i++) {
       assertTrue(String.format(Locale.ROOT, missing, upperArr[i]), set.contains(upperArr[i]));
       assertFalse(String.format(Locale.ROOT, falsePos, lowerArr[i]), set.contains(lowerArr[i]));
@@ -212,17 +204,13 @@ public class TestCharArraySet extends LuceneTestCase {
     String[] lowerArr =
         new String[] {"abc\uD800", "abc\uD800efg", "\uD800efg", "\uD800\ud801\udc44b"};
     CharArraySet set = new CharArraySet(Arrays.asList(TEST_STOP_WORDS), true);
-    for (String upper : upperArr) {
-      set.add(upper);
-    }
+    Collections.addAll(set, upperArr);
     for (int i = 0; i < upperArr.length; i++) {
       assertTrue(String.format(Locale.ROOT, missing, upperArr[i]), set.contains(upperArr[i]));
       assertTrue(String.format(Locale.ROOT, missing, lowerArr[i]), set.contains(lowerArr[i]));
     }
     set = new CharArraySet(Arrays.asList(TEST_STOP_WORDS), false);
-    for (String upper : upperArr) {
-      set.add(upper);
-    }
+    Collections.addAll(set, upperArr);
     for (int i = 0; i < upperArr.length; i++) {
       assertTrue(String.format(Locale.ROOT, missing, upperArr[i]), set.contains(upperArr[i]));
       assertFalse(String.format(Locale.ROOT, falsePos, upperArr[i]), set.contains(lowerArr[i]));
@@ -239,9 +227,9 @@ public class TestCharArraySet extends LuceneTestCase {
       stopwordsUpper.add(string.toUpperCase(Locale.ROOT));
     }
     setIgnoreCase.addAll(Arrays.asList(TEST_STOP_WORDS));
-    setIgnoreCase.add(Integer.valueOf(1));
+    setIgnoreCase.add(1);
     setCaseSensitive.addAll(Arrays.asList(TEST_STOP_WORDS));
-    setCaseSensitive.add(Integer.valueOf(1));
+    setCaseSensitive.add(1);
 
     CharArraySet copy = CharArraySet.copy(setIgnoreCase);
     CharArraySet copyCaseSens = CharArraySet.copy(setCaseSensitive);
@@ -274,7 +262,7 @@ public class TestCharArraySet extends LuceneTestCase {
 
   /** Test the static #copy() function with a CharArraySet as a source */
   public void testCopyCharArraySet() {
-    CharArraySet setIngoreCase = new CharArraySet(10, true);
+    CharArraySet setIgnoreCase = new CharArraySet(10, true);
     CharArraySet setCaseSensitive = new CharArraySet(10, false);
 
     List<String> stopwords = Arrays.asList(TEST_STOP_WORDS);
@@ -282,15 +270,15 @@ public class TestCharArraySet extends LuceneTestCase {
     for (String string : stopwords) {
       stopwordsUpper.add(string.toUpperCase(Locale.ROOT));
     }
-    setIngoreCase.addAll(Arrays.asList(TEST_STOP_WORDS));
-    setIngoreCase.add(Integer.valueOf(1));
+    setIgnoreCase.addAll(Arrays.asList(TEST_STOP_WORDS));
+    setIgnoreCase.add(1);
     setCaseSensitive.addAll(Arrays.asList(TEST_STOP_WORDS));
-    setCaseSensitive.add(Integer.valueOf(1));
+    setCaseSensitive.add(1);
 
-    CharArraySet copy = CharArraySet.copy(setIngoreCase);
+    CharArraySet copy = CharArraySet.copy(setIgnoreCase);
     CharArraySet copyCaseSens = CharArraySet.copy(setCaseSensitive);
 
-    assertEquals(setIngoreCase.size(), copy.size());
+    assertEquals(setIgnoreCase.size(), copy.size());
     assertEquals(setCaseSensitive.size(), copy.size());
 
     assertTrue(copy.containsAll(stopwords));
@@ -311,21 +299,19 @@ public class TestCharArraySet extends LuceneTestCase {
     assertTrue(copy.containsAll(newWords));
     // new added terms are not in the source set
     for (String string : newWords) {
-      assertFalse(setIngoreCase.contains(string));
+      assertFalse(setIgnoreCase.contains(string));
       assertFalse(setCaseSensitive.contains(string));
     }
   }
 
   /** Test the static #copy() function with a JDK {@link Set} as a source */
   public void testCopyJDKSet() {
-    Set<String> set = new HashSet<>();
-
     List<String> stopwords = Arrays.asList(TEST_STOP_WORDS);
     List<String> stopwordsUpper = new ArrayList<>();
     for (String string : stopwords) {
       stopwordsUpper.add(string.toUpperCase(Locale.ROOT));
     }
-    set.addAll(Arrays.asList(TEST_STOP_WORDS));
+    Set<String> set = new HashSet<>(Arrays.asList(TEST_STOP_WORDS));
 
     CharArraySet copy = CharArraySet.copy(set);
 
@@ -377,23 +363,11 @@ public class TestCharArraySet extends LuceneTestCase {
   public void testContainsWithNull() {
     CharArraySet set = new CharArraySet(1, true);
 
-    expectThrows(
-        NullPointerException.class,
-        () -> {
-          set.contains((char[]) null, 0, 10);
-        });
+    expectThrows(NullPointerException.class, () -> set.contains(null, 0, 10));
 
-    expectThrows(
-        NullPointerException.class,
-        () -> {
-          set.contains((CharSequence) null);
-        });
+    expectThrows(NullPointerException.class, () -> set.contains((CharSequence) null));
 
-    expectThrows(
-        NullPointerException.class,
-        () -> {
-          set.contains((Object) null);
-        });
+    expectThrows(NullPointerException.class, () -> set.contains((Object) null));
   }
 
   public void testToString() {

@@ -40,6 +40,10 @@ import org.apache.lucene.util.IOUtils;
  *       java.nio.file.FileAlreadyExistsException}.
  * </ul>
  *
+ * <p><b>NOTE:</b> If your application requires external synchronization, you should <b>not</b>
+ * synchronize on the <code>Directory</code> implementation instance as this may cause deadlock; use
+ * your own (non-Lucene) objects instead.
+ *
  * @see FSDirectory
  * @see ByteBuffersDirectory
  * @see FilterDirectory
@@ -148,8 +152,8 @@ public abstract class Directory implements Closeable {
    * @param name the name of an existing file.
    * @throws IOException in case of I/O error
    */
-  public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
-    return new BufferedChecksumIndexInput(openInput(name, context));
+  public ChecksumIndexInput openChecksumInput(String name) throws IOException {
+    return new BufferedChecksumIndexInput(openInput(name, IOContext.READONCE));
   }
 
   /**
@@ -168,12 +172,12 @@ public abstract class Directory implements Closeable {
 
   /**
    * Copies an existing {@code src} file from directory {@code from} to a non-existent file {@code
-   * dest} in this directory.
+   * dest} in this directory. The given IOContext is only used for opening the destination file.
    */
   public void copyFrom(Directory from, String src, String dest, IOContext context)
       throws IOException {
     boolean success = false;
-    try (IndexInput is = from.openInput(src, context);
+    try (IndexInput is = from.openInput(src, IOContext.READONCE);
         IndexOutput os = createOutput(dest, context)) {
       os.copyBytes(is, is.length());
       success = true;

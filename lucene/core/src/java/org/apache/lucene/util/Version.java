@@ -16,8 +16,11 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.text.ParseException;
 import java.util.Locale;
+import java.util.jar.Manifest;
 
 /**
  * Use by certain classes to match version compatibility across releases of Lucene.
@@ -29,151 +32,23 @@ import java.util.Locale;
 public final class Version {
 
   /**
-   * Match settings and bugs in Lucene's 8.0.0 release.
-   *
-   * @deprecated (9.0.0) Use latest
+   * @deprecated Use latest
    */
-  @Deprecated public static final Version LUCENE_8_0_0 = new Version(8, 0, 0);
+  @Deprecated public static final Version LUCENE_10_0_0 = new Version(10, 0, 0);
 
   /**
-   * Match settings and bugs in Lucene's 8.1.0 release.
+   * Match settings and bugs in Lucene's 10.1.0 release.
    *
    * @deprecated Use latest
    */
-  @Deprecated public static final Version LUCENE_8_1_0 = new Version(8, 1, 0);
+  @Deprecated public static final Version LUCENE_10_1_0 = new Version(10, 1, 0);
 
   /**
-   * Match settings and bugs in Lucene's 8.1.1 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_1_1 = new Version(8, 1, 1);
-
-  /**
-   * Match settings and bugs in Lucene's 8.2.0 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_2_0 = new Version(8, 2, 0);
-
-  /**
-   * Match settings and bugs in Lucene's 8.3.0 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_3_0 = new Version(8, 3, 0);
-
-  /**
-   * Match settings and bugs in Lucene's 8.3.1 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_3_1 = new Version(8, 3, 1);
-
-  /**
-   * Match settings and bugs in Lucene's 8.4.0 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_4_0 = new Version(8, 4, 0);
-
-  /**
-   * Match settings and bugs in Lucene's 8.4.1 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_4_1 = new Version(8, 4, 1);
-
-  /**
-   * Match settings and bugs in Lucene's 8.5.0 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_5_0 = new Version(8, 5, 0);
-
-  /**
-   * Match settings and bugs in Lucene's 8.5.1 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_5_1 = new Version(8, 5, 1);
-
-  /**
-   * Match settings and bugs in Lucene's 8.5.2 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_5_2 = new Version(8, 5, 2);
-
-  /**
-   * Match settings and bugs in Lucene's 8.6.0 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_6_0 = new Version(8, 6, 0);
-
-  /**
-   * Match settings and bugs in Lucene's 8.6.1 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_6_1 = new Version(8, 6, 1);
-
-  /**
-   * Match settings and bugs in Lucene's 8.6.2 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_6_2 = new Version(8, 6, 2);
-
-  /**
-   * Match settings and bugs in Lucene's 8.6.3 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_6_3 = new Version(8, 6, 3);
-
-  /**
-   * Match settings and bugs in Lucene's 8.7.0 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_7_0 = new Version(8, 7, 0);
-
-  /**
-   * Match settings and bugs in Lucene's 8.8.0 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_8_0 = new Version(8, 8, 0);
-
-  /**
-   * Match settings and bugs in Lucene's 8.8.1 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_8_1 = new Version(8, 8, 1);
-
-  /**
-   * Match settings and bugs in Lucene's 8.8.2 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_8_2 = new Version(8, 8, 2);
-
-  /**
-   * Match settings and bugs in Lucene's 8.9.0 release.
-   *
-   * @deprecated Use latest
-   */
-  @Deprecated public static final Version LUCENE_8_9_0 = new Version(8, 9, 0);
-
-  /**
-   * Match settings and bugs in Lucene's 9.0.0 release.
+   * Match settings and bugs in Lucene's 11.0.0 release.
    *
    * <p>Use this to get the latest &amp; greatest settings, bug fixes, etc, for Lucene.
    */
-  public static final Version LUCENE_9_0_0 = new Version(9, 0, 0);
+  public static final Version LUCENE_11_0_0 = new Version(11, 0, 0);
 
   // To add a new version:
   //  * Only add above this comment
@@ -189,7 +64,7 @@ public final class Version {
    * <b>re-test your entire application</b> to ensure it behaves as expected, as some defaults may
    * have changed and may break functionality in your application.
    */
-  public static final Version LATEST = LUCENE_9_0_0;
+  public static final Version LATEST = LUCENE_11_0_0;
 
   /**
    * Constant for backwards compatibility.
@@ -203,6 +78,11 @@ public final class Version {
    * version that initially created the index.
    */
   public static final int MIN_SUPPORTED_MAJOR = Version.LATEST.major - 1;
+
+  /**
+   * @see #getPackageImplementationVersion()
+   */
+  private static String implementationVersion;
 
   /**
    * Parse a version number of the form {@code "major.minor.bugfix.prerelease"}.
@@ -357,10 +237,13 @@ public final class Version {
 
   /** Major version, the difference between stable and trunk */
   public final int major;
+
   /** Minor version, incremented within the stable branch */
   public final int minor;
+
   /** Bugfix number, incremented on release branches */
   public final int bugfix;
+
   /** Prerelease version, currently 0 (alpha), 1 (beta), or 2 (final) */
   public final int prerelease;
 
@@ -438,5 +321,47 @@ public final class Version {
   @Override
   public int hashCode() {
     return encodedValue;
+  }
+
+  /**
+   * Return Lucene's full implementation version. This version is saved in Lucene's metadata at
+   * build time (JAR manifest, module info). If it is not available, an {@code unknown}
+   * implementation version is returned.
+   *
+   * @return Lucene implementation version string, never {@code null}.
+   */
+  public static String getPackageImplementationVersion() {
+    // Initialize the lazy value.
+    synchronized (Version.class) {
+      if (implementationVersion == null) {
+        String version;
+
+        Package p = Version.class.getPackage();
+        version = p.getImplementationVersion();
+
+        if (version == null) {
+          var module = Version.class.getModule();
+          if (module.isNamed()) {
+            // Running as a module? Try parsing the manifest manually.
+            try (var is = module.getResourceAsStream("/META-INF/MANIFEST.MF")) {
+              if (is != null) {
+                Manifest m = new Manifest(is);
+                version = m.getMainAttributes().getValue("Implementation-Version");
+              }
+            } catch (IOException e) {
+              throw new UncheckedIOException(e);
+            }
+          }
+        }
+
+        if (version == null) {
+          version = "unknown";
+        }
+
+        implementationVersion = version;
+      }
+
+      return implementationVersion;
+    }
   }
 }

@@ -75,13 +75,15 @@ import org.apache.lucene.search.similarities.Normalization.NoNormalization;
 public class DFRSimilarity extends SimilarityBase {
   /** The basic model for information content. */
   protected final BasicModel basicModel;
+
   /** The first normalization of the information content. */
   protected final AfterEffect afterEffect;
+
   /** The term frequency normalization. */
   protected final Normalization normalization;
 
   /**
-   * Creates DFRSimilarity from the three components.
+   * Creates DFRSimilarity from the three components and using default discountOverlaps value.
    *
    * <p>Note that <code>null</code> values are not allowed: if you want no normalization, instead
    * pass {@link NoNormalization}.
@@ -92,6 +94,27 @@ public class DFRSimilarity extends SimilarityBase {
    */
   public DFRSimilarity(
       BasicModel basicModel, AfterEffect afterEffect, Normalization normalization) {
+    this(basicModel, afterEffect, normalization, true);
+  }
+
+  /**
+   * Creates DFRSimilarity from the three components and with the specified discountOverlaps value.
+   *
+   * <p>Note that <code>null</code> values are not allowed: if you want no normalization, instead
+   * pass {@link NoNormalization}.
+   *
+   * @param basicModel Basic model of information content
+   * @param afterEffect First normalization of information gain
+   * @param normalization Second (length) normalization
+   * @param discountOverlaps True if overlap tokens (tokens with a position of increment of zero)
+   *     are discounted from the document's length.
+   */
+  public DFRSimilarity(
+      BasicModel basicModel,
+      AfterEffect afterEffect,
+      Normalization normalization,
+      boolean discountOverlaps) {
+    super(discountOverlaps);
     if (basicModel == null || afterEffect == null || normalization == null) {
       throw new NullPointerException("null parameters not allowed.");
     }

@@ -18,8 +18,8 @@ package org.apache.lucene.misc.store;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import org.apache.lucene.store.BaseDirectoryTestCase;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 
 /** Tests RAFDirectory */
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows

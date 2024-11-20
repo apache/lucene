@@ -26,9 +26,9 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.FlagsAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Basic Tests for {@link WikipediaTokenizer} */
 public class TestWikipediaTokenizer extends BaseTokenStreamTestCase {

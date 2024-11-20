@@ -18,7 +18,7 @@ package org.apache.lucene.misc;
 
 import org.apache.lucene.index.LogDocMergePolicy;
 import org.apache.lucene.misc.IndexMergeTool.Options;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.PrintStreamInfoStream;
 
 public class TestIndexMergeTool extends LuceneTestCase {

@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.pl;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestPolishAnalyzer extends BaseTokenStreamTestCase {
   /** This test fails with NPE when the stopwords file is missing in classpath */
@@ -41,7 +41,6 @@ public class TestPolishAnalyzer extends BaseTokenStreamTestCase {
   /** test use of exclusion set */
   public void testExclude() throws IOException {
     CharArraySet exclusionSet = new CharArraySet(asSet("studenta"), false);
-    ;
     Analyzer a = new PolishAnalyzer(PolishAnalyzer.getDefaultStopSet(), exclusionSet);
     checkOneTerm(a, "studenta", "studenta");
     checkOneTerm(a, "studenci", "student");

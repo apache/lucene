@@ -16,8 +16,10 @@
  */
 package org.apache.lucene.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -31,38 +33,64 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.automaton.Automata;
+import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -76,9 +104,10 @@ import org.apache.lucene.util.Version;
  */
 public final class CheckIndex implements Closeable {
 
+  private final Directory dir;
+  private final Lock writeLock;
+  private final NumberFormat nf = NumberFormat.getInstance(Locale.ROOT);
   private PrintStream infoStream;
-  private Directory dir;
-  private Lock writeLock;
   private volatile boolean closed;
 
   /**
@@ -120,7 +149,7 @@ public final class CheckIndex implements Closeable {
 
     /**
      * SegmentInfos instance containing only segments that had no problems (this is used with the
-     * {@link CheckIndex#exorciseIndex} method to repair the index.
+     * {@link CheckIndex#exorciseIndex} method to repair the index).
      */
     SegmentInfos newSegments;
 
@@ -131,8 +160,8 @@ public final class CheckIndex implements Closeable {
     public int numBadSegments;
 
     /**
-     * True if we checked only specific segments ({@link #checkIndex(List)}) was called with
-     * non-null argument).
+     * True if we checked only specific segments ({@link #checkIndex(List)} was called with non-null
+     * argument).
      */
     public boolean partial;
 
@@ -181,6 +210,9 @@ public final class CheckIndex implements Closeable {
       /** True if we were able to open a CodecReader on this segment. */
       public boolean openReaderPassed;
 
+      /** doc count in this segment */
+      public int toLoseDocCount;
+
       /**
        * Map that includes certain debugging details that IndexWriter records into each segment it
        * creates
@@ -216,6 +248,12 @@ public final class CheckIndex implements Closeable {
 
       /** Status of vectors */
       public VectorValuesStatus vectorValuesStatus;
+
+      /** Status of soft deletes */
+      public SoftDeletesStatus softDeletesStatus;
+
+      /** Exception thrown during segment test (null on success) */
+      public Throwable error;
     }
 
     /** Status from testing livedocs */
@@ -226,7 +264,7 @@ public final class CheckIndex implements Closeable {
       public int numDeleted;
 
       /** Exception thrown during term index test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
     }
 
     /** Status from testing field infos. */
@@ -237,7 +275,7 @@ public final class CheckIndex implements Closeable {
       public long totFields = 0L;
 
       /** Exception thrown during term index test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
     }
 
     /** Status from testing field norms. */
@@ -248,7 +286,7 @@ public final class CheckIndex implements Closeable {
       public long totFields = 0L;
 
       /** Exception thrown during term index test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
     }
 
     /** Status from testing term index. */
@@ -259,7 +297,7 @@ public final class CheckIndex implements Closeable {
       /** Number of terms with at least one live doc. */
       public long termCount = 0L;
 
-      /** Number of terms with zero live docs docs. */
+      /** Number of terms with zero live docs. */
       public long delTermCount = 0L;
 
       /** Total frequency across all terms. */
@@ -269,11 +307,11 @@ public final class CheckIndex implements Closeable {
       public long totPos = 0L;
 
       /** Exception thrown during term index test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
 
       /**
        * Holds details of block allocations in the block tree terms dictionary (this is only set if
-       * the {@link PostingsFormat} for this segment uses block tree.
+       * the {@link PostingsFormat} for this segment uses block tree).
        */
       public Map<String, Object> blockTreeStats = null;
     }
@@ -290,7 +328,7 @@ public final class CheckIndex implements Closeable {
       public long totFields = 0;
 
       /** Exception thrown during stored fields test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
     }
 
     /** Status from testing stored fields. */
@@ -305,7 +343,7 @@ public final class CheckIndex implements Closeable {
       public long totVectors = 0;
 
       /** Exception thrown during term vector test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
     }
 
     /** Status from testing DocValues */
@@ -331,8 +369,11 @@ public final class CheckIndex implements Closeable {
       /** Total number of sortedset fields */
       public long totalSortedSetFields;
 
+      /** Total number of skipping index tested. */
+      public long totalSkippingIndex;
+
       /** Exception thrown during doc values test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
     }
 
     /** Status from testing PointValues */
@@ -347,10 +388,10 @@ public final class CheckIndex implements Closeable {
       public int totalValueFields;
 
       /** Exception thrown during point values test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
     }
 
-    /** Status from testing VectorValues */
+    /** Status from testing vector values */
     public static final class VectorValuesStatus {
 
       VectorValuesStatus() {}
@@ -362,7 +403,7 @@ public final class CheckIndex implements Closeable {
       public int totalKnnVectorFields;
 
       /** Exception thrown during vector values test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
     }
 
     /** Status from testing index sort */
@@ -370,7 +411,15 @@ public final class CheckIndex implements Closeable {
       IndexSortStatus() {}
 
       /** Exception thrown during term index test (null on success) */
-      public Throwable error = null;
+      public Throwable error;
+    }
+
+    /** Status from testing soft deletes */
+    public static final class SoftDeletesStatus {
+      SoftDeletesStatus() {}
+
+      /** Exception thrown during soft deletes test (null on success) */
+      public Throwable error;
     }
   }
 
@@ -403,19 +452,20 @@ public final class CheckIndex implements Closeable {
     IOUtils.close(writeLock);
   }
 
-  private boolean doSlowChecks;
+  private int level;
 
   /**
-   * If true, additional slow checks are performed. This will likely drastically increase time it
-   * takes to run CheckIndex!
+   * Sets Level, the higher the value, the more additional checks are performed. This will likely
+   * drastically increase time it takes to run CheckIndex! See {@link Level}
    */
-  public void setDoSlowChecks(boolean v) {
-    doSlowChecks = v;
+  public void setLevel(int v) {
+    Level.checkIfLevelInBounds(v);
+    level = v;
   }
 
-  /** See {@link #setDoSlowChecks}. */
-  public boolean doSlowChecks() {
-    return doSlowChecks;
+  /** See {@link #setLevel}. */
+  public int getLevel() {
+    return level;
   }
 
   private boolean failFast;
@@ -435,20 +485,16 @@ public final class CheckIndex implements Closeable {
 
   private boolean verbose;
 
-  /** See {@link #getChecksumsOnly}. */
-  public boolean getChecksumsOnly() {
-    return checksumsOnly;
+  /** Set threadCount used for parallelizing index integrity checking. */
+  public void setThreadCount(int tc) {
+    if (tc <= 0) {
+      throw new IllegalArgumentException(
+          "setThreadCount requires a number larger than 0, but got: " + tc);
+    }
+    threadCount = tc;
   }
 
-  /**
-   * If true, only validate physical integrity for all files. Note that the returned nested status
-   * objects (e.g. storedFieldStatus) will be null.
-   */
-  public void setChecksumsOnly(boolean v) {
-    checksumsOnly = v;
-  }
-
-  private boolean checksumsOnly;
+  private int threadCount = Runtime.getRuntime().availableProcessors();
 
   /**
    * Set infoStream where messages should go. If null, no messages are printed. If verbose is true
@@ -464,8 +510,16 @@ public final class CheckIndex implements Closeable {
     setInfoStream(out, false);
   }
 
+  private static void msg(PrintStream out, ByteArrayOutputStream msg) {
+    if (out != null) {
+      out.println(msg.toString(UTF_8));
+    }
+  }
+
   private static void msg(PrintStream out, String msg) {
-    if (out != null) out.println(msg);
+    if (out != null) {
+      out.println(msg);
+    }
   }
 
   /**
@@ -488,10 +542,47 @@ public final class CheckIndex implements Closeable {
    *     quite a long time to run.
    */
   public Status checkIndex(List<String> onlySegments) throws IOException {
+    ExecutorService executorService = null;
+
+    // if threadCount == 1, then no executor is created and use the main thread to do index checking
+    // sequentially
+    if (threadCount > 1) {
+      executorService =
+          Executors.newFixedThreadPool(threadCount, new NamedThreadFactory("async-check-index"));
+    }
+
+    msg(infoStream, "Checking index with threadCount: " + threadCount);
+    try {
+      return checkIndex(onlySegments, executorService);
+    } finally {
+      if (executorService != null) {
+        executorService.shutdown();
+        try {
+          executorService.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+          msg(
+              infoStream,
+              "ERROR: Interrupted exception occurred when shutting down executor service");
+          if (infoStream != null) e.printStackTrace(infoStream);
+        } finally {
+          executorService.shutdownNow();
+        }
+      }
+    }
+  }
+
+  /**
+   * Returns a {@link Status} instance detailing the state of the index.
+   *
+   * <p>This method allows caller to pass in customized ExecutorService to speed up the check.
+   *
+   * <p><b>WARNING</b>: make sure you only call this when the index is not opened by any writer.
+   */
+  public Status checkIndex(List<String> onlySegments, ExecutorService executorService)
+      throws IOException {
     ensureOpen();
     long startNS = System.nanoTime();
-    NumberFormat nf = NumberFormat.getInstance(Locale.ROOT);
-    SegmentInfos sis = null;
+
     Status result = new Status();
     result.dir = dir;
     String[] files = dir.listAll();
@@ -500,43 +591,112 @@ public final class CheckIndex implements Closeable {
       throw new IndexNotFoundException(
           "no segments* file found in " + dir + ": files: " + Arrays.toString(files));
     }
-    try {
-      // Do not use SegmentInfos.read(Directory) since the spooky
-      // retrying it does is not necessary here (we hold the write lock):
-      sis =
-          SegmentInfos.readCommit(
-              dir, lastSegmentsFile, 0 /* always open old indices if codecs are around */);
-    } catch (Throwable t) {
-      if (failFast) {
-        throw IOUtils.rethrowAlways(t);
+
+    // https://github.com/apache/lucene/issues/7820: also attempt to open any older commit
+    // points (segments_N), which will catch certain corruption like missing _N.si files
+    // for segments not also referenced by the newest commit point (which was already
+    // loaded, successfully, above).  Note that we do not do a deeper check of segments
+    // referenced ONLY by these older commit points, because such corruption would not
+    // prevent a new IndexWriter from opening on the newest commit point.  but it is still
+    // corruption, e.g. a reader opened on those old commit points can hit corruption
+    // exceptions which we (still) will not detect here.  progress not perfection!
+
+    SegmentInfos lastCommit = null;
+
+    List<String> allSegmentsFiles = new ArrayList<>();
+    for (String fileName : files) {
+      if (fileName.startsWith(IndexFileNames.SEGMENTS)
+          && fileName.equals(SegmentInfos.OLD_SEGMENTS_GEN) == false) {
+        allSegmentsFiles.add(fileName);
       }
+    }
+
+    // Sort descending by generation so that we always attempt to read the last commit first.  This
+    // way if an index has a broken last commit AND a broken old commit, we report the last commit
+    // error first:
+    allSegmentsFiles.sort(
+        (a, b) -> {
+          long genA = SegmentInfos.generationFromSegmentsFileName(a);
+          long genB = SegmentInfos.generationFromSegmentsFileName(b);
+
+          // reversed natural sort (largest generation first):
+          return -Long.compare(genA, genB);
+        });
+
+    for (String fileName : allSegmentsFiles) {
+
+      boolean isLastCommit = fileName.equals(lastSegmentsFile);
+
+      SegmentInfos infos;
+
+      try {
+        // Do not use SegmentInfos.read(Directory) since the spooky
+        // retrying it does is not necessary here (we hold the write lock):
+        // always open old indices if codecs are around
+        infos = SegmentInfos.readCommit(dir, fileName, 0);
+      } catch (Throwable t) {
+        if (failFast) {
+          throw IOUtils.rethrowAlways(t);
+        }
+
+        String message;
+
+        if (isLastCommit) {
+          message =
+              "ERROR: could not read latest commit point from segments file \""
+                  + fileName
+                  + "\" in directory";
+        } else {
+          message =
+              "ERROR: could not read old (not latest) commit point segments file \""
+                  + fileName
+                  + "\" in directory";
+        }
+        msg(infoStream, message);
+        result.missingSegments = true;
+        if (infoStream != null) {
+          t.printStackTrace(infoStream);
+        }
+        return result;
+      }
+
+      if (isLastCommit) {
+        // record the latest commit point: we will deeply check all segments referenced by it
+        lastCommit = infos;
+      }
+    }
+
+    // we know there is a lastSegmentsFileName, so we must've attempted to load it in the above for
+    // loop.  if it failed to load, we threw the exception (fastFail == true) or we returned the
+    // failure (fastFail == false).  so if we get here, we should // always have a valid lastCommit:
+    assert lastCommit != null;
+
+    if (lastCommit == null) {
       msg(infoStream, "ERROR: could not read any segments file in directory");
       result.missingSegments = true;
-      if (infoStream != null) t.printStackTrace(infoStream);
       return result;
     }
 
     if (infoStream != null) {
       int maxDoc = 0;
       int delCount = 0;
-      for (SegmentCommitInfo info : sis) {
+      for (SegmentCommitInfo info : lastCommit) {
         maxDoc += info.info.maxDoc();
         delCount += info.getDelCount();
       }
-      infoStream.println(
-          String.format(
-              Locale.ROOT,
-              "%.2f%% total deletions; %d documents; %d deleteions",
-              100. * delCount / maxDoc,
-              maxDoc,
-              delCount));
+      infoStream.printf(
+          Locale.ROOT,
+          "%.2f%% total deletions; %d documents; %d deletions%n",
+          100. * delCount / maxDoc,
+          maxDoc,
+          delCount);
     }
 
     // find the oldest and newest segment versions
     Version oldest = null;
     Version newest = null;
     String oldSegs = null;
-    for (SegmentCommitInfo si : sis) {
+    for (SegmentCommitInfo si : lastCommit) {
       Version version = si.info.getVersion();
       if (version == null) {
         // pre-3.1 segment
@@ -551,14 +711,14 @@ public final class CheckIndex implements Closeable {
       }
     }
 
-    final int numSegments = sis.size();
-    final String segmentsFileName = sis.getSegmentsFileName();
+    final int numSegments = lastCommit.size();
+    final String segmentsFileName = lastCommit.getSegmentsFileName();
     result.segmentsFileName = segmentsFileName;
     result.numSegments = numSegments;
-    result.userData = sis.getUserData();
+    result.userData = lastCommit.getUserData();
     String userDataString;
-    if (sis.getUserData().size() > 0) {
-      userDataString = " userData=" + sis.getUserData();
+    if (lastCommit.getUserData().size() > 0) {
+      userDataString = " userData=" + lastCommit.getUserData();
     } else {
       userDataString = "";
     }
@@ -586,7 +746,7 @@ public final class CheckIndex implements Closeable {
             + " "
             + versionString
             + " id="
-            + StringHelper.idToString(sis.getId())
+            + StringHelper.idToString(lastCommit.getId())
             + userDataString);
 
     if (onlySegments != null) {
@@ -601,218 +761,123 @@ public final class CheckIndex implements Closeable {
       msg(infoStream, ":");
     }
 
-    result.newSegments = sis.clone();
+    result.newSegments = lastCommit.clone();
     result.newSegments.clear();
     result.maxSegmentName = -1;
 
-    for (int i = 0; i < numSegments; i++) {
-      final SegmentCommitInfo info = sis.info(i);
-      long segmentName = Long.parseLong(info.info.name.substring(1), Character.MAX_RADIX);
-      if (segmentName > result.maxSegmentName) {
-        result.maxSegmentName = segmentName;
-      }
-      if (onlySegments != null && !onlySegments.contains(info.info.name)) {
-        continue;
-      }
-      Status.SegmentInfoStatus segInfoStat = new Status.SegmentInfoStatus();
-      result.segmentInfos.add(segInfoStat);
-      msg(
-          infoStream,
-          "  "
-              + (1 + i)
-              + " of "
-              + numSegments
-              + ": name="
-              + info.info.name
-              + " maxDoc="
-              + info.info.maxDoc());
-      segInfoStat.name = info.info.name;
-      segInfoStat.maxDoc = info.info.maxDoc();
-
-      final Version version = info.info.getVersion();
-      if (info.info.maxDoc() <= 0) {
-        throw new RuntimeException("illegal number of documents: maxDoc=" + info.info.maxDoc());
-      }
-
-      int toLoseDocCount = info.info.maxDoc();
-
-      SegmentReader reader = null;
-
-      try {
-        msg(infoStream, "    version=" + (version == null ? "3.0" : version));
-        msg(infoStream, "    id=" + StringHelper.idToString(info.info.getId()));
-        final Codec codec = info.info.getCodec();
-        msg(infoStream, "    codec=" + codec);
-        segInfoStat.codec = codec;
-        msg(infoStream, "    compound=" + info.info.getUseCompoundFile());
-        segInfoStat.compound = info.info.getUseCompoundFile();
-        msg(infoStream, "    numFiles=" + info.files().size());
-        Sort indexSort = info.info.getIndexSort();
-        if (indexSort != null) {
-          msg(infoStream, "    sort=" + indexSort);
-        }
-        segInfoStat.numFiles = info.files().size();
-        segInfoStat.sizeMB = info.sizeInBytes() / (1024. * 1024.);
-        msg(infoStream, "    size (MB)=" + nf.format(segInfoStat.sizeMB));
-        Map<String, String> diagnostics = info.info.getDiagnostics();
-        segInfoStat.diagnostics = diagnostics;
-        if (diagnostics.size() > 0) {
-          msg(infoStream, "    diagnostics = " + diagnostics);
+    // checks segments sequentially
+    if (executorService == null) {
+      for (int i = 0; i < numSegments; i++) {
+        final SegmentCommitInfo info = lastCommit.info(i);
+        updateMaxSegmentName(result, info);
+        if (onlySegments != null && !onlySegments.contains(info.info.name)) {
+          continue;
         }
 
-        if (!info.hasDeletions()) {
-          msg(infoStream, "    no deletions");
-          segInfoStat.hasDeletions = false;
-        } else {
-          msg(infoStream, "    has deletions [delGen=" + info.getDelGen() + "]");
-          segInfoStat.hasDeletions = true;
-          segInfoStat.deletionsGen = info.getDelGen();
-        }
-
-        long startOpenReaderNS = System.nanoTime();
-        if (infoStream != null) infoStream.print("    test: open reader.........");
-        reader = new SegmentReader(info, sis.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
         msg(
             infoStream,
-            String.format(
-                Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startOpenReaderNS)));
+            (1 + i)
+                + " of "
+                + numSegments
+                + ": name="
+                + info.info.name
+                + " maxDoc="
+                + info.info.maxDoc());
+        Status.SegmentInfoStatus segmentInfoStatus = testSegment(lastCommit, info, infoStream);
 
-        segInfoStat.openReaderPassed = true;
+        processSegmentInfoStatusResult(result, info, segmentInfoStatus);
+      }
+    } else {
+      ByteArrayOutputStream[] outputs = new ByteArrayOutputStream[numSegments];
+      @SuppressWarnings({"unchecked", "rawtypes"})
+      CompletableFuture<Status.SegmentInfoStatus>[] futures = new CompletableFuture[numSegments];
 
-        long startIntegrityNS = System.nanoTime();
-        if (infoStream != null) infoStream.print("    test: check integrity.....");
-        reader.checkIntegrity();
-        msg(
-            infoStream,
-            String.format(
-                Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startIntegrityNS)));
-
-        if (reader.maxDoc() != info.info.maxDoc()) {
-          throw new RuntimeException(
-              "SegmentReader.maxDoc() "
-                  + reader.maxDoc()
-                  + " != SegmentInfo.maxDoc "
-                  + info.info.maxDoc());
-        }
-
-        final int numDocs = reader.numDocs();
-        toLoseDocCount = numDocs;
-
-        if (reader.hasDeletions()) {
-          if (reader.numDocs() != info.info.maxDoc() - info.getDelCount()) {
-            throw new RuntimeException(
-                "delete count mismatch: info="
-                    + (info.info.maxDoc() - info.getDelCount())
-                    + " vs reader="
-                    + reader.numDocs());
-          }
-          if ((info.info.maxDoc() - reader.numDocs()) > reader.maxDoc()) {
-            throw new RuntimeException(
-                "too many deleted docs: maxDoc()="
-                    + reader.maxDoc()
-                    + " vs del count="
-                    + (info.info.maxDoc() - reader.numDocs()));
-          }
-          if (info.info.maxDoc() - reader.numDocs() != info.getDelCount()) {
-            throw new RuntimeException(
-                "delete count mismatch: info="
-                    + info.getDelCount()
-                    + " vs reader="
-                    + (info.info.maxDoc() - reader.numDocs()));
-          }
-        } else {
-          if (info.getDelCount() != 0) {
-            throw new RuntimeException(
-                "delete count mismatch: info="
-                    + info.getDelCount()
-                    + " vs reader="
-                    + (info.info.maxDoc() - reader.numDocs()));
-          }
-        }
-
-        if (checksumsOnly == false) {
-          // Test Livedocs
-          segInfoStat.liveDocStatus = testLiveDocs(reader, infoStream, failFast);
-
-          // Test Fieldinfos
-          segInfoStat.fieldInfoStatus = testFieldInfos(reader, infoStream, failFast);
-
-          // Test Field Norms
-          segInfoStat.fieldNormStatus = testFieldNorms(reader, infoStream, failFast);
-
-          // Test the Term Index
-          segInfoStat.termIndexStatus =
-              testPostings(reader, infoStream, verbose, doSlowChecks, failFast);
-
-          // Test Stored Fields
-          segInfoStat.storedFieldStatus = testStoredFields(reader, infoStream, failFast);
-
-          // Test Term Vectors
-          segInfoStat.termVectorStatus =
-              testTermVectors(reader, infoStream, verbose, doSlowChecks, failFast);
-
-          // Test Docvalues
-          segInfoStat.docValuesStatus = testDocValues(reader, infoStream, failFast);
-
-          // Test PointValues
-          segInfoStat.pointsStatus = testPoints(reader, infoStream, failFast);
-
-          // Test VectorValues
-          segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
-
-          // Test index sort
-          segInfoStat.indexSortStatus = testSort(reader, indexSort, infoStream, failFast);
-
-          // Rethrow the first exception we encountered
-          //  This will cause stats for failed segments to be incremented properly
-          if (segInfoStat.liveDocStatus.error != null) {
-            throw new RuntimeException("Live docs test failed");
-          } else if (segInfoStat.fieldInfoStatus.error != null) {
-            throw new RuntimeException("Field Info test failed");
-          } else if (segInfoStat.fieldNormStatus.error != null) {
-            throw new RuntimeException("Field Norm test failed");
-          } else if (segInfoStat.termIndexStatus.error != null) {
-            throw new RuntimeException("Term Index test failed");
-          } else if (segInfoStat.storedFieldStatus.error != null) {
-            throw new RuntimeException("Stored Field test failed");
-          } else if (segInfoStat.termVectorStatus.error != null) {
-            throw new RuntimeException("Term Vector test failed");
-          } else if (segInfoStat.docValuesStatus.error != null) {
-            throw new RuntimeException("DocValues test failed");
-          } else if (segInfoStat.pointsStatus.error != null) {
-            throw new RuntimeException("Points test failed");
-          }
-        }
-        final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
-        if (softDeletesField != null) {
-          checkSoftDeletes(softDeletesField, info, reader, infoStream, failFast);
-        }
-        msg(infoStream, "");
-
-      } catch (Throwable t) {
-        if (failFast) {
-          throw IOUtils.rethrowAlways(t);
-        }
-        msg(infoStream, "FAILED");
-        String comment;
-        comment = "exorciseIndex() would remove reference to this segment";
-        msg(infoStream, "    WARNING: " + comment + "; full exception:");
-        if (infoStream != null) t.printStackTrace(infoStream);
-        msg(infoStream, "");
-        result.totLoseDocCount += toLoseDocCount;
-        result.numBadSegments++;
-        continue;
-      } finally {
-        if (reader != null) reader.close();
+      // checks segments concurrently
+      List<SegmentCommitInfo> segmentCommitInfos = new ArrayList<>();
+      for (SegmentCommitInfo sci : lastCommit) {
+        segmentCommitInfos.add(sci);
       }
 
-      // Keeper
-      result.newSegments.add(info.clone());
+      // sort segmentCommitInfos by segment size, as smaller segment tends to finish faster, and
+      // hence its output can be printed out faster
+      segmentCommitInfos.sort(
+          (info1, info2) -> {
+            try {
+              return Long.compare(info1.sizeInBytes(), info2.sizeInBytes());
+            } catch (IOException e) {
+              msg(
+                  infoStream,
+                  "ERROR: IOException occurred when comparing SegmentCommitInfo file sizes");
+              if (infoStream != null) e.printStackTrace(infoStream);
+              return 0;
+            }
+          });
+
+      // start larger segments earlier
+      for (int i = numSegments - 1; i >= 0; i--) {
+        final SegmentCommitInfo info = segmentCommitInfos.get(i);
+        updateMaxSegmentName(result, info);
+        if (onlySegments != null && !onlySegments.contains(info.info.name)) {
+          continue;
+        }
+
+        SegmentInfos finalSis = lastCommit;
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream stream = new PrintStream(output, true, UTF_8);
+        msg(
+            stream,
+            (1 + i)
+                + " of "
+                + numSegments
+                + ": name="
+                + info.info.name
+                + " maxDoc="
+                + info.info.maxDoc());
+
+        outputs[i] = output;
+        futures[i] =
+            runAsyncSegmentCheck(() -> testSegment(finalSis, info, stream), executorService);
+      }
+
+      for (int i = 0; i < numSegments; i++) {
+        SegmentCommitInfo info = segmentCommitInfos.get(i);
+        if (onlySegments != null && !onlySegments.contains(info.info.name)) {
+          continue;
+        }
+
+        ByteArrayOutputStream output = outputs[i];
+
+        // print segment results in order
+        Status.SegmentInfoStatus segmentInfoStatus = null;
+        try {
+          segmentInfoStatus = futures[i].get();
+        } catch (InterruptedException e) {
+          // the segment test output should come before interrupted exception message that follows,
+          // hence it's not emitted from finally clause
+          msg(infoStream, output);
+          msg(
+              infoStream,
+              "ERROR: Interrupted exception occurred when getting segment check result for segment "
+                  + info.info.name);
+          if (infoStream != null) e.printStackTrace(infoStream);
+        } catch (ExecutionException e) {
+          msg(infoStream, output.toString(UTF_8));
+
+          assert failFast;
+          throw new CheckIndexException(
+              "Segment " + info.info.name + " check failed.", e.getCause());
+        }
+
+        msg(infoStream, output);
+
+        processSegmentInfoStatusResult(result, info, segmentInfoStatus);
+      }
     }
 
     if (0 == result.numBadSegments) {
       result.clean = true;
-    } else
+    } else {
       msg(
           infoStream,
           "WARNING: "
@@ -820,14 +885,16 @@ public final class CheckIndex implements Closeable {
               + " broken segments (containing "
               + result.totLoseDocCount
               + " documents) detected");
+    }
 
-    if (!(result.validCounter = (result.maxSegmentName < sis.counter))) {
+    result.validCounter = result.maxSegmentName < lastCommit.counter;
+    if (result.validCounter == false) {
       result.clean = false;
       result.newSegments.counter = result.maxSegmentName + 1;
       msg(
           infoStream,
           "ERROR: Next segment name counter "
-              + sis.counter
+              + lastCommit.counter
               + " is not greater than max segment name "
               + result.maxSegmentName);
     }
@@ -843,11 +910,254 @@ public final class CheckIndex implements Closeable {
     return result;
   }
 
-  /**
-   * Tests index sort order.
-   *
-   * @lucene.experimental
-   */
+  private void updateMaxSegmentName(Status result, SegmentCommitInfo info) {
+    long segmentName = Long.parseLong(info.info.name.substring(1), Character.MAX_RADIX);
+    if (segmentName > result.maxSegmentName) {
+      result.maxSegmentName = segmentName;
+    }
+  }
+
+  private void processSegmentInfoStatusResult(
+      Status result, SegmentCommitInfo info, Status.SegmentInfoStatus segmentInfoStatus) {
+    result.segmentInfos.add(segmentInfoStatus);
+    if (segmentInfoStatus.error != null) {
+      result.totLoseDocCount += segmentInfoStatus.toLoseDocCount;
+      result.numBadSegments++;
+    } else {
+      // Keeper
+      result.newSegments.add(info.clone());
+    }
+  }
+
+  private <R> CompletableFuture<R> runAsyncSegmentCheck(
+      Callable<R> asyncCallable, ExecutorService executorService) {
+    return CompletableFuture.supplyAsync(callableToSupplier(asyncCallable), executorService);
+  }
+
+  private <T> Supplier<T> callableToSupplier(Callable<T> callable) {
+    return () -> {
+      try {
+        return callable.call();
+      } catch (RuntimeException | Error e) {
+        throw e;
+      } catch (Throwable e) {
+        throw new CompletionException(e);
+      }
+    };
+  }
+
+  private Status.SegmentInfoStatus testSegment(
+      SegmentInfos sis, SegmentCommitInfo info, PrintStream infoStream) throws IOException {
+    Status.SegmentInfoStatus segInfoStat = new Status.SegmentInfoStatus();
+    segInfoStat.name = info.info.name;
+    segInfoStat.maxDoc = info.info.maxDoc();
+
+    final Version version = info.info.getVersion();
+    if (info.info.maxDoc() <= 0) {
+      throw new CheckIndexException(" illegal number of documents: maxDoc=" + info.info.maxDoc());
+    }
+
+    int toLoseDocCount = info.info.maxDoc();
+
+    SegmentReader reader = null;
+
+    try {
+      msg(infoStream, "    version=" + (version == null ? "3.0" : version));
+      msg(infoStream, "    id=" + StringHelper.idToString(info.info.getId()));
+      final Codec codec = info.info.getCodec();
+      msg(infoStream, "    codec=" + codec);
+      segInfoStat.codec = codec;
+      msg(infoStream, "    compound=" + info.info.getUseCompoundFile());
+      segInfoStat.compound = info.info.getUseCompoundFile();
+      msg(infoStream, "    numFiles=" + info.files().size());
+      Sort indexSort = info.info.getIndexSort();
+      if (indexSort != null) {
+        msg(infoStream, "    sort=" + indexSort);
+      }
+      segInfoStat.numFiles = info.files().size();
+      segInfoStat.sizeMB = info.sizeInBytes() / (1024. * 1024.);
+      // nf#format is not thread-safe, and would generate random non-valid results in concurrent
+      // setting
+      synchronized (nf) {
+        msg(infoStream, "    size (MB)=" + nf.format(segInfoStat.sizeMB));
+      }
+      Map<String, String> diagnostics = info.info.getDiagnostics();
+      segInfoStat.diagnostics = diagnostics;
+      if (diagnostics.size() > 0) {
+        msg(infoStream, "    diagnostics = " + diagnostics);
+      }
+
+      if (info.hasDeletions() == false) {
+        msg(infoStream, "    no deletions");
+        segInfoStat.hasDeletions = false;
+      } else {
+        msg(infoStream, "    has deletions [delGen=" + info.getDelGen() + "]");
+        segInfoStat.hasDeletions = true;
+        segInfoStat.deletionsGen = info.getDelGen();
+      }
+
+      long startOpenReaderNS = System.nanoTime();
+      if (infoStream != null) infoStream.print("    test: open reader.........");
+      reader = new SegmentReader(info, sis.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
+      msg(
+          infoStream,
+          String.format(
+              Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startOpenReaderNS)));
+
+      segInfoStat.openReaderPassed = true;
+
+      long startIntegrityNS = System.nanoTime();
+      if (infoStream != null) infoStream.print("    test: check integrity.....");
+      reader.checkIntegrity();
+      msg(
+          infoStream,
+          String.format(
+              Locale.ROOT, "OK [took %.3f sec]", nsToSec(System.nanoTime() - startIntegrityNS)));
+
+      if (reader.maxDoc() != info.info.maxDoc()) {
+        throw new CheckIndexException(
+            "SegmentReader.maxDoc() "
+                + reader.maxDoc()
+                + " != SegmentInfo.maxDoc "
+                + info.info.maxDoc());
+      }
+
+      final int numDocs = reader.numDocs();
+      toLoseDocCount = numDocs;
+
+      if (reader.hasDeletions()) {
+        if (numDocs != info.info.maxDoc() - info.getDelCount()) {
+          throw new CheckIndexException(
+              "delete count mismatch: info="
+                  + (info.info.maxDoc() - info.getDelCount())
+                  + " vs reader="
+                  + numDocs);
+        }
+        if ((info.info.maxDoc() - numDocs) > reader.maxDoc()) {
+          throw new CheckIndexException(
+              "too many deleted docs: maxDoc()="
+                  + reader.maxDoc()
+                  + " vs del count="
+                  + (info.info.maxDoc() - numDocs));
+        }
+        if (info.info.maxDoc() - numDocs != info.getDelCount()) {
+          throw new CheckIndexException(
+              "delete count mismatch: info="
+                  + info.getDelCount()
+                  + " vs reader="
+                  + (info.info.maxDoc() - numDocs));
+        }
+      } else {
+        if (info.getDelCount() != 0) {
+          throw new CheckIndexException(
+              "delete count mismatch: info="
+                  + info.getDelCount()
+                  + " vs reader="
+                  + (info.info.maxDoc() - numDocs));
+        }
+      }
+      if (level >= Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS) {
+        // Test Livedocs
+        segInfoStat.liveDocStatus = testLiveDocs(reader, infoStream, failFast);
+
+        // Test Fieldinfos
+        segInfoStat.fieldInfoStatus = testFieldInfos(reader, infoStream, failFast);
+
+        // Test Field Norms
+        segInfoStat.fieldNormStatus = testFieldNorms(reader, infoStream, failFast);
+
+        // Test the Term Index
+        segInfoStat.termIndexStatus = testPostings(reader, infoStream, verbose, level, failFast);
+
+        // Test Stored Fields
+        segInfoStat.storedFieldStatus = testStoredFields(reader, infoStream, failFast);
+
+        // Test Term Vectors
+        segInfoStat.termVectorStatus =
+            testTermVectors(reader, infoStream, verbose, level, failFast);
+
+        // Test Docvalues
+        segInfoStat.docValuesStatus = testDocValues(reader, infoStream, failFast);
+
+        // Test PointValues
+        segInfoStat.pointsStatus = testPoints(reader, infoStream, failFast);
+
+        // Test FloatVectorValues and ByteVectorValues
+        segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
+
+        // Test Index Sort
+        if (indexSort != null) {
+          segInfoStat.indexSortStatus = testSort(reader, indexSort, infoStream, failFast);
+        }
+
+        // Test Soft Deletes
+        final String softDeletesField = reader.getFieldInfos().getSoftDeletesField();
+        if (softDeletesField != null) {
+          segInfoStat.softDeletesStatus =
+              checkSoftDeletes(softDeletesField, info, reader, infoStream, failFast);
+        }
+
+        // Rethrow the first exception we encountered
+        //  This will cause stats for failed segments to be incremented properly
+        // We won't be able to (easily) stop check running in another thread, so we may as well
+        // wait for all of them to complete before we proceed, and that we don't throw
+        // CheckIndexException
+        // below while the segment part check may still print out messages
+        if (segInfoStat.liveDocStatus.error != null) {
+          throw new CheckIndexException("Live docs test failed", segInfoStat.liveDocStatus.error);
+        } else if (segInfoStat.fieldInfoStatus.error != null) {
+          throw new CheckIndexException(
+              "Field Info test failed", segInfoStat.fieldInfoStatus.error);
+        } else if (segInfoStat.fieldNormStatus.error != null) {
+          throw new CheckIndexException(
+              "Field Norm test failed", segInfoStat.fieldNormStatus.error);
+        } else if (segInfoStat.termIndexStatus.error != null) {
+          throw new CheckIndexException(
+              "Term Index test failed", segInfoStat.termIndexStatus.error);
+        } else if (segInfoStat.storedFieldStatus.error != null) {
+          throw new CheckIndexException(
+              "Stored Field test failed", segInfoStat.storedFieldStatus.error);
+        } else if (segInfoStat.termVectorStatus.error != null) {
+          throw new CheckIndexException(
+              "Term Vector test failed", segInfoStat.termVectorStatus.error);
+        } else if (segInfoStat.docValuesStatus.error != null) {
+          throw new CheckIndexException("DocValues test failed", segInfoStat.docValuesStatus.error);
+        } else if (segInfoStat.pointsStatus.error != null) {
+          throw new CheckIndexException("Points test failed", segInfoStat.pointsStatus.error);
+        } else if (segInfoStat.vectorValuesStatus.error != null) {
+          throw new CheckIndexException(
+              "Vectors test failed", segInfoStat.vectorValuesStatus.error);
+        } else if (segInfoStat.indexSortStatus != null
+            && segInfoStat.indexSortStatus.error != null) {
+          throw new CheckIndexException(
+              "Index Sort test failed", segInfoStat.indexSortStatus.error);
+        } else if (segInfoStat.softDeletesStatus != null
+            && segInfoStat.softDeletesStatus.error != null) {
+          throw new CheckIndexException(
+              "Soft Deletes test failed", segInfoStat.softDeletesStatus.error);
+        }
+      }
+
+      msg(infoStream, "");
+    } catch (Throwable t) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(t);
+      }
+      segInfoStat.error = t;
+      segInfoStat.toLoseDocCount = toLoseDocCount;
+      msg(infoStream, "FAILED");
+      String comment;
+      comment = "exorciseIndex() would remove reference to this segment";
+      msg(infoStream, "    WARNING: " + comment + "; full exception:");
+      if (infoStream != null) t.printStackTrace(infoStream);
+      msg(infoStream, "");
+    } finally {
+      if (reader != null) reader.close();
+    }
+    return segInfoStat;
+  }
+
+  /** Tests index sort order. */
   public static Status.IndexSortStatus testSort(
       CodecReader reader, Sort sort, PrintStream infoStream, boolean failFast) throws IOException {
     // This segment claims its documents are sorted according to the incoming sort ... let's make
@@ -870,37 +1180,49 @@ public final class CheckIndex implements Closeable {
 
       for (int i = 0; i < fields.length; i++) {
         reverseMul[i] = fields[i].getReverse() ? -1 : 1;
-        comparators[i] = fields[i].getComparator(1, i).getLeafComparator(readerContext);
+        comparators[i] = fields[i].getComparator(1, Pruning.NONE).getLeafComparator(readerContext);
       }
 
-      int maxDoc = reader.maxDoc();
-
       try {
-
-        for (int docID = 1; docID < maxDoc; docID++) {
-
+        LeafMetaData metaData = reader.getMetaData();
+        FieldInfos fieldInfos = reader.getFieldInfos();
+        if (metaData.hasBlocks()
+            && fieldInfos.getParentField() == null
+            && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
+          throw new IllegalStateException(
+              "parent field is not set but the index has document blocks and was created with version: "
+                  + metaData.createdVersionMajor());
+        }
+        final DocIdSetIterator iter;
+        if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
+          iter = reader.getNumericDocValues(fieldInfos.getParentField());
+        } else {
+          iter = DocIdSetIterator.all(reader.maxDoc());
+        }
+        int prevDoc = iter.nextDoc();
+        int nextDoc;
+        while ((nextDoc = iter.nextDoc()) != NO_MORE_DOCS) {
           int cmp = 0;
-
           for (int i = 0; i < comparators.length; i++) {
-            // TODO: would be better if copy() didnt cause a term lookup in TermOrdVal & co,
+            // TODO: would be better if copy() didn't cause a term lookup in TermOrdVal & co,
             // the segments are always the same here...
-            comparators[i].copy(0, docID - 1);
+            comparators[i].copy(0, prevDoc);
             comparators[i].setBottom(0);
-            cmp = reverseMul[i] * comparators[i].compareBottom(docID);
+            cmp = reverseMul[i] * comparators[i].compareBottom(nextDoc);
             if (cmp != 0) {
               break;
             }
           }
-
           if (cmp > 0) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "segment has indexSort="
                     + sort
                     + " but docID="
-                    + (docID - 1)
+                    + (prevDoc)
                     + " sorts after docID="
-                    + docID);
+                    + nextDoc);
           }
+          prevDoc = nextDoc;
         }
         msg(
             infoStream,
@@ -909,7 +1231,7 @@ public final class CheckIndex implements Closeable {
         if (failFast) {
           throw IOUtils.rethrowAlways(e);
         }
-        msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+        msg(infoStream, "ERROR [" + e.getMessage() + "]");
         status.error = e;
         if (infoStream != null) {
           e.printStackTrace(infoStream);
@@ -920,11 +1242,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test live docs.
-   *
-   * @lucene.experimental
-   */
+  /** Test live docs. */
   public static Status.LiveDocStatus testLiveDocs(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
@@ -936,7 +1254,7 @@ public final class CheckIndex implements Closeable {
       if (reader.hasDeletions()) {
         Bits liveDocs = reader.getLiveDocs();
         if (liveDocs == null) {
-          throw new RuntimeException("segment should have deletions, but liveDocs is null");
+          throw new CheckIndexException("segment should have deletions, but liveDocs is null");
         } else {
           int numLive = 0;
           for (int j = 0; j < liveDocs.length(); j++) {
@@ -945,7 +1263,7 @@ public final class CheckIndex implements Closeable {
             }
           }
           if (numLive != numDocs) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "liveDocs count mismatch: info=" + numDocs + ", vs bits=" + numLive);
           }
         }
@@ -963,8 +1281,8 @@ public final class CheckIndex implements Closeable {
         if (liveDocs != null) {
           // it's ok for it to be non-null here, as long as none are set right?
           for (int j = 0; j < liveDocs.length(); j++) {
-            if (!liveDocs.get(j)) {
-              throw new RuntimeException(
+            if (liveDocs.get(j) == false) {
+              throw new CheckIndexException(
                   "liveDocs mismatch: info says no deletions but doc " + j + " is deleted.");
             }
           }
@@ -979,7 +1297,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, "ERROR [" + e.getMessage() + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -989,11 +1307,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test field infos.
-   *
-   * @lucene.experimental
-   */
+  /** Test field infos. */
   public static Status.FieldInfoStatus testFieldInfos(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
@@ -1020,7 +1334,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, "ERROR [" + e.getMessage() + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -1030,11 +1344,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test field norms.
-   *
-   * @lucene.experimental
-   */
+  /** Test field norms. */
   public static Status.FieldNormStatus testFieldNorms(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
@@ -1067,7 +1377,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, "ERROR [" + e.getMessage() + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -1091,7 +1401,7 @@ public final class CheckIndex implements Closeable {
       boolean isVectors,
       PrintStream infoStream,
       boolean verbose,
-      boolean doSlowChecks)
+      int level)
       throws IOException {
     // TODO: we should probably return our own stats thing...?!
     long startNS;
@@ -1111,7 +1421,7 @@ public final class CheckIndex implements Closeable {
 
       // MultiFieldsEnum relies upon this order...
       if (lastField != null && field.compareTo(lastField) <= 0) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "fields out of order: lastField=" + lastField + " field=" + field);
       }
       lastField = field;
@@ -1120,11 +1430,11 @@ public final class CheckIndex implements Closeable {
       // TODO: add a separate test to check this for different reader impls
       FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
       if (fieldInfo == null) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "fieldsEnum inconsistent with fieldInfos, no fieldInfos for: " + field);
       }
       if (fieldInfo.getIndexOptions() == IndexOptions.NONE) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "fieldsEnum inconsistent with fieldInfos, isIndexed == false for: " + field);
       }
 
@@ -1140,7 +1450,7 @@ public final class CheckIndex implements Closeable {
       }
 
       if (terms.getDocCount() > maxDoc) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "docCount > maxDoc for field: "
                 + field
                 + ", docCount="
@@ -1174,13 +1484,13 @@ public final class CheckIndex implements Closeable {
           assert bb.isValid();
           maxTerm = BytesRef.deepCopyOf(bb);
           if (minTerm == null) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "field \"" + field + "\" has null minTerm but non-null maxTerm");
           }
         } else {
           maxTerm = null;
           if (minTerm != null) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "field \"" + field + "\" has non-null minTerm but null maxTerm");
           }
         }
@@ -1191,7 +1501,7 @@ public final class CheckIndex implements Closeable {
           (isVectors || fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0);
 
       if (hasFreqs != expectedHasFreqs) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "field \""
                 + field
                 + "\" should have hasFreqs="
@@ -1200,11 +1510,11 @@ public final class CheckIndex implements Closeable {
                 + hasFreqs);
       }
 
-      if (!isVectors) {
+      if (isVectors == false) {
         final boolean expectedHasPositions =
             fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
         if (hasPositions != expectedHasPositions) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "field \""
                   + field
                   + "\" should have hasPositions="
@@ -1215,7 +1525,7 @@ public final class CheckIndex implements Closeable {
 
         final boolean expectedHasPayloads = fieldInfo.hasPayloads();
         if (hasPayloads != expectedHasPayloads) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "field \""
                   + field
                   + "\" should have hasPayloads="
@@ -1230,7 +1540,7 @@ public final class CheckIndex implements Closeable {
                     .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
                 >= 0;
         if (hasOffsets != expectedHasOffsets) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "field \""
                   + field
                   + "\" should have hasOffsets="
@@ -1268,7 +1578,7 @@ public final class CheckIndex implements Closeable {
           lastTerm.copyBytes(term);
         } else {
           if (lastTerm.get().compareTo(term) >= 0) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "terms out of order: lastTerm=" + lastTerm.get() + " term=" + term);
           }
           lastTerm.copyBytes(term);
@@ -1278,24 +1588,24 @@ public final class CheckIndex implements Closeable {
           if (minTerm == null) {
             // We checked this above:
             assert maxTerm == null;
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "field=\"" + field + "\": invalid term: term=" + term + ", minTerm=" + minTerm);
           }
 
           if (term.compareTo(minTerm) < 0) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "field=\"" + field + "\": invalid term: term=" + term + ", minTerm=" + minTerm);
           }
 
           if (term.compareTo(maxTerm) > 0) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "field=\"" + field + "\": invalid term: term=" + term + ", maxTerm=" + maxTerm);
           }
         }
 
         final int docFreq = termsEnum.docFreq();
         if (docFreq <= 0) {
-          throw new RuntimeException("docfreq: " + docFreq + " is out of bounds");
+          throw new CheckIndexException("docfreq: " + docFreq + " is out of bounds");
         }
         sumDocFreq += docFreq;
 
@@ -1303,7 +1613,7 @@ public final class CheckIndex implements Closeable {
 
         if (hasFreqs == false) {
           if (termsEnum.totalTermFreq() != termsEnum.docFreq()) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "field \""
                     + field
                     + "\" hasFreqs is false, but TermsEnum.totalTermFreq()="
@@ -1327,7 +1637,7 @@ public final class CheckIndex implements Closeable {
           if (hasOrd) {
             final long ordExpected = status.delTermCount + status.termCount - termCountStart;
             if (ord != ordExpected) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "ord mismatch: TermsEnum has ord=" + ord + " vs actual=" + ordExpected);
             }
           }
@@ -1345,7 +1655,7 @@ public final class CheckIndex implements Closeable {
           visitedDocs.set(doc);
           int freq = postings.freq();
           if (freq <= 0) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "term " + term + ": doc " + doc + ": freq " + freq + " is out of bounds");
           }
           if (hasFreqs == false) {
@@ -1353,7 +1663,7 @@ public final class CheckIndex implements Closeable {
             // consistently "lie" and pretend that freq was
             // 1:
             if (postings.freq() != 1) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "term "
                       + term
                       + ": doc "
@@ -1375,10 +1685,11 @@ public final class CheckIndex implements Closeable {
           docCount++;
 
           if (doc <= lastDoc) {
-            throw new RuntimeException("term " + term + ": doc " + doc + " <= lastDoc " + lastDoc);
+            throw new CheckIndexException(
+                "term " + term + ": doc " + doc + " <= lastDoc " + lastDoc);
           }
           if (doc >= maxDoc) {
-            throw new RuntimeException("term " + term + ": doc " + doc + " >= maxDoc " + maxDoc);
+            throw new CheckIndexException("term " + term + ": doc " + doc + " >= maxDoc " + maxDoc);
           }
 
           lastDoc = doc;
@@ -1390,11 +1701,11 @@ public final class CheckIndex implements Closeable {
               final int pos = postings.nextPosition();
 
               if (pos < 0) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "term " + term + ": doc " + doc + ": pos " + pos + " is out of bounds");
               }
               if (pos > IndexWriter.MAX_POSITION) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "term "
                         + term
                         + ": doc "
@@ -1405,7 +1716,7 @@ public final class CheckIndex implements Closeable {
                         + IndexWriter.MAX_POSITION);
               }
               if (pos < lastPos) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "term " + term + ": doc " + doc + ": pos " + pos + " < lastPos " + lastPos);
               }
               lastPos = pos;
@@ -1414,7 +1725,7 @@ public final class CheckIndex implements Closeable {
                 assert payload.isValid();
               }
               if (payload != null && payload.length < 1) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "term "
                         + term
                         + ": doc "
@@ -1428,7 +1739,7 @@ public final class CheckIndex implements Closeable {
                 int startOffset = postings.startOffset();
                 int endOffset = postings.endOffset();
                 if (startOffset < 0) {
-                  throw new RuntimeException(
+                  throw new CheckIndexException(
                       "term "
                           + term
                           + ": doc "
@@ -1440,7 +1751,7 @@ public final class CheckIndex implements Closeable {
                           + " is out of bounds");
                 }
                 if (startOffset < lastOffset) {
-                  throw new RuntimeException(
+                  throw new CheckIndexException(
                       "term "
                           + term
                           + ": doc "
@@ -1454,7 +1765,7 @@ public final class CheckIndex implements Closeable {
                           + "; consider using the FixBrokenOffsets tool in Lucene's backward-codecs module to correct your index");
                 }
                 if (endOffset < 0) {
-                  throw new RuntimeException(
+                  throw new CheckIndexException(
                       "term "
                           + term
                           + ": doc "
@@ -1466,7 +1777,7 @@ public final class CheckIndex implements Closeable {
                           + " is out of bounds");
                 }
                 if (endOffset < startOffset) {
-                  throw new RuntimeException(
+                  throw new CheckIndexException(
                       "term "
                           + term
                           + ": doc "
@@ -1493,19 +1804,19 @@ public final class CheckIndex implements Closeable {
         final long totalTermFreq2 = termsEnum.totalTermFreq();
 
         if (docCount != docFreq) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "term " + term + " docFreq=" + docFreq + " != tot docs w/o deletions " + docCount);
         }
         if (docFreq > terms.getDocCount()) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "term " + term + " docFreq=" + docFreq + " > docCount=" + terms.getDocCount());
         }
         if (totalTermFreq2 <= 0) {
-          throw new RuntimeException("totalTermFreq: " + totalTermFreq2 + " is out of bounds");
+          throw new CheckIndexException("totalTermFreq: " + totalTermFreq2 + " is out of bounds");
         }
         sumTotalTermFreq += totalTermFreq;
         if (totalTermFreq != totalTermFreq2) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "term "
                   + term
                   + " totalTermFreq="
@@ -1514,11 +1825,11 @@ public final class CheckIndex implements Closeable {
                   + totalTermFreq);
         }
         if (totalTermFreq2 < docFreq) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "totalTermFreq: " + totalTermFreq2 + " is out of bounds, docFreq=" + docFreq);
         }
         if (hasFreqs == false && totalTermFreq != docFreq) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "term " + term + " totalTermFreq=" + totalTermFreq + " !=  docFreq=" + docFreq);
         }
 
@@ -1532,12 +1843,12 @@ public final class CheckIndex implements Closeable {
               break;
             } else {
               if (docID < skipDocID) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "term " + term + ": advance(docID=" + skipDocID + ") returned docID=" + docID);
               }
               final int freq = postings.freq();
               if (freq <= 0) {
-                throw new RuntimeException("termFreq " + freq + " is out of bounds");
+                throw new CheckIndexException("termFreq " + freq + " is out of bounds");
               }
               int lastPosition = -1;
               int lastOffset = 0;
@@ -1545,10 +1856,10 @@ public final class CheckIndex implements Closeable {
                 final int pos = postings.nextPosition();
 
                 if (pos < 0) {
-                  throw new RuntimeException("position " + pos + " is out of bounds");
+                  throw new CheckIndexException("position " + pos + " is out of bounds");
                 }
                 if (pos < lastPosition) {
-                  throw new RuntimeException(
+                  throw new CheckIndexException(
                       "position " + pos + " is < lastPosition " + lastPosition);
                 }
                 lastPosition = pos;
@@ -1559,9 +1870,9 @@ public final class CheckIndex implements Closeable {
                   // free-for-all before?
                   // but for offsets in the postings lists these checks are fine: they were always
                   // enforced by IndexWriter
-                  if (!isVectors) {
+                  if (isVectors == false) {
                     if (startOffset < 0) {
-                      throw new RuntimeException(
+                      throw new CheckIndexException(
                           "term "
                               + term
                               + ": doc "
@@ -1573,7 +1884,7 @@ public final class CheckIndex implements Closeable {
                               + " is out of bounds");
                     }
                     if (startOffset < lastOffset) {
-                      throw new RuntimeException(
+                      throw new CheckIndexException(
                           "term "
                               + term
                               + ": doc "
@@ -1586,7 +1897,7 @@ public final class CheckIndex implements Closeable {
                               + lastOffset);
                     }
                     if (endOffset < 0) {
-                      throw new RuntimeException(
+                      throw new CheckIndexException(
                           "term "
                               + term
                               + ": doc "
@@ -1598,7 +1909,7 @@ public final class CheckIndex implements Closeable {
                               + " is out of bounds");
                     }
                     if (endOffset < startOffset) {
-                      throw new RuntimeException(
+                      throw new CheckIndexException(
                           "term "
                               + term
                               + ": doc "
@@ -1620,7 +1931,7 @@ public final class CheckIndex implements Closeable {
                 break;
               }
               if (nextDocID <= docID) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "term "
                         + term
                         + ": advance(docID="
@@ -1646,7 +1957,7 @@ public final class CheckIndex implements Closeable {
               break;
             } else {
               if (docID < skipDocID) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "term " + term + ": advance(docID=" + skipDocID + ") returned docID=" + docID);
               }
               final int nextDocID = postings.nextDoc();
@@ -1654,7 +1965,7 @@ public final class CheckIndex implements Closeable {
                 break;
               }
               if (nextDocID <= docID) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "term "
                         + term
                         + ": advance(docID="
@@ -1673,28 +1984,27 @@ public final class CheckIndex implements Closeable {
         }
 
         // Checking score blocks is heavy, we only do it on long postings lists, on every 1024th
-        // term
-        // or if slow checks are enabled.
-        if (doSlowChecks
+        // term or if slow checks are enabled.
+        if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS
             || docFreq > 1024
             || (status.termCount + status.delTermCount) % 1024 == 0) {
           // First check max scores and block uptos
-          // But only if slok checks are enabled since we visit all docs
-          if (doSlowChecks) {
+          // But only if slow checks are enabled since we visit all docs
+          if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS) {
             int max = -1;
             int maxFreq = 0;
             ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
             postings = termsEnum.postings(postings, PostingsEnum.FREQS);
             for (int doc = impactsEnum.nextDoc(); ; doc = impactsEnum.nextDoc()) {
               if (postings.nextDoc() != doc) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "Wrong next doc: " + doc + ", expected " + postings.docID());
               }
               if (doc == DocIdSetIterator.NO_MORE_DOCS) {
                 break;
               }
               if (postings.freq() != impactsEnum.freq()) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "Wrong freq, expected " + postings.freq() + ", but got " + impactsEnum.freq());
               }
               if (doc > max) {
@@ -1706,7 +2016,7 @@ public final class CheckIndex implements Closeable {
                 maxFreq = impacts0.get(impacts0.size() - 1).freq;
               }
               if (impactsEnum.freq() > maxFreq) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "freq "
                         + impactsEnum.freq()
                         + " is greater than the max freq according to impacts "
@@ -1747,9 +2057,9 @@ public final class CheckIndex implements Closeable {
               Impacts impacts = impactsEnum.getImpacts();
               checkImpacts(impacts, doc);
               maxFreq = Integer.MAX_VALUE;
-              for (int level = 0; level < impacts.numLevels(); ++level) {
-                if (impacts.getDocIdUpTo(level) >= max) {
-                  List<Impact> perLevelImpacts = impacts.getImpacts(level);
+              for (int impactsLevel = 0; impactsLevel < impacts.numLevels(); ++impactsLevel) {
+                if (impacts.getDocIdUpTo(impactsLevel) >= max) {
+                  List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
                   maxFreq = perLevelImpacts.get(perLevelImpacts.size() - 1).freq;
                   break;
                 }
@@ -1763,7 +2073,7 @@ public final class CheckIndex implements Closeable {
             }
 
             if (postings.advance(target) != doc) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "Impacts do not advance to the same document as postings for target "
                       + target
                       + ", postings: "
@@ -1775,7 +2085,7 @@ public final class CheckIndex implements Closeable {
               break;
             }
             if (postings.freq() != impactsEnum.freq()) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "Wrong freq, expected " + postings.freq() + ", but got " + impactsEnum.freq());
             }
 
@@ -1789,9 +2099,9 @@ public final class CheckIndex implements Closeable {
               Impacts impacts = impactsEnum.getImpacts();
               checkImpacts(impacts, doc);
               maxFreq = Integer.MAX_VALUE;
-              for (int level = 0; level < impacts.numLevels(); ++level) {
-                if (impacts.getDocIdUpTo(level) >= max) {
-                  List<Impact> perLevelImpacts = impacts.getImpacts(level);
+              for (int impactsLevel = 0; impactsLevel < impacts.numLevels(); ++impactsLevel) {
+                if (impacts.getDocIdUpTo(impactsLevel) >= max) {
+                  List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
                   maxFreq = perLevelImpacts.get(perLevelImpacts.size() - 1).freq;
                   break;
                 }
@@ -1799,7 +2109,7 @@ public final class CheckIndex implements Closeable {
             }
 
             if (impactsEnum.freq() > maxFreq) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "Term frequency "
                       + impactsEnum.freq()
                       + " is greater than the max freq according to impacts "
@@ -1810,7 +2120,7 @@ public final class CheckIndex implements Closeable {
       }
 
       if (minTerm != null && status.termCount + status.delTermCount == 0) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "field=\"" + field + "\": minTerm is non-null yet we saw no terms: " + minTerm);
       }
 
@@ -1819,7 +2129,7 @@ public final class CheckIndex implements Closeable {
         // Unusual: the FieldsEnum returned a field but
         // the Terms for that field is null; this should
         // only happen if it's a ghost field (field with
-        // no terms, eg there used to be terms but all
+        // no terms, e.g. there used to be terms but all
         // docs got deleted and then merged away):
 
       } else {
@@ -1835,7 +2145,7 @@ public final class CheckIndex implements Closeable {
 
         final long actualSumDocFreq = fields.terms(field).getSumDocFreq();
         if (sumDocFreq != actualSumDocFreq) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "sumDocFreq for field "
                   + field
                   + "="
@@ -1846,7 +2156,7 @@ public final class CheckIndex implements Closeable {
 
         final long actualSumTotalTermFreq = fields.terms(field).getSumTotalTermFreq();
         if (sumTotalTermFreq != actualSumTotalTermFreq) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "sumTotalTermFreq for field "
                   + field
                   + "="
@@ -1856,7 +2166,7 @@ public final class CheckIndex implements Closeable {
         }
 
         if (hasFreqs == false && sumTotalTermFreq != sumDocFreq) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "sumTotalTermFreq for field "
                   + field
                   + " should be "
@@ -1867,7 +2177,7 @@ public final class CheckIndex implements Closeable {
 
         final int v = fieldTerms.getDocCount();
         if (visitedDocs.cardinality() != v) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "docCount for field "
                   + field
                   + "="
@@ -1878,6 +2188,8 @@ public final class CheckIndex implements Closeable {
 
         if (fieldInfo.hasNorms() && isVectors == false) {
           final NumericDocValues norms = normsProducer.getNorms(fieldInfo);
+          // count of valid norm values found for the field
+          int actualCount = 0;
           // Cross-check terms with norms
           for (int doc = norms.nextDoc();
               doc != DocIdSetIterator.NO_MORE_DOCS;
@@ -1889,28 +2201,50 @@ public final class CheckIndex implements Closeable {
               continue;
             }
             final long norm = norms.longValue();
-            if (norm != 0 && visitedDocs.get(doc) == false) {
-              throw new RuntimeException(
-                  "Document "
-                      + doc
-                      + " doesn't have terms according to postings but has a norm value that is not zero: "
-                      + Long.toUnsignedString(norm));
-            } else if (norm == 0 && visitedDocs.get(doc)) {
-              throw new RuntimeException(
+            if (norm != 0) {
+              actualCount++;
+              if (visitedDocs.get(doc) == false) {
+                throw new CheckIndexException(
+                    "Document "
+                        + doc
+                        + " doesn't have terms according to postings but has a norm value that is not zero: "
+                        + Long.toUnsignedString(norm));
+              }
+            } else if (visitedDocs.get(doc)) {
+              throw new CheckIndexException(
                   "Document "
                       + doc
                       + " has terms according to postings but its norm value is 0, which may only be used on documents that have no terms");
             }
+          }
+          int expectedCount = 0;
+          for (int doc = visitedDocs.nextSetBit(0);
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc =
+                  doc + 1 >= visitedDocs.length()
+                      ? DocIdSetIterator.NO_MORE_DOCS
+                      : visitedDocs.nextSetBit(doc + 1)) {
+            if (liveDocs != null && liveDocs.get(doc) == false) {
+              // Norms may only be out of sync with terms on deleted documents.
+              // This happens when a document fails indexing and in that case it
+              // should be immediately marked as deleted by the IndexWriter.
+              continue;
+            }
+            expectedCount++;
+          }
+          if (expectedCount != actualCount) {
+            throw new CheckIndexException(
+                "actual norm count: " + actualCount + " but expected: " + expectedCount);
           }
         }
 
         // Test seek to last term:
         if (lastTerm != null) {
           if (termsEnum.seekCeil(lastTerm.get()) != TermsEnum.SeekStatus.FOUND) {
-            throw new RuntimeException("seek to last term " + lastTerm.get() + " failed");
+            throw new CheckIndexException("seek to last term " + lastTerm.get() + " failed");
           }
           if (termsEnum.term().equals(lastTerm.get()) == false) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "seek to last term "
                     + lastTerm.get()
                     + " returned FOUND but seeked to the wrong term "
@@ -1924,7 +2258,7 @@ public final class CheckIndex implements Closeable {
             docFreq++;
           }
           if (docFreq != expectedDocFreq) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "docFreq for last term "
                     + lastTerm.get()
                     + "="
@@ -1941,7 +2275,8 @@ public final class CheckIndex implements Closeable {
           termCount = fields.terms(field).size();
 
           if (termCount != -1 && termCount != fieldTermCount) {
-            throw new RuntimeException("termCount mismatch " + termCount + " vs " + fieldTermCount);
+            throw new CheckIndexException(
+                "termCount mismatch " + termCount + " vs " + fieldTermCount);
           }
         }
 
@@ -1957,7 +2292,7 @@ public final class CheckIndex implements Closeable {
               termsEnum.seekExact(ord);
               long actualOrd = termsEnum.ord();
               if (actualOrd != ord) {
-                throw new RuntimeException("seek to ord " + ord + " returned ord " + actualOrd);
+                throw new CheckIndexException("seek to ord " + ord + " returned ord " + actualOrd);
               }
               seekTerms[i] = BytesRef.deepCopyOf(termsEnum.term());
             }
@@ -1965,10 +2300,10 @@ public final class CheckIndex implements Closeable {
             // Seek by term
             for (int i = seekCount - 1; i >= 0; i--) {
               if (termsEnum.seekCeil(seekTerms[i]) != TermsEnum.SeekStatus.FOUND) {
-                throw new RuntimeException("seek to existing term " + seekTerms[i] + " failed");
+                throw new CheckIndexException("seek to existing term " + seekTerms[i] + " failed");
               }
               if (termsEnum.term().equals(seekTerms[i]) == false) {
-                throw new RuntimeException(
+                throw new CheckIndexException(
                     "seek to existing term "
                         + seekTerms[i]
                         + " returned FOUND but seeked to the wrong term "
@@ -1977,11 +2312,34 @@ public final class CheckIndex implements Closeable {
 
               postings = termsEnum.postings(postings, PostingsEnum.NONE);
               if (postings == null) {
-                throw new RuntimeException("null DocsEnum from to existing term " + seekTerms[i]);
+                throw new CheckIndexException(
+                    "null DocsEnum from to existing term " + seekTerms[i]);
               }
             }
           }
         }
+
+        // Test Terms#intersect
+        // An automaton that should match a good number of terms
+        Automaton automaton =
+            Operations.concatenate(
+                Arrays.asList(
+                    Automata.makeAnyBinary(),
+                    Automata.makeCharRange('a', 'e'),
+                    Automata.makeAnyBinary()));
+        BytesRef startTerm = null;
+        checkTermsIntersect(terms, automaton, startTerm);
+
+        startTerm = new BytesRef();
+        checkTermsIntersect(terms, automaton, startTerm);
+
+        automaton = Automata.makeNonEmptyBinary();
+        startTerm = new BytesRef(new byte[] {'l'});
+        checkTermsIntersect(terms, automaton, startTerm);
+
+        // a term that likely compares greater than every other term in the dictionary
+        startTerm = new BytesRef(new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
+        checkTermsIntersect(terms, automaton, startTerm);
       }
     }
 
@@ -1989,10 +2347,10 @@ public final class CheckIndex implements Closeable {
 
     if (fieldCount != -1) {
       if (fieldCount < 0) {
-        throw new RuntimeException("invalid fieldCount: " + fieldCount);
+        throw new CheckIndexException("invalid fieldCount: " + fieldCount);
       }
       if (fieldCount != computedFieldCount) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "fieldCount mismatch "
                 + fieldCount
                 + " vs recomputed field count "
@@ -2022,32 +2380,76 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  private static void checkTermsIntersect(Terms terms, Automaton automaton, BytesRef startTerm)
+      throws IOException {
+    TermsEnum allTerms = terms.iterator();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    CompiledAutomaton compiledAutomaton = new CompiledAutomaton(automaton, false, true, true);
+    ByteRunAutomaton runAutomaton = new ByteRunAutomaton(automaton, true);
+    TermsEnum filteredTerms = terms.intersect(compiledAutomaton, startTerm);
+    BytesRef term;
+    if (startTerm != null) {
+      switch (allTerms.seekCeil(startTerm)) {
+        case FOUND:
+          term = allTerms.next();
+          break;
+        case NOT_FOUND:
+          term = allTerms.term();
+          break;
+        case END:
+        default:
+          term = null;
+          break;
+      }
+    } else {
+      term = allTerms.next();
+    }
+    for (; term != null; term = allTerms.next()) {
+      if (runAutomaton.run(term.bytes, term.offset, term.length)) {
+        BytesRef filteredTerm = filteredTerms.next();
+        if (Objects.equals(term, filteredTerm) == false) {
+          throw new CheckIndexException(
+              "Expected next filtered term: " + term + ", but got " + filteredTerm);
+        }
+      }
+    }
+    BytesRef filteredTerm = filteredTerms.next();
+    if (filteredTerm != null) {
+      throw new CheckIndexException("Expected exhausted TermsEnum, but got " + filteredTerm);
+    }
+  }
+
+  /**
+   * For use in tests only.
+   *
+   * @lucene.internal
+   */
   static void checkImpacts(Impacts impacts, int lastTarget) {
     final int numLevels = impacts.numLevels();
     if (numLevels < 1) {
-      throw new RuntimeException("The number of levels must be >= 1, got " + numLevels);
+      throw new CheckIndexException("The number of impact levels must be >= 1, got " + numLevels);
     }
 
     int docIdUpTo0 = impacts.getDocIdUpTo(0);
     if (docIdUpTo0 < lastTarget) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "getDocIdUpTo returned "
               + docIdUpTo0
               + " on level 0, which is less than the target "
               + lastTarget);
     }
 
-    for (int level = 1; level < numLevels; ++level) {
-      int docIdUpTo = impacts.getDocIdUpTo(level);
-      int previousDocIdUpTo = impacts.getDocIdUpTo(level - 1);
+    for (int impactsLevel = 1; impactsLevel < numLevels; ++impactsLevel) {
+      int docIdUpTo = impacts.getDocIdUpTo(impactsLevel);
+      int previousDocIdUpTo = impacts.getDocIdUpTo(impactsLevel - 1);
       if (docIdUpTo < previousDocIdUpTo) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "Decreasing return for getDocIdUpTo: level "
-                + (level - 1)
+                + (impactsLevel - 1)
                 + " returned "
                 + previousDocIdUpTo
                 + " but level "
-                + level
+                + impactsLevel
                 + " returned "
                 + docIdUpTo
                 + " for target "
@@ -2055,30 +2457,30 @@ public final class CheckIndex implements Closeable {
       }
     }
 
-    for (int level = 0; level < numLevels; ++level) {
-      List<Impact> perLevelImpacts = impacts.getImpacts(level);
+    for (int impactsLevel = 0; impactsLevel < numLevels; ++impactsLevel) {
+      List<Impact> perLevelImpacts = impacts.getImpacts(impactsLevel);
       if (perLevelImpacts.isEmpty()) {
-        throw new RuntimeException("Got empty list of impacts on level " + level);
+        throw new CheckIndexException("Got empty list of impacts on level " + impactsLevel);
       }
       Impact first = perLevelImpacts.get(0);
       if (first.freq < 1) {
-        throw new RuntimeException("First impact had a freq <= 0: " + first);
+        throw new CheckIndexException("First impact had a freq <= 0: " + first);
       }
       if (first.norm == 0) {
-        throw new RuntimeException("First impact had a norm == 0: " + first);
+        throw new CheckIndexException("First impact had a norm == 0: " + first);
       }
       // Impacts must be in increasing order of norm AND freq
       Impact previous = first;
       for (int i = 1; i < perLevelImpacts.size(); ++i) {
         Impact impact = perLevelImpacts.get(i);
         if (impact.freq <= previous.freq || Long.compareUnsigned(impact.norm, previous.norm) <= 0) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "Impacts are not ordered or contain dups, got " + previous + " then " + impact);
         }
       }
-      if (level > 0) {
-        // Make sure that impacts at level N trigger better scores than an level N-1
-        Iterator<Impact> previousIt = impacts.getImpacts(level - 1).iterator();
+      if (impactsLevel > 0) {
+        // Make sure that impacts at level N trigger better scores than an impactsLevel N-1
+        Iterator<Impact> previousIt = impacts.getImpacts(impactsLevel - 1).iterator();
         previous = previousIt.next();
         Iterator<Impact> it = perLevelImpacts.iterator();
         Impact impact = it.next();
@@ -2090,13 +2492,13 @@ public final class CheckIndex implements Closeable {
             continue;
           }
           if (it.hasNext() == false) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "Found impact "
                     + previous
                     + " on level "
-                    + (level - 1)
+                    + (impactsLevel - 1)
                     + " but no impact on level "
-                    + level
+                    + impactsLevel
                     + " triggers a better score: "
                     + perLevelImpacts);
           }
@@ -2106,32 +2508,19 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  /**
-   * Test the term index.
-   *
-   * @lucene.experimental
-   */
+  /** Test the term index. */
   public static Status.TermIndexStatus testPostings(CodecReader reader, PrintStream infoStream)
       throws IOException {
-    return testPostings(reader, infoStream, false, true, false);
+    return testPostings(reader, infoStream, false, Level.MIN_LEVEL_FOR_SLOW_CHECKS, false);
   }
 
-  /**
-   * Test the term index.
-   *
-   * @lucene.experimental
-   */
+  /** Test the term index. */
   public static Status.TermIndexStatus testPostings(
-      CodecReader reader,
-      PrintStream infoStream,
-      boolean verbose,
-      boolean doSlowChecks,
-      boolean failFast)
+      CodecReader reader, PrintStream infoStream, boolean verbose, int level, boolean failFast)
       throws IOException {
 
-    // TODO: we should go and verify term vectors match, if
-    // doSlowChecks is on...
-
+    // TODO: we should go and verify term vectors match, if the Level is high enough to
+    // include slow checks
     Status.TermIndexStatus status;
     final int maxDoc = reader.maxDoc();
 
@@ -2140,7 +2529,12 @@ public final class CheckIndex implements Closeable {
         infoStream.print("    test: terms, freq, prox...");
       }
 
-      final Fields fields = reader.getPostingsReader().getMergeInstance();
+      FieldsProducer fields = reader.getPostingsReader();
+      if (fields != null) {
+        fields = fields.getMergeInstance();
+      } else {
+        return new Status.TermIndexStatus();
+      }
       final FieldInfos fieldInfos = reader.getFieldInfos();
       NormsProducer normsProducer = reader.getNormsReader();
       if (normsProducer != null) {
@@ -2157,7 +2551,7 @@ public final class CheckIndex implements Closeable {
               false,
               infoStream,
               verbose,
-              doSlowChecks);
+              level);
     } catch (Throwable e) {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
@@ -2173,11 +2567,7 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test the points index
-   *
-   * @lucene.experimental
-   */
+  /** Test the points index. */
   public static Status.PointsStatus testPoints(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
@@ -2191,7 +2581,7 @@ public final class CheckIndex implements Closeable {
       if (fieldInfos.hasPointValues()) {
         PointsReader pointsReader = reader.getPointsReader();
         if (pointsReader == null) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "there are fields with points, but reader.getPointsReader() is null");
         }
         for (FieldInfo fieldInfo : fieldInfos) {
@@ -2210,21 +2600,22 @@ public final class CheckIndex implements Closeable {
                 values.estimatePointCount(
                     new ConstantRelationIntersectVisitor(Relation.CELL_CROSSES_QUERY));
             if (crossCost < size / 2) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "estimatePointCount should return >= size/2 when all cells match");
             }
             final long insideCost =
                 values.estimatePointCount(
                     new ConstantRelationIntersectVisitor(Relation.CELL_INSIDE_QUERY));
             if (insideCost < size) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "estimatePointCount should return >= size when all cells fully match");
             }
             final long outsideCost =
                 values.estimatePointCount(
                     new ConstantRelationIntersectVisitor(Relation.CELL_OUTSIDE_QUERY));
             if (outsideCost != 0) {
-              throw new RuntimeException("estimatePointCount should return 0 when no cells match");
+              throw new CheckIndexException(
+                  "estimatePointCount should return 0 when no cells match");
             }
 
             VerifyPointsVisitor visitor =
@@ -2232,7 +2623,7 @@ public final class CheckIndex implements Closeable {
             values.intersect(visitor);
 
             if (visitor.getPointCountSeen() != size) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "point values for field \""
                       + fieldInfo.name
                       + "\" claims to have size="
@@ -2242,7 +2633,7 @@ public final class CheckIndex implements Closeable {
             }
 
             if (visitor.getDocCountSeen() != docCount) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "point values for field \""
                       + fieldInfo.name
                       + "\" claims to have docCount="
@@ -2279,15 +2670,11 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test the vectors index
-   *
-   * @lucene.experimental
-   */
+  /** Test the vectors index. */
   public static Status.VectorValuesStatus testVectors(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     if (infoStream != null) {
-      infoStream.print("    test: vectors..............");
+      infoStream.print("    test: vectors.............");
     }
     long startNS = System.nanoTime();
     FieldInfos fieldInfos = reader.getFieldInfos();
@@ -2299,48 +2686,43 @@ public final class CheckIndex implements Closeable {
           if (fieldInfo.hasVectorValues()) {
             int dimension = fieldInfo.getVectorDimension();
             if (dimension <= 0) {
-              throw new RuntimeException(
+              throw new CheckIndexException(
                   "Field \""
                       + fieldInfo.name
                       + "\" has vector values but dimension is "
                       + dimension);
             }
-            VectorValues values = reader.getVectorValues(fieldInfo.name);
-            if (values == null) {
+            if (reader.getFloatVectorValues(fieldInfo.name) == null
+                && reader.getByteVectorValues(fieldInfo.name) == null) {
               continue;
             }
 
             status.totalKnnVectorFields++;
-
-            int docCount = 0;
-            while (values.nextDoc() != NO_MORE_DOCS) {
-              int valueLength = values.vectorValue().length;
-              if (valueLength != dimension) {
-                throw new RuntimeException(
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE:
+                checkByteVectorValues(
+                    Objects.requireNonNull(reader.getByteVectorValues(fieldInfo.name)),
+                    fieldInfo,
+                    status,
+                    reader);
+                break;
+              case FLOAT32:
+                checkFloatVectorValues(
+                    Objects.requireNonNull(reader.getFloatVectorValues(fieldInfo.name)),
+                    fieldInfo,
+                    status,
+                    reader);
+                break;
+              default:
+                throw new CheckIndexException(
                     "Field \""
                         + fieldInfo.name
-                        + "\" has a value whose dimension="
-                        + valueLength
-                        + " not matching the field's dimension="
-                        + dimension);
-              }
-              ++docCount;
+                        + "\" has unexpected vector encoding: "
+                        + fieldInfo.getVectorEncoding());
             }
-            if (docCount != values.size()) {
-              throw new RuntimeException(
-                  "Field \""
-                      + fieldInfo.name
-                      + "\" has size="
-                      + values.size()
-                      + " but when iterated, returns "
-                      + docCount
-                      + " docs with values");
-            }
-            status.totalVectorValues += docCount;
           }
         }
       }
-
       msg(
           infoStream,
           String.format(
@@ -2364,6 +2746,109 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  private static boolean vectorsReaderSupportsSearch(CodecReader codecReader, String fieldName) {
+    KnnVectorsReader vectorsReader = codecReader.getVectorReader();
+    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader) {
+      vectorsReader = perFieldReader.getFieldReader(fieldName);
+    }
+    return (vectorsReader instanceof FlatVectorsReader) == false;
+  }
+
+  private static void checkFloatVectorValues(
+      FloatVectorValues values,
+      FieldInfo fieldInfo,
+      CheckIndex.Status.VectorValuesStatus status,
+      CodecReader codecReader)
+      throws IOException {
+    int count = 0;
+    int everyNdoc = Math.max(values.size() / 64, 1);
+    while (count < values.size()) {
+      // search the first maxNumSearches vectors to exercise the graph
+      if (values.ordToDoc(count) % everyNdoc == 0) {
+        KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
+        if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
+          codecReader
+              .getVectorReader()
+              .search(fieldInfo.name, values.vectorValue(count), collector, null);
+          TopDocs docs = collector.topDocs();
+          if (docs.scoreDocs.length == 0) {
+            throw new CheckIndexException(
+                "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+          }
+        }
+      }
+      int valueLength = values.vectorValue(count).length;
+      if (valueLength != fieldInfo.getVectorDimension()) {
+        throw new CheckIndexException(
+            "Field \""
+                + fieldInfo.name
+                + "\" has a value whose dimension="
+                + valueLength
+                + " not matching the field's dimension="
+                + fieldInfo.getVectorDimension());
+      }
+      ++count;
+    }
+    if (count != values.size()) {
+      throw new CheckIndexException(
+          "Field \""
+              + fieldInfo.name
+              + "\" has size="
+              + values.size()
+              + " but when iterated, returns "
+              + count
+              + " docs with values");
+    }
+    status.totalVectorValues += count;
+  }
+
+  private static void checkByteVectorValues(
+      ByteVectorValues values,
+      FieldInfo fieldInfo,
+      CheckIndex.Status.VectorValuesStatus status,
+      CodecReader codecReader)
+      throws IOException {
+    int count = 0;
+    int everyNdoc = Math.max(values.size() / 64, 1);
+    boolean supportsSearch = vectorsReaderSupportsSearch(codecReader, fieldInfo.name);
+    while (count < values.size()) {
+      // search the first maxNumSearches vectors to exercise the graph
+      if (supportsSearch && values.ordToDoc(count) % everyNdoc == 0) {
+        KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
+        codecReader
+            .getVectorReader()
+            .search(fieldInfo.name, values.vectorValue(count), collector, null);
+        TopDocs docs = collector.topDocs();
+        if (docs.scoreDocs.length == 0) {
+          throw new CheckIndexException(
+              "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+        }
+      }
+      int valueLength = values.vectorValue(count).length;
+      if (valueLength != fieldInfo.getVectorDimension()) {
+        throw new CheckIndexException(
+            "Field \""
+                + fieldInfo.name
+                + "\" has a value whose dimension="
+                + valueLength
+                + " not matching the field's dimension="
+                + fieldInfo.getVectorDimension());
+      }
+      ++count;
+    }
+    if (count != values.size()) {
+      throw new CheckIndexException(
+          "Field \""
+              + fieldInfo.name
+              + "\" has size="
+              + values.size()
+              + " but when iterated, returns "
+              + count
+              + " docs with values");
+    }
+    status.totalVectorValues += count;
+  }
+
   /**
    * Walks the entire N-dimensional points space, verifying that all points fall within the last
    * cell's boundaries.
@@ -2384,6 +2869,7 @@ public final class CheckIndex implements Closeable {
     private final int numDataDims;
     private final int numIndexDims;
     private final int bytesPerDim;
+    private final ByteArrayComparator comparator;
     private final String fieldName;
 
     /** Sole constructor */
@@ -2393,6 +2879,7 @@ public final class CheckIndex implements Closeable {
       numDataDims = values.getNumDimensions();
       numIndexDims = values.getNumIndexDimensions();
       bytesPerDim = values.getBytesPerDimension();
+      comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
       packedBytesCount = numDataDims * bytesPerDim;
       packedIndexBytesCount = numIndexDims * bytesPerDim;
       globalMinPackedValue = values.getMinPackedValue();
@@ -2403,7 +2890,7 @@ public final class CheckIndex implements Closeable {
       lastPackedValue = new byte[packedBytesCount];
 
       if (values.getDocCount() > values.size()) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "point values for field \""
                 + fieldName
                 + "\" claims to have size="
@@ -2413,7 +2900,7 @@ public final class CheckIndex implements Closeable {
       }
 
       if (values.getDocCount() > maxDoc) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "point values for field \""
                 + fieldName
                 + "\" claims to have docCount="
@@ -2424,14 +2911,14 @@ public final class CheckIndex implements Closeable {
 
       if (globalMinPackedValue == null) {
         if (values.size() != 0) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "getMinPackedValue is null points for field \""
                   + fieldName
                   + "\" yet size="
                   + values.size());
         }
       } else if (globalMinPackedValue.length != packedIndexBytesCount) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "getMinPackedValue for field \""
                 + fieldName
                 + "\" return length="
@@ -2441,14 +2928,14 @@ public final class CheckIndex implements Closeable {
       }
       if (globalMaxPackedValue == null) {
         if (values.size() != 0) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "getMaxPackedValue is null points for field \""
                   + fieldName
                   + "\" yet size="
                   + values.size());
         }
       } else if (globalMaxPackedValue.length != packedIndexBytesCount) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "getMaxPackedValue for field \""
                 + fieldName
                 + "\" return length="
@@ -2470,7 +2957,7 @@ public final class CheckIndex implements Closeable {
 
     @Override
     public void visit(int docID) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "codec called IntersectVisitor.visit without a packed value for docID=" + docID);
     }
 
@@ -2484,17 +2971,10 @@ public final class CheckIndex implements Closeable {
         int offset = bytesPerDim * dim;
 
         // Compare to last cell:
-        if (Arrays.compareUnsigned(
-                packedValue,
-                offset,
-                offset + bytesPerDim,
-                lastMinPackedValue,
-                offset,
-                offset + bytesPerDim)
-            < 0) {
+        if (comparator.compare(packedValue, offset, lastMinPackedValue, offset) < 0) {
           // This doc's point, in this dimension, is lower than the minimum value of the last cell
           // checked:
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "packed points value "
                   + Arrays.toString(packedValue)
                   + " for field=\""
@@ -2509,17 +2989,10 @@ public final class CheckIndex implements Closeable {
                   + dim);
         }
 
-        if (Arrays.compareUnsigned(
-                packedValue,
-                offset,
-                offset + bytesPerDim,
-                lastMaxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
+        if (comparator.compare(packedValue, offset, lastMaxPackedValue, offset) > 0) {
           // This doc's point, in this dimension, is greater than the maximum value of the last cell
           // checked:
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "packed points value "
                   + Arrays.toString(packedValue)
                   + " for field=\""
@@ -2541,10 +3014,9 @@ public final class CheckIndex implements Closeable {
       // for data dimension > 1, leaves are sorted by the dimension with the lowest cardinality to
       // improve block compression
       if (numDataDims == 1) {
-        int cmp =
-            Arrays.compareUnsigned(lastPackedValue, 0, bytesPerDim, packedValue, 0, bytesPerDim);
+        int cmp = comparator.compare(lastPackedValue, 0, packedValue, 0);
         if (cmp > 0) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "packed points value "
                   + Arrays.toString(packedValue)
                   + " for field=\""
@@ -2555,7 +3027,7 @@ public final class CheckIndex implements Closeable {
                   + Arrays.toString(lastPackedValue));
         } else if (cmp == 0) {
           if (docID < lastDocID) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "packed points value is the same, but docID="
                     + docID
                     + " is out of order vs previous docID="
@@ -2580,15 +3052,8 @@ public final class CheckIndex implements Closeable {
       for (int dim = 0; dim < numIndexDims; dim++) {
         int offset = bytesPerDim * dim;
 
-        if (Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
-          throw new RuntimeException(
+        if (comparator.compare(minPackedValue, offset, maxPackedValue, offset) > 0) {
+          throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
                   + " is out-of-bounds of the cell's maxPackedValue "
@@ -2600,16 +3065,9 @@ public final class CheckIndex implements Closeable {
                   + "\"");
         }
 
-        // Make sure this cell is not outside of the global min/max:
-        if (Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMinPackedValue,
-                offset,
-                offset + bytesPerDim)
-            < 0) {
-          throw new RuntimeException(
+        // Make sure this cell is not outside the global min/max:
+        if (comparator.compare(minPackedValue, offset, globalMinPackedValue, offset) < 0) {
+          throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
                   + " is out-of-bounds of the global minimum "
@@ -2621,15 +3079,8 @@ public final class CheckIndex implements Closeable {
                   + "\"");
         }
 
-        if (Arrays.compareUnsigned(
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMinPackedValue,
-                offset,
-                offset + bytesPerDim)
-            < 0) {
-          throw new RuntimeException(
+        if (comparator.compare(maxPackedValue, offset, globalMinPackedValue, offset) < 0) {
+          throw new CheckIndexException(
               "packed points cell maxPackedValue "
                   + Arrays.toString(maxPackedValue)
                   + " is out-of-bounds of the global minimum "
@@ -2641,15 +3092,8 @@ public final class CheckIndex implements Closeable {
                   + "\"");
         }
 
-        if (Arrays.compareUnsigned(
-                minPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMaxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
-          throw new RuntimeException(
+        if (comparator.compare(minPackedValue, offset, globalMaxPackedValue, offset) > 0) {
+          throw new CheckIndexException(
               "packed points cell minPackedValue "
                   + Arrays.toString(minPackedValue)
                   + " is out-of-bounds of the global maximum "
@@ -2660,15 +3104,8 @@ public final class CheckIndex implements Closeable {
                   + fieldName
                   + "\"");
         }
-        if (Arrays.compareUnsigned(
-                maxPackedValue,
-                offset,
-                offset + bytesPerDim,
-                globalMaxPackedValue,
-                offset,
-                offset + bytesPerDim)
-            > 0) {
-          throw new RuntimeException(
+        if (comparator.compare(maxPackedValue, offset, globalMaxPackedValue, offset) > 0) {
+          throw new CheckIndexException(
               "packed points cell maxPackedValue "
                   + Arrays.toString(maxPackedValue)
                   + " is out-of-bounds of the global maximum "
@@ -2688,12 +3125,12 @@ public final class CheckIndex implements Closeable {
 
     private void checkPackedValue(String desc, byte[] packedValue, int docID) {
       if (packedValue == null) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             desc + " is null for docID=" + docID + " field=\"" + fieldName + "\"");
       }
 
       if (packedValue.length != (docID < 0 ? packedIndexBytesCount : packedBytesCount)) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             desc
                 + " has incorrect length="
                 + packedValue.length
@@ -2708,12 +3145,7 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  private static class ConstantRelationIntersectVisitor implements IntersectVisitor {
-    private final Relation relation;
-
-    ConstantRelationIntersectVisitor(Relation relation) {
-      this.relation = relation;
-    }
+  private record ConstantRelationIntersectVisitor(Relation relation) implements IntersectVisitor {
 
     @Override
     public void visit(int docID) throws IOException {
@@ -2731,11 +3163,7 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  /**
-   * Test stored fields.
-   *
-   * @lucene.experimental
-   */
+  /** Test stored fields. */
   public static Status.StoredFieldStatus testStoredFields(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
@@ -2753,7 +3181,10 @@ public final class CheckIndex implements Closeable {
         // Intentionally pull even deleted documents to
         // make sure they too are not corrupt:
         DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor();
-        storedFields.visitDocument(j, visitor);
+        if ((j & 0x03) == 0) {
+          storedFields.prefetch(j);
+        }
+        storedFields.document(j, visitor);
         Document doc = visitor.getDocument();
         if (liveDocs == null || liveDocs.get(j)) {
           status.docCount++;
@@ -2763,7 +3194,7 @@ public final class CheckIndex implements Closeable {
 
       // Validate docCount
       if (status.docCount != reader.numDocs()) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "docCount=" + status.docCount + " but saw " + status.docCount + " undeleted docs");
       }
 
@@ -2779,7 +3210,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, "ERROR [" + e.getMessage() + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -2789,14 +3220,11 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  /**
-   * Test docvalues.
-   *
-   * @lucene.experimental
-   */
+  /** Test docvalues. */
   public static Status.DocValuesStatus testDocValues(
       CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
     long startNS = System.nanoTime();
+
     final Status.DocValuesStatus status = new Status.DocValuesStatus();
     try {
       if (infoStream != null) {
@@ -2809,7 +3237,7 @@ public final class CheckIndex implements Closeable {
       for (FieldInfo fieldInfo : reader.getFieldInfos()) {
         if (fieldInfo.getDocValuesType() != DocValuesType.NONE) {
           status.totalValueFields++;
-          checkDocValues(fieldInfo, dvReader, reader.maxDoc(), infoStream, status);
+          checkDocValues(fieldInfo, dvReader, status);
         }
       }
 
@@ -2817,19 +3245,20 @@ public final class CheckIndex implements Closeable {
           infoStream,
           String.format(
               Locale.ROOT,
-              "OK [%d docvalues fields; %d BINARY; %d NUMERIC; %d SORTED; %d SORTED_NUMERIC; %d SORTED_SET] [took %.3f sec]",
+              "OK [%d docvalues fields; %d BINARY; %d NUMERIC; %d SORTED; %d SORTED_NUMERIC; %d SORTED_SET; %d SKIPPING INDEX] [took %.3f sec]",
               status.totalValueFields,
               status.totalBinaryFields,
               status.totalNumericFields,
               status.totalSortedFields,
               status.totalSortedNumericFields,
               status.totalSortedSetFields,
+              status.totalSkippingIndex,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, "ERROR [" + e.getMessage() + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -2839,11 +3268,99 @@ public final class CheckIndex implements Closeable {
   }
 
   @FunctionalInterface
-  private static interface DocValuesIteratorSupplier {
+  private interface DocValuesIteratorSupplier {
     DocValuesIterator get(FieldInfo fi) throws IOException;
   }
 
-  private static void checkDVIterator(FieldInfo fi, int maxDoc, DocValuesIteratorSupplier producer)
+  private static void checkDocValueSkipper(FieldInfo fi, DocValuesSkipper skipper)
+      throws IOException {
+    String fieldName = fi.name;
+    if (skipper.maxDocID(0) != -1) {
+      throw new CheckIndexException(
+          "binary dv iterator for field: "
+              + fieldName
+              + " should start at docID=-1, but got "
+              + skipper.maxDocID(0));
+    }
+    if (skipper.docCount() > 0 && skipper.minValue() > skipper.maxValue()) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " reports wrong global value range, got  "
+              + skipper.minValue()
+              + " > "
+              + skipper.maxValue());
+    }
+    int docCount = 0;
+    int doc;
+    while (true) {
+      doc = skipper.maxDocID(0) + 1;
+      skipper.advance(doc);
+      if (skipper.maxDocID(0) == NO_MORE_DOCS) {
+        break;
+      }
+      if (skipper.minDocID(0) < doc) {
+        throw new CheckIndexException(
+            "skipper dv iterator for field: "
+                + fieldName
+                + " reports wrong minDocID, got "
+                + skipper.minDocID(0)
+                + " < "
+                + doc);
+      }
+      int levels = skipper.numLevels();
+      for (int level = 0; level < levels; level++) {
+        if (skipper.minDocID(level) > skipper.maxDocID(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " reports wrong doc range, got "
+                  + skipper.minDocID(level)
+                  + " > "
+                  + skipper.maxDocID(level));
+        }
+        if (skipper.minValue() > skipper.minValue(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " : global minValue  "
+                  + skipper.minValue()
+                  + " , got  "
+                  + skipper.minValue(level));
+        }
+        if (skipper.maxValue() < skipper.maxValue(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " : global maxValue  "
+                  + skipper.maxValue()
+                  + " , got  "
+                  + skipper.maxValue(level));
+        }
+        if (skipper.minValue(level) > skipper.maxValue(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " reports wrong value range, got  "
+                  + skipper.minValue(level)
+                  + " > "
+                  + skipper.maxValue(level));
+        }
+      }
+      docCount += skipper.docCount(0);
+    }
+    if (skipper.docCount() != docCount) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " inconsistent docCount, got "
+              + skipper.docCount()
+              + " != "
+              + docCount);
+    }
+  }
+
+  private static void checkDVIterator(FieldInfo fi, DocValuesIteratorSupplier producer)
       throws IOException {
     String field = fi.name;
 
@@ -2856,7 +3373,7 @@ public final class CheckIndex implements Closeable {
       if (i++ % 10 == 1) {
         int doc2 = it2.advance(doc - 1);
         if (doc2 < doc - 1) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "dv iterator field="
                   + field
                   + ": doc="
@@ -2869,7 +3386,7 @@ public final class CheckIndex implements Closeable {
           doc2 = it2.nextDoc();
         }
         if (doc2 != doc) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "dv iterator field="
                   + field
                   + ": doc="
@@ -2879,7 +3396,7 @@ public final class CheckIndex implements Closeable {
                   + ")");
         }
         if (it2.docID() != doc) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "dv iterator field="
                   + field
                   + ": doc="
@@ -2905,7 +3422,7 @@ public final class CheckIndex implements Closeable {
       if (i++ % 13 == 1) {
         boolean found = it2.advanceExact(doc - 1);
         if ((doc - 1 == lastDoc) != found) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "dv iterator field="
                   + field
                   + ": doc="
@@ -2915,7 +3432,7 @@ public final class CheckIndex implements Closeable {
                   + ")");
         }
         if (it2.docID() != doc - 1) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "dv iterator field="
                   + field
                   + ": doc="
@@ -2927,14 +3444,14 @@ public final class CheckIndex implements Closeable {
 
         boolean found2 = it2.advanceExact(doc - 1);
         if (found != found2) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "dv iterator field=" + field + ": doc=" + (doc - 1) + " has unstable advanceExact");
         }
 
         if (i % 2 == 0) {
           int doc2 = it2.nextDoc();
           if (doc != doc2) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "dv iterator field="
                     + field
                     + ": doc="
@@ -2944,7 +3461,7 @@ public final class CheckIndex implements Closeable {
                     + ")");
           }
           if (it2.docID() != doc) {
-            throw new RuntimeException(
+            throw new CheckIndexException(
                 "dv iterator field="
                     + field
                     + ": doc="
@@ -2961,9 +3478,9 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkBinaryDocValues(
-      String fieldName, int maxDoc, BinaryDocValues bdv, BinaryDocValues bdv2) throws IOException {
+      String fieldName, BinaryDocValues bdv, BinaryDocValues bdv2) throws IOException {
     if (bdv.docID() != -1) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "binary dv iterator for field: "
               + fieldName
               + " should start at docID=-1, but got "
@@ -2975,20 +3492,20 @@ public final class CheckIndex implements Closeable {
       value.isValid();
 
       if (bdv2.advanceExact(doc) == false) {
-        throw new RuntimeException("advanceExact did not find matching doc ID: " + doc);
+        throw new CheckIndexException("advanceExact did not find matching doc ID: " + doc);
       }
       BytesRef value2 = bdv2.binaryValue();
       if (value.equals(value2) == false) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "nextDoc and advanceExact report different values: " + value + " != " + value2);
       }
     }
   }
 
   private static void checkSortedDocValues(
-      String fieldName, int maxDoc, SortedDocValues dv, SortedDocValues dv2) throws IOException {
+      String fieldName, SortedDocValues dv, SortedDocValues dv2) throws IOException {
     if (dv.docID() != -1) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "sorted dv iterator for field: "
               + fieldName
               + " should start at docID=-1, but got "
@@ -3000,25 +3517,25 @@ public final class CheckIndex implements Closeable {
     for (int doc = dv.nextDoc(); doc != NO_MORE_DOCS; doc = dv.nextDoc()) {
       int ord = dv.ordValue();
       if (ord == -1) {
-        throw new RuntimeException("dv for field: " + fieldName + " has -1 ord");
+        throw new CheckIndexException("dv for field: " + fieldName + " has -1 ord");
       } else if (ord < -1 || ord > maxOrd) {
-        throw new RuntimeException("ord out of bounds: " + ord);
+        throw new CheckIndexException("ord out of bounds: " + ord);
       } else {
         maxOrd2 = Math.max(maxOrd2, ord);
         seenOrds.set(ord);
       }
 
       if (dv2.advanceExact(doc) == false) {
-        throw new RuntimeException("advanceExact did not find matching doc ID: " + doc);
+        throw new CheckIndexException("advanceExact did not find matching doc ID: " + doc);
       }
       int ord2 = dv2.ordValue();
       if (ord != ord2) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "nextDoc and advanceExact report different ords: " + ord + " != " + ord2);
       }
     }
     if (maxOrd != maxOrd2) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "dv for field: "
               + fieldName
               + " reports wrong maxOrd="
@@ -3027,7 +3544,7 @@ public final class CheckIndex implements Closeable {
               + maxOrd2);
     }
     if (seenOrds.cardinality() != dv.getValueCount()) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "dv for field: "
               + fieldName
               + " has holes in its ords, valueCount="
@@ -3041,7 +3558,7 @@ public final class CheckIndex implements Closeable {
       term.isValid();
       if (lastValue != null) {
         if (term.compareTo(lastValue) <= 0) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "dv for field: " + fieldName + " has ords out of order: " + lastValue + " >=" + term);
         }
       }
@@ -3050,48 +3567,70 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkSortedSetDocValues(
-      String fieldName, int maxDoc, SortedSetDocValues dv, SortedSetDocValues dv2)
-      throws IOException {
+      String fieldName, SortedSetDocValues dv, SortedSetDocValues dv2) throws IOException {
     final long maxOrd = dv.getValueCount() - 1;
     LongBitSet seenOrds = new LongBitSet(dv.getValueCount());
     long maxOrd2 = -1;
     for (int docID = dv.nextDoc(); docID != NO_MORE_DOCS; docID = dv.nextDoc()) {
+      int count = dv.docValueCount();
+      if (count == 0) {
+        throw new CheckIndexException(
+            "sortedset dv for field: "
+                + fieldName
+                + " returned docValueCount=0 for docID="
+                + docID);
+      }
       if (dv2.advanceExact(docID) == false) {
-        throw new RuntimeException("advanceExact did not find matching doc ID: " + docID);
+        throw new CheckIndexException("advanceExact did not find matching doc ID: " + docID);
+      }
+      int count2 = dv2.docValueCount();
+      if (count != count2) {
+        throw new CheckIndexException(
+            "advanceExact reports different value count: " + count + " != " + count2);
       }
       long lastOrd = -1;
-      long ord;
       int ordCount = 0;
-      while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+      for (int i = 0; i < count; i++) {
+        if (count != dv.docValueCount()) {
+          throw new CheckIndexException(
+              "value count changed from "
+                  + count
+                  + " to "
+                  + dv.docValueCount()
+                  + " during iterating over all values");
+        }
+        long ord = dv.nextOrd();
         long ord2 = dv2.nextOrd();
         if (ord != ord2) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "nextDoc and advanceExact report different ords: " + ord + " != " + ord2);
         }
         if (ord <= lastOrd) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "ords out of order: " + ord + " <= " + lastOrd + " for doc: " + docID);
         }
         if (ord < 0 || ord > maxOrd) {
-          throw new RuntimeException("ord out of bounds: " + ord);
+          throw new CheckIndexException("ord out of bounds: " + ord);
         }
         lastOrd = ord;
         maxOrd2 = Math.max(maxOrd2, ord);
         seenOrds.set(ord);
         ordCount++;
       }
-      if (ordCount == 0) {
-        throw new RuntimeException(
-            "dv for field: " + fieldName + " returned docID=" + docID + " yet has no ordinals");
+      if (dv.docValueCount() != dv2.docValueCount()) {
+        throw new CheckIndexException(
+            "dv and dv2 report different values count after iterating over all values: "
+                + dv.docValueCount()
+                + " != "
+                + dv2.docValueCount());
       }
-      long ord2 = dv2.nextOrd();
-      if (ord != ord2) {
-        throw new RuntimeException(
-            "nextDoc and advanceExact report different ords: " + ord + " != " + ord2);
+      if (ordCount == 0) {
+        throw new CheckIndexException(
+            "dv for field: " + fieldName + " returned docID=" + docID + " yet has no ordinals");
       }
     }
     if (maxOrd != maxOrd2) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "dv for field: "
               + fieldName
               + " reports wrong maxOrd="
@@ -3100,7 +3639,7 @@ public final class CheckIndex implements Closeable {
               + maxOrd2);
     }
     if (seenOrds.cardinality() != dv.getValueCount()) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "dv for field: "
               + fieldName
               + " has holes in its ords, valueCount="
@@ -3115,7 +3654,7 @@ public final class CheckIndex implements Closeable {
       assert term.isValid();
       if (lastValue != null) {
         if (term.compareTo(lastValue) <= 0) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "dv for field: " + fieldName + " has ords out of order: " + lastValue + " >=" + term);
         }
       }
@@ -3124,10 +3663,10 @@ public final class CheckIndex implements Closeable {
   }
 
   private static void checkSortedNumericDocValues(
-      String fieldName, int maxDoc, SortedNumericDocValues ndv, SortedNumericDocValues ndv2)
+      String fieldName, SortedNumericDocValues ndv, SortedNumericDocValues ndv2)
       throws IOException {
     if (ndv.docID() != -1) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "dv iterator for field: "
               + fieldName
               + " should start at docID=-1, but got "
@@ -3136,32 +3675,32 @@ public final class CheckIndex implements Closeable {
     for (int docID = ndv.nextDoc(); docID != NO_MORE_DOCS; docID = ndv.nextDoc()) {
       int count = ndv.docValueCount();
       if (count == 0) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "sorted numeric dv for field: "
                 + fieldName
                 + " returned docValueCount=0 for docID="
                 + docID);
       }
       if (ndv2.advanceExact(docID) == false) {
-        throw new RuntimeException("advanceExact did not find matching doc ID: " + docID);
+        throw new CheckIndexException("advanceExact did not find matching doc ID: " + docID);
       }
       int count2 = ndv2.docValueCount();
       if (count != count2) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "advanceExact reports different value count: " + count + " != " + count2);
       }
       long previous = Long.MIN_VALUE;
       for (int j = 0; j < count; j++) {
         long value = ndv.nextValue();
         if (value < previous) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "values out of order: " + value + " < " + previous + " for doc: " + docID);
         }
         previous = value;
 
         long value2 = ndv2.nextValue();
         if (value != value2) {
-          throw new RuntimeException(
+          throw new CheckIndexException(
               "advanceExact reports different value: " + value + " != " + value2);
         }
       }
@@ -3171,7 +3710,7 @@ public final class CheckIndex implements Closeable {
   private static void checkNumericDocValues(
       String fieldName, NumericDocValues ndv, NumericDocValues ndv2) throws IOException {
     if (ndv.docID() != -1) {
-      throw new RuntimeException(
+      throw new CheckIndexException(
           "dv iterator for field: "
               + fieldName
               + " should start at docID=-1, but got "
@@ -3182,49 +3721,47 @@ public final class CheckIndex implements Closeable {
       long value = ndv.longValue();
 
       if (ndv2.advanceExact(doc) == false) {
-        throw new RuntimeException("advanceExact did not find matching doc ID: " + doc);
+        throw new CheckIndexException("advanceExact did not find matching doc ID: " + doc);
       }
       long value2 = ndv2.longValue();
       if (value != value2) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "advanceExact reports different value: " + value + " != " + value2);
       }
     }
   }
 
   private static void checkDocValues(
-      FieldInfo fi,
-      DocValuesProducer dvReader,
-      int maxDoc,
-      PrintStream infoStream,
-      DocValuesStatus status)
-      throws Exception {
+      FieldInfo fi, DocValuesProducer dvReader, DocValuesStatus status) throws Exception {
+    if (fi.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
+      status.totalSkippingIndex++;
+      checkDocValueSkipper(fi, dvReader.getSkipper(fi));
+    }
     switch (fi.getDocValuesType()) {
       case SORTED:
         status.totalSortedFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getSorted);
-        checkSortedDocValues(fi.name, maxDoc, dvReader.getSorted(fi), dvReader.getSorted(fi));
+        checkDVIterator(fi, dvReader::getSorted);
+        checkSortedDocValues(fi.name, dvReader.getSorted(fi), dvReader.getSorted(fi));
         break;
       case SORTED_NUMERIC:
         status.totalSortedNumericFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getSortedNumeric);
+        checkDVIterator(fi, dvReader::getSortedNumeric);
         checkSortedNumericDocValues(
-            fi.name, maxDoc, dvReader.getSortedNumeric(fi), dvReader.getSortedNumeric(fi));
+            fi.name, dvReader.getSortedNumeric(fi), dvReader.getSortedNumeric(fi));
         break;
       case SORTED_SET:
         status.totalSortedSetFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getSortedSet);
-        checkSortedSetDocValues(
-            fi.name, maxDoc, dvReader.getSortedSet(fi), dvReader.getSortedSet(fi));
+        checkDVIterator(fi, dvReader::getSortedSet);
+        checkSortedSetDocValues(fi.name, dvReader.getSortedSet(fi), dvReader.getSortedSet(fi));
         break;
       case BINARY:
         status.totalBinaryFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getBinary);
-        checkBinaryDocValues(fi.name, maxDoc, dvReader.getBinary(fi), dvReader.getBinary(fi));
+        checkDVIterator(fi, dvReader::getBinary);
+        checkBinaryDocValues(fi.name, dvReader.getBinary(fi), dvReader.getBinary(fi));
         break;
       case NUMERIC:
         status.totalNumericFields++;
-        checkDVIterator(fi, maxDoc, dvReader::getNumeric);
+        checkDVIterator(fi, dvReader::getNumeric);
         checkNumericDocValues(fi.name, dvReader.getNumeric(fi), dvReader.getNumeric(fi));
         break;
       case NONE:
@@ -3233,27 +3770,15 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  /**
-   * Test term vectors.
-   *
-   * @lucene.experimental
-   */
+  /** Test term vectors. */
   public static Status.TermVectorStatus testTermVectors(CodecReader reader, PrintStream infoStream)
       throws IOException {
-    return testTermVectors(reader, infoStream, false, false, false);
+    return testTermVectors(reader, infoStream, false, Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, false);
   }
 
-  /**
-   * Test term vectors.
-   *
-   * @lucene.experimental
-   */
+  /** Test term vectors. */
   public static Status.TermVectorStatus testTermVectors(
-      CodecReader reader,
-      PrintStream infoStream,
-      boolean verbose,
-      boolean doSlowChecks,
-      boolean failFast)
+      CodecReader reader, PrintStream infoStream, boolean verbose, int level, boolean failFast)
       throws IOException {
     long startNS = System.nanoTime();
     final Status.TermVectorStatus status = new Status.TermVectorStatus();
@@ -3266,15 +3791,18 @@ public final class CheckIndex implements Closeable {
 
       PostingsEnum postings = null;
 
-      // Only used if doSlowChecks is true:
+      // Only used if the Level is high enough to include slow checks:
       PostingsEnum postingsDocs = null;
 
       final Bits liveDocs = reader.getLiveDocs();
 
-      final Fields postingsFields;
+      FieldsProducer postingsFields;
       // TODO: testTermsIndex
-      if (doSlowChecks) {
-        postingsFields = reader.getPostingsReader().getMergeInstance();
+      if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS) {
+        postingsFields = reader.getPostingsReader();
+        if (postingsFields != null) {
+          postingsFields = postingsFields.getMergeInstance();
+        }
       } else {
         postingsFields = null;
       }
@@ -3284,6 +3812,9 @@ public final class CheckIndex implements Closeable {
       if (vectorsReader != null) {
         vectorsReader = vectorsReader.getMergeInstance();
         for (int j = 0; j < reader.maxDoc(); ++j) {
+          if ((j & 0x03) == 0) {
+            vectorsReader.prefetch(j);
+          }
           // Intentionally pull/visit (but don't count in
           // stats) deleted documents to make sure they too
           // are not corrupt:
@@ -3294,8 +3825,7 @@ public final class CheckIndex implements Closeable {
 
           if (tfv != null) {
             // First run with no deletions:
-            checkFields(
-                tfv, null, 1, fieldInfos, null, false, true, infoStream, verbose, doSlowChecks);
+            checkFields(tfv, null, 1, fieldInfos, null, false, true, infoStream, verbose, level);
 
             // Only agg stats if the doc is live:
             final boolean doStats = liveDocs == null || liveDocs.get(j);
@@ -3311,8 +3841,8 @@ public final class CheckIndex implements Closeable {
 
               // Make sure FieldInfo thinks this field is vector'd:
               final FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
-              if (!fieldInfo.hasVectors()) {
-                throw new RuntimeException(
+              if (fieldInfo.hasTermVectors() == false) {
+                throw new CheckIndexException(
                     "docID="
                         + j
                         + " has term vectors for field="
@@ -3320,7 +3850,7 @@ public final class CheckIndex implements Closeable {
                         + " but FieldInfo has storeTermVector=false");
               }
 
-              if (doSlowChecks) {
+              if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS) {
                 Terms terms = tfv.terms(field);
                 TermsEnum termsEnum = terms.iterator();
                 final boolean postingsHasFreq =
@@ -3328,23 +3858,35 @@ public final class CheckIndex implements Closeable {
                 final boolean postingsHasPayload = fieldInfo.hasPayloads();
                 final boolean vectorsHasPayload = terms.hasPayloads();
 
+                if (postingsFields == null) {
+                  throw new CheckIndexException(
+                      "vector field=" + field + " does not exist in postings; doc=" + j);
+                }
                 Terms postingsTerms = postingsFields.terms(field);
                 if (postingsTerms == null) {
-                  throw new RuntimeException(
+                  throw new CheckIndexException(
                       "vector field=" + field + " does not exist in postings; doc=" + j);
                 }
                 TermsEnum postingsTermsEnum = postingsTerms.iterator();
 
                 final boolean hasProx = terms.hasOffsets() || terms.hasPositions();
-                BytesRef term = null;
+                int seekExactCounter = 0;
+                BytesRef term;
                 while ((term = termsEnum.next()) != null) {
 
                   // This is the term vectors:
                   postings = termsEnum.postings(postings, PostingsEnum.ALL);
                   assert postings != null;
 
-                  if (!postingsTermsEnum.seekExact(term)) {
-                    throw new RuntimeException(
+                  boolean termExists;
+                  if ((seekExactCounter++ & 0x01) == 0) {
+                    termExists = postingsTermsEnum.seekExact(term);
+                  } else {
+                    IOBooleanSupplier termExistsSupplier = postingsTermsEnum.prepareSeekExact(term);
+                    termExists = termExistsSupplier != null && termExistsSupplier.get();
+                  }
+                  if (termExists == false) {
+                    throw new CheckIndexException(
                         "vector term="
                             + term
                             + " field="
@@ -3359,7 +3901,7 @@ public final class CheckIndex implements Closeable {
 
                   final int advanceDoc = postingsDocs.advance(j);
                   if (advanceDoc != j) {
-                    throw new RuntimeException(
+                    throw new CheckIndexException(
                         "vector term="
                             + term
                             + " field="
@@ -3374,14 +3916,14 @@ public final class CheckIndex implements Closeable {
                   final int doc = postings.nextDoc();
 
                   if (doc != 0) {
-                    throw new RuntimeException(
+                    throw new CheckIndexException(
                         "vector for doc " + j + " didn't return docID=0: got docID=" + doc);
                   }
 
                   if (postingsHasFreq) {
                     final int tf = postings.freq();
                     if (postingsHasFreq && postingsDocs.freq() != tf) {
-                      throw new RuntimeException(
+                      throw new CheckIndexException(
                           "vector term="
                               + term
                               + " field="
@@ -3401,7 +3943,7 @@ public final class CheckIndex implements Closeable {
                         if (postingsTerms.hasPositions()) {
                           int postingsPos = postingsDocs.nextPosition();
                           if (terms.hasPositions() && pos != postingsPos) {
-                            throw new RuntimeException(
+                            throw new CheckIndexException(
                                 "vector term="
                                     + term
                                     + " field="
@@ -3434,7 +3976,7 @@ public final class CheckIndex implements Closeable {
                           int postingsStartOffset = postingsDocs.startOffset();
                           int postingsEndOffset = postingsDocs.endOffset();
                           if (startOffset != postingsStartOffset) {
-                            throw new RuntimeException(
+                            throw new CheckIndexException(
                                 "vector term="
                                     + term
                                     + " field="
@@ -3447,7 +3989,7 @@ public final class CheckIndex implements Closeable {
                                     + postingsStartOffset);
                           }
                           if (endOffset != postingsEndOffset) {
-                            throw new RuntimeException(
+                            throw new CheckIndexException(
                                 "vector term="
                                     + term
                                     + " field="
@@ -3473,7 +4015,7 @@ public final class CheckIndex implements Closeable {
                             // we have payloads, but not at this position.
                             // postings has payloads too, it should not have one at this position
                             if (postingsDocs.getPayload() != null) {
-                              throw new RuntimeException(
+                              throw new CheckIndexException(
                                   "vector term="
                                       + term
                                       + " field="
@@ -3487,7 +4029,7 @@ public final class CheckIndex implements Closeable {
                             // we have payloads, and one at this position
                             // postings should also have one at this position, with the same bytes.
                             if (postingsDocs.getPayload() == null) {
-                              throw new RuntimeException(
+                              throw new CheckIndexException(
                                   "vector term="
                                       + term
                                       + " field="
@@ -3499,8 +4041,8 @@ public final class CheckIndex implements Closeable {
                                       + " but postings does not.");
                             }
                             BytesRef postingsPayload = postingsDocs.getPayload();
-                            if (!payload.equals(postingsPayload)) {
-                              throw new RuntimeException(
+                            if (payload.equals(postingsPayload) == false) {
+                              throw new CheckIndexException(
                                   "vector term="
                                       + term
                                       + " field="
@@ -3536,7 +4078,7 @@ public final class CheckIndex implements Closeable {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, "ERROR [" + e.getMessage() + "]");
       status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
@@ -3619,9 +4161,9 @@ public final class CheckIndex implements Closeable {
   /** Run-time configuration options for CheckIndex commands. */
   public static class Options {
     boolean doExorcise = false;
-    boolean doSlowChecks = false;
     boolean verbose = false;
-    boolean doChecksumsOnly = false;
+    int level = Level.DEFAULT_VALUE;
+    int threadCount;
     List<String> onlySegments = new ArrayList<>();
     String indexPath = null;
     String dirImpl = null;
@@ -3657,12 +4199,13 @@ public final class CheckIndex implements Closeable {
       return 1;
     }
 
-    if (!assertsOn())
+    if (assertsOn() == false) {
       System.out.println(
           "\nNOTE: testing will be more thorough if you run java with '-ea:org.apache.lucene...', so assertions are enabled");
+    }
 
     System.out.println("\nOpening index @ " + opts.indexPath + "\n");
-    Directory directory = null;
+    Directory directory;
     Path path = Paths.get(opts.indexPath);
     try {
       if (opts.dirImpl == null) {
@@ -3683,6 +4226,42 @@ public final class CheckIndex implements Closeable {
     }
   }
 
+  /** Class with static variables with information about CheckIndex's -level parameter. */
+  public static class Level {
+    private Level() {}
+
+    /** Minimum valid level. */
+    public static final int MIN_VALUE = 1;
+
+    /** Maximum valid level. */
+    public static final int MAX_VALUE = 3;
+
+    /** The default level if none is specified. */
+    public static final int DEFAULT_VALUE = MIN_VALUE;
+
+    /** Minimum level required to run checksum checks. */
+    public static final int MIN_LEVEL_FOR_CHECKSUM_CHECKS = 1;
+
+    /** Minimum level required to run integrity checks. */
+    public static final int MIN_LEVEL_FOR_INTEGRITY_CHECKS = 2;
+
+    /** Minimum level required to run slow checks. */
+    public static final int MIN_LEVEL_FOR_SLOW_CHECKS = 3;
+
+    /** Checks if given level value is within the allowed bounds else it raises an Exception. */
+    public static void checkIfLevelInBounds(int levelVal) throws IllegalArgumentException {
+      if (levelVal < Level.MIN_VALUE || levelVal > Level.MAX_VALUE) {
+        throw new IllegalArgumentException(
+            String.format(
+                Locale.ROOT,
+                "ERROR: given value: '%d' for -level option is out of bounds. Please use a value from '%d'->'%d'",
+                levelVal,
+                Level.MIN_VALUE,
+                Level.MAX_VALUE));
+      }
+    }
+  }
+
   /**
    * Parse command line args into fields
    *
@@ -3697,15 +4276,16 @@ public final class CheckIndex implements Closeable {
     int i = 0;
     while (i < args.length) {
       String arg = args[i];
-      if ("-fast".equals(arg)) {
-        opts.doChecksumsOnly = true;
+      if ("-level".equals(arg)) {
+        if (i == args.length - 1) {
+          throw new IllegalArgumentException("ERROR: missing value for -level option");
+        }
+        i++;
+        int level = Integer.parseInt(args[i]);
+        Level.checkIfLevelInBounds(level);
+        opts.level = level;
       } else if ("-exorcise".equals(arg)) {
         opts.doExorcise = true;
-      } else if ("-crossCheckTermVectors".equals(arg)) {
-        System.err.println("-crossCheckTermVectors is deprecated, use -slow instead");
-        opts.doSlowChecks = true;
-      } else if ("-slow".equals(arg)) {
-        opts.doSlowChecks = true;
       } else if (arg.equals("-verbose")) {
         opts.verbose = true;
       } else if (arg.equals("-segment")) {
@@ -3720,6 +4300,16 @@ public final class CheckIndex implements Closeable {
         }
         i++;
         opts.dirImpl = args[i];
+      } else if ("-threadCount".equals(arg)) {
+        if (i == args.length - 1) {
+          throw new IllegalArgumentException("-threadCount requires a following number");
+        }
+        i++;
+        opts.threadCount = Integer.parseInt(args[i]);
+        if (opts.threadCount <= 0) {
+          throw new IllegalArgumentException(
+              "-threadCount requires a number larger than 0, but got: " + opts.threadCount);
+        }
       } else {
         if (opts.indexPath != null) {
           throw new IllegalArgumentException("ERROR: unexpected extra argument '" + args[i] + "'");
@@ -3732,23 +4322,29 @@ public final class CheckIndex implements Closeable {
     if (opts.indexPath == null) {
       throw new IllegalArgumentException(
           "\nERROR: index path not specified"
-              + "\nUsage: java org.apache.lucene.index.CheckIndex pathToIndex [-exorcise] [-slow] [-segment X] [-segment Y] [-dir-impl X]\n"
+              + "\nUsage: java org.apache.lucene.index.CheckIndex pathToIndex [-exorcise] [-level X] [-segment X] [-segment Y] [-threadCount X] [-dir-impl X]\n"
               + "\n"
               + "  -exorcise: actually write a new segments_N file, removing any problematic segments\n"
-              + "  -fast: just verify file checksums, omitting logical integrity checks\n"
-              + "  -slow: do additional slow checks; THIS IS VERY SLOW!\n"
+              + "  -level X: sets the detail level of the check. The higher the value, the more checks are done.\n"
+              + "         1 - (Default) Checksum checks only.\n"
+              + "         2 - All level 1 checks + logical integrity checks.\n"
+              + "         3 - All level 2 checks + slow checks.\n"
               + "  -codec X: when exorcising, codec to write the new segments_N file with\n"
               + "  -verbose: print additional details\n"
               + "  -segment X: only check the specified segments.  This can be specified multiple\n"
-              + "              times, to check more than one segment, eg '-segment _2 -segment _a'.\n"
+              + "              times, to check more than one segment, e.g. '-segment _2 -segment _a'.\n"
               + "              You can't use this with the -exorcise option\n"
+              + "  -threadCount X: number of threads used to check index concurrently.\n"
+              + "                  When not specified, this will default to the number of CPU cores.\n"
+              + "                  When '-threadCount 1' is used, index checking will be performed sequentially.\n"
               + "  -dir-impl X: use a specific "
               + FSDirectory.class.getSimpleName()
               + " implementation. "
               + "If no package is specified the "
               + FSDirectory.class.getPackage().getName()
               + " package will be used.\n"
-              + "\n"
+              + "CheckIndex only verifies file checksums as default.\n"
+              + "Use -level with value of '2' or higher if you also want to check segment file contents.\n\n"
               + "**WARNING**: -exorcise *LOSES DATA*. This should only be used on an emergency basis as it will cause\n"
               + "documents (perhaps many) to be permanently removed from the index.  Always make\n"
               + "a backup copy of your index before running this!  Do not run this tool on an index\n"
@@ -3764,14 +4360,10 @@ public final class CheckIndex implements Closeable {
               + "corruption, else 0.\n");
     }
 
-    if (opts.onlySegments.size() == 0) {
+    if (opts.onlySegments.isEmpty()) {
       opts.onlySegments = null;
     } else if (opts.doExorcise) {
       throw new IllegalArgumentException("ERROR: cannot specify both -exorcise and -segment");
-    }
-
-    if (opts.doChecksumsOnly && opts.doSlowChecks) {
-      throw new IllegalArgumentException("ERROR: cannot specify both -fast and -slow");
     }
 
     return opts;
@@ -3783,18 +4375,24 @@ public final class CheckIndex implements Closeable {
    * @param opts The options to use for this check
    * @return 0 iff the index is clean, 1 otherwise
    */
+  @SuppressForbidden(reason = "Thread sleep")
   public int doCheck(Options opts) throws IOException, InterruptedException {
-    setDoSlowChecks(opts.doSlowChecks);
-    setChecksumsOnly(opts.doChecksumsOnly);
+    setLevel(opts.level);
     setInfoStream(opts.out, opts.verbose);
+    // user provided thread count via command line argument, overriding the default with user
+    // provided value
+    if (opts.threadCount > 0) {
+      setThreadCount(opts.threadCount);
+    }
 
     Status result = checkIndex(opts.onlySegments);
+
     if (result.missingSegments) {
       return 1;
     }
 
-    if (!result.clean) {
-      if (!opts.doExorcise) {
+    if (result.clean == false) {
+      if (opts.doExorcise == false) {
         opts.out.println(
             "WARNING: would write new segments file, and "
                 + result.totLoseDocCount
@@ -3816,44 +4414,70 @@ public final class CheckIndex implements Closeable {
             "Wrote new segments file \"" + result.newSegments.getSegmentsFileName() + "\"");
       }
     }
-    opts.out.println("");
+    opts.out.println();
 
-    if (result.clean == true) {
-      return 0;
-    } else {
-      return 1;
-    }
+    return result.clean ? 0 : 1;
   }
 
-  private static void checkSoftDeletes(
+  private static Status.SoftDeletesStatus checkSoftDeletes(
       String softDeletesField,
       SegmentCommitInfo info,
       SegmentReader reader,
       PrintStream infoStream,
       boolean failFast)
       throws IOException {
+
+    Status.SoftDeletesStatus status = new Status.SoftDeletesStatus();
     if (infoStream != null) infoStream.print("    test: check soft deletes.....");
     try {
       int softDeletes =
           PendingSoftDeletes.countSoftDeletes(
-              DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(softDeletesField, reader),
+              FieldExistsQuery.getDocValuesDocIdSetIterator(softDeletesField, reader),
               reader.getLiveDocs());
       if (softDeletes != info.getSoftDelCount()) {
-        throw new RuntimeException(
+        throw new CheckIndexException(
             "actual soft deletes: " + softDeletes + " but expected: " + info.getSoftDelCount());
       }
     } catch (Exception e) {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
-      msg(infoStream, "ERROR [" + String.valueOf(e.getMessage()) + "]");
+      msg(infoStream, "ERROR [" + e.getMessage() + "]");
+      status.error = e;
       if (infoStream != null) {
         e.printStackTrace(infoStream);
       }
     }
+
+    return status;
   }
 
   private static double nsToSec(long ns) {
-    return ns / 1000000000.0;
+    return ns / (double) TimeUnit.SECONDS.toNanos(1);
+  }
+
+  /**
+   * The marker RuntimeException used by CheckIndex APIs when index integrity failure is detected.
+   */
+  public static class CheckIndexException extends RuntimeException {
+
+    /**
+     * Constructs a new CheckIndexException with the error message
+     *
+     * @param message the detailed error message.
+     */
+    public CheckIndexException(String message) {
+      super(message);
+    }
+
+    /**
+     * Constructs a new CheckIndexException with the error message, and the root cause
+     *
+     * @param message the detailed error message.
+     * @param cause the underlying cause.
+     */
+    public CheckIndexException(String message, Throwable cause) {
+      super(message, cause);
+    }
   }
 }

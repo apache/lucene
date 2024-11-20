@@ -147,4 +147,37 @@ public abstract class FilterDirectoryReader extends DirectoryReader {
   public DirectoryReader getDelegate() {
     return in;
   }
+
+  /**
+   * A DelegatingCacheHelper is a CacheHelper specialization for implementing long-lived caching
+   * behaviour for FilterDirectoryReader subclasses. It uses a unique CacheKey for the purpose of
+   * implementing the onClose listener delegation for the reader.
+   */
+  protected static class DelegatingCacheHelper implements CacheHelper {
+    private final CacheHelper delegate;
+    private final CacheKey cacheKey = new CacheKey();
+
+    /**
+     * Create a new DelegatingCacheHelper that delegates the cache onClose listener to another
+     * CacheHelper, but with its own unique CacheKey.
+     *
+     * @param delegate the CacheHelper to delegate the close listener to
+     */
+    protected DelegatingCacheHelper(CacheHelper delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public CacheKey getKey() {
+      return cacheKey;
+    }
+
+    @Override
+    public void addClosedListener(ClosedListener listener) {
+      // here we wrap the listener and call it with our cache key
+      // this is important since this key will be used to cache the reader and otherwise we won't
+      // free caches etc.
+      delegate.addClosedListener(unused -> listener.onClose(cacheKey));
+    }
+  }
 }

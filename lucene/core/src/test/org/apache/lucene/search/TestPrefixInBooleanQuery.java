@@ -19,10 +19,10 @@ package org.apache.lucene.search;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -82,12 +82,12 @@ public class TestPrefixInBooleanQuery extends LuceneTestCase {
 
   public void testPrefixQuery() throws Exception {
     Query query = new PrefixQuery(new Term(FIELD, "tang"));
-    assertEquals("Number of matched documents", 2, searcher.search(query, 1000).totalHits.value);
+    assertEquals("Number of matched documents", 2, searcher.search(query, 1000).totalHits.value());
   }
 
   public void testTermQuery() throws Exception {
     Query query = new TermQuery(new Term(FIELD, "tangfulin"));
-    assertEquals("Number of matched documents", 2, searcher.search(query, 1000).totalHits.value);
+    assertEquals("Number of matched documents", 2, searcher.search(query, 1000).totalHits.value());
   }
 
   public void testTermBooleanQuery() throws Exception {
@@ -95,7 +95,7 @@ public class TestPrefixInBooleanQuery extends LuceneTestCase {
     query.add(new TermQuery(new Term(FIELD, "tangfulin")), BooleanClause.Occur.SHOULD);
     query.add(new TermQuery(new Term(FIELD, "notexistnames")), BooleanClause.Occur.SHOULD);
     assertEquals(
-        "Number of matched documents", 2, searcher.search(query.build(), 1000).totalHits.value);
+        "Number of matched documents", 2, searcher.search(query.build(), 1000).totalHits.value());
   }
 
   public void testPrefixBooleanQuery() throws Exception {
@@ -103,6 +103,6 @@ public class TestPrefixInBooleanQuery extends LuceneTestCase {
     query.add(new PrefixQuery(new Term(FIELD, "tang")), BooleanClause.Occur.SHOULD);
     query.add(new TermQuery(new Term(FIELD, "notexistnames")), BooleanClause.Occur.SHOULD);
     assertEquals(
-        "Number of matched documents", 2, searcher.search(query.build(), 1000).totalHits.value);
+        "Number of matched documents", 2, searcher.search(query.build(), 1000).totalHits.value());
   }
 }

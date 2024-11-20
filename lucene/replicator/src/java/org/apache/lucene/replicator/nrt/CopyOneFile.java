@@ -20,6 +20,7 @@ package org.apache.lucene.replicator.nrt;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
@@ -52,7 +53,7 @@ public class CopyOneFile implements Closeable {
 
     // last 8 bytes are checksum, which we write ourselves after copying all bytes and confirming
     // checksum:
-    bytesToCopy = metaData.length - Long.BYTES;
+    bytesToCopy = metaData.length() - Long.BYTES;
 
     if (Node.VERBOSE_FILES) {
       dest.message(
@@ -96,7 +97,7 @@ public class CopyOneFile implements Closeable {
       long bytesLeft = bytesToCopy - bytesCopied;
       if (bytesLeft == 0) {
         long checksum = out.getChecksum();
-        if (checksum != metaData.checksum) {
+        if (checksum != metaData.checksum()) {
           // Bits flipped during copy!
           dest.message(
               "file "
@@ -104,7 +105,7 @@ public class CopyOneFile implements Closeable {
                   + ": checksum mismatch after copy (bits flipped during network copy?) after-copy checksum="
                   + checksum
                   + " vs expected="
-                  + metaData.checksum
+                  + metaData.checksum()
                   + "; cancel job");
           throw new IOException("file " + name + ": checksum mismatch after file copy");
         }
@@ -133,8 +134,8 @@ public class CopyOneFile implements Closeable {
                   Locale.ROOT,
                   "file %s: done copying [%s, %.3fms]",
                   name,
-                  Node.bytesToString(metaData.length),
-                  (System.nanoTime() - copyStartNS) / 1000000.0));
+                  Node.bytesToString(metaData.length()),
+                  (System.nanoTime() - copyStartNS) / (double) TimeUnit.MILLISECONDS.toNanos(1)));
         }
 
         return true;

@@ -25,9 +25,9 @@ import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
  */
 public class OpaqueQueryNode extends QueryNodeImpl {
 
-  private CharSequence schema = null;
+  private CharSequence schema;
 
-  private CharSequence value = null;
+  private CharSequence value;
 
   /**
    * @param schema - schema identifier
@@ -60,12 +60,16 @@ public class OpaqueQueryNode extends QueryNodeImpl {
     return clone;
   }
 
-  /** @return the schema */
+  /**
+   * @return the schema
+   */
   public CharSequence getSchema() {
     return this.schema;
   }
 
-  /** @return the value */
+  /**
+   * @return the value
+   */
   public CharSequence getValue() {
     return this.value;
   }

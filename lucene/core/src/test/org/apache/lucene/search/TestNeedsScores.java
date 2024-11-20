@@ -23,11 +23,11 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestNeedsScores extends LuceneTestCase {
   Directory dir;
@@ -46,6 +46,9 @@ public class TestNeedsScores extends LuceneTestCase {
     }
     reader = iw.getReader();
     searcher = newSearcher(reader);
+    // Needed so that the cache doesn't consume weights with ScoreMode.COMPLETE_NO_SCORES for the
+    // purpose of populating the cache.
+    searcher.setQueryCache(null);
     iw.close();
   }
 
@@ -64,27 +67,49 @@ public class TestNeedsScores extends LuceneTestCase {
     bq.add(
         new AssertNeedsScores(prohibited, ScoreMode.COMPLETE_NO_SCORES),
         BooleanClause.Occur.MUST_NOT);
-    assertEquals(4, searcher.search(bq.build(), 5).totalHits.value); // we exclude 3
+    assertEquals(4, searcher.search(bq.build(), 5).totalHits.value()); // we exclude 3
   }
 
   /** nested inside constant score query */
   public void testConstantScoreQuery() throws Exception {
     Query term = new TermQuery(new Term("field", "this"));
+
+    // Counting queries and top-score queries that compute the hit count should use
+    // COMPLETE_NO_SCORES
     Query constantScore =
         new ConstantScoreQuery(new AssertNeedsScores(term, ScoreMode.COMPLETE_NO_SCORES));
-    assertEquals(5, searcher.search(constantScore, 5).totalHits.value);
+    assertEquals(5, searcher.count(constantScore));
+
+    TopDocs hits =
+        searcher.search(constantScore, new TopScoreDocCollectorManager(5, null, Integer.MAX_VALUE));
+    assertEquals(5, hits.totalHits.value());
+
+    // Queries that support dynamic pruning like top-score or top-doc queries that do not compute
+    // the hit count should use TOP_DOCS
+    constantScore = new ConstantScoreQuery(new AssertNeedsScores(term, ScoreMode.TOP_DOCS));
+    assertEquals(5, searcher.search(constantScore, 5).totalHits.value());
+
+    assertEquals(
+        5, searcher.search(constantScore, 5, new Sort(SortField.FIELD_DOC)).totalHits.value());
+
+    assertEquals(
+        5,
+        searcher
+            .search(constantScore, 5, new Sort(SortField.FIELD_DOC, SortField.FIELD_SCORE))
+            .totalHits
+            .value());
   }
 
   /** when not sorting by score */
   public void testSortByField() throws Exception {
     Query query = new AssertNeedsScores(new MatchAllDocsQuery(), ScoreMode.TOP_DOCS);
-    assertEquals(5, searcher.search(query, 5, Sort.INDEXORDER).totalHits.value);
+    assertEquals(5, searcher.search(query, 5, Sort.INDEXORDER).totalHits.value());
   }
 
   /** when sorting by score */
   public void testSortByScore() throws Exception {
     Query query = new AssertNeedsScores(new MatchAllDocsQuery(), ScoreMode.TOP_SCORES);
-    assertEquals(5, searcher.search(query, 5, Sort.RELEVANCE).totalHits.value);
+    assertEquals(5, searcher.search(query, 5, Sort.RELEVANCE).totalHits.value());
   }
 
   /**
@@ -106,18 +131,33 @@ public class TestNeedsScores extends LuceneTestCase {
       final Weight w = in.createWeight(searcher, scoreMode, boost);
       return new FilterWeight(w) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          assertEquals("query=" + in, value, scoreMode);
-          return w.scorer(context);
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorerSupplier = w.scorerSupplier(context);
+          if (scorerSupplier == null) {
+            return null;
+          }
+          final var scorer = scorerSupplier.get(Long.MAX_VALUE);
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              assertEquals("query=" + in, value, scoreMode);
+              return scorer;
+            }
+
+            @Override
+            public long cost() {
+              return scorer.iterator().cost();
+            }
+          };
         }
       };
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-      Query in2 = in.rewrite(reader);
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      Query in2 = in.rewrite(indexSearcher);
       if (in2 == in) {
-        return super.rewrite(reader);
+        return super.rewrite(indexSearcher);
       } else {
         return new AssertNeedsScores(in2, value);
       }

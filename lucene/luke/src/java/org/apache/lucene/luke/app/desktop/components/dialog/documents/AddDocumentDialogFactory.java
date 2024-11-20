@@ -33,7 +33,8 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.IntStream;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -51,7 +52,6 @@ import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -151,9 +151,7 @@ public final class AddDocumentDialogFactory
     this.indexOptionsDialogFactory = IndexOptionsDialogFactory.getInstance();
     this.helpDialogFactory = HelpDialogFactory.getInstance();
     this.newFieldList =
-        IntStream.range(0, ROW_COUNT)
-            .mapToObj(i -> NewField.newInstance())
-            .collect(Collectors.toList());
+        IntStream.range(0, ROW_COUNT).mapToObj(i -> NewField.newInstance()).toList();
 
     operatorRegistry.register(AddDocumentDialogOperator.class, this);
     indexHandler.addObserver(new Observer());
@@ -387,7 +385,7 @@ public final class AddDocumentDialogFactory
               .filter(nf -> !nf.isDeleted())
               .filter(nf -> !StringUtils.isNullOrEmpty(nf.getName()))
               .filter(nf -> !StringUtils.isNullOrEmpty(nf.getValue()))
-              .collect(Collectors.toList());
+              .toList();
       if (validFields.isEmpty()) {
         infoTA.setText("Please add one or more fields. Name and Value are both required.");
         return;
@@ -399,18 +397,17 @@ public final class AddDocumentDialogFactory
           doc.add(toIndexableField(nf));
         }
       } catch (NumberFormatException ex) {
-        log.error("Error converting field value", e);
+        log.log(Level.SEVERE, "Error converting field value", e);
         throw new LukeException("Invalid value: " + ex.getMessage(), ex);
       } catch (Exception ex) {
-        log.error("Error converting field value", e);
+        log.log(Level.SEVERE, "Error converting field value", e);
         throw new LukeException(ex.getMessage(), ex);
       }
 
       addDocument(doc);
-      log.info("Added document: {}", doc);
+      log.info("Added document: " + doc);
     }
 
-    @SuppressWarnings("unchecked")
     private IndexableField toIndexableField(NewField nf) throws Exception {
       final Constructor<? extends IndexableField> constr;
       if (nf.getType().equals(TextField.class) || nf.getType().equals(StringField.class)) {
@@ -460,7 +457,7 @@ public final class AddDocumentDialogFactory
             operatorRegistry
                 .get(AnalysisTabOperator.class)
                 .map(AnalysisTabOperator::getCurrentAnalyzer)
-                .orElse(new StandardAnalyzer());
+                .orElseGet(StandardAnalyzer::new);
         toolsModel.addDocument(doc, analyzer);
         indexHandler.reOpen();
         operatorRegistry
@@ -504,9 +501,9 @@ public final class AddDocumentDialogFactory
       OPTIONS("Options", 3, String.class),
       VALUE("Value", 4, String.class);
 
-      private String colName;
-      private int index;
-      private Class<?> type;
+      private final String colName;
+      private final int index;
+      private final Class<?> type;
 
       Column(String colName, int index, Class<?> type) {
         this.colName = colName;
@@ -588,7 +585,7 @@ public final class AddDocumentDialogFactory
 
   static final class OptionsCellRenderer implements TableCellRenderer {
 
-    private JDialog dialog;
+    private final JDialog dialog;
 
     private final IndexOptionsDialogFactory indexOptionsDialogFactory;
 
@@ -608,7 +605,6 @@ public final class AddDocumentDialogFactory
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Component getTableCellRendererComponent(
         JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
       if (table != null && this.table != table) {
@@ -634,9 +630,7 @@ public final class AddDocumentDialogFactory
                             title,
                             500,
                             500,
-                            (factory) -> {
-                              factory.setNewField(newFieldList.get(row));
-                            });
+                            (factory) -> factory.setNewField(newFieldList.get(row)));
                   }
                 }
               });

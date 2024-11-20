@@ -22,17 +22,19 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /** Query that matches String prefixes */
 public class SrndPrefixQuery extends SimpleTerm {
-  private final BytesRef prefixRef;
+  private final CompiledAutomaton compiled;
 
   public SrndPrefixQuery(String prefix, boolean quoted, char truncator) {
     super(quoted);
     this.prefix = prefix;
-    prefixRef = new BytesRef(prefix);
+    compiled =
+        new CompiledAutomaton(PrefixQuery.toAutomaton(new BytesRef(prefix)), true, true, true);
     this.truncator = truncator;
   }
 
@@ -48,10 +50,6 @@ public class SrndPrefixQuery extends SimpleTerm {
     return truncator;
   }
 
-  public Term getLucenePrefixTerm(String fieldName) {
-    return new Term(fieldName, getPrefix());
-  }
-
   @Override
   public String toStringUnquoted() {
     return getPrefix();
@@ -65,35 +63,13 @@ public class SrndPrefixQuery extends SimpleTerm {
   @Override
   public void visitMatchingTerms(IndexReader reader, String fieldName, MatchingTermVisitor mtv)
       throws IOException {
-    /* inspired by PrefixQuery.rewrite(): */
     Terms terms = MultiTerms.getTerms(reader, fieldName);
     if (terms != null) {
-      TermsEnum termsEnum = terms.iterator();
+      TermsEnum termsEnum = compiled.getTermsEnum(terms);
 
-      boolean skip = false;
-      TermsEnum.SeekStatus status = termsEnum.seekCeil(new BytesRef(getPrefix()));
-      if (status == TermsEnum.SeekStatus.FOUND) {
-        mtv.visitMatchingTerm(getLucenePrefixTerm(fieldName));
-      } else if (status == TermsEnum.SeekStatus.NOT_FOUND) {
-        if (StringHelper.startsWith(termsEnum.term(), prefixRef)) {
-          mtv.visitMatchingTerm(new Term(fieldName, termsEnum.term().utf8ToString()));
-        } else {
-          skip = true;
-        }
-      } else {
-        // EOF
-        skip = true;
-      }
-
-      if (!skip) {
-        while (true) {
-          BytesRef text = termsEnum.next();
-          if (text != null && StringHelper.startsWith(text, prefixRef)) {
-            mtv.visitMatchingTerm(new Term(fieldName, text.utf8ToString()));
-          } else {
-            break;
-          }
-        }
+      BytesRef br;
+      while ((br = termsEnum.next()) != null) {
+        mtv.visitMatchingTerm(new Term(fieldName, BytesRef.deepCopyOf(br)));
       }
     }
   }

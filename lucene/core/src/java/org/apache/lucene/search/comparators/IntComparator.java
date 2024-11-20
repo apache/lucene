@@ -18,9 +18,10 @@
 package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
-import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Comparator based on {@link Integer#compare} for {@code numHits}. This comparator provides a
@@ -32,8 +33,8 @@ public class IntComparator extends NumericComparator<Integer> {
   protected int bottom;
 
   public IntComparator(
-      int numHits, String field, Integer missingValue, boolean reverse, int sortPos) {
-    super(field, missingValue != null ? missingValue : 0, reverse, sortPos, Integer.BYTES);
+      int numHits, String field, Integer missingValue, boolean reverse, Pruning pruning) {
+    super(field, missingValue != null ? missingValue : 0, reverse, pruning, Integer.BYTES);
     values = new int[numHits];
   }
 
@@ -51,6 +52,16 @@ public class IntComparator extends NumericComparator<Integer> {
   @Override
   public Integer value(int slot) {
     return Integer.valueOf(values[slot]);
+  }
+
+  @Override
+  protected long missingValueAsComparableLong() {
+    return missingValue;
+  }
+
+  @Override
+  protected long sortableBytesToLong(byte[] bytes) {
+    return NumericUtils.sortableBytesToInt(bytes, 0);
   }
 
   @Override
@@ -96,21 +107,13 @@ public class IntComparator extends NumericComparator<Integer> {
     }
 
     @Override
-    protected boolean isMissingValueCompetitive() {
-      int result = Integer.compare(missingValue, bottom);
-      // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
-      // in asc sort missingValue is competitive when it's smaller or equal to bottom
-      return reverse ? (result >= 0) : (result <= 0);
+    protected long bottomAsComparableLong() {
+      return bottom;
     }
 
     @Override
-    protected void encodeBottom(byte[] packedValue) {
-      IntPoint.encodeDimension(bottom, packedValue, 0);
-    }
-
-    @Override
-    protected void encodeTop(byte[] packedValue) {
-      IntPoint.encodeDimension(topValue, packedValue, 0);
+    protected long topAsComparableLong() {
+      return topValue;
     }
   }
 }

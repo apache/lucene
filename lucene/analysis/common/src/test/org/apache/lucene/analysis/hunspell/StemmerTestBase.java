@@ -23,9 +23,9 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.AfterClass;
 
 /** base class for hunspell stemmer tests */
@@ -65,13 +65,15 @@ public abstract class StemmerTestBase extends LuceneTestCase {
       }
     }
 
+    return loadDictionary(ignoreCase, affixStream, dictStreams);
+  }
+
+  protected static Dictionary loadDictionary(
+      boolean ignoreCase, InputStream affixStream, InputStream... dictStreams)
+      throws IOException, ParseException {
     try {
-      return new Dictionary(
-          new ByteBuffersDirectory(),
-          "dictionary",
-          affixStream,
-          Arrays.asList(dictStreams),
-          ignoreCase);
+      ByteBuffersDirectory dir = new ByteBuffersDirectory();
+      return new Dictionary(dir, "dictionary", affixStream, Arrays.asList(dictStreams), ignoreCase);
     } finally {
       IOUtils.closeWhileHandlingException(affixStream);
       IOUtils.closeWhileHandlingException(dictStreams);

@@ -18,7 +18,7 @@ package org.apache.lucene.analysis.miscellaneous;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestDateRecognizerFilterFactory extends BaseTokenStreamTestCase {
 

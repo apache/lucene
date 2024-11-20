@@ -24,14 +24,14 @@ import java.util.PriorityQueue;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValues.PointTree;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.bkd.BKDReader;
 
 /**
  * KNN search on top of N dimensional indexed float points.
@@ -40,16 +40,14 @@ import org.apache.lucene.util.bkd.BKDReader;
  */
 public class FloatPointNearestNeighbor {
 
-  static class Cell implements Comparable<Cell> {
-    final int readerIndex;
-    final byte[] minPacked;
-    final byte[] maxPacked;
-    final BKDReader.IndexTree index;
-    /** The closest possible distance^2 of all points in this cell */
-    final double distanceSquared;
-
+  /**
+   * @param distanceSquared The closest possible distance^2 of all points in this cell
+   */
+  record Cell(
+      PointTree index, int readerIndex, byte[] minPacked, byte[] maxPacked, double distanceSquared)
+      implements Comparable<Cell> {
     Cell(
-        BKDReader.IndexTree index,
+        PointTree index,
         int readerIndex,
         byte[] minPacked,
         byte[] maxPacked,
@@ -70,10 +68,8 @@ public class FloatPointNearestNeighbor {
     public String toString() {
       return "Cell(readerIndex="
           + readerIndex
-          + " nodeID="
-          + index.getNodeID()
-          + " isLeaf="
-          + index.isLeafNode()
+          + " "
+          + index.toString()
           + " distanceSquared="
           + distanceSquared
           + ")";
@@ -176,9 +172,9 @@ public class FloatPointNearestNeighbor {
   }
 
   private static NearestHit[] nearest(
-      List<BKDReader> readers,
+      List<PointValues> readers,
       List<Bits> liveDocs,
-      List<Integer> docBases,
+      IntArrayList docBases,
       final int topN,
       float[] origin)
       throws IOException {
@@ -201,31 +197,17 @@ public class FloatPointNearestNeighbor {
     PriorityQueue<Cell> cellQueue = new PriorityQueue<>();
 
     NearestVisitor visitor = new NearestVisitor(hitQueue, topN, origin);
-    List<BKDReader.IntersectState> states = new ArrayList<>();
 
     // Add root cell for each reader into the queue:
-    int bytesPerDim = -1;
-
     for (int i = 0; i < readers.size(); ++i) {
-      BKDReader reader = readers.get(i);
-      if (bytesPerDim == -1) {
-        bytesPerDim = reader.getBytesPerDimension();
-      } else if (bytesPerDim != reader.getBytesPerDimension()) {
-        throw new IllegalStateException(
-            "bytesPerDim changed from "
-                + bytesPerDim
-                + " to "
-                + reader.getBytesPerDimension()
-                + " across readers");
-      }
+      PointValues reader = readers.get(i);
       byte[] minPackedValue = reader.getMinPackedValue();
       byte[] maxPackedValue = reader.getMaxPackedValue();
-      BKDReader.IntersectState state = reader.getIntersectState(visitor);
-      states.add(state);
+      PointTree indexTree = reader.getPointTree();
 
       cellQueue.offer(
           new Cell(
-              state.index,
+              indexTree,
               i,
               reader.getMinPackedValue(),
               reader.getMaxPackedValue(),
@@ -240,57 +222,47 @@ public class FloatPointNearestNeighbor {
         break;
       }
 
-      BKDReader reader = readers.get(cell.readerIndex);
-      if (cell.index.isLeafNode()) {
+      if (cell.index.moveToChild() == false) {
         // System.out.println("    leaf");
         // Leaf block: visit all points and possibly collect them:
         visitor.curDocBase = docBases.get(cell.readerIndex);
         visitor.curLiveDocs = liveDocs.get(cell.readerIndex);
-        reader.visitLeafBlockValues(cell.index, states.get(cell.readerIndex));
+        cell.index.visitDocValues(visitor);
+        // reader.visitLeafBlockValues(cell.index, states.get(cell.readerIndex));
 
         // assert hitQueue.peek().distanceSquared >= cell.distanceSquared;
         // System.out.println("    now " + hitQueue.size() + " hits");
       } else {
-        // System.out.println("    non-leaf");
-        // Non-leaf block: split into two cells and put them back into the queue:
-
-        BytesRef splitValue = BytesRef.deepCopyOf(cell.index.getSplitDimValue());
-        int splitDim = cell.index.getSplitDim();
 
         // we must clone the index so that we we can recurse left and right "concurrently":
-        BKDReader.IndexTree newIndex = cell.index.clone();
-        byte[] splitPackedValue = cell.maxPacked.clone();
-        System.arraycopy(
-            splitValue.bytes,
-            splitValue.offset,
-            splitPackedValue,
-            splitDim * bytesPerDim,
-            bytesPerDim);
+        PointTree newIndex = cell.index.clone();
 
-        cell.index.pushLeft();
         double distanceLeft =
-            pointToRectangleDistanceSquared(cell.minPacked, splitPackedValue, origin);
+            pointToRectangleDistanceSquared(
+                newIndex.getMinPackedValue(), newIndex.getMaxPackedValue(), origin);
         if (distanceLeft <= visitor.bottomNearestDistanceSquared) {
           cellQueue.offer(
               new Cell(
-                  cell.index, cell.readerIndex, cell.minPacked, splitPackedValue, distanceLeft));
+                  newIndex,
+                  cell.readerIndex,
+                  newIndex.getMinPackedValue(),
+                  newIndex.getMaxPackedValue(),
+                  distanceLeft));
         }
 
-        splitPackedValue = cell.minPacked.clone();
-        System.arraycopy(
-            splitValue.bytes,
-            splitValue.offset,
-            splitPackedValue,
-            splitDim * bytesPerDim,
-            bytesPerDim);
-
-        newIndex.pushRight();
-        double distanceRight =
-            pointToRectangleDistanceSquared(splitPackedValue, cell.maxPacked, origin);
-        if (distanceRight <= visitor.bottomNearestDistanceSquared) {
-          cellQueue.offer(
-              new Cell(
-                  newIndex, cell.readerIndex, splitPackedValue, cell.maxPacked, distanceRight));
+        if (cell.index.moveToSibling()) {
+          double distanceRight =
+              pointToRectangleDistanceSquared(
+                  cell.index.getMinPackedValue(), cell.index.getMaxPackedValue(), origin);
+          if (distanceRight <= visitor.bottomNearestDistanceSquared) {
+            cellQueue.offer(
+                new Cell(
+                    cell.index,
+                    cell.readerIndex,
+                    cell.index.getMinPackedValue(),
+                    cell.index.getMaxPackedValue(),
+                    distanceRight));
+          }
         }
       }
     }
@@ -335,19 +307,15 @@ public class FloatPointNearestNeighbor {
     if (searcher == null) {
       throw new IllegalArgumentException("searcher must not be null");
     }
-    List<BKDReader> readers = new ArrayList<>();
-    List<Integer> docBases = new ArrayList<>();
+    List<PointValues> readers = new ArrayList<>();
+    IntArrayList docBases = new IntArrayList();
     List<Bits> liveDocs = new ArrayList<>();
     int totalHits = 0;
     for (LeafReaderContext leaf : searcher.getIndexReader().leaves()) {
       PointValues points = leaf.reader().getPointValues(field);
       if (points != null) {
-        if (points instanceof BKDReader == false) {
-          throw new IllegalArgumentException(
-              "can only run on Lucene60PointsReader points implementation, but got " + points);
-        }
         totalHits += points.getDocCount();
-        readers.add((BKDReader) points);
+        readers.add(points);
         docBases.add(leaf.docBase);
         liveDocs.add(leaf.reader().getLiveDocs());
       }

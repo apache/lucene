@@ -17,8 +17,8 @@
 package org.apache.lucene.analysis.hi;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Tests the HindiAnalyzer */
 public class TestHindiAnalyzer extends BaseTokenStreamTestCase {

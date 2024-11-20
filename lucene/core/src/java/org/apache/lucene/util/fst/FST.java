@@ -17,6 +17,7 @@
 package org.apache.lucene.util.fst;
 
 import static org.apache.lucene.util.fst.FST.Arc.BitTable;
+import static org.apache.lucene.util.fst.FSTCompiler.getOnHeapReaderWriter;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -25,6 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -33,7 +35,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -62,6 +63,8 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public final class FST<T> implements Accountable {
 
+  final FSTMetadata<T> metadata;
+
   /** Specifies allowed range of each int input label for this FST. */
   public enum INPUT_TYPE {
     BYTE1,
@@ -72,82 +75,73 @@ public final class FST<T> implements Accountable {
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(FST.class);
 
-  private static final int BIT_FINAL_ARC = 1 << 0;
+  static final int BIT_FINAL_ARC = 1 << 0;
   static final int BIT_LAST_ARC = 1 << 1;
   static final int BIT_TARGET_NEXT = 1 << 2;
 
   // TODO: we can free up a bit if we can nuke this:
-  private static final int BIT_STOP_NODE = 1 << 3;
+  static final int BIT_STOP_NODE = 1 << 3;
 
   /** This flag is set if the arc has an output. */
   public static final int BIT_ARC_HAS_OUTPUT = 1 << 4;
 
-  private static final int BIT_ARC_HAS_FINAL_OUTPUT = 1 << 5;
+  static final int BIT_ARC_HAS_FINAL_OUTPUT = 1 << 5;
 
-  /** Value of the arc flags to declare a node with fixed length arcs designed for binary search. */
+  /**
+   * Value of the arc flags to declare a node with fixed length (sparse) arcs designed for binary
+   * search.
+   */
   // We use this as a marker because this one flag is illegal by itself.
   public static final byte ARCS_FOR_BINARY_SEARCH = BIT_ARC_HAS_FINAL_OUTPUT;
 
   /**
-   * Value of the arc flags to declare a node with fixed length arcs and bit table designed for
-   * direct addressing.
+   * Value of the arc flags to declare a node with fixed length dense arcs and bit table designed
+   * for direct addressing.
    */
   static final byte ARCS_FOR_DIRECT_ADDRESSING = 1 << 6;
 
-  /** @see #shouldExpandNodeWithFixedLengthArcs */
-  static final int FIXED_LENGTH_ARC_SHALLOW_DEPTH = 3; // 0 => only root node.
-
-  /** @see #shouldExpandNodeWithFixedLengthArcs */
-  static final int FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS = 5;
-
-  /** @see #shouldExpandNodeWithFixedLengthArcs */
-  static final int FIXED_LENGTH_ARC_DEEP_NUM_ARCS = 10;
-
   /**
-   * Maximum oversizing factor allowed for direct addressing compared to binary search when
-   * expansion credits allow the oversizing. This factor prevents expansions that are obviously too
-   * costly even if there are sufficient credits.
-   *
-   * @see #shouldExpandNodeWithDirectAddressing
+   * Value of the arc flags to declare a node with continuous arcs designed for pos the arc directly
+   * with labelToPos - firstLabel. like {@link #ARCS_FOR_BINARY_SEARCH} we use flag combinations
+   * that will not occur at the same time.
    */
-  private static final float DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR = 1.66f;
+  static final byte ARCS_FOR_CONTINUOUS = ARCS_FOR_DIRECT_ADDRESSING + ARCS_FOR_BINARY_SEARCH;
 
   // Increment version to change it
   private static final String FILE_FORMAT_NAME = "FST";
-  private static final int VERSION_START = 6;
+
+  /** First supported version, this is the version that was used when releasing Lucene 7.0. */
+  public static final int VERSION_START = 6;
+
+  // Version 7 introduced direct addressing for arcs, but it's not recorded here because it doesn't
+  // need version checks on the read side, it uses new flag values on arcs instead.
+
   private static final int VERSION_LITTLE_ENDIAN = 8;
-  private static final int VERSION_CURRENT = VERSION_LITTLE_ENDIAN;
+
+  /** Version that started storing continuous arcs. */
+  public static final int VERSION_CONTINUOUS_ARCS = 9;
+
+  /** Current version. */
+  public static final int VERSION_CURRENT = VERSION_CONTINUOUS_ARCS;
+
+  /** Version that was used when releasing Lucene 9.0. */
+  public static final int VERSION_90 = VERSION_LITTLE_ENDIAN;
 
   // Never serialized; just used to represent the virtual
   // final node w/ no arcs:
-  private static final long FINAL_END_NODE = -1;
+  static final long FINAL_END_NODE = -1;
 
   // Never serialized; just used to represent the virtual
   // non-final node w/ no arcs:
-  private static final long NON_FINAL_END_NODE = 0;
+  static final long NON_FINAL_END_NODE = 0;
 
   /** If arc has this label then that arc is final/accepted */
   public static final int END_LABEL = -1;
 
-  final INPUT_TYPE inputType;
-
-  // if non-null, this FST accepts the empty string and
-  // produces this output
-  T emptyOutput;
-
-  /**
-   * A {@link BytesStore}, used during building, or during reading when the FST is very large (more
-   * than 1 GB). If the FST is less than 1 GB then bytesArray is set instead.
-   */
-  final BytesStore bytes;
-
-  private final FSTStore fstStore;
-
-  private long startNode = -1;
+  /** The reader of the FST, used to read bytes from the underlying FST storage */
+  private final FSTReader fstReader;
 
   public final Outputs<T> outputs;
-
-  private final int version;
 
   /** Represents a single arc. */
   public static final class Arc<T> {
@@ -269,7 +263,10 @@ public final class FST<T> implements Accountable {
             .append(numArcs())
             .append(")")
             .append("(")
-            .append(nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING ? "da" : "bs")
+            .append(
+                nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING
+                    ? "da"
+                    : nodeFlags() == ARCS_FOR_CONTINUOUS ? "cs" : "bs")
             .append(")");
       }
       return b.toString();
@@ -311,8 +308,8 @@ public final class FST<T> implements Accountable {
 
     /**
      * Node header flags. Only meaningful to check if the value is either {@link
-     * #ARCS_FOR_BINARY_SEARCH} or {@link #ARCS_FOR_DIRECT_ADDRESSING} (other value when bytesPerArc
-     * == 0).
+     * #ARCS_FOR_BINARY_SEARCH} or {@link #ARCS_FOR_DIRECT_ADDRESSING} or {@link
+     * #ARCS_FOR_CONTINUOUS} (other value when bytesPerArc == 0).
      */
     public byte nodeFlags() {
       return nodeFlags;
@@ -344,7 +341,7 @@ public final class FST<T> implements Accountable {
 
     /**
      * First label of a direct addressing node. Only valid if nodeFlags == {@link
-     * #ARCS_FOR_DIRECT_ADDRESSING}.
+     * #ARCS_FOR_DIRECT_ADDRESSING} or {@link #ARCS_FOR_CONTINUOUS}.
      */
     int firstLabel() {
       return firstLabel;
@@ -413,48 +410,65 @@ public final class FST<T> implements Accountable {
     return (flags & bit) != 0;
   }
 
-  // make a new empty FST, for building; Builder invokes this
-  FST(INPUT_TYPE inputType, Outputs<T> outputs, int bytesPageBits) {
-    this.inputType = inputType;
-    this.outputs = outputs;
-    fstStore = null;
-    bytes = new BytesStore(bytesPageBits);
-    // pad: ensure no node gets address 0 which is reserved to mean
-    // the stop state w/ no arcs
-    bytes.writeByte((byte) 0);
-    emptyOutput = null;
-    this.version = VERSION_CURRENT;
-  }
-
   private static final int DEFAULT_MAX_BLOCK_BITS = Constants.JRE_IS_64BIT ? 30 : 28;
 
-  /** Load a previously saved FST. */
-  public FST(DataInput metaIn, DataInput in, Outputs<T> outputs) throws IOException {
-    this(metaIn, in, outputs, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS));
+  /**
+   * Load a previously saved FST with a DataInput for metdata using an {@link OnHeapFSTStore} with
+   * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
+   */
+  public FST(FSTMetadata<T> metadata, DataInput in) throws IOException {
+    this(metadata, new OnHeapFSTStore(DEFAULT_MAX_BLOCK_BITS, in, metadata.numBytes));
+  }
+
+  /** Create the FST with a metadata object and a FSTReader. */
+  FST(FSTMetadata<T> metadata, FSTReader fstReader) {
+    assert fstReader != null;
+    this.metadata = Objects.requireNonNull(metadata, "FSTMetadata cannot be null");
+    this.outputs = metadata.outputs;
+    this.fstReader = fstReader;
   }
 
   /**
-   * Load a previously saved FST; maxBlockBits allows you to control the size of the byte[] pages
-   * used to hold the FST bytes.
+   * Create a FST from a {@link FSTReader}. Return null if the metadata is null.
+   *
+   * @param fstMetadata the metadata
+   * @param fstReader the FSTReader
+   * @return the FST
    */
-  public FST(DataInput metaIn, DataInput in, Outputs<T> outputs, FSTStore fstStore)
-      throws IOException {
-    bytes = null;
-    this.fstStore = fstStore;
-    this.outputs = outputs;
+  public static <T> FST<T> fromFSTReader(FSTMetadata<T> fstMetadata, FSTReader fstReader) {
+    // FSTMetadata could be null if there is no node accepted by the FST
+    if (fstMetadata == null) {
+      return null;
+    }
+    return new FST<>(fstMetadata, Objects.requireNonNull(fstReader, "FSTReader cannot be null"));
+  }
 
+  /**
+   * Read the FST metadata from DataInput
+   *
+   * @param metaIn the DataInput of the metadata
+   * @param outputs the FST outputs
+   * @return the FST metadata
+   * @param <T> the output type
+   * @throws IOException if exception occurred during parsing
+   */
+  public static <T> FSTMetadata<T> readMetadata(DataInput metaIn, Outputs<T> outputs)
+      throws IOException {
     // NOTE: only reads formats VERSION_START up to VERSION_CURRENT; we don't have
     // back-compat promise for FSTs (they are experimental), but we are sometimes able to offer it
-    this.version = CodecUtil.checkHeader(metaIn, FILE_FORMAT_NAME, VERSION_START, VERSION_CURRENT);
+    int version = CodecUtil.checkHeader(metaIn, FILE_FORMAT_NAME, VERSION_START, VERSION_CURRENT);
+    T emptyOutput;
     if (metaIn.readByte() == 1) {
       // accepts empty string
       // 1 KB blocks:
-      BytesStore emptyBytes = new BytesStore(10);
+      ReadWriteDataOutput emptyBytes = (ReadWriteDataOutput) getOnHeapReaderWriter(10);
       int numBytes = metaIn.readVInt();
       emptyBytes.copyBytes(metaIn, numBytes);
 
+      emptyBytes.freeze();
+
       // De-serialize empty-string output:
-      BytesReader reader = emptyBytes.getReverseReader();
+      BytesReader reader = emptyBytes.getReverseBytesReader();
       // NoOutputs uses 0 bytes when writing its output,
       // so we have to check here else BytesStore gets
       // angry:
@@ -465,116 +479,51 @@ public final class FST<T> implements Accountable {
     } else {
       emptyOutput = null;
     }
+    INPUT_TYPE inputType;
     final byte t = metaIn.readByte();
-    switch (t) {
-      case 0:
-        inputType = INPUT_TYPE.BYTE1;
-        break;
-      case 1:
-        inputType = INPUT_TYPE.BYTE2;
-        break;
-      case 2:
-        inputType = INPUT_TYPE.BYTE4;
-        break;
-      default:
-        throw new CorruptIndexException("invalid input type " + t, in);
-    }
-    startNode = metaIn.readVLong();
-
+    inputType =
+        switch (t) {
+          case 0 -> INPUT_TYPE.BYTE1;
+          case 1 -> INPUT_TYPE.BYTE2;
+          case 2 -> INPUT_TYPE.BYTE4;
+          default -> throw new CorruptIndexException("invalid input type " + t, metaIn);
+        };
+    long startNode = metaIn.readVLong();
     long numBytes = metaIn.readVLong();
-    this.fstStore.init(in, numBytes);
+    return new FSTMetadata<>(inputType, outputs, emptyOutput, startNode, version, numBytes);
   }
 
   @Override
   public long ramBytesUsed() {
-    long size = BASE_RAM_BYTES_USED;
-    if (this.fstStore != null) {
-      size += this.fstStore.ramBytesUsed();
-    } else {
-      size += bytes.ramBytesUsed();
-    }
-
-    return size;
+    return BASE_RAM_BYTES_USED + fstReader.ramBytesUsed();
   }
 
   @Override
   public String toString() {
-    return getClass().getSimpleName() + "(input=" + inputType + ",output=" + outputs;
+    return getClass().getSimpleName() + "(input=" + metadata.inputType + ",output=" + outputs;
   }
 
-  void finish(long newStartNode) throws IOException {
-    assert newStartNode <= bytes.getPosition();
-    if (startNode != -1) {
-      throw new IllegalStateException("already finished");
-    }
-    if (newStartNode == FINAL_END_NODE && emptyOutput != null) {
-      newStartNode = 0;
-    }
-    startNode = newStartNode;
-    bytes.finish();
+  public long numBytes() {
+    return metadata.numBytes;
   }
 
   public T getEmptyOutput() {
-    return emptyOutput;
+    return metadata.emptyOutput;
   }
 
-  void setEmptyOutput(T v) {
-    if (emptyOutput != null) {
-      emptyOutput = outputs.merge(emptyOutput, v);
-    } else {
-      emptyOutput = v;
-    }
+  public FSTMetadata<T> getMetadata() {
+    return metadata;
   }
 
+  /**
+   * Save the FST to DataOutput.
+   *
+   * @param metaOut the DataOutput to write the metadata to
+   * @param out the DataOutput to write the FST bytes to
+   */
   public void save(DataOutput metaOut, DataOutput out) throws IOException {
-    if (startNode == -1) {
-      throw new IllegalStateException("call finish first");
-    }
-    CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
-    // TODO: really we should encode this as an arc, arriving
-    // to the root node, instead of special casing here:
-    if (emptyOutput != null) {
-      // Accepts empty string
-      metaOut.writeByte((byte) 1);
-
-      // Serialize empty-string output:
-      ByteBuffersDataOutput ros = new ByteBuffersDataOutput();
-      outputs.writeFinalOutput(emptyOutput, ros);
-      byte[] emptyOutputBytes = ros.toArrayCopy();
-      int emptyLen = emptyOutputBytes.length;
-
-      // reverse
-      final int stopAt = emptyLen / 2;
-      int upto = 0;
-      while (upto < stopAt) {
-        final byte b = emptyOutputBytes[upto];
-        emptyOutputBytes[upto] = emptyOutputBytes[emptyLen - upto - 1];
-        emptyOutputBytes[emptyLen - upto - 1] = b;
-        upto++;
-      }
-      metaOut.writeVInt(emptyLen);
-      metaOut.writeBytes(emptyOutputBytes, 0, emptyLen);
-    } else {
-      metaOut.writeByte((byte) 0);
-    }
-    final byte t;
-    if (inputType == INPUT_TYPE.BYTE1) {
-      t = 0;
-    } else if (inputType == INPUT_TYPE.BYTE2) {
-      t = 1;
-    } else {
-      t = 2;
-    }
-    metaOut.writeByte(t);
-    metaOut.writeVLong(startNode);
-    if (bytes != null) {
-      long numBytes = bytes.getPosition();
-      metaOut.writeVLong(numBytes);
-      bytes.writeTo(out);
-    } else {
-      assert fstStore != null;
-      fstStore.writeTo(out);
-    }
+    metadata.save(metaOut);
+    fstReader.writeTo(out);
   }
 
   /** Writes an automaton to a file. */
@@ -589,32 +538,19 @@ public final class FST<T> implements Accountable {
   public static <T> FST<T> read(Path path, Outputs<T> outputs) throws IOException {
     try (InputStream is = Files.newInputStream(path)) {
       DataInput in = new InputStreamDataInput(new BufferedInputStream(is));
-      return new FST<>(in, in, outputs);
-    }
-  }
-
-  private void writeLabel(DataOutput out, int v) throws IOException {
-    assert v >= 0 : "v=" + v;
-    if (inputType == INPUT_TYPE.BYTE1) {
-      assert v <= 255 : "v=" + v;
-      out.writeByte((byte) v);
-    } else if (inputType == INPUT_TYPE.BYTE2) {
-      assert v <= 65535 : "v=" + v;
-      out.writeShort((short) v);
-    } else {
-      out.writeVInt(v);
+      return new FST<>(readMetadata(in, outputs), in);
     }
   }
 
   /** Reads one BYTE1/2/4 label from the provided {@link DataInput}. */
   public int readLabel(DataInput in) throws IOException {
     final int v;
-    if (inputType == INPUT_TYPE.BYTE1) {
+    if (metadata.inputType == INPUT_TYPE.BYTE1) {
       // Unsigned byte:
       v = in.readByte() & 0xFF;
-    } else if (inputType == INPUT_TYPE.BYTE2) {
+    } else if (metadata.inputType == INPUT_TYPE.BYTE2) {
       // Unsigned short:
-      if (version < VERSION_LITTLE_ENDIAN) {
+      if (metadata.version < VERSION_LITTLE_ENDIAN) {
         v = Short.reverseBytes(in.readShort()) & 0xFFFF;
       } else {
         v = in.readShort() & 0xFFFF;
@@ -630,381 +566,11 @@ public final class FST<T> implements Accountable {
     return arc.target() > 0;
   }
 
-  // serializes new node by appending its bytes to the end
-  // of the current byte[]
-  long addNode(FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> nodeIn)
-      throws IOException {
-    T NO_OUTPUT = outputs.getNoOutput();
-
-    // System.out.println("FST.addNode pos=" + bytes.getPosition() + " numArcs=" + nodeIn.numArcs);
-    if (nodeIn.numArcs == 0) {
-      if (nodeIn.isFinal) {
-        return FINAL_END_NODE;
-      } else {
-        return NON_FINAL_END_NODE;
-      }
-    }
-    final long startAddress = fstCompiler.bytes.getPosition();
-    // System.out.println("  startAddr=" + startAddress);
-
-    final boolean doFixedLengthArcs = shouldExpandNodeWithFixedLengthArcs(fstCompiler, nodeIn);
-    if (doFixedLengthArcs) {
-      // System.out.println("  fixed length arcs");
-      if (fstCompiler.numBytesPerArc.length < nodeIn.numArcs) {
-        fstCompiler.numBytesPerArc = new int[ArrayUtil.oversize(nodeIn.numArcs, Integer.BYTES)];
-        fstCompiler.numLabelBytesPerArc = new int[fstCompiler.numBytesPerArc.length];
-      }
-    }
-
-    fstCompiler.arcCount += nodeIn.numArcs;
-
-    final int lastArc = nodeIn.numArcs - 1;
-
-    long lastArcStart = fstCompiler.bytes.getPosition();
-    int maxBytesPerArc = 0;
-    int maxBytesPerArcWithoutLabel = 0;
-    for (int arcIdx = 0; arcIdx < nodeIn.numArcs; arcIdx++) {
-      final FSTCompiler.Arc<T> arc = nodeIn.arcs[arcIdx];
-      final FSTCompiler.CompiledNode target = (FSTCompiler.CompiledNode) arc.target;
-      int flags = 0;
-      // System.out.println("  arc " + arcIdx + " label=" + arc.label + " -> target=" +
-      // target.node);
-
-      if (arcIdx == lastArc) {
-        flags += BIT_LAST_ARC;
-      }
-
-      if (fstCompiler.lastFrozenNode == target.node && !doFixedLengthArcs) {
-        // TODO: for better perf (but more RAM used) we
-        // could avoid this except when arc is "near" the
-        // last arc:
-        flags += BIT_TARGET_NEXT;
-      }
-
-      if (arc.isFinal) {
-        flags += BIT_FINAL_ARC;
-        if (arc.nextFinalOutput != NO_OUTPUT) {
-          flags += BIT_ARC_HAS_FINAL_OUTPUT;
-        }
-      } else {
-        assert arc.nextFinalOutput == NO_OUTPUT;
-      }
-
-      boolean targetHasArcs = target.node > 0;
-
-      if (!targetHasArcs) {
-        flags += BIT_STOP_NODE;
-      }
-
-      if (arc.output != NO_OUTPUT) {
-        flags += BIT_ARC_HAS_OUTPUT;
-      }
-
-      fstCompiler.bytes.writeByte((byte) flags);
-      long labelStart = fstCompiler.bytes.getPosition();
-      writeLabel(fstCompiler.bytes, arc.label);
-      int numLabelBytes = (int) (fstCompiler.bytes.getPosition() - labelStart);
-
-      // System.out.println("  write arc: label=" + (char) arc.label + " flags=" + flags + "
-      // target=" + target.node + " pos=" + bytes.getPosition() + " output=" +
-      // outputs.outputToString(arc.output));
-
-      if (arc.output != NO_OUTPUT) {
-        outputs.write(arc.output, fstCompiler.bytes);
-        // System.out.println("    write output");
-      }
-
-      if (arc.nextFinalOutput != NO_OUTPUT) {
-        // System.out.println("    write final output");
-        outputs.writeFinalOutput(arc.nextFinalOutput, fstCompiler.bytes);
-      }
-
-      if (targetHasArcs && (flags & BIT_TARGET_NEXT) == 0) {
-        assert target.node > 0;
-        // System.out.println("    write target");
-        fstCompiler.bytes.writeVLong(target.node);
-      }
-
-      // just write the arcs "like normal" on first pass, but record how many bytes each one took
-      // and max byte size:
-      if (doFixedLengthArcs) {
-        int numArcBytes = (int) (fstCompiler.bytes.getPosition() - lastArcStart);
-        fstCompiler.numBytesPerArc[arcIdx] = numArcBytes;
-        fstCompiler.numLabelBytesPerArc[arcIdx] = numLabelBytes;
-        lastArcStart = fstCompiler.bytes.getPosition();
-        maxBytesPerArc = Math.max(maxBytesPerArc, numArcBytes);
-        maxBytesPerArcWithoutLabel =
-            Math.max(maxBytesPerArcWithoutLabel, numArcBytes - numLabelBytes);
-        // System.out.println("    arcBytes=" + numArcBytes + " labelBytes=" + numLabelBytes);
-      }
-    }
-
-    // TODO: try to avoid wasteful cases: disable doFixedLengthArcs in that case
-    /*
-     *
-     * LUCENE-4682: what is a fair heuristic here?
-     * It could involve some of these:
-     * 1. how "busy" the node is: nodeIn.inputCount relative to frontier[0].inputCount?
-     * 2. how much binSearch saves over scan: nodeIn.numArcs
-     * 3. waste: numBytes vs numBytesExpanded
-     *
-     * the one below just looks at #3
-    if (doFixedLengthArcs) {
-      // rough heuristic: make this 1.25 "waste factor" a parameter to the phd ctor????
-      int numBytes = lastArcStart - startAddress;
-      int numBytesExpanded = maxBytesPerArc * nodeIn.numArcs;
-      if (numBytesExpanded > numBytes*1.25) {
-        doFixedLengthArcs = false;
-      }
-    }
-    */
-
-    if (doFixedLengthArcs) {
-      assert maxBytesPerArc > 0;
-      // 2nd pass just "expands" all arcs to take up a fixed byte size
-
-      int labelRange = nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label + 1;
-      assert labelRange > 0;
-      if (shouldExpandNodeWithDirectAddressing(
-          fstCompiler, nodeIn, maxBytesPerArc, maxBytesPerArcWithoutLabel, labelRange)) {
-        writeNodeForDirectAddressing(
-            fstCompiler, nodeIn, startAddress, maxBytesPerArcWithoutLabel, labelRange);
-        fstCompiler.directAddressingNodeCount++;
-      } else {
-        writeNodeForBinarySearch(fstCompiler, nodeIn, startAddress, maxBytesPerArc);
-        fstCompiler.binarySearchNodeCount++;
-      }
-    }
-
-    final long thisNodeAddress = fstCompiler.bytes.getPosition() - 1;
-    fstCompiler.bytes.reverse(startAddress, thisNodeAddress);
-    fstCompiler.nodeCount++;
-    return thisNodeAddress;
-  }
-
-  /**
-   * Returns whether the given node should be expanded with fixed length arcs. Nodes will be
-   * expanded depending on their depth (distance from the root node) and their number of arcs.
-   *
-   * <p>Nodes with fixed length arcs use more space, because they encode all arcs with a fixed
-   * number of bytes, but they allow either binary search or direct addressing on the arcs (instead
-   * of linear scan) on lookup by arc label.
-   */
-  private boolean shouldExpandNodeWithFixedLengthArcs(
-      FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> node) {
-    return fstCompiler.allowFixedLengthArcs
-        && ((node.depth <= FIXED_LENGTH_ARC_SHALLOW_DEPTH
-                && node.numArcs >= FIXED_LENGTH_ARC_SHALLOW_NUM_ARCS)
-            || node.numArcs >= FIXED_LENGTH_ARC_DEEP_NUM_ARCS);
-  }
-
-  /**
-   * Returns whether the given node should be expanded with direct addressing instead of binary
-   * search.
-   *
-   * <p>Prefer direct addressing for performance if it does not oversize binary search byte size too
-   * much, so that the arcs can be directly addressed by label.
-   *
-   * @see FSTCompiler#getDirectAddressingMaxOversizingFactor()
-   */
-  private boolean shouldExpandNodeWithDirectAddressing(
-      FSTCompiler<T> fstCompiler,
-      FSTCompiler.UnCompiledNode<T> nodeIn,
-      int numBytesPerArc,
-      int maxBytesPerArcWithoutLabel,
-      int labelRange) {
-    // Anticipate precisely the size of the encodings.
-    int sizeForBinarySearch = numBytesPerArc * nodeIn.numArcs;
-    int sizeForDirectAddressing =
-        getNumPresenceBytes(labelRange)
-            + fstCompiler.numLabelBytesPerArc[0]
-            + maxBytesPerArcWithoutLabel * nodeIn.numArcs;
-
-    // Determine the allowed oversize compared to binary search.
-    // This is defined by a parameter of FST Builder (default 1: no oversize).
-    int allowedOversize =
-        (int) (sizeForBinarySearch * fstCompiler.getDirectAddressingMaxOversizingFactor());
-    int expansionCost = sizeForDirectAddressing - allowedOversize;
-
-    // Select direct addressing if either:
-    // - Direct addressing size is smaller than binary search.
-    //   In this case, increment the credit by the reduced size (to use it later).
-    // - Direct addressing size is larger than binary search, but the positive credit allows the
-    // oversizing.
-    //   In this case, decrement the credit by the oversize.
-    // In addition, do not try to oversize to a clearly too large node size
-    // (this is the DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR parameter).
-    if (expansionCost <= 0
-        || (fstCompiler.directAddressingExpansionCredit >= expansionCost
-            && sizeForDirectAddressing
-                <= allowedOversize * DIRECT_ADDRESSING_MAX_OVERSIZE_WITH_CREDIT_FACTOR)) {
-      fstCompiler.directAddressingExpansionCredit -= expansionCost;
-      return true;
-    }
-    return false;
-  }
-
-  private void writeNodeForBinarySearch(
-      FSTCompiler<T> fstCompiler,
-      FSTCompiler.UnCompiledNode<T> nodeIn,
-      long startAddress,
-      int maxBytesPerArc) {
-    // Build the header in a buffer.
-    // It is a false/special arc which is in fact a node header with node flags followed by node
-    // metadata.
-    fstCompiler
-        .fixedLengthArcsBuffer
-        .resetPosition()
-        .writeByte(ARCS_FOR_BINARY_SEARCH)
-        .writeVInt(nodeIn.numArcs)
-        .writeVInt(maxBytesPerArc);
-    int headerLen = fstCompiler.fixedLengthArcsBuffer.getPosition();
-
-    // Expand the arcs in place, backwards.
-    long srcPos = fstCompiler.bytes.getPosition();
-    long destPos = startAddress + headerLen + nodeIn.numArcs * maxBytesPerArc;
-    assert destPos >= srcPos;
-    if (destPos > srcPos) {
-      fstCompiler.bytes.skipBytes((int) (destPos - srcPos));
-      for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
-        destPos -= maxBytesPerArc;
-        int arcLen = fstCompiler.numBytesPerArc[arcIdx];
-        srcPos -= arcLen;
-        if (srcPos != destPos) {
-          assert destPos > srcPos
-              : "destPos="
-                  + destPos
-                  + " srcPos="
-                  + srcPos
-                  + " arcIdx="
-                  + arcIdx
-                  + " maxBytesPerArc="
-                  + maxBytesPerArc
-                  + " arcLen="
-                  + arcLen
-                  + " nodeIn.numArcs="
-                  + nodeIn.numArcs;
-          fstCompiler.bytes.copyBytes(srcPos, destPos, arcLen);
-        }
-      }
-    }
-
-    // Write the header.
-    fstCompiler.bytes.writeBytes(
-        startAddress, fstCompiler.fixedLengthArcsBuffer.getBytes(), 0, headerLen);
-  }
-
-  private void writeNodeForDirectAddressing(
-      FSTCompiler<T> fstCompiler,
-      FSTCompiler.UnCompiledNode<T> nodeIn,
-      long startAddress,
-      int maxBytesPerArcWithoutLabel,
-      int labelRange) {
-    // Expand the arcs backwards in a buffer because we remove the labels.
-    // So the obtained arcs might occupy less space. This is the reason why this
-    // whole method is more complex.
-    // Drop the label bytes since we can infer the label based on the arc index,
-    // the presence bits, and the first label. Keep the first label.
-    int headerMaxLen = 11;
-    int numPresenceBytes = getNumPresenceBytes(labelRange);
-    long srcPos = fstCompiler.bytes.getPosition();
-    int totalArcBytes =
-        fstCompiler.numLabelBytesPerArc[0] + nodeIn.numArcs * maxBytesPerArcWithoutLabel;
-    int bufferOffset = headerMaxLen + numPresenceBytes + totalArcBytes;
-    byte[] buffer = fstCompiler.fixedLengthArcsBuffer.ensureCapacity(bufferOffset).getBytes();
-    // Copy the arcs to the buffer, dropping all labels except first one.
-    for (int arcIdx = nodeIn.numArcs - 1; arcIdx >= 0; arcIdx--) {
-      bufferOffset -= maxBytesPerArcWithoutLabel;
-      int srcArcLen = fstCompiler.numBytesPerArc[arcIdx];
-      srcPos -= srcArcLen;
-      int labelLen = fstCompiler.numLabelBytesPerArc[arcIdx];
-      // Copy the flags.
-      fstCompiler.bytes.copyBytes(srcPos, buffer, bufferOffset, 1);
-      // Skip the label, copy the remaining.
-      int remainingArcLen = srcArcLen - 1 - labelLen;
-      if (remainingArcLen != 0) {
-        fstCompiler.bytes.copyBytes(
-            srcPos + 1 + labelLen, buffer, bufferOffset + 1, remainingArcLen);
-      }
-      if (arcIdx == 0) {
-        // Copy the label of the first arc only.
-        bufferOffset -= labelLen;
-        fstCompiler.bytes.copyBytes(srcPos + 1, buffer, bufferOffset, labelLen);
-      }
-    }
-    assert bufferOffset == headerMaxLen + numPresenceBytes;
-
-    // Build the header in the buffer.
-    // It is a false/special arc which is in fact a node header with node flags followed by node
-    // metadata.
-    fstCompiler
-        .fixedLengthArcsBuffer
-        .resetPosition()
-        .writeByte(ARCS_FOR_DIRECT_ADDRESSING)
-        .writeVInt(labelRange) // labelRange instead of numArcs.
-        .writeVInt(
-            maxBytesPerArcWithoutLabel); // maxBytesPerArcWithoutLabel instead of maxBytesPerArc.
-    int headerLen = fstCompiler.fixedLengthArcsBuffer.getPosition();
-
-    // Prepare the builder byte store. Enlarge or truncate if needed.
-    long nodeEnd = startAddress + headerLen + numPresenceBytes + totalArcBytes;
-    long currentPosition = fstCompiler.bytes.getPosition();
-    if (nodeEnd >= currentPosition) {
-      fstCompiler.bytes.skipBytes((int) (nodeEnd - currentPosition));
-    } else {
-      fstCompiler.bytes.truncate(nodeEnd);
-    }
-    assert fstCompiler.bytes.getPosition() == nodeEnd;
-
-    // Write the header.
-    long writeOffset = startAddress;
-    fstCompiler.bytes.writeBytes(
-        writeOffset, fstCompiler.fixedLengthArcsBuffer.getBytes(), 0, headerLen);
-    writeOffset += headerLen;
-
-    // Write the presence bits
-    writePresenceBits(fstCompiler, nodeIn, writeOffset, numPresenceBytes);
-    writeOffset += numPresenceBytes;
-
-    // Write the first label and the arcs.
-    fstCompiler.bytes.writeBytes(
-        writeOffset, fstCompiler.fixedLengthArcsBuffer.getBytes(), bufferOffset, totalArcBytes);
-  }
-
-  private void writePresenceBits(
-      FSTCompiler<T> fstCompiler,
-      FSTCompiler.UnCompiledNode<T> nodeIn,
-      long dest,
-      int numPresenceBytes) {
-    long bytePos = dest;
-    byte presenceBits = 1; // The first arc is always present.
-    int presenceIndex = 0;
-    int previousLabel = nodeIn.arcs[0].label;
-    for (int arcIdx = 1; arcIdx < nodeIn.numArcs; arcIdx++) {
-      int label = nodeIn.arcs[arcIdx].label;
-      assert label > previousLabel;
-      presenceIndex += label - previousLabel;
-      while (presenceIndex >= Byte.SIZE) {
-        fstCompiler.bytes.writeByte(bytePos++, presenceBits);
-        presenceBits = 0;
-        presenceIndex -= Byte.SIZE;
-      }
-      // Set the bit at presenceIndex to flag that the corresponding arc is present.
-      presenceBits |= 1 << presenceIndex;
-      previousLabel = label;
-    }
-    assert presenceIndex == (nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label) % 8;
-    assert presenceBits != 0; // The last byte is not 0.
-    assert (presenceBits & (1 << presenceIndex)) != 0; // The last arc is always present.
-    fstCompiler.bytes.writeByte(bytePos++, presenceBits);
-    assert bytePos - dest == numPresenceBytes;
-  }
-
   /**
    * Gets the number of bytes required to flag the presence of each arc in the given label range,
    * one bit per arc.
    */
-  private static int getNumPresenceBytes(int labelRange) {
+  static int getNumPresenceBytes(int labelRange) {
     assert labelRange >= 0;
     return (labelRange + 7) >> 3;
   }
@@ -1024,10 +590,10 @@ public final class FST<T> implements Accountable {
   public Arc<T> getFirstArc(Arc<T> arc) {
     T NO_OUTPUT = outputs.getNoOutput();
 
-    if (emptyOutput != null) {
+    if (metadata.emptyOutput != null) {
       arc.flags = BIT_FINAL_ARC | BIT_LAST_ARC;
-      arc.nextFinalOutput = emptyOutput;
-      if (emptyOutput != NO_OUTPUT) {
+      arc.nextFinalOutput = metadata.emptyOutput;
+      if (metadata.emptyOutput != NO_OUTPUT) {
         arc.flags = (byte) (arc.flags() | BIT_ARC_HAS_FINAL_OUTPUT);
       }
     } else {
@@ -1038,7 +604,7 @@ public final class FST<T> implements Accountable {
 
     // If there are no nodes, ie, the FST only accepts the
     // empty string, then startNode is 0
-    arc.target = startNode;
+    arc.target = metadata.startNode;
     return arc;
   }
 
@@ -1058,11 +624,12 @@ public final class FST<T> implements Accountable {
       arc.output = follow.nextFinalOutput();
       arc.flags = BIT_LAST_ARC;
       arc.nodeFlags = arc.flags;
-      return arc;
     } else {
       in.setPosition(follow.target());
       byte flags = arc.nodeFlags = in.readByte();
-      if (flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING) {
+      if (flags == ARCS_FOR_BINARY_SEARCH
+          || flags == ARCS_FOR_DIRECT_ADDRESSING
+          || flags == ARCS_FOR_CONTINUOUS) {
         // Special arc which is actually a node header for fixed length arcs.
         // Jump straight to end to find the last arc.
         arc.numArcs = in.readVInt();
@@ -1073,10 +640,14 @@ public final class FST<T> implements Accountable {
           arc.firstLabel = readLabel(in);
           arc.posArcsStart = in.getPosition();
           readLastArcByDirectAddressing(arc, in);
-        } else {
+        } else if (flags == ARCS_FOR_BINARY_SEARCH) {
           arc.arcIdx = arc.numArcs() - 2;
           arc.posArcsStart = in.getPosition();
           readNextRealArc(arc, in);
+        } else {
+          arc.firstLabel = readLabel(in);
+          arc.posArcsStart = in.getPosition();
+          readLastArcByContinuous(arc, in);
         }
       } else {
         arc.flags = flags;
@@ -1105,8 +676,8 @@ public final class FST<T> implements Accountable {
         readNextRealArc(arc, in);
       }
       assert arc.isLast();
-      return arc;
     }
+    return arc;
   }
 
   private long readUnpackedNodeTarget(BytesReader in) throws IOException {
@@ -1144,14 +715,14 @@ public final class FST<T> implements Accountable {
     }
   }
 
-  public Arc<T> readFirstRealTargetArc(long nodeAddress, Arc<T> arc, final BytesReader in)
+  private void readFirstArcInfo(long nodeAddress, Arc<T> arc, final BytesReader in)
       throws IOException {
     in.setPosition(nodeAddress);
-    // System.out.println("   flags=" + arc.flags);
 
     byte flags = arc.nodeFlags = in.readByte();
-    if (flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING) {
-      // System.out.println("  fixed length arc");
+    if (flags == ARCS_FOR_BINARY_SEARCH
+        || flags == ARCS_FOR_DIRECT_ADDRESSING
+        || flags == ARCS_FOR_CONTINUOUS) {
       // Special arc which is actually a node header for fixed length arcs.
       arc.numArcs = in.readVInt();
       arc.bytesPerArc = in.readVInt();
@@ -1160,15 +731,19 @@ public final class FST<T> implements Accountable {
         readPresenceBytes(arc, in);
         arc.firstLabel = readLabel(in);
         arc.presenceIndex = -1;
+      } else if (flags == ARCS_FOR_CONTINUOUS) {
+        arc.firstLabel = readLabel(in);
       }
       arc.posArcsStart = in.getPosition();
-      // System.out.println("  bytesPer=" + arc.bytesPerArc + " numArcs=" + arc.numArcs + "
-      // arcsStart=" + pos);
     } else {
       arc.nextArc = nodeAddress;
       arc.bytesPerArc = 0;
     }
+  }
 
+  public Arc<T> readFirstRealTargetArc(long nodeAddress, Arc<T> arc, final BytesReader in)
+      throws IOException {
+    readFirstArcInfo(nodeAddress, arc, in);
     return readNextRealArc(arc, in);
   }
 
@@ -1182,7 +757,9 @@ public final class FST<T> implements Accountable {
     } else {
       in.setPosition(follow.target());
       byte flags = in.readByte();
-      return flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING;
+      return flags == ARCS_FOR_BINARY_SEARCH
+          || flags == ARCS_FOR_DIRECT_ADDRESSING
+          || flags == ARCS_FOR_CONTINUOUS;
     }
   }
 
@@ -1210,26 +787,26 @@ public final class FST<T> implements Accountable {
 
       in.setPosition(arc.nextArc());
       byte flags = in.readByte();
-      if (flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING) {
+      if (flags == ARCS_FOR_BINARY_SEARCH
+          || flags == ARCS_FOR_DIRECT_ADDRESSING
+          || flags == ARCS_FOR_CONTINUOUS) {
         // System.out.println("    nextArc fixed length arc");
         // Special arc which is actually a node header for fixed length arcs.
         int numArcs = in.readVInt();
         in.readVInt(); // Skip bytesPerArc.
         if (flags == ARCS_FOR_BINARY_SEARCH) {
           in.readByte(); // Skip arc flags.
-        } else {
+        } else if (flags == ARCS_FOR_DIRECT_ADDRESSING) {
           in.skipBytes(getNumPresenceBytes(numArcs));
-        }
+        } // Nothing to do for ARCS_FOR_CONTINUOUS
       }
     } else {
-      if (arc.bytesPerArc() != 0) {
-        // System.out.println("    nextArc real array");
-        // Arcs have fixed length.
-        if (arc.nodeFlags() == ARCS_FOR_BINARY_SEARCH) {
+      switch (arc.nodeFlags()) {
+        case ARCS_FOR_BINARY_SEARCH:
           // Point to next arc, -1 to skip arc flags.
-          in.setPosition(arc.posArcsStart() - (1 + arc.arcIdx()) * arc.bytesPerArc() - 1);
-        } else {
-          assert arc.nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING;
+          in.setPosition(arc.posArcsStart() - (1 + arc.arcIdx()) * (long) arc.bytesPerArc() - 1);
+          break;
+        case ARCS_FOR_DIRECT_ADDRESSING:
           // Direct addressing node. The label is not stored but rather inferred
           // based on first label and arc index in the range.
           assert BitTable.assertIsValid(arc, in);
@@ -1237,12 +814,16 @@ public final class FST<T> implements Accountable {
           int nextIndex = BitTable.nextBitSet(arc.arcIdx(), arc, in);
           assert nextIndex != -1;
           return arc.firstLabel() + nextIndex;
-        }
-      } else {
-        // Arcs have variable length.
-        // System.out.println("    nextArc real list");
-        // Position to next arc, -1 to skip flags.
-        in.setPosition(arc.nextArc() - 1);
+        case ARCS_FOR_CONTINUOUS:
+          return arc.firstLabel() + arc.arcIdx() + 1;
+        default:
+          // Variable length arcs - linear search.
+          assert arc.bytesPerArc() == 0;
+          // Arcs have variable length.
+          // System.out.println("    nextArc real list");
+          // Position to next arc, -1 to skip flags.
+          in.setPosition(arc.nextArc() - 1);
+          break;
       }
     }
     return readLabel(in);
@@ -1252,8 +833,22 @@ public final class FST<T> implements Accountable {
     assert arc.bytesPerArc() > 0;
     assert arc.nodeFlags() == ARCS_FOR_BINARY_SEARCH;
     assert idx >= 0 && idx < arc.numArcs();
-    in.setPosition(arc.posArcsStart() - idx * arc.bytesPerArc());
+    in.setPosition(arc.posArcsStart() - idx * (long) arc.bytesPerArc());
     arc.arcIdx = idx;
+    arc.flags = in.readByte();
+    return readArc(arc, in);
+  }
+
+  /**
+   * Reads a Continuous node arc, with the provided index in the label range.
+   *
+   * @param rangeIndex The index of the arc in the label range. It must be within the label range.
+   */
+  public Arc<T> readArcByContinuous(Arc<T> arc, final BytesReader in, int rangeIndex)
+      throws IOException {
+    assert rangeIndex >= 0 && rangeIndex < arc.numArcs();
+    in.setPosition(arc.posArcsStart() - rangeIndex * (long) arc.bytesPerArc());
+    arc.arcIdx = rangeIndex;
     arc.flags = in.readByte();
     return readArc(arc, in);
   }
@@ -1279,7 +874,7 @@ public final class FST<T> implements Accountable {
    */
   private Arc<T> readArcByDirectAddressing(
       Arc<T> arc, final BytesReader in, int rangeIndex, int presenceIndex) throws IOException {
-    in.setPosition(arc.posArcsStart() - presenceIndex * arc.bytesPerArc());
+    in.setPosition(arc.posArcsStart() - presenceIndex * (long) arc.bytesPerArc());
     arc.arcIdx = rangeIndex;
     arc.presenceIndex = presenceIndex;
     arc.flags = in.readByte();
@@ -1297,6 +892,11 @@ public final class FST<T> implements Accountable {
     return readArcByDirectAddressing(arc, in, arc.numArcs() - 1, presenceIndex);
   }
 
+  /** Reads the last arc of a continuous node. */
+  public Arc<T> readLastArcByContinuous(Arc<T> arc, final BytesReader in) throws IOException {
+    return readArcByContinuous(arc, in, arc.numArcs() - 1);
+  }
+
   /** Never returns null, but you should never call this if arc.isLast() is true. */
   public Arc<T> readNextRealArc(Arc<T> arc, final BytesReader in) throws IOException {
 
@@ -1305,10 +905,11 @@ public final class FST<T> implements Accountable {
 
     switch (arc.nodeFlags()) {
       case ARCS_FOR_BINARY_SEARCH:
+      case ARCS_FOR_CONTINUOUS:
         assert arc.bytesPerArc() > 0;
         arc.arcIdx++;
         assert arc.arcIdx() >= 0 && arc.arcIdx() < arc.numArcs();
-        in.setPosition(arc.posArcsStart() - arc.arcIdx() * arc.bytesPerArc());
+        in.setPosition(arc.posArcsStart() - arc.arcIdx() * (long) arc.bytesPerArc());
         arc.flags = in.readByte();
         break;
 
@@ -1333,7 +934,7 @@ public final class FST<T> implements Accountable {
    * positioned just after the arc flags byte.
    */
   private Arc<T> readArc(Arc<T> arc, BytesReader in) throws IOException {
-    if (arc.nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING) {
+    if (arc.nodeFlags() == ARCS_FOR_DIRECT_ADDRESSING || arc.nodeFlags() == ARCS_FOR_CONTINUOUS) {
       arc.label = arc.firstLabel() + arc.arcIdx();
     } else {
       arc.label = readLabel(in);
@@ -1371,7 +972,7 @@ public final class FST<T> implements Accountable {
               arc.nodeFlags == ARCS_FOR_DIRECT_ADDRESSING
                   ? BitTable.countBits(arc, in)
                   : arc.numArcs();
-          in.setPosition(arc.posArcsStart() - arc.bytesPerArc() * numArcs);
+          in.setPosition(arc.posArcsStart() - arc.bytesPerArc() * (long) numArcs);
         }
       }
       arc.target = in.getPosition();
@@ -1476,25 +1077,44 @@ public final class FST<T> implements Accountable {
         }
       }
       return null;
+    } else if (flags == ARCS_FOR_CONTINUOUS) {
+      arc.numArcs = in.readVInt();
+      arc.bytesPerArc = in.readVInt();
+      arc.firstLabel = readLabel(in);
+      arc.posArcsStart = in.getPosition();
+      int arcIndex = labelToMatch - arc.firstLabel();
+      if (arcIndex < 0 || arcIndex >= arc.numArcs()) {
+        return null; // Before or after label range.
+      }
+      arc.arcIdx = arcIndex - 1;
+      return readNextRealArc(arc, in);
     }
 
     // Linear scan
-    readFirstRealTargetArc(follow.target(), arc, in);
-
+    readFirstArcInfo(follow.target(), arc, in);
+    in.setPosition(arc.nextArc());
     while (true) {
-      // System.out.println("  non-bs cycle");
-      // TODO: we should fix this code to not have to create
-      // object for the output of every arc we scan... only
-      // for the matching arc, if found
-      if (arc.label() == labelToMatch) {
-        // System.out.println("    found!");
-        return arc;
-      } else if (arc.label() > labelToMatch) {
+      assert arc.bytesPerArc() == 0;
+      flags = arc.flags = in.readByte();
+      long pos = in.getPosition();
+      int label = readLabel(in);
+      if (label == labelToMatch) {
+        in.setPosition(pos);
+        return readArc(arc, in);
+      } else if (label > labelToMatch) {
         return null;
       } else if (arc.isLast()) {
         return null;
       } else {
-        readNextRealArc(arc, in);
+        if (flag(flags, BIT_ARC_HAS_OUTPUT)) {
+          outputs.skipOutput(in);
+        }
+        if (flag(flags, BIT_ARC_HAS_FINAL_OUTPUT)) {
+          outputs.skipFinalOutput(in);
+        }
+        if (flag(flags, BIT_STOP_NODE) == false && flag(flags, BIT_TARGET_NEXT) == false) {
+          readUnpackedNodeTarget(in);
+        }
       }
     }
   }
@@ -1514,7 +1134,7 @@ public final class FST<T> implements Accountable {
         outputs.skipFinalOutput(in);
       }
 
-      if (!flag(flags, BIT_STOP_NODE) && !flag(flags, BIT_TARGET_NEXT)) {
+      if (flag(flags, BIT_STOP_NODE) == false && flag(flags, BIT_TARGET_NEXT) == false) {
         readUnpackedNodeTarget(in);
       }
 
@@ -1526,11 +1146,7 @@ public final class FST<T> implements Accountable {
 
   /** Returns a {@link BytesReader} for this FST, positioned at position 0. */
   public BytesReader getBytesReader() {
-    if (this.fstStore != null) {
-      return this.fstStore.getReverseBytesReader();
-    } else {
-      return bytes.getReverseReader();
-    }
+    return fstReader.getReverseBytesReader();
   }
 
   /** Reads bytes stored in an FST. */
@@ -1540,8 +1156,99 @@ public final class FST<T> implements Accountable {
 
     /** Set current read position. */
     public abstract void setPosition(long pos);
+  }
 
-    /** Returns true if this reader uses reversed bytes under-the-hood. */
-    public abstract boolean reversed();
+  /**
+   * Represents the FST metadata.
+   *
+   * @param <T> the FST output type
+   */
+  public static final class FSTMetadata<T> {
+    final INPUT_TYPE inputType;
+    final Outputs<T> outputs;
+    final int version;
+    // if non-null, this FST accepts the empty string and
+    // produces this output
+    T emptyOutput;
+    long startNode;
+    long numBytes;
+
+    public FSTMetadata(
+        INPUT_TYPE inputType,
+        Outputs<T> outputs,
+        T emptyOutput,
+        long startNode,
+        int version,
+        long numBytes) {
+      this.inputType = inputType;
+      this.outputs = outputs;
+      this.emptyOutput = emptyOutput;
+      this.startNode = startNode;
+      this.version = version;
+      this.numBytes = numBytes;
+    }
+
+    /**
+     * Returns the version constant of the binary format this FST was written in. See the {@code
+     * static final int VERSION} constants in FST's javadoc, e.g. {@link
+     * FST#VERSION_CONTINUOUS_ARCS}.
+     */
+    public int getVersion() {
+      return version;
+    }
+
+    public T getEmptyOutput() {
+      return emptyOutput;
+    }
+
+    public long getNumBytes() {
+      return numBytes;
+    }
+
+    /**
+     * Save the metadata to a DataOutput
+     *
+     * @param metaOut the DataOutput to write the metadata to
+     */
+    public void save(DataOutput metaOut) throws IOException {
+      CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
+      // TODO: really we should encode this as an arc, arriving
+      // to the root node, instead of special casing here:
+      if (emptyOutput != null) {
+        // Accepts empty string
+        metaOut.writeByte((byte) 1);
+
+        // Serialize empty-string output:
+        ByteBuffersDataOutput ros = new ByteBuffersDataOutput();
+        outputs.writeFinalOutput(emptyOutput, ros);
+        byte[] emptyOutputBytes = ros.toArrayCopy();
+        int emptyLen = emptyOutputBytes.length;
+
+        // reverse
+        final int stopAt = emptyLen / 2;
+        int upto = 0;
+        while (upto < stopAt) {
+          final byte b = emptyOutputBytes[upto];
+          emptyOutputBytes[upto] = emptyOutputBytes[emptyLen - upto - 1];
+          emptyOutputBytes[emptyLen - upto - 1] = b;
+          upto++;
+        }
+        metaOut.writeVInt(emptyLen);
+        metaOut.writeBytes(emptyOutputBytes, 0, emptyLen);
+      } else {
+        metaOut.writeByte((byte) 0);
+      }
+      final byte t;
+      if (inputType == INPUT_TYPE.BYTE1) {
+        t = 0;
+      } else if (inputType == INPUT_TYPE.BYTE2) {
+        t = 1;
+      } else {
+        t = 2;
+      }
+      metaOut.writeByte(t);
+      metaOut.writeVLong(startNode);
+      metaOut.writeVLong(numBytes);
+    }
   }
 }

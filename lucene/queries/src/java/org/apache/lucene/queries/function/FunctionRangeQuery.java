@@ -25,13 +25,14 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /**
  * A Query wrapping a {@link ValueSource} that matches docs in which the values in the value source
  * match a configured range. The score is the float value. This can be a slow query if run by itself
  * since it must visit all docs; ideally it's combined with other queries. It's mostly a wrapper
- * around {@link FunctionValues#getRangeScorer(Weight, LeafReaderContext, String, String, boolean,
+ * around {@link FunctionValues#getRangeScorer(LeafReaderContext, String, String, boolean,
  * boolean)}.
  *
  * <p>A similar class is {@code org.apache.lucene.search.DocValuesRangeQuery} in the sandbox module.
@@ -116,8 +117,8 @@ public class FunctionRangeQuery extends Query {
   }
 
   private boolean equalsTo(FunctionRangeQuery other) {
-    return Objects.equals(includeLower, other.includeLower)
-        && Objects.equals(includeUpper, other.includeUpper)
+    return includeLower == other.includeLower
+        && includeUpper == other.includeUpper
         && Objects.equals(valueSource, other.valueSource)
         && Objects.equals(lowerVal, other.lowerVal)
         && Objects.equals(upperVal, other.upperVal);
@@ -154,7 +155,7 @@ public class FunctionRangeQuery extends Query {
       // note: by using ValueSourceScorer directly, we avoid calling scorer.advance(doc) and
       // checking if true, which can be slow since if that doc doesn't match, it has to linearly
       // find the next matching
-      ValueSourceScorer scorer = scorer(context);
+      ValueSourceScorer scorer = (ValueSourceScorer) scorer(context);
       if (scorer.matches(doc)) {
         scorer.iterator().advance(doc);
         return Explanation.match(
@@ -165,11 +166,11 @@ public class FunctionRangeQuery extends Query {
     }
 
     @Override
-    public ValueSourceScorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       FunctionValues functionValues = valueSource.getValues(vsContext, context);
-      // getRangeScorer takes String args and parses them. Weird.
-      return functionValues.getRangeScorer(
-          this, context, lowerVal, upperVal, includeLower, includeUpper);
+      final var scorer =
+          functionValues.getRangeScorer(context, lowerVal, upperVal, includeLower, includeUpper);
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

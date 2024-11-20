@@ -20,7 +20,7 @@ import java.io.StringReader;
 import java.util.Locale;
 import java.util.Properties;
 import org.apache.lucene.benchmark.byTask.feeds.DemoHTMLParser.Parser;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestHtmlParser extends LuceneTestCase {
 
@@ -96,7 +96,7 @@ public class TestHtmlParser extends LuceneTestCase {
   public void testTurkish() throws Exception {
     final Locale saved = Locale.getDefault();
     try {
-      Locale.setDefault(new Locale("tr", "TR"));
+      Locale.setDefault(new Locale.Builder().setLanguageTag("tr-TR").build());
       String text =
           "<html><HEAD><TITLE>ııı</TITLE></head><body>"
               + "<IMG SRC=\"../images/head.jpg\" WIDTH=570 HEIGHT=47 BORDER=0 ALT=\"ş\">"

@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Lets all tokens pass through until it sees one with a start offset &lt;= a configured limit,
@@ -46,6 +47,7 @@ public final class LimitTokenOffsetFilter extends TokenFilter {
    *
    * @param maxStartOffset the maximum start offset allowed
    */
+  @IgnoreRandomChains(reason = "all tokens must be consumed")
   public LimitTokenOffsetFilter(TokenStream input, int maxStartOffset) {
     this(input, maxStartOffset, false);
   }

@@ -20,12 +20,18 @@ import java.time.format.DateTimeFormatter
 
 plugins {
   id "base"
-  id "com.palantir.consistent-versions" version "2.0.0"
-  id "org.owasp.dependencycheck" version "5.3.0"
-  id 'de.thetaphi.forbiddenapis' version '3.1' apply false
-  id "de.undercouch.download" version "4.1.1" apply false
-  id "net.ltgt.errorprone" version "1.2.1" apply false
-  id 'com.diffplug.spotless' version "5.14.3" apply false
+  id "lucene.build-infra"
+
+  alias(deps.plugins.dependencychecks)
+  alias(deps.plugins.spotless) apply false
+  alias(deps.plugins.benmanes.versions)
+  alias(deps.plugins.forbiddenapis) apply false
+  alias(deps.plugins.versionCatalogUpdate) apply false
+  alias(deps.plugins.randomizedtesting) apply false
+  alias(deps.plugins.owasp.dependencycheck)
+  alias(deps.plugins.undercouch.download) apply false
+  alias(deps.plugins.errorprone) apply false
+  alias(deps.plugins.jacocolog) apply false
 }
 
 apply from: file('gradle/globals.gradle')
@@ -35,7 +41,7 @@ apply from: file('gradle/globals.gradle')
 // Calculate project version:
 version = {
   // Release manager: update base version here after release:
-  String baseVersion = '9.0.0'
+  String baseVersion = '11.0.0'
 
   // On a release explicitly set release version in one go:
   //  -Dversion.release=x.y.z
@@ -46,7 +52,7 @@ version = {
   String versionSuffix = propertyOrDefault('version.suffix', 'SNAPSHOT')
   return propertyOrDefault('version.release', "${baseVersion}-${versionSuffix}")
 }()
-description = 'Grandparent project for Apache Lucene Core and Apache Solr'
+description = 'Grandparent project for Apache Lucene Core'
 
 // Propagate version and derived properties across projects.
 allprojects {
@@ -72,7 +78,10 @@ ext {
   }
 
   // Minimum Java version required to compile and run Lucene.
-  minJavaVersion = JavaVersion.VERSION_11
+  minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
+
+  // also change this in extractor tool: ExtractForeignAPI
+  vectorIncubatorJavaVersions = [ JavaVersion.VERSION_21, JavaVersion.VERSION_22, JavaVersion.VERSION_23 ] as Set
 
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
@@ -97,36 +106,38 @@ configurations {
 
 dependencies {
   // Use a newer groovy that doesn't have illegal reflective accesses.
-  groovy "org.codehaus.groovy:groovy-all:3.0.7"
+  groovy deps.groovy
 }
-
-apply from: file('buildSrc/scriptDepVersions.gradle')
 
 // Include smaller chunks configuring dedicated build areas.
 // Some of these intersect or add additional functionality.
 // The order of inclusion of these files shouldn't matter (but may
 // if the build file is incorrectly written and evaluates something
 // eagerly).
-
+apply from: file('gradle/conventions.gradle')
 apply from: file('gradle/generation/local-settings.gradle')
+
+// Make sure the build environment is consistent.
+apply from: file('gradle/validation/check-environment.gradle')
 
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
 apply from: file('gradle/java/folder-layout.gradle')
 apply from: file('gradle/java/javac.gradle')
+apply from: file('gradle/java/core-mrjar.gradle')
 apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/testing/alternative-jdk-support.gradle')
 apply from: file('gradle/java/jar-manifest.gradle')
-
-// Publishing and releasing
-apply from: file('gradle/publishing/defaults-maven.gradle')
-apply from: file('gradle/publishing/distribution.gradle')
+apply from: file('gradle/java/modules.gradle')
 
 // IDE support, settings and specials.
 apply from: file('gradle/ide/intellij-idea.gradle')
 apply from: file('gradle/ide/eclipse.gradle')
+
+// Maven artifact publishing.
+apply from: file('gradle/maven/publications.gradle')
 
 // Validation tasks
 apply from: file('gradle/validation/measure-task-times.gradle')
@@ -135,14 +146,24 @@ apply from: file('gradle/validation/precommit.gradle')
 apply from: file('gradle/validation/forbidden-apis.gradle')
 apply from: file('gradle/validation/jar-checks.gradle')
 apply from: file('gradle/validation/git-status.gradle')
-apply from: file('gradle/validation/versions-props-sorted.gradle')
 apply from: file('gradle/validation/validate-source-patterns.gradle')
 apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')
 apply from: file('gradle/validation/ecj-lint.gradle')
 apply from: file('gradle/validation/gradlew-scripts-tweaked.gradle')
-
+apply from: file('gradle/validation/dependencies.gradle')
 apply from: file('gradle/validation/spotless.gradle')
+
+// Wire up included builds to some validation tasks.
+rootProject.tasks.named("tidy").configure {
+  dependsOn gradle.includedBuilds*.task(":tidy")
+}
+rootProject.tasks.named("clean").configure {
+  dependsOn gradle.includedBuilds*.task(":clean")
+}
+rootProject.tasks.named("check").configure {
+  dependsOn gradle.includedBuilds*.task(":forbiddenApis")
+}
 
 // Source or data regeneration tasks
 apply from: file('gradle/generation/regenerate.gradle')
@@ -154,14 +175,13 @@ apply from: file('gradle/generation/nori.gradle')
 apply from: file('gradle/generation/icu.gradle')
 apply from: file('gradle/generation/javacc.gradle')
 apply from: file('gradle/generation/forUtil.gradle')
+apply from: file('gradle/generation/antlr.gradle')
+apply from: file('gradle/generation/unicode-test-classes.gradle')
+apply from: file('gradle/generation/extract-jdk-apis.gradle')
 
 apply from: file('gradle/datasets/external-datasets.gradle')
 
-// Shared configuration of subprojects containing native code.
-apply from: file('gradle/native/disable-native.gradle')
-
 // Additional development aids.
-apply from: file('gradle/publishing/maven-local.gradle')
 apply from: file('gradle/testing/per-project-summary.gradle')
 apply from: file('gradle/testing/slowest-tests-at-end.gradle')
 apply from: file('gradle/testing/failed-tests-at-end.gradle')
@@ -181,3 +201,5 @@ apply from: file('gradle/hacks/wipe-temp.gradle')
 apply from: file('gradle/hacks/hashmapAssertions.gradle')
 apply from: file('gradle/hacks/turbocharge-jvm-opts.gradle')
 apply from: file('gradle/hacks/dummy-outputs.gradle')
+
+apply from: file('gradle/pylucene/pylucene.gradle')

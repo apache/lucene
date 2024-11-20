@@ -20,10 +20,14 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -33,11 +37,12 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFieldVisitor;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
 
@@ -92,13 +97,16 @@ public class TermVectorLeafReader extends LeafReader {
             terms.hasPayloads(),
             indexOptions,
             DocValuesType.NONE,
+            DocValuesSkipIndexType.NONE,
             -1,
             Collections.emptyMap(),
             0,
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
+            false,
             false);
     fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
@@ -137,6 +145,11 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    return null;
+  }
+
+  @Override
   public NumericDocValues getNormValues(String field) throws IOException {
     return null; // Is this needed?  See MemoryIndex for a way to do it.
   }
@@ -157,27 +170,36 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public VectorValues getVectorValues(String fieldName) {
+  public FloatVectorValues getFloatVectorValues(String fieldName) {
     return null;
   }
 
   @Override
-  public TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs) {
+  public ByteVectorValues getByteVectorValues(String fieldName) {
     return null;
   }
+
+  @Override
+  public void searchNearestVectors(
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {}
+
+  @Override
+  public void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {}
 
   @Override
   public void checkIntegrity() throws IOException {}
 
   @Override
-  public TermVectors getTermVectorsReader() {
+  public TermVectors termVectors() throws IOException {
     return new TermVectors() {
       @Override
       public Fields get(int docID) {
         if (docID != 0) {
           return null;
+        } else {
+          return fields;
         }
-        return fields;
       }
     };
   }
@@ -193,11 +215,16 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+  public StoredFields storedFields() throws IOException {
+    return new StoredFields() {
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
+    };
+  }
 
   @Override
   public LeafMetaData getMetaData() {
-    return new LeafMetaData(Version.LATEST.major, null, null);
+    return new LeafMetaData(Version.LATEST.major, null, null, false);
   }
 
   @Override

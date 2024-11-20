@@ -81,7 +81,9 @@ public final class ClassicAnalyzer extends StopwordAnalyzerBase {
     maxTokenLength = length;
   }
 
-  /** @see #setMaxTokenLength */
+  /**
+   * @see #setMaxTokenLength
+   */
   public int getMaxTokenLength() {
     return maxTokenLength;
   }

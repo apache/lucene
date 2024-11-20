@@ -25,6 +25,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.AnalyzerWrapper;
 import org.apache.lucene.analysis.TokenFilter;
@@ -61,7 +64,7 @@ import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TopFieldCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.suggest.InputIterator;
 import org.apache.lucene.search.suggest.Lookup;
@@ -113,6 +116,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
 
   /** Analyzer used at search time */
   protected final Analyzer queryAnalyzer;
+
   /** Analyzer used at index time */
   protected final Analyzer indexAnalyzer;
 
@@ -125,14 +129,26 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
   private final boolean commitOnBuild;
   private final boolean closeIndexWriterOnBuild;
 
-  /** Used for ongoing NRT additions/updates. */
+  /**
+   * Used for ongoing NRT additions/updates. May be null depending on <code>closeIndexWriterOnBuild
+   * </code> constructor arg
+   */
   protected IndexWriter writer;
 
-  /** {@link IndexSearcher} used for lookups. */
+  /** Used to manage concurrent access to writer */
+  protected final Object writerLock = new Object();
+
+  /**
+   * {@link IndexSearcher} used for lookups. May be null if {@link Directory} did not exist on
+   * instantiation and neither {@link #build}, {@link #add}, or {@link #update} have been called
+   */
   protected SearcherManager searcherMgr;
 
   /** Used to manage concurrent access to searcherMgr */
-  protected final Object searcherMgrLock = new Object();
+  protected final ReadWriteLock searcherMgrLock = new ReentrantReadWriteLock();
+
+  private final Lock searcherMgrReadLock = searcherMgrLock.readLock();
+  private final Lock searcherMgrWriteLock = searcherMgrLock.writeLock();
 
   /** Default minimum number of leading characters before PrefixQuery is used (4). */
   public static final int DEFAULT_MIN_PREFIX_CHARS = 4;
@@ -274,6 +290,20 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
     }
   }
 
+  private void setAndCloseOldSearcherManager(final SearcherManager newSearcherMgr)
+      throws IOException {
+    searcherMgrWriteLock.lock();
+    try {
+      final SearcherManager oldSearcherMgr = searcherMgr;
+      searcherMgr = newSearcherMgr;
+      if (oldSearcherMgr != null) {
+        oldSearcherMgr.close();
+      }
+    } finally {
+      searcherMgrWriteLock.unlock();
+    }
+  }
+
   /** Override this to customize index settings, e.g. which codec to use. */
   protected IndexWriterConfig getIndexWriterConfig(
       Analyzer indexAnalyzer, IndexWriterConfig.OpenMode openMode) {
@@ -296,12 +326,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
   @Override
   public void build(InputIterator iter) throws IOException {
 
-    synchronized (searcherMgrLock) {
-      if (searcherMgr != null) {
-        searcherMgr.close();
-        searcherMgr = null;
-      }
-
+    synchronized (writerLock) {
       if (writer != null) {
         writer.close();
         writer = null;
@@ -334,7 +359,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
         if (commitOnBuild || closeIndexWriterOnBuild) {
           commit();
         }
-        searcherMgr = new SearcherManager(writer, null);
+        setAndCloseOldSearcherManager(new SearcherManager(writer, null));
         success = true;
       } finally {
         if (success) {
@@ -394,7 +419,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
   }
 
   private void ensureOpen() throws IOException {
-    synchronized (searcherMgrLock) {
+    synchronized (writerLock) {
       if (writer == null) {
         if (DirectoryReader.indexExists(dir)) {
           // Already built; open it:
@@ -406,12 +431,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
               new IndexWriter(
                   dir, getIndexWriterConfig(getGramAnalyzer(), IndexWriterConfig.OpenMode.CREATE));
         }
-
-        SearcherManager oldSearcherMgr = searcherMgr;
-        searcherMgr = new SearcherManager(writer, null);
-        if (oldSearcherMgr != null) {
-          oldSearcherMgr.close();
-        }
+        setAndCloseOldSearcherManager(new SearcherManager(writer, null));
       }
     }
   }
@@ -675,7 +695,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       if (contextQuery != null) {
         boolean allMustNot = true;
         for (BooleanClause clause : contextQuery.clauses()) {
-          if (clause.getOccur() != BooleanClause.Occur.MUST_NOT) {
+          if (clause.occur() != BooleanClause.Occur.MUST_NOT) {
             allMustNot = false;
             break;
           }
@@ -708,19 +728,20 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
     // System.out.println("finalQuery=" + finalQuery);
 
     // Sort by weight, descending:
-    TopFieldCollector c = TopFieldCollector.create(SORT, num, 1);
     List<LookupResult> results = null;
     SearcherManager mgr;
     IndexSearcher searcher;
-    synchronized (searcherMgrLock) {
+    searcherMgrReadLock.lock();
+    try {
       mgr = searcherMgr; // acquire & release on same SearcherManager, via local reference
       searcher = mgr.acquire();
+    } finally {
+      searcherMgrReadLock.unlock();
     }
     try {
+      TopFieldCollectorManager c = new TopFieldCollectorManager(SORT, num, null, 1);
       // System.out.println("got searcher=" + searcher);
-      searcher.search(finalQuery, c);
-
-      TopFieldDocs hits = c.topDocs();
+      TopFieldDocs hits = searcher.search(finalQuery, c);
 
       // Slower way if postings are not pre-sorted by weight:
       // hits = searcher.search(query, null, num, SORT);
@@ -729,7 +750,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       mgr.release(searcher);
     }
 
-    // System.out.println((System.currentTimeMillis() - t0) + " msec for infix suggest");
+    // System.out.println((System.currentTimeMillis() - t0) + " ms for infix suggest");
     // System.out.println(results);
 
     return results;
@@ -789,9 +810,8 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
         contexts = new HashSet<BytesRef>();
         int targetDocID = fd.doc - leaves.get(segment).docBase;
         if (contextsDV.advance(targetDocID) == targetDocID) {
-          long ord;
-          while ((ord = contextsDV.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-            BytesRef context = BytesRef.deepCopyOf(contextsDV.lookupOrd(ord));
+          for (int j = 0; j < contextsDV.docValueCount(); j++) {
+            BytesRef context = BytesRef.deepCopyOf(contextsDV.lookupOrd(contextsDV.nextOrd()));
             contexts.add(context);
           }
         }
@@ -906,7 +926,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       return;
     }
     sb.append("<b>");
-    sb.append(surface.substring(0, prefixToken.length()));
+    sb.append(surface, 0, prefixToken.length());
     sb.append("</b>");
     sb.append(surface.substring(prefixToken.length()));
   }
@@ -948,9 +968,12 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
     }
     SearcherManager mgr;
     IndexSearcher searcher;
-    synchronized (searcherMgrLock) {
+    searcherMgrReadLock.lock();
+    try {
       mgr = searcherMgr; // acquire & release on same SearcherManager, via local reference
       searcher = mgr.acquire();
+    } finally {
+      searcherMgrReadLock.unlock();
     }
     try {
       return searcher.getIndexReader().numDocs();

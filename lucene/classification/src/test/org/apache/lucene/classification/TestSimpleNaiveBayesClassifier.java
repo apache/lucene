@@ -17,7 +17,6 @@
 package org.apache.lucene.classification;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.ngram.EdgeNGramTokenFilter;
@@ -29,7 +28,9 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Testcase for {@link SimpleNaiveBayesClassifier} */
@@ -47,9 +48,7 @@ public class TestSimpleNaiveBayesClassifier extends ClassificationTestBase<Bytes
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
       checkCorrectClassification(classifier, POLITICS_INPUT, POLITICS_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -66,9 +65,7 @@ public class TestSimpleNaiveBayesClassifier extends ClassificationTestBase<Bytes
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
       checkCorrectClassification(classifier, POLITICS_INPUT, POLITICS_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -83,9 +80,7 @@ public class TestSimpleNaiveBayesClassifier extends ClassificationTestBase<Bytes
               leafReader, analyzer, null, categoryFieldName, textFieldName);
       checkCorrectClassification(classifier, TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 

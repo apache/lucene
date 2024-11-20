@@ -42,14 +42,9 @@ import org.apache.lucene.util.automaton.RegExp;
  * @lucene.experimental
  */
 public class RegexpQuery extends AutomatonQuery {
+
   /** A provider that provides no named automata */
-  private static AutomatonProvider defaultProvider =
-      new AutomatonProvider() {
-        @Override
-        public Automaton getAutomaton(String name) {
-          return null;
-        }
-      };
+  public static final AutomatonProvider DEFAULT_PROVIDER = name -> null;
 
   /**
    * Constructs a query for terms matching <code>term</code>.
@@ -69,7 +64,7 @@ public class RegexpQuery extends AutomatonQuery {
    * @param flags optional RegExp features from {@link RegExp}
    */
   public RegexpQuery(Term term, int flags) {
-    this(term, flags, defaultProvider, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    this(term, flags, DEFAULT_PROVIDER, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 
   /**
@@ -83,31 +78,37 @@ public class RegexpQuery extends AutomatonQuery {
    *     otherwise know what to specify.
    */
   public RegexpQuery(Term term, int flags, int determinizeWorkLimit) {
-    this(term, flags, defaultProvider, determinizeWorkLimit);
+    this(term, flags, DEFAULT_PROVIDER, determinizeWorkLimit);
   }
 
   /**
    * Constructs a query for terms matching <code>term</code>.
    *
    * @param term regular expression.
-   * @param syntax_flags optional RegExp syntax features from {@link RegExp} automaton for the
-   *     regexp can result in. Set higher to allow more complex queries and lower to prevent memory
+   * @param syntaxFlags optional RegExp syntax features from {@link RegExp} automaton for the regexp
+   *     can result in. Set higher to allow more complex queries and lower to prevent memory
    *     exhaustion.
-   * @param match_flags boolean 'or' of match behavior options such as case insensitivity
+   * @param matchFlags boolean 'or' of match behavior options such as case insensitivity
    * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
    *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
    *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
    *     otherwise know what to specify.
    */
-  public RegexpQuery(Term term, int syntax_flags, int match_flags, int determinizeWorkLimit) {
-    this(term, syntax_flags, match_flags, defaultProvider, determinizeWorkLimit);
+  public RegexpQuery(Term term, int syntaxFlags, int matchFlags, int determinizeWorkLimit) {
+    this(
+        term,
+        syntaxFlags,
+        matchFlags,
+        DEFAULT_PROVIDER,
+        determinizeWorkLimit,
+        CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**
    * Constructs a query for terms matching <code>term</code>.
    *
    * @param term regular expression.
-   * @param syntax_flags optional RegExp features from {@link RegExp}
+   * @param syntaxFlags optional RegExp features from {@link RegExp}
    * @param provider custom AutomatonProvider for named automata
    * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
    *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
@@ -115,33 +116,82 @@ public class RegexpQuery extends AutomatonQuery {
    *     otherwise know what to specify.
    */
   public RegexpQuery(
-      Term term, int syntax_flags, AutomatonProvider provider, int determinizeWorkLimit) {
-    this(term, syntax_flags, 0, provider, determinizeWorkLimit);
+      Term term, int syntaxFlags, AutomatonProvider provider, int determinizeWorkLimit) {
+    this(term, syntaxFlags, 0, provider, determinizeWorkLimit, CONSTANT_SCORE_BLENDED_REWRITE);
   }
 
   /**
    * Constructs a query for terms matching <code>term</code>.
    *
    * @param term regular expression.
-   * @param syntax_flags optional RegExp features from {@link RegExp}
-   * @param match_flags boolean 'or' of match behavior options such as case insensitivity
+   * @param syntaxFlags optional RegExp features from {@link RegExp}
+   * @param matchFlags boolean 'or' of match behavior options such as case insensitivity
    * @param provider custom AutomatonProvider for named automata
    * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
    *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
    *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
    *     otherwise know what to specify.
+   * @param rewriteMethod the rewrite method to use to build the final query
    */
   public RegexpQuery(
       Term term,
-      int syntax_flags,
-      int match_flags,
+      int syntaxFlags,
+      int matchFlags,
       AutomatonProvider provider,
-      int determinizeWorkLimit) {
+      int determinizeWorkLimit,
+      RewriteMethod rewriteMethod) {
+    this(term, syntaxFlags, matchFlags, provider, determinizeWorkLimit, rewriteMethod, true);
+  }
+
+  /**
+   * Constructs a query for terms matching <code>term</code>.
+   *
+   * @param term regular expression.
+   * @param syntaxFlags optional RegExp features from {@link RegExp}
+   * @param matchFlags boolean 'or' of match behavior options such as case insensitivity
+   * @param provider custom AutomatonProvider for named automata
+   * @param determinizeWorkLimit maximum effort to spend while compiling the automaton from this
+   *     regexp. Set higher to allow more complex queries and lower to prevent memory exhaustion.
+   *     Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a decent default if you don't
+   *     otherwise know what to specify.
+   * @param rewriteMethod the rewrite method to use to build the final query
+   * @param doDeterminization whether do determinization to force the query to use DFA as
+   *     runAutomaton, if false, the query will not try to determinize the generated automaton from
+   *     regexp such that it might or might not be a DFA. In case it is an NFA, the query will
+   *     eventually use {@link org.apache.lucene.util.automaton.NFARunAutomaton} to execute. Notice
+   *     that {@link org.apache.lucene.util.automaton.NFARunAutomaton} is not thread-safe, so better
+   *     to avoid rewritten method like {@link #CONSTANT_SCORE_BLENDED_REWRITE} when searcher is
+   *     configured with an executor service
+   */
+  public RegexpQuery(
+      Term term,
+      int syntaxFlags,
+      int matchFlags,
+      AutomatonProvider provider,
+      int determinizeWorkLimit,
+      RewriteMethod rewriteMethod,
+      boolean doDeterminization) {
     super(
         term,
-        new RegExp(term.text(), syntax_flags, match_flags)
-            .toAutomaton(provider, determinizeWorkLimit),
-        determinizeWorkLimit);
+        toAutomaton(
+            new RegExp(term.text(), syntaxFlags, matchFlags),
+            determinizeWorkLimit,
+            provider,
+            doDeterminization),
+        false,
+        rewriteMethod);
+  }
+
+  private static Automaton toAutomaton(
+      RegExp regexp,
+      int determinizeWorkLimit,
+      AutomatonProvider provider,
+      boolean doDeterminization) {
+    if (doDeterminization) {
+      return Operations.determinize(regexp.toAutomaton(provider), determinizeWorkLimit);
+    } else {
+      return regexp.toAutomaton(provider);
+    }
   }
 
   /** Returns the regexp of this query wrapped in a Term. */

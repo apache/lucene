@@ -24,6 +24,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Characters before the delimiter are the "token", the textual integer after is the term frequency.
@@ -36,6 +37,8 @@ import org.apache.lucene.util.ArrayUtil;
  *
  * <p>Note make sure your Tokenizer doesn't split on the delimiter, or this won't work
  */
+@IgnoreRandomChains(
+    reason = "requires a special encoded token value, so it may fail with random data")
 public final class DelimitedTermFrequencyTokenFilter extends TokenFilter {
   public static final char DEFAULT_DELIMITER = '|';
 

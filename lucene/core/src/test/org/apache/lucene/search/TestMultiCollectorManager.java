@@ -20,18 +20,17 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMultiCollectorManager extends LuceneTestCase {
 
@@ -52,11 +51,9 @@ public class TestMultiCollectorManager extends LuceneTestCase {
 
     for (int iter = 0; iter < 100; iter++) {
       int docs = RandomNumbers.randomIntBetween(random(), 1000, 10000);
-      List<Integer> expected = generateDocIds(docs, random());
-      List<Integer> expectedEven =
-          expected.stream().filter(evenPredicate).collect(Collectors.toList());
-      List<Integer> expectedOdd =
-          expected.stream().filter(oddPredicate).collect(Collectors.toList());
+      SortedSet<Integer> expected = generateDocIds(docs, random());
+      List<Integer> expectedEven = expected.stream().filter(evenPredicate).toList();
+      List<Integer> expectedOdd = expected.stream().filter(oddPredicate).toList();
 
       // Test only wrapping one of the collector managers:
       MultiCollectorManager mcm = new MultiCollectorManager(cm1);
@@ -92,28 +89,19 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     LeafReaderContext ctx = reader.leaves().get(0);
 
     // no collector needs scores => no caching
-    CollectorManager<?, ?> cm1 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, ScoreAndDoc.class);
-    CollectorManager<?, ?> cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, ScoreAndDoc.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+    CollectorManager<?, ?> cm1 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, Score.class);
+    CollectorManager<?, ?> cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, Score.class);
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     // only one collector needs scores => no caching
-    cm1 = collectorManager(ScoreMode.COMPLETE, ScoreAndDoc.class);
-    cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, ScoreAndDoc.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+    cm1 = collectorManager(ScoreMode.COMPLETE, Score.class);
+    cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, Score.class);
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     // several collectors need scores => caching
     cm1 = collectorManager(ScoreMode.COMPLETE, ScoreCachingWrappingScorer.class);
     cm2 = collectorManager(ScoreMode.COMPLETE, ScoreCachingWrappingScorer.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     reader.close();
     dir.close();
@@ -132,19 +120,13 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     CollectorManager<?, ?> cm2 =
         collectorManager(
             ScoreMode.TOP_SCORES, MultiCollector.MinCompetitiveScoreAwareScorable.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     // both wrapped collector managers need scores, but one is exhaustive, so they should
     // see a ScoreCachingWrappingScorer pass in as their scorer:
     cm1 = collectorManager(ScoreMode.COMPLETE, ScoreCachingWrappingScorer.class);
     cm2 = collectorManager(ScoreMode.TOP_SCORES, ScoreCachingWrappingScorer.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new ScoreAndDoc());
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     reader.close();
     dir.close();
@@ -157,7 +139,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     LeafReaderContext ctx = reader.leaves().get(0);
 
     int docs = RandomNumbers.randomIntBetween(random(), 1000, 10000);
-    List<Integer> expected = generateDocIds(docs, random());
+    Collection<Integer> expected = generateDocIds(docs, random());
 
     // The first collector manager should collect all docs even though the second throws
     // CollectionTerminatedException immediately:
@@ -192,7 +174,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
   }
 
   private static <C extends Collector> Object collectAll(
-      LeafReaderContext ctx, List<Integer> values, CollectorManager<C, ?> collectorManager)
+      LeafReaderContext ctx, Collection<Integer> values, CollectorManager<C, ?> collectorManager)
       throws IOException {
     List<C> collectors = new ArrayList<>();
     C collector = collectorManager.newCollector();
@@ -210,18 +192,17 @@ public class TestMultiCollectorManager extends LuceneTestCase {
   }
 
   /**
-   * Generate test doc ids. This will de-dupe and create a sorted list to be more realistic with
-   * real-world use-cases. Note that it's possible this will generate fewer than 'count' entries
-   * because of de-duping, but that should be quite rare and probably isn't worth worrying about for
-   * these testing purposes.
+   * Generate test doc ids. This will de-dupe and create a sorted collection to be more realistic
+   * with real-world use-cases. Note that it's possible this will generate fewer than 'count'
+   * entries because of de-duping, but that should be quite rare and probably isn't worth worrying
+   * about for these testing purposes.
    */
-  private List<Integer> generateDocIds(int count, Random random) {
-    Set<Integer> generated = new HashSet<>(count);
+  private static SortedSet<Integer> generateDocIds(int count, Random random) {
+    SortedSet<Integer> generated = new TreeSet<>();
     for (int i = 0; i < count; i++) {
       generated.add(random.nextInt());
     }
-
-    return generated.stream().sorted().collect(Collectors.toList());
+    return generated;
   }
 
   private static final class SimpleCollectorManager
@@ -307,7 +288,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
 
   private static CollectorManager<?, ?> collectorManager(
       ScoreMode scoreMode, Class<?> expectedScorer) {
-    return new CollectorManager<Collector, Object>() {
+    return new CollectorManager<>() {
 
       @Override
       public Collector newCollector() throws IOException {

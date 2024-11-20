@@ -31,6 +31,8 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -196,12 +198,14 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
     @Override
     public void withTopDocs(IndexSearcher searcher, Query q, TopDocs hits) throws Exception {
       IndexReader reader = searcher.getIndexReader();
+      StoredFields storedFields = reader.storedFields();
+      TermVectors termVectors = reader.termVectors();
       highlighter.setFragmentScorer(new QueryScorer(q));
       // highlighter.setTextFragmenter();  unfortunately no sentence mechanism, not even regex.
       // Default here is trivial
       for (ScoreDoc scoreDoc : docIdOrder(hits.scoreDocs)) {
-        Document document = reader.document(scoreDoc.doc, hlFields);
-        Fields tvFields = termVecs ? reader.getTermVectors(scoreDoc.doc) : null;
+        Document document = storedFields.document(scoreDoc.doc, hlFields);
+        Fields tvFields = termVecs ? termVectors.get(scoreDoc.doc) : null;
         for (IndexableField indexableField : document) {
           TokenStream tokenStream;
           if (termVecs) {
@@ -288,17 +292,19 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
         return;
       }
       lastSearcher = searcher;
+      UnifiedHighlighter.Builder uhBuilder =
+          new UnifiedHighlighter.Builder(searcher, analyzer)
+              .withBreakIterator(() -> BreakIterator.getSentenceInstance(Locale.ENGLISH))
+              .withMaxLength(maxDocCharsToAnalyze)
+              .withHighlightPhrasesStrictly(true)
+              .withHandleMultiTermQuery(true);
       highlighter =
-          new UnifiedHighlighter(searcher, analyzer) {
+          new UnifiedHighlighter(uhBuilder) {
             @Override
             protected OffsetSource getOffsetSource(String field) {
               return offsetSource != null ? offsetSource : super.getOffsetSource(field);
             }
           };
-      highlighter.setBreakIterator(() -> BreakIterator.getSentenceInstance(Locale.ENGLISH));
-      highlighter.setMaxLength(maxDocCharsToAnalyze);
-      highlighter.setHighlightPhrasesStrictly(true);
-      highlighter.setHandleMultiTermQuery(true);
     }
 
     @Override
@@ -314,8 +320,10 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
     @Override
     public void withTopDocs(IndexSearcher searcher, Query q, TopDocs hits) throws Exception {
       // just retrieve the HL fields
+      StoredFields storedFields = searcher.storedFields();
       for (ScoreDoc scoreDoc : docIdOrder(hits.scoreDocs)) {
-        preventOptimizeAway += searcher.doc(scoreDoc.doc, hlFields).iterator().hasNext() ? 2 : 1;
+        preventOptimizeAway +=
+            storedFields.document(scoreDoc.doc, hlFields).iterator().hasNext() ? 2 : 1;
       }
     }
   }

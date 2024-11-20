@@ -17,11 +17,9 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
@@ -61,12 +59,12 @@ public abstract class TopTermsRewrite<B> extends TermCollectingRewrite<B> {
   protected abstract int getMaxSize();
 
   @Override
-  public final Query rewrite(final IndexReader reader, final MultiTermQuery query)
+  public final Query rewrite(IndexSearcher indexSearcher, final MultiTermQuery query)
       throws IOException {
     final int maxSize = Math.min(size, getMaxSize());
     final PriorityQueue<ScoreTerm> stQueue = new PriorityQueue<>();
     collectTerms(
-        reader,
+        indexSearcher.getIndexReader(),
         query,
         new TermCollector() {
           private final MaxNonCompetitiveBoostAttribute maxBoostAtt =
@@ -161,7 +159,7 @@ public abstract class TopTermsRewrite<B> extends TermCollectingRewrite<B> {
 
     final B b = getTopLevelBuilder();
     final ScoreTerm[] scoreTerms = stQueue.toArray(new ScoreTerm[stQueue.size()]);
-    ArrayUtil.timSort(scoreTerms, scoreTermSortByTermComp);
+    ArrayUtil.timSort(scoreTerms, (st1, st2) -> st1.bytes.get().compareTo(st2.bytes.get()));
 
     for (final ScoreTerm st : scoreTerms) {
       final Term term = new Term(query.field, st.bytes.toBytesRef());
@@ -188,14 +186,6 @@ public abstract class TopTermsRewrite<B> extends TermCollectingRewrite<B> {
     if (size != other.size) return false;
     return true;
   }
-
-  private static final Comparator<ScoreTerm> scoreTermSortByTermComp =
-      new Comparator<ScoreTerm>() {
-        @Override
-        public int compare(ScoreTerm st1, ScoreTerm st2) {
-          return st1.bytes.get().compareTo(st2.bytes.get());
-        }
-      };
 
   static final class ScoreTerm implements Comparable<ScoreTerm> {
     public final BytesRefBuilder bytes = new BytesRefBuilder();

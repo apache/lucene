@@ -22,6 +22,7 @@ import java.util.Locale;
 /** This enum breaks down the query into different sections to describe what was timed. */
 public enum QueryProfilerTimingType {
   CREATE_WEIGHT,
+  COUNT,
   BUILD_SCORER,
   NEXT_DOC,
   ADVANCE,

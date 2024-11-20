@@ -21,10 +21,11 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 
 /** Simple tests for {@link JapaneseIterationMarkCharFilterFactory} */
 public class TestJapaneseIterationMarkCharFilterFactory extends BaseTokenStreamTestCase {

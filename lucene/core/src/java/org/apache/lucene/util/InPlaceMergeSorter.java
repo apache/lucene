@@ -18,7 +18,11 @@ package org.apache.lucene.util;
 
 /**
  * {@link Sorter} implementation based on the merge-sort algorithm that merges in place (no extra
- * memory will be allocated). Small arrays are sorted with insertion sort.
+ * memory will be allocated). Small arrays are sorted with binary sort.
+ *
+ * <p>This algorithm is stable. It's especially suited to sorting small lists where we'd rather
+ * optimize for avoiding allocating memory for this task. It performs well on lists that are already
+ * sorted.
  *
  * @lucene.internal
  */

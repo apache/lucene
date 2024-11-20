@@ -20,7 +20,7 @@ import java.util.Arrays;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 
 /**
  * Add an instance of this to your {@link Document} for every facet label.
@@ -30,13 +30,11 @@ import org.apache.lucene.index.IndexOptions;
  */
 public class FacetField extends Field {
 
-  /** Field type used for storing facet values: docs, freqs, and positions. */
+  /**
+   * Field type used for storing facet values. Actual field type used for indexing is determined in
+   * {@link FacetsConfig#build(TaxonomyWriter, Document)}
+   */
   public static final FieldType TYPE = new FieldType();
-
-  static {
-    TYPE.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-    TYPE.freeze();
-  }
 
   /** Dimension for this field. */
   public final String dim;
@@ -44,7 +42,7 @@ public class FacetField extends Field {
   /** Path for this field. */
   public final String[] path;
 
-  /** Creates the this from {@code dim} and {@code path}. */
+  /** Creates this from {@code dim} and {@code path}. */
   public FacetField(String dim, String... path) {
     super("dummy", TYPE);
     verifyLabel(dim);

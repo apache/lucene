@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMergedIterator extends LuceneTestCase {
   private static final int REPEATS = 2;

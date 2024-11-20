@@ -27,7 +27,7 @@ allprojects {
 
   // Artifacts will have names after full gradle project path
   // so :solr:core will have solr-core.jar, etc.
-  project.archivesBaseName = project.path.replaceAll("^:", "").replace(':', '-')
+  project.base.archivesName = project.path.replaceAll("^:", "").replace(':', '-')
 
   ext {
     // Utility method to support passing overrides via -P or -D.
@@ -47,18 +47,16 @@ allprojects {
 
     // System environment variable or default.
     envOrDefault = { envName, defValue ->
-      return Objects.requireNonNullElse(System.getenv(envName), defValue);
+      def result = System.getenv(envName)
+      if (result == null) {
+        result = defValue
+      }
+      return result
     }
 
     // Either a project, system property, environment variable or default value.
     propertyOrEnvOrDefault = { propName, envName, defValue ->
       return propertyOrDefault(propName, envOrDefault(envName, defValue));
-    }
-
-    // Locate script-relative resource folder. This is context-sensitive so pass
-    // the right buildscript (top-level).
-    scriptResources = { buildscript ->
-      return file(buildscript.sourceFile.absolutePath.replaceAll('.gradle$', ""))
     }
 
     // Utility function similar to project.exec but not emitting
@@ -109,6 +107,8 @@ allprojects {
               "code: ${result.exitValue}, " +
               "output at: ${outputFile} (and logged above).")
         }
+      } else {
+        logger.info(new String(outputFile.bytes))
       }
 
       return result
@@ -143,5 +143,10 @@ allprojects {
       }
       return taskList
     }
+
+    // detect if we run in CI environment by looking at existence of env vars:
+    // "CI": Github (https://docs.github.com/en/actions/learn-github-actions/environment-variables)
+    // anything starting with "JENKINS_" or "HUDSON_": Jenkins/Hudson (https://jenkins.thetaphi.de/env-vars.html/)
+    isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
   }
 }

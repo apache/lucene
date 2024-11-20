@@ -34,12 +34,16 @@ import org.apache.lucene.queryparser.flexible.standard.processors.StandardQueryN
  */
 public class PrecedenceQueryParser extends StandardQueryParser {
 
-  /** @see StandardQueryParser#StandardQueryParser() */
+  /**
+   * @see StandardQueryParser#StandardQueryParser()
+   */
   public PrecedenceQueryParser() {
     setQueryNodeProcessor(new PrecedenceQueryNodeProcessorPipeline(getQueryConfigHandler()));
   }
 
-  /** @see StandardQueryParser#StandardQueryParser(Analyzer) */
+  /**
+   * @see StandardQueryParser#StandardQueryParser(Analyzer)
+   */
   public PrecedenceQueryParser(Analyzer analyer) {
     super(analyer);
 

@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
@@ -48,11 +49,9 @@ public class TestXYMultiLineShapeQueries extends BaseXYShapeTestCase {
     List<Field> allFields = new ArrayList<>();
     for (XYLine line : lines) {
       Field[] fields = XYShape.createIndexableFields(name, line);
-      for (Field field : fields) {
-        allFields.add(field);
-      }
+      Collections.addAll(allFields, fields);
     }
-    return allFields.toArray(new Field[allFields.size()]);
+    return allFields.toArray(new Field[0]);
   }
 
   @Override
@@ -60,7 +59,7 @@ public class TestXYMultiLineShapeQueries extends BaseXYShapeTestCase {
     return new MultiLineValidator(ENCODER);
   }
 
-  protected class MultiLineValidator extends Validator {
+  protected static class MultiLineValidator extends Validator {
     TestXYLineShapeQueries.LineValidator LINEVALIDATOR;
 
     MultiLineValidator(Encoder encoder) {
@@ -95,7 +94,6 @@ public class TestXYMultiLineShapeQueries extends BaseXYShapeTestCase {
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {

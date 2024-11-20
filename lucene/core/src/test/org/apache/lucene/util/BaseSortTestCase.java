@@ -17,22 +17,17 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
+import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public abstract class BaseSortTestCase extends LuceneTestCase {
 
-  public static class Entry implements java.lang.Comparable<Entry> {
-
-    public final int value;
-    public final int ord;
-
-    public Entry(int value, int ord) {
-      this.value = value;
-      this.ord = ord;
-    }
+  public record Entry(int value, int ord) implements Comparable<Entry> {
 
     @Override
     public int compareTo(Entry other) {
-      return value < other.value ? -1 : value == other.value ? 0 : 1;
+      return Integer.compare(value, other.value);
     }
   }
 
@@ -46,7 +41,7 @@ public abstract class BaseSortTestCase extends LuceneTestCase {
 
   public void assertSorted(Entry[] original, Entry[] sorted) {
     assertEquals(original.length, sorted.length);
-    Entry[] actuallySorted = ArrayUtil.copyOfSubArray(original, 0, original.length);
+    Entry[] actuallySorted = ArrayUtil.copyArray(original);
     Arrays.sort(actuallySorted);
     for (int i = 0; i < original.length; ++i) {
       assertEquals(actuallySorted[i].value, sorted[i].value);
@@ -68,70 +63,78 @@ public abstract class BaseSortTestCase extends LuceneTestCase {
   enum Strategy {
     RANDOM {
       @Override
-      public void set(Entry[] arr, int i) {
-        arr[i] = new Entry(random().nextInt(), i);
+      public void set(Entry[] arr, int i, Random random) {
+        arr[i] = new Entry(random.nextInt(), i);
       }
     },
     RANDOM_LOW_CARDINALITY {
       @Override
-      public void set(Entry[] arr, int i) {
-        arr[i] = new Entry(random().nextInt(6), i);
+      public void set(Entry[] arr, int i, Random random) {
+        arr[i] = new Entry(random.nextInt(6), i);
+      }
+    },
+    RANDOM_MEDIUM_CARDINALITY {
+      @Override
+      public void set(Entry[] arr, int i, Random random) {
+        arr[i] = new Entry(random.nextInt(arr.length / 2), i);
       }
     },
     ASCENDING {
       @Override
-      public void set(Entry[] arr, int i) {
+      public void set(Entry[] arr, int i, Random random) {
         arr[i] =
             i == 0
-                ? new Entry(random().nextInt(6), 0)
-                : new Entry(arr[i - 1].value + random().nextInt(6), i);
+                ? new Entry(random.nextInt(6), 0)
+                : new Entry(arr[i - 1].value + random.nextInt(6), i);
       }
     },
     DESCENDING {
       @Override
-      public void set(Entry[] arr, int i) {
+      public void set(Entry[] arr, int i, Random random) {
         arr[i] =
             i == 0
-                ? new Entry(random().nextInt(6), 0)
-                : new Entry(arr[i - 1].value - random().nextInt(6), i);
+                ? new Entry(random.nextInt(6), 0)
+                : new Entry(arr[i - 1].value - random.nextInt(6), i);
       }
     },
     STRICTLY_DESCENDING {
       @Override
-      public void set(Entry[] arr, int i) {
+      public void set(Entry[] arr, int i, Random random) {
         arr[i] =
             i == 0
-                ? new Entry(random().nextInt(6), 0)
-                : new Entry(arr[i - 1].value - TestUtil.nextInt(random(), 1, 5), i);
+                ? new Entry(random.nextInt(6), 0)
+                : new Entry(arr[i - 1].value - TestUtil.nextInt(random, 1, 5), i);
       }
     },
     ASCENDING_SEQUENCES {
       @Override
-      public void set(Entry[] arr, int i) {
+      public void set(Entry[] arr, int i, Random random) {
         arr[i] =
             i == 0
-                ? new Entry(random().nextInt(6), 0)
+                ? new Entry(random.nextInt(6), 0)
                 : new Entry(
-                    rarely() ? random().nextInt(1000) : arr[i - 1].value + random().nextInt(6), i);
+                    rarely(random) ? random.nextInt(1000) : arr[i - 1].value + random.nextInt(6),
+                    i);
       }
     },
     MOSTLY_ASCENDING {
       @Override
-      public void set(Entry[] arr, int i) {
+      public void set(Entry[] arr, int i, Random random) {
         arr[i] =
             i == 0
-                ? new Entry(random().nextInt(6), 0)
-                : new Entry(arr[i - 1].value + TestUtil.nextInt(random(), -8, 10), i);
+                ? new Entry(random.nextInt(6), 0)
+                : new Entry(arr[i - 1].value + TestUtil.nextInt(random, -8, 10), i);
       }
     };
 
-    public abstract void set(Entry[] arr, int i);
+    public abstract void set(Entry[] arr, int i, Random random);
   }
 
   public void test(Strategy strategy, int length) {
+    Random random = random();
     final Entry[] arr = new Entry[length];
     for (int i = 0; i < arr.length; ++i) {
-      strategy.set(arr, i);
+      strategy.set(arr, i, random);
     }
     test(arr);
   }

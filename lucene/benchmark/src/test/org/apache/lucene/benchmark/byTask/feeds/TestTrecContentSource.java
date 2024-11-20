@@ -28,15 +28,15 @@ import java.util.Properties;
 import org.apache.lucene.benchmark.byTask.feeds.TrecDocParser.ParsePathType;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 import org.apache.lucene.document.DateTools;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestTrecContentSource extends LuceneTestCase {
 
   /** A TrecDocMaker which works on a String and not files. */
   private static class StringableTrecSource extends TrecContentSource {
 
-    private String docs = null;
+    private final String docs;
 
     public StringableTrecSource(String docs, boolean forever) {
       this.docs = docs;

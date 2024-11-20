@@ -56,21 +56,21 @@ def make_html(dict):
     sys.exit(1)
   global conf
   template = Environment(loader=BaseLoader).from_string("""
-  <h1>Lucene/Solr Github PR report</h1>
+  <h1>Lucene Github PR report</h1>
 
   <p>Number of open Pull Requests: {{ open_count }}</p>
 
   <h2>PRs lacking JIRA reference in title ({{ no_jira_count }})</h2>
   <ul>
   {% for pr in no_jira %}
-    <li><a href="https://github.com/apache/lucene-solr/pull/{{ pr.number }}">#{{ pr.number }}: {{ pr.created }} {{ pr.title }}</a> ({{ pr.user }})</li>
+    <li><a href="https://github.com/apache/lucene/pull/{{ pr.number }}">#{{ pr.number }}: {{ pr.created }} {{ pr.title }}</a> ({{ pr.user }})</li>
   {%- endfor %}
   </ul>
 
   <h2>Open PRs with a resolved JIRA ({{ closed_jira_count }})</h2>
   <ul>
   {% for pr in closed_jira %}
-    <li><a href="https://github.com/apache/lucene-solr/pull/{{ pr.pr_number }}">#{{ pr.pr_number }}</a>: <a href="https://issues.apache.org/jira/browse/{{ pr.issue_key }}">{{ pr.status }} {{ pr.resolution_date }} {{ pr.issue_key}}: {{ pr.issue_summary }}</a> ({{ pr.assignee }})</li>
+    <li><a href="https://github.com/apache/lucene/pull/{{ pr.pr_number }}">#{{ pr.pr_number }}</a>: <a href="https://issues.apache.org/jira/browse/{{ pr.issue_key }}">{{ pr.status }} {{ pr.resolution_date }} {{ pr.issue_key}}: {{ pr.issue_summary }}</a> ({{ pr.assignee }})</li>
   {%- endfor %}
   </ul>
   """)
@@ -86,14 +86,14 @@ def main():
     gh = Github()
   jira = JIRA('https://issues.apache.org/jira')
   result = {}
-  repo = gh.get_repo('apache/lucene-solr')
+  repo = gh.get_repo('apache/lucene')
   open_prs = repo.get_pulls(state='open')
-  out("Lucene/Solr Github PR report")
+  out("Lucene Github PR report")
   out("============================")
   out("Number of open Pull Requests: %s" % open_prs.totalCount)
   result['open_count'] = open_prs.totalCount
 
-  lack_jira = list(filter(lambda x: not re.match(r'.*\b(LUCENE|SOLR)-\d{3,6}\b', x.title), open_prs))
+  lack_jira = list(filter(lambda x: not re.match(r'.*\b(LUCENE)-\d{3,6}\b', x.title), open_prs))
   result['no_jira_count'] = len(lack_jira)
   lack_jira_list = []
   for pr in lack_jira:
@@ -104,12 +104,12 @@ def main():
     out("  #%s: %s %s (%s)" % (pr['number'], pr['created'], pr['title'], pr['user'] ))
 
   out("\nOpen PRs with a resolved JIRA")
-  has_jira = list(filter(lambda x: re.match(r'.*\b(LUCENE|SOLR)-\d{3,6}\b', x.title), open_prs))
+  has_jira = list(filter(lambda x: re.match(r'.*\b(LUCENE)-\d{3,6}\b', x.title), open_prs))
 
   issue_ids = []
   issue_to_pr = {}
   for pr in has_jira:
-    jira_issue_str = re.match(r'.*\b((LUCENE|SOLR)-\d{3,6})\b', pr.title).group(1)
+    jira_issue_str = re.match(r'.*\b((LUCENE)-\d{3,6})\b', pr.title).group(1)
     issue_ids.append(jira_issue_str)
     issue_to_pr[jira_issue_str] = pr
 

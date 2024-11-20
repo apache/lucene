@@ -20,13 +20,13 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /** Base implementation class for buffered {@link IndexInput}. */
 public abstract class BufferedIndexInput extends IndexInput implements RandomAccessInput {
 
   private static final ByteBuffer EMPTY_BYTEBUFFER =
       ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
-  ;
 
   /** Default buffer size set to {@value #BUFFER_SIZE}. */
   public static final int BUFFER_SIZE = 1024;
@@ -43,7 +43,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   /** A buffer size for merges set to {@value #MERGE_BUFFER_SIZE}. */
   public static final int MERGE_BUFFER_SIZE = 4096;
 
-  private int bufferSize = BUFFER_SIZE;
+  private final int bufferSize;
 
   private ByteBuffer buffer = EMPTY_BYTEBUFFER;
 
@@ -72,7 +72,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
     this.bufferSize = bufferSize;
   }
 
-  /** Returns buffer size. @see #setBufferSize */
+  /** Returns buffer size */
   public final int getBufferSize() {
     return bufferSize;
   }
@@ -151,6 +151,16 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readGroupVInt(int[] dst, int offset) throws IOException {
+    final int len =
+        GroupVIntUtil.readGroupVInt(
+            this, buffer.remaining(), p -> buffer.getInt((int) p), buffer.position(), dst, offset);
+    if (len > 0) {
+      buffer.position(buffer.position() + len);
+    }
+  }
+
+  @Override
   public final long readLong() throws IOException {
     if (Long.BYTES <= buffer.remaining()) {
       return buffer.getLong();
@@ -160,115 +170,130 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  public final int readVInt() throws IOException {
-    if (5 <= buffer.remaining()) {
-      byte b = buffer.get();
-      if (b >= 0) return b;
-      int i = b & 0x7F;
-      b = buffer.get();
-      i |= (b & 0x7F) << 7;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7F) << 14;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7F) << 21;
-      if (b >= 0) return i;
-      b = buffer.get();
-      // Warning: the next ands use 0x0F / 0xF0 - beware copy/paste errors:
-      i |= (b & 0x0F) << 28;
-      if ((b & 0xF0) == 0) return i;
-      throw new IOException("Invalid vInt detected (too many bits)");
-    } else {
-      return super.readVInt();
+  public void readFloats(float[] dst, int offset, int len) throws IOException {
+    int remainingDst = len;
+    while (remainingDst > 0) {
+      int cnt = Math.min(buffer.remaining() / Float.BYTES, remainingDst);
+      buffer.asFloatBuffer().get(dst, offset + len - remainingDst, cnt);
+      buffer.position(buffer.position() + Float.BYTES * cnt);
+      remainingDst -= cnt;
+      if (remainingDst > 0) {
+        if (buffer.hasRemaining()) {
+          dst[offset + len - remainingDst] = Float.intBitsToFloat(readInt());
+          --remainingDst;
+        } else {
+          refill();
+        }
+      }
     }
   }
 
   @Override
-  public final long readVLong() throws IOException {
-    if (9 <= buffer.remaining()) {
-      byte b = buffer.get();
-      if (b >= 0) return b;
-      long i = b & 0x7FL;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 7;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 14;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 21;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 28;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 35;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 42;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 49;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 56;
-      if (b >= 0) return i;
-      throw new IOException("Invalid vLong detected (negative values disallowed)");
-    } else {
-      return super.readVLong();
+  public void readLongs(long[] dst, int offset, int len) throws IOException {
+    int remainingDst = len;
+    while (remainingDst > 0) {
+      int cnt = Math.min(buffer.remaining() / Long.BYTES, remainingDst);
+      buffer.asLongBuffer().get(dst, offset + len - remainingDst, cnt);
+      buffer.position(buffer.position() + Long.BYTES * cnt);
+      remainingDst -= cnt;
+      if (remainingDst > 0) {
+        if (buffer.hasRemaining()) {
+          dst[offset + len - remainingDst] = readLong();
+          --remainingDst;
+        } else {
+          refill();
+        }
+      }
     }
+  }
+
+  @Override
+  public void readInts(int[] dst, int offset, int len) throws IOException {
+    int remainingDst = len;
+    while (remainingDst > 0) {
+      int cnt = Math.min(buffer.remaining() / Integer.BYTES, remainingDst);
+      buffer.asIntBuffer().get(dst, offset + len - remainingDst, cnt);
+      buffer.position(buffer.position() + Integer.BYTES * cnt);
+      remainingDst -= cnt;
+      if (remainingDst > 0) {
+        if (buffer.hasRemaining()) {
+          dst[offset + len - remainingDst] = readInt();
+          --remainingDst;
+        } else {
+          refill();
+        }
+      }
+    }
+  }
+
+  // Computes an offset into the current buffer from an absolute position to read
+  // `width` bytes from.  If the buffer does not contain the position, then we
+  // readjust the bufferStart and refill.
+  private long resolvePositionInBuffer(long pos, int width) throws IOException {
+    long index = pos - bufferStart;
+    if (index >= 0 && index <= buffer.limit() - width) {
+      return index;
+    }
+    if (index < 0) {
+      // if we're moving backwards, then try and fill up the previous page rather than
+      // starting again at the current pos, to avoid successive backwards reads reloading
+      // the same data over and over again.  We also check that we can read `width`
+      // bytes without going over the end of the buffer
+      bufferStart = Math.max(bufferStart - bufferSize, pos + width - bufferSize);
+      bufferStart = Math.max(bufferStart, 0);
+      bufferStart = Math.min(bufferStart, pos);
+    } else {
+      // we're moving forwards, reset the buffer to start at pos
+      bufferStart = pos;
+    }
+    buffer.limit(0); // trigger refill() on read
+    seekInternal(bufferStart);
+    refill();
+    return pos - bufferStart;
   }
 
   @Override
   public final byte readByte(long pos) throws IOException {
-    long index = pos - bufferStart;
-    if (index < 0 || index >= buffer.limit()) {
-      bufferStart = pos;
-      buffer.limit(0); // trigger refill() on read
-      seekInternal(pos);
-      refill();
-      index = 0;
-    }
+    long index = resolvePositionInBuffer(pos, Byte.BYTES);
     return buffer.get((int) index);
   }
 
   @Override
-  public final short readShort(long pos) throws IOException {
-    long index = pos - bufferStart;
-    if (index < 0 || index >= buffer.limit() - 1) {
-      bufferStart = pos;
-      buffer.limit(0); // trigger refill() on read
-      seekInternal(pos);
-      refill();
-      index = 0;
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    if (len <= bufferSize) {
+      // the buffer is big enough to satisfy this request
+      if (len > 0) { // to allow b to be null if len is 0...
+        long index = resolvePositionInBuffer(pos, len);
+        buffer.get((int) index, bytes, offset, len);
+      }
+    } else {
+      while (len > bufferSize) {
+        long index = resolvePositionInBuffer(pos, bufferSize);
+        buffer.get((int) index, bytes, offset, bufferSize);
+        len -= bufferSize;
+        offset += bufferSize;
+        pos += bufferSize;
+      }
+      long index = resolvePositionInBuffer(pos, len);
+      buffer.get((int) index, bytes, offset, len);
     }
+  }
+
+  @Override
+  public final short readShort(long pos) throws IOException {
+    long index = resolvePositionInBuffer(pos, Short.BYTES);
     return buffer.getShort((int) index);
   }
 
   @Override
   public final int readInt(long pos) throws IOException {
-    long index = pos - bufferStart;
-    if (index < 0 || index >= buffer.limit() - 3) {
-      bufferStart = pos;
-      buffer.limit(0); // trigger refill() on read
-      seekInternal(pos);
-      refill();
-      index = 0;
-    }
+    long index = resolvePositionInBuffer(pos, Integer.BYTES);
     return buffer.getInt((int) index);
   }
 
   @Override
   public final long readLong(long pos) throws IOException {
-    long index = pos - bufferStart;
-    if (index < 0 || index >= buffer.limit() - 7) {
-      bufferStart = pos;
-      buffer.limit(0); // trigger refill() on read
-      seekInternal(pos);
-      refill();
-      index = 0;
-    }
+    long index = resolvePositionInBuffer(pos, Long.BYTES);
     return buffer.getLong((int) index);
   }
 
@@ -344,12 +369,11 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   /** Returns default buffer sizes for the given {@link IOContext} */
   public static int bufferSize(IOContext context) {
-    switch (context.context) {
+    switch (context.context()) {
       case MERGE:
         return MERGE_BUFFER_SIZE;
       case DEFAULT:
       case FLUSH:
-      case READ:
       default:
         return BUFFER_SIZE;
     }

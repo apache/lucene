@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.facet.taxonomy;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -26,7 +28,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -36,6 +37,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -44,7 +46,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -54,8 +55,10 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.PerFieldSimilarityWrapper;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 
 public class TestTaxonomyFacetCounts extends FacetTestCase {
 
@@ -111,6 +114,9 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertTrue(((TaxonomyFacets) facets).siblingsLoaded());
     assertTrue(((TaxonomyFacets) facets).childrenLoaded());
 
+    Facets finalFacets = facets;
+    expectThrows(IllegalArgumentException.class, () -> finalFacets.getTopChildren(0, "Author"));
+
     // Retrieve & verify results:
     assertEquals(
         "dim=Publish Date path=[] value=5 childCount=3\n  2010 (2)\n  2012 (2)\n  1999 (1)\n",
@@ -119,11 +125,37 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         "dim=Author path=[] value=5 childCount=4\n  Lisa (2)\n  Bob (1)\n  Susan (1)\n  Frank (1)\n",
         facets.getTopChildren(10, "Author").toString());
 
+    assertFacetResult(
+        facets.getAllChildren("Publish Date"),
+        "Publish Date",
+        new String[0],
+        3,
+        5,
+        new LabelAndValue("1999", 1),
+        new LabelAndValue("2010", 2),
+        new LabelAndValue("2012", 2));
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        4,
+        5,
+        new LabelAndValue("Bob", 1),
+        new LabelAndValue("Frank", 1),
+        new LabelAndValue("Lisa", 2),
+        new LabelAndValue("Susan", 1));
+
+    // test getAllDims
+    List<FacetResult> results = facets.getAllDims(10);
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allTopDimsResults = facets.getTopDims(10, 10);
+    assertEquals(results, allTopDimsResults);
+
     // Now user drills down on Publish Date/2010:
     DrillDownQuery q2 = new DrillDownQuery(config);
     q2.add("Publish Date", "2010");
-    FacetsCollector c = new FacetsCollector();
-    searcher.search(q2, c);
+    FacetsCollector c = searcher.search(q2, new FacetsCollectorManager());
     facets = new FastTaxonomyFacetCounts(taxoReader, config, c);
     assertEquals(
         "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)\n",
@@ -135,14 +167,14 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     // Smoke test PrintTaxonomyStats:
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    PrintTaxonomyStats.printStats(taxoReader, new PrintStream(bos, false, IOUtils.UTF_8), true);
-    String result = bos.toString(IOUtils.UTF_8);
-    assertTrue(result.indexOf("/Author: 4 immediate children; 5 total categories") != -1);
-    assertTrue(result.indexOf("/Publish Date: 3 immediate children; 12 total categories") != -1);
+    PrintTaxonomyStats.printStats(taxoReader, new PrintStream(bos, false, UTF_8), true);
+    String result = bos.toString(UTF_8);
+    assertTrue(result.contains("/Author: 4 immediate children; 5 total categories"));
+    assertTrue(result.contains("/Publish Date: 3 immediate children; 12 total categories"));
     // Make sure at least a few nodes of the tree came out:
-    assertTrue(result.indexOf("  /1999") != -1);
-    assertTrue(result.indexOf("  /2012") != -1);
-    assertTrue(result.indexOf("      /20") != -1);
+    assertTrue(result.contains("  /1999"));
+    assertTrue(result.contains("  /2012"));
+    assertTrue(result.contains("      /20"));
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
@@ -163,6 +195,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     Document doc = new Document();
     doc.add(new FacetField("a", "foo1"));
+    doc.add(new FacetField("b", "aar1"));
     writer.addDocument(config.build(taxoWriter, doc));
 
     if (random().nextBoolean()) {
@@ -193,6 +226,9 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     Facets facets =
         getAllFacets(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher, taxoReader, config);
 
+    // test getAllDims(0)
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
+
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
 
@@ -201,8 +237,35 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n  foo2 (1)\n  foo3 (1)\n",
         results.get(0).toString());
     assertEquals(
-        "dim=b path=[] value=2 childCount=2\n  bar1 (1)\n  bar2 (1)\n", results.get(1).toString());
+        "dim=b path=[] value=3 childCount=3\n  aar1 (1)\n  bar1 (1)\n  bar2 (1)\n",
+        results.get(1).toString());
     assertEquals("dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", results.get(2).toString());
+
+    // test getAllDims with topN = 1, sort by dim names when values are equal
+    List<FacetResult> top1results = facets.getAllDims(1);
+
+    assertEquals(3, results.size());
+    assertEquals("dim=a path=[] value=3 childCount=3\n  foo1 (1)\n", top1results.get(0).toString());
+    assertEquals("dim=b path=[] value=3 childCount=3\n  aar1 (1)\n", top1results.get(1).toString());
+    assertEquals("dim=c path=[] value=1 childCount=1\n  baz1 (1)\n", top1results.get(2).toString());
+
+    // test default implementation of getTopDims
+    List<FacetResult> topNDimsResult = facets.getTopDims(2, 1);
+    assertEquals(2, topNDimsResult.size());
+    assertEquals(
+        "dim=a path=[] value=3 childCount=3\n  foo1 (1)\n", topNDimsResult.get(0).toString());
+    assertEquals(
+        "dim=b path=[] value=3 childCount=3\n  aar1 (1)\n", topNDimsResult.get(1).toString());
+
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allDimsResults = facets.getTopDims(10, 10);
+    assertEquals(results, allDimsResults);
+
+    // test getTopDims(0, 1)
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopDims(0, 1));
+
+    // test getTopDims(1, 0) with topNChildren = 0
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopDims(1, 0));
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
@@ -231,36 +294,23 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector c = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), c);
+    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     // Uses default $facets field:
-    Facets facets;
-    if (random().nextBoolean()) {
-      facets = new FastTaxonomyFacetCounts(taxoReader, config, c);
-    } else {
-      OrdinalsReader ordsReader = new DocValuesOrdinalsReader();
-      if (random().nextBoolean()) {
-        ordsReader = new CachedOrdinalsReader(ordsReader);
-      }
-      facets = new TaxonomyFacetCounts(ordsReader, taxoReader, config, c);
-    }
+    Facets facets = new FastTaxonomyFacetCounts(taxoReader, config, c);
 
     // Ask for top 10 labels for any dims that have counts:
     List<FacetResult> results = facets.getAllDims(10);
     assertTrue(results.isEmpty());
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getSpecificValue("a");
-        });
+    // test getTopDims(10, 10) and expect same results from getAllDims(10)
+    List<FacetResult> allTopDimsResults = facets.getTopDims(10, 10);
+    assertEquals(results, allTopDimsResults);
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getTopChildren(10, "a");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getSpecificValue("a"));
+
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopChildren(10, "a"));
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllChildren("a"));
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
@@ -292,6 +342,12 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     // make sure the result is null (and no exception was thrown)
     assertNull(result);
+
+    // get facets for the dimension, which was never configured or indexed before
+    FacetResult allChildrenResult = facets.getAllChildren("non-existent dimension");
+
+    // make sure the result is null (and no exception was thrown)
+    assertNull(allChildrenResult);
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
@@ -349,15 +405,15 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     Facets facets =
         getAllFacets(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher, taxoReader, config);
 
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getSpecificValue("a");
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getSpecificValue("a"));
 
     FacetResult result = facets.getTopChildren(10, "a");
     assertEquals(1, result.labelValues.length);
     assertEquals(1, result.labelValues[0].value.intValue());
+
+    FacetResult allChildren = facets.getAllChildren("a");
+    assertEquals(1, allChildren.labelValues.length);
+    assertEquals(1, allChildren.labelValues[0].value.intValue());
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, dir, taxoDir);
@@ -399,6 +455,15 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "dim=dim path=[] value=-1 childCount=2\n  test\u001Fone (1)\n  test\u001Etwo (1)\n",
         result.toString());
+
+    assertFacetResult(
+        facets.getAllChildren("dim"),
+        "dim",
+        new String[0],
+        2,
+        -1,
+        new LabelAndValue("test\u001Etwo", 1),
+        new LabelAndValue("test\u001Fone", 1));
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, dir, taxoDir);
   }
@@ -438,13 +503,13 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         getAllFacets(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher, taxoReader, config);
 
     assertEquals(1, facets.getTopChildren(10, "dim").value);
+    assertEquals(1, facets.getAllChildren("dim").value);
     assertEquals(1, facets.getTopChildren(10, "dim2").value);
+    assertEquals(1, facets.getAllChildren("dim2").value);
     assertEquals(1, facets.getTopChildren(10, "dim3").value);
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getSpecificValue("dim");
-        });
+    assertEquals(1, facets.getAllChildren("dim3").value);
+    expectThrows(IllegalArgumentException.class, () -> facets.getSpecificValue("dim"));
+
     assertEquals(1, facets.getSpecificValue("dim2"));
     assertEquals(1, facets.getSpecificValue("dim3"));
     writer.close();
@@ -497,6 +562,15 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     }
     assertEquals(numLabels, allLabels.size());
 
+    FacetResult allChildrenResult = facets.getAllChildren("dim");
+    assertEquals(numLabels, result.labelValues.length);
+    Set<String> allChildrenLabels = new HashSet<>();
+    for (LabelAndValue labelValue : allChildrenResult.labelValues) {
+      allChildrenLabels.add(labelValue.label);
+      assertEquals(1, labelValue.value.intValue());
+    }
+    assertEquals(numLabels, allChildrenLabels.size());
+
     writer.close();
     IOUtils.close(searcher.getIndexReader(), taxoWriter, taxoReader, dir, taxoDir);
   }
@@ -514,11 +588,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     Document doc = new Document();
     doc.add(newTextField("field", "text", Field.Store.NO));
     doc.add(new FacetField("a", "path", "other"));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          config.build(taxoWriter, doc);
-        });
+    expectThrows(IllegalArgumentException.class, () -> config.build(taxoWriter, doc));
 
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
@@ -538,11 +608,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     doc.add(newTextField("field", "text", Field.Store.NO));
     doc.add(new FacetField("a", "path"));
     doc.add(new FacetField("a", "path2"));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          config.build(taxoWriter, doc);
-        });
+    expectThrows(IllegalArgumentException.class, () -> config.build(taxoWriter, doc));
 
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
@@ -568,12 +634,14 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector sfc = new FacetsCollector();
-    newSearcher(r).search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc =
+        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
     Facets facets1 = getTaxonomyFacetCounts(taxoReader, config, sfc);
     Facets facets2 = getTaxonomyFacetCounts(taxoReader, config, sfc, "$b");
     assertEquals(r.maxDoc(), facets1.getTopChildren(10, "a").value.intValue());
+    assertEquals(r.maxDoc(), facets1.getAllChildren("a").value.intValue());
     assertEquals(r.maxDoc(), facets2.getTopChildren(10, "b").value.intValue());
+    assertEquals(r.maxDoc(), facets2.getAllChildren("b").value.intValue());
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
@@ -599,9 +667,25 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     Facets facets =
         getAllFacets(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, newSearcher(r), taxoReader, config);
 
-    for (FacetResult result : facets.getAllDims(10)) {
+    List<FacetResult> allDimsResult = facets.getAllDims(10);
+    for (FacetResult result : allDimsResult) {
       assertEquals(r.numDocs(), result.value.intValue());
     }
+
+    // test override implementation of getTopDims
+    if (allDimsResult.size() > 0) {
+      List<FacetResult> topNDimsResult = facets.getTopDims(1, 10);
+      assertEquals(allDimsResult.get(0), topNDimsResult.get(0));
+    }
+
+    // test getTopDims(0, 1)
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopDims(0, 1));
+
+    // test getTopDims(1, 0) with topNChildren = 0
+    expectThrows(IllegalArgumentException.class, () -> facets.getTopDims(1, 0));
+
+    // test getAllDims(0)
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
@@ -632,6 +716,13 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     assertEquals(
         "calling getFacetResults twice should return the .equals()=true result", res1, res2);
 
+    // test getTopDims(n, 10)
+    if (res1.size() > 0) {
+      for (int i = 1; i < res1.size(); i++) {
+        assertEquals(res1.subList(0, i), facets.getTopDims(i, 10));
+      }
+    }
+
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
   }
@@ -657,9 +748,154 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
         getAllFacets(FacetsConfig.DEFAULT_INDEX_FIELD_NAME, newSearcher(r), taxoReader, config);
 
     assertEquals(10, facets.getTopChildren(2, "a").childCount);
+    assertEquals(10, facets.getAllChildren("a").childCount);
 
     iw.close();
     IOUtils.close(taxoWriter, taxoReader, taxoDir, r, indexDir);
+  }
+
+  public void testMultiValuedFieldCountAll() throws Exception {
+
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Publish Date", true);
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    doc.add(new FacetField("Author", "Bob"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "15"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(new FacetField("Author", "Lisa"));
+    doc.add(new FacetField("Publish Date", "2010", "10", "20"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    IndexSearcher searcher1 = newSearcher(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+    Facets facets =
+        new FastTaxonomyFacetCounts(
+            FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher1.getIndexReader(), taxoReader, config);
+
+    assertEquals(
+        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)",
+        facets.getTopChildren(10, "Author").toString().trim());
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        2,
+        2,
+        new LabelAndValue("Bob", 1),
+        new LabelAndValue("Lisa", 1));
+
+    // -- delete to trigger liveDocs != null
+    writer.deleteDocuments(new Term("id", "0"));
+    IndexSearcher searcher2 = newSearcher(writer.getReader());
+    facets =
+        new FastTaxonomyFacetCounts(
+            FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher2.getIndexReader(), taxoReader, config);
+
+    assertEquals(
+        "dim=Author path=[] value=1 childCount=1\n  Lisa (1)",
+        facets.getTopChildren(10, "Author").toString().trim());
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        1,
+        1,
+        new LabelAndValue("Lisa", 1));
+
+    IOUtils.close(
+        writer,
+        taxoWriter,
+        searcher1.getIndexReader(),
+        searcher2.getIndexReader(),
+        taxoReader,
+        taxoDir,
+        dir);
+  }
+
+  public void testCountAllSingleValuedField() throws Exception {
+
+    Directory dir = newDirectory();
+    Directory taxoDir = newDirectory();
+
+    DirectoryTaxonomyWriter taxoWriter =
+        new DirectoryTaxonomyWriter(taxoDir, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setHierarchical("Author", true);
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    doc.add(new FacetField("Author", "Bob"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    doc = new Document();
+    doc.add(new StringField("id", "1", Field.Store.NO));
+    doc.add(new FacetField("Author", "Lisa"));
+    writer.addDocument(config.build(taxoWriter, doc));
+
+    IndexSearcher searcher1 = newSearcher(writer.getReader());
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
+    Facets facets =
+        new FastTaxonomyFacetCounts(
+            FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher1.getIndexReader(), taxoReader, config);
+
+    assertEquals(
+        "dim=Author path=[] value=2 childCount=2\n  Bob (1)\n  Lisa (1)",
+        facets.getTopChildren(10, "Author").toString().trim());
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        2,
+        2,
+        new LabelAndValue("Bob", 1),
+        new LabelAndValue("Lisa", 1));
+
+    // -- delete to trigger liveDocs != null
+    writer.deleteDocuments(new Term("id", "0"));
+    IndexSearcher searcher2 = newSearcher(writer.getReader());
+    facets =
+        new FastTaxonomyFacetCounts(
+            FacetsConfig.DEFAULT_INDEX_FIELD_NAME, searcher2.getIndexReader(), taxoReader, config);
+
+    assertEquals(
+        "dim=Author path=[] value=1 childCount=1\n  Lisa (1)",
+        facets.getTopChildren(10, "Author").toString().trim());
+
+    assertFacetResult(
+        facets.getAllChildren("Author"),
+        "Author",
+        new String[0],
+        1,
+        1,
+        new LabelAndValue("Lisa", 1));
+
+    IOUtils.close(
+        writer,
+        taxoWriter,
+        searcher1.getIndexReader(),
+        searcher2.getIndexReader(),
+        taxoReader,
+        taxoDir,
+        dir);
   }
 
   private void indexTwoDocs(
@@ -710,12 +946,16 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
 
     // search for "f:a", only segments 1 and 3 should match results
     Query q = new TermQuery(new Term("f", "a"));
-    FacetsCollector sfc = new FacetsCollector();
-    indexSearcher.search(q, sfc);
+    FacetsCollector sfc = indexSearcher.search(q, new FacetsCollectorManager());
     Facets facets = getTaxonomyFacetCounts(taxoReader, config, sfc);
     FacetResult result = facets.getTopChildren(10, "A");
     assertEquals("wrong number of children", 2, result.labelValues.length);
     for (LabelAndValue labelValue : result.labelValues) {
+      assertEquals("wrong weight for child " + labelValue.label, 2, labelValue.value.intValue());
+    }
+    FacetResult allChildrenResult = facets.getAllChildren("A");
+    assertEquals("wrong number of children", 2, allChildrenResult.labelValues.length);
+    for (LabelAndValue labelValue : allChildrenResult.labelValues) {
       assertEquals("wrong weight for child " + labelValue.label, 2, labelValue.value.intValue());
     }
 
@@ -756,8 +996,13 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       if (VERBOSE) {
         System.out.println("\nTEST: iter content=" + searchToken);
       }
-      FacetsCollector fc = new FacetsCollector();
-      FacetsCollector.search(searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+      FacetsCollector fc =
+          FacetsCollectorManager.search(
+                  searcher,
+                  new TermQuery(new Term("content", searchToken)),
+                  10,
+                  new FacetsCollectorManager())
+              .facetsCollector();
       Facets facets = getTaxonomyFacetCounts(tr, config, fc);
 
       // Slow, yet hopefully bug-free, faceting:
@@ -774,12 +1019,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
           List<FacetLabel> facetLabels = new ArrayList<>();
           for (int j = 0; j < numDims; j++) {
             if (doc.dims[j] != null) {
-              Integer v = expectedCounts[j].get(doc.dims[j]);
-              if (v == null) {
-                expectedCounts[j].put(doc.dims[j], 1);
-              } else {
-                expectedCounts[j].put(doc.dims[j], v.intValue() + 1);
-              }
+              expectedCounts[j].merge(doc.dims[j], 1, Integer::sum);
               // Add document facet labels
               facetLabels.add(new FacetLabel("dim" + j, doc.dims[j]));
             }
@@ -803,25 +1043,31 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
                   "dim" + i,
                   new String[0],
                   totCount,
-                  labelValues.toArray(new LabelAndValue[labelValues.size()]),
+                  labelValues.toArray(new LabelAndValue[0]),
                   labelValues.size()));
         }
       }
 
-      // Sort by highest value, tie break by value:
+      // Sort by highest value, tie-break by value:
       sortFacetResults(expected);
 
       List<FacetResult> actual = facets.getAllDims(10);
-
       // Messy: fixup ties
       sortTies(actual);
 
       assertEquals(expected, actual);
 
+      // test getTopDims
+      if (actual.size() > 0) {
+        List<FacetResult> topNDimsResult = facets.getTopDims(actual.size(), 10);
+        sortTies(topNDimsResult);
+        assertEquals(actual, topNDimsResult);
+      }
+
       // Test facet labels for each matching test doc
       List<List<FacetLabel>> actualLabels = getAllTaxonomyFacetLabels(null, tr, fc);
       assertEquals(expectedLabels.size(), actualLabels.size());
-      assertTrue(sortedFacetLabels(expectedLabels).equals(sortedFacetLabels(actualLabels)));
+      assertEquals(sortedFacetLabels(expectedLabels), sortedFacetLabels(actualLabels));
 
       // Test facet labels for each matching test doc, given a specific dimension chosen randomly
       final String dimension = "dim" + random().nextInt(numDims);
@@ -829,7 +1075,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
           list -> list.removeIf(f -> f.components[0].equals(dimension) == false));
 
       actualLabels = getAllTaxonomyFacetLabels(dimension, tr, fc);
-      assertTrue(sortedFacetLabels(expectedLabels).equals(sortedFacetLabels(actualLabels)));
+      assertEquals(sortedFacetLabels(expectedLabels), sortedFacetLabels(actualLabels));
     }
 
     w.close();
@@ -843,8 +1089,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       Collections.sort(facetLabels);
     }
 
-    Collections.sort(
-        allFacetLabels,
+    allFacetLabels.sort(
         (o1, o2) -> {
           int diff = o1.size() - o2.size();
           if (diff != 0) {
@@ -869,14 +1114,11 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       String indexFieldName, IndexSearcher searcher, TaxonomyReader taxoReader, FacetsConfig config)
       throws IOException {
     if (random().nextBoolean()) {
-      // Aggregate the facet counts:
-      FacetsCollector c = new FacetsCollector();
-
       // MatchAllDocsQuery is for "browsing" (counts facets
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query, and use MultiCollector to
       // wrap collecting the "normal" hits and also facets:
-      searcher.search(new MatchAllDocsQuery(), c);
+      FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
       return new FastTaxonomyFacetCounts(taxoReader, config, c);
     } else {

@@ -22,7 +22,7 @@ package org.apache.lucene.spatial3d.geom;
  *
  * @lucene.experimental
  */
-public interface GeoShape extends Bounded, Membership, PlanetObject {
+public interface GeoShape extends GeoBounds {
 
   /**
    * Return a sample point that is on the outside edge/boundary of the shape.

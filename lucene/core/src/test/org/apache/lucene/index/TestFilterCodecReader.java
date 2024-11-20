@@ -19,10 +19,9 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Objects;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestFilterCodecReader extends LuceneTestCase {
 
@@ -35,7 +34,7 @@ public class TestFilterCodecReader extends LuceneTestCase {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       w.addDocument(new Document());
-      try (DirectoryReader reader = w.getReader()) {
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
         FilterCodecReader r =
             FilterCodecReader.wrapLiveDocs(
                 (CodecReader) reader.getSequentialSubReaders().get(0), null, 1);
@@ -57,19 +56,15 @@ public class TestFilterCodecReader extends LuceneTestCase {
         final Method subClassMethod =
             subClass.getDeclaredMethod(
                 superClassMethod.getName(), superClassMethod.getParameterTypes());
-        assertTrue(
-            "getReturnType() difference and not compatible",
-            isTypeEqualOrAssignable(
-                superClassMethod.getReturnType(), subClassMethod.getReturnType()));
+        assertEquals(
+            "getReturnType() difference",
+            superClassMethod.getReturnType(),
+            subClassMethod.getReturnType());
       } catch (
           @SuppressWarnings("unused")
           NoSuchMethodException e) {
         fail(subClass + " needs to override '" + superClassMethod + "'");
       }
     }
-  }
-
-  private boolean isTypeEqualOrAssignable(Class<?> superClass, Class<?> subClass) {
-    return Objects.equals(subClass, superClass) || superClass.isAssignableFrom(subClass);
   }
 }

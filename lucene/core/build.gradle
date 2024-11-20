@@ -20,6 +20,6 @@ apply plugin: 'java-library'
 description = 'Lucene core library'
 
 dependencies {
-  testImplementation project(':lucene:codecs')
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:codecs')
+  moduleTestImplementation project(':lucene:test-framework')
 }

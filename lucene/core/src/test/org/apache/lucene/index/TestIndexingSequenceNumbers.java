@@ -33,9 +33,10 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestIndexingSequenceNumbers extends LuceneTestCase {
 
@@ -126,8 +127,8 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
       DirectoryReader r = w.getReader();
       IndexSearcher s = newSearcher(r);
       TopDocs hits = s.search(new TermQuery(id), 1);
-      assertEquals("maxDoc: " + r.maxDoc(), 1, hits.totalHits.value);
-      Document doc = r.document(hits.scoreDocs[0].doc);
+      assertEquals("maxDoc: " + r.maxDoc(), 1, hits.totalHits.value());
+      Document doc = r.storedFields().document(hits.scoreDocs[0].doc);
       assertEquals(maxThread, doc.getField("thread").numericValue().intValue());
       r.close();
       w.close();
@@ -275,8 +276,8 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
         TopDocs hits = s.search(new TermQuery(new Term("id", "" + id)), 1);
 
         if (expectedThreadIDs[id] != -1) {
-          assertEquals(1, hits.totalHits.value);
-          Document doc = r.document(hits.scoreDocs[0].doc);
+          assertEquals(1, hits.totalHits.value());
+          Document doc = r.storedFields().document(hits.scoreDocs[0].doc);
           int actualThreadID = doc.getField("thread").numericValue().intValue();
           if (expectedThreadIDs[id] != actualThreadID) {
             System.out.println(
@@ -305,14 +306,14 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
             }
             assertEquals("id=" + id, expectedThreadIDs[id], actualThreadID);
           }
-        } else if (hits.totalHits.value != 0) {
+        } else if (hits.totalHits.value() != 0) {
           System.out.println(
               "FAIL: id="
                   + id
                   + " expectedThreadID="
                   + expectedThreadIDs[id]
                   + " vs totalHits="
-                  + hits.totalHits.value
+                  + hits.totalHits.value()
                   + " commitSeqNo="
                   + commitSeqNo
                   + " numThreads="
@@ -330,7 +331,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
               }
             }
           }
-          assertEquals(0, hits.totalHits.value);
+          assertEquals(0, hits.totalHits.value());
         }
       }
       w.close();
@@ -481,7 +482,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
 
         // We pre-add all ids up front:
         assert expectedThreadIDs[id] != -1;
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
         int hitDoc = hits.scoreDocs[0].doc;
         assertEquals(hitDoc, docValues.advance(hitDoc));
         int actualThreadID = (int) docValues.longValue();
@@ -687,19 +688,21 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
             }
           }
           TopDocs hits = s.search(new TermQuery(new Term("id", "" + id)), 1 + actualCount);
+          StoredFields storedFields = s.storedFields();
           for (ScoreDoc hit : hits.scoreDocs) {
-            System.out.println("  hit: " + s.doc(hit.doc).get("threadop"));
+            System.out.println("  hit: " + storedFields.document(hit.doc).get("threadop"));
           }
 
           for (LeafReaderContext ctx : r.leaves()) {
             System.out.println("  sub=" + ctx.reader());
             Bits liveDocs = ctx.reader().getLiveDocs();
+            storedFields = ctx.reader().storedFields();
             for (int docID = 0; docID < ctx.reader().maxDoc(); docID++) {
               System.out.println(
                   "    docID="
                       + docID
                       + " threadop="
-                      + ctx.reader().document(docID).get("threadop")
+                      + storedFields.document(docID).get("threadop")
                       + (liveDocs != null && liveDocs.get(docID) == false ? " (deleted)" : ""));
             }
           }

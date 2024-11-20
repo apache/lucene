@@ -17,9 +17,10 @@
 package org.apache.lucene.backward_codecs.lucene87;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Compressor;
-import org.apache.lucene.codecs.compressing.Decompressor;
+import org.apache.lucene.backward_codecs.compressing.CompressionMode;
+import org.apache.lucene.backward_codecs.compressing.Compressor;
+import org.apache.lucene.backward_codecs.compressing.Decompressor;
+import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
@@ -38,8 +39,8 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
   // Shoot for 10 sub blocks
   private static final int NUM_SUB_BLOCKS = 10;
-  // And a dictionary whose size is about 16x smaller than sub blocks
-  private static final int DICT_SIZE_FACTOR = 16;
+  // And a dictionary whose size is about 2x smaller than sub blocks
+  private static final int DICT_SIZE_FACTOR = 2;
 
   /** Sole constructor. */
   public LZ4WithPresetDictCompressionMode() {}
@@ -100,7 +101,8 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       buffer = ArrayUtil.grow(buffer, dictLength + blockLength);
       bytes.length = 0;
       // Read the dictionary
-      if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
+      if (LZ4.decompress(EndiannessReverserUtil.wrapDataInput(in), dictLength, buffer, 0)
+          != dictLength) {
         throw new CorruptIndexException("Illegal dict length", in);
       }
 
@@ -128,7 +130,8 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       // Read blocks that intersect with the interval we need
       while (offsetInBlock < offset + length) {
         final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
-        LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
+        LZ4.decompress(
+            EndiannessReverserUtil.wrapDataInput(in), bytesToDecompress, buffer, dictLength);
         bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + bytesToDecompress);
         System.arraycopy(buffer, dictLength, bytes.bytes, bytes.length, bytesToDecompress);
         bytes.length += bytesToDecompress;

@@ -30,6 +30,13 @@ public abstract class Facets {
   public Facets() {}
 
   /**
+   * Returns all child labels with non-zero counts under the specified path. Users should make no
+   * assumptions about ordering of the children. Returns null if the specified path doesn't exist or
+   * if this dimension was never seen.
+   */
+  public abstract FacetResult getAllChildren(String dim, String... path) throws IOException;
+
+  /**
    * Returns the topN child labels under the specified path. Returns null if the specified path
    * doesn't exist or if this dimension was never seen.
    */
@@ -48,4 +55,31 @@ public abstract class Facets {
    * indexed, for example depending on the type of document.
    */
   public abstract List<FacetResult> getAllDims(int topN) throws IOException;
+
+  /**
+   * Returns labels for topN dimensions and their topNChildren sorted by the number of
+   * hits/aggregated values that dimension matched. Results should be the same as calling getAllDims
+   * and then only using the first topNDims. Note that dims should be configured as requiring dim
+   * counts if using this functionality to ensure accurate counts are available (see: {@link
+   * FacetsConfig#setRequireDimCount(String, boolean)}).
+   *
+   * <p>Sub-classes may want to override this implementation with a more efficient one if they are
+   * able.
+   */
+  public List<FacetResult> getTopDims(int topNDims, int topNChildren) throws IOException {
+    List<FacetResult> allResults = getAllDims(topNChildren);
+    return allResults.subList(0, Math.min(topNDims, allResults.size()));
+  }
+
+  /**
+   * This helper method checks if topN is valid for getTopChildren and getAllDims. Throws
+   * IllegalArgumentException if topN is invalid.
+   *
+   * @lucene.experimental it may not exist in future versions of Lucene
+   */
+  protected static void validateTopN(int topN) {
+    if (topN <= 0) {
+      throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
+    }
+  }
 }

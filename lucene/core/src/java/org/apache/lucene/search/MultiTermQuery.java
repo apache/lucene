@@ -18,9 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.FilteredTermsEnum; // javadocs
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.SingleTermsEnum; // javadocs
+import org.apache.lucene.index.FilteredTermsEnum;
+import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
@@ -36,14 +35,14 @@ import org.apache.lucene.util.AttributeSource;
  * #getTermsEnum(Terms,AttributeSource)} to provide a {@link FilteredTermsEnum} that iterates
  * through the terms to be matched.
  *
- * <p><b>NOTE</b>: if {@link #setRewriteMethod} is either {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} or
+ * <p><b>NOTE</b>: if {@link RewriteMethod} is either {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} or
  * {@link #SCORING_BOOLEAN_REWRITE}, you may encounter a {@link IndexSearcher.TooManyClauses}
  * exception during searching, which happens when the number of terms to be searched exceeds {@link
- * IndexSearcher#getMaxClauseCount()}. Setting {@link #setRewriteMethod} to {@link
- * #CONSTANT_SCORE_REWRITE} prevents this.
+ * IndexSearcher#getMaxClauseCount()}. Setting {@link RewriteMethod} to {@link
+ * #CONSTANT_SCORE_BLENDED_REWRITE} or {@link #CONSTANT_SCORE_REWRITE} prevents this.
  *
- * <p>The recommended rewrite method is {@link #CONSTANT_SCORE_REWRITE}: it doesn't spend CPU
- * computing unhelpful scores, and is the most performant rewrite method given the query. If you
+ * <p>The recommended rewrite method is {@link #CONSTANT_SCORE_BLENDED_REWRITE}: it doesn't spend
+ * CPU computing unhelpful scores, and is the most performant rewrite method given the query. If you
  * need scoring (like {@link FuzzyQuery}, use {@link TopTermsScoringBooleanQueryRewrite} which uses
  * a priority queue to only collect competitive terms and not hit this limitation.
  *
@@ -52,11 +51,13 @@ import org.apache.lucene.util.AttributeSource;
  */
 public abstract class MultiTermQuery extends Query {
   protected final String field;
-  protected RewriteMethod rewriteMethod = CONSTANT_SCORE_REWRITE;
+  protected final RewriteMethod rewriteMethod;
 
   /** Abstract class that defines how the query is rewritten. */
   public abstract static class RewriteMethod {
-    public abstract Query rewrite(IndexReader reader, MultiTermQuery query) throws IOException;
+    public abstract Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
+        throws IOException;
+
     /**
      * Returns the {@link MultiTermQuery}s {@link TermsEnum}
      *
@@ -70,6 +71,27 @@ public abstract class MultiTermQuery extends Query {
   }
 
   /**
+   * A rewrite method where documents are assigned a constant score equal to the query's boost.
+   * Maintains a boolean query-like implementation over the most costly terms while pre-processing
+   * the less costly terms into a filter bitset. Enforces an upper-limit on the number of terms
+   * allowed in the boolean query-like implementation.
+   *
+   * <p>This method aims to balance the benefits of both {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} and
+   * {@link #CONSTANT_SCORE_REWRITE} by enabling skipping and early termination over costly terms
+   * while limiting the overhead of a BooleanQuery with many terms. It also ensures you cannot hit
+   * {@link org.apache.lucene.search.IndexSearcher.TooManyClauses}. For some use-cases with all low
+   * cost terms, {@link #CONSTANT_SCORE_REWRITE} may be more performant. While for some use-cases
+   * with all high cost terms, {@link #CONSTANT_SCORE_BOOLEAN_REWRITE} may be better.
+   */
+  public static final RewriteMethod CONSTANT_SCORE_BLENDED_REWRITE =
+      new RewriteMethod() {
+        @Override
+        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
+          return new MultiTermQueryConstantScoreBlendedWrapper<>(query);
+        }
+      };
+
+  /**
    * A rewrite method that first creates a private Filter, by visiting each term in sequence and
    * marking all docs for that term. Matching documents are assigned a constant score equal to the
    * query's boost.
@@ -77,16 +99,27 @@ public abstract class MultiTermQuery extends Query {
    * <p>This method is faster than the BooleanQuery rewrite methods when the number of matched terms
    * or matched documents is non-trivial. Also, it will never hit an errant {@link
    * IndexSearcher.TooManyClauses} exception.
-   *
-   * @see #setRewriteMethod
    */
   public static final RewriteMethod CONSTANT_SCORE_REWRITE =
       new RewriteMethod() {
         @Override
-        public Query rewrite(IndexReader reader, MultiTermQuery query) {
+        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
           return new MultiTermQueryConstantScoreWrapper<>(query);
         }
       };
+
+  /**
+   * A rewrite method that uses {@link org.apache.lucene.index.DocValuesType#SORTED} / {@link
+   * org.apache.lucene.index.DocValuesType#SORTED_SET} doc values to find matching docs through a
+   * post-filtering type approach. This will be very slow if used in isolation, but will likely be
+   * the most performant option when combined with a sparse query clause. All matching docs are
+   * assigned a constant score equal to the query's boost.
+   *
+   * <p>If you don't have doc values indexed, see the other rewrite methods that rely on postings
+   * alone (e.g., {@link #CONSTANT_SCORE_BLENDED_REWRITE}, {@link #SCORING_BOOLEAN_REWRITE}, etc.
+   * depending on scoring needs).
+   */
+  public static final RewriteMethod DOC_VALUES_REWRITE = new DocValuesRewriteMethod();
 
   /**
    * A rewrite method that first translates each term into {@link BooleanClause.Occur#SHOULD} clause
@@ -96,8 +129,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p><b>NOTE</b>: This rewrite method will hit {@link IndexSearcher.TooManyClauses} if the number
    * of terms exceeds {@link IndexSearcher#getMaxClauseCount}.
-   *
-   * @see #setRewriteMethod
    */
   public static final RewriteMethod SCORING_BOOLEAN_REWRITE =
       ScoringRewrite.SCORING_BOOLEAN_REWRITE;
@@ -108,8 +139,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p><b>NOTE</b>: This rewrite method will hit {@link IndexSearcher.TooManyClauses} if the number
    * of terms exceeds {@link IndexSearcher#getMaxClauseCount}.
-   *
-   * @see #setRewriteMethod
    */
   public static final RewriteMethod CONSTANT_SCORE_BOOLEAN_REWRITE =
       ScoringRewrite.CONSTANT_SCORE_BOOLEAN_REWRITE;
@@ -120,8 +149,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p>This rewrite method only uses the top scoring terms so it will not overflow the boolean max
    * clause count.
-   *
-   * @see #setRewriteMethod
    */
   public static final class TopTermsScoringBooleanQueryRewrite
       extends TopTermsRewrite<BooleanQuery.Builder> {
@@ -167,8 +194,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p>This rewrite method only uses the top scoring terms so it will not overflow the boolean max
    * clause count.
-   *
-   * @see #setRewriteMethod
    */
   public static final class TopTermsBlendedFreqScoringRewrite
       extends TopTermsRewrite<BlendedTermQuery.Builder> {
@@ -217,8 +242,6 @@ public abstract class MultiTermQuery extends Query {
    *
    * <p>This rewrite method only uses the top scoring terms so it will not overflow the boolean max
    * clause count.
-   *
-   * @see #setRewriteMethod
    */
   public static final class TopTermsBoostOnlyBooleanQueryRewrite
       extends TopTermsRewrite<BooleanQuery.Builder> {
@@ -257,8 +280,9 @@ public abstract class MultiTermQuery extends Query {
   }
 
   /** Constructs a query matching terms that cannot be represented with a single Term. */
-  public MultiTermQuery(final String field) {
+  public MultiTermQuery(final String field, RewriteMethod rewriteMethod) {
     this.field = Objects.requireNonNull(field, "field must not be null");
+    this.rewriteMethod = Objects.requireNonNull(rewriteMethod, "rewriteMethod must not be null");
   }
 
   /** Returns the field name for this query */
@@ -286,25 +310,27 @@ public abstract class MultiTermQuery extends Query {
   }
 
   /**
+   * Return the number of unique terms contained in this query, if known up-front. If not known, -1
+   * will be returned.
+   */
+  public long getTermsCount() {
+    return -1;
+  }
+
+  /**
    * To rewrite to a simpler form, instead return a simpler enum from {@link #getTermsEnum(Terms,
    * AttributeSource)}. For example, to rewrite to a single term, return a {@link SingleTermsEnum}
    */
   @Override
-  public final Query rewrite(IndexReader reader) throws IOException {
-    return rewriteMethod.rewrite(reader, this);
-  }
-
-  /** @see #setRewriteMethod */
-  public RewriteMethod getRewriteMethod() {
-    return rewriteMethod;
+  public final Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    return rewriteMethod.rewrite(indexSearcher, this);
   }
 
   /**
-   * Sets the rewrite method to be used when executing the query. You can use one of the four core
-   * methods, or implement your own subclass of {@link RewriteMethod}.
+   * @return the rewrite method used to build the final query
    */
-  public void setRewriteMethod(RewriteMethod method) {
-    rewriteMethod = method;
+  public RewriteMethod getRewriteMethod() {
+    return rewriteMethod;
   }
 
   @Override

@@ -21,7 +21,6 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -31,6 +30,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -41,7 +41,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSearchForDuplicates extends LuceneTestCase {
 
@@ -137,9 +138,10 @@ public class TestSearchForDuplicates extends LuceneTestCase {
   private void printHits(PrintWriter out, ScoreDoc[] hits, IndexSearcher searcher)
       throws IOException {
     out.println(hits.length + " total results\n");
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < hits.length; i++) {
       if (i < 10 || (i > 94 && i < 105)) {
-        Document d = searcher.doc(hits[i].doc);
+        Document d = storedFields.document(hits[i].doc);
         out.println(i + " " + d.get(ID_FIELD));
       }
     }
@@ -148,9 +150,10 @@ public class TestSearchForDuplicates extends LuceneTestCase {
   private void checkHits(ScoreDoc[] hits, int expectedCount, IndexSearcher searcher)
       throws IOException {
     assertEquals("total results", expectedCount, hits.length);
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < hits.length; i++) {
       if (i < 10 || (i > 94 && i < 105)) {
-        Document d = searcher.doc(hits[i].doc);
+        Document d = storedFields.document(hits[i].doc);
         assertEquals("check " + i, String.valueOf(i), d.get(ID_FIELD));
       }
     }

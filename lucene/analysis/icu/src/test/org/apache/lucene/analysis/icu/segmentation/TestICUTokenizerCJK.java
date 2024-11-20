@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.icu.segmentation;
 
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.AwaitsFix;
 
 /** test ICUTokenizer with dictionary-based CJ segmentation */
 @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-8222")

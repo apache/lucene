@@ -57,6 +57,23 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
     return heap[0];
   }
 
+  /** Return the 2nd least value in this heap, or null if the heap contains less than 2 values. */
+  public DisiWrapper top2() {
+    switch (size()) {
+      case 0:
+      case 1:
+        return null;
+      case 2:
+        return heap[1];
+      default:
+        if (heap[1].doc <= heap[2].doc) {
+          return heap[1];
+        } else {
+          return heap[2];
+        }
+    }
+  }
+
   /** Get the list of scorers which are on the current doc. */
   public DisiWrapper topList() {
     final DisiWrapper[] heap = this.heap;
@@ -103,6 +120,48 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
     return heap[0];
   }
 
+  public void addAll(DisiWrapper[] entries, int offset, int len) {
+    // Nothing to do if empty:
+    if (len == 0) {
+      return;
+    }
+
+    // Fail early if we're going to over-fill:
+    if (size + len > heap.length) {
+      throw new IndexOutOfBoundsException(
+          "Cannot add "
+              + len
+              + " elements to a queue with remaining capacity "
+              + (heap.length - size));
+    }
+
+    // Copy the entries over to our heap array:
+    System.arraycopy(entries, offset, heap, size, len);
+    size += len;
+
+    // Heapify in bulk:
+    final int firstLeafIndex = size >>> 1;
+    for (int rootIndex = firstLeafIndex - 1; rootIndex >= 0; rootIndex--) {
+      int parentIndex = rootIndex;
+      DisiWrapper parent = heap[parentIndex];
+      while (parentIndex < firstLeafIndex) {
+        int childIndex = leftNode(parentIndex);
+        int rightChildIndex = rightNode(childIndex);
+        DisiWrapper child = heap[childIndex];
+        if (rightChildIndex < size && heap[rightChildIndex].doc < child.doc) {
+          child = heap[rightChildIndex];
+          childIndex = rightChildIndex;
+        }
+        if (child.doc >= parent.doc) {
+          break;
+        }
+        heap[parentIndex] = child;
+        parentIndex = childIndex;
+      }
+      heap[parentIndex] = parent;
+    }
+  }
+
   public DisiWrapper pop() {
     final DisiWrapper[] heap = this.heap;
     final DisiWrapper result = heap[0];
@@ -121,6 +180,12 @@ public final class DisiPriorityQueue implements Iterable<DisiWrapper> {
   DisiWrapper updateTop(DisiWrapper topReplacement) {
     heap[0] = topReplacement;
     return updateTop();
+  }
+
+  /** Clear the heap. */
+  public void clear() {
+    Arrays.fill(heap, null);
+    size = 0;
   }
 
   void upHeap(int i) {

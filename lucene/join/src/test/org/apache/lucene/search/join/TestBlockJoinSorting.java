@@ -19,13 +19,11 @@ package org.apache.lucene.search.join;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
@@ -35,8 +33,10 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** */
@@ -224,7 +224,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
             "field2", SortField.Type.STRING, false, parentFilter, childFilter);
     Sort sort = new Sort(sortField);
     TopFieldDocs topDocs = searcher.search(query, 5, sort);
-    assertEquals(7, topDocs.totalHits.value);
+    assertEquals(7, topDocs.totalHits.value());
     assertEquals(5, topDocs.scoreDocs.length);
     assertEquals(3, topDocs.scoreDocs[0].doc);
     assertEquals("a", ((BytesRef) ((FieldDoc) topDocs.scoreDocs[0]).fields[0]).utf8ToString());
@@ -247,7 +247,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
 
     sort = new Sort(sortField);
     topDocs = searcher.search(query, 5, sort);
-    assertEquals(7, topDocs.totalHits.value);
+    assertEquals(7, topDocs.totalHits.value());
     assertEquals(5, topDocs.scoreDocs.length);
     assertEquals(3, topDocs.scoreDocs[0].doc);
     assertEquals("c", ((BytesRef) ((FieldDoc) topDocs.scoreDocs[0]).fields[0]).utf8ToString());
@@ -269,7 +269,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
                     "field2", SortField.Type.STRING, true, parentFilter, childFilter));
     sort = new Sort(sortField);
     topDocs = searcher.search(query, 5, sort);
-    assertEquals(topDocs.totalHits.value, 7);
+    assertEquals(topDocs.totalHits.value(), 7);
     assertEquals(5, topDocs.scoreDocs.length);
     assertEquals(27, topDocs.scoreDocs[0].doc);
     assertEquals("o", ((BytesRef) ((FieldDoc) topDocs.scoreDocs[0]).fields[0]).utf8ToString());
@@ -298,7 +298,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
 
     sort = new Sort(sortField);
     topDocs = searcher.search(query, 5, sort);
-    assertEquals(6, topDocs.totalHits.value);
+    assertEquals(6, topDocs.totalHits.value());
     assertEquals(5, topDocs.scoreDocs.length);
     assertEquals(23, topDocs.scoreDocs[0].doc);
     assertEquals("m", ((BytesRef) ((FieldDoc) topDocs.scoreDocs[0]).fields[0]).utf8ToString());

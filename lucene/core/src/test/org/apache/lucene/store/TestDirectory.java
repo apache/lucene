@@ -25,8 +25,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.lucene.mockfile.ExtrasFS;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.mockfile.ExtrasFS;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDirectory extends LuceneTestCase {
 
@@ -43,10 +43,8 @@ public class TestDirectory extends LuceneTestCase {
 
     final List<FSDirectory> dirs0 = new ArrayList<>();
     dirs0.add(new NIOFSDirectory(path));
-    if (hasWorkingMMapOnWindows()) {
-      dirs0.add(new MMapDirectory(path));
-    }
-    final FSDirectory[] dirs = dirs0.stream().toArray(FSDirectory[]::new);
+    dirs0.add(new MMapDirectory(path));
+    final FSDirectory[] dirs = dirs0.toArray(FSDirectory[]::new);
 
     for (int i = 0; i < dirs.length; i++) {
       FSDirectory dir = dirs[i];
@@ -58,14 +56,10 @@ public class TestDirectory extends LuceneTestCase {
       out.writeBytes(largeBuffer, largeBuffer.length);
       out.close();
 
-      for (int j = 0; j < dirs.length; j++) {
-        FSDirectory d2 = dirs[j];
+      for (FSDirectory d2 : dirs) {
         d2.ensureOpen();
         assertTrue(slowFileExists(d2, fname));
         assertEquals(1 + largeBuffer.length, d2.fileLength(fname));
-
-        // don't do read tests if unmapping is not supported!
-        if (d2 instanceof MMapDirectory && !((MMapDirectory) d2).getUseUnmap()) continue;
 
         IndexInput input = d2.openInput(fname, newIOContext(random()));
         assertEquals((byte) i, input.readByte());
@@ -84,19 +78,14 @@ public class TestDirectory extends LuceneTestCase {
       // delete with a different dir
       dirs[(i + 1) % dirs.length].deleteFile(fname);
 
-      for (int j = 0; j < dirs.length; j++) {
-        FSDirectory d2 = dirs[j];
+      for (FSDirectory d2 : dirs) {
         assertFalse(slowFileExists(d2, fname));
       }
 
       Lock lock = dir.obtainLock(lockname);
 
       for (Directory other : dirs) {
-        expectThrows(
-            LockObtainFailedException.class,
-            () -> {
-              other.obtainLock(lockname);
-            });
+        expectThrows(LockObtainFailedException.class, () -> other.obtainLock(lockname));
       }
 
       lock.close();
@@ -106,8 +95,7 @@ public class TestDirectory extends LuceneTestCase {
       lock.close();
     }
 
-    for (int i = 0; i < dirs.length; i++) {
-      FSDirectory dir = dirs[i];
+    for (FSDirectory dir : dirs) {
       dir.ensureOpen();
       dir.close();
       assertFalse(dir.isOpen);
@@ -117,18 +105,11 @@ public class TestDirectory extends LuceneTestCase {
   // LUCENE-1468
   public void testNotDirectory() throws Throwable {
     Path path = createTempDir("testnotdir");
-    Directory fsDir = new NIOFSDirectory(path);
-    try {
+    try (Directory fsDir = new NIOFSDirectory(path)) {
       IndexOutput out = fsDir.createOutput("afile", newIOContext(random()));
       out.close();
       assertTrue(slowFileExists(fsDir, "afile"));
-      expectThrows(
-          IOException.class,
-          () -> {
-            new NIOFSDirectory(path.resolve("afile"));
-          });
-    } finally {
-      fsDir.close();
+      expectThrows(IOException.class, () -> new NIOFSDirectory(path.resolve("afile")));
     }
   }
 

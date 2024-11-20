@@ -27,18 +27,18 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LRUQueryCache;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.RandomApproximationQuery;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.RandomApproximationQuery;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -83,6 +83,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
+    MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.COUNT.toString()), equalTo(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString()), greaterThan(0L));
     MatcherAssert.assertThat(
@@ -96,6 +97,8 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString() + "_count"),
         greaterThan(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.COUNT.toString() + "_count"), equalTo(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString() + "_count"), greaterThan(0L));
     MatcherAssert.assertThat(
@@ -156,6 +159,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
+    MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.COUNT.toString()), equalTo(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString()), greaterThan(0L));
     MatcherAssert.assertThat(
@@ -168,6 +172,8 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString() + "_count"),
         greaterThan(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.COUNT.toString() + "_count"), equalTo(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString() + "_count"), greaterThan(0L));
     MatcherAssert.assertThat(
@@ -189,7 +195,36 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     searcher.count(query); // will use index stats
 
     List<QueryProfilerResult> results = searcher.getProfileResult();
-    assertEquals(0, results.size());
+    assertEquals(1, results.size());
+    Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.COUNT.toString()), greaterThan(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString()), equalTo(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.NEXT_DOC.toString()), equalTo(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.ADVANCE.toString()), equalTo(0L));
+    MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.SCORE.toString()), equalTo(0L));
+    MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.MATCH.toString()), equalTo(0L));
+
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString() + "_count"),
+        greaterThan(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.COUNT.toString() + "_count"), greaterThan(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString() + "_count"), equalTo(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.NEXT_DOC.toString() + "_count"), equalTo(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.ADVANCE.toString() + "_count"), equalTo(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.SCORE.toString() + "_count"), equalTo(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.MATCH.toString() + "_count"), equalTo(0L));
 
     long rewriteTime = searcher.getRewriteTime();
     MatcherAssert.assertThat(rewriteTime, greaterThan(0L));
@@ -205,6 +240,8 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
     MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.COUNT.toString()), greaterThan(0L));
+    MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString()), greaterThan(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.NEXT_DOC.toString()), greaterThan(0L));
@@ -217,6 +254,8 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString() + "_count"),
         greaterThan(0L));
+    MatcherAssert.assertThat(
+        breakdown.get(QueryProfilerTimingType.COUNT.toString() + "_count"), greaterThan(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString() + "_count"), greaterThan(0L));
     MatcherAssert.assertThat(

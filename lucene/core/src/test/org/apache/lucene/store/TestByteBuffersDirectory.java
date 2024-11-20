@@ -22,13 +22,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.function.Supplier;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.util.English;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
+import org.apache.lucene.tests.util.English;
 import org.junit.Test;
 
 public class TestByteBuffersDirectory extends BaseDirectoryTestCase {
@@ -82,15 +83,6 @@ public class TestByteBuffersDirectory extends BaseDirectoryTestCase {
                         ByteBuffersDataOutput::new,
                         ByteBuffersDirectory.OUTPUT_AS_ONE_BUFFER),
             "one buffer (heap)"
-          },
-          {
-            (Supplier<ByteBuffersDirectory>)
-                () ->
-                    new ByteBuffersDirectory(
-                        new SingleInstanceLockFactory(),
-                        ByteBuffersDataOutput::new,
-                        ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS_LUCENE),
-            "lucene's buffers (heap)"
           },
           {
             (Supplier<ByteBuffersDirectory>)

@@ -28,11 +28,13 @@ import java.io.OutputStream;
 class GeoWideLongitudeSlice extends GeoBaseBBox {
   /** The left longitude */
   protected final double leftLon;
+
   /** The right longitude */
   protected final double rightLon;
 
   /** The left plane */
   protected final SidedPlane leftPlane;
+
   /** The right plane */
   protected final SidedPlane rightPlane;
 
@@ -67,7 +69,7 @@ class GeoWideLongitudeSlice extends GeoBaseBBox {
     if (extent < 0.0) {
       extent += 2.0 * Math.PI;
     }
-    if (extent < Math.PI) {
+    if (extent < GeoWideRectangle.MIN_WIDE_EXTENT) {
       throw new IllegalArgumentException("Width of rectangle too small");
     }
 

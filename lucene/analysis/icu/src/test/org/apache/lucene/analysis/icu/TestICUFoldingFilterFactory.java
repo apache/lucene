@@ -19,8 +19,8 @@ package org.apache.lucene.analysis.icu;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.HashMap;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** basic tests for {@link ICUFoldingFilterFactory} */
 public class TestICUFoldingFilterFactory extends BaseTokenStreamTestCase {

@@ -29,13 +29,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
+import org.apache.lucene.analysis.en.PorterStemFilter;
 import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
 import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.document.Field;
@@ -46,6 +48,7 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.intervals.IntervalQuery;
 import org.apache.lucene.queries.intervals.Intervals;
+import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
@@ -55,8 +58,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -116,14 +120,14 @@ public class TestMatchHighlighter extends LuceneTestCase {
   static SynonymMap buildSynonymMap(String[][] synonyms) throws IOException {
     SynonymMap.Builder builder = new SynonymMap.Builder();
     for (String[] pair : synonyms) {
-      assertThat(pair.length, Matchers.equalTo(2));
+      MatcherAssert.assertThat(pair.length, Matchers.equalTo(2));
       builder.add(new CharsRef(pair[0]), new CharsRef(pair[1]), true);
     }
     return builder.build();
   }
 
   @Test
-  public void testBasicUsage() throws IOException {
+  public void testBasicUsage() throws Exception {
     new IndexBuilder(this::toField)
         .doc(FLD_TEXT1, "foo bar baz")
         .doc(FLD_TEXT1, "bar foo baz")
@@ -233,7 +237,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
   }
 
   @Test
-  public void testSynonymHighlight() throws IOException {
+  public void testSynonymHighlight() throws Exception {
     // There is nothing special needed to highlight or process complex queries, synonyms, etc.
     // Synonyms defined in the constructor of this class.
     new IndexBuilder(this::toField)
@@ -264,7 +268,274 @@ public class TestMatchHighlighter extends LuceneTestCase {
   }
 
   @Test
-  public void testCustomFieldHighlightHandling() throws IOException {
+  public void testAnalyzedTextIntervals() throws Exception {
+    SynonymMap synonymMap =
+        buildSynonymMap(
+            new String[][] {
+              {"moon\u0000shine", "firewater"},
+              {"firewater", "moon\u0000shine"},
+            });
+
+    Analyzer analyzer =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new StandardTokenizer();
+            TokenStream ts = tokenizer;
+            ts = new LowerCaseFilter(ts);
+            ts = new SynonymGraphFilter(ts, synonymMap, true);
+            ts = new PorterStemFilter(ts);
+            return new TokenStreamComponents(tokenizer, ts);
+          }
+        };
+
+    new IndexBuilder(this::toField)
+        .doc(FLD_TEXT1, "Where the moon shine falls, firewater flows.")
+        .build(
+            analyzer,
+            reader -> {
+              IndexSearcher searcher = new IndexSearcher(reader);
+              Sort sortOrder = Sort.INDEXORDER; // So that results are consistently ordered.
+
+              MatchHighlighter highlighter =
+                  new MatchHighlighter(searcher, analyzer)
+                      .appendFieldHighlighter(
+                          FieldValueHighlighters.highlighted(
+                              80 * 3, 1, new PassageFormatter("...", ">", "<"), FLD_TEXT1::equals))
+                      .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
+
+              {
+                // [moon shine, firewater] are synonyms, tokens are lowercased. Porter stemming on.
+                Query query =
+                    new IntervalQuery(
+                        FLD_TEXT1,
+                        Intervals.analyzedText("Firewater Fall", analyzer, FLD_TEXT1, 0, true));
+
+                assertHighlights(
+                    toDocList(highlighter.highlight(searcher.search(query, 10, sortOrder), query)),
+                    "0. text1: Where the >moon shine falls<, firewater flows.");
+              }
+            });
+  }
+
+  @Test
+  public void testStandardQueryParserIntervalFunctions() throws Exception {
+    Analyzer analyzer =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer = new StandardTokenizer();
+            TokenStream ts = tokenizer;
+            ts = new LowerCaseFilter(ts);
+            return new TokenStreamComponents(tokenizer, ts);
+          }
+        };
+
+    // Rerun the same test on fields with offsets and without offsets.
+    for (String field : List.of(FLD_TEXT1, FLD_TEXT2)) {
+      String inputDocument = "The quick brown fox jumps over the lazy dog";
+
+      String[][] queryResultPairs =
+          new String[][] {
+            {"fn:ordered(brown dog)", "0. %s: The quick >brown fox jumps over the lazy dog<"},
+            {
+              "fn:within(fn:or(lazy quick) 1 fn:or(dog fox))",
+              "0. %s: The quick brown fox jumps over the >lazy< dog"
+            },
+            {
+              "fn:containedBy(fox fn:ordered(brown fox dog))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:atLeast(2 quick fox \"furry dog\")",
+              "0. %s: The >quick brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:maxgaps(0 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+              "0. %s: The quick brown fox jumps over the >lazy dog<"
+            },
+            {
+              "fn:maxgaps(1 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+              "0. %s: The >quick brown fox< jumps over the >lazy dog<"
+            },
+            {
+              "fn:maxwidth(2 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+              "0. %s: The quick brown fox jumps over the >lazy dog<"
+            },
+            {
+              "fn:maxwidth(3 fn:ordered(fn:or(quick lazy) fn:or(fox dog)))",
+              "0. %s: The >quick brown fox< jumps over the >lazy dog<"
+            },
+            {"fn:or(quick \"fox\")", "0. %s: The >quick< brown >fox< jumps over the lazy dog"},
+            {"fn:or(\"quick fox\")"},
+            {"fn:phrase(quick brown fox)", "0. %s: The >quick brown fox< jumps over the lazy dog"},
+            {"fn:wildcard(jump*)", "0. %s: The quick brown fox >jumps< over the lazy dog"},
+            {"fn:wildcard(br*n)", "0. %s: The quick >brown< fox jumps over the lazy dog"},
+            {"fn:fuzzyTerm(fxo)", "0. %s: The quick brown >fox< jumps over the lazy dog"},
+            {"fn:or(dog fox)", "0. %s: The quick brown >fox< jumps over the lazy >dog<"},
+            {
+              "fn:phrase(fn:ordered(quick fox) jumps)",
+              "0. %s: The >quick brown fox jumps< over the lazy dog"
+            },
+            {"fn:ordered(quick jumps dog)", "0. %s: The >quick brown fox jumps over the lazy dog<"},
+            {
+              "fn:ordered(quick fn:or(fox dog))",
+              "0. %s: The >quick brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:ordered(quick jumps fn:or(fox dog))",
+              "0. %s: The >quick brown fox jumps over the lazy dog<"
+            },
+            {
+              "fn:unordered(dog jumps quick)",
+              "0. %s: The >quick brown fox jumps over the lazy dog<"
+            },
+            {
+              "fn:unordered(fn:or(fox dog) quick)",
+              "0. %s: The >quick brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:unordered(fn:phrase(brown fox) fn:phrase(fox jumps))",
+              "0. %s: The quick >brown fox jumps< over the lazy dog"
+            },
+            {"fn:ordered(fn:phrase(brown fox) fn:phrase(fox jumps))"},
+            {"fn:unorderedNoOverlaps(fn:phrase(brown fox) fn:phrase(fox jumps))"},
+            {
+              "fn:before(fn:or(brown lazy) fox)",
+              "0. %s: The quick >brown< fox jumps over the lazy dog"
+            },
+            {
+              "fn:before(fn:or(brown lazy) fn:or(dog fox))",
+              "0. %s: The quick >brown< fox jumps over the >lazy< dog"
+            },
+            {
+              "fn:after(fn:or(brown lazy) fox)",
+              "0. %s: The quick brown fox jumps over the >lazy< dog"
+            },
+            {
+              "fn:after(fn:or(brown lazy) fn:or(dog fox))",
+              "0. %s: The quick brown fox jumps over the >lazy< dog"
+            },
+            {
+              "fn:within(fn:or(fox dog) 1 fn:or(quick lazy))",
+              "0. %s: The quick brown fox jumps over the lazy >dog<"
+            },
+            {
+              "fn:within(fn:or(fox dog) 2 fn:or(quick lazy))",
+              "0. %s: The quick brown >fox< jumps over the lazy >dog<"
+            },
+            {
+              "fn:notWithin(fn:or(fox dog) 1 fn:or(quick lazy))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:containedBy(fn:or(fox dog) fn:ordered(quick lazy))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:notContainedBy(fn:or(fox dog) fn:ordered(quick lazy))",
+              "0. %s: The quick brown fox jumps over the lazy >dog<"
+            },
+            {
+              "fn:containing(fn:atLeast(2 quick fox dog) jumps)",
+              "0. %s: The quick brown >fox jumps over the lazy dog<"
+            },
+            {
+              "fn:notContaining(fn:ordered(fn:or(the The) fn:or(fox dog)) brown)",
+              "0. %s: The quick brown fox jumps over >the lazy dog<"
+            },
+            {
+              "fn:overlapping(fn:phrase(brown fox) fn:phrase(fox jumps))",
+              "0. %s: The quick >brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:overlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
+              "0. %s: The quick brown fox jumps over the lazy >dog<"
+            },
+            {
+              "fn:nonOverlapping(fn:phrase(brown fox) fn:phrase(lazy dog))",
+              "0. %s: The quick >brown fox< jumps over the lazy dog"
+            },
+            {
+              "fn:nonOverlapping(fn:or(fox dog) fn:extend(lazy 2 2))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:atLeast(2 fn:unordered(furry dog) fn:unordered(brown dog) lazy quick)",
+              "0. %s: The >quick >brown fox jumps over the lazy<<> dog<"
+            },
+            {"fn:extend(fox 1 2)", "0. %s: The quick >brown fox jumps over< the lazy dog"},
+            {
+              "fn:extend(fn:or(dog fox) 2 0)",
+              "0. %s: The >quick brown fox< jumps over >the lazy dog<"
+            },
+            {
+              "fn:containedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
+              "0. %s: The quick brown fox jumps over the lazy >dog<"
+            },
+            {
+              "fn:notContainedBy(fn:or(fox dog) fn:extend(lazy 3 3))",
+              "0. %s: The quick brown >fox< jumps over the lazy dog"
+            },
+            {
+              "fn:containing(fn:extend(fn:or(lazy brown) 1 1) fn:or(fox dog))",
+              "0. %s: The >quick brown fox< jumps over >the lazy dog<"
+            },
+            {
+              "fn:notContaining(fn:extend(fn:or(fox dog) 1 0) fn:or(brown yellow))",
+              "0. %s: The quick brown fox jumps over the >lazy dog<"
+            }
+          };
+
+      // Verify assertions.
+      new IndexBuilder(this::toField)
+          // Just one document and multiple interval queries to check.
+          .doc(field, inputDocument)
+          .build(
+              analyzer,
+              reader -> {
+                IndexSearcher searcher = new IndexSearcher(reader);
+                Sort sortOrder = Sort.INDEXORDER; // So that results are consistently ordered.
+
+                MatchHighlighter highlighter =
+                    new MatchHighlighter(searcher, analyzer)
+                        .appendFieldHighlighter(
+                            FieldValueHighlighters.highlighted(
+                                80 * 3, 1, new PassageFormatter("...", ">", "<"), fld -> true))
+                        .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
+
+                StandardQueryParser qp = new StandardQueryParser(analyzer);
+
+                // Run all pairs of query-expected highlight.
+                List<String> errors = new ArrayList<>();
+                for (var queryHighlightPair : queryResultPairs) {
+                  assert queryHighlightPair.length >= 1;
+                  String queryString = queryHighlightPair[0];
+                  var query = qp.parse(queryString, field);
+                  var expected =
+                      Arrays.stream(queryHighlightPair)
+                          .skip(1)
+                          .map(v -> String.format(Locale.ROOT, v, field))
+                          .toArray(String[]::new);
+
+                  try {
+                    assertHighlights(
+                        toDocList(
+                            highlighter.highlight(searcher.search(query, 10, sortOrder), query)),
+                        expected);
+                  } catch (AssertionError e) {
+                    errors.add("MISMATCH: query: " + queryString + "\n" + e.getMessage());
+                  }
+                }
+                if (errors.size() > 0) {
+                  throw new AssertionError(String.join("\n\n", errors));
+                }
+              });
+    }
+  }
+
+  @Test
+  public void testCustomFieldHighlightHandling() throws Exception {
     // Match highlighter is a showcase of individual components in this package, suitable
     // to create any kind of field-display designs.
     //
@@ -334,16 +605,15 @@ public class TestMatchHighlighter extends LuceneTestCase {
                 @Override
                 public List<String> format(
                     String field,
-                    String[] values,
+                    List<String> values,
                     String contiguousValue,
                     List<OffsetRange> valueRanges,
                     List<MatchHighlighter.QueryOffsetRange> matchOffsets) {
-                  if (values.length <= limit) {
-                    return Arrays.asList(values);
+                  if (values.size() <= limit) {
+                    return values;
                   } else {
-                    List<String> collected =
-                        Stream.of(values).limit(limit).collect(Collectors.toList());
-                    int remaining = values.length - collected.size();
+                    List<String> collected = values.subList(0, limit);
+                    int remaining = values.size() - collected.size();
                     collected.add(String.format(Locale.ROOT, "[%d omitted]", remaining));
                     return collected;
                   }
@@ -372,7 +642,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
   }
 
   @Test
-  public void testHighlightMoreQueriesAtOnceShowoff() throws IOException {
+  public void testHighlightMoreQueriesAtOnceShowoff() throws Exception {
     // Match highlighter underlying components are powerful enough to build interesting,
     // if not always super-practical, things. In this case, we would like to highlight
     // a set of matches of *more than one* query over the same set of input documents. This includes
@@ -450,7 +720,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                 @Override
                 public List<String> format(
                     String field,
-                    String[] values,
+                    List<String> values,
                     String contiguousValue,
                     List<OffsetRange> valueRanges,
                     List<MatchHighlighter.QueryOffsetRange> matchOffsets) {
@@ -511,14 +781,14 @@ public class TestMatchHighlighter extends LuceneTestCase {
       }
     }
 
-    if (!Arrays.equals(
-        Stream.of(expectedFormattedLines).map(String::trim).toArray(),
-        actualLines.stream().map(String::trim).toArray())) {
+    var expectedTrimmed = Stream.of(expectedFormattedLines).map(String::trim).toList();
+    var actualTrimmed = actualLines.stream().map(String::trim).toList();
+    if (!Objects.equals(expectedTrimmed, actualTrimmed)) {
       throw new AssertionError(
           "Actual hits were:\n"
-              + String.join("\n", actualLines)
-              + "\n\n but expected them to be:\n"
-              + String.join("\n", expectedFormattedLines));
+              + String.join("\n", actualTrimmed)
+              + "\n\nbut expected them to be:\n"
+              + String.join("\n", expectedTrimmed));
     }
   }
 
@@ -528,8 +798,8 @@ public class TestMatchHighlighter extends LuceneTestCase {
             docHighlights ->
                 docHighlights.fields.entrySet().stream()
                     .map(e -> e.getKey() + ": " + String.join(", ", e.getValue()))
-                    .collect(Collectors.toList()))
-        .collect(Collectors.toList());
+                    .toList())
+        .toList();
   }
 
   private IndexableField toField(String name, String value) {

@@ -18,10 +18,10 @@ package org.apache.lucene.analysis.miscellaneous;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Simple tests to ensure the simple truncation filter factory is working. */
 public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
@@ -67,5 +67,24 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
             .contains(
                 TruncateTokenFilterFactory.PREFIX_LENGTH_KEY
                     + " parameter must be a positive number: -5"));
+  }
+
+  /** Test that takes length greater than byte limit accepts it */
+  public void testLengthGreaterThanByteLimitArgument() throws Exception {
+    Reader reader =
+        new StringReader(
+            "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvw128characters From here");
+    TokenStream stream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    ((Tokenizer) stream).setReader(reader);
+    stream =
+        tokenFilterFactory("Truncate", TruncateTokenFilterFactory.PREFIX_LENGTH_KEY, "128")
+            .create(stream);
+    assertTokenStreamContents(
+        stream,
+        new String[] {
+          "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvw1",
+          "From",
+          "here"
+        });
   }
 }

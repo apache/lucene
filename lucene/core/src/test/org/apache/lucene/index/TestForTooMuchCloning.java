@@ -16,17 +16,18 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestForTooMuchCloning extends LuceneTestCase {
 
@@ -74,12 +75,17 @@ public class TestForTooMuchCloning extends LuceneTestCase {
     final TopDocs hits =
         s.search(
             new TermRangeQuery("field", new BytesRef(), new BytesRef("\uFFFF"), true, true), 10);
-    assertTrue(hits.totalHits.value > 0);
+    assertTrue(hits.totalHits.value() > 0);
     final int queryCloneCount = dir.getInputCloneCount() - cloneCount;
     // System.out.println("query clone count=" + queryCloneCount);
+    // It is rather difficult to reliably predict how many query clone calls will be performed. One
+    // important factor is the number of segment partitions being searched, but it depends as well
+    // on the terms being indexed, and the distribution of the matches across the documents, which
+    // affects how the query gets rewritten and the subsequent number of clone calls it will
+    // perform.
     assertTrue(
         "too many calls to IndexInput.clone during TermRangeQuery: " + queryCloneCount,
-        queryCloneCount < 50);
+        queryCloneCount <= Math.max(s.getLeafContexts().size(), s.getSlices().length) * 5);
     r.close();
     dir.close();
   }

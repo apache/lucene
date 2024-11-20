@@ -20,8 +20,9 @@ import static org.apache.lucene.facet.taxonomy.TaxonomyReader.INVALID_ORDINAL;
 import static org.apache.lucene.facet.taxonomy.TaxonomyReader.ROOT_ORDINAL;
 
 import java.io.IOException;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.index.SortedNumericDocValues;
 
 /**
  * Utility class to easily retrieve previously indexed facet labels, allowing you to skip also
@@ -34,19 +35,16 @@ public class TaxonomyFacetLabels {
   /** {@code TaxonomyReader} provided to the constructor */
   private final TaxonomyReader taxoReader;
 
-  /**
-   * {@code OrdinalsReader} to decode ordinals previously indexed into the {@code BinaryDocValues}
-   * facet field
-   */
-  private final OrdinalsReader ordsReader;
+  /** field storing the taxonomy ordinals */
+  private final String indexFieldName;
 
   /**
    * Sole constructor. Do not close the provided {@link TaxonomyReader} while still using this
    * instance!
    */
-  public TaxonomyFacetLabels(TaxonomyReader taxoReader, String indexFieldName) throws IOException {
+  public TaxonomyFacetLabels(TaxonomyReader taxoReader, String indexFieldName) {
     this.taxoReader = taxoReader;
-    this.ordsReader = new DocValuesOrdinalsReader(indexFieldName);
+    this.indexFieldName = indexFieldName;
   }
 
   /**
@@ -62,7 +60,13 @@ public class TaxonomyFacetLabels {
    * @throws IOException when a low-level IO issue occurs
    */
   public FacetLabelReader getFacetLabelReader(LeafReaderContext readerContext) throws IOException {
-    return new FacetLabelReader(ordsReader, readerContext);
+    SortedNumericDocValues ordinalValues =
+        DocValues.getSortedNumeric(readerContext.reader(), indexFieldName);
+    if (ordinalValues == null) {
+      ordinalValues = DocValues.emptySortedNumeric();
+    }
+
+    return new FacetLabelReader(ordinalValues);
   }
 
   /**
@@ -71,18 +75,20 @@ public class TaxonomyFacetLabels {
    * @lucene.experimental
    */
   public class FacetLabelReader {
-    private final OrdinalsReader.OrdinalsSegmentReader ordinalsSegmentReader;
-    private final IntsRef decodedOrds = new IntsRef();
+    /** By default, we store taxonomy ordinals in SortedNumericDocValues field */
+    private final SortedNumericDocValues ordinalValues;
+
     private int currentDocId = -1;
-    private int currentPos = -1;
+    private boolean currentDocHasValues;
+    private int currentPos;
+    private int currentDocOrdinalCount;
 
     // Lazily set when nextFacetLabel(int docId, String facetDimension) is first called
-    private int[] parents;
+    private ParallelTaxonomyArrays.IntArray parents;
 
-    /** Sole constructor. */
-    public FacetLabelReader(OrdinalsReader ordsReader, LeafReaderContext readerContext)
-        throws IOException {
-      ordinalsSegmentReader = ordsReader.getReader(readerContext);
+    /** Construct from a specified {@link SortedNumericDocValues} field. */
+    public FacetLabelReader(SortedNumericDocValues ordinalValues) {
+      this.ordinalValues = ordinalValues;
     }
 
     /**
@@ -108,29 +114,37 @@ public class TaxonomyFacetLabels {
           throw new IllegalArgumentException(
               "docs out of order: previous docId=" + currentDocId + " current docId=" + docId);
         }
-        ordinalsSegmentReader.get(docId, decodedOrds);
+
         currentDocId = docId;
-        currentPos = decodedOrds.offset;
+
+        currentDocHasValues = ordinalValues.advanceExact(docId);
+        if (currentDocHasValues) {
+          currentDocOrdinalCount = ordinalValues.docValueCount();
+          currentPos = 0;
+        }
       }
 
-      int endPos = decodedOrds.offset + decodedOrds.length;
-      assert currentPos <= endPos;
-
-      if (currentPos == endPos) {
-        // no more FacetLabels
+      if (currentDocHasValues == false) {
         return null;
       }
 
-      int ord = decodedOrds.ints[currentPos++];
+      assert currentPos <= currentDocOrdinalCount;
+      if (currentPos == currentDocOrdinalCount) {
+        return null;
+      }
+
+      int ord = (int) ordinalValues.nextValue();
+      currentPos++;
+
       return taxoReader.getPath(ord);
     }
 
     private boolean isDescendant(int ord, int ancestorOrd) {
       while (ord != INVALID_ORDINAL && ord != ROOT_ORDINAL) {
-        if (parents[ord] == ancestorOrd) {
+        if (parents.get(ord) == ancestorOrd) {
           return true;
         }
-        ord = parents[ord];
+        ord = parents.get(ord);
       }
       return false;
     }
@@ -168,24 +182,36 @@ public class TaxonomyFacetLabels {
           throw new IllegalArgumentException(
               "docs out of order: previous docId=" + currentDocId + " current docId=" + docId);
         }
-        ordinalsSegmentReader.get(docId, decodedOrds);
-        currentPos = decodedOrds.offset;
         currentDocId = docId;
+
+        currentDocHasValues = ordinalValues.advanceExact(docId);
+        if (currentDocHasValues) {
+          currentDocOrdinalCount = ordinalValues.docValueCount();
+          currentPos = 0;
+        }
+      }
+
+      if (currentDocHasValues == false) {
+        return null;
+      }
+
+      assert currentPos <= currentDocOrdinalCount;
+      if (currentPos == currentDocOrdinalCount) {
+        return null;
       }
 
       if (parents == null) {
         parents = taxoReader.getParallelTaxonomyArrays().parents();
       }
 
-      int endPos = decodedOrds.offset + decodedOrds.length;
-      assert currentPos <= endPos;
-
-      for (; currentPos < endPos; ) {
-        int ord = decodedOrds.ints[currentPos++];
+      do {
+        int ord = (int) ordinalValues.nextValue();
+        currentPos++;
         if (isDescendant(ord, parentOrd) == true) {
           return taxoReader.getPath(ord);
         }
-      }
+      } while (currentPos < currentDocOrdinalCount);
+
       return null;
     }
   }

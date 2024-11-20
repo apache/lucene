@@ -18,7 +18,13 @@
 package org.apache.lucene.monitor;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
@@ -40,8 +46,8 @@ public class HighlightsMatch extends QueryMatch {
           new CandidateMatcher<HighlightsMatch>(searcher) {
 
             @Override
-            protected void matchQuery(
-                String queryId, Query matchQuery, Map<String, String> metadata) throws IOException {
+            public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
+                throws IOException {
               Weight w =
                   searcher.createWeight(
                       searcher.rewrite(matchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
@@ -96,12 +102,16 @@ public class HighlightsMatch extends QueryMatch {
     this.hits = new TreeMap<>();
   }
 
-  /** @return a map of hits per field */
+  /**
+   * @return a map of hits per field
+   */
   public Map<String, Set<Hit>> getHits() {
     return Collections.unmodifiableMap(this.hits);
   }
 
-  /** @return the fields in which matches have been found */
+  /**
+   * @return the fields in which matches have been found
+   */
   public Set<String> getFields() {
     return Collections.unmodifiableSet(hits.keySet());
   }
@@ -118,7 +128,9 @@ public class HighlightsMatch extends QueryMatch {
     return Collections.emptyList();
   }
 
-  /** @return the total number of hits for the query */
+  /**
+   * @return the total number of hits for the query
+   */
   public int getHitCount() {
     int c = 0;
     for (Set<Hit> fieldhits : hits.values()) {
@@ -168,47 +180,16 @@ public class HighlightsMatch extends QueryMatch {
     hitSet.add(new Hit(startPos, startOffset, endPos, endOffset));
   }
 
-  /** Represents an individual hit */
-  public static class Hit implements Comparable<Hit> {
-
-    /** The start position */
-    public final int startPosition;
-
-    /** The start offset */
-    public final int startOffset;
-
-    /** The end positions */
-    public final int endPosition;
-
-    /** The end offset */
-    public final int endOffset;
-
-    public Hit(int startPosition, int startOffset, int endPosition, int endOffset) {
-      this.startPosition = startPosition;
-      this.startOffset = startOffset;
-      this.endPosition = endPosition;
-      this.endOffset = endOffset;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (this == obj) return true;
-      if (!(obj instanceof Hit)) return false;
-      Hit other = (Hit) obj;
-      return this.startOffset == other.startOffset
-          && this.endOffset == other.endOffset
-          && this.startPosition == other.startPosition
-          && this.endPosition == other.endPosition;
-    }
-
-    @Override
-    public int hashCode() {
-      int result = startPosition;
-      result = 31 * result + startOffset;
-      result = 31 * result + endPosition;
-      result = 31 * result + endOffset;
-      return result;
-    }
+  /**
+   * Represents an individual hit
+   *
+   * @param startPosition The start position
+   * @param startOffset The start offset
+   * @param endPosition The end position
+   * @param endOffset The end offset
+   */
+  public record Hit(int startPosition, int startOffset, int endPosition, int endOffset)
+      implements Comparable<Hit> {
 
     @Override
     public String toString() {

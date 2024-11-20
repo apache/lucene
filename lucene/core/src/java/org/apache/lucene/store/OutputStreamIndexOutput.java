@@ -21,12 +21,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedOutputStream;
+import org.apache.lucene.util.BitUtil;
 
 /** Implementation class for buffered {@link IndexOutput} that writes to an {@link OutputStream}. */
 public class OutputStreamIndexOutput extends IndexOutput {
 
   private final CRC32 crc = new CRC32();
-  private final BufferedOutputStream os;
+  private final XBufferedOutputStream os;
 
   private long bytesWritten = 0L;
   private boolean flushedOnClose = false;
@@ -35,12 +36,16 @@ public class OutputStreamIndexOutput extends IndexOutput {
    * Creates a new {@link OutputStreamIndexOutput} with the given buffer size.
    *
    * @param bufferSize the buffer size in bytes used to buffer writes internally.
-   * @throws IllegalArgumentException if the given buffer size is less or equal to <code>0</code>
+   * @throws IllegalArgumentException if the given buffer size is less than <code>
+   *     {@value Long#BYTES}</code>
    */
   public OutputStreamIndexOutput(
       String resourceDescription, String name, OutputStream out, int bufferSize) {
     super(resourceDescription, name);
-    this.os = new BufferedOutputStream(new CheckedOutputStream(out, crc), bufferSize);
+    if (bufferSize < Long.BYTES) {
+      throw new IllegalArgumentException("Buffer size too small, need: " + Long.BYTES);
+    }
+    this.os = new XBufferedOutputStream(new CheckedOutputStream(out, crc), bufferSize);
   }
 
   @Override
@@ -53,6 +58,24 @@ public class OutputStreamIndexOutput extends IndexOutput {
   public final void writeBytes(byte[] b, int offset, int length) throws IOException {
     os.write(b, offset, length);
     bytesWritten += length;
+  }
+
+  @Override
+  public void writeShort(short i) throws IOException {
+    os.writeShort(i);
+    bytesWritten += Short.BYTES;
+  }
+
+  @Override
+  public void writeInt(int i) throws IOException {
+    os.writeInt(i);
+    bytesWritten += Integer.BYTES;
+  }
+
+  @Override
+  public void writeLong(long i) throws IOException {
+    os.writeLong(i);
+    bytesWritten += Long.BYTES;
   }
 
   @Override
@@ -80,5 +103,51 @@ public class OutputStreamIndexOutput extends IndexOutput {
   public final long getChecksum() throws IOException {
     os.flush();
     return crc.getValue();
+  }
+
+  /** This subclass is an optimization for writing primitives. Don't use outside of this class! */
+  private static final class XBufferedOutputStream extends BufferedOutputStream {
+
+    XBufferedOutputStream(OutputStream out, int size) {
+      super(out, size);
+    }
+
+    private void flushIfNeeded(int len) throws IOException {
+      if (len > buf.length - count) {
+        flush();
+      }
+    }
+
+    void writeShort(short i) throws IOException {
+      flushIfNeeded(Short.BYTES);
+      BitUtil.VH_LE_SHORT.set(buf, count, i);
+      count += Short.BYTES;
+    }
+
+    void writeInt(int i) throws IOException {
+      flushIfNeeded(Integer.BYTES);
+      BitUtil.VH_LE_INT.set(buf, count, i);
+      count += Integer.BYTES;
+    }
+
+    void writeLong(long i) throws IOException {
+      flushIfNeeded(Long.BYTES);
+      BitUtil.VH_LE_LONG.set(buf, count, i);
+      count += Long.BYTES;
+    }
+
+    @Override
+    public void write(int b) throws IOException {
+      // override single byte write to avoid synchronization overhead now that JEP374 removed biased
+      // locking
+      byte[] buffer = buf;
+      int count = this.count;
+      if (count >= buffer.length) {
+        super.write(b);
+      } else {
+        buffer[count] = (byte) b;
+        this.count = count + 1;
+      }
+    }
   }
 }

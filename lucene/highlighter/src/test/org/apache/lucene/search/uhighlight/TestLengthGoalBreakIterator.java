@@ -20,10 +20,10 @@ package org.apache.lucene.search.uhighlight;
 import java.io.IOException;
 import java.text.BreakIterator;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.QueryBuilder;
 
 public class TestLengthGoalBreakIterator extends LuceneTestCase {
@@ -218,11 +218,13 @@ public class TestLengthGoalBreakIterator extends LuceneTestCase {
   private String highlightClosestToLen(
       String content, Query query, int lengthGoal, float fragAlign, int maxPassages, char separator)
       throws IOException {
-    UnifiedHighlighter highlighter = new UnifiedHighlighter(null, analyzer);
-    highlighter.setBreakIterator(
-        () ->
-            LengthGoalBreakIterator.createClosestToLength(
-                new CustomSeparatorBreakIterator(separator), lengthGoal, fragAlign));
+    UnifiedHighlighter highlighter =
+        UnifiedHighlighter.builderWithoutSearcher(analyzer)
+            .withBreakIterator(
+                () ->
+                    LengthGoalBreakIterator.createClosestToLength(
+                        new CustomSeparatorBreakIterator(separator), lengthGoal, fragAlign))
+            .build();
     return highlighter.highlightWithoutSearcher(FIELD, query, content, maxPassages).toString();
   }
 
@@ -235,11 +237,13 @@ public class TestLengthGoalBreakIterator extends LuceneTestCase {
       String content, Query query, int lengthGoal, float fragAlign, char separator)
       throws IOException {
     // differs from above only by "createMinLength"
-    UnifiedHighlighter highlighter = new UnifiedHighlighter(null, analyzer);
-    highlighter.setBreakIterator(
-        () ->
-            LengthGoalBreakIterator.createMinLength(
-                new CustomSeparatorBreakIterator(separator), lengthGoal, fragAlign));
+    UnifiedHighlighter highlighter =
+        UnifiedHighlighter.builderWithoutSearcher(analyzer)
+            .withBreakIterator(
+                () ->
+                    LengthGoalBreakIterator.createMinLength(
+                        new CustomSeparatorBreakIterator(separator), lengthGoal, fragAlign))
+            .build();
     return highlighter.highlightWithoutSearcher(FIELD, query, content, 1).toString();
   }
 }

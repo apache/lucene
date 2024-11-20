@@ -37,8 +37,6 @@ import org.apache.lucene.index.LeafReaderContext;
  *   <li>{@link TopFieldCollector} subclasses {@link TopDocsCollector} and sorts according to a
  *       specified {@link Sort} object (sort by field). This is used internally by the {@link
  *       IndexSearcher} search methods that take an explicit {@link Sort}.
- *   <li>{@link TimeLimitingCollector}, which wraps any other Collector and aborts the search if
- *       it's taken too much time.
  *   <li>{@link PositiveScoresOnlyCollector} wraps any other Collector and prevents collection of
  *       hits whose score is &lt;= 0.0
  * </ul>
@@ -56,4 +54,11 @@ public interface Collector {
 
   /** Indicates what features are required from the scorer. */
   ScoreMode scoreMode();
+
+  /**
+   * Set the {@link Weight} that will be used to produce scorers that will feed {@link
+   * LeafCollector}s. This is typically useful to have access to {@link Weight#count} from {@link
+   * Collector#getLeafCollector}.
+   */
+  default void setWeight(Weight weight) {}
 }

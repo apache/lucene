@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-@defaultMessage Spawns threads with vague names; use a custom thread factory (Lucene's NamedThreadFactory, Solr's SolrNamedThreadFactory) and name threads so that you can tell (by its name) which executor it is associated with
+@defaultMessage Spawns threads with vague names; use a custom thread factory (Lucene's NamedThreadFactory) and name threads so that you can tell (by its name) which executor it is associated with
 java.util.concurrent.Executors#newFixedThreadPool(int)
 java.util.concurrent.Executors#newSingleThreadExecutor()
 java.util.concurrent.Executors#newCachedThreadPool()
@@ -37,32 +37,42 @@ java.lang.Character#codePointAt(char[],int) @ Implicit end offset is error-prone
 java.io.File#delete() @ use Files.delete for real exception, IOUtils.deleteFilesIgnoringExceptions if you dont care
 
 java.util.Collections#shuffle(java.util.List) @ Use shuffle(List, Random) instead so that it can be reproduced
+java.util.Stack @ Use more modern java.util.ArrayDeque as it is not synchronized
+java.util.Vector @ Use more modern java.util.ArrayList as it is not synchronized
+
+# TODO (needs some fix in forbiddenapis): this also hits java.util.Properties:
+# java.util.Hashtable @ Use more modern java.util.HashMap as it is not synchronized
 
 java.util.Locale#forLanguageTag(java.lang.String) @ use new Locale.Builder().setLanguageTag(...).build() which has error handling
 java.util.Locale#toString() @ use Locale#toLanguageTag() for a standardized BCP47 locale name
 
 @defaultMessage Constructors for wrapper classes of Java primitives should be avoided in favor of the public static methods available or autoboxing
-java.lang.Integer#<init>(int)
-java.lang.Integer#<init>(java.lang.String)
-java.lang.Byte#<init>(byte)
-java.lang.Byte#<init>(java.lang.String)
-java.lang.Short#<init>(short)
-java.lang.Short#<init>(java.lang.String)
-java.lang.Long#<init>(long)
-java.lang.Long#<init>(java.lang.String)
-java.lang.Boolean#<init>(boolean)
-java.lang.Boolean#<init>(java.lang.String)
-java.lang.Character#<init>(char)
-java.lang.Float#<init>(float)
-java.lang.Float#<init>(double)
-java.lang.Float#<init>(java.lang.String)
-java.lang.Double#<init>(double)
-java.lang.Double#<init>(java.lang.String)
+java.lang.Integer#<init>(**)
+java.lang.Byte#<init>(**)
+java.lang.Short#<init>(**)
+java.lang.Long#<init>(**)
+java.lang.Boolean#<init>(**)
+java.lang.Character#<init>(**)
+java.lang.Float#<init>(**)
+java.lang.Double#<init>(**)
 
 @defaultMessage Java deserialization is unsafe when the data is untrusted. The java developer is powerless: no checks or casts help, exploitation can happen in places such as clinit or finalize!
 java.io.ObjectInputStream
 java.io.ObjectOutputStream
 
-@defaultMessage Don't set a dictionary on a Deflater using a method that takes an offset or ByteBuffer (JDK-8252739)
-java.util.zip.Deflater#setDictionary(byte[],int,int)
-java.util.zip.Deflater#setDictionary(java.nio.ByteBuffer)
+@defaultMessage JNDI is RCE-in-a-box, avoid it.
+javax.naming.Context
+javax.management.remote.JMXConnectorFactory
+javax.management.remote.rmi.RMIConnector
+javax.naming.directory.InitialDirContext
+javax.naming.InitialContext
+javax.naming.spi.ContinuationContext
+javax.naming.spi.ContinuationDirContext
+javax.sql.rowset.spi.ProviderImpl
+javax.sql.rowset.spi.SyncFactory
+
+@defaultMessage Math.fma is insanely slow (2500x) in many environments (e.g. VMs). Use multiply/add and suffer the extra rounding
+java.lang.Math#fma(float,float,float)
+java.lang.Math#fma(double,double,double)
+
+java.lang.Thread#sleep(**) @ Thread.sleep makes inefficient use of resources, introduces weird race conditions and slows down the code/tests. Not a scalable and good practice so we should prevent it creeping into lucene code

@@ -25,7 +25,7 @@ import org.apache.lucene.queryparser.flexible.core.util.StringUtils;
  * configuration, it creates an empty {@link FieldConfig} object and delegate it to field config
  * listeners, these are responsible for setting up all the field configuration.
  *
- * <p>{@link QueryConfigHandler} should be extended by classes that intends to provide configuration
+ * <p>{@link QueryConfigHandler} should be extended by classes that intend to provide configuration
  * to {@link QueryNodeProcessor} objects.
  *
  * <p>The class that extends {@link QueryConfigHandler} should also provide {@link FieldConfig}

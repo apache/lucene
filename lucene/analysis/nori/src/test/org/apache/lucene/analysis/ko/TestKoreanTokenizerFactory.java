@@ -21,8 +21,9 @@ import java.io.StringReader;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 
 /** Simple tests for {@link KoreanTokenizerFactory} */
 public class TestKoreanTokenizerFactory extends BaseTokenStreamTestCase {

@@ -18,10 +18,10 @@ package org.apache.lucene.analysis.util;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Simple tests to ensure the French elision filter factory is working. */
 public class TestElisionFilterFactory extends BaseTokenStreamFactoryTestCase {

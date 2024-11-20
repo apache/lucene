@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -46,10 +47,11 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.store.RateLimitedIndexOutput;
 import org.apache.lucene.store.RateLimiter;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.SuppressForbidden;
 
 class SimpleReplicaNode extends ReplicaNode {
   final int tcpPort;
@@ -134,7 +136,7 @@ class SimpleReplicaNode extends ReplicaNode {
         c.out.writeByte((byte) 1);
         c.flush();
         copyState = TestSimpleServer.readCopyState(c.in);
-        files = copyState.files;
+        files = copyState.files();
       } else {
         c.out.writeByte((byte) 0);
         copyState = null;
@@ -169,6 +171,7 @@ class SimpleReplicaNode extends ReplicaNode {
   static final byte CMD_PRE_COPY_MERGE = 17;
 
   /** Handles incoming request to the naive TCP server wrapping this node */
+  @SuppressForbidden(reason = "Thread sleep")
   void handleOneConnection(
       ServerSocket ss,
       AtomicBoolean stop,
@@ -293,9 +296,10 @@ class SimpleReplicaNode extends ReplicaNode {
                 TopDocs hits =
                     searcher.search(
                         new TermQuery(new Term("marker", "marker")), expectedAtLeastCount);
+                StoredFields storedFields = searcher.storedFields();
                 List<Integer> seen = new ArrayList<>();
                 for (ScoreDoc hit : hits.scoreDocs) {
-                  Document doc = searcher.doc(hit.doc);
+                  Document doc = storedFields.document(hit.doc);
                   seen.add(Integer.parseInt(doc.get("docid").substring(1)));
                 }
                 Collections.sort(seen);

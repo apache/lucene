@@ -87,19 +87,43 @@ class ExpressionValueSource extends DoubleValuesSource {
     return new ExpressionFunctionValues(expression, externalValues);
   }
 
+  /**
+   * Create a wrapper around all the expression arguments to do two things:
+   *
+   * <ol>
+   *   <li>Default to 0 for any argument that doesn't have a value for a given doc (i.e.,
+   *       #advanceExact returns false)
+   *   <li>Be as lazy as possible about actually advancing to the given doc until the argument value
+   *       is actually needed by the expression. For a given doc, some arguments may not actually be
+   *       needed, e.g., because of condition short-circuiting (<code>(true || X)</code> doesn't
+   *       need to evaluate <code>X</code>) or ternary branching (<code>true ? X : Y</code> doesn't
+   *       need to evaluate <code>Y</code>).
+   * </ol>
+   */
   static DoubleValues zeroWhenUnpositioned(DoubleValues in) {
     return new DoubleValues() {
 
-      boolean positioned = false;
+      int currentDoc = -1;
+      double value;
+      boolean computed = false;
 
       @Override
       public double doubleValue() throws IOException {
-        return positioned ? in.doubleValue() : 0;
+        if (computed == false) {
+          value = in.advanceExact(currentDoc) ? in.doubleValue() : 0;
+          computed = true;
+        }
+        return value;
       }
 
       @Override
-      public boolean advanceExact(int doc) throws IOException {
-        return positioned = in.advanceExact(doc);
+      public boolean advanceExact(int doc) {
+        if (currentDoc == doc) {
+          return true;
+        }
+        currentDoc = doc;
+        computed = false;
+        return true;
       }
     };
   }

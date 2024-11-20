@@ -18,7 +18,7 @@ package org.apache.lucene.queryparser.flexible.core.nodes;
 
 import java.util.Arrays;
 import java.util.Collections;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestQueryNode extends LuceneTestCase {
 

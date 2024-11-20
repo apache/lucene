@@ -131,7 +131,7 @@ public class DoubleRange extends Field {
    *
    * <p>example for 4 dimensions (8 bytes per dimension value): minD1 ... minD4 | maxD1 ... maxD4
    */
-  static void verifyAndEncode(double[] min, double[] max, byte[] bytes) {
+  public static void verifyAndEncode(double[] min, double[] max, byte[] bytes) {
     for (int d = 0, i = 0, j = min.length * BYTES; d < min.length; ++d, i += BYTES, j += BYTES) {
       if (Double.isNaN(min[d])) {
         throw new IllegalArgumentException(

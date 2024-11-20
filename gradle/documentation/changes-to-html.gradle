@@ -22,6 +22,18 @@ configure(project(':lucene:documentation')) {
     siteDir = resources
     script = file("${resources}/changes2html.pl")
   }
+
+  // Make the rendered HTML of changes available as a separate
+  // artifact for the distribution.
+  configurations {
+    changesHtml
+  }
+
+  artifacts {
+    changesHtml changesToHtml.targetDir, {
+      builtBy changesToHtml
+    }
+  }
 }
 
 // compile changes.txt into an html file

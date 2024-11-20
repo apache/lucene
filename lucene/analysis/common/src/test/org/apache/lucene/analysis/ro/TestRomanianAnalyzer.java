@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.ro;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestRomanianAnalyzer extends BaseTokenStreamTestCase {
   /** This test fails with NPE when the stopwords file is missing in classpath */
@@ -27,12 +27,14 @@ public class TestRomanianAnalyzer extends BaseTokenStreamTestCase {
     new RomanianAnalyzer().close();
   }
 
-  /** test stopwords and stemming */
+  /** test stopwords, normalization and stemming */
   public void testBasics() throws IOException {
     Analyzer a = new RomanianAnalyzer();
     // stemming
-    checkOneTerm(a, "absenţa", "absenţ");
-    checkOneTerm(a, "absenţi", "absenţ");
+    checkOneTerm(a, "absența", "absenț");
+    checkOneTerm(a, "absenți", "absenț");
+    // normalization
+    checkOneTerm(a, "absenţ", "absenț");
     // stopword
     assertAnalyzesTo(a, "îl", new String[] {});
     a.close();
@@ -40,10 +42,10 @@ public class TestRomanianAnalyzer extends BaseTokenStreamTestCase {
 
   /** test use of exclusion set */
   public void testExclude() throws IOException {
-    CharArraySet exclusionSet = new CharArraySet(asSet("absenţa"), false);
+    CharArraySet exclusionSet = new CharArraySet(asSet("absența"), false);
     Analyzer a = new RomanianAnalyzer(RomanianAnalyzer.getDefaultStopSet(), exclusionSet);
-    checkOneTerm(a, "absenţa", "absenţa");
-    checkOneTerm(a, "absenţi", "absenţ");
+    checkOneTerm(a, "absența", "absența");
+    checkOneTerm(a, "absenți", "absenț");
     a.close();
   }
 

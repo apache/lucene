@@ -137,7 +137,7 @@ public abstract class CopyJob implements Comparable<CopyJob> {
       if (prevTmpFileName != null) {
         // This fileName is common to both jobs, and the old job already finished copying it (to a
         // temp file), so we keep it:
-        long fileLength = ent.getValue().length;
+        long fileLength = ent.getValue().length();
         bytesAlreadyCopied += fileLength;
         dest.message(
             "xfer: carry over already-copied file "
@@ -187,7 +187,7 @@ public abstract class CopyJob implements Comparable<CopyJob> {
 
         prevJob.current = null;
 
-        totBytes += current.metaData.length;
+        totBytes += current.metaData.length();
 
         // So it's not in our copy list anymore:
         it.remove();
@@ -206,7 +206,7 @@ public abstract class CopyJob implements Comparable<CopyJob> {
       if (Node.VERBOSE_FILES) {
         dest.message("remove partial file " + prevJob.current.tmpName);
       }
-      dest.deleter.deleteNewFile(prevJob.current.tmpName);
+      dest.deleter.forceDeleteFile(prevJob.current.tmpName);
       prevJob.current = null;
     }
   }
@@ -252,7 +252,7 @@ public abstract class CopyJob implements Comparable<CopyJob> {
       if (Node.VERBOSE_FILES) {
         dest.message("remove partial file " + current.tmpName);
       }
-      dest.deleter.deleteNewFile(current.tmpName);
+      dest.deleter.forceDeleteFile(current.tmpName);
       current = null;
     }
   }

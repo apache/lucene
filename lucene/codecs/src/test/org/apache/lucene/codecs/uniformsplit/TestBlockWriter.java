@@ -19,15 +19,17 @@ package org.apache.lucene.codecs.uniformsplit;
 
 import java.io.IOException;
 import java.util.Collections;
-import org.apache.lucene.codecs.lucene90.MockTermStateFactory;
+import org.apache.lucene.codecs.lucene90.tests.MockTermStateFactory;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersIndexOutput;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 /** Tests {@link BlockWriter}. */
 public class TestBlockWriter extends LuceneTestCase {
@@ -110,13 +112,16 @@ public class TestBlockWriter extends LuceneTestCase {
         true,
         IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
         DocValuesType.NONE,
+        DocValuesSkipIndexType.NONE,
         -1,
         Collections.emptyMap(),
         0,
         0,
         0,
         0,
+        VectorEncoding.FLOAT32,
         VectorSimilarityFunction.EUCLIDEAN,
-        true);
+        true,
+        false);
   }
 }

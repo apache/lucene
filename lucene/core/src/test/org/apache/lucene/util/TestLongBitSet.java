@@ -17,6 +17,8 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLongBitSet extends LuceneTestCase {
 
@@ -349,7 +351,7 @@ public class TestLongBitSet extends LuceneTestCase {
     assertFalse(newBits.get(1));
   }
 
-  @Nightly
+  @Monster("needs hundreds of MB of heap")
   public void testHugeCapacity() {
     long moreThanMaxInt = (long) Integer.MAX_VALUE + 5;
 

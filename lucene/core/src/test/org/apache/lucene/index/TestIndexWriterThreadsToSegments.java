@@ -24,7 +24,6 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -33,10 +32,13 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.Version;
 
 @LuceneTestCase.SuppressCodecs({"SimpleText", "Direct"})
@@ -249,12 +251,14 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
     IOUtils.close(checker, w, dir);
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testManyThreadsClose() throws Exception {
     Directory dir = newDirectory();
     Random r = random();
     IndexWriterConfig iwc = newIndexWriterConfig(r, new MockAnalyzer(r));
     iwc.setCommitOnClose(false);
     final RandomIndexWriter w = new RandomIndexWriter(r, dir, iwc);
+    TestUtil.reduceOpenFiles(w.w);
     w.setDoRandomForceMerge(false);
     Thread[] threads = new Thread[TestUtil.nextInt(random(), 4, 30)];
     final CountDownLatch startingGun = new CountDownLatch(1);
@@ -303,6 +307,8 @@ public class TestIndexWriterThreadsToSegments extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: can we make this test more efficient so it doesn't need to be nightly?
+  @LuceneTestCase.Nightly
   public void testDocsStuckInRAMForever() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));

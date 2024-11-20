@@ -23,8 +23,7 @@ configure(rootProject) {
     description = "All precommit checks"
 
     // Root-level validation tasks.
-    dependsOn ":verifyLocks"
-    dependsOn ":versionsPropsAreSorted"
+    dependsOn ":checkLocks"
     dependsOn ":checkWorkingCopyClean"
   }
 
@@ -36,7 +35,6 @@ configure(rootProject) {
           task.name in [
           "forbiddenApis",
           "licenses",
-          "javadoc",
           "rat",
           "ecjLint",
           "validateSourcePatterns",

@@ -28,20 +28,23 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.PerThreadPKLookup;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 @SuppressCodecs({"SimpleText", "Direct"})
@@ -280,7 +283,7 @@ public class TestTermsEnum extends LuceneTestCase {
         a = Automata.makeStringUnion(sortedAcceptTerms);
       }
 
-      final CompiledAutomaton c = new CompiledAutomaton(a, true, false, 1000000, false);
+      final CompiledAutomaton c = new CompiledAutomaton(a, true, false, false);
 
       final BytesRef[] acceptTermsArray = new BytesRef[acceptTerms.size()];
       final Set<BytesRef> acceptTermsSet = new HashSet<>();
@@ -622,15 +625,7 @@ public class TestTermsEnum extends LuceneTestCase {
     }
   }
 
-  private static class TermAndState {
-    public final BytesRef term;
-    public final TermState state;
-
-    public TermAndState(BytesRef term, TermState state) {
-      this.term = term;
-      this.state = state;
-    }
-  }
+  private record TermAndState(BytesRef term, TermState state) {}
 
   private void testRandomSeeks(IndexReader r, String... validTermStrings) throws IOException {
     final BytesRef[] validTerms = new BytesRef[validTermStrings.length];
@@ -827,6 +822,7 @@ public class TestTermsEnum extends LuceneTestCase {
     Terms terms = sub.terms("field");
 
     Automaton automaton = new RegExp(".*d", RegExp.NONE).toAutomaton();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     CompiledAutomaton ca = new CompiledAutomaton(automaton, false, false);
     TermsEnum te;
 
@@ -940,6 +936,7 @@ public class TestTermsEnum extends LuceneTestCase {
     TermsEnum termsEnum = MultiTerms.getTerms(r, "id").iterator();
     PostingsEnum postingsEnum = null;
     PerThreadPKLookup pkLookup = new PerThreadPKLookup(r, "id");
+    StoredFields storedFields = r.storedFields();
 
     int iters = atLeast(numTerms * 3);
     List<String> termsList = new ArrayList<>(terms);
@@ -968,7 +965,7 @@ public class TestTermsEnum extends LuceneTestCase {
         int docID = postingsEnum.nextDoc();
         assertTrue(docID != PostingsEnum.NO_MORE_DOCS);
         assertEquals(docID, pkLookup.lookup(termBytesRef));
-        Document doc = r.document(docID);
+        Document doc = storedFields.document(docID);
         assertEquals(term, doc.get("id"));
 
         if (random().nextInt(7) == 1) {

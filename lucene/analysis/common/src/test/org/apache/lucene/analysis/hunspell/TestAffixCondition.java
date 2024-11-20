@@ -21,7 +21,7 @@ import static org.apache.lucene.analysis.hunspell.AffixCondition.ALWAYS_TRUE_KEY
 import static org.apache.lucene.analysis.hunspell.AffixKind.PREFIX;
 import static org.apache.lucene.analysis.hunspell.AffixKind.SUFFIX;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestAffixCondition extends LuceneTestCase {
 

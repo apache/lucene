@@ -20,8 +20,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
 /**
  * Not thorough, but tries to test determinism correctness somewhat randomly, by determinizing a
@@ -49,13 +50,13 @@ public class TestDeterminizeLexicon extends LuceneTestCase {
     Collections.shuffle(automata, random());
     Automaton lex = Operations.union(automata);
     lex = Operations.determinize(lex, 1000000);
-    assertTrue(Operations.isFinite(lex));
+    assertTrue(AutomatonTestUtil.isFinite(lex));
     for (String s : terms) {
       assertTrue(Operations.run(lex, s));
     }
     if (TEST_NIGHTLY) {
       // TODO: very wasteful of RAM to do this without minimizing first.
-      final ByteRunAutomaton lexByte = new ByteRunAutomaton(lex, false, 1000000);
+      final ByteRunAutomaton lexByte = new ByteRunAutomaton(lex, false);
       for (String s : terms) {
         byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
         assertTrue(lexByte.run(bytes, 0, bytes.length));

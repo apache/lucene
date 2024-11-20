@@ -28,18 +28,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.UnicodeUtil;
 
 /** A {@link DataOutput} storing data in a list of {@link ByteBuffer}s. */
 public final class ByteBuffersDataOutput extends DataOutput implements Accountable {
   private static final ByteBuffer EMPTY = ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
-  ;
+
   private static final byte[] EMPTY_BYTE_ARRAY = {};
 
   public static final IntFunction<ByteBuffer> ALLOCATE_BB_ON_HEAP = ByteBuffer::allocate;
@@ -80,8 +78,17 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     }
   }
 
+  /** Default {@code minBitsPerBlock} */
   public static final int DEFAULT_MIN_BITS_PER_BLOCK = 10; // 1024 B
+
+  /** Default {@code maxBitsPerBlock} */
   public static final int DEFAULT_MAX_BITS_PER_BLOCK = 26; //   64 MB
+
+  /** Smallest {@code minBitsPerBlock} allowed */
+  public static final int LIMIT_MIN_BITS_PER_BLOCK = 1;
+
+  /** Largest {@code maxBitsPerBlock} allowed */
+  public static final int LIMIT_MAX_BITS_PER_BLOCK = 31;
 
   /**
    * Maximum number of blocks at the current {@link #blockBits} block size before we increase the
@@ -110,6 +117,14 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   /** The current-or-next write block. */
   private ByteBuffer currentBlock = EMPTY;
 
+  /**
+   * Create a new output, suitable for writing a file of around {@code expectedSize} bytes.
+   *
+   * <p>Memory allocation will be optimized based on the {@code expectedSize} hint, so that there is
+   * less overhead for larger files.
+   *
+   * @param expectedSize estimated size of the output file
+   */
   public ByteBuffersDataOutput(long expectedSize) {
     this(
         computeBlockSizeBitsFor(expectedSize),
@@ -118,18 +133,47 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
         NO_REUSE);
   }
 
+  /** Creates a new output with all defaults. */
   public ByteBuffersDataOutput() {
     this(DEFAULT_MIN_BITS_PER_BLOCK, DEFAULT_MAX_BITS_PER_BLOCK, ALLOCATE_BB_ON_HEAP, NO_REUSE);
   }
 
+  /**
+   * Expert: Creates a new output with custom parameters.
+   *
+   * @param minBitsPerBlock minimum bits per block
+   * @param maxBitsPerBlock maximum bits per block
+   * @param blockAllocate block allocator
+   * @param blockReuse block recycler
+   */
   public ByteBuffersDataOutput(
       int minBitsPerBlock,
       int maxBitsPerBlock,
       IntFunction<ByteBuffer> blockAllocate,
       Consumer<ByteBuffer> blockReuse) {
-    if (minBitsPerBlock < 10 || minBitsPerBlock > maxBitsPerBlock || maxBitsPerBlock > 31) {
+    if (minBitsPerBlock < LIMIT_MIN_BITS_PER_BLOCK) {
       throw new IllegalArgumentException(
-          String.format(Locale.ROOT, "Invalid arguments: %s %s", minBitsPerBlock, maxBitsPerBlock));
+          String.format(
+              Locale.ROOT,
+              "minBitsPerBlock (%s) too small, must be at least %s",
+              minBitsPerBlock,
+              LIMIT_MIN_BITS_PER_BLOCK));
+    }
+    if (maxBitsPerBlock > LIMIT_MAX_BITS_PER_BLOCK) {
+      throw new IllegalArgumentException(
+          String.format(
+              Locale.ROOT,
+              "maxBitsPerBlock (%s) too large, must not exceed %s",
+              maxBitsPerBlock,
+              LIMIT_MAX_BITS_PER_BLOCK));
+    }
+    if (minBitsPerBlock > maxBitsPerBlock) {
+      throw new IllegalArgumentException(
+          String.format(
+              Locale.ROOT,
+              "minBitsPerBlock (%s) cannot exceed maxBitsPerBlock (%s)",
+              minBitsPerBlock,
+              maxBitsPerBlock));
     }
     this.maxBitsPerBlock = maxBitsPerBlock;
     this.blockBits = minBitsPerBlock;
@@ -196,7 +240,6 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     } else {
       for (ByteBuffer bb : blocks) {
         bb = bb.asReadOnlyBuffer().flip().order(ByteOrder.LITTLE_ENDIAN);
-        ;
         result.add(bb);
       }
     }
@@ -265,6 +308,29 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     return arr;
   }
 
+  @Override
+  public void copyBytes(DataInput input, long numBytes) throws IOException {
+    assert numBytes >= 0 : "numBytes=" + numBytes;
+    int length = (int) numBytes;
+    while (length > 0) {
+      if (!currentBlock.hasRemaining()) {
+        appendBlock();
+      }
+      if (!currentBlock.hasArray()) {
+        break;
+      }
+      int chunk = Math.min(currentBlock.remaining(), length);
+      final int pos = currentBlock.position();
+      input.readBytes(currentBlock.array(), Math.addExact(currentBlock.arrayOffset(), pos), chunk);
+      length -= chunk;
+      currentBlock.position(pos + chunk);
+    }
+    // if current block is Direct, we fall back to super.copyBytes for remaining bytes
+    if (length > 0) {
+      super.copyBytes(input, length);
+    }
+  }
+
   /** Copy the current content of this object into another {@link DataOutput}. */
   public void copyTo(DataOutput output) throws IOException {
     for (ByteBuffer bb : blocks) {
@@ -277,7 +343,9 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     }
   }
 
-  /** @return The number of bytes written to this output so far. */
+  /**
+   * @return The number of bytes written to this output so far.
+   */
   public long size() {
     long size = 0;
     int blockCount = blocks.size();
@@ -341,25 +409,22 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     }
   }
 
+  private static final int MAX_CHARS_PER_WINDOW = 1024;
+
   @Override
   public void writeString(String v) {
     try {
-      final int MAX_CHARS_PER_WINDOW = 1024;
-      if (v.length() <= MAX_CHARS_PER_WINDOW) {
-        final BytesRef utf8 = new BytesRef(v);
-        writeVInt(utf8.length);
-        writeBytes(utf8.bytes, utf8.offset, utf8.length);
+      final int charCount = v.length();
+      final int byteLen = UnicodeUtil.calcUTF16toUTF8Length(v, 0, charCount);
+      writeVInt(byteLen);
+      ByteBuffer currentBlock = this.currentBlock;
+      if (currentBlock.hasArray() && currentBlock.remaining() >= byteLen) {
+        int startingPos = currentBlock.position();
+        UnicodeUtil.UTF16toUTF8(
+            v, 0, charCount, currentBlock.array(), currentBlock.arrayOffset() + startingPos);
+        currentBlock.position(startingPos + byteLen);
       } else {
-        writeVInt(UnicodeUtil.calcUTF16toUTF8Length(v, 0, v.length()));
-        final byte[] buf = new byte[UnicodeUtil.MAX_UTF8_BYTES_PER_CHAR * MAX_CHARS_PER_WINDOW];
-        UTF16toUTF8(
-            v,
-            0,
-            v.length(),
-            buf,
-            (len) -> {
-              writeBytes(buf, 0, len);
-            });
+        writeLongString(byteLen, v);
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -390,7 +455,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     // any special distinction for direct memory buffers.
     assert ramBytesUsed
         == blocks.stream().mapToLong(ByteBuffer::capacity).sum()
-            + blocks.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+            + (long) blocks.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     return ramBytesUsed;
   }
 
@@ -410,7 +475,9 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     currentBlock = EMPTY;
   }
 
-  /** @return Returns a new {@link ByteBuffersDataOutput} with the {@link #reset()} capability. */
+  /**
+   * @return Returns a new {@link ByteBuffersDataOutput} with the {@link #reset()} capability.
+   */
   // TODO: perhaps we can move it out to an utility class (as a supplier of preconfigured
   // instances?)
   public static ByteBuffersDataOutput newResettableInstance() {
@@ -437,7 +504,6 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
 
     final int requiredBlockSize = 1 << blockBits;
     currentBlock = blockAllocate.apply(requiredBlockSize).order(ByteOrder.LITTLE_ENDIAN);
-    ;
     assert currentBlock.capacity() == requiredBlockSize;
     blocks.add(currentBlock);
     ramBytesUsed += RamUsageEstimator.NUM_BYTES_OBJECT_REF + currentBlock.capacity();
@@ -478,66 +544,20 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
     return blockBits;
   }
 
-  // TODO: move this block-based conversion to UnicodeUtil.
-
-  private static final long HALF_SHIFT = 10;
-  private static final int SURROGATE_OFFSET =
-      Character.MIN_SUPPLEMENTARY_CODE_POINT
-          - (UnicodeUtil.UNI_SUR_HIGH_START << HALF_SHIFT)
-          - UnicodeUtil.UNI_SUR_LOW_START;
-
-  /** A consumer-based UTF16-UTF8 encoder (writes the input string in smaller buffers.). */
-  private static int UTF16toUTF8(
-      final CharSequence s,
-      final int offset,
-      final int length,
-      byte[] buf,
-      IntConsumer bufferFlusher) {
-    int utf8Len = 0;
-    int j = 0;
-    for (int i = offset, end = offset + length; i < end; i++) {
-      final int chr = (int) s.charAt(i);
-
-      if (j + 4 >= buf.length) {
-        bufferFlusher.accept(j);
-        utf8Len += j;
-        j = 0;
+  /** Writes a long string in chunks */
+  private void writeLongString(int byteLen, final String s) throws IOException {
+    final byte[] buf =
+        new byte[Math.min(byteLen, UnicodeUtil.MAX_UTF8_BYTES_PER_CHAR * MAX_CHARS_PER_WINDOW)];
+    for (int i = 0, end = s.length(); i < end; ) {
+      // do one fewer chars than MAX_CHARS_PER_WINDOW in case we run into an unpaired surrogate
+      // below and need to increase the step to cover the lower surrogate as well
+      int step = Math.min(end - i, MAX_CHARS_PER_WINDOW - 1);
+      if (i + step < end && Character.isHighSurrogate(s.charAt(i + step - 1))) {
+        step++;
       }
-
-      if (chr < 0x80) buf[j++] = (byte) chr;
-      else if (chr < 0x800) {
-        buf[j++] = (byte) (0xC0 | (chr >> 6));
-        buf[j++] = (byte) (0x80 | (chr & 0x3F));
-      } else if (chr < 0xD800 || chr > 0xDFFF) {
-        buf[j++] = (byte) (0xE0 | (chr >> 12));
-        buf[j++] = (byte) (0x80 | ((chr >> 6) & 0x3F));
-        buf[j++] = (byte) (0x80 | (chr & 0x3F));
-      } else {
-        // A surrogate pair. Confirm valid high surrogate.
-        if (chr < 0xDC00 && (i < end - 1)) {
-          int utf32 = (int) s.charAt(i + 1);
-          // Confirm valid low surrogate and write pair.
-          if (utf32 >= 0xDC00 && utf32 <= 0xDFFF) {
-            utf32 = (chr << 10) + utf32 + SURROGATE_OFFSET;
-            i++;
-            buf[j++] = (byte) (0xF0 | (utf32 >> 18));
-            buf[j++] = (byte) (0x80 | ((utf32 >> 12) & 0x3F));
-            buf[j++] = (byte) (0x80 | ((utf32 >> 6) & 0x3F));
-            buf[j++] = (byte) (0x80 | (utf32 & 0x3F));
-            continue;
-          }
-        }
-        // Replace unpaired surrogate or out-of-order low surrogate
-        // with substitution character.
-        buf[j++] = (byte) 0xEF;
-        buf[j++] = (byte) 0xBF;
-        buf[j++] = (byte) 0xBD;
-      }
+      int upTo = UnicodeUtil.UTF16toUTF8(s, i, step, buf);
+      writeBytes(buf, 0, upTo);
+      i += step;
     }
-
-    bufferFlusher.accept(j);
-    utf8Len += j;
-
-    return utf8Len;
   }
 }

@@ -24,7 +24,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -39,6 +38,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.spatial.SpatialStrategy;
@@ -154,7 +154,9 @@ public class PointVectorStrategy extends SpatialStrategy {
     throw new UnsupportedOperationException("Can only index Point, not " + shape);
   }
 
-  /** @see #createIndexableFields(org.locationtech.spatial4j.shape.Shape) */
+  /**
+   * @see #createIndexableFields(org.locationtech.spatial4j.shape.Shape)
+   */
   public Field[] createIndexableFields(Point point) {
     Field[] fields = new Field[fieldsLen];
     int idx = -1;
@@ -251,8 +253,8 @@ public class PointVectorStrategy extends SpatialStrategy {
     }
 
     @Override
-    public Query rewrite(IndexReader reader) throws IOException {
-      Query rewritten = inner.rewrite(reader);
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      Query rewritten = inner.rewrite(indexSearcher);
       if (rewritten == inner) return this;
       return new DistanceRangeQuery(rewritten, distanceSource, limit);
     }
@@ -268,7 +270,7 @@ public class PointVectorStrategy extends SpatialStrategy {
       Weight w = inner.createWeight(searcher, scoreMode, 1f);
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           Scorer in = w.scorer(context);
           if (in == null) return null;
           DoubleValues v = distanceSource.getValues(context, DoubleValuesSource.fromScorer(in));
@@ -285,7 +287,8 @@ public class PointVectorStrategy extends SpatialStrategy {
                   return 100; // distance calculation can be heavy!
                 }
               };
-          return new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

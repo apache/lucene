@@ -16,8 +16,16 @@
  */
 package org.apache.lucene.search;
 
-/** Just counts the total number of hits. */
-public class TotalHitCountCollector extends SimpleCollector {
+import java.io.IOException;
+import org.apache.lucene.index.LeafReaderContext;
+
+/**
+ * Just counts the total number of hits. This is the collector behind {@link IndexSearcher#count}.
+ * When the {@link Weight} implements {@link Weight#count}, this collector will skip collecting
+ * segments.
+ */
+public class TotalHitCountCollector implements Collector {
+  private Weight weight;
   private int totalHits;
 
   /** Returns how many hits matched the search. */
@@ -26,12 +34,40 @@ public class TotalHitCountCollector extends SimpleCollector {
   }
 
   @Override
-  public void collect(int doc) {
-    totalHits++;
+  public ScoreMode scoreMode() {
+    return ScoreMode.COMPLETE_NO_SCORES;
   }
 
   @Override
-  public ScoreMode scoreMode() {
-    return ScoreMode.COMPLETE_NO_SCORES;
+  public void setWeight(Weight weight) {
+    this.weight = weight;
+  }
+
+  @Override
+  public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+    int leafCount = weight == null ? -1 : weight.count(context);
+    if (leafCount != -1) {
+      totalHits += leafCount;
+      throw new CollectionTerminatedException();
+    }
+    return createLeafCollector();
+  }
+
+  protected final LeafCollector createLeafCollector() {
+    return new LeafCollector() {
+
+      @Override
+      public void setScorer(Scorable scorer) {}
+
+      @Override
+      public void collect(int doc) {
+        totalHits++;
+      }
+
+      @Override
+      public void collect(DocIdStream stream) throws IOException {
+        totalHits += stream.count();
+      }
+    };
   }
 }

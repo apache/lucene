@@ -18,7 +18,6 @@ package org.apache.lucene.classification.utils;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.classification.BM25NBClassifier;
 import org.apache.lucene.classification.BooleanPerceptronClassifier;
 import org.apache.lucene.classification.CachingNaiveBayesClassifier;
@@ -29,7 +28,9 @@ import org.apache.lucene.classification.KNearestFuzzyClassifier;
 import org.apache.lucene.classification.KNearestNeighborClassifier;
 import org.apache.lucene.classification.SimpleNaiveBayesClassifier;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Tests for {@link ConfusionMatrixGenerator} */
@@ -81,9 +82,7 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
       assertTrue(f1Measure >= 0d);
       assertTrue(f1Measure <= 1d);
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      IOUtils.close(reader);
     }
   }
 
@@ -100,9 +99,7 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
               reader, classifier, categoryFieldName, textFieldName, -1);
       checkCM(confusionMatrix);
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      IOUtils.close(reader);
     }
   }
 
@@ -138,9 +135,7 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
               reader, classifier, categoryFieldName, textFieldName, -1);
       checkCM(confusionMatrix);
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      IOUtils.close(reader);
     }
   }
 
@@ -157,9 +152,7 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
               reader, classifier, categoryFieldName, textFieldName, -1);
       checkCM(confusionMatrix);
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      IOUtils.close(reader);
     }
   }
 
@@ -177,9 +170,7 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
               reader, classifier, categoryFieldName, textFieldName, -1);
       checkCM(confusionMatrix);
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      IOUtils.close(reader);
     }
   }
 
@@ -197,9 +188,7 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
               reader, classifier, categoryFieldName, textFieldName, -1);
       checkCM(confusionMatrix);
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      IOUtils.close(reader);
     }
   }
 
@@ -229,9 +218,7 @@ public class TestConfusionMatrixGenerator extends ClassificationTestBase<Object>
       assertTrue(confusionMatrix.getF1Measure("false") >= 0d);
       assertTrue(confusionMatrix.getF1Measure("false") <= 1d);
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      IOUtils.close(reader);
     }
   }
 }

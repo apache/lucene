@@ -18,9 +18,9 @@ package org.apache.lucene.analysis.miscellaneous;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.util.StringMockResourceLoader;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.util.StringMockResourceLoader;
 import org.apache.lucene.util.Version;
 
 /** Simple tests to ensure the keyword marker filter factory is working. */
@@ -89,7 +89,6 @@ public class TestKeywordMarkerFilterFactory extends BaseTokenStreamFactoryTestCa
     stream =
         tokenFilterFactory("KeywordMarker", "pattern", "Cats", "ignoreCase", "true").create(stream);
     stream = tokenFilterFactory("PorterStem").create(stream);
-    ;
     assertTokenStreamContents(stream, new String[] {"dog", "cats", "Cats"});
   }
 

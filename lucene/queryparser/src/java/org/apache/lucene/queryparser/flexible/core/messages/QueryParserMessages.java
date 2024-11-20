@@ -20,7 +20,6 @@ import org.apache.lucene.queryparser.flexible.messages.NLS;
 
 /** Flexible Query Parser message bundle class */
 public class QueryParserMessages extends NLS {
-
   private static final String BUNDLE_NAME = QueryParserMessages.class.getName();
 
   private QueryParserMessages() {
@@ -52,4 +51,5 @@ public class QueryParserMessages extends NLS {
   public static String NUMBER_CLASS_NOT_SUPPORTED_BY_NUMERIC_RANGE_QUERY;
   public static String UNSUPPORTED_NUMERIC_DATA_TYPE;
   public static String NUMERIC_CANNOT_BE_EMPTY;
+  public static String ANALYZER_REQUIRED;
 }

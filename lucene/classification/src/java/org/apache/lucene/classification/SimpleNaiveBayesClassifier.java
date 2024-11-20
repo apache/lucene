@@ -35,7 +35,6 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
 
@@ -106,9 +105,9 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     ClassificationResult<BytesRef> assignedClass = null;
     double maxscore = -Double.MAX_VALUE;
     for (ClassificationResult<BytesRef> c : assignedClasses) {
-      if (c.getScore() > maxscore) {
+      if (c.score() > maxscore) {
         assignedClass = c;
-        maxscore = c.getScore();
+        maxscore = c.score();
       }
     }
     return assignedClass;
@@ -169,7 +168,6 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     Terms terms = MultiTerms.getTerms(this.indexReader, this.classFieldName);
     int docCount;
     if (terms == null || terms.getDocCount() == -1) { // in case codec doesn't support getDocCount
-      TotalHitCountCollector classQueryCountCollector = new TotalHitCountCollector();
       BooleanQuery.Builder q = new BooleanQuery.Builder();
       q.add(
           new BooleanClause(
@@ -179,8 +177,7 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
       if (query != null) {
         q.add(query, BooleanClause.Occur.MUST);
       }
-      indexSearcher.search(q.build(), classQueryCountCollector);
-      docCount = classQueryCountCollector.getTotalHits();
+      docCount = indexSearcher.count(q.build());
     } else {
       docCount = terms.getDocCount();
     }
@@ -276,13 +273,11 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     if (query != null) {
       booleanQuery.add(query, BooleanClause.Occur.MUST);
     }
-    TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
-    indexSearcher.search(booleanQuery.build(), totalHitCountCollector);
-    return totalHitCountCollector.getTotalHits();
+    return indexSearcher.count(booleanQuery.build());
   }
 
   private double calculateLogPrior(Term term, int docsWithClassSize) throws IOException {
-    return Math.log((double) docCount(term)) - Math.log(docsWithClassSize);
+    return Math.log(docCount(term)) - Math.log(docsWithClassSize);
   }
 
   private int docCount(Term term) throws IOException {
@@ -302,13 +297,13 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     if (!assignedClasses.isEmpty()) {
       Collections.sort(assignedClasses);
       // this is a negative number closest to 0 = a
-      double smax = assignedClasses.get(0).getScore();
+      double smax = assignedClasses.get(0).score();
 
       double sumLog = 0;
       // log(sum(exp(x_n-a)))
       for (ClassificationResult<BytesRef> cr : assignedClasses) {
         // getScore-smax <=0 (both negative, smax is the smallest abs()
-        sumLog += Math.exp(cr.getScore() - smax);
+        sumLog += Math.exp(cr.score() - smax);
       }
       // loga=a+log(sum(exp(x_n-a))) = log(sum(exp(x_n)))
       double loga = smax;
@@ -316,8 +311,8 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
 
       // 1/sum*x = exp(log(x))*1/sum = exp(log(x)-log(sum))
       for (ClassificationResult<BytesRef> cr : assignedClasses) {
-        double scoreDiff = cr.getScore() - loga;
-        returnList.add(new ClassificationResult<>(cr.getAssignedClass(), Math.exp(scoreDiff)));
+        double scoreDiff = cr.score() - loga;
+        returnList.add(new ClassificationResult<>(cr.assignedClass(), Math.exp(scoreDiff)));
       }
     }
     return returnList;

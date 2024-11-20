@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocValues;
@@ -55,7 +56,7 @@ import org.apache.lucene.util.packed.PackedInts;
  * <p>The lifecycle is:
  *
  * <ol>
- *   <li>DocValuesConsumer is created by {@link NormsFormat#normsConsumer(SegmentWriteState)}.
+ *   <li>DocValuesConsumer is created by {@link DocValuesFormat#fieldsConsumer(SegmentWriteState)}.
  *   <li>{@link #addNumericField}, {@link #addBinaryField}, {@link #addSortedField}, {@link
  *       #addSortedSetField}, or {@link #addSortedNumericField} are called for each Numeric, Binary,
  *       Sorted, SortedSet, or SortedNumeric docvalues field. The API is a "pull" rather than
@@ -191,7 +192,6 @@ public abstract class DocValuesConsumer implements Closeable {
 
             List<NumericDocValuesSub> subs = new ArrayList<>();
             assert mergeState.docMaps.length == mergeState.docValuesProducers.length;
-            long cost = 0;
             for (int i = 0; i < mergeState.docValuesProducers.length; i++) {
               NumericDocValues values = null;
               DocValuesProducer docValuesProducer = mergeState.docValuesProducers[i];
@@ -203,58 +203,65 @@ public abstract class DocValuesConsumer implements Closeable {
                 }
               }
               if (values != null) {
-                cost += values.cost();
                 subs.add(new NumericDocValuesSub(mergeState.docMaps[i], values));
               }
             }
 
-            final DocIDMerger<NumericDocValuesSub> docIDMerger =
-                DocIDMerger.of(subs, mergeState.needsIndexSort);
-
-            final long finalCost = cost;
-
-            return new NumericDocValues() {
-              private int docID = -1;
-              private NumericDocValuesSub current;
-
-              @Override
-              public int docID() {
-                return docID;
-              }
-
-              @Override
-              public int nextDoc() throws IOException {
-                current = docIDMerger.next();
-                if (current == null) {
-                  docID = NO_MORE_DOCS;
-                } else {
-                  docID = current.mappedDocID;
-                }
-                return docID;
-              }
-
-              @Override
-              public int advance(int target) throws IOException {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public boolean advanceExact(int target) throws IOException {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public long cost() {
-                return finalCost;
-              }
-
-              @Override
-              public long longValue() throws IOException {
-                return current.values.longValue();
-              }
-            };
+            return mergeNumericValues(subs, mergeState.needsIndexSort);
           }
         });
+  }
+
+  private static NumericDocValues mergeNumericValues(
+      List<NumericDocValuesSub> subs, boolean indexIsSorted) throws IOException {
+    long cost = 0;
+    for (NumericDocValuesSub sub : subs) {
+      cost += sub.values.cost();
+    }
+    final long finalCost = cost;
+
+    final DocIDMerger<NumericDocValuesSub> docIDMerger = DocIDMerger.of(subs, indexIsSorted);
+
+    return new NumericDocValues() {
+      private int docID = -1;
+      private NumericDocValuesSub current;
+
+      @Override
+      public int docID() {
+        return docID;
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        current = docIDMerger.next();
+        if (current == null) {
+          docID = NO_MORE_DOCS;
+        } else {
+          docID = current.mappedDocID;
+        }
+        return docID;
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public boolean advanceExact(int target) throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public long cost() {
+        return finalCost;
+      }
+
+      @Override
+      public long longValue() throws IOException {
+        return current.values.longValue();
+      }
+    };
   }
 
   /** Tracks state of one binary sub-reader that we are merging */
@@ -396,6 +403,7 @@ public abstract class DocValuesConsumer implements Closeable {
             // We must make new iterators + DocIDMerger for each iterator:
             List<SortedNumericDocValuesSub> subs = new ArrayList<>();
             long cost = 0;
+            boolean allSingletons = true;
             for (int i = 0; i < mergeState.docValuesProducers.length; i++) {
               DocValuesProducer docValuesProducer = mergeState.docValuesProducers[i];
               SortedNumericDocValues values = null;
@@ -410,7 +418,24 @@ public abstract class DocValuesConsumer implements Closeable {
                 values = DocValues.emptySortedNumeric();
               }
               cost += values.cost();
+              if (allSingletons && DocValues.unwrapSingleton(values) == null) {
+                allSingletons = false;
+              }
               subs.add(new SortedNumericDocValuesSub(mergeState.docMaps[i], values));
+            }
+
+            if (allSingletons) {
+              // All subs are single-valued.
+              // We specialize for that case since it makes it easier for codecs to optimize
+              // for single-valued fields.
+              List<NumericDocValuesSub> singleValuedSubs = new ArrayList<>();
+              for (SortedNumericDocValuesSub sub : subs) {
+                final NumericDocValues singleValuedValues = DocValues.unwrapSingleton(sub.values);
+                assert singleValuedValues != null;
+                singleValuedSubs.add(new NumericDocValuesSub(sub.docMap, singleValuedValues));
+              }
+              return DocValues.singleton(
+                  mergeNumericValues(singleValuedSubs, mergeState.needsIndexSort));
             }
 
             final long finalCost = cost;
@@ -474,7 +499,7 @@ public abstract class DocValuesConsumer implements Closeable {
    * {@link SortedDocValues#lookupOrd(int)} or {@link SortedSetDocValues#lookupOrd(long)} on every
    * call to {@link TermsEnum#next()}.
    */
-  private static class MergedTermsEnum extends TermsEnum {
+  private static class MergedTermsEnum extends BaseTermsEnum {
 
     private final TermsEnum[] subs;
     private final OrdinalMap ordinalMap;
@@ -519,22 +544,12 @@ public abstract class DocValuesConsumer implements Closeable {
     }
 
     @Override
-    public boolean seekExact(BytesRef text) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public SeekStatus seekCeil(BytesRef text) throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public void seekExact(long ord) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void seekExact(BytesRef term, TermState state) throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -598,7 +613,7 @@ public abstract class DocValuesConsumer implements Closeable {
       if (docValuesProducer != null) {
         FieldInfo readerFieldInfo = mergeState.fieldInfos[i].fieldInfo(fieldInfo.name);
         if (readerFieldInfo != null && readerFieldInfo.getDocValuesType() == DocValuesType.SORTED) {
-          values = docValuesProducer.getSorted(fieldInfo);
+          values = docValuesProducer.getSorted(readerFieldInfo);
         }
       }
       if (values == null) {
@@ -651,7 +666,6 @@ public abstract class DocValuesConsumer implements Closeable {
             // We must make new iterators + DocIDMerger for each iterator:
 
             List<SortedDocValuesSub> subs = new ArrayList<>();
-            long cost = 0;
             for (int i = 0; i < mergeState.docValuesProducers.length; i++) {
               SortedDocValues values = null;
               DocValuesProducer docValuesProducer = mergeState.docValuesProducers[i];
@@ -665,81 +679,88 @@ public abstract class DocValuesConsumer implements Closeable {
               if (values == null) {
                 values = DocValues.emptySorted();
               }
-              cost += values.cost();
 
               subs.add(new SortedDocValuesSub(mergeState.docMaps[i], values, map.getGlobalOrds(i)));
             }
 
-            final long finalCost = cost;
-
-            final DocIDMerger<SortedDocValuesSub> docIDMerger =
-                DocIDMerger.of(subs, mergeState.needsIndexSort);
-
-            return new SortedDocValues() {
-              private int docID = -1;
-              private int ord;
-
-              @Override
-              public int docID() {
-                return docID;
-              }
-
-              @Override
-              public int nextDoc() throws IOException {
-                SortedDocValuesSub sub = docIDMerger.next();
-                if (sub == null) {
-                  return docID = NO_MORE_DOCS;
-                }
-                int subOrd = sub.values.ordValue();
-                assert subOrd != -1;
-                ord = (int) sub.map.get(subOrd);
-                docID = sub.mappedDocID;
-                return docID;
-              }
-
-              @Override
-              public int ordValue() {
-                return ord;
-              }
-
-              @Override
-              public int advance(int target) {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public boolean advanceExact(int target) throws IOException {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public long cost() {
-                return finalCost;
-              }
-
-              @Override
-              public int getValueCount() {
-                return (int) map.getValueCount();
-              }
-
-              @Override
-              public BytesRef lookupOrd(int ord) throws IOException {
-                int segmentNumber = map.getFirstSegmentNumber(ord);
-                int segmentOrd = (int) map.getFirstSegmentOrd(ord);
-                return dvs[segmentNumber].lookupOrd(segmentOrd);
-              }
-
-              @Override
-              public TermsEnum termsEnum() throws IOException {
-                TermsEnum[] subs = new TermsEnum[toMerge.size()];
-                for (int sub = 0; sub < subs.length; ++sub) {
-                  subs[sub] = toMerge.get(sub).termsEnum();
-                }
-                return new MergedTermsEnum(map, subs);
-              }
-            };
+            return mergeSortedValues(subs, mergeState.needsIndexSort, map);
           }
         });
+  }
+
+  private static SortedDocValues mergeSortedValues(
+      List<SortedDocValuesSub> subs, boolean indexIsSorted, OrdinalMap map) throws IOException {
+    long cost = 0;
+    for (SortedDocValuesSub sub : subs) {
+      cost += sub.values.cost();
+    }
+    final long finalCost = cost;
+
+    final DocIDMerger<SortedDocValuesSub> docIDMerger = DocIDMerger.of(subs, indexIsSorted);
+
+    return new SortedDocValues() {
+      private int docID = -1;
+      private SortedDocValuesSub current;
+
+      @Override
+      public int docID() {
+        return docID;
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        current = docIDMerger.next();
+        if (current == null) {
+          docID = NO_MORE_DOCS;
+        } else {
+          docID = current.mappedDocID;
+        }
+        return docID;
+      }
+
+      @Override
+      public int ordValue() throws IOException {
+        int subOrd = current.values.ordValue();
+        assert subOrd != -1;
+        return (int) current.map.get(subOrd);
+      }
+
+      @Override
+      public int advance(int target) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public boolean advanceExact(int target) throws IOException {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public long cost() {
+        return finalCost;
+      }
+
+      @Override
+      public int getValueCount() {
+        return (int) map.getValueCount();
+      }
+
+      @Override
+      public BytesRef lookupOrd(int ord) throws IOException {
+        int segmentNumber = map.getFirstSegmentNumber(ord);
+        int segmentOrd = (int) map.getFirstSegmentOrd(ord);
+        return subs.get(segmentNumber).values.lookupOrd(segmentOrd);
+      }
+
+      @Override
+      public TermsEnum termsEnum() throws IOException {
+        TermsEnum[] termsEnurmSubs = new TermsEnum[subs.size()];
+        for (int sub = 0; sub < termsEnurmSubs.length; ++sub) {
+          termsEnurmSubs[sub] = subs.get(sub).values.termsEnum();
+        }
+        return new MergedTermsEnum(map, termsEnurmSubs);
+      }
+    };
   }
 
   /** Tracks state of one sorted set sub-reader that we are merging */
@@ -806,9 +827,8 @@ public abstract class DocValuesConsumer implements Closeable {
         int docID;
         while ((docID = dv.nextDoc()) != NO_MORE_DOCS) {
           if (liveDocs.get(docID)) {
-            long ord;
-            while ((ord = dv.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-              bitset.set(ord);
+            for (int i = 0; i < dv.docValueCount(); i++) {
+              bitset.set(dv.nextOrd());
             }
           }
         }
@@ -834,6 +854,7 @@ public abstract class DocValuesConsumer implements Closeable {
             List<SortedSetDocValuesSub> subs = new ArrayList<>();
 
             long cost = 0;
+            boolean allSingletons = true;
 
             for (int i = 0; i < mergeState.docValuesProducers.length; i++) {
               SortedSetDocValues values = null;
@@ -849,8 +870,26 @@ public abstract class DocValuesConsumer implements Closeable {
                 values = DocValues.emptySortedSet();
               }
               cost += values.cost();
+              if (allSingletons && DocValues.unwrapSingleton(values) == null) {
+                allSingletons = false;
+              }
               subs.add(
                   new SortedSetDocValuesSub(mergeState.docMaps[i], values, map.getGlobalOrds(i)));
+            }
+
+            if (allSingletons) {
+              // All subs are single-valued.
+              // We specialize for that case since it makes it easier for codecs to optimize
+              // for single-valued fields.
+              List<SortedDocValuesSub> singleValuedSubs = new ArrayList<>();
+              for (SortedSetDocValuesSub sub : subs) {
+                final SortedDocValues singleValuedValues = DocValues.unwrapSingleton(sub.values);
+                assert singleValuedValues != null;
+                singleValuedSubs.add(
+                    new SortedDocValuesSub(sub.docMap, singleValuedValues, sub.map));
+              }
+              return DocValues.singleton(
+                  mergeSortedValues(singleValuedSubs, mergeState.needsIndexSort, map));
             }
 
             final DocIDMerger<SortedSetDocValuesSub> docIDMerger =
@@ -892,10 +931,12 @@ public abstract class DocValuesConsumer implements Closeable {
               @Override
               public long nextOrd() throws IOException {
                 long subOrd = currentSub.values.nextOrd();
-                if (subOrd == NO_MORE_ORDS) {
-                  return NO_MORE_ORDS;
-                }
                 return currentSub.map.get(subOrd);
+              }
+
+              @Override
+              public int docValueCount() {
+                return currentSub.values.docValueCount();
               }
 
               @Override

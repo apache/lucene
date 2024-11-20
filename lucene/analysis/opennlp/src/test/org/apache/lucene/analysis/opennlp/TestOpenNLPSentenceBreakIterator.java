@@ -23,8 +23,8 @@ import java.text.CharacterIterator;
 import org.apache.lucene.analysis.opennlp.tools.NLPSentenceDetectorOp;
 import org.apache.lucene.analysis.opennlp.tools.OpenNLPOpsFactory;
 import org.apache.lucene.analysis.util.CharArrayIterator;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.BeforeClass;
 
 public class TestOpenNLPSentenceBreakIterator extends LuceneTestCase {
@@ -201,6 +201,17 @@ public class TestOpenNLPSentenceBreakIterator extends LuceneTestCase {
     BreakIterator bi = new OpenNLPSentenceBreakIterator(sentenceDetectorOp);
     bi.setText("");
     test0Sentences(bi);
+  }
+
+  public void testPrecedingWithTwoSentences() throws IOException {
+    NLPSentenceDetectorOp sentenceDetectorOp =
+        OpenNLPOpsFactory.getSentenceDetector(sentenceModelFile);
+    BreakIterator bi = new OpenNLPSentenceBreakIterator(sentenceDetectorOp);
+    bi.setText("This is sentence one. This is sentence two.");
+
+    // set pos to somewhere in the second sentence
+    int precedingSentence = bi.preceding(25);
+    assertEquals(0, precedingSentence);
   }
 
   private void test0Sentences(BreakIterator bi) {

@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.geo;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.geo.ShapeTestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestXYCircle extends LuceneTestCase {
 
@@ -110,9 +111,9 @@ public class TestXYCircle extends LuceneTestCase {
     assertEquals(circle, copy);
     assertEquals(circle.hashCode(), copy.hashCode());
     XYCircle otherCircle = ShapeTestUtil.nextCircle();
-    if (circle.getX() != otherCircle.getX()
-        || circle.getY() != otherCircle.getY()
-        || circle.getRadius() != otherCircle.getRadius()) {
+    if (Float.compare(circle.getX(), otherCircle.getX()) != 0
+        || Float.compare(circle.getY(), otherCircle.getY()) != 0
+        || Float.compare(circle.getRadius(), otherCircle.getRadius()) != 0) {
       assertNotEquals(circle, otherCircle);
       assertNotEquals(circle.hashCode(), otherCircle.hashCode());
     } else {

@@ -84,7 +84,7 @@ public class ModifierQueryNode extends QueryNodeImpl {
     }
   }
 
-  private Modifier modifier = Modifier.MOD_NONE;
+  private Modifier modifier;
 
   /**
    * Used to store the modifier value on the original query string

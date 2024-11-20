@@ -19,19 +19,14 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestPositiveScoresOnlyCollector extends LuceneTestCase {
 
   private static final class SimpleScorer extends Scorer {
     private int idx = -1;
-
-    public SimpleScorer(Weight weight) {
-      super(weight);
-    }
 
     @Override
     public float score() {
@@ -113,11 +108,9 @@ public class TestPositiveScoresOnlyCollector extends LuceneTestCase {
     writer.commit();
     IndexReader ir = writer.getReader();
     writer.close();
-    IndexSearcher searcher = newSearcher(ir);
-    Weight fake =
-        new TermQuery(new Term("fake", "weight")).createWeight(searcher, ScoreMode.COMPLETE, 1f);
-    Scorer s = new SimpleScorer(fake);
-    TopDocsCollector<ScoreDoc> tdc = TopScoreDocCollector.create(scores.length, Integer.MAX_VALUE);
+    Scorer s = new SimpleScorer();
+    TopDocsCollector<ScoreDoc> tdc =
+        new TopScoreDocCollectorManager(scores.length, null, Integer.MAX_VALUE).newCollector();
     Collector c = new PositiveScoresOnlyCollector(tdc);
     LeafCollector ac = c.getLeafCollector(ir.leaves().get(0));
     ac.setScorer(s);
@@ -126,7 +119,7 @@ public class TestPositiveScoresOnlyCollector extends LuceneTestCase {
     }
     TopDocs td = tdc.topDocs();
     ScoreDoc[] sd = td.scoreDocs;
-    assertEquals(numPositiveScores, td.totalHits.value);
+    assertEquals(numPositiveScores, td.totalHits.value());
     for (int i = 0; i < sd.length; i++) {
       assertTrue("only positive scores should return: " + sd[i].score, sd[i].score > 0);
     }

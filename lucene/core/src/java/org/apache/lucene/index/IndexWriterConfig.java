@@ -105,7 +105,7 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * Default value for time to wait for merges on commit or getReader (when using a {@link
    * MergePolicy} that implements {@link MergePolicy#findFullFlushMerges}).
    */
-  public static final long DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS = 0;
+  public static final long DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS = 500;
 
   // indicates whether this config instance is already attached to a writer.
   // not final so that it can be cloned properly.
@@ -457,9 +457,14 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * call, like natural segment merges. The default is <code>
    * {@value IndexWriterConfig#DEFAULT_MAX_FULL_FLUSH_MERGE_WAIT_MILLIS}</code>.
    *
-   * <p>Note: This settings has no effect unless {@link
-   * MergePolicy#findFullFlushMerges(MergeTrigger, SegmentInfos, MergePolicy.MergeContext)} has an
-   * implementation that actually returns merges which by default doesn't return any merges.
+   * <p>Note: Which segments would get merged depends on the implementation of {@link
+   * MergePolicy#findFullFlushMerges(MergeTrigger, SegmentInfos, MergePolicy.MergeContext)}
+   *
+   * <p>Note: Set to 0 to disable merging on full flush.
+   *
+   * <p>Note: If {@link SerialMergeScheduler} is used and a non-zero timout is configured,
+   * full-flush merges will always wait for the merge to finish without honoring the configured
+   * timeout.
    */
   public IndexWriterConfig setMaxFullFlushMergeWaitMillis(long maxFullFlushMergeWaitMillis) {
     this.maxFullFlushMergeWaitMillis = maxFullFlushMergeWaitMillis;
@@ -538,6 +543,22 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   public IndexWriterConfig setIndexWriterEventListener(
       final IndexWriterEventListener eventListener) {
     this.eventListener = eventListener;
+    return this;
+  }
+
+  /**
+   * Sets the parent document field. If this optional property is set, IndexWriter will add an
+   * internal field to every root document added to the index writer. A document is considered a
+   * parent document if it's the last document in a document block indexed via {@link
+   * IndexWriter#addDocuments(Iterable)} or {@link IndexWriter#updateDocuments(Term, Iterable)} and
+   * its relatives. Additionally, all individual documents added via the single document methods
+   * ({@link IndexWriter#addDocuments(Iterable)} etc.) are also considered parent documents. This
+   * property is optional for all indices that don't use document blocks in combination with index
+   * sorting. In order to maintain the API guarantee that the document order of a block is not
+   * altered by the {@link IndexWriter} a marker for parent documents is required.
+   */
+  public IndexWriterConfig setParentField(String parentField) {
+    this.parentField = parentField;
     return this;
   }
 }

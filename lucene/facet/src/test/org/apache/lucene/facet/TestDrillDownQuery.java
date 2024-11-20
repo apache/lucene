@@ -19,8 +19,6 @@ package org.apache.lucene.facet;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -29,16 +27,18 @@ import org.apache.lucene.facet.taxonomy.TaxonomyWriter;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -125,7 +125,7 @@ public class TestDrillDownQuery extends FacetTestCase {
     q.add("a", "2");
     q.add("b", "1");
     TopDocs docs = searcher.search(q, 100);
-    assertEquals(5, docs.totalHits.value);
+    assertEquals(5, docs.totalHits.value());
   }
 
   public void testQuery() throws IOException {
@@ -136,14 +136,14 @@ public class TestDrillDownQuery extends FacetTestCase {
     q.add("a");
     QueryUtils.check(q);
     TopDocs docs = searcher.search(q, 100);
-    assertEquals(25, docs.totalHits.value);
+    assertEquals(25, docs.totalHits.value());
 
     // Making sure the query yields 5 documents with the facet "b" and the
     // previous (facet "a") query as a base query
     DrillDownQuery q2 = new DrillDownQuery(config, q);
     q2.add("b");
     docs = searcher.search(q2, 100);
-    assertEquals(5, docs.totalHits.value);
+    assertEquals(5, docs.totalHits.value());
 
     // Making sure that a query of both facet "a" and facet "b" yields 5 results
     DrillDownQuery q3 = new DrillDownQuery(config);
@@ -151,14 +151,14 @@ public class TestDrillDownQuery extends FacetTestCase {
     q3.add("b");
     docs = searcher.search(q3, 100);
 
-    assertEquals(5, docs.totalHits.value);
+    assertEquals(5, docs.totalHits.value());
     // Check that content:foo (which yields 50% results) and facet/b (which yields 20%)
     // would gather together 10 results (10%..)
     Query fooQuery = new TermQuery(new Term("content", "foo"));
     DrillDownQuery q4 = new DrillDownQuery(config, fooQuery);
     q4.add("b");
     docs = searcher.search(q4, 100);
-    assertEquals(10, docs.totalHits.value);
+    assertEquals(10, docs.totalHits.value());
   }
 
   public void testQueryImplicitDefaultParams() throws IOException {
@@ -173,7 +173,7 @@ public class TestDrillDownQuery extends FacetTestCase {
     DrillDownQuery q2 = new DrillDownQuery(config, q);
     q2.add("b");
     TopDocs docs = searcher.search(q2, 100);
-    assertEquals(5, docs.totalHits.value);
+    assertEquals(5, docs.totalHits.value());
 
     // Check that content:foo (which yields 50% results) and facet/b (which yields 20%)
     // would gather together 10 results (10%..)
@@ -181,7 +181,7 @@ public class TestDrillDownQuery extends FacetTestCase {
     DrillDownQuery q4 = new DrillDownQuery(config, fooQuery);
     q4.add("b");
     docs = searcher.search(q4, 100);
-    assertEquals(10, docs.totalHits.value);
+    assertEquals(10, docs.totalHits.value());
   }
 
   public void testZeroLimit() throws IOException {
@@ -189,8 +189,10 @@ public class TestDrillDownQuery extends FacetTestCase {
     DrillDownQuery q = new DrillDownQuery(config);
     q.add("b", "1");
     int limit = 0;
-    FacetsCollector facetCollector = new FacetsCollector();
-    FacetsCollector.search(searcher, q, limit, facetCollector);
+
+    FacetsCollector facetCollector =
+        FacetsCollectorManager.search(searcher, q, limit, new FacetsCollectorManager())
+            .facetsCollector();
     Facets facets =
         getTaxonomyFacetCounts(
             taxo, config, facetCollector, config.getDimConfig("b").indexFieldName);
@@ -255,7 +257,8 @@ public class TestDrillDownQuery extends FacetTestCase {
   public void testNoDrillDown() throws Exception {
     Query base = new MatchAllDocsQuery();
     DrillDownQuery q = new DrillDownQuery(config, base);
-    Query rewrite = q.rewrite(reader).rewrite(reader);
+    IndexSearcher searcher = newSearcher(reader);
+    Query rewrite = q.rewrite(searcher).rewrite(searcher);
     assertEquals(base, rewrite);
   }
 

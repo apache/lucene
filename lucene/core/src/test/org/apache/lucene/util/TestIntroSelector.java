@@ -17,30 +17,28 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
+import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestIntroSelector extends LuceneTestCase {
 
   public void testSelect() {
+    Random random = random();
     for (int iter = 0; iter < 100; ++iter) {
-      doTestSelect(false);
+      doTestSelect(random);
     }
   }
 
-  public void testSlowSelect() {
-    for (int iter = 0; iter < 100; ++iter) {
-      doTestSelect(true);
-    }
-  }
-
-  private void doTestSelect(boolean slow) {
-    final int from = random().nextInt(5);
-    final int to = from + TestUtil.nextInt(random(), 1, 10000);
-    final int max = random().nextBoolean() ? random().nextInt(100) : random().nextInt(100000);
-    Integer[] arr = new Integer[to + random().nextInt(5)];
+  private void doTestSelect(Random random) {
+    final int from = random.nextInt(5);
+    final int to = from + TestUtil.nextInt(random, 1, 10000);
+    final int max = random.nextBoolean() ? random.nextInt(100) : random.nextInt(100000);
+    Integer[] arr = new Integer[to + random.nextInt(5)];
     for (int i = 0; i < arr.length; ++i) {
-      arr[i] = TestUtil.nextInt(random(), 0, max);
+      arr[i] = TestUtil.nextInt(random, 0, max);
     }
-    final int k = TestUtil.nextInt(random(), from, to - 1);
+    final int k = TestUtil.nextInt(random, from, to - 1);
 
     Integer[] expected = arr.clone();
     Arrays.sort(expected, from, to);
@@ -66,10 +64,10 @@ public class TestIntroSelector extends LuceneTestCase {
             return pivot.compareTo(actual[j]);
           }
         };
-    if (slow) {
-      selector.slowSelect(from, to, k);
-    } else {
+    if (random.nextBoolean()) {
       selector.select(from, to, k);
+    } else {
+      selector.select(from, to, k, random.nextInt(3));
     }
 
     assertEquals(expected[k], actual[k]);
@@ -77,9 +75,9 @@ public class TestIntroSelector extends LuceneTestCase {
       if (i < from || i >= to) {
         assertSame(arr[i], actual[i]);
       } else if (i <= k) {
-        assertTrue(actual[i].intValue() <= actual[k].intValue());
+        assertTrue(actual[i] <= actual[k]);
       } else {
-        assertTrue(actual[i].intValue() >= actual[k].intValue());
+        assertTrue(actual[i] >= actual[k]);
       }
     }
   }

@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.search.Query;
 
 /**
@@ -31,12 +33,16 @@ import org.apache.lucene.search.Query;
 class QueryProfilerTree {
 
   private final ArrayList<QueryProfilerBreakdown> breakdowns;
+
   /** Maps the Query to it's list of children. This is basically the dependency tree */
-  private final ArrayList<ArrayList<Integer>> tree;
+  private final ArrayList<IntArrayList> tree;
+
   /** A list of the original queries, keyed by index position */
   private final ArrayList<Query> queries;
+
   /** A list of top-level "roots". Each root can have its own tree of profiles */
-  private final ArrayList<Integer> roots;
+  private final IntArrayList roots;
+
   /** A temporary stack used to record where we are in the dependency tree. */
   private final Deque<Integer> stack;
 
@@ -52,7 +58,7 @@ class QueryProfilerTree {
     stack = new ArrayDeque<>(10);
     tree = new ArrayList<>(10);
     queries = new ArrayList<>(10);
-    roots = new ArrayList<>(10);
+    roots = new IntArrayList(10);
   }
 
   /**
@@ -109,7 +115,7 @@ class QueryProfilerTree {
   private QueryProfilerBreakdown addDependencyNode(Query query, int token) {
 
     // Add a new slot in the dependency tree
-    tree.add(new ArrayList<>(5));
+    tree.add(new IntArrayList(5));
 
     // Save our query for lookup later
     queries.add(query);
@@ -136,8 +142,8 @@ class QueryProfilerTree {
    */
   public List<QueryProfilerResult> getTree() {
     ArrayList<QueryProfilerResult> results = new ArrayList<>(roots.size());
-    for (Integer root : roots) {
-      results.add(doGetTree(root));
+    for (IntCursor root : roots) {
+      results.add(doGetTree(root.value));
     }
     return results;
   }
@@ -151,13 +157,13 @@ class QueryProfilerTree {
   private QueryProfilerResult doGetTree(int token) {
     Query query = queries.get(token);
     QueryProfilerBreakdown breakdown = breakdowns.get(token);
-    List<Integer> children = tree.get(token);
+    IntArrayList children = tree.get(token);
     List<QueryProfilerResult> childrenProfileResults = Collections.emptyList();
 
     if (children != null) {
       childrenProfileResults = new ArrayList<>(children.size());
-      for (Integer child : children) {
-        QueryProfilerResult childNode = doGetTree(child);
+      for (IntCursor child : children) {
+        QueryProfilerResult childNode = doGetTree(child.value);
         childrenProfileResults.add(childNode);
       }
     }
@@ -194,7 +200,7 @@ class QueryProfilerTree {
    */
   private void updateParent(int childToken) {
     Integer parent = stack.peekLast();
-    ArrayList<Integer> parentNode = tree.get(parent);
+    IntArrayList parentNode = tree.get(parent);
     parentNode.add(childToken);
     tree.set(parent, parentNode);
   }

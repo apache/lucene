@@ -104,7 +104,7 @@ function personality_modules
       ;;
     junit|unit)
       moduleType="submodules"
-      extra="-Dtests.badapples=false test"
+      extra="test"
       ;;  
     *)
       ;;

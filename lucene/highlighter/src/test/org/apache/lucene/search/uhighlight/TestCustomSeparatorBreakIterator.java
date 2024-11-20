@@ -17,19 +17,18 @@
 package org.apache.lucene.search.uhighlight;
 
 import static org.apache.lucene.search.uhighlight.TestWholeBreakIterator.assertSameBreaks;
-import static org.hamcrest.CoreMatchers.equalTo;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.text.BreakIterator;
 import java.util.Locale;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestCustomSeparatorBreakIterator extends LuceneTestCase {
 
   private static final Character[] SEPARATORS = new Character[] {' ', '\u0000', 8233};
 
   public void testBreakOnCustomSeparator() throws Exception {
-    Character separator = randomSeparator();
+    char separator = randomSeparator();
     BreakIterator bi = new CustomSeparatorBreakIterator(separator);
     String source =
         "this"
@@ -42,40 +41,38 @@ public class TestCustomSeparatorBreakIterator extends LuceneTestCase {
             + separator
             + "sentence";
     bi.setText(source);
-    assertThat(bi.current(), equalTo(0));
-    assertThat(bi.first(), equalTo(0));
-    assertThat(source.substring(bi.current(), bi.next()), equalTo("this" + separator));
-    assertThat(source.substring(bi.current(), bi.next()), equalTo("is" + separator));
-    assertThat(source.substring(bi.current(), bi.next()), equalTo("the" + separator));
-    assertThat(source.substring(bi.current(), bi.next()), equalTo("first" + separator));
-    assertThat(source.substring(bi.current(), bi.next()), equalTo("sentence"));
-    assertThat(bi.next(), equalTo(BreakIterator.DONE));
+    assertEquals(0, bi.current());
+    assertEquals(0, bi.first());
+    assertEquals("this" + separator, source.substring(bi.current(), bi.next()));
+    assertEquals("is" + separator, source.substring(bi.current(), bi.next()));
+    assertEquals("the" + separator, source.substring(bi.current(), bi.next()));
+    assertEquals("first" + separator, source.substring(bi.current(), bi.next()));
+    assertEquals("sentence", source.substring(bi.current(), bi.next()));
+    assertEquals(BreakIterator.DONE, bi.next());
 
-    assertThat(bi.last(), equalTo(source.length()));
+    assertEquals(source.length(), bi.last());
     int current = bi.current();
-    assertThat(source.substring(bi.previous(), current), equalTo("sentence"));
+    assertEquals("sentence", source.substring(bi.previous(), current));
     current = bi.current();
-    assertThat(source.substring(bi.previous(), current), equalTo("first" + separator));
+    assertEquals("first" + separator, source.substring(bi.previous(), current));
     current = bi.current();
-    assertThat(source.substring(bi.previous(), current), equalTo("the" + separator));
+    assertEquals("the" + separator, source.substring(bi.previous(), current));
     current = bi.current();
-    assertThat(source.substring(bi.previous(), current), equalTo("is" + separator));
+    assertEquals("is" + separator, source.substring(bi.previous(), current));
     current = bi.current();
-    assertThat(source.substring(bi.previous(), current), equalTo("this" + separator));
-    assertThat(bi.previous(), equalTo(BreakIterator.DONE));
-    assertThat(bi.current(), equalTo(0));
+    assertEquals("this" + separator, source.substring(bi.previous(), current));
+    assertEquals(BreakIterator.DONE, bi.previous());
+    assertEquals(0, bi.current());
 
-    assertThat(
-        source.substring(0, bi.following(9)),
-        equalTo("this" + separator + "is" + separator + "the" + separator));
+    assertEquals(
+        "this" + separator + "is" + separator + "the" + separator,
+        source.substring(0, bi.following(9)));
 
-    assertThat(
-        source.substring(0, bi.preceding(9)), equalTo("this" + separator + "is" + separator));
+    assertEquals("this" + separator + "is" + separator, source.substring(0, bi.preceding(9)));
 
-    assertThat(bi.first(), equalTo(0));
-    assertThat(
-        source.substring(0, bi.next(3)),
-        equalTo("this" + separator + "is" + separator + "the" + separator));
+    assertEquals(0, bi.first());
+    assertEquals(
+        "this" + separator + "is" + separator + "the" + separator, source.substring(0, bi.next(3)));
   }
 
   public void testSingleSentences() throws Exception {

@@ -20,19 +20,20 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.document.FeatureField.FeatureFunction;
 import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.ImpactsDISI;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TermScorer;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.BytesRef;
@@ -50,12 +51,12 @@ final class FeatureQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    FeatureFunction rewritten = function.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    FeatureFunction rewritten = function.rewrite(indexSearcher);
     if (function != rewritten) {
       return new FeatureQuery(fieldName, featureName, rewritten);
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
@@ -81,6 +82,13 @@ final class FeatureQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
+    if (!scoreMode.needsScores()) {
+      // We don't need scores (e.g. for faceting), and since features are stored as terms,
+      // allow TermQuery to optimize in this case
+      TermQuery tq = new TermQuery(new Term(fieldName, featureName));
+      return searcher.rewrite(tq).createWeight(searcher, scoreMode, boost);
+    }
+
     return new Weight(this) {
 
       @Override
@@ -110,50 +118,33 @@ final class FeatureQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        Terms terms = context.reader().terms(fieldName);
-        if (terms == null) {
-          return null;
-        }
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        Terms terms = Terms.getTerms(context.reader(), fieldName);
         TermsEnum termsEnum = terms.iterator();
         if (termsEnum.seekExact(new BytesRef(featureName)) == false) {
           return null;
         }
+        final int docFreq = termsEnum.docFreq();
 
-        final SimScorer scorer = function.scorer(boost);
-        final ImpactsEnum impacts = termsEnum.impacts(PostingsEnum.FREQS);
-        final ImpactsDISI impactsDisi = new ImpactsDISI(impacts, impacts, scorer);
+        return new ScorerSupplier() {
 
-        return new Scorer(this) {
+          private boolean topLevelScoringClause = false;
 
           @Override
-          public int docID() {
-            return impacts.docID();
+          public Scorer get(long leadCost) throws IOException {
+            final SimScorer scorer = function.scorer(boost);
+            final ImpactsEnum impacts = termsEnum.impacts(PostingsEnum.FREQS);
+            return new TermScorer(impacts, scorer, null, topLevelScoringClause);
           }
 
           @Override
-          public float score() throws IOException {
-            return scorer.score(impacts.freq(), 1L);
+          public long cost() {
+            return docFreq;
           }
 
           @Override
-          public DocIdSetIterator iterator() {
-            return impactsDisi;
-          }
-
-          @Override
-          public int advanceShallow(int target) throws IOException {
-            return impactsDisi.advanceShallow(target);
-          }
-
-          @Override
-          public float getMaxScore(int upTo) throws IOException {
-            return impactsDisi.getMaxScore(upTo);
-          }
-
-          @Override
-          public void setMinCompetitiveScore(float minScore) {
-            impactsDisi.setMinCompetitiveScore(minScore);
+          public void setTopLevelScoringClause() throws IOException {
+            topLevelScoringClause = true;
           }
         };
       }

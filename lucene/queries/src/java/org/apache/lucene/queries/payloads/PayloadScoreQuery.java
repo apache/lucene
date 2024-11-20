@@ -19,8 +19,8 @@ package org.apache.lucene.queries.payloads;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -33,13 +33,18 @@ import org.apache.lucene.queries.spans.Spans;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.BytesRef;
 
-/** A Query class that uses a {@link PayloadFunction} to modify the score of a wrapped SpanQuery */
+/**
+ * A Query class that uses a {@link PayloadFunction} to modify the score of a wrapped {@link
+ * SpanQuery}. A wrapped span query is used due to the way that payload values are indexed, see
+ * {@link PostingsEnum#PAYLOADS}.
+ */
 public class PayloadScoreQuery extends SpanQuery {
 
   private final SpanQuery wrappedQuery;
@@ -83,12 +88,12 @@ public class PayloadScoreQuery extends SpanQuery {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    Query matchRewritten = wrappedQuery.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    Query matchRewritten = wrappedQuery.rewrite(indexSearcher);
     if (wrappedQuery != matchRewritten && matchRewritten instanceof SpanQuery) {
       return new PayloadScoreQuery((SpanQuery) matchRewritten, function, decoder, includeSpanScore);
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
@@ -157,17 +162,6 @@ public class PayloadScoreQuery extends SpanQuery {
     }
 
     @Override
-    public SpanScorer scorer(LeafReaderContext context) throws IOException {
-      Spans spans = getSpans(context, Postings.PAYLOADS);
-      if (spans == null) {
-        return null;
-      }
-      LeafSimScorer docScorer = innerWeight.getSimScorer(context);
-      PayloadSpans payloadSpans = new PayloadSpans(spans, decoder);
-      return new PayloadSpanScorer(this, payloadSpans, docScorer);
-    }
-
-    @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return innerWeight.isCacheable(ctx);
     }
@@ -182,13 +176,25 @@ public class PayloadScoreQuery extends SpanQuery {
       Explanation payloadExpl = scorer.getPayloadExplanation();
 
       if (includeSpanScore) {
-        SpanWeight innerWeight = ((PayloadSpanWeight) scorer.getWeight()).innerWeight;
+        SpanWeight innerWeight = this.innerWeight;
         Explanation innerExpl = innerWeight.explain(context, doc);
         return Explanation.match(
             scorer.scoreCurrentDoc(), "PayloadSpanQuery, product of:", innerExpl, payloadExpl);
       }
 
       return scorer.getPayloadExplanation();
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      Spans spans = getSpans(context, Postings.PAYLOADS);
+      if (spans == null) {
+        return null;
+      }
+      NumericDocValues norms = context.reader().getNormValues(field);
+      PayloadSpans payloadSpans = new PayloadSpans(spans, decoder);
+      final var scorer = new PayloadSpanScorer(payloadSpans, innerWeight.getSimScorer(), norms);
+      return new DefaultScorerSupplier(scorer);
     }
   }
 
@@ -243,9 +249,9 @@ public class PayloadScoreQuery extends SpanQuery {
 
     private final PayloadSpans spans;
 
-    private PayloadSpanScorer(SpanWeight weight, PayloadSpans spans, LeafSimScorer docScorer)
+    private PayloadSpanScorer(PayloadSpans spans, SimScorer scorer, NumericDocValues norms)
         throws IOException {
-      super(weight, spans, docScorer);
+      super(spans, scorer, norms);
       this.spans = spans;
     }
 

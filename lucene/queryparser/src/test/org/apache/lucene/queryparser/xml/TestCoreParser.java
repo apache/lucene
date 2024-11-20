@@ -22,11 +22,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -38,7 +36,10 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.xml.sax.SAXException;
 
@@ -129,7 +130,7 @@ public class TestCoreParser extends LuceneTestCase {
 
   public void testCustomFieldUserQueryXML() throws ParserException, IOException {
     Query q = parse("UserInputQueryCustomField.xml");
-    long h = searcher().search(q, 1000).totalHits.value;
+    long h = searcher().search(q, 1000).totalHits.value();
     assertEquals("UserInputQueryCustomField should produce 0 result ", 0, h);
   }
 
@@ -148,7 +149,7 @@ public class TestCoreParser extends LuceneTestCase {
 
   public void testSpanPositionRangeQueryXML() throws Exception {
     Query q = parse("SpanPositionRangeQuery.xml");
-    long h = searcher().search(q, 10).totalHits.value;
+    long h = searcher().search(q, 10).totalHits.value();
     assertEquals("SpanPositionRangeQuery should produce 2 result ", 2, h);
     SpanQuery sq = parseAsSpan("SpanPositionRangeQuery.xml");
     dumpResults("SpanPositionRangeQuery", sq, 5);
@@ -156,19 +157,9 @@ public class TestCoreParser extends LuceneTestCase {
   }
 
   public void testSpanNearQueryWithoutSlopXML() throws Exception {
-    Exception expectedException = new NumberFormatException("For input string: \"\"");
-    try {
-      Query q = parse("SpanNearQueryWithoutSlop.xml");
-      fail("got query " + q + " instead of expected exception " + expectedException);
-    } catch (Exception e) {
-      assertEquals(expectedException.toString(), e.toString());
-    }
-    try {
-      SpanQuery sq = parseAsSpan("SpanNearQueryWithoutSlop.xml");
-      fail("got span query " + sq + " instead of expected exception " + expectedException);
-    } catch (Exception e) {
-      assertEquals(expectedException.toString(), e.toString());
-    }
+    // expected NumberFormatException from empty "slop" string
+    assertThrows(NumberFormatException.class, () -> parse("SpanNearQueryWithoutSlop.xml"));
+    assertThrows(NumberFormatException.class, () -> parseAsSpan("SpanNearQueryWithoutSlop.xml"));
   }
 
   public void testConstantScoreQueryXML() throws Exception {
@@ -315,7 +306,7 @@ public class TestCoreParser extends LuceneTestCase {
   }
 
   protected Query rewrite(Query q) throws IOException {
-    return q.rewrite(reader());
+    return q.rewrite(searcher());
   }
 
   protected void dumpResults(String qType, Query q, int numDocs) throws IOException {
@@ -332,7 +323,7 @@ public class TestCoreParser extends LuceneTestCase {
     }
     final IndexSearcher searcher = searcher();
     TopDocs hits = searcher.search(q, numDocs);
-    final boolean producedResults = (hits.totalHits.value > 0);
+    final boolean producedResults = (hits.totalHits.value() > 0);
     if (!producedResults) {
       System.out.println(
           "TEST: qType="
@@ -346,8 +337,9 @@ public class TestCoreParser extends LuceneTestCase {
     }
     if (VERBOSE) {
       ScoreDoc[] scoreDocs = hits.scoreDocs;
-      for (int i = 0; i < Math.min(numDocs, hits.totalHits.value); i++) {
-        Document ldoc = searcher.doc(scoreDocs[i].doc);
+      StoredFields storedFields = searcher.storedFields();
+      for (int i = 0; i < Math.min(numDocs, hits.totalHits.value()); i++) {
+        Document ldoc = storedFields.document(scoreDocs[i].doc);
         System.out.println("[" + ldoc.get("date") + "]" + ldoc.get("contents"));
       }
       System.out.println();

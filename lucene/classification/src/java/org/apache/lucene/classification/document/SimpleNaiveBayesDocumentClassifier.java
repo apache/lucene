@@ -40,7 +40,6 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -81,9 +80,9 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     ClassificationResult<BytesRef> assignedClass = null;
     double maxscore = -Double.MAX_VALUE;
     for (ClassificationResult<BytesRef> c : assignedClasses) {
-      if (c.getScore() > maxscore) {
+      if (c.score() > maxscore) {
         assignedClass = c;
-        maxscore = c.getScore();
+        maxscore = c.score();
       }
     }
     return assignedClass;
@@ -263,13 +262,11 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     if (query != null) {
       booleanQuery.add(query, BooleanClause.Occur.MUST);
     }
-    TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
-    indexSearcher.search(booleanQuery.build(), totalHitCountCollector);
-    return totalHitCountCollector.getTotalHits();
+    return indexSearcher.count(booleanQuery.build());
   }
 
   private double calculateLogPrior(Term term, int docsWithClassSize) throws IOException {
-    return Math.log((double) docCount(term)) - Math.log(docsWithClassSize);
+    return Math.log(docCount(term)) - Math.log(docsWithClassSize);
   }
 
   private int docCount(Term term) throws IOException {

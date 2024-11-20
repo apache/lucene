@@ -21,10 +21,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSearchWithThreads extends LuceneTestCase {
 
@@ -57,23 +58,20 @@ public class TestSearchWithThreads extends LuceneTestCase {
 
     final AtomicBoolean failed = new AtomicBoolean();
     final AtomicLong netSearch = new AtomicLong();
-
+    CollectorManager<?, Integer> collectorManager = DummyTotalHitCountCollector.createManager();
     Thread[] threads = new Thread[numThreads];
     for (int threadID = 0; threadID < numThreads; threadID++) {
       threads[threadID] =
           new Thread() {
-            TotalHitCountCollector col = new TotalHitCountCollector();
 
             @Override
             public void run() {
               try {
                 long totHits = 0;
                 long totSearch = 0;
-                for (; totSearch < numSearches & !failed.get(); totSearch++) {
-                  s.search(new TermQuery(new Term("body", "aaa")), col);
-                  totHits += col.getTotalHits();
-                  s.search(new TermQuery(new Term("body", "bbb")), col);
-                  totHits += col.getTotalHits();
+                for (; totSearch < numSearches && !failed.get(); totSearch++) {
+                  totHits += s.search(new TermQuery(new Term("body", "aaa")), collectorManager);
+                  totHits += s.search(new TermQuery(new Term("body", "bbb")), collectorManager);
                 }
                 assertTrue(totSearch > 0 && totHits > 0);
                 netSearch.addAndGet(totSearch);

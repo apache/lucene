@@ -18,11 +18,11 @@ package org.apache.lucene.document;
 
 import java.net.InetAddress;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for {@link InetAddressPoint} */
 public class TestInetAddressPoint extends LuceneTestCase {

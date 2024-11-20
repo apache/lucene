@@ -23,18 +23,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.index.VectorValues;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 
 /** Writes vector-valued fields in a plain text format */
-public class SimpleTextKnnVectorsWriter extends KnnVectorsWriter {
+public class SimpleTextKnnVectorsWriter extends BufferingKnnVectorsWriter {
 
   static final BytesRef FIELD_NUMBER = new BytesRef("field-number ");
   static final BytesRef FIELD_NAME = new BytesRef("field-name ");
@@ -47,8 +49,6 @@ public class SimpleTextKnnVectorsWriter extends KnnVectorsWriter {
   private final BytesRefBuilder scratch = new BytesRefBuilder();
 
   SimpleTextKnnVectorsWriter(SegmentWriteState state) throws IOException {
-    assert state.fieldInfos.hasVectorValues();
-
     boolean success = false;
     // exception handling to pass TestSimpleTextKnnVectorsFormat#testRandomExceptions
     try {
@@ -74,21 +74,44 @@ public class SimpleTextKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void writeField(FieldInfo fieldInfo, VectorValues vectors) throws IOException {
+  public void writeField(FieldInfo fieldInfo, FloatVectorValues floatVectorValues, int maxDoc)
+      throws IOException {
     long vectorDataOffset = vectorData.getFilePointer();
     List<Integer> docIds = new ArrayList<>();
-    int docV;
-    for (docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc()) {
-      writeVectorValue(vectors);
+    KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+    for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+      writeFloatVectorValue(floatVectorValues, iter.index());
+      docIds.add(docId);
+    }
+    long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+    writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
+  }
+
+  private void writeFloatVectorValue(FloatVectorValues vectors, int ord) throws IOException {
+    // write vector value
+    float[] value = vectors.vectorValue(ord);
+    assert value.length == vectors.dimension();
+    write(vectorData, Arrays.toString(value));
+    newline(vectorData);
+  }
+
+  @Override
+  public void writeField(FieldInfo fieldInfo, ByteVectorValues byteVectorValues, int maxDoc)
+      throws IOException {
+    long vectorDataOffset = vectorData.getFilePointer();
+    List<Integer> docIds = new ArrayList<>();
+    KnnVectorValues.DocIndexIterator it = byteVectorValues.iterator();
+    for (int docV = it.nextDoc(); docV != NO_MORE_DOCS; docV = it.nextDoc()) {
+      writeByteVectorValue(byteVectorValues, it.index());
       docIds.add(docV);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(fieldInfo, vectorDataOffset, vectorDataLength, docIds);
   }
 
-  private void writeVectorValue(VectorValues vectors) throws IOException {
+  private void writeByteVectorValue(ByteVectorValues vectors, int ord) throws IOException {
     // write vector value
-    float[] value = vectors.vectorValue();
+    byte[] value = vectors.vectorValue(ord);
     assert value.length == vectors.dimension();
     write(vectorData, Arrays.toString(value));
     newline(vectorData);

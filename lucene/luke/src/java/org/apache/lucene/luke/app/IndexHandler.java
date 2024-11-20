@@ -21,7 +21,8 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.NoSuchFileException;
 import java.util.Objects;
-import org.apache.logging.log4j.Logger;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.luke.app.desktop.PreferencesFactory;
 import org.apache.lucene.luke.app.desktop.util.MessageUtils;
@@ -75,19 +76,19 @@ public final class IndexHandler extends AbstractHandler<IndexObserver> {
     try {
       reader = IndexUtils.openIndex(indexPath, dirImpl);
     } catch (NoSuchFileException e) {
-      log.error("Error opening index", e);
+      log.log(Level.SEVERE, "Error opening index", e);
       try {
         // remove the non-existing index path from history.
         PreferencesFactory.getInstance().removeHistory(indexPath);
       } catch (IOException ioe) {
-        log.error("Preference file is deleted?", ioe);
+        log.log(Level.SEVERE, "Preference file is deleted?", ioe);
       }
       throw new LukeException(
           MessageUtils.getLocalizedMessage(
               "openindex.message.index_path_does_not_exist", indexPath),
           e);
     } catch (Exception e) {
-      log.error("Error opening index", e);
+      log.log(Level.SEVERE, "Error opening index", e);
       throw new LukeException(
           MessageUtils.getLocalizedMessage("openindex.message.index_path_invalid", indexPath), e);
     }

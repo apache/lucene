@@ -74,6 +74,7 @@ public class SuggestStopFilterFactory extends TokenFilterFactory implements Reso
 
   /** the default format, one word per line, whole line comments start with "#" */
   public static final String FORMAT_WORDSET = "wordset";
+
   /** multiple words may be specified on each line, trailing comments start with "&#124;" */
   public static final String FORMAT_SNOWBALL = "snowball";
 

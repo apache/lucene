@@ -1,0 +1,76 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+// Configure artifact push to apache nexus (snapshots repository, CI job)
+
+configure(rootProject) {
+  ext {
+    apacheNexusSnapshotsRepository = "https://repository.apache.org/content/repositories/snapshots"
+  }
+
+  // These access credentials are typically passed by the CI job.
+  def asfNexusUsername = propertyOrEnvOrDefault('asfNexusUsername', "ASF_NEXUS_USERNAME", null)
+  def asfNexusPassword = propertyOrEnvOrDefault('asfNexusPassword', "ASF_NEXUS_PASSWORD", null)
+
+  task mavenToApacheSnapshots() {
+    group "Distribution"
+    description "Publish Lucene Maven artifacts to Apache Snapshots repository: ${apacheNexusSnapshotsRepository}"
+
+    dependsOn rootProject.ext.mavenProjects.collect {
+      it.tasks.matching { it.name == "publishJarsPublicationToApacheSnapshotsRepository" }
+    }
+  }
+
+  task checkSnapshotsRepositoryPushPreconditions() {
+    doFirst {
+      // Make sure we're pushing a snapshot version.
+      if (!snapshotBuild) {
+        throw new GradleException("ASF snapshots repository will not accept a non-snapshot version: ${rootProject.version}")
+      }
+
+      // Make sure access credentials have been passed.
+      if (asfNexusUsername == null || asfNexusPassword == null) {
+        throw new GradleException("asfNexusUsername or asfNexusPassword is empty: these are required to publish to " +
+            " ASF Nexus.")
+      }
+    }
+  }
+
+  configure(rootProject.ext.mavenProjects) { Project project ->
+    // Make sure any actual publication task is preceded by precondition checks.
+    tasks.matching { it.name ==~ /publish.+ToApacheSnapshotsRepository/ }.all {
+      dependsOn rootProject.tasks.checkSnapshotsRepositoryPushPreconditions
+    }
+
+    plugins.withType(PublishingPlugin) {
+      publishing {
+        repositories {
+          maven {
+            name = "ApacheSnapshots"
+            url = apacheNexusSnapshotsRepository
+
+            credentials {
+              username asfNexusUsername
+              password asfNexusPassword
+            }
+          }
+        }
+      }
+    }
+  }
+}

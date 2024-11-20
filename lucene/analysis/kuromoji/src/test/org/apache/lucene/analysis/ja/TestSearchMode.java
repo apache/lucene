@@ -16,18 +16,19 @@
  */
 package org.apache.lucene.analysis.ja;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestSearchMode extends BaseTokenStreamTestCase {
   private static final String SEGMENTATION_FILENAME = "search-segmentation-tests.txt";
@@ -70,10 +71,9 @@ public class TestSearchMode extends BaseTokenStreamTestCase {
       throw new FileNotFoundException(
           "Cannot find " + SEGMENTATION_FILENAME + " in test classpath");
     }
-    try {
-      LineNumberReader reader =
-          new LineNumberReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-      String line = null;
+    try (is) {
+      LineNumberReader reader = new LineNumberReader(new InputStreamReader(is, UTF_8));
+      String line;
       while ((line = reader.readLine()) != null) {
         // Remove comments
         line = line.replaceAll("#.*$", "");
@@ -98,10 +98,16 @@ public class TestSearchMode extends BaseTokenStreamTestCase {
             expectedPosLengths[tokIDX] = 1;
           }
         }
-        assertAnalyzesTo(analyzer, sourceText, expectedTokens, expectedPosIncrs);
+        assertAnalyzesTo(
+            analyzer,
+            sourceText,
+            expectedTokens,
+            null,
+            null,
+            null,
+            expectedPosIncrs,
+            expectedPosLengths);
       }
-    } finally {
-      is.close();
     }
   }
 
@@ -111,10 +117,9 @@ public class TestSearchMode extends BaseTokenStreamTestCase {
       throw new FileNotFoundException(
           "Cannot find " + SEGMENTATION_FILENAME + " in test classpath");
     }
-    try {
-      LineNumberReader reader =
-          new LineNumberReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-      String line = null;
+    try (is) {
+      LineNumberReader reader = new LineNumberReader(new InputStreamReader(is, UTF_8));
+      String line;
       while ((line = reader.readLine()) != null) {
         // Remove comments
         line = line.replaceAll("#.*$", "");
@@ -130,9 +135,9 @@ public class TestSearchMode extends BaseTokenStreamTestCase {
         String[] tmpExpectedTokens = fields[1].split("\\s+");
 
         List<String> expectedTokenList = new ArrayList<>();
-        for (int tokIDX = 0; tokIDX < tmpExpectedTokens.length; tokIDX++) {
-          if (!tmpExpectedTokens[tokIDX].endsWith("/0")) {
-            expectedTokenList.add(tmpExpectedTokens[tokIDX]);
+        for (String expectedToken : tmpExpectedTokens) {
+          if (!expectedToken.endsWith("/0")) {
+            expectedTokenList.add(expectedToken);
           }
         }
 
@@ -145,11 +150,13 @@ public class TestSearchMode extends BaseTokenStreamTestCase {
         assertAnalyzesTo(
             analyzerNoOriginal,
             sourceText,
-            expectedTokenList.toArray(new String[expectedTokenList.size()]),
-            expectedPosIncrs);
+            expectedTokenList.toArray(new String[0]),
+            null,
+            null,
+            null,
+            expectedPosIncrs,
+            expectedPosLengths);
       }
-    } finally {
-      is.close();
     }
   }
 }

@@ -23,7 +23,6 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.BooleanQuery;
@@ -31,6 +30,7 @@ import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -166,6 +166,16 @@ public final class FeatureField extends Field {
     return stream;
   }
 
+  /**
+   * This is useful if you have multiple features sharing a name and you want to take action to
+   * deduplicate them.
+   *
+   * @return the feature value of this field.
+   */
+  public float getFeatureValue() {
+    return featureValue;
+  }
+
   private static final class FeatureTokenStream extends TokenStream {
     private final CharTermAttribute termAttribute = addAttribute(CharTermAttribute.class);
     private final TermFrequencyAttribute freqAttribute = addAttribute(TermFrequencyAttribute.class);
@@ -223,7 +233,7 @@ public final class FeatureField extends Field {
 
     abstract Explanation explain(String field, String feature, float w, int freq);
 
-    FeatureFunction rewrite(IndexReader reader) throws IOException {
+    FeatureFunction rewrite(IndexSearcher indexSearcher) throws IOException {
       return this;
     }
   }
@@ -272,7 +282,6 @@ public final class FeatureField extends Field {
       return true;
     }
   }
-  ;
 
   static final class LogFunction extends FeatureFunction {
 
@@ -340,11 +349,11 @@ public final class FeatureField extends Field {
     }
 
     @Override
-    public FeatureFunction rewrite(IndexReader reader) throws IOException {
+    public FeatureFunction rewrite(IndexSearcher indexSearcher) throws IOException {
       if (pivot != null) {
-        return super.rewrite(reader);
+        return super.rewrite(indexSearcher);
       }
-      float newPivot = computePivotFeatureValue(reader, field, feature);
+      float newPivot = computePivotFeatureValue(indexSearcher, field, feature);
       return new SaturationFunction(field, feature, newPivot);
     }
 
@@ -466,7 +475,7 @@ public final class FeatureField extends Field {
           Explanation.match(
               pivot, "k, pivot feature value that would give a score contribution equal to w/2"),
           Explanation.match(
-              pivot,
+              a,
               "a, exponent, higher values make the function grow slower before k and faster after k"),
           Explanation.match(featureValue, "S, feature value"));
     }
@@ -617,14 +626,14 @@ public final class FeatureField extends Field {
    * store the exponent in the higher bits, it means that the result will be an approximation of the
    * geometric mean of all feature values.
    *
-   * @param reader the {@link IndexReader} to search against
+   * @param searcher the {@link IndexSearcher} to perform the search
    * @param featureField the field that stores features
    * @param featureName the name of the feature
    */
-  static float computePivotFeatureValue(IndexReader reader, String featureField, String featureName)
-      throws IOException {
+  static float computePivotFeatureValue(
+      IndexSearcher searcher, String featureField, String featureName) throws IOException {
     Term term = new Term(featureField, featureName);
-    TermStates states = TermStates.build(reader.getContext(), term, true);
+    TermStates states = TermStates.build(searcher, term, true);
     if (states.docFreq() == 0) {
       // avoid division by 0
       // The return value doesn't matter much here, the term doesn't exist,

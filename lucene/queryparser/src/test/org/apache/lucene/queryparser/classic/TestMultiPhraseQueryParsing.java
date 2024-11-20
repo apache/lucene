@@ -24,19 +24,11 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.MultiPhraseQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMultiPhraseQueryParsing extends LuceneTestCase {
 
-  private static class TokenAndPos {
-    public final String token;
-    public final int pos;
-
-    public TokenAndPos(String token, int pos) {
-      this.token = token;
-      this.pos = pos;
-    }
-  }
+  private record TokenAndPos(String token, int pos) {}
 
   private static class CannedAnalyzer extends Analyzer {
     private final TokenAndPos[] tokens;

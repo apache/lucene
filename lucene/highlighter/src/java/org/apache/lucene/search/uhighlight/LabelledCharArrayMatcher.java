@@ -28,7 +28,9 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
  */
 public interface LabelledCharArrayMatcher extends CharArrayMatcher {
 
-  /** @return the label for this matcher */
+  /**
+   * @return the label for this matcher
+   */
   String getLabel();
 
   /** Associates a label with a CharArrayMatcher */

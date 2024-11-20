@@ -30,8 +30,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -57,7 +57,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
@@ -107,7 +107,7 @@ public final class SearchImpl extends LukeModel implements Search {
         .map(f -> IndexUtils.getFieldInfo(reader, f))
         .filter(info -> !info.getDocValuesType().equals(DocValuesType.NONE))
         .map(info -> info.name)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   @Override
@@ -116,7 +116,7 @@ public final class SearchImpl extends LukeModel implements Search {
         .map(f -> IndexUtils.getFieldInfo(reader, f))
         .filter(info -> !info.getIndexOptions().equals(IndexOptions.NONE))
         .map(info -> info.name)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   @Override
@@ -152,10 +152,10 @@ public final class SearchImpl extends LukeModel implements Search {
 
     if (rewrite) {
       try {
-        query = query.rewrite(reader);
+        query = query.rewrite(searcher);
       } catch (IOException e) {
         throw new LukeException(
-            String.format(Locale.ENGLISH, "Failed to rewrite query: %s", query.toString()), e);
+            String.format(Locale.ENGLISH, "Failed to rewrite query: %s", query), e);
       }
     }
 
@@ -230,7 +230,7 @@ public final class SearchImpl extends LukeModel implements Search {
         } else if (type == Float.class || type == Double.class) {
           pc = new PointsConfig(NumberFormat.getNumberInstance(Locale.ROOT), type);
         } else {
-          log.warn(
+          log.warning(
               String.format(Locale.ENGLISH, "Ignored invalid number type: %s.", type.getName()));
           continue;
         }
@@ -250,15 +250,15 @@ public final class SearchImpl extends LukeModel implements Search {
 
   @Override
   public Query mltQuery(int docid, MLTConfig mltConfig, Analyzer analyzer) {
-    MoreLikeThis mlt = new MoreLikeThis(reader);
-
-    mlt.setAnalyzer(analyzer);
-    mlt.setFieldNames(mltConfig.getFieldNames());
-    mlt.setMinDocFreq(mltConfig.getMinDocFreq());
-    mlt.setMaxDocFreq(mltConfig.getMaxDocFreq());
-    mlt.setMinTermFreq(mltConfig.getMinTermFreq());
-
     try {
+      MoreLikeThis mlt = new MoreLikeThis(reader);
+
+      mlt.setAnalyzer(analyzer);
+      mlt.setFieldNames(mltConfig.getFieldNames());
+      mlt.setMinDocFreq(mltConfig.getMinDocFreq());
+      mlt.setMaxDocFreq(mltConfig.getMaxDocFreq());
+      mlt.setMinTermFreq(mltConfig.getMinTermFreq());
+
       return mlt.like(docid);
     } catch (IOException e) {
       throw new LukeException("Failed to create MLT query for doc: " + docid, e);
@@ -314,9 +314,9 @@ public final class SearchImpl extends LukeModel implements Search {
       topDocs = searcher.searchAfter(after, query, pageSize, sort);
     } else {
       int hitsThreshold = exactHitsCount ? Integer.MAX_VALUE : DEFAULT_TOTAL_HITS_THRESHOLD;
-      TopScoreDocCollector collector = TopScoreDocCollector.create(pageSize, after, hitsThreshold);
-      searcher.search(query, collector);
-      topDocs = collector.topDocs();
+      TopScoreDocCollectorManager collectorManager =
+          new TopScoreDocCollectorManager(pageSize, after, hitsThreshold);
+      topDocs = searcher.search(query, collectorManager);
     }
 
     // reset total hits for the current query
@@ -341,10 +341,10 @@ public final class SearchImpl extends LukeModel implements Search {
     // proceed to next page
     currentPage += 1;
 
-    if (totalHits.value == 0
-        || (totalHits.relation == TotalHits.Relation.EQUAL_TO
-            && currentPage * pageSize >= totalHits.value)) {
-      log.warn("No more next search results are available.");
+    if (totalHits.value() == 0
+        || (totalHits.relation() == TotalHits.Relation.EQUAL_TO
+            && currentPage * (long) pageSize >= totalHits.value())) {
+      log.warning("No more next search results are available.");
       return Optional.empty();
     }
 
@@ -375,7 +375,7 @@ public final class SearchImpl extends LukeModel implements Search {
     currentPage -= 1;
 
     if (currentPage < 0) {
-      log.warn("No more previous search results are available.");
+      log.warning("No more previous search results are available.");
       return Optional.empty();
     }
 
@@ -394,8 +394,7 @@ public final class SearchImpl extends LukeModel implements Search {
     Similarity similarity;
 
     if (config.isUseClassicSimilarity()) {
-      ClassicSimilarity tfidf = new ClassicSimilarity();
-      tfidf.setDiscountOverlaps(config.isDiscountOverlaps());
+      ClassicSimilarity tfidf = new ClassicSimilarity(config.isDiscountOverlaps());
       similarity = tfidf;
     } else {
       BM25Similarity bm25 =
@@ -427,7 +426,7 @@ public final class SearchImpl extends LukeModel implements Search {
                   new SortField(name, SortField.Type.FLOAT),
                   new SortField(name, SortField.Type.DOUBLE)
                 })
-            .collect(Collectors.toList());
+            .toList();
 
       case SORTED_NUMERIC:
         return Arrays.stream(
@@ -437,7 +436,7 @@ public final class SearchImpl extends LukeModel implements Search {
                   new SortedNumericSortField(name, SortField.Type.FLOAT),
                   new SortedNumericSortField(name, SortField.Type.DOUBLE)
                 })
-            .collect(Collectors.toList());
+            .toList();
 
       case SORTED:
         return Arrays.stream(
@@ -445,7 +444,7 @@ public final class SearchImpl extends LukeModel implements Search {
                   new SortField(name, SortField.Type.STRING),
                   new SortField(name, SortField.Type.STRING_VAL)
                 })
-            .collect(Collectors.toList());
+            .toList();
 
       case SORTED_SET:
         return Collections.singletonList(new SortedSetSortField(name, false));
@@ -462,7 +461,7 @@ public final class SearchImpl extends LukeModel implements Search {
     Objects.requireNonNull(type);
     List<SortField> candidates = guessSortTypes(name);
     if (candidates.isEmpty()) {
-      log.warn(String.format(Locale.ENGLISH, "No available sort types for: %s", name));
+      log.warning(String.format(Locale.ENGLISH, "No available sort types for: %s", name));
       return Optional.empty();
     }
 

@@ -19,6 +19,7 @@ package org.apache.lucene.util;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.math.BigInteger;
 import java.util.Arrays;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMathUtil extends LuceneTestCase {
 

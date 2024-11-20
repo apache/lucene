@@ -17,7 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Objects;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -110,8 +110,11 @@ public abstract class Weight implements SegmentCacheable {
   }
 
   /**
-   * Returns a {@link Scorer} which can iterate in order over all matching documents and assign them
-   * a score.
+   * Optional method that delegates to scorerSupplier.
+   *
+   * <p>Returns a {@link Scorer} which can iterate in order over all matching documents and assign
+   * them a score. A scorer for the same {@link LeafReaderContext} instance may be requested
+   * multiple times as part of a single search call.
    *
    * <p><b>NOTE:</b> null can be returned if no documents will be scored by this query.
    *
@@ -123,55 +126,100 @@ public abstract class Weight implements SegmentCacheable {
    * @return a {@link Scorer} which scores documents in/out-of order.
    * @throws IOException if there is a low-level I/O error
    */
-  public abstract Scorer scorer(LeafReaderContext context) throws IOException;
-
-  /**
-   * Optional method. Get a {@link ScorerSupplier}, which allows to know the cost of the {@link
-   * Scorer} before building it. The default implementation calls {@link #scorer} and builds a
-   * {@link ScorerSupplier} wrapper around it.
-   *
-   * @see #scorer
-   */
-  public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-    final Scorer scorer = scorer(context);
-    if (scorer == null) {
+  public final Scorer scorer(LeafReaderContext context) throws IOException {
+    ScorerSupplier scorerSupplier = scorerSupplier(context);
+    if (scorerSupplier == null) {
       return null;
     }
-    return new ScorerSupplier() {
-      @Override
-      public Scorer get(long leadCost) {
-        return scorer;
-      }
-
-      @Override
-      public long cost() {
-        return scorer.iterator().cost();
-      }
-    };
+    return scorerSupplier.get(Long.MAX_VALUE);
   }
 
   /**
-   * Optional method, to return a {@link BulkScorer} to score the query and send hits to a {@link
-   * Collector}. Only queries that have a different top-level approach need to override this; the
-   * default implementation pulls a normal {@link Scorer} and iterates and collects the resulting
-   * hits which are not marked as deleted.
+   * Get a {@link ScorerSupplier}, which allows knowing the cost of the {@link Scorer} before
+   * building it. A scorer supplier for the same {@link LeafReaderContext} instance may be requested
+   * multiple times as part of a single search call.
    *
-   * @param context the {@link org.apache.lucene.index.LeafReaderContext} for which to return the
-   *     {@link Scorer}.
-   * @return a {@link BulkScorer} which scores documents and passes them to a collector.
-   * @throws IOException if there is a low-level I/O error
+   * <p><strong>Note:</strong> It must return null if the scorer is null.
+   *
+   * @param context the leaf reader context
+   * @return a {@link ScorerSupplier} providing the scorer, or null if scorer is null
+   * @throws IOException if an IOException occurs
+   * @see Scorer
+   * @see DefaultScorerSupplier
    */
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+  public abstract ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException;
 
-    Scorer scorer = scorer(context);
-    if (scorer == null) {
+  /**
+   * Helper method that delegates to {@link #scorerSupplier(LeafReaderContext)}. It is implemented
+   * as
+   *
+   * <pre class="prettyprint">
+   * ScorerSupplier scorerSupplier = scorerSupplier(context);
+   * if (scorerSupplier == null) {
+   *   // No docs match
+   *   return null;
+   * }
+   *
+   * scorerSupplier.setTopLevelScoringClause();
+   * return scorerSupplier.bulkScorer();
+   * </pre>
+   *
+   * A bulk scorer for the same {@link LeafReaderContext} instance may be requested multiple times
+   * as part of a single search call.
+   */
+  public final BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
+    ScorerSupplier scorerSupplier = scorerSupplier(context);
+    if (scorerSupplier == null) {
       // No docs match
       return null;
     }
 
-    // This impl always scores docs in order, so we can
-    // ignore scoreDocsInOrder:
-    return new DefaultBulkScorer(scorer);
+    scorerSupplier.setTopLevelScoringClause();
+    return scorerSupplier.bulkScorer();
+  }
+
+  /**
+   * Counts the number of live documents that match a given {@link Weight#parentQuery} in a leaf.
+   *
+   * <p>The default implementation returns -1 for every query. This indicates that the count could
+   * not be computed in sub-linear time.
+   *
+   * <p>Specific query classes should override it to provide other accurate sub-linear
+   * implementations (that actually return the count). Look at {@link
+   * MatchAllDocsQuery#createWeight(IndexSearcher, ScoreMode, float)} for an example
+   *
+   * <p>We use this property of the function to count hits in {@link IndexSearcher#count(Query)}.
+   *
+   * @param context the {@link org.apache.lucene.index.LeafReaderContext} for which to return the
+   *     count.
+   * @return integer count of the number of matches
+   * @throws IOException if there is a low-level I/O error
+   */
+  public int count(LeafReaderContext context) throws IOException {
+    return -1;
+  }
+
+  /**
+   * A wrap for default scorer supplier.
+   *
+   * @lucene.internal
+   */
+  protected static final class DefaultScorerSupplier extends ScorerSupplier {
+    private final Scorer scorer;
+
+    public DefaultScorerSupplier(Scorer scorer) {
+      this.scorer = Objects.requireNonNull(scorer, "Scorer must not be null");
+    }
+
+    @Override
+    public Scorer get(long leadCost) throws IOException {
+      return scorer;
+    }
+
+    @Override
+    public long cost() {
+      return scorer.iterator().cost();
+    }
   }
 
   /**
@@ -204,28 +252,17 @@ public abstract class Weight implements SegmentCacheable {
         throws IOException {
       collector.setScorer(scorer);
       DocIdSetIterator scorerIterator = twoPhase == null ? iterator : twoPhase.approximation();
-      DocIdSetIterator collectorIterator = collector.competitiveIterator();
-      DocIdSetIterator filteredIterator;
-      if (collectorIterator == null) {
-        filteredIterator = scorerIterator;
-      } else {
-        if (scorerIterator.docID() != -1) {
-          // Wrap ScorerIterator to start from -1 for conjunction
-          scorerIterator = new StartDISIWrapper(scorerIterator);
-        }
-        // filter scorerIterator to keep only competitive docs as defined by collector
-        filteredIterator =
-            ConjunctionUtils.intersectIterators(Arrays.asList(scorerIterator, collectorIterator));
-      }
-      if (filteredIterator.docID() == -1 && min == 0 && max == DocIdSetIterator.NO_MORE_DOCS) {
-        scoreAll(collector, filteredIterator, twoPhase, acceptDocs);
+      DocIdSetIterator competitiveIterator = collector.competitiveIterator();
+
+      if (competitiveIterator == null
+          && scorerIterator.docID() == -1
+          && min == 0
+          && max == DocIdSetIterator.NO_MORE_DOCS) {
+        scoreAll(collector, scorerIterator, twoPhase, acceptDocs);
         return DocIdSetIterator.NO_MORE_DOCS;
       } else {
-        int doc = filteredIterator.docID();
-        if (doc < min) {
-          doc = filteredIterator.advance(min);
-        }
-        return scoreRange(collector, filteredIterator, twoPhase, acceptDocs, doc, max);
+        return scoreRange(
+            collector, scorerIterator, twoPhase, competitiveIterator, acceptDocs, min, max);
       }
     }
 
@@ -238,27 +275,59 @@ public abstract class Weight implements SegmentCacheable {
         LeafCollector collector,
         DocIdSetIterator iterator,
         TwoPhaseIterator twoPhase,
+        DocIdSetIterator competitiveIterator,
         Bits acceptDocs,
-        int currentDoc,
-        int end)
+        int min,
+        int max)
         throws IOException {
-      if (twoPhase == null) {
-        while (currentDoc < end) {
-          if (acceptDocs == null || acceptDocs.get(currentDoc)) {
-            collector.collect(currentDoc);
-          }
-          currentDoc = iterator.nextDoc();
+
+      if (competitiveIterator != null) {
+        if (competitiveIterator.docID() > min) {
+          min = competitiveIterator.docID();
+          // The competitive iterator may not match any docs in the range.
+          min = Math.min(min, max);
         }
-        return currentDoc;
-      } else {
-        while (currentDoc < end) {
-          if ((acceptDocs == null || acceptDocs.get(currentDoc)) && twoPhase.matches()) {
-            collector.collect(currentDoc);
-          }
-          currentDoc = iterator.nextDoc();
-        }
-        return currentDoc;
       }
+
+      int doc = iterator.docID();
+      if (doc < min) {
+        if (doc == min - 1) {
+          doc = iterator.nextDoc();
+        } else {
+          doc = iterator.advance(min);
+        }
+      }
+
+      if (twoPhase == null && competitiveIterator == null) {
+        // Optimize simple iterators with collectors that can't skip
+        while (doc < max) {
+          if (acceptDocs == null || acceptDocs.get(doc)) {
+            collector.collect(doc);
+          }
+          doc = iterator.nextDoc();
+        }
+      } else {
+        while (doc < max) {
+          if (competitiveIterator != null) {
+            assert competitiveIterator.docID() <= doc;
+            if (competitiveIterator.docID() < doc) {
+              competitiveIterator.advance(doc);
+            }
+            if (competitiveIterator.docID() != doc) {
+              doc = iterator.advance(competitiveIterator.docID());
+              continue;
+            }
+          }
+
+          if ((acceptDocs == null || acceptDocs.get(doc))
+              && (twoPhase == null || twoPhase.matches())) {
+            collector.collect(doc);
+          }
+          doc = iterator.nextDoc();
+        }
+      }
+
+      return doc;
     }
 
     /**
@@ -290,41 +359,6 @@ public abstract class Weight implements SegmentCacheable {
           }
         }
       }
-    }
-  }
-
-  /** Wraps an internal docIdSetIterator for it to start with docID = -1 */
-  protected static class StartDISIWrapper extends DocIdSetIterator {
-    private final DocIdSetIterator in;
-    private final int min;
-    private int docID = -1;
-
-    public StartDISIWrapper(DocIdSetIterator in) {
-      this.in = in;
-      this.min = in.docID();
-    }
-
-    @Override
-    public int docID() {
-      return docID;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(docID + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target <= min) {
-        return docID = min;
-      }
-      return docID = in.advance(target);
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
     }
   }
 }

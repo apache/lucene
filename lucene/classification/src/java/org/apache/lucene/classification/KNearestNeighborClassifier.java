@@ -24,10 +24,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.mlt.MoreLikeThis;
 import org.apache.lucene.search.BooleanClause;
@@ -95,18 +97,16 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
       int minDocsFreq,
       int minTermFreq,
       String classFieldName,
-      String... textFieldNames) {
+      String... textFieldNames)
+      throws IOException {
     this.textFieldNames = textFieldNames;
     this.classFieldName = classFieldName;
     this.mlt = new MoreLikeThis(indexReader);
     this.mlt.setAnalyzer(analyzer);
     this.mlt.setFieldNames(textFieldNames);
     this.indexSearcher = new IndexSearcher(indexReader);
-    if (similarity != null) {
-      this.indexSearcher.setSimilarity(similarity);
-    } else {
-      this.indexSearcher.setSimilarity(new BM25Similarity());
-    }
+    this.indexSearcher.setSimilarity(
+        Objects.requireNonNullElseGet(similarity, BM25Similarity::new));
     if (minDocsFreq > 0) {
       mlt.setMinDocFreq(minDocsFreq);
     }
@@ -129,9 +129,9 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
     ClassificationResult<BytesRef> assignedClass = null;
     double maxscore = -Double.MAX_VALUE;
     for (ClassificationResult<BytesRef> cl : assignedClasses) {
-      if (cl.getScore() > maxscore) {
+      if (cl.score() > maxscore) {
         assignedClass = cl;
-        maxscore = cl.getScore();
+        maxscore = cl.score();
       }
     }
     return assignedClass;
@@ -192,14 +192,16 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
     Map<BytesRef, Integer> classCounts = new HashMap<>();
     Map<BytesRef, Double> classBoosts =
         new HashMap<>(); // this is a boost based on class ranking positions in topDocs
-    float maxScore = topDocs.totalHits.value == 0 ? Float.NaN : topDocs.scoreDocs[0].score;
+    float maxScore = topDocs.totalHits.value() == 0 ? Float.NaN : topDocs.scoreDocs[0].score;
+    StoredFields storedFields = indexSearcher.storedFields();
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-      IndexableField[] storableFields = indexSearcher.doc(scoreDoc.doc).getFields(classFieldName);
+      IndexableField[] storableFields =
+          storedFields.document(scoreDoc.doc).getFields(classFieldName);
       for (IndexableField singleStorableField : storableFields) {
         if (singleStorableField != null) {
           BytesRef cl = new BytesRef(singleStorableField.stringValue());
           // update count
-          classCounts.merge(cl, 1, (a, b) -> a + b);
+          classCounts.merge(cl, 1, Integer::sum);
           // update boost, the boost is based on the best score
           Double totalBoost = classBoosts.get(cl);
           double singleBoost = scoreDoc.score / maxScore;
@@ -227,7 +229,7 @@ public class KNearestNeighborClassifier implements Classifier<BytesRef> {
     if (sumdoc < k) {
       for (ClassificationResult<BytesRef> cr : temporaryList) {
         returnList.add(
-            new ClassificationResult<>(cr.getAssignedClass(), cr.getScore() * k / (double) sumdoc));
+            new ClassificationResult<>(cr.assignedClass(), cr.score() * k / (double) sumdoc));
       }
     } else {
       returnList = temporaryList;

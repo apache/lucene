@@ -66,5 +66,6 @@ public class StandardQueryNodeProcessorPipeline extends QueryNodeProcessorPipeli
     add(new DefaultPhraseSlopQueryNodeProcessor());
     add(new BoostQueryNodeProcessor());
     add(new MultiTermRewriteMethodProcessor());
+    add(new IntervalQueryNodeProcessor());
   }
 }

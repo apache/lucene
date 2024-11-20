@@ -36,8 +36,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.search.similarities.BaseSimilarityTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.Version;
 
 public class TestClassicSimilarity extends BaseSimilarityTestCase {
@@ -69,7 +70,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
   public void testHit() throws IOException {
     Query query = new TermQuery(new Term("test", "hit"));
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -77,13 +78,13 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
   public void testMiss() throws IOException {
     Query query = new TermQuery(new Term("test", "miss"));
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
   }
 
   public void testEmpty() throws IOException {
     Query query = new TermQuery(new Term("empty", "miss"));
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
   }
 
   public void testBQHit() throws IOException {
@@ -92,7 +93,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
             .add(new TermQuery(new Term("test", "hit")), Occur.SHOULD)
             .build();
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -104,7 +105,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
             .add(new TermQuery(new Term("test", "miss")), Occur.SHOULD)
             .build();
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -116,7 +117,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
             .add(new TermQuery(new Term("empty", "miss")), Occur.SHOULD)
             .build();
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -124,7 +125,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
   public void testDMQHit() throws IOException {
     Query query = new DisjunctionMaxQuery(Arrays.asList(new TermQuery(new Term("test", "hit"))), 0);
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -136,7 +137,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
                 new TermQuery(new Term("test", "hit")), new TermQuery(new Term("test", "miss"))),
             0);
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -148,7 +149,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
                 new TermQuery(new Term("test", "hit")), new TermQuery(new Term("empty", "miss"))),
             0);
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -189,7 +190,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
               100,
               maxTermFrequency,
               uniqueTermCount);
-      assertEquals(sim2.computeNorm(state), sim1.computeNorm(state), 0f);
+      assertEquals(sim2.computeNorm(state), sim1.computeNorm(state));
     }
   }
 

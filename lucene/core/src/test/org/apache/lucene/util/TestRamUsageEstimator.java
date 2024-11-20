@@ -16,24 +16,26 @@
  */
 package org.apache.lucene.util;
 
+import static org.apache.lucene.tests.util.RamUsageTester.ramUsed;
 import static org.apache.lucene.util.RamUsageEstimator.COMPRESSED_REFS_ENABLED;
-import static org.apache.lucene.util.RamUsageEstimator.HOTSPOT_BEAN_CLASS;
 import static org.apache.lucene.util.RamUsageEstimator.JVM_IS_HOTSPOT_64BIT;
 import static org.apache.lucene.util.RamUsageEstimator.LONG_SIZE;
-import static org.apache.lucene.util.RamUsageEstimator.MANAGEMENT_FACTORY_CLASS;
 import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_ALIGNMENT;
 import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
 import static org.apache.lucene.util.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOf;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
-import static org.apache.lucene.util.RamUsageTester.sizeOf;
+import static org.apache.lucene.util.RamUsageEstimator.sizeOf;
 
+import java.lang.management.CompilationMXBean;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -41,71 +43,80 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestRamUsageEstimator extends LuceneTestCase {
 
   static final String[] strings = new String[] {"test string", "hollow", "catchmaster"};
 
   public void testSanity() {
-    assertTrue(sizeOf("test string") > shallowSizeOfInstance(String.class));
+    assertTrue(ramUsed("test string") > shallowSizeOfInstance(String.class));
 
     Holder holder = new Holder();
     holder.holder = new Holder("string2", 5000L);
-    assertTrue(sizeOf(holder) > shallowSizeOfInstance(Holder.class));
-    assertTrue(sizeOf(holder) > sizeOf(holder.holder));
+    assertTrue(ramUsed(holder) > shallowSizeOfInstance(Holder.class));
+    assertTrue(ramUsed(holder) > ramUsed(holder.holder));
 
     assertTrue(shallowSizeOfInstance(HolderSubclass.class) >= shallowSizeOfInstance(Holder.class));
     assertTrue(shallowSizeOfInstance(Holder.class) == shallowSizeOfInstance(HolderSubclass2.class));
 
-    assertTrue(sizeOf(strings) > shallowSizeOf(strings));
+    assertTrue(ramUsed(strings) > shallowSizeOf(strings));
   }
 
   public void testStaticOverloads() {
     Random rnd = random();
     {
       byte[] array = new byte[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(sizeOf(array), ramUsed(array));
+      assertEquals(shallowSizeOf(array), ramUsed(array));
     }
 
     {
       boolean[] array = new boolean[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       char[] array = new char[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       short[] array = new short[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       int[] array = new int[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       float[] array = new float[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       long[] array = new long[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
 
     {
       double[] array = new double[rnd.nextInt(1024)];
-      assertEquals(sizeOf(array), sizeOf((Object) array));
+      assertEquals(ramUsed(array), sizeOf(array));
+      assertEquals(ramUsed(array), shallowSizeOf(array));
     }
   }
 
   public void testStrings() {
-    long actual = sizeOf(strings);
-    long estimated = RamUsageEstimator.sizeOf(strings);
+    long actual = ramUsed(strings);
+    long estimated = sizeOf(strings);
     assertEquals(actual, estimated);
   }
 
@@ -115,12 +126,11 @@ public class TestRamUsageEstimator extends LuceneTestCase {
       bytes.add(new BytesRef("foo bar " + i));
       bytes.add(new BytesRef("baz bam " + i));
     }
-    long actual = sizeOf(bytes);
-    long estimated = RamUsageEstimator.sizeOf(bytes);
+    long actual = ramUsed(bytes);
+    long estimated = sizeOf(bytes);
     assertEquals((double) actual, (double) estimated, (double) actual * 0.1);
   }
 
-  // @AwaitsFix(bugUrl="https://issues.apache.org/jira/browse/LUCENE-8898")
   public void testMap() {
     Map<String, Object> map = new HashMap<>();
     map.put("primitive", 1234L);
@@ -129,13 +139,13 @@ public class TestRamUsageEstimator extends LuceneTestCase {
       map.put("complex " + i, new Term("foo " + i, "bar " + i));
     }
     double errorFactor = COMPRESSED_REFS_ENABLED ? 0.2 : 0.3;
-    long actual = sizeOf(map);
+    long actual = ramUsed(map);
     long estimated = RamUsageEstimator.sizeOfObject(map);
     assertEquals((double) actual, (double) estimated, (double) actual * errorFactor);
 
     // test recursion
     map.put("self", map);
-    actual = sizeOf(map);
+    actual = ramUsed(map);
     estimated = RamUsageEstimator.sizeOfObject(map);
     assertEquals((double) actual, (double) estimated, (double) actual * errorFactor);
   }
@@ -147,13 +157,13 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     for (int i = 0; i < 100; i++) {
       list.add(new Term("foo " + i, "term " + i));
     }
-    long actual = sizeOf(list);
+    long actual = ramUsed(list);
     long estimated = RamUsageEstimator.sizeOfObject(list);
     assertEquals((double) actual, (double) estimated, (double) actual * 0.1);
 
     // test recursion
     list.add(list);
-    actual = sizeOf(list);
+    actual = ramUsed(list);
     estimated = RamUsageEstimator.sizeOfObject(list);
     assertEquals((double) actual, (double) estimated, (double) actual * 0.1);
   }
@@ -172,7 +182,7 @@ public class TestRamUsageEstimator extends LuceneTestCase {
                 BooleanClause.Occur.MUST_NOT)
             .add(dismax, BooleanClause.Occur.MUST)
             .build();
-    long actual = sizeOf(bq);
+    long actual = ramUsed(bq);
     long estimated = RamUsageEstimator.sizeOfObject(bq);
     // sizeOfObject uses much lower default size estimate than we normally use
     // but the query-specific default is so large that the comparison becomes meaningless.
@@ -195,18 +205,12 @@ public class TestRamUsageEstimator extends LuceneTestCase {
 
   public void testHotspotBean() {
     assumeTrue("testHotspotBean only works on 64bit JVMs.", Constants.JRE_IS_64BIT);
-    try {
-      Class.forName(MANAGEMENT_FACTORY_CLASS);
-    } catch (ClassNotFoundException e) {
-      assumeNoException("testHotspotBean does not work on Java 8+ compact profile.", e);
-    }
-    try {
-      Class.forName(HOTSPOT_BEAN_CLASS);
-    } catch (ClassNotFoundException e) {
-      assumeNoException(
-          "testHotspotBean only works on Hotspot (OpenJDK, Oracle) virtual machines.", e);
-    }
-
+    assumeTrue(
+        "testHotspotBean only works on Hotspot (OpenJDK, Oracle) virtual machines.",
+        Optional.ofNullable(ManagementFactory.getCompilationMXBean())
+            .map(CompilationMXBean::getName)
+            .orElse("Unknown")
+            .startsWith("HotSpot"));
     assertTrue(
         "We should have been able to detect Hotspot's internal settings from the management bean.",
         JVM_IS_HOTSPOT_64BIT);

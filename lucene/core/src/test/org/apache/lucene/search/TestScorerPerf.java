@@ -17,51 +17,21 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.BitSet;
-import org.apache.lucene.analysis.MockAnalyzer;
+import java.util.Collection;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestScorerPerf extends LuceneTestCase {
   private final boolean validate = true; // set to false when doing performance testing
 
-  public void createRandomTerms(int nDocs, int nTerms, double power, Directory dir)
-      throws Exception {
-    int[] freq = new int[nTerms];
-    Term[] terms = new Term[nTerms];
-    for (int i = 0; i < nTerms; i++) {
-      int f = (nTerms + 1) - i; // make first terms less frequent
-      freq[i] = (int) Math.ceil(Math.pow(f, power));
-      terms[i] = new Term("f", Character.toString((char) ('A' + i)));
-    }
-
-    IndexWriter iw =
-        new IndexWriter(
-            dir, newIndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.CREATE));
-    for (int i = 0; i < nDocs; i++) {
-      Document d = new Document();
-      for (int j = 0; j < nTerms; j++) {
-        if (random().nextInt(freq[j]) == 0) {
-          d.add(newStringField("f", terms[j].text(), Field.Store.NO));
-          // System.out.println(d);
-        }
-      }
-      iw.addDocument(d);
-    }
-    iw.forceMerge(1);
-    iw.close();
-  }
-
-  public FixedBitSet randBitSet(int sz, int numBitsToSet) {
+  private static FixedBitSet randBitSet(int sz, int numBitsToSet) {
     FixedBitSet set = new FixedBitSet(sz);
     for (int i = 0; i < numBitsToSet; i++) {
       set.set(random().nextInt(sz));
@@ -69,7 +39,7 @@ public class TestScorerPerf extends LuceneTestCase {
     return set;
   }
 
-  public FixedBitSet[] randBitSets(int numSets, int setSize) {
+  private static FixedBitSet[] randBitSets(int numSets, int setSize) {
     FixedBitSet[] sets = new FixedBitSet[numSets];
     for (int i = 0; i < sets.length; i++) {
       sets[i] = randBitSet(setSize, random().nextInt(setSize));
@@ -77,7 +47,26 @@ public class TestScorerPerf extends LuceneTestCase {
     return sets;
   }
 
-  public static class CountingHitCollector extends SimpleCollector {
+  private record CountingHitCollectorManager()
+      implements CollectorManager<CountingHitCollector, CountingHitCollector> {
+
+    @Override
+    public CountingHitCollector newCollector() {
+      return new CountingHitCollector();
+    }
+
+    @Override
+    public CountingHitCollector reduce(Collection<CountingHitCollector> collectors) {
+      CountingHitCollector result = new CountingHitCollector();
+      for (CountingHitCollector collector : collectors) {
+        result.count += collector.count;
+        result.sum += collector.sum;
+      }
+      return result;
+    }
+  }
+
+  private static class CountingHitCollector extends SimpleCollector {
     int count = 0;
     int sum = 0;
     protected int docBase = 0;
@@ -92,36 +81,14 @@ public class TestScorerPerf extends LuceneTestCase {
       return count;
     }
 
-    public int getSum() {
-      return sum;
-    }
-
     @Override
-    protected void doSetNextReader(LeafReaderContext context) throws IOException {
+    protected void doSetNextReader(LeafReaderContext context) {
       docBase = context.docBase;
     }
 
     @Override
     public ScoreMode scoreMode() {
       return ScoreMode.COMPLETE_NO_SCORES;
-    }
-  }
-
-  public static class MatchingHitCollector extends CountingHitCollector {
-    FixedBitSet answer;
-    int pos = -1;
-
-    public MatchingHitCollector(FixedBitSet answer) {
-      this.answer = answer;
-    }
-
-    public void collect(int doc, float score) {
-
-      pos = answer.nextSetBit(pos + 1);
-      if (pos != doc + docBase) {
-        throw new RuntimeException("Expected doc " + pos + " but got " + doc + docBase);
-      }
-      super.collect(doc);
     }
   }
 
@@ -134,13 +101,14 @@ public class TestScorerPerf extends LuceneTestCase {
     }
 
     @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-        throws IOException {
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          return new ConstantScoreScorer(
-              this, score(), scoreMode, new BitSetIterator(docs, docs.approximateCardinality()));
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) {
+          final var scorer =
+              new ConstantScoreScorer(
+                  score(), scoreMode, new BitSetIterator(docs, docs.approximateCardinality()));
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override
@@ -169,20 +137,22 @@ public class TestScorerPerf extends LuceneTestCase {
     }
   }
 
-  FixedBitSet addClause(FixedBitSet[] sets, BooleanQuery.Builder bq, FixedBitSet result) {
+  private FixedBitSet addClause(FixedBitSet[] sets, BooleanQuery.Builder bq, FixedBitSet result) {
     final FixedBitSet rnd = sets[random().nextInt(sets.length)];
     Query q = new BitSetQuery(rnd);
     bq.add(q, BooleanClause.Occur.MUST);
     if (validate) {
-      if (result == null) result = rnd.clone();
-      else result.and(rnd);
+      if (result == null) {
+        result = rnd.clone();
+      } else {
+        result.and(rnd);
+      }
     }
     return result;
   }
 
-  public int doConjunctions(IndexSearcher s, FixedBitSet[] sets, int iter, int maxClauses)
+  private void doConjunctions(IndexSearcher s, FixedBitSet[] sets, int iter, int maxClauses)
       throws IOException {
-    int ret = 0;
 
     for (int i = 0; i < iter; i++) {
       int nClauses = random().nextInt(maxClauses - 1) + 2; // min 2 clauses
@@ -191,23 +161,17 @@ public class TestScorerPerf extends LuceneTestCase {
       for (int j = 0; j < nClauses; j++) {
         result = addClause(sets, bq, result);
       }
+      CountingHitCollector hc = s.search(bq.build(), new CountingHitCollectorManager());
 
-      CountingHitCollector hc =
-          validate ? new MatchingHitCollector(result) : new CountingHitCollector();
-      s.search(bq.build(), hc);
-      ret += hc.getSum();
-
-      if (validate) assertEquals(result.cardinality(), hc.getCount());
-      // System.out.println(hc.getCount());
+      if (validate) {
+        assertEquals(result.cardinality(), hc.getCount());
+      }
     }
-
-    return ret;
   }
 
-  public int doNestedConjunctions(
+  private void doNestedConjunctions(
       IndexSearcher s, FixedBitSet[] sets, int iter, int maxOuterClauses, int maxClauses)
       throws IOException {
-    int ret = 0;
     long nMatches = 0;
 
     for (int i = 0; i < iter; i++) {
@@ -226,111 +190,15 @@ public class TestScorerPerf extends LuceneTestCase {
         oq.add(bq.build(), BooleanClause.Occur.MUST);
       } // outer
 
-      CountingHitCollector hc =
-          validate ? new MatchingHitCollector(result) : new CountingHitCollector();
-      s.search(oq.build(), hc);
+      CountingHitCollector hc = s.search(oq.build(), new CountingHitCollectorManager());
       nMatches += hc.getCount();
-      ret += hc.getSum();
-      if (validate) assertEquals(result.cardinality(), hc.getCount());
-      // System.out.println(hc.getCount());
-    }
-    if (VERBOSE) System.out.println("Average number of matches=" + (nMatches / iter));
-    return ret;
-  }
-
-  public int doTermConjunctions(
-      Term[] terms, IndexSearcher s, int termsInIndex, int maxClauses, int iter)
-      throws IOException {
-    int ret = 0;
-
-    long nMatches = 0;
-    for (int i = 0; i < iter; i++) {
-      int nClauses = random().nextInt(maxClauses - 1) + 2; // min 2 clauses
-      BooleanQuery.Builder bq = new BooleanQuery.Builder();
-      BitSet termflag = new BitSet(termsInIndex);
-      for (int j = 0; j < nClauses; j++) {
-        int tnum;
-        // don't pick same clause twice
-        tnum = random().nextInt(termsInIndex);
-        if (termflag.get(tnum)) tnum = termflag.nextClearBit(tnum);
-        if (tnum < 0 || tnum >= termsInIndex) tnum = termflag.nextClearBit(0);
-        termflag.set(tnum);
-        Query tq = new TermQuery(terms[tnum]);
-        bq.add(tq, BooleanClause.Occur.MUST);
+      if (validate) {
+        assertEquals(result.cardinality(), hc.getCount());
       }
-
-      CountingHitCollector hc = new CountingHitCollector();
-      s.search(bq.build(), hc);
-      nMatches += hc.getCount();
-      ret += hc.getSum();
     }
-    if (VERBOSE) System.out.println("Average number of matches=" + (nMatches / iter));
-
-    return ret;
-  }
-
-  public int doNestedTermConjunctions(
-      IndexSearcher s,
-      Term[] terms,
-      int termsInIndex,
-      int maxOuterClauses,
-      int maxClauses,
-      int iter)
-      throws IOException {
-    int ret = 0;
-    long nMatches = 0;
-    for (int i = 0; i < iter; i++) {
-      int oClauses = random().nextInt(maxOuterClauses - 1) + 2;
-      BooleanQuery.Builder oq = new BooleanQuery.Builder();
-      for (int o = 0; o < oClauses; o++) {
-
-        int nClauses = random().nextInt(maxClauses - 1) + 2; // min 2 clauses
-        BooleanQuery.Builder bq = new BooleanQuery.Builder();
-        BitSet termflag = new BitSet(termsInIndex);
-        for (int j = 0; j < nClauses; j++) {
-          int tnum;
-          // don't pick same clause twice
-          tnum = random().nextInt(termsInIndex);
-          if (termflag.get(tnum)) tnum = termflag.nextClearBit(tnum);
-          if (tnum < 0 || tnum >= 25) tnum = termflag.nextClearBit(0);
-          termflag.set(tnum);
-          Query tq = new TermQuery(terms[tnum]);
-          bq.add(tq, BooleanClause.Occur.MUST);
-        } // inner
-
-        oq.add(bq.build(), BooleanClause.Occur.MUST);
-      } // outer
-
-      CountingHitCollector hc = new CountingHitCollector();
-      s.search(oq.build(), hc);
-      nMatches += hc.getCount();
-      ret += hc.getSum();
+    if (VERBOSE) {
+      System.out.println("Average number of matches=" + (nMatches / iter));
     }
-    if (VERBOSE) System.out.println("Average number of matches=" + (nMatches / iter));
-    return ret;
-  }
-
-  public int doSloppyPhrase(IndexSearcher s, int termsInIndex, int maxClauses, int iter)
-      throws IOException {
-    int ret = 0;
-
-    for (int i = 0; i < iter; i++) {
-      int nClauses = random().nextInt(maxClauses - 1) + 2; // min 2 clauses
-      PhraseQuery.Builder builder = new PhraseQuery.Builder();
-      for (int j = 0; j < nClauses; j++) {
-        int tnum = random().nextInt(termsInIndex);
-        builder.add(new Term("f", Character.toString((char) (tnum + 'A'))));
-      }
-      // slop could be random too
-      builder.setSlop(termsInIndex);
-      PhraseQuery q = builder.build();
-
-      CountingHitCollector hc = new CountingHitCollector();
-      s.search(q, hc);
-      ret += hc.getSum();
-    }
-
-    return ret;
   }
 
   public void testConjunctions() throws Exception {

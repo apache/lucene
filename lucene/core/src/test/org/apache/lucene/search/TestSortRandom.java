@@ -17,14 +17,17 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -33,13 +36,14 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** random sorting tests */
 public class TestSortRandom extends LuceneTestCase {
@@ -203,6 +207,7 @@ public class TestSortRandom extends LuceneTestCase {
 
       if (VERBOSE) {
         System.out.println("  actual:");
+        StoredFields storedFields = s.storedFields();
         for (int hitIDX = 0; hitIDX < hits.scoreDocs.length; hitIDX++) {
           final FieldDoc fd = (FieldDoc) hits.scoreDocs[hitIDX];
           BytesRef br = (BytesRef) fd.fields[0];
@@ -213,7 +218,7 @@ public class TestSortRandom extends LuceneTestCase {
                   + ": "
                   + (br == null ? "<missing>" : br.utf8ToString())
                   + " id="
-                  + s.doc(fd.doc).get("id"));
+                  + storedFields.document(fd.doc).get("id"));
         }
       }
       for (int hitIDX = 0; hitIDX < hits.scoreDocs.length; hitIDX++) {
@@ -236,6 +241,7 @@ public class TestSortRandom extends LuceneTestCase {
     private final List<BytesRef> docValues;
     public final List<BytesRef> matchValues =
         Collections.synchronizedList(new ArrayList<BytesRef>());
+    private final Map<LeafReaderContext, FixedBitSet> bitsets = new ConcurrentHashMap<>();
 
     // density should be 0.0 ... 1.0
     public RandomQuery(long seed, float density, List<BytesRef> docValues) {
@@ -249,23 +255,39 @@ public class TestSortRandom extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          Random random = new Random(context.docBase ^ seed);
-          final int maxDoc = context.reader().maxDoc();
-          final NumericDocValues idSource = DocValues.getNumeric(context.reader(), "id");
-          assertNotNull(idSource);
-          final FixedBitSet bits = new FixedBitSet(maxDoc);
-          for (int docID = 0; docID < maxDoc; docID++) {
-            assertEquals(docID, idSource.nextDoc());
-            if (random.nextFloat() <= density) {
-              bits.set(docID);
-              // System.out.println("  acc id=" + idSource.getInt(docID) + " docID=" + docID);
-              matchValues.add(docValues.get((int) idSource.longValue()));
-            }
-          }
-
-          return new ConstantScoreScorer(
-              this, score(), scoreMode, new BitSetIterator(bits, bits.approximateCardinality()));
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          FixedBitSet bits =
+              bitsets.computeIfAbsent(
+                  context,
+                  ctx -> {
+                    Random random = new Random(context.docBase ^ seed);
+                    final int maxDoc = context.reader().maxDoc();
+                    try {
+                      final NumericDocValues idSource =
+                          DocValues.getNumeric(context.reader(), "id");
+                      assertNotNull(idSource);
+                      final FixedBitSet bitset = new FixedBitSet(maxDoc);
+                      for (int docID = 0; docID < maxDoc; docID++) {
+                        assertEquals(docID, idSource.nextDoc());
+                        if (random.nextFloat() <= density) {
+                          bitset.set(docID);
+                          // System.out.println("  acc id=" + idSource.getInt(docID) + " docID=" +
+                          // docID);
+                          matchValues.add(docValues.get((int) idSource.longValue()));
+                        }
+                      }
+                      return bitset;
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  });
+          // The bitset is built for the whole segment, the first time each leaf is seen. Every
+          // partition iterates through its own set of doc ids, using a separate iterator backed by
+          // the shared bitset.
+          final var scorer =
+              new ConstantScoreScorer(
+                  score(), scoreMode, new BitSetIterator(bits, bits.approximateCardinality()));
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

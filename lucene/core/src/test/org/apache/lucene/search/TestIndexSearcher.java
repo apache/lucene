@@ -19,19 +19,13 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -41,15 +35,14 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.apache.lucene.util.TestUtil;
-import org.junit.Test;
 
 public class TestIndexSearcher extends LuceneTestCase {
   Directory dir;
@@ -79,8 +72,7 @@ public class TestIndexSearcher extends LuceneTestCase {
   @Override
   public void tearDown() throws Exception {
     super.tearDown();
-    reader.close();
-    dir.close();
+    IOUtils.close(reader, dir);
   }
 
   // should not throw exception
@@ -123,7 +115,6 @@ public class TestIndexSearcher extends LuceneTestCase {
     TestUtil.shutdownExecutorService(service);
   }
 
-  @Test
   public void testSearchAfterPassedMaxDoc() throws Exception {
     // LUCENE-5128: ensure we get a meaningful message if searchAfter exceeds maxDoc
     Directory dir = newDirectory();
@@ -176,12 +167,11 @@ public class TestIndexSearcher extends LuceneTestCase {
                   .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
                   .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
                   .build())) {
-        assertEquals(searcher.count(query), searcher.search(query, 1).totalHits.value);
+        assertEquals(searcher.count(query), searcher.search(query, 1).totalHits.value());
       }
       reader.close();
     }
-    w.close();
-    dir.close();
+    IOUtils.close(w, dir);
   }
 
   public void testGetQueryCache() throws IOException {
@@ -230,34 +220,54 @@ public class TestIndexSearcher extends LuceneTestCase {
     assertEquals(dummyPolicy, searcher.getQueryCachingPolicy());
   }
 
-  public void testGetSlices() throws Exception {
-    assertNull(new IndexSearcher(new MultiReader()).getSlices());
+  public void testGetSlicesNoLeavesNoExecutor() throws IOException {
+    IndexSearcher.LeafSlice[] slices = new IndexSearcher(new MultiReader()).getSlices();
+    assertEquals(0, slices.length);
+  }
 
+  public void testGetSlicesNoLeavesWithExecutor() throws IOException {
+    IndexSearcher.LeafSlice[] slices =
+        new IndexSearcher(new MultiReader(), Runnable::run).getSlices();
+    assertEquals(0, slices.length);
+  }
+
+  public void testGetSlices() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    w.addDocument(new Document());
+    for (int i = 0; i < 10; i++) {
+      w.addDocument(new Document());
+      // manually flush, so we get to create multiple segments almost all the times, as well as
+      // multiple slices
+      w.flush();
+    }
     IndexReader r = w.getReader();
     w.close();
 
-    ExecutorService service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestIndexSearcher"));
-    IndexSearcher s = new IndexSearcher(r, service);
-    IndexSearcher.LeafSlice[] slices = s.getSlices();
-    assertNotNull(slices);
-    assertEquals(1, slices.length);
-    assertEquals(1, slices[0].leaves.length);
-    assertTrue(slices[0].leaves[0] == r.leaves().get(0));
-    service.shutdown();
+    {
+      // without executor
+      IndexSearcher.LeafSlice[] slices = new IndexSearcher(r).getSlices();
+      assertEquals(1, slices.length);
+      assertEquals(r.leaves().size(), slices[0].partitions.length);
+    }
+    {
+      // force creation of multiple slices, and provide an executor
+      IndexSearcher searcher =
+          new IndexSearcher(r, Runnable::run) {
+            @Override
+            protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+              return slices(leaves, 1, 1, false);
+            }
+          };
+      IndexSearcher.LeafSlice[] slices = searcher.getSlices();
+      for (IndexSearcher.LeafSlice slice : slices) {
+        assertEquals(1, slice.partitions.length);
+      }
+      assertEquals(r.leaves().size(), slices.length);
+    }
     IOUtils.close(r, dir);
   }
 
-  public void testOneSegmentExecutesOnTheCallerThread() throws IOException {
+  public void testSlicesOffloadedToTheExecutor() throws IOException {
     List<LeafReaderContext> leaves = reader.leaves();
     AtomicInteger numExecutions = new AtomicInteger(0);
     IndexSearcher searcher =
@@ -271,202 +281,48 @@ public class TestIndexSearcher extends LuceneTestCase {
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
             ArrayList<LeafSlice> slices = new ArrayList<>();
             for (LeafReaderContext ctx : leaves) {
-              slices.add(new LeafSlice(Arrays.asList(ctx)));
+              slices.add(
+                  new LeafSlice(
+                      Collections.singletonList(
+                          LeafReaderContextPartition.createForEntireSegment(ctx))));
             }
             return slices.toArray(new LeafSlice[0]);
           }
         };
     searcher.search(new MatchAllDocsQuery(), 10);
-    if (leaves.size() <= 1) {
-      assertEquals(0, numExecutions.get());
-    } else {
-      assertEquals(leaves.size() - 1, numExecutions.get());
-    }
+    assertEquals(leaves.size() - 1, numExecutions.get());
   }
 
-  public void testRejectedExecution() throws IOException {
-    ExecutorService service = new RejectingMockExecutor();
+  public void testNullExecutorNonNullTaskExecutor() {
+    IndexSearcher indexSearcher = new IndexSearcher(reader);
+    assertNotNull(indexSearcher.getTaskExecutor());
+  }
 
-    IndexSearcher searcher =
-        new IndexSearcher(reader, service) {
+  public void testSegmentPartitionsSameSlice() {
+    IndexSearcher indexSearcher =
+        new IndexSearcher(reader, Runnable::run) {
           @Override
           protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-            ArrayList<LeafSlice> slices = new ArrayList<>();
+            List<LeafSlice> slices = new ArrayList<>();
             for (LeafReaderContext ctx : leaves) {
-              slices.add(new LeafSlice(Arrays.asList(ctx)));
+              slices.add(
+                  new LeafSlice(
+                      new ArrayList<>(
+                          List.of(
+                              LeafReaderContextPartition.createFromAndTo(ctx, 0, 1),
+                              LeafReaderContextPartition.createFromAndTo(
+                                  ctx, 1, ctx.reader().maxDoc())))));
             }
             return slices.toArray(new LeafSlice[0]);
           }
         };
 
-    // To ensure that failing ExecutorService still allows query to run
-    // successfully
-    TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), 10);
-    assert topDocs.scoreDocs.length == 10;
-
-    service.shutdown();
-  }
-
-  private static class RejectingMockExecutor implements ExecutorService {
-
-    @Override
-    public void shutdown() {}
-
-    @Override
-    public List<Runnable> shutdownNow() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isShutdown() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean isTerminated() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean awaitTermination(final long l, final TimeUnit timeUnit)
-        throws InterruptedException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T> Future<T> submit(final Callable<T> tCallable) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T> Future<T> submit(final Runnable runnable, final T t) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Future<?> submit(final Runnable runnable) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T> List<Future<T>> invokeAll(final Collection<? extends Callable<T>> callables)
-        throws InterruptedException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T> List<Future<T>> invokeAll(
-        final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit)
-        throws InterruptedException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T> T invokeAny(final Collection<? extends Callable<T>> callables)
-        throws InterruptedException, ExecutionException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public <T> T invokeAny(
-        final Collection<? extends Callable<T>> callables, final long l, final TimeUnit timeUnit)
-        throws InterruptedException, ExecutionException, TimeoutException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void execute(final Runnable runnable) {
-      throw new RejectedExecutionException();
-    }
-  }
-
-  public void testQueueSizeBasedSliceExecutor() throws Exception {
-    ThreadPoolExecutor service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestIndexSearcher"));
-
-    runSliceExecutorTest(service, false);
-
-    TestUtil.shutdownExecutorService(service);
-  }
-
-  public void testRandomBlockingSliceExecutor() throws Exception {
-    ThreadPoolExecutor service =
-        new ThreadPoolExecutor(
-            4,
-            4,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<Runnable>(),
-            new NamedThreadFactory("TestIndexSearcher"));
-
-    runSliceExecutorTest(service, true);
-
-    TestUtil.shutdownExecutorService(service);
-  }
-
-  private void runSliceExecutorTest(ThreadPoolExecutor service, boolean useRandomSliceExecutor)
-      throws Exception {
-    SliceExecutor sliceExecutor =
-        useRandomSliceExecutor == true
-            ? new RandomBlockingSliceExecutor(service)
-            : new QueueSizeBasedExecutor(service);
-
-    IndexSearcher searcher = new IndexSearcher(reader.getContext(), service, sliceExecutor);
-
-    Query[] queries = new Query[] {new MatchAllDocsQuery(), new TermQuery(new Term("field", "1"))};
-    Sort[] sorts = new Sort[] {null, new Sort(new SortField("field2", SortField.Type.STRING))};
-    ScoreDoc[] afters =
-        new ScoreDoc[] {null, new FieldDoc(0, 0f, new Object[] {newBytesRef("boo!")})};
-
-    for (ScoreDoc after : afters) {
-      for (Query query : queries) {
-        for (Sort sort : sorts) {
-          searcher.search(query, Integer.MAX_VALUE);
-          searcher.searchAfter(after, query, Integer.MAX_VALUE);
-          if (sort != null) {
-            TopDocs topDocs = searcher.search(query, Integer.MAX_VALUE, sort);
-            assertTrue(topDocs.totalHits.value > 0);
-
-            topDocs = searcher.search(query, Integer.MAX_VALUE, sort, true);
-            assertTrue(topDocs.totalHits.value > 0);
-
-            topDocs = searcher.search(query, Integer.MAX_VALUE, sort, false);
-            assertTrue(topDocs.totalHits.value > 0);
-
-            topDocs = searcher.searchAfter(after, query, Integer.MAX_VALUE, sort);
-            assertTrue(topDocs.totalHits.value > 0);
-
-            topDocs = searcher.searchAfter(after, query, Integer.MAX_VALUE, sort, true);
-            assertTrue(topDocs.totalHits.value > 0);
-
-            topDocs = searcher.searchAfter(after, query, Integer.MAX_VALUE, sort, false);
-            assertTrue(topDocs.totalHits.value > 0);
-          }
-        }
-      }
-    }
-  }
-
-  private class RandomBlockingSliceExecutor extends SliceExecutor {
-
-    public RandomBlockingSliceExecutor(Executor executor) {
-      super(executor);
-    }
-
-    @Override
-    public void invokeAll(Collection<? extends Runnable> tasks) {
-
-      for (Runnable task : tasks) {
-        boolean shouldExecuteOnCallerThread = random().nextBoolean();
-
-        processTask(task, shouldExecuteOnCallerThread);
-      }
-    }
+    assumeTrue(
+        "Needs at least 2 docs in the same segment",
+        indexSearcher.leafContexts.stream().allMatch(ctx -> ctx.reader().maxDoc() > 1));
+    IllegalStateException e = expectThrows(IllegalStateException.class, indexSearcher::getSlices);
+    assertEquals(
+        "The same slice targets multiple leaf partitions of the same leaf reader context. A physical segment should rather get partitioned to be searched concurrently from as many slices as the number of leaf partitions it is split into.",
+        e.getMessage());
   }
 }

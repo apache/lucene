@@ -30,7 +30,10 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
  * <p>To prevent terms from being stemmed use an instance of {@link SetKeywordMarkerFilter} or a
  * custom {@link TokenFilter} that sets the {@link KeywordAttribute} before this {@link
  * TokenStream}.
+ *
+ * @deprecated Use {@link SpanishPluralStemFilter} instead.
  */
+@Deprecated
 public final class SpanishMinimalStemFilter extends TokenFilter {
   private final SpanishMinimalStemmer stemmer = new SpanishMinimalStemmer();
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);

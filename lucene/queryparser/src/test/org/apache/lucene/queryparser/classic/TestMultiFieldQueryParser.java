@@ -21,9 +21,6 @@ import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockSynonymFilter;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -39,8 +36,11 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.RegexpQuery;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockSynonymFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 /** Tests QueryParser. */
 public class TestMultiFieldQueryParser extends LuceneTestCase {
@@ -155,6 +155,31 @@ public class TestMultiFieldQueryParser extends LuceneTestCase {
     // Check for AND and a field
     q = mfqp.parse("one AND two AND foo:test");
     assertEquals("+((b:one)^5.0 (t:one)^10.0) +((b:two)^5.0 (t:two)^10.0) +foo:test", q.toString());
+
+    // Check boost with slop
+    // See https://github.com/apache/lucene/issues/12195
+    q = mfqp.parse("\"one two\"~2");
+    assertEquals("(b:\"one two\"~2)^5.0 (t:\"one two\"~2)^10.0", q.toString());
+
+    // check boost with fuzzy
+    q = mfqp.parse("one~");
+    assertEquals("(b:one~2)^5.0 (t:one~2)^10.0", q.toString());
+
+    // check boost with prefix
+    q = mfqp.parse("one*");
+    assertEquals("(b:one*)^5.0 (t:one*)^10.0", q.toString());
+
+    // check boost with wildcard
+    q = mfqp.parse("o?n*e");
+    assertEquals("(b:o?n*e)^5.0 (t:o?n*e)^10.0", q.toString());
+
+    // check boost with regex
+    q = mfqp.parse("/[a-z][123]/");
+    assertEquals("(b:/[a-z][123]/)^5.0 (t:/[a-z][123]/)^10.0", q.toString());
+
+    // check boost with range
+    q = mfqp.parse("[one TO two]");
+    assertEquals("(b:[one TO two])^5.0 (t:[one TO two])^10.0", q.toString());
 
     q = mfqp.parse("one^3 AND two^4");
     assertEquals("+((b:one)^5.0 (t:one)^10.0)^3.0 +((b:two)^5.0 (t:two)^10.0)^4.0", q.toString());

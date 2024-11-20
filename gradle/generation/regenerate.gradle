@@ -1,6 +1,6 @@
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
-import org.apache.commons.codec.digest.DigestUtils
+import java.util.function.Function
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -56,10 +56,29 @@ def computeChecksummedEntries = { Task sourceTask ->
   allFiles.files.forEach { file ->
     allEntries.put(
         sourceTask.project.rootDir.relativePath(file),
-        file.exists() ? new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() : "--")
+        file.exists() ? buildinfra.sha1Digest().digestAsHex(file).trim() : "--")
   }
 
   return allEntries
+}
+
+configure(rootProject) {
+  ext {
+    /**
+     * Utility function to read a file, apply changes to its content and write it back.
+     */
+    modifyFile = { File path, Function<String, String> modify ->
+      Function<String, String> normalizeEols = { text -> text.replace("\r\n", "\n") }
+
+      String original = path.getText("UTF-8")
+      String modified = normalizeEols.apply(original)
+      modified = modify.apply(modified)
+      modified = normalizeEols.apply(modified)
+      if (!original.equals(modified)) {
+        path.write(modified, "UTF-8")
+      }
+    }
+  }
 }
 
 configure([
@@ -70,6 +89,8 @@ configure([
         project(":lucene:backward-codecs"),
         project(":lucene:core"),
         project(":lucene:queryparser"),
+        project(":lucene:expressions"),
+        project(":lucene:test-framework"),
 ]) {
     task regenerate() {
       description "Rerun any code or static data generation tasks."
@@ -82,16 +103,21 @@ configure([
       //
       // The idea is that, given source-generating task "sourceTaskInternal" (note the suffix),
       // we create a bunch of other tasks that perform checksum generation, validation and
-      // source task skipping; example (sourceTask has Internal suffix stripped)
+      // source task skipping. For example, let's say we have a task 'genFooInternal";
+      // the following tasks would be created
       //
-      // ${sourceTask}ChecksumLoad
-      // ${sourceTask}ChecksumSave
-      // ${sourceTask}ChecksumCheck (fails if checksums are inconsistent)
-      // ${sourceTask} dependsOn [checksum-load, ${sourceTask}Internal, checksum-save]
+      // genFooChecksumLoad
+      // genFooChecksumSave
+      // genFooChecksumCheck (fails if checksums are inconsistent)
+      //
+      // and the following set of dependencies would be created (with additional
+      // constraints to run them in this particular order!).
+      //
+      // genFoo.dependsOn [genFooChecksumLoad, genFooInternal, genFooChecksumSave]
       //
       // Checksums are persisted and computed from sourceTask's inputs/outputs. If the
-      // persisted checksums are identical to current checksums, source task
-      // is skipped (via sourceTaskInternal.onlyIf { false }).
+      // persisted checksums are identical to the now-current checksums, the "internal" task
+      // is skipped (using onlyIf { false }).
       //
       // Implementation-wise things get complicated because gradle doesn't have the notion
       // of "ordered" task execution with respect to task AND its dependencies (we can add
@@ -99,8 +125,11 @@ configure([
       //
       // sourceTask - the task to wrap
       // extraConfig - a map with extra (optional) configuration options.
-      //   andThenTasks: other tasks that should be scheduled to run after source task and
-      //     before checksum calculation.
+      //   andThenTasks: any other tasks that should be scheduled to run after the internal task and
+      //     before checksum calculation/ saving. spotless is a good example of this.
+      //   ignoreWithSource: any other tasks that should be ignored if the internal task is ignored
+      //     (checksums are identical)
+      //   mustRunBefore: any tasks which should be scheduled to run after the internal task.
       wrapWithPersistentChecksums = { Task sourceTask, Map<String, Object> extraConfig = [:] ->
         if (!sourceTask.name.endsWith("Internal")) {
           throw new GradleException("Wrapped task must follow the convention name of *Internal: ${sourceTask.name}")
@@ -120,6 +149,13 @@ configure([
 
         List<Object> andThenTasks = toList(extraConfig.get("andThenTasks"))
         List<Object> ignoreWithSource =  toList(extraConfig.get("ignoreWithSource"))
+
+        // Schedule must-run-afters
+        List<Object> mustRunBefore = toList(extraConfig.get("mustRunBefore"))
+        // TODO: maybe ensure all task refs here are strings?
+        tasks.matching { it.name in mustRunBefore }.configureEach {
+          mustRunAfter sourceTask
+        }
 
         // Create checksum-loader task.
         Task checksumLoadTask = tasks.create("${sourceTaskName}ChecksumLoad", {
@@ -157,9 +193,11 @@ configure([
               expected = expected - same
 
               throw new GradleException("Checksums mismatch for derived resources; you might have" +
-                  " modified a generated resource (regenerate task: ${sourceTask.name}):\n" +
+                  " modified a generated resource (regenerate task: ${sourceTaskName}):\n" +
                   "Current:\n  ${current.entrySet().join('\n  ')}\n\n" +
-                  "Expected:\n  ${expected.entrySet().join('\n  ')}"
+                  "Expected:\n  ${expected.entrySet().join('\n  ')}\n\n" +
+                  "Input files for this task are:\n  " + sourceTask.inputs.files.join('\n  ') + "\n\n" +
+                  "Files generated by this task are:\n  " + sourceTask.outputs.files.join('\n  ')
               )
             }
           }
@@ -201,7 +239,13 @@ configure([
         })
 
         // Load checksums before the source task executes, otherwise it's always ignored.
-        sourceTask.dependsOn checksumLoadTask
+        project.afterEvaluate {
+          resolveTaskRefs([sourceTask, *ignoreWithSource]).each { t ->
+            t.configure {
+              dependsOn checksumLoadTask
+            }
+          }
+        }
 
         // Copy the description and group from the source task.
         project.afterEvaluate {

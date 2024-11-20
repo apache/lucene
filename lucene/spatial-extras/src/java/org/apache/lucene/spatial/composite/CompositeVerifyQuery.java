@@ -17,7 +17,6 @@
 package org.apache.lucene.spatial.composite;
 
 import java.io.IOException;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
@@ -26,6 +25,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.spatial.util.ShapeValuesPredicate;
@@ -47,12 +47,12 @@ public class CompositeVerifyQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    final Query rewritten = indexQuery.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    final Query rewritten = indexQuery.rewrite(indexSearcher);
     if (rewritten != indexQuery) {
       return new CompositeVerifyQuery(rewritten, predicateValueSource);
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
@@ -97,10 +97,8 @@ public class CompositeVerifyQuery extends Query {
             searcher, ScoreMode.COMPLETE_NO_SCORES, boost); // scores aren't unsupported
 
     return new ConstantScoreWeight(this, boost) {
-
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final Scorer indexQueryScorer = indexQueryWeight.scorer(context);
         if (indexQueryScorer == null) {
           return null;
@@ -108,7 +106,8 @@ public class CompositeVerifyQuery extends Query {
 
         final TwoPhaseIterator predFuncValues =
             predicateValueSource.iterator(context, indexQueryScorer.iterator());
-        return new ConstantScoreScorer(this, score(), scoreMode, predFuncValues);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, predFuncValues);
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

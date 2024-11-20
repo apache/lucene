@@ -20,7 +20,7 @@ import static org.apache.lucene.geo.XYEncodingUtils.encode;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.document.ShapeField.QueryRelation; // javadoc
+import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.document.ShapeField.Triangle;
 import org.apache.lucene.geo.Tessellator;
 import org.apache.lucene.geo.XYCircle;
@@ -34,6 +34,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.BytesRef;
 
 /**
  * A cartesian shape utility class for indexing and searching geometries whose vertices are unitless
@@ -43,8 +44,19 @@ import org.apache.lucene.search.Query;
  *
  * <ul>
  *   <li>{@link #createIndexableFields(String, XYPolygon)} for indexing a cartesian polygon.
+ *   <li>{@link #createDocValueField(String, XYPolygon)} for indexing a cartesian polygon doc value
+ *       field.
+ *   <li>{@link #createIndexableFields(String, XYPolygon, boolean)} for indexing a cartesian polygon
+ *       with the possibility of checking for self-intersections.
+ *   <li>{@link #createIndexableFields(String, XYPolygon, boolean)} for indexing a cartesian polygon
+ *       doc value field with the possibility of checking for self-intersections.
  *   <li>{@link #createIndexableFields(String, XYLine)} for indexing a cartesian linestring.
+ *   <li>{@link #createDocValueField(String, XYLine)} for indexing a cartesian linestring doc value.
  *   <li>{@link #createIndexableFields(String, float, float)} for indexing a x, y cartesian point.
+ *   <li>{@link #createDocValueField(String, float, float)} for indexing a x, y cartesian point doc
+ *       value.
+ *   <li>{@link #createDocValueField(String, BytesRef)} for indexing a cartesian doc value from
+ *       existing encoding.
  *   <li>{@link #newBoxQuery newBoxQuery()} for matching cartesian shapes that have some {@link
  *       QueryRelation} with a bounding box.
  *   <li>{@link #newBoxQuery newLineQuery()} for matching cartesian shapes that have some {@link
@@ -53,13 +65,14 @@ import org.apache.lucene.search.Query;
  *       QueryRelation} with a polygon.
  *   <li>{@link #newGeometryQuery newGeometryQuery()} for matching cartesian shapes that have some
  *       {@link QueryRelation} with one or more {@link XYGeometry}.
+ *   <li>{@link #createXYShapeDocValues(BytesRef)} for creating the {@link XYShapeDocValues}
  * </ul>
  *
  * <b>WARNING</b>: Like {@link LatLonPoint}, vertex values are indexed with some loss of precision
  * from the original {@code double} values.
  *
  * @see PointValues
- * @see LatLonDocValuesField
+ * @see XYDocValuesField
  */
 public class XYShape {
 
@@ -68,13 +81,52 @@ public class XYShape {
 
   /** create indexable fields for cartesian polygon geometry */
   public static Field[] createIndexableFields(String fieldName, XYPolygon polygon) {
+    return createIndexableFields(fieldName, polygon, false);
+  }
 
-    List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon);
-    List<Triangle> fields = new ArrayList<>(tessellation.size());
-    for (Tessellator.Triangle t : tessellation) {
-      fields.add(new Triangle(fieldName, t));
+  /** create doc value field for X,Y polygon geometry without creating indexable fields */
+  public static XYShapeDocValuesField createDocValueField(String fieldName, XYPolygon polygon) {
+    return createDocValueField(fieldName, polygon, false);
+  }
+
+  /**
+   * create indexable fields for cartesian polygon geometry. If {@code checkSelfIntersections} is
+   * set to true, the validity of the provided polygon is checked with a small performance penalty.
+   */
+  public static Field[] createIndexableFields(
+      String fieldName, XYPolygon polygon, boolean checkSelfIntersections) {
+
+    List<Tessellator.Triangle> tessellation =
+        Tessellator.tessellate(polygon, checkSelfIntersections);
+    Triangle[] fields = new Triangle[tessellation.size()];
+    for (int i = 0; i < tessellation.size(); i++) {
+      fields[i] = new Triangle(fieldName, tessellation.get(i));
     }
-    return fields.toArray(new Field[fields.size()]);
+    return fields;
+  }
+
+  /** create doc value field for lat lon polygon geometry without creating indexable fields. */
+  public static XYShapeDocValuesField createDocValueField(
+      String fieldName, XYPolygon polygon, boolean checkSelfIntersections) {
+    List<Tessellator.Triangle> tessellation =
+        Tessellator.tessellate(polygon, checkSelfIntersections);
+    ArrayList<ShapeField.DecodedTriangle> triangles = new ArrayList<>(tessellation.size());
+    for (Tessellator.Triangle t : tessellation) {
+      ShapeField.DecodedTriangle dt = new ShapeField.DecodedTriangle();
+      dt.type = ShapeField.DecodedTriangle.TYPE.TRIANGLE;
+      dt.setValues(
+          t.getEncodedX(0),
+          t.getEncodedY(0),
+          t.isEdgefromPolygon(0),
+          t.getEncodedX(1),
+          t.getEncodedY(1),
+          t.isEdgefromPolygon(0),
+          t.getEncodedX(2),
+          t.getEncodedY(2),
+          t.isEdgefromPolygon(2));
+      triangles.add(dt);
+    }
+    return new XYShapeDocValuesField(fieldName, triangles);
   }
 
   /** create indexable fields for cartesian line geometry */
@@ -96,6 +148,29 @@ public class XYShape {
     return fields;
   }
 
+  /** create doc value field for x, y line geometry without creating indexable fields. */
+  public static XYShapeDocValuesField createDocValueField(String fieldName, XYLine line) {
+    int numPoints = line.numPoints();
+    List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(numPoints - 1);
+    // create "flat" triangles
+    for (int i = 0, j = 1; j < numPoints; ++i, ++j) {
+      ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
+      t.type = ShapeField.DecodedTriangle.TYPE.LINE;
+      t.setValues(
+          encode(line.getX(i)),
+          encode(line.getY(i)),
+          true,
+          encode(line.getX(j)),
+          encode(line.getY(j)),
+          true,
+          encode(line.getX(i)),
+          encode(line.getY(i)),
+          true);
+      triangles.add(t);
+    }
+    return new XYShapeDocValuesField(fieldName, triangles);
+  }
+
   /** create indexable fields for cartesian point geometry */
   public static Field[] createIndexableFields(String fieldName, float x, float y) {
     return new Field[] {
@@ -103,11 +178,42 @@ public class XYShape {
     };
   }
 
+  /**
+   * create a {@link XYShapeDocValuesField} for cartesian points without creating indexable fields.
+   */
+  public static XYShapeDocValuesField createDocValueField(String fieldName, float x, float y) {
+    List<ShapeField.DecodedTriangle> triangles = new ArrayList<>(1);
+    ShapeField.DecodedTriangle t = new ShapeField.DecodedTriangle();
+    t.type = ShapeField.DecodedTriangle.TYPE.POINT;
+    t.setValues(encode(x), encode(y), true, encode(x), encode(y), true, encode(x), encode(y), true);
+    triangles.add(t);
+    return new XYShapeDocValuesField(fieldName, triangles);
+  }
+
+  /** create a {@link XYShapeDocValuesField} from an existing encoded representation */
+  public static XYShapeDocValuesField createDocValueField(String fieldName, BytesRef binaryValue) {
+    return new XYShapeDocValuesField(fieldName, binaryValue);
+  }
+
+  /** create a {@link XYShapeDocValuesField} from a precomputed tessellation */
+  public static XYShapeDocValuesField createDocValueField(
+      String fieldName, List<ShapeField.DecodedTriangle> tessellation) {
+    return new XYShapeDocValuesField(fieldName, tessellation);
+  }
+
   /** create a query to find all cartesian shapes that intersect a defined bounding box * */
   public static Query newBoxQuery(
       String field, QueryRelation queryRelation, float minX, float maxX, float minY, float maxY) {
     XYRectangle rectangle = new XYRectangle(minX, maxX, minY, maxY);
     return newGeometryQuery(field, queryRelation, rectangle);
+  }
+
+  /**
+   * create a docvalue query to find all cartesian shapes that intersect a defined bounding box *
+   */
+  public static Query newSlowDocValuesBoxQuery(
+      String field, QueryRelation queryRelation, float minX, float maxX, float minY, float maxY) {
+    return new XYShapeDocValuesQuery(field, queryRelation, new XYRectangle(minX, maxX, minY, maxY));
   }
 
   /**
@@ -163,5 +269,15 @@ public class XYShape {
       return new ConstantScoreQuery(builder.build());
     }
     return new XYShapeQuery(field, queryRelation, xyGeometries);
+  }
+
+  /**
+   * Factory method for creating the {@link XYShapeDocValues}
+   *
+   * @param bytesRef {@link BytesRef}
+   * @return {@link XYShapeDocValues}
+   */
+  public static XYShapeDocValues createXYShapeDocValues(BytesRef bytesRef) {
+    return new XYShapeDocValues(bytesRef);
   }
 }

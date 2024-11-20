@@ -31,12 +31,16 @@ class LegacyPacked64 extends PackedInts.Reader {
 
   /** Values are stores contiguously in the blocks array. */
   private final long[] blocks;
+
   /** A right-aligned mask of width BitsPerValue used by {@link #get(int)}. */
   private final long maskRight;
+
   /** Optimization: Saves one lookup in {@link #get(int)}. */
   private final int bpvMinusBlockSize;
+
   /** number of values */
   protected final int valueCount;
+
   /** bits per value. */
   protected final int bitsPerValue;
 

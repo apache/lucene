@@ -17,141 +17,135 @@
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
-import java.util.Map;
-import org.apache.lucene.facet.FacetResult;
+import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.FacetsConfig.DimConfig;
-import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndFloatQueue;
+import org.apache.lucene.facet.TopOrdAndNumberQueue;
+import org.apache.lucene.internal.hppc.IntFloatHashMap;
 
-/** Base class for all taxonomy-based facets that aggregate to a per-ords float[]. */
-public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
+/** Base class for all taxonomy-based facets that aggregate to float. */
+abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
-  // TODO: also use native hash map for sparse collection, like IntTaxonomyFacets
+  /** Aggregation function used for combining values. */
+  protected final AssociationAggregationFunction aggregationFunction;
 
-  /** Per-ordinal value. */
-  protected final float[] values;
+  /** Dense ordinal values. */
+  float[] values;
+
+  /** Sparse ordinal values. */
+  IntFloatHashMap sparseValues;
 
   /** Sole constructor. */
-  protected FloatTaxonomyFacets(
-      String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config) throws IOException {
-    super(indexFieldName, taxoReader, config);
-    values = new float[taxoReader.getSize()];
+  FloatTaxonomyFacets(
+      String indexFieldName,
+      TaxonomyReader taxoReader,
+      AssociationAggregationFunction aggregationFunction,
+      FacetsConfig config,
+      FacetsCollector fc)
+      throws IOException {
+    super(indexFieldName, taxoReader, config, fc);
+    this.aggregationFunction = aggregationFunction;
+    valueComparator = (o1, o2) -> Float.compare(o1.floatValue(), o2.floatValue());
   }
 
-  /** Rolls up any single-valued hierarchical dimensions. */
-  protected void rollup() throws IOException {
-    // Rollup any necessary dims:
-    int[] children = getChildren();
-    for (Map.Entry<String, DimConfig> ent : config.getDimConfigs().entrySet()) {
-      String dim = ent.getKey();
-      DimConfig ft = ent.getValue();
-      if (ft.hierarchical && ft.multiValued == false) {
-        int dimRootOrd = taxoReader.getOrdinal(new FacetLabel(dim));
-        assert dimRootOrd > 0;
-        values[dimRootOrd] += rollup(children[dimRootOrd]);
-      }
+  @Override
+  protected void initializeValueCounters() {
+    if (initialized) {
+      return;
     }
+    super.initializeValueCounters();
+
+    assert sparseValues == null && values == null;
+    if (sparseCounts != null) {
+      sparseValues = new IntFloatHashMap();
+    } else {
+      values = new float[taxoReader.getSize()];
+    }
+  }
+
+  /** Set the value associated with this ordinal to {@code newValue}. */
+  void setValue(int ordinal, float newValue) {
+    if (sparseValues != null) {
+      sparseValues.put(ordinal, newValue);
+    } else {
+      values[ordinal] = newValue;
+    }
+  }
+
+  /** Get the value associated with this ordinal. */
+  float getValue(int ordinal) {
+    if (sparseValues != null) {
+      return sparseValues.get(ordinal);
+    } else {
+      return values[ordinal];
+    }
+  }
+
+  @Override
+  protected Number getAggregationValue(int ordinal) {
+    return getValue(ordinal);
+  }
+
+  @Override
+  protected Number aggregate(Number existingVal, Number newVal) {
+    return aggregationFunction.aggregate(existingVal.floatValue(), newVal.floatValue());
+  }
+
+  @Override
+  protected void updateValueFromRollup(int ordinal, int childOrdinal) throws IOException {
+    super.updateValueFromRollup(ordinal, childOrdinal);
+    float currentValue = getValue(ordinal);
+    float newValue = aggregationFunction.aggregate(currentValue, rollup(childOrdinal));
+    setValue(ordinal, newValue);
+  }
+
+  @Override
+  protected TopOrdAndNumberQueue makeTopOrdAndNumberQueue(int topN) {
+    return new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
+  }
+
+  @Override
+  protected Number missingAggregationValue() {
+    return -1f;
   }
 
   private float rollup(int ord) throws IOException {
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
-    float sum = 0;
+    ParallelTaxonomyArrays.IntArray children = getChildren();
+    ParallelTaxonomyArrays.IntArray siblings = getSiblings();
+    float aggregatedValue = 0f;
     while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      float childValue = values[ord] + rollup(children[ord]);
-      values[ord] = childValue;
-      sum += childValue;
-      ord = siblings[ord];
+      updateValueFromRollup(ord, children.get(ord));
+      aggregatedValue = aggregationFunction.aggregate(aggregatedValue, getValue(ord));
+      ord = siblings.get(ord);
     }
-    return sum;
+    return aggregatedValue;
   }
 
   @Override
-  public Number getSpecificValue(String dim, String... path) throws IOException {
-    DimConfig dimConfig = verifyDim(dim);
-    if (path.length == 0) {
-      if (dimConfig.hierarchical && dimConfig.multiValued == false) {
-        // ok: rolled up at search time
-      } else if (dimConfig.requireDimCount && dimConfig.multiValued) {
-        // ok: we indexed all ords at index time
-      } else {
-        throw new IllegalArgumentException(
-            "cannot return dimension-level value alone; use getTopChildren instead");
-      }
+  protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
+    ((TopOrdAndFloatQueue.OrdAndFloat) incomingOrdAndValue).value = getValue(ord);
+  }
+
+  protected class FloatAggregatedValue extends AggregatedValue {
+    private float value;
+
+    public FloatAggregatedValue(float value) {
+      this.value = value;
     }
-    int ord = taxoReader.getOrdinal(new FacetLabel(dim, path));
-    if (ord < 0) {
-      return -1;
+
+    @Override
+    public void aggregate(int ord) {
+      value = aggregationFunction.aggregate(value, getValue(ord));
     }
-    return values[ord];
+
+    @Override
+    public Number get() {
+      return value;
+    }
   }
 
   @Override
-  public FacetResult getTopChildren(int topN, String dim, String... path) throws IOException {
-    if (topN <= 0) {
-      throw new IllegalArgumentException("topN must be > 0 (got: " + topN + ")");
-    }
-    DimConfig dimConfig = verifyDim(dim);
-    FacetLabel cp = new FacetLabel(dim, path);
-    int dimOrd = taxoReader.getOrdinal(cp);
-    if (dimOrd == -1) {
-      return null;
-    }
-
-    TopOrdAndFloatQueue q = new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
-    float bottomValue = 0;
-
-    int[] children = getChildren();
-    int[] siblings = getSiblings();
-
-    int ord = children[dimOrd];
-    float sumValues = 0;
-    int childCount = 0;
-
-    TopOrdAndFloatQueue.OrdAndValue reuse = null;
-    while (ord != TaxonomyReader.INVALID_ORDINAL) {
-      if (values[ord] > 0) {
-        sumValues += values[ord];
-        childCount++;
-        if (values[ord] > bottomValue) {
-          if (reuse == null) {
-            reuse = new TopOrdAndFloatQueue.OrdAndValue();
-          }
-          reuse.ord = ord;
-          reuse.value = values[ord];
-          reuse = q.insertWithOverflow(reuse);
-          if (q.size() == topN) {
-            bottomValue = q.top().value;
-          }
-        }
-      }
-
-      ord = siblings[ord];
-    }
-
-    if (sumValues == 0) {
-      return null;
-    }
-
-    if (dimConfig.multiValued) {
-      if (dimConfig.requireDimCount) {
-        sumValues = values[dimOrd];
-      } else {
-        // Our sum'd count is not correct, in general:
-        sumValues = -1;
-      }
-    } else {
-      // Our sum'd dim count is accurate, so we keep it
-    }
-
-    LabelAndValue[] labelValues = new LabelAndValue[q.size()];
-    for (int i = labelValues.length - 1; i >= 0; i--) {
-      TopOrdAndFloatQueue.OrdAndValue ordAndValue = q.pop();
-      FacetLabel child = taxoReader.getPath(ordAndValue.ord);
-      labelValues[i] = new LabelAndValue(child.components[cp.length], ordAndValue.value);
-    }
-
-    return new FacetResult(dim, path, sumValues, labelValues, childCount);
+  protected AggregatedValue newAggregatedValue() {
+    return new FloatAggregatedValue(0f);
   }
 }

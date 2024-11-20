@@ -31,22 +31,23 @@ public class PositiveScoresOnlyCollector extends FilterCollector {
 
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-    return new FilterLeafCollector(super.getLeafCollector(context)) {
+    return ScoreCachingWrappingScorer.wrap(
+        new FilterLeafCollector(super.getLeafCollector(context)) {
 
-      private Scorable scorer;
+          private Scorable scorer;
 
-      @Override
-      public void setScorer(Scorable scorer) throws IOException {
-        this.scorer = ScoreCachingWrappingScorer.wrap(scorer);
-        in.setScorer(this.scorer);
-      }
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {
+            this.scorer = scorer;
+            in.setScorer(scorer);
+          }
 
-      @Override
-      public void collect(int doc) throws IOException {
-        if (scorer.score() > 0) {
-          in.collect(doc);
-        }
-      }
-    };
+          @Override
+          public void collect(int doc) throws IOException {
+            if (scorer.score() > 0) {
+              in.collect(doc);
+            }
+          }
+        });
   }
 }

@@ -18,7 +18,8 @@ package org.apache.lucene.util.automaton;
 
 import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
 /** Not completely thorough, but tries to test determinism correctness somewhat randomly. */
 public class TestDeterminism extends LuceneTestCase {
@@ -40,7 +41,7 @@ public class TestDeterminism extends LuceneTestCase {
       a = AutomatonTestUtil.determinizeSimple(a);
       Automaton b = Operations.determinize(a, Integer.MAX_VALUE);
       // TODO: more verifications possible?
-      assertTrue(Operations.sameLanguage(a, b));
+      assertTrue(AutomatonTestUtil.sameLanguage(a, b));
     }
   }
 
@@ -52,20 +53,20 @@ public class TestDeterminism extends LuceneTestCase {
         Operations.complement(
             Operations.complement(a, DEFAULT_DETERMINIZE_WORK_LIMIT),
             DEFAULT_DETERMINIZE_WORK_LIMIT);
-    assertTrue(Operations.sameLanguage(a, equivalent));
+    assertTrue(AutomatonTestUtil.sameLanguage(a, equivalent));
 
     // a union a = a
     equivalent =
         Operations.determinize(
             Operations.removeDeadStates(Operations.union(a, a)), DEFAULT_DETERMINIZE_WORK_LIMIT);
-    assertTrue(Operations.sameLanguage(a, equivalent));
+    assertTrue(AutomatonTestUtil.sameLanguage(a, equivalent));
 
     // a intersect a = a
     equivalent =
         Operations.determinize(
             Operations.removeDeadStates(Operations.intersection(a, a)),
             DEFAULT_DETERMINIZE_WORK_LIMIT);
-    assertTrue(Operations.sameLanguage(a, equivalent));
+    assertTrue(AutomatonTestUtil.sameLanguage(a, equivalent));
 
     // a minus a = empty
     Automaton empty = Operations.minus(a, a, DEFAULT_DETERMINIZE_WORK_LIMIT);
@@ -80,7 +81,7 @@ public class TestDeterminism extends LuceneTestCase {
       equivalent =
           Operations.minus(optional, Automata.makeEmptyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       // System.out.println("equiv " + equivalent);
-      assertTrue(Operations.sameLanguage(a, equivalent));
+      assertTrue(AutomatonTestUtil.sameLanguage(a, equivalent));
     }
   }
 }

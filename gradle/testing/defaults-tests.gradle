@@ -18,7 +18,6 @@
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.apache.tools.ant.types.Commandline
 import org.gradle.api.tasks.testing.logging.*
-import org.apache.lucene.gradle.ErrorReportingTestListener
 
 def resources = scriptResources(buildscript)
 def verboseModeHookInstalled = false
@@ -34,7 +33,7 @@ allprojects {
           // asserts, debug output.
           [propName: 'tests.verbose', value: false, description: "Enables verbose mode (emits full test outputs immediately)."],
           [propName: 'tests.workDir',
-           value: { -> file("${buildDir}/tmp/tests-tmp") },
+           value: { -> project.relativePath(file("${buildDir}/tmp/tests-tmp")) },
            description: "Working directory for forked test JVMs",
            includeInReproLine: false
           ],
@@ -45,10 +44,17 @@ allprojects {
           [propName: 'tests.jvms',
            value: { -> ((int) Math.max(1, Math.min(Runtime.runtime.availableProcessors() / 2.0, 4.0))) },
            description: "Number of forked test JVMs"],
-          [propName: 'tests.haltonfailure', value: true, description: "Halt processing on test failure."],
+          [propName: 'tests.haltonfailure',
+           value: true,
+           description: "Halt processing on test failure.",
+           includeInReproLine: false
+          ],
           [propName: 'tests.jvmargs',
-           value: { -> propertyOrEnvOrDefault("tests.jvmargs", "TEST_JVM_ARGS", "-XX:TieredStopAtLevel=1") },
+           value: { -> envOrDefault("TEST_JVM_ARGS", (isCIBuild || testsDefaultVectorizationRequested()) ? "" : "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1") },
            description: "Arguments passed to each forked JVM."],
+          // Other settings.
+          [propName: 'tests.neverUpToDate', value: true,
+           description: "Make test tasks always fail the up-to-date checks (rerun) even if the inputs have not changed."],
       ]
 
       // Resolves test option's value.
@@ -59,6 +65,8 @@ allprojects {
         }
         return propertyOrDefault(option.propName, option.value)
       }
+      
+      testsDefaultVectorizationRequested = { -> Boolean.parseBoolean(resolvedTestOption('tests.defaultvectorization') as String) }
 
       testsCwd = file("${buildDir}/tmp/tests-cwd")
       testsTmpDir = file(resolvedTestOption("tests.workDir"))
@@ -87,7 +95,12 @@ allprojects {
 
     tasks.withType(Test) {
       ext {
-        testOutputsDir = file("${reports.junitXml.destination}/outputs")
+        testOutputsDir = file("${reports.junitXml.outputLocation.get()}/outputs")
+      }
+
+      // LUCENE-9660: Make it possible to always rerun tests, even if they're incrementally up-to-date.
+      if (resolvedTestOption("tests.neverUpToDate").toBoolean()) {
+        outputs.upToDateWhen { false }
       }
 
       maxParallelForks = resolvedTestOption("tests.jvms") as Integer
@@ -104,10 +117,43 @@ allprojects {
 
       ignoreFailures = resolvedTestOption("tests.haltonfailure").toBoolean() == false
 
-      jvmArgs Commandline.translateCommandline(resolvedTestOption("tests.jvmargs"))
-      jvmArgs '--illegal-access=deny'
+      // Up to JDK-15 we have to enforce --illegal-access=deny, because we want no code to access
+      // JDK internals; JDK-16 and later will default to deny, see https://openjdk.java.net/jeps/396:
+      if (rootProject.runtimeJavaVersion < JavaVersion.VERSION_16) {
+        jvmArgs '--illegal-access=deny'
+      }
 
-      systemProperty 'java.util.logging.config.file', file("${resources}/logging.properties")
+      // Lucene needs to optional modules at runtime, which we want to enforce for testing
+      // (if the runner JVM does not support them, it will fail tests):
+      jvmArgs '--add-modules', 'jdk.management'
+
+      // Enable the vector incubator module on supported Java versions:
+      def prop = propertyOrDefault("org.apache.lucene.vectorization.upperJavaFeatureVersion", "1") as String
+      def v = JavaVersion.toVersion(Integer.parseInt(prop)).majorVersion
+      if (rootProject.vectorIncubatorJavaVersions.contains(rootProject.runtimeJavaVersion) ||
+          rootProject.runtimeJavaVersion.majorVersion <= v) {
+        jvmArgs '--add-modules', 'jdk.incubator.vector'
+        if (rootProject.runtimeJavaVersion.majorVersion <= v) {
+          systemProperty 'org.apache.lucene.vectorization.upperJavaFeatureVersion', v
+        }
+      }
+      
+      jvmArgs '--enable-native-access=' + (project.path in [
+              ':lucene:core',
+              ':lucene:codecs',
+              ":lucene:distribution.tests",
+              ":lucene:test-framework"
+      ] ? 'ALL-UNNAMED' : 'org.apache.lucene.core')
+
+      def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
+      def tempDir = layout.projectDirectory.dir(testsTmpDir.toString())
+      jvmArgumentProviders.add(
+          new LoggingFileArgumentProvider(
+              loggingConfigFile: loggingConfigFile,
+              tempDir: tempDir
+          )
+      )
+
       systemProperty 'java.awt.headless', 'true'
       systemProperty 'jdk.map.althashing.threshold', '0'
 
@@ -128,14 +174,13 @@ allprojects {
 
       // Set up cwd and temp locations.
       systemProperty("java.io.tmpdir", testsTmpDir)
-      systemProperty("tempDir", testsTmpDir)
       doFirst {
         testsCwd.mkdirs()
         testsTmpDir.mkdirs()
       }
 
       // Disable HTML report generation. The reports are big and slow to generate.
-      reports.html.enabled = false
+      reports.html.required = false
 
       // Set up logging.
       testLogging {
@@ -148,13 +193,20 @@ allprojects {
         showStandardStreams false
       }
 
+      // Disable automatic test class detection, rely on class names only. This is needed for testing
+      // against JDKs where the bytecode is unparseable by Gradle, for example.
+      // We require all tests to start with Test*, this simplifies include patterns greatly.
+      scanForTestClasses = false
+      include '**/Test*.class'
+      exclude '**/*$*'
+
       // Set up custom test output handler.
       doFirst {
         project.delete testOutputsDir
       }
 
       def spillDir = getTemporaryDir().toPath()
-      def listener = new ErrorReportingTestListener(test.testLogging, spillDir, testOutputsDir.toPath(), verboseMode)
+      def listener = buildinfra.newErrorReportingTestListener(test.testLogging, spillDir, testOutputsDir.toPath(), verboseMode)
       addTestOutputListener(listener)
       addTestListener(listener)
 
@@ -163,5 +215,22 @@ allprojects {
         logger.info("Test folders for {}: cwd={}, tmp={}", project.path, testsCwd, testsTmpDir)
       }
     }
+  }
+}
+
+class LoggingFileArgumentProvider implements CommandLineArgumentProvider {
+  @InputFile
+  @PathSensitive(PathSensitivity.RELATIVE)
+  RegularFile loggingConfigFile
+
+  @Internal
+  Directory tempDir
+
+  @Override
+  Iterable<String> asArguments() {
+    [
+        "-Djava.util.logging.config.file=${loggingConfigFile.getAsFile()}",
+        "-DtempDir=${tempDir.getAsFile()}"
+    ]
   }
 }

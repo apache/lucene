@@ -17,12 +17,13 @@
 
 package org.apache.lucene;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
@@ -35,10 +36,10 @@ import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
-import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.junit.AfterClass;
 
@@ -95,7 +96,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
         PrintWriter pw = new PrintWriter(sw);
         ioe.printStackTrace(pw);
         if (infoStream.isEnabled("IW")) {
-          infoStream.message("IW", "TEST: now throw exc:\n" + sw.toString());
+          infoStream.message("IW", "TEST: now throw exc:\n" + sw);
         }
         throw ioe;
       }
@@ -123,14 +124,21 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
             .setMergePolicy(newLogMergePolicy());
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    infoStream = new PrintStreamInfoStream(new PrintStream(baos, true, IOUtils.UTF_8));
+    infoStream = new PrintStreamInfoStream(new PrintStream(baos, true, UTF_8));
     iwc.setInfoStream(infoStream);
 
     IndexWriter writer = new IndexWriter(dir, iwc);
     LogMergePolicy logMP = (LogMergePolicy) writer.getConfig().getMergePolicy();
     logMP.setMergeFactor(10);
-    for (int i = 0; i < 20; i++) {
-      writer.addDocument(doc);
+
+    try {
+      for (int i = 0; i < 60; i++) {
+        writer.addDocument(doc);
+      }
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalStateException ise) {
+      // OK
     }
 
     try {
@@ -148,7 +156,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
       assertTrue(excCalled);
     } catch (AssertionError ae) {
       System.out.println("TEST FAILED; IW infoStream output:");
-      System.out.println(baos.toString(IOUtils.UTF_8));
+      System.out.println(baos.toString(UTF_8));
       throw ae;
     }
     dir.close();
@@ -158,7 +166,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
 
     @Override
     public void merge(MergeSource mergeSource, MergeTrigger trigger) throws IOException {
-      OneMerge merge = null;
+      OneMerge merge;
       while ((merge = mergeSource.getNextMerge()) != null) {
         if (VERBOSE) {
           System.out.println("executing merge " + merge.segString());

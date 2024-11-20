@@ -38,6 +38,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   private final TermsHashPerField nextPerField;
   private final IntBlockPool intPool;
   final ByteBlockPool bytePool;
+  private final ByteSlicePool slicePool;
   // for each term we store an integer per stream that points into the bytePool above
   // the address is updated once data is written to the stream to point to the next free offset
   // in the terms stream. The start address for the stream is stored in
@@ -72,6 +73,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       IndexOptions indexOptions) {
     this.intPool = intPool;
     this.bytePool = bytePool;
+    this.slicePool = new ByteSlicePool(bytePool);
     this.streamCount = streamCount;
     this.fieldName = fieldName;
     this.nextPerField = nextPerField;
@@ -97,7 +99,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     final int offsetInAddressBuffer = streamStartOffset & IntBlockPool.INT_BLOCK_MASK;
     reader.init(
         bytePool,
-        postingsArray.byteStarts[termID] + stream * ByteBlockPool.FIRST_LEVEL_SIZE,
+        postingsArray.byteStarts[termID] + stream * ByteSlicePool.FIRST_LEVEL_SIZE,
         streamAddressBuffer[offsetInAddressBuffer + stream]);
   }
 
@@ -140,16 +142,21 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     }
   }
 
+  /**
+   * Called when we first encounter a new term. We must allocate slies to store the postings (vInt
+   * compressed doc/freq/prox), and also the int pointers to where (in our {@link ByteBlockPool}
+   * storage) the postings for this term begin.
+   */
   private void initStreamSlices(int termID, int docID) throws IOException {
     // Init stream slices
-    // TODO: figure out why this is 2*streamCount here. streamCount should be enough?
-    if ((2 * streamCount) + intPool.intUpto > IntBlockPool.INT_BLOCK_SIZE) {
-      // can we fit all the streams in the current buffer?
+    if (streamCount + intPool.intUpto > IntBlockPool.INT_BLOCK_SIZE) {
+      // not enough space remaining in this buffer -- jump to next buffer and lose this remaining
+      // piece
       intPool.nextBuffer();
     }
 
     if (ByteBlockPool.BYTE_BLOCK_SIZE - bytePool.byteUpto
-        < (2 * streamCount) * ByteBlockPool.FIRST_LEVEL_SIZE) {
+        < (2 * streamCount) * ByteSlicePool.FIRST_LEVEL_SIZE) {
       // can we fit at least one byte per stream in the current buffer, if not allocate a new one
       bytePool.nextBuffer();
     }
@@ -163,7 +170,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     for (int i = 0; i < streamCount; i++) {
       // initialize each stream with a slice we start with ByteBlockPool.FIRST_LEVEL_SIZE)
       // and grow as we need more space. see ByteBlockPool.LEVEL_SIZE_ARRAY
-      final int upto = bytePool.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE);
+      final int upto = slicePool.newSlice(ByteSlicePool.FIRST_LEVEL_SIZE);
       termStreamAddressBuffer[streamAddressOffset + i] = upto + bytePool.byteOffset;
     }
     postingsArray.byteStarts[termID] = termStreamAddressBuffer[streamAddressOffset];
@@ -211,12 +218,12 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   final void writeByte(int stream, byte b) {
     int streamAddress = streamAddressOffset + stream;
     int upto = termStreamAddressBuffer[streamAddress];
-    byte[] bytes = bytePool.buffers[upto >> ByteBlockPool.BYTE_BLOCK_SHIFT];
+    byte[] bytes = bytePool.getBuffer(upto >> ByteBlockPool.BYTE_BLOCK_SHIFT);
     assert bytes != null;
     int offset = upto & ByteBlockPool.BYTE_BLOCK_MASK;
     if (bytes[offset] != 0) {
       // End of slice; allocate a new one
-      offset = bytePool.allocSlice(bytes, offset);
+      offset = slicePool.allocSlice(bytes, offset);
       bytes = bytePool.buffer;
       termStreamAddressBuffer[streamAddress] = offset + bytePool.byteOffset;
     }
@@ -225,9 +232,29 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   }
 
   final void writeBytes(int stream, byte[] b, int offset, int len) {
-    // TODO: optimize
     final int end = offset + len;
-    for (int i = offset; i < end; i++) writeByte(stream, b[i]);
+    int streamAddress = streamAddressOffset + stream;
+    int upto = termStreamAddressBuffer[streamAddress];
+    byte[] slice = bytePool.getBuffer(upto >> ByteBlockPool.BYTE_BLOCK_SHIFT);
+    assert slice != null;
+    int sliceOffset = upto & ByteBlockPool.BYTE_BLOCK_MASK;
+
+    while (slice[sliceOffset] == 0 && offset < end) {
+      slice[sliceOffset++] = b[offset++];
+      (termStreamAddressBuffer[streamAddress])++;
+    }
+
+    while (offset < end) {
+      int offsetAndLength = slicePool.allocKnownSizeSlice(slice, sliceOffset);
+      sliceOffset = offsetAndLength >> 8;
+      int sliceLength = offsetAndLength & 0xff;
+      slice = bytePool.buffer;
+      int writeLength = Math.min(sliceLength - 1, end - offset);
+      System.arraycopy(b, offset, slice, sliceOffset, writeLength);
+      sliceOffset += writeLength;
+      offset += writeLength;
+      termStreamAddressBuffer[streamAddress] = sliceOffset + bytePool.byteOffset;
+    }
   }
 
   final void writeVInt(int stream, int i) {
@@ -262,7 +289,8 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       if (perField.postingsArray == null) {
         perField.postingsArray = perField.createPostingsArray(2);
         perField.newPostingsArray();
-        bytesUsed.addAndGet(perField.postingsArray.size * perField.postingsArray.bytesPerPosting());
+        bytesUsed.addAndGet(
+            perField.postingsArray.size * (long) perField.postingsArray.bytesPerPosting());
       }
       return perField.postingsArray.textStarts;
     }
@@ -273,7 +301,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       final int oldSize = perField.postingsArray.size;
       postingsArray = perField.postingsArray = postingsArray.grow();
       perField.newPostingsArray();
-      bytesUsed.addAndGet((postingsArray.bytesPerPosting() * (postingsArray.size - oldSize)));
+      bytesUsed.addAndGet(postingsArray.bytesPerPosting() * (long) (postingsArray.size - oldSize));
       return postingsArray.textStarts;
     }
 

@@ -22,13 +22,15 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.junit.Test;
 
@@ -103,9 +105,9 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     fsDir.close();
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   private void runTest(Random random, Directory dir) throws Exception {
-    // Run for ~1 seconds at night
-    final long stopTime = System.currentTimeMillis() + (TEST_NIGHTLY ? 1000 : 100);
+    final int maxIterations = TEST_NIGHTLY ? 100 : 10;
 
     SnapshotDeletionPolicy dp = getDeletionPolicy();
     final IndexWriter writer =
@@ -126,8 +128,10 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
 
     final Thread t =
         new Thread() {
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           public void run() {
+            int iterations = 0;
             Document doc = new Document();
             FieldType customType = new FieldType(TextField.TYPE_STORED);
             customType.setStoreTermVectors(true);
@@ -155,7 +159,7 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
               } catch (InterruptedException ie) {
                 throw new ThreadInterruptedException(ie);
               }
-            } while (System.currentTimeMillis() < stopTime);
+            } while (++iterations < maxIterations);
           }
         };
 
@@ -225,8 +229,9 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
 
   byte[] buffer = new byte[4096];
 
+  @SuppressForbidden(reason = "Thread sleep")
   private void readFile(Directory dir, String name) throws Exception {
-    IndexInput input = dir.openInput(name, newIOContext(random()));
+    IndexInput input = dir.openInput(name, IOContext.READONCE);
     try {
       long size = dir.fileLength(name);
       long bytesLeft = size;

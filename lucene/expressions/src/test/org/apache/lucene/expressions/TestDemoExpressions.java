@@ -26,7 +26,6 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.expressions.js.VariableContext;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.FieldDoc;
@@ -37,7 +36,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** simple demo of using expressions */
 public class TestDemoExpressions extends LuceneTestCase {
@@ -92,7 +92,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     // compile an expression:
     Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
 
-    // we use SimpleBindings: which just maps variables to SortField instances
+    // we use SimpleBindings: which just maps variables to DoubleValuesSource instances
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("_score", DoubleValuesSource.SCORES);
     bindings.add("popularity", DoubleValuesSource.fromIntField("popularity"));
@@ -221,10 +221,29 @@ public class TestDemoExpressions extends LuceneTestCase {
     TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
 
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
+    assertEquals(0.4621D, (Double) d.fields[0], 1E-1);
+
+    d = (FieldDoc) td.scoreDocs[1];
+    assertEquals(1.055, (Double) d.fields[0], 1E-1);
+
+    d = (FieldDoc) td.scoreDocs[2];
+    assertEquals(5.2859D, (Double) d.fields[0], 1E-1);
+  }
+
+  public void testHaversinMetersDistanceSort() throws Exception {
+    Expression distance =
+        JavascriptCompiler.compile("haversinMeters(40.7143528,-74.0059731,latitude,longitude)");
+    SimpleBindings bindings = new SimpleBindings();
+    bindings.add("latitude", DoubleValuesSource.fromDoubleField("latitude"));
+    bindings.add("longitude", DoubleValuesSource.fromDoubleField("longitude"));
+    Sort sort = new Sort(distance.getSortField(bindings, false));
+    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
+
+    FieldDoc d = (FieldDoc) td.scoreDocs[0];
     assertEquals(462.1D, (Double) d.fields[0], 1E-1);
 
     d = (FieldDoc) td.scoreDocs[1];
-    assertEquals(1055D, (Double) d.fields[0], 1E-1);
+    assertEquals(1055, (Double) d.fields[0], 1E-1);
 
     d = (FieldDoc) td.scoreDocs[2];
     assertEquals(5285.9D, (Double) d.fields[0], 1E-1);

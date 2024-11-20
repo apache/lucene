@@ -16,34 +16,18 @@
  */
 package org.apache.lucene.util;
 
-import static org.apache.lucene.util.LongHeap.Order.MAX;
-import static org.apache.lucene.util.LongHeap.Order.MIN;
-
 import java.util.ArrayList;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLongHeap extends LuceneTestCase {
 
-  private static class AssertingLongHeap extends LongHeap {
-    AssertingLongHeap(int count) {
-      super(count);
-    }
-
-    @Override
-    public boolean lessThan(long a, long b) {
-      return (a < b);
-    }
-
-    final void checkValidity() {
-      long[] heapArray = getHeapArray();
-      for (int i = 1; i <= size(); i++) {
-        int parent = i >>> 1;
-        if (parent > 1) {
-          if (lessThan(heapArray[parent], heapArray[i]) == false) {
-            assertEquals(heapArray[parent], heapArray[i]);
-          }
-        }
-      }
+  private static void checkValidity(LongHeap heap) {
+    long[] heapArray = heap.getHeapArray();
+    for (int i = 2; i <= heap.size(); i++) {
+      int parent = i >>> 1;
+      assert heapArray[parent] <= heapArray[i];
     }
   }
 
@@ -52,7 +36,7 @@ public class TestLongHeap extends LuceneTestCase {
   }
 
   public static void testPQ(int count, Random gen) {
-    LongHeap pq = LongHeap.create(MIN, count);
+    LongHeap pq = new LongHeap(count);
     long sum = 0, sum2 = 0;
 
     for (int i = 0; i < count; i++) {
@@ -73,7 +57,7 @@ public class TestLongHeap extends LuceneTestCase {
   }
 
   public void testClear() {
-    LongHeap pq = LongHeap.create(MIN, 3);
+    LongHeap pq = new LongHeap(3);
     pq.push(2);
     pq.push(3);
     pq.push(1);
@@ -83,7 +67,7 @@ public class TestLongHeap extends LuceneTestCase {
   }
 
   public void testExceedBounds() {
-    LongHeap pq = LongHeap.create(MIN, 1);
+    LongHeap pq = new LongHeap(1);
     pq.push(2);
     pq.push(0);
     // expectThrows(ArrayIndexOutOfBoundsException.class, () -> pq.push(0));
@@ -92,7 +76,7 @@ public class TestLongHeap extends LuceneTestCase {
   }
 
   public void testFixedSize() {
-    LongHeap pq = LongHeap.create(MIN, 3);
+    LongHeap pq = new LongHeap(3);
     pq.insertWithOverflow(2);
     pq.insertWithOverflow(3);
     pq.insertWithOverflow(1);
@@ -103,20 +87,8 @@ public class TestLongHeap extends LuceneTestCase {
     assertEquals(3, pq.top());
   }
 
-  public void testFixedSizeMax() {
-    LongHeap pq = LongHeap.create(MAX, 3);
-    pq.insertWithOverflow(2);
-    pq.insertWithOverflow(3);
-    pq.insertWithOverflow(1);
-    pq.insertWithOverflow(5);
-    pq.insertWithOverflow(7);
-    pq.insertWithOverflow(1);
-    assertEquals(3, pq.size());
-    assertEquals(2, pq.top());
-  }
-
   public void testDuplicateValues() {
-    LongHeap pq = LongHeap.create(MIN, 3);
+    LongHeap pq = new LongHeap(3);
     pq.push(2);
     pq.push(3);
     pq.push(1);
@@ -129,7 +101,7 @@ public class TestLongHeap extends LuceneTestCase {
   public void testInsertions() {
     Random random = random();
     int numDocsInPQ = TestUtil.nextInt(random, 1, 100);
-    AssertingLongHeap pq = new AssertingLongHeap(numDocsInPQ);
+    LongHeap pq = new LongHeap(numDocsInPQ);
     Long lastLeast = null;
 
     // Basic insertion of new content
@@ -138,7 +110,7 @@ public class TestLongHeap extends LuceneTestCase {
       long newEntry = Math.abs(random.nextLong());
       sds.add(newEntry);
       pq.insertWithOverflow(newEntry);
-      pq.checkValidity();
+      checkValidity(pq);
       long newLeast = pq.top();
       if ((lastLeast != null) && (newLeast != newEntry) && (newLeast != lastLeast)) {
         // If there has been a change of least entry and it wasn't our new
@@ -151,17 +123,16 @@ public class TestLongHeap extends LuceneTestCase {
   }
 
   public void testInvalid() {
-    expectThrows(IllegalArgumentException.class, () -> LongHeap.create(MAX, -1));
-    expectThrows(IllegalArgumentException.class, () -> LongHeap.create(MAX, 0));
-    expectThrows(
-        IllegalArgumentException.class, () -> LongHeap.create(MAX, ArrayUtil.MAX_ARRAY_LENGTH));
+    expectThrows(IllegalArgumentException.class, () -> new LongHeap(-1));
+    expectThrows(IllegalArgumentException.class, () -> new LongHeap(0));
+    expectThrows(IllegalArgumentException.class, () -> new LongHeap(ArrayUtil.MAX_ARRAY_LENGTH));
   }
 
   public void testUnbounded() {
     int initialSize = random().nextInt(10) + 1;
-    LongHeap pq = LongHeap.create(MAX, initialSize);
+    LongHeap pq = new LongHeap(initialSize);
     int num = random().nextInt(100) + 1;
-    long minValue = Long.MAX_VALUE;
+    long maxValue = Long.MIN_VALUE;
     int count = 0;
     for (int i = 0; i < num; i++) {
       long value = random().nextLong();
@@ -176,19 +147,19 @@ public class TestLongHeap extends LuceneTestCase {
           }
         }
       }
-      minValue = Math.min(minValue, value);
+      maxValue = Math.max(maxValue, value);
     }
     assertEquals(count, pq.size());
-    long last = Long.MAX_VALUE;
+    long last = Long.MIN_VALUE;
     while (pq.size() > 0) {
       long top = pq.top();
       long next = pq.pop();
       assertEquals(top, next);
       --count;
-      assertTrue(next <= last);
+      assertTrue(next >= last);
       last = next;
     }
     assertEquals(0, count);
-    assertEquals(minValue, last);
+    assertEquals(maxValue, last);
   }
 }

@@ -24,29 +24,17 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-class OrderedIntervalsSource extends ConjunctionIntervalsSource {
+class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
 
   static IntervalsSource build(List<IntervalsSource> sources) {
     if (sources.size() == 1) {
       return sources.get(0);
     }
-    List<IntervalsSource> rewritten = deduplicate(flatten(sources));
+    List<IntervalsSource> rewritten = deduplicate(sources);
     if (rewritten.size() == 1) {
       return rewritten.get(0);
     }
     return new OrderedIntervalsSource(rewritten);
-  }
-
-  private static List<IntervalsSource> flatten(List<IntervalsSource> sources) {
-    List<IntervalsSource> flattened = new ArrayList<>();
-    for (IntervalsSource s : sources) {
-      if (s instanceof OrderedIntervalsSource) {
-        flattened.addAll(((OrderedIntervalsSource) s).subSources);
-      } else {
-        flattened.add(s);
-      }
-    }
-    return flattened;
   }
 
   private static List<IntervalsSource> deduplicate(List<IntervalsSource> sources) {
@@ -69,12 +57,12 @@ class OrderedIntervalsSource extends ConjunctionIntervalsSource {
   }
 
   private OrderedIntervalsSource(List<IntervalsSource> sources) {
-    super(sources, true);
+    super(sources);
   }
 
   @Override
-  protected IntervalIterator combine(List<IntervalIterator> iterators) {
-    return new OrderedIntervalIterator(iterators);
+  protected IntervalIterator combine(List<IntervalIterator> iterators, MatchCallback onMatch) {
+    return new OrderedIntervalIterator(iterators, onMatch);
   }
 
   @Override
@@ -112,11 +100,13 @@ class OrderedIntervalsSource extends ConjunctionIntervalsSource {
 
   private static class OrderedIntervalIterator extends ConjunctionIntervalIterator {
 
-    int start = -1, end = -1, i;
+    int start = -1, end = -1, i = 1;
     int slop;
+    final MatchCallback onMatch;
 
-    private OrderedIntervalIterator(List<IntervalIterator> subIntervals) {
+    private OrderedIntervalIterator(List<IntervalIterator> subIntervals, MatchCallback onMatch) {
       super(subIntervals);
+      this.onMatch = onMatch;
     }
 
     @Override
@@ -134,38 +124,58 @@ class OrderedIntervalsSource extends ConjunctionIntervalsSource {
       start = end = slop = IntervalIterator.NO_MORE_INTERVALS;
       int lastStart = Integer.MAX_VALUE;
       boolean minimizing = false;
-      i = 1;
+      final var subIterators = this.subIterators;
+      int currentIndex = i;
       while (true) {
+        int prevEnd = subIterators.get(currentIndex - 1).end();
         while (true) {
-          if (subIterators.get(i - 1).end() >= lastStart) {
+          if (prevEnd >= lastStart) {
+            i = currentIndex;
             return start;
           }
-          if (i == subIterators.size()
-              || (minimizing && subIterators.get(i).start() > subIterators.get(i - 1).end())) {
+          if (currentIndex == subIterators.size()) {
             break;
           }
+          final IntervalIterator current = subIterators.get(currentIndex);
+          if (minimizing && (current.start() > prevEnd)) {
+            break;
+          }
+          int currentStart;
           do {
-            if (subIterators.get(i).end() >= lastStart
-                || subIterators.get(i).nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
+            if (current.end() >= lastStart
+                || (currentStart = current.nextInterval()) == IntervalIterator.NO_MORE_INTERVALS) {
+              i = currentIndex;
               return start;
             }
-          } while (subIterators.get(i).start() <= subIterators.get(i - 1).end());
-          i++;
+          } while (currentStart <= prevEnd);
+          currentIndex++;
+          prevEnd = current.end();
         }
-        start = subIterators.get(0).start();
+        var first = subIterators.get(0);
+        final int start = first.start();
+        this.start = start;
         if (start == NO_MORE_INTERVALS) {
+          i = currentIndex;
           return end = NO_MORE_INTERVALS;
         }
-        end = subIterators.get(subIterators.size() - 1).end();
-        slop = end - start + 1;
-        for (IntervalIterator subIterator : subIterators) {
-          slop -= subIterator.width();
+        var last = subIterators.getLast();
+
+        final int end = last.end();
+        this.end = end;
+        int slop = end - start + 1;
+        // use indexed loop since this is always a random access capable list to avoid allocations
+        // in a hot nested loop
+        for (int j = 0, n = subIterators.size(); j < n; j++) {
+          slop -= subIterators.get(j).width();
         }
-        lastStart = subIterators.get(subIterators.size() - 1).start();
-        i = 1;
-        if (subIterators.get(0).nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
+        this.slop = slop;
+        onMatch.onMatch();
+        currentIndex = 1;
+        if (first.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
+          i = currentIndex;
           return start;
         }
+        lastStart = last.start();
         minimizing = true;
       }
     }

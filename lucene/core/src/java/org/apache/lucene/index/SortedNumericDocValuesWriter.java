@@ -21,6 +21,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
+import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.index.NumericDocValuesWriter.BufferedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Counter;
@@ -30,9 +32,9 @@ import org.apache.lucene.util.packed.PackedLongValues;
 
 /** Buffers up pending long[] per doc, sorts, then flushes when segment flushes. */
 class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValues> {
-  private PackedLongValues.Builder pending; // stream of all values
+  private final PackedLongValues.Builder pending; // stream of all values
   private PackedLongValues.Builder pendingCounts; // count of values per doc
-  private DocsWithFieldSet docsWithField;
+  private final DocsWithFieldSet docsWithField;
   private final Counter iwBytesUsed;
   private long bytesUsed; // this only tracks differences in 'pending' and 'pendingCounts'
   private final FieldInfo fieldInfo;
@@ -47,11 +49,9 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = iwBytesUsed;
     pending = PackedLongValues.deltaPackedBuilder(PackedInts.COMPACT);
-    pendingCounts = PackedLongValues.deltaPackedBuilder(PackedInts.COMPACT);
     docsWithField = new DocsWithFieldSet();
     bytesUsed =
         pending.ramBytesUsed()
-            + pendingCounts.ramBytesUsed()
             + docsWithField.ramBytesUsed()
             + RamUsageEstimator.sizeOf(currentValues);
     iwBytesUsed.addAndGet(bytesUsed);
@@ -73,12 +73,22 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     if (currentDoc == -1) {
       return;
     }
-    Arrays.sort(currentValues, 0, currentUpto);
+    if (currentUpto > 1) {
+      Arrays.sort(currentValues, 0, currentUpto);
+    }
     for (int i = 0; i < currentUpto; i++) {
       pending.add(currentValues[i]);
     }
     // record the number of values for this doc
-    pendingCounts.add(currentUpto);
+    if (pendingCounts != null) {
+      pendingCounts.add(currentUpto);
+    } else if (currentUpto != 1) {
+      pendingCounts = PackedLongValues.deltaPackedBuilder(PackedInts.COMPACT);
+      for (int i = 0; i < docsWithField.cardinality(); ++i) {
+        pendingCounts.add(1);
+      }
+      pendingCounts.add(currentUpto);
+    }
     currentUpto = 0;
 
     docsWithField.add(currentDoc);
@@ -96,7 +106,7 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
   private void updateBytesUsed() {
     final long newBytesUsed =
         pending.ramBytesUsed()
-            + pendingCounts.ramBytesUsed()
+            + (pendingCounts == null ? 0 : pendingCounts.ramBytesUsed())
             + docsWithField.ramBytesUsed()
             + RamUsageEstimator.sizeOf(currentValues);
     iwBytesUsed.addAndGet(newBytesUsed - bytesUsed);
@@ -109,10 +119,9 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       assert finalValuesCount == null;
       finishCurrentDoc();
       finalValues = pending.build();
-      finalValuesCount = pendingCounts.build();
+      finalValuesCount = pendingCounts == null ? null : pendingCounts.build();
     }
-    return new BufferedSortedNumericDocValues(
-        finalValues, finalValuesCount, docsWithField.iterator());
+    return getValues(finalValues, finalValuesCount, docsWithField);
   }
 
   static final class LongValues {
@@ -144,6 +153,15 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     }
   }
 
+  private SortedNumericDocValues getValues(
+      PackedLongValues values, PackedLongValues valueCounts, DocsWithFieldSet docsWithField) {
+    if (valueCounts == null) {
+      return DocValues.singleton(new BufferedNumericDocValues(values, docsWithField.iterator()));
+    } else {
+      return new BufferedSortedNumericDocValues(values, valueCounts, docsWithField.iterator());
+    }
+  }
+
   @Override
   public void flush(SegmentWriteState state, Sorter.DocMap sortMap, DocValuesConsumer dvConsumer)
       throws IOException {
@@ -152,10 +170,24 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     if (finalValues == null) {
       finishCurrentDoc();
       values = pending.build();
-      valueCounts = pendingCounts.build();
+      valueCounts = pendingCounts == null ? null : pendingCounts.build();
     } else {
       values = finalValues;
       valueCounts = finalValuesCount;
+    }
+
+    if (valueCounts == null) {
+      DocValuesProducer singleValueProducer =
+          NumericDocValuesWriter.getDocValuesProducer(fieldInfo, values, docsWithField, sortMap);
+      dvConsumer.addSortedNumericField(
+          fieldInfo,
+          new EmptyDocValuesProducer() {
+            @Override
+            public SortedNumericDocValues getSortedNumeric(FieldInfo fieldInfo) throws IOException {
+              return DocValues.singleton(singleValueProducer.getNumeric(fieldInfo));
+            }
+          });
+      return;
     }
 
     final LongValues sorted;
@@ -164,7 +196,7 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
           new LongValues(
               state.segmentInfo.maxDoc(),
               sortMap,
-              new BufferedSortedNumericDocValues(values, valueCounts, docsWithField.iterator()),
+              getValues(values, valueCounts, docsWithField),
               PackedInts.FASTEST);
     } else {
       sorted = null;
@@ -178,8 +210,7 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
             if (fieldInfoIn != fieldInfo) {
               throw new IllegalArgumentException("wrong fieldInfo");
             }
-            final SortedNumericDocValues buf =
-                new BufferedSortedNumericDocValues(values, valueCounts, docsWithField.iterator());
+            final SortedNumericDocValues buf = getValues(values, valueCounts, docsWithField);
             if (sorted == null) {
               return buf;
             } else {
@@ -239,9 +270,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
 
     @Override
     public long nextValue() {
-      if (valueUpto == valueCount) {
-        throw new IllegalStateException();
-      }
       valueUpto++;
       return valuesIter.next();
     }
@@ -258,7 +286,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     private int docID = -1;
     private long upto;
     private int numValues = -1;
-    private long limit;
 
     SortingSortedNumericDocValues(SortedNumericDocValues in, LongValues values) {
       this.in = in;
@@ -280,7 +307,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       } while (values.offsets[docID] <= 0);
       upto = values.offsets[docID];
       numValues = Math.toIntExact(values.values.get(upto - 1));
-      limit = upto + numValues;
       return docID;
     }
 
@@ -295,21 +321,14 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       upto = values.offsets[docID];
       if (values.offsets[docID] > 0) {
         numValues = Math.toIntExact(values.values.get(upto - 1));
-        limit = upto + numValues;
         return true;
-      } else {
-        limit = upto;
       }
       return false;
     }
 
     @Override
     public long nextValue() {
-      if (upto == limit) {
-        throw new AssertionError();
-      } else {
-        return values.values.get(upto++);
-      }
+      return values.values.get(upto++);
     }
 
     @Override

@@ -21,7 +21,7 @@ package org.apache.lucene.spatial3d.geom;
  *
  * @lucene.internal
  */
-public abstract class GeoBaseShape extends BasePlanetObject implements GeoShape {
+public abstract class GeoBaseShape extends GeoBaseBounds implements GeoShape {
 
   /**
    * Constructor.
@@ -30,27 +30,5 @@ public abstract class GeoBaseShape extends BasePlanetObject implements GeoShape 
    */
   public GeoBaseShape(final PlanetModel planetModel) {
     super(planetModel);
-  }
-
-  @Override
-  public void getBounds(Bounds bounds) {
-    if (isWithin(planetModel.NORTH_POLE)) {
-      bounds.noTopLatitudeBound().noLongitudeBound().addPoint(planetModel.NORTH_POLE);
-    }
-    if (isWithin(planetModel.SOUTH_POLE)) {
-      bounds.noBottomLatitudeBound().noLongitudeBound().addPoint(planetModel.SOUTH_POLE);
-    }
-    if (isWithin(planetModel.MIN_X_POLE)) {
-      bounds.addPoint(planetModel.MIN_X_POLE);
-    }
-    if (isWithin(planetModel.MAX_X_POLE)) {
-      bounds.addPoint(planetModel.MAX_X_POLE);
-    }
-    if (isWithin(planetModel.MIN_Y_POLE)) {
-      bounds.addPoint(planetModel.MIN_Y_POLE);
-    }
-    if (isWithin(planetModel.MAX_Y_POLE)) {
-      bounds.addPoint(planetModel.MAX_Y_POLE);
-    }
   }
 }

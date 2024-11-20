@@ -19,14 +19,15 @@ package org.apache.lucene.analysis.path;
 import static org.apache.lucene.analysis.path.PathHierarchyTokenizer.DEFAULT_DELIMITER;
 import static org.apache.lucene.analysis.path.PathHierarchyTokenizer.DEFAULT_SKIP;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.charfilter.MappingCharFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
 
@@ -41,7 +42,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/a", "/a/b", "/a/b/c"},
         new int[] {0, 0, 0},
         new int[] {2, 4, 6},
-        new int[] {1, 0, 0},
+        new int[] {1, 1, 1},
         path.length());
   }
 
@@ -56,7 +57,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/a", "/a/b", "/a/b/c", "/a/b/c/"},
         new int[] {0, 0, 0, 0},
         new int[] {2, 4, 6, 7},
-        new int[] {1, 0, 0, 0},
+        new int[] {1, 1, 1, 1},
         path.length());
   }
 
@@ -71,7 +72,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"a", "a/b", "a/b/c"},
         new int[] {0, 0, 0},
         new int[] {1, 3, 5},
-        new int[] {1, 0, 0},
+        new int[] {1, 1, 1},
         path.length());
   }
 
@@ -86,7 +87,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"a", "a/b", "a/b/c", "a/b/c/"},
         new int[] {0, 0, 0, 0},
         new int[] {1, 3, 5, 6},
-        new int[] {1, 0, 0, 0},
+        new int[] {1, 1, 1, 1},
         path.length());
   }
 
@@ -111,7 +112,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/", "//"},
         new int[] {0, 0},
         new int[] {1, 2},
-        new int[] {1, 0},
+        new int[] {1, 1},
         path.length());
   }
 
@@ -125,7 +126,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"\\a", "\\a\\b", "\\a\\b\\c"},
         new int[] {0, 0, 0},
         new int[] {2, 4, 6},
-        new int[] {1, 0, 0},
+        new int[] {1, 1, 1},
         path.length());
   }
 
@@ -139,7 +140,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"c:", "c:\\a", "c:\\a\\b", "c:\\a\\b\\c"},
         new int[] {0, 0, 0, 0},
         new int[] {2, 4, 6, 8},
-        new int[] {1, 0, 0, 0},
+        new int[] {1, 1, 1, 1},
         path.length());
   }
 
@@ -158,7 +159,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"c:", "c:/a", "c:/a/b", "c:/a/b/c"},
         new int[] {0, 0, 0, 0},
         new int[] {2, 4, 6, 8},
-        new int[] {1, 0, 0, 0},
+        new int[] {1, 1, 1, 1},
         path.length());
   }
 
@@ -172,7 +173,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/b", "/b/c"},
         new int[] {2, 2},
         new int[] {4, 6},
-        new int[] {1, 0},
+        new int[] {1, 1},
         path.length());
   }
 
@@ -186,7 +187,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/b", "/b/c", "/b/c/"},
         new int[] {2, 2, 2},
         new int[] {4, 6, 7},
-        new int[] {1, 0, 0},
+        new int[] {1, 1, 1},
         path.length());
   }
 
@@ -200,7 +201,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/b", "/b/c"},
         new int[] {1, 1},
         new int[] {3, 5},
-        new int[] {1, 0},
+        new int[] {1, 1},
         path.length());
   }
 
@@ -214,7 +215,7 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
         new String[] {"/b", "/b/c", "/b/c/"},
         new int[] {1, 1, 1},
         new int[] {3, 5, 6},
-        new int[] {1, 0, 0},
+        new int[] {1, 1, 1},
         path.length());
   }
 
@@ -269,5 +270,21 @@ public class TestPathHierarchyTokenizer extends BaseTokenStreamTestCase {
     // TODO: properly support positionLengthAttribute
     checkRandomData(random, a, 100 * RANDOM_MULTIPLIER, 1027, false, false);
     a.close();
+  }
+
+  private final Analyzer analyzer =
+      new Analyzer() {
+        @Override
+        protected TokenStreamComponents createComponents(String fieldName) {
+          Tokenizer tokenizer = new PathHierarchyTokenizer();
+          return new TokenStreamComponents(tokenizer);
+        }
+      };
+
+  public void testTokenizerViaAnalyzerOutput() throws IOException {
+    assertAnalyzesTo(analyzer, "a/b/c", new String[] {"a", "a/b", "a/b/c"});
+    assertAnalyzesTo(analyzer, "a/b/c/", new String[] {"a", "a/b", "a/b/c", "a/b/c/"});
+    assertAnalyzesTo(analyzer, "/a/b/c", new String[] {"/a", "/a/b", "/a/b/c"});
+    assertAnalyzesTo(analyzer, "/a/b/c/", new String[] {"/a", "/a/b", "/a/b/c", "/a/b/c/"});
   }
 }

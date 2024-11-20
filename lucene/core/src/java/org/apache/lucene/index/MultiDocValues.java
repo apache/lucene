@@ -53,8 +53,18 @@ public class MultiDocValues {
     } else if (size == 1) {
       return leaves.get(0).reader().getNormValues(field);
     }
-    FieldInfo fi = FieldInfos.getMergedFieldInfos(r).fieldInfo(field); // TODO avoid merging
-    if (fi == null || fi.hasNorms() == false) {
+
+    // Check if any of the leaf reader which has this field has norms.
+    boolean normFound = false;
+    for (LeafReaderContext leaf : leaves) {
+      LeafReader reader = leaf.reader();
+      FieldInfo info = reader.getFieldInfos().fieldInfo(field);
+      if (info != null && info.hasNorms()) {
+        normFound = true;
+        break;
+      }
+    }
+    if (normFound == false) {
       return null;
     }
 
@@ -674,8 +684,10 @@ public class MultiDocValues {
   public static class MultiSortedDocValues extends SortedDocValues {
     /** docbase for each leaf: parallel with {@link #values} */
     public final int[] docStarts;
+
     /** leaf values */
     public final SortedDocValues[] values;
+
     /** ordinal map mapping ords from <code>values</code> to global ord space */
     public final OrdinalMap mapping;
 
@@ -811,8 +823,10 @@ public class MultiDocValues {
   public static class MultiSortedSetDocValues extends SortedSetDocValues {
     /** docbase for each leaf: parallel with {@link #values} */
     public final int[] docStarts;
+
     /** leaf values */
     public final SortedSetDocValues[] values;
+
     /** ordinal map mapping ords from <code>values</code> to global ord space */
     public final OrdinalMap mapping;
 
@@ -920,11 +934,12 @@ public class MultiDocValues {
     @Override
     public long nextOrd() throws IOException {
       long segmentOrd = currentValues.nextOrd();
-      if (segmentOrd == NO_MORE_ORDS) {
-        return segmentOrd;
-      } else {
-        return mapping.getGlobalOrds(nextLeaf - 1).get(segmentOrd);
-      }
+      return mapping.getGlobalOrds(nextLeaf - 1).get(segmentOrd);
+    }
+
+    @Override
+    public int docValueCount() {
+      return currentValues.docValueCount();
     }
 
     @Override

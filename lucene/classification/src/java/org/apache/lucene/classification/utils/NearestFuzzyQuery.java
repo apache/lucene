@@ -35,6 +35,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.FuzzyTermsEnum;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermQuery;
@@ -158,10 +159,7 @@ public class NearestFuzzyQuery extends Query {
             float score = fe.getBoost();
             if (variantsQ.size() < MAX_VARIANTS_PER_TERM || score > minScore) {
               ScoreTerm st =
-                  new ScoreTerm(
-                      new Term(startTerm.field(), BytesRef.deepCopyOf(possibleMatch)),
-                      score,
-                      startTerm);
+                  new ScoreTerm(new Term(startTerm.field(), possibleMatch), score, startTerm);
               variantsQ.insertWithOverflow(st);
               minScore = variantsQ.top().score; // maintain minScore
             }
@@ -203,20 +201,19 @@ public class NearestFuzzyQuery extends Query {
     // equal to 1
     TermStates termStates = new TermStates(reader.getContext());
     for (LeafReaderContext leafContext : reader.leaves()) {
-      Terms terms = leafContext.reader().terms(term.field());
-      if (terms != null) {
-        TermsEnum termsEnum = terms.iterator();
-        if (termsEnum.seekExact(term.bytes())) {
-          int freq = 1 - termStates.docFreq(); // we want the total df and ttf to be 1
-          termStates.register(termsEnum.termState(), leafContext.ord, freq, freq);
-        }
+      Terms terms = Terms.getTerms(leafContext.reader(), term.field());
+      TermsEnum termsEnum = terms.iterator();
+      if (termsEnum.seekExact(term.bytes())) {
+        int freq = 1 - termStates.docFreq(); // we want the total df and ttf to be 1
+        termStates.register(termsEnum.termState(), leafContext.ord, freq, freq);
       }
     }
     return new TermQuery(term, termStates);
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    IndexReader reader = indexSearcher.getIndexReader();
     ScoreTermQueue q = new ScoreTermQueue(MAX_NUM_TERMS);
     // load up the list of possible terms
     for (FieldVals f : fieldVals) {

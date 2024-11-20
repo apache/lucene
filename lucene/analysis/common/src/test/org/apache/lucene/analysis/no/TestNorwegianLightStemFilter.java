@@ -16,21 +16,21 @@
  */
 package org.apache.lucene.analysis.no;
 
-import static org.apache.lucene.analysis.VocabularyAssert.*;
 import static org.apache.lucene.analysis.no.NorwegianLightStemmer.BOKMAAL;
 import static org.apache.lucene.analysis.no.NorwegianLightStemmer.NYNORSK;
+import static org.apache.lucene.tests.analysis.VocabularyAssert.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharArraySet;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Simple tests for {@link NorwegianLightStemFilter} */
 public class TestNorwegianLightStemFilter extends BaseTokenStreamTestCase {

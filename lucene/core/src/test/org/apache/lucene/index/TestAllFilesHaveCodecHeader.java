@@ -19,13 +19,15 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Test that a plain default puts codec headers in all files */
 public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
@@ -48,7 +50,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
       }
       if (random().nextInt(15) == 0) {
         riw.updateNumericDocValue(
-            new Term("docid", Integer.toString(i)), "docid_intDV", Long.valueOf(i));
+            new Term("docid", Integer.toString(i)), "page_views", Long.valueOf(i));
       }
     }
     riw.close();
@@ -68,10 +70,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
       }
       if (si.info.getUseCompoundFile()) {
         try (Directory cfsDir =
-            si.info
-                .getCodec()
-                .compoundFormat()
-                .getCompoundReader(dir, si.info, newIOContext(random()))) {
+            si.info.getCodec().compoundFormat().getCompoundReader(dir, si.info)) {
           for (String cfsFile : cfsDir.listAll()) {
             checkHeader(cfsDir, cfsFile, namesToExtensions, si.info.getId());
           }
@@ -83,7 +82,7 @@ public class TestAllFilesHaveCodecHeader extends LuceneTestCase {
   private void checkHeader(
       Directory dir, String file, Map<String, String> namesToExtensions, byte[] id)
       throws IOException {
-    try (IndexInput in = dir.openInput(file, newIOContext(random()))) {
+    try (IndexInput in = dir.openInput(file, IOContext.READONCE)) {
       int val = CodecUtil.readBEInt(in);
       assertEquals(
           file + " has no codec header, instead found: " + val, CodecUtil.CODEC_MAGIC, val);

@@ -20,10 +20,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.NoSuchFileException;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.util.Accountable;
@@ -31,7 +32,7 @@ import org.apache.lucene.util.IOUtils;
 
 // TODO
 //   - let subclass dictate policy...?
-//   - rename to MergeCacheingDir?  NRTCachingDir
+//   - rename to MergeCachingDir?  NRTCachingDir
 
 /**
  * Wraps a RAM-resident directory around any provided delegate directory, to be used during NRT
@@ -72,8 +73,14 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
           new SingleInstanceLockFactory(),
           ByteBuffersDataOutput::new,
           (fileName, content) -> {
+            // Defensive check to handle the case the file has been deleted before this lambda
+            // is called when the IndexOutput is closed. Unsafe in the unlikely case the deletion
+            // happens concurrently on another thread.
+            if (isCachedFile(fileName) == false) {
+              return null;
+            }
             cacheSize.addAndGet(content.size());
-            return ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS_LUCENE.apply(fileName, content);
+            return ByteBuffersDirectory.OUTPUT_AS_MANY_BUFFERS.apply(fileName, content);
           });
 
   private final long maxMergeSizeBytes;
@@ -97,24 +104,18 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     return "NRTCachingDirectory("
         + in
         + "; maxCacheMB="
-        + (maxCachedBytes / 1024 / 1024.)
+        + (maxCachedBytes / 1024. / 1024.)
         + " maxMergeSizeMB="
-        + (maxMergeSizeBytes / 1024 / 1024.)
+        + (maxMergeSizeBytes / 1024. / 1024.)
         + ")";
   }
 
   @Override
   public synchronized String[] listAll() throws IOException {
-    final Set<String> files = new HashSet<>();
-    for (String f : cacheDirectory.listAll()) {
-      files.add(f);
-    }
-    for (String f : in.listAll()) {
-      files.add(f);
-    }
-    String[] result = files.toArray(new String[files.size()]);
-    Arrays.sort(result);
-    return result;
+    final Set<String> files = new TreeSet<>();
+    Collections.addAll(files, cacheDirectory.listAll());
+    Collections.addAll(files, in.listAll());
+    return files.toArray(new String[0]);
   }
 
   @Override
@@ -123,7 +124,10 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
       System.out.println("nrtdir.deleteFile name=" + name);
     }
     if (cacheDirectory.fileExists(name)) {
+      long size = cacheDirectory.fileLength(name);
       cacheDirectory.deleteFile(name);
+      long newSize = cacheSize.addAndGet(-size);
+      assert newSize >= 0;
     } else {
       in.deleteFile(name);
     }
@@ -228,10 +232,10 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     // size=" + (merge==null ? 0 : merge.estimatedMergeBytes));
 
     long bytes = 0;
-    if (context.mergeInfo != null) {
-      bytes = context.mergeInfo.estimatedMergeBytes;
-    } else if (context.flushInfo != null) {
-      bytes = context.flushInfo.estimatedSegmentSize;
+    if (context.mergeInfo() != null) {
+      bytes = context.mergeInfo().estimatedMergeBytes();
+    } else if (context.flushInfo() != null) {
+      bytes = context.flushInfo().estimatedSegmentSize();
     } else {
       return false;
     }
@@ -298,6 +302,10 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     } catch (@SuppressWarnings("unused") NoSuchFileException | FileNotFoundException e) {
       return false;
     }
+  }
+
+  private synchronized boolean isCachedFile(String fileName) {
+    return cacheDirectory.fileExists(fileName);
   }
 
   private void unCache(String fileName) throws IOException {

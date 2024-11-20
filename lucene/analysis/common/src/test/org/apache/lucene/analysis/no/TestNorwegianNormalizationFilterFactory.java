@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.analysis.no;
 
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 public class TestNorwegianNormalizationFilterFactory extends BaseTokenStreamFactoryTestCase {
 

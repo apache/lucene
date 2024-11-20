@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.suggest.fst;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -68,7 +70,7 @@ public class WFSTCompletionLookup extends Lookup {
   private final boolean exactFirst;
 
   /** Number of entries the lookup was built with */
-  private long count = 0;
+  private volatile long count = 0;
 
   private final Directory tempDir;
   private final String tempFileNamePrefix;
@@ -102,13 +104,14 @@ public class WFSTCompletionLookup extends Lookup {
     if (iterator.hasContexts()) {
       throw new IllegalArgumentException("this suggester doesn't support contexts");
     }
-    count = 0;
+    long newCount = 0;
     BytesRef scratch = new BytesRef();
     InputIterator iter = new WFSTInputIterator(tempDir, tempFileNamePrefix, iterator);
     IntsRefBuilder scratchInts = new IntsRefBuilder();
     BytesRefBuilder previous = null;
     PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     while ((scratch = iter.next()) != null) {
       long cost = iter.weight();
 
@@ -121,9 +124,10 @@ public class WFSTCompletionLookup extends Lookup {
       Util.toIntsRef(scratch, scratchInts);
       fstCompiler.add(scratchInts.get(), cost);
       previous.copyBytes(scratch);
-      count++;
+      newCount++;
     }
-    fst = fstCompiler.compile();
+    fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
+    count = newCount;
   }
 
   @Override
@@ -139,7 +143,7 @@ public class WFSTCompletionLookup extends Lookup {
   @Override
   public boolean load(DataInput input) throws IOException {
     count = input.readVLong();
-    this.fst = new FST<>(input, input, PositiveIntOutputs.getSingleton());
+    this.fst = new FST<>(readMetadata(input, PositiveIntOutputs.getSingleton()), input);
     return true;
   }
 
@@ -190,7 +194,8 @@ public class WFSTCompletionLookup extends Lookup {
     // complete top-N
     TopResults<Long> completions = null;
     try {
-      completions = Util.shortestPaths(fst, arc, prefixOutput, weightComparator, num, !exactFirst);
+      completions =
+          Util.shortestPaths(fst, arc, prefixOutput, Comparator.naturalOrder(), num, !exactFirst);
       assert completions.isComplete;
     } catch (IOException bogus) {
       throw new RuntimeException(bogus);
@@ -200,10 +205,10 @@ public class WFSTCompletionLookup extends Lookup {
     for (Result<Long> completion : completions) {
       scratch.setLength(prefixLength);
       // append suffix
-      Util.toBytesRef(completion.input, suffix);
+      Util.toBytesRef(completion.input(), suffix);
       scratch.append(suffix);
       spare.copyUTF8Bytes(scratch.get());
-      results.add(new LookupResult(spare.toString(), decodeWeight(completion.output)));
+      results.add(new LookupResult(spare.toString(), decodeWeight(completion.output())));
     }
     return results;
   }
@@ -296,14 +301,6 @@ public class WFSTCompletionLookup extends Lookup {
       return tmpInput.readInt();
     }
   }
-
-  static final Comparator<Long> weightComparator =
-      new Comparator<Long>() {
-        @Override
-        public int compare(Long left, Long right) {
-          return left.compareTo(right);
-        }
-      };
 
   /** Returns byte size of the underlying FST. */
   @Override

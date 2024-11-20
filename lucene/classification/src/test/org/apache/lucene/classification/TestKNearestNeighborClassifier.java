@@ -18,7 +18,6 @@ package org.apache.lucene.classification;
 
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.classification.utils.ConfusionMatrixGenerator;
 import org.apache.lucene.index.LeafReader;
@@ -29,7 +28,9 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.LMDirichletSimilarity;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.Test;
 
 /** Testcase for {@link KNearestNeighborClassifier} */
@@ -87,11 +88,9 @@ public class TestKNearestNeighborClassifier extends ClassificationTestBase<Bytes
                   textFieldName),
               TECHNOLOGY_INPUT,
               TECHNOLOGY_RESULT);
-      assertTrue(resultDS.getScore() != resultLMS.getScore());
+      assertTrue(resultDS.score() != resultLMS.score());
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -114,12 +113,10 @@ public class TestKNearestNeighborClassifier extends ClassificationTestBase<Bytes
               leafReader, null, analyzer, null, 6, 1, 1, categoryFieldName, textFieldName);
       List<ClassificationResult<BytesRef>> classes =
           knnClassifier.getClasses(STRONG_TECHNOLOGY_INPUT);
-      assertTrue(classes.get(0).getScore() > classes.get(1).getScore());
+      assertTrue(classes.get(0).score() > classes.get(1).score());
       checkCorrectClassification(knnClassifier, STRONG_TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -142,12 +139,10 @@ public class TestKNearestNeighborClassifier extends ClassificationTestBase<Bytes
               leafReader, null, analyzer, null, 3, 1, 1, categoryFieldName, textFieldName);
       List<ClassificationResult<BytesRef>> classes =
           knnClassifier.getClasses(SUPER_STRONG_TECHNOLOGY_INPUT);
-      assertTrue(classes.get(0).getScore() > classes.get(1).getScore());
+      assertTrue(classes.get(0).score() > classes.get(1).score());
       checkCorrectClassification(knnClassifier, SUPER_STRONG_TECHNOLOGY_INPUT, TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 
@@ -164,9 +159,7 @@ public class TestKNearestNeighborClassifier extends ClassificationTestBase<Bytes
           TECHNOLOGY_INPUT,
           TECHNOLOGY_RESULT);
     } finally {
-      if (leafReader != null) {
-        leafReader.close();
-      }
+      IOUtils.close(leafReader);
     }
   }
 

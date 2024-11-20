@@ -23,16 +23,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.UnicodeUtil;
 
 public class TestMultiFields extends LuceneTestCase {
@@ -126,7 +126,7 @@ public class TestMultiFields extends LuceneTestCase {
         }
       }
 
-      IndexReader reader = w.getReader();
+      IndexReader reader = DirectoryReader.open(w);
       w.close();
       if (VERBOSE) {
         System.out.println("TEST: reader=" + reader);
@@ -182,7 +182,7 @@ public class TestMultiFields extends LuceneTestCase {
     w.addDocument(d);
     w.commit();
     w.addDocument(d);
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     w.close();
     PostingsEnum d1 = TestUtil.docs(random(), r, "f", new BytesRef("j"), null, PostingsEnum.NONE);
     PostingsEnum d2 = TestUtil.docs(random(), r, "f", new BytesRef("j"), null, PostingsEnum.NONE);
@@ -200,7 +200,7 @@ public class TestMultiFields extends LuceneTestCase {
     w.addDocument(d);
     w.commit();
     w.addDocument(d);
-    IndexReader r = w.getReader();
+    IndexReader r = DirectoryReader.open(w);
     w.close();
     PostingsEnum de =
         MultiTerms.getTermPostingsEnum(r, "f", new BytesRef("j"), (int) PostingsEnum.FREQS);

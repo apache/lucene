@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.TextField;
@@ -40,11 +39,13 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.MergeInfo;
-import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
 
@@ -223,6 +224,7 @@ public class TestDoc extends LuceneTestCase {
             merged,
             -1,
             false,
+            false,
             codec,
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -235,8 +237,9 @@ public class TestDoc extends LuceneTestCase {
             si,
             InfoStream.getDefault(),
             trackingDir,
-            new FieldInfos.FieldNumbers(null),
-            context);
+            new FieldInfos.FieldNumbers(null, null),
+            context,
+            new SameThreadExecutorService());
 
     merger.merge();
     r1.close();
@@ -258,7 +261,10 @@ public class TestDoc extends LuceneTestCase {
   private void printSegment(PrintWriter out, SegmentCommitInfo si) throws Exception {
     SegmentReader reader = new SegmentReader(si, Version.LATEST.major, newIOContext(random()));
 
-    for (int i = 0; i < reader.numDocs(); i++) out.println(reader.document(i));
+    StoredFields storedFields = reader.storedFields();
+    for (int i = 0; i < reader.numDocs(); i++) {
+      out.println(storedFields.document(i));
+    }
 
     for (FieldInfo fieldInfo : reader.getFieldInfos()) {
       if (fieldInfo.getIndexOptions() == IndexOptions.NONE) {

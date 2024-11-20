@@ -109,7 +109,7 @@ class RepeatingIntervalsSource extends IntervalsSource {
   public boolean equals(Object other) {
     if (other instanceof RepeatingIntervalsSource == false) return false;
     RepeatingIntervalsSource o = (RepeatingIntervalsSource) other;
-    return Objects.equals(this.in, o.in) && Objects.equals(this.childCount, o.childCount);
+    return Objects.equals(this.in, o.in) && this.childCount == o.childCount;
   }
 
   @Override
@@ -290,7 +290,7 @@ class RepeatingIntervalsSource extends IntervalsSource {
       for (MatchesIterator mi : subs) {
         MatchesIterator sub = mi.getSubMatches();
         if (sub == null) {
-          sub = new ConjunctionIntervalsSource.SingletonMatchesIterator(mi);
+          sub = new ConjunctionMatchesIterator.SingletonMatchesIterator(mi);
         }
         subMatches.add(sub);
       }

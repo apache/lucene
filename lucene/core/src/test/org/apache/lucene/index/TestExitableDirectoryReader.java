@@ -16,25 +16,33 @@
  */
 package org.apache.lucene.index;
 
+import static com.carrotsearch.randomizedtesting.RandomizedTest.atMost;
+
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.ExitableDirectoryReader.ExitingReaderException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.SuppressForbidden;
+import org.apache.lucene.util.TestVectorUtil;
 
 /**
  * Test that uses a default/lucene Implementation of {@link QueryTimeout} to exit out long running
@@ -60,6 +68,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       }
 
       /** Sleep between iterations to timeout things. */
+      @SuppressForbidden(reason = "Thread sleep")
       @Override
       public BytesRef next() throws IOException {
         try {
@@ -159,17 +168,6 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     searcher = new IndexSearcher(reader);
     searcher.search(query, 10);
     reader.close();
-
-    // Set a negative time allowed and expect the query to complete (should disable timeouts)
-    // Not checking the validity of the result, all we are bothered about in this test is the timing
-    // out.
-    directoryReader = DirectoryReader.open(directory);
-    exitableDirectoryReader = new ExitableDirectoryReader(directoryReader, disabledQueryTimeout());
-    reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
-    searcher = new IndexSearcher(reader);
-    searcher.search(query, 10);
-    reader.close();
-
     directory.close();
   }
 
@@ -282,48 +280,40 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     searcher = new IndexSearcher(reader);
     searcher.search(query, 10);
     reader.close();
-
-    // Set a negative time allowed and expect the query to complete (should disable timeouts)
-    // Not checking the validity of the result, all we are bothered about in this test is the timing
-    // out.
-    directoryReader = DirectoryReader.open(directory);
-    exitableDirectoryReader = new ExitableDirectoryReader(directoryReader, disabledQueryTimeout());
-    reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
-    searcher = new IndexSearcher(reader);
-    searcher.search(query, 10);
-    reader.close();
-
     directory.close();
   }
 
-  private static QueryTimeout disabledQueryTimeout() {
-    return new QueryTimeout() {
+  public void testExitableTermsMinAndMax() throws IOException {
+    Directory directory = newDirectory();
+    IndexWriter w = new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random())));
+    Document doc = new Document();
+    StringField fooField = new StringField("foo", "bar", Field.Store.NO);
+    doc.add(fooField);
+    w.addDocument(doc);
+    w.flush();
 
-      @Override
-      public boolean shouldExit() {
-        return false;
-      }
+    DirectoryReader directoryReader = DirectoryReader.open(w);
+    for (LeafReaderContext lfc : directoryReader.leaves()) {
+      ExitableDirectoryReader.ExitableTerms terms =
+          new ExitableDirectoryReader.ExitableTerms(
+              lfc.reader().terms("foo"), infiniteQueryTimeout()) {
+            @Override
+            public TermsEnum iterator() {
+              fail("min and max should be retrieved from block tree, no need to iterate");
+              return null;
+            }
+          };
+      assertEquals("bar", terms.getMin().utf8ToString());
+      assertEquals("bar", terms.getMax().utf8ToString());
+    }
 
-      @Override
-      public boolean isTimeoutEnabled() {
-        return false;
-      }
-    };
+    w.close();
+    directoryReader.close();
+    directory.close();
   }
 
   private static QueryTimeout infiniteQueryTimeout() {
-    return new QueryTimeout() {
-
-      @Override
-      public boolean shouldExit() {
-        return false;
-      }
-
-      @Override
-      public boolean isTimeoutEnabled() {
-        return true;
-      }
-    };
+    return () -> false;
   }
 
   private static class CountingQueryTimeout implements QueryTimeout {
@@ -335,29 +325,13 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       return false;
     }
 
-    @Override
-    public boolean isTimeoutEnabled() {
-      return true;
-    }
-
     public int getShouldExitCallCount() {
       return counter;
     }
   }
 
   private static QueryTimeout immediateQueryTimeout() {
-    return new QueryTimeout() {
-
-      @Override
-      public boolean shouldExit() {
-        return true;
-      }
-
-      @Override
-      public boolean isTimeoutEnabled() {
-        return true;
-      }
-    };
+    return () -> true;
   }
 
   @FunctionalInterface
@@ -415,9 +389,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
 
       directoryReader = DirectoryReader.open(directory);
       exitableDirectoryReader =
-          new ExitableDirectoryReader(
-              directoryReader,
-              random().nextBoolean() ? infiniteQueryTimeout() : disabledQueryTimeout());
+          new ExitableDirectoryReader(directoryReader, infiniteQueryTimeout());
       {
         IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
         final LeafReader leaf = reader.leaves().get(0).reader();
@@ -433,6 +405,185 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     }
 
     directory.close();
+  }
+
+  public void testFloatVectorValues() throws IOException {
+    Directory directory = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    int numDoc = atLeast(20);
+    int deletedDoc = atMost(5);
+    int dimension = atLeast(3);
+
+    for (int i = 0; i < numDoc; i++) {
+      Document doc = new Document();
+
+      float[] value = new float[dimension];
+      for (int j = 0; j < dimension; j++) {
+        value[j] = random().nextFloat();
+      }
+      FieldType fieldType =
+          KnnFloatVectorField.createFieldType(dimension, VectorSimilarityFunction.COSINE);
+      doc.add(new KnnFloatVectorField("vector", value, fieldType));
+
+      doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    writer.forceMerge(1);
+    writer.commit();
+
+    for (int i = 0; i < deletedDoc; i++) {
+      writer.deleteDocuments(new Term("id", Integer.toString(i)));
+    }
+
+    writer.close();
+
+    QueryTimeout queryTimeout;
+    if (random().nextBoolean()) {
+      queryTimeout = immediateQueryTimeout();
+    } else {
+      queryTimeout = infiniteQueryTimeout();
+    }
+
+    DirectoryReader directoryReader = DirectoryReader.open(directory);
+    DirectoryReader exitableDirectoryReader = directoryReader;
+    exitableDirectoryReader = new ExitableDirectoryReader(directoryReader, queryTimeout);
+    IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
+
+    LeafReaderContext context = reader.leaves().get(0);
+    LeafReader leaf = context.reader();
+
+    if (queryTimeout.shouldExit()) {
+      expectThrows(
+          ExitingReaderException.class,
+          () -> {
+            KnnVectorValues values = leaf.getFloatVectorValues("vector");
+            scanAndRetrieve(leaf, values);
+          });
+
+      expectThrows(
+          ExitingReaderException.class,
+          () ->
+              leaf.searchNearestVectors(
+                  "vector",
+                  TestVectorUtil.randomVector(dimension),
+                  5,
+                  leaf.getLiveDocs(),
+                  Integer.MAX_VALUE));
+    } else {
+      KnnVectorValues values = leaf.getFloatVectorValues("vector");
+      scanAndRetrieve(leaf, values);
+
+      leaf.searchNearestVectors(
+          "vector",
+          TestVectorUtil.randomVector(dimension),
+          5,
+          leaf.getLiveDocs(),
+          Integer.MAX_VALUE);
+    }
+
+    reader.close();
+    directory.close();
+  }
+
+  public void testByteVectorValues() throws IOException {
+    Directory directory = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    int numDoc = atLeast(20);
+    int deletedDoc = atMost(5);
+    int dimension = atLeast(3);
+
+    for (int i = 0; i < numDoc; i++) {
+      Document doc = new Document();
+      byte[] value = new byte[dimension];
+      random().nextBytes(value);
+      doc.add(new KnnByteVectorField("vector", value, VectorSimilarityFunction.COSINE));
+      doc.add(new StringField("id", Integer.toString(i), Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    writer.forceMerge(1);
+    writer.commit();
+
+    for (int i = 0; i < deletedDoc; i++) {
+      writer.deleteDocuments(new Term("id", Integer.toString(i)));
+    }
+
+    writer.close();
+
+    QueryTimeout queryTimeout;
+    if (random().nextBoolean()) {
+      queryTimeout = immediateQueryTimeout();
+    } else {
+      queryTimeout = infiniteQueryTimeout();
+    }
+
+    DirectoryReader directoryReader = DirectoryReader.open(directory);
+    DirectoryReader exitableDirectoryReader = directoryReader;
+    exitableDirectoryReader = new ExitableDirectoryReader(directoryReader, queryTimeout);
+    IndexReader reader = new TestReader(getOnlyLeafReader(exitableDirectoryReader));
+
+    LeafReaderContext context = reader.leaves().get(0);
+    LeafReader leaf = context.reader();
+
+    if (queryTimeout.shouldExit()) {
+      expectThrows(
+          ExitingReaderException.class,
+          () -> {
+            KnnVectorValues values = leaf.getByteVectorValues("vector");
+            scanAndRetrieve(leaf, values);
+          });
+
+      expectThrows(
+          ExitingReaderException.class,
+          () ->
+              leaf.searchNearestVectors(
+                  "vector",
+                  TestVectorUtil.randomVectorBytes(dimension),
+                  5,
+                  leaf.getLiveDocs(),
+                  Integer.MAX_VALUE));
+
+    } else {
+      KnnVectorValues values = leaf.getByteVectorValues("vector");
+      scanAndRetrieve(leaf, values);
+
+      leaf.searchNearestVectors(
+          "vector",
+          TestVectorUtil.randomVectorBytes(dimension),
+          5,
+          leaf.getLiveDocs(),
+          Integer.MAX_VALUE);
+    }
+
+    reader.close();
+    directory.close();
+  }
+
+  private static void scanAndRetrieve(LeafReader leaf, KnnVectorValues values) throws IOException {
+    KnnVectorValues.DocIndexIterator iter = values.iterator();
+    for (iter.nextDoc();
+        iter.docID() != DocIdSetIterator.NO_MORE_DOCS && iter.docID() < leaf.maxDoc(); ) {
+      int docId = iter.docID();
+      if (docId >= leaf.maxDoc()) {
+        break;
+      }
+      final int nextDocId = docId + 1;
+      if (random().nextBoolean() && nextDocId < leaf.maxDoc()) {
+        iter.advance(nextDocId);
+      } else {
+        iter.nextDoc();
+      }
+      if (random().nextBoolean()
+          && iter.docID() != DocIdSetIterator.NO_MORE_DOCS
+          && values instanceof FloatVectorValues) {
+        ((FloatVectorValues) values).vectorValue(iter.index());
+      }
+    }
   }
 
   private static void scan(LeafReader leaf, DocValuesIterator iter) throws IOException {

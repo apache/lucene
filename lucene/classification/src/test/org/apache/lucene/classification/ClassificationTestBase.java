@@ -25,12 +25,13 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 
@@ -83,15 +84,14 @@ public abstract class ClassificationTestBase<T> extends LuceneTestCase {
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    indexWriter.close();
-    dir.close();
+    IOUtils.close(indexWriter, dir);
   }
 
   protected ClassificationResult<T> checkCorrectClassification(
       Classifier<T> classifier, String inputDoc, T expectedResult) throws Exception {
     ClassificationResult<T> classificationResult = classifier.assignClass(inputDoc);
     assertNotNull(classificationResult);
-    T assignedClass = classificationResult.getAssignedClass();
+    T assignedClass = classificationResult.assignedClass();
     assertNotNull(assignedClass);
     assertEquals(
         "got an assigned class of " + assignedClass,
@@ -101,7 +101,7 @@ public abstract class ClassificationTestBase<T> extends LuceneTestCase {
         assignedClass instanceof BytesRef
             ? ((BytesRef) assignedClass).utf8ToString()
             : assignedClass);
-    double score = classificationResult.getScore();
+    double score = classificationResult.score();
     assertTrue("score should be between 0 and 1, got:" + score, score <= 1 && score >= 0);
     return classificationResult;
   }
@@ -130,18 +130,17 @@ public abstract class ClassificationTestBase<T> extends LuceneTestCase {
     getSampleIndex(analyzer);
 
     ClassificationResult<T> classificationResult = classifier.assignClass(inputDoc);
-    assertNotNull(classificationResult.getAssignedClass());
+    assertNotNull(classificationResult.assignedClass());
     assertEquals(
-        "got an assigned class of " + classificationResult.getAssignedClass(),
+        "got an assigned class of " + classificationResult.assignedClass(),
         expectedResult,
-        classificationResult.getAssignedClass());
-    double score = classificationResult.getScore();
+        classificationResult.assignedClass());
+    double score = classificationResult.score();
     assertTrue("score should be between 0 and 1, got: " + score, score <= 1 && score >= 0);
     updateSampleIndex();
     ClassificationResult<T> secondClassificationResult = classifier.assignClass(inputDoc);
-    assertEquals(
-        classificationResult.getAssignedClass(), secondClassificationResult.getAssignedClass());
-    assertEquals(Double.valueOf(score), Double.valueOf(secondClassificationResult.getScore()));
+    assertEquals(classificationResult.assignedClass(), secondClassificationResult.assignedClass());
+    assertEquals(Double.valueOf(score), Double.valueOf(secondClassificationResult.score()));
   }
 
   protected LeafReader getSampleIndex(Analyzer analyzer) throws IOException {

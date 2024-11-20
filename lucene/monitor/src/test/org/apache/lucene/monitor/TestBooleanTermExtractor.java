@@ -26,7 +26,7 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestBooleanTermExtractor extends LuceneTestCase {
 
@@ -81,8 +81,8 @@ public class TestBooleanTermExtractor extends LuceneTestCase {
     Query q = MonitorTestBase.parse("+*:*");
     assertTrue(q instanceof BooleanQuery);
     BooleanClause clause = ((BooleanQuery) q).iterator().next();
-    assertTrue(clause.getQuery() instanceof MatchAllDocsQuery);
-    assertEquals(BooleanClause.Occur.MUST, clause.getOccur());
+    assertTrue(clause.query() instanceof MatchAllDocsQuery);
+    assertEquals(BooleanClause.Occur.MUST, clause.occur());
 
     Set<Term> terms = collectTerms(q);
     assertEquals(1, terms.size());

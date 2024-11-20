@@ -18,10 +18,7 @@ package org.apache.lucene.analysis.pattern;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -29,7 +26,8 @@ import org.apache.lucene.analysis.charfilter.MappingCharFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.automaton.Automaton;
 
 public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
@@ -61,12 +59,9 @@ public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
     Tokenizer t = new SimplePatternTokenizer(".*");
     CharTermAttribute termAtt = t.getAttribute(CharTermAttribute.class);
     String s;
-    while (true) {
+    do {
       s = TestUtil.randomUnicodeString(random());
-      if (s.length() > 0) {
-        break;
-      }
-    }
+    } while (s.isEmpty());
     t.setReader(new StringReader(s));
     t.reset();
     assertTrue(t.incrementToken());
@@ -120,8 +115,8 @@ public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
     };
 
     for (String[] test : tests) {
-      TokenStream stream = new SimplePatternTokenizer(test[0]);
-      ((Tokenizer) stream).setReader(new StringReader(test[1]));
+      Tokenizer stream = new SimplePatternTokenizer(test[0]);
+      stream.setReader(new StringReader(test[1]));
       String out = tsToString(stream);
 
       assertEquals("pattern: " + test[0] + " with input: " + test[1], test[2], out);
@@ -139,19 +134,13 @@ public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
     a.addTransition(start, mid2, 'a', 'z');
     a.addTransition(mid1, end, 'b');
     a.addTransition(mid2, end, 'b');
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new SimplePatternTokenizer(a);
-        });
+    expectThrows(IllegalArgumentException.class, () -> new SimplePatternTokenizer(a));
   }
 
   public void testOffsetCorrection() throws Exception {
     final String INPUT = "G&uuml;nther G&uuml;nther is here";
 
     // create MappingCharFilter
-    List<String> mappingRules = new ArrayList<>();
-    mappingRules.add("\"&uuml;\" => \"ü\"");
     NormalizeCharMap.Builder builder = new NormalizeCharMap.Builder();
     builder.add("&uuml;", "ü");
     NormalizeCharMap normMap = builder.build();
@@ -181,7 +170,7 @@ public class TestSimplePatternTokenizer extends BaseTokenStreamTestCase {
       if (out.length() > 0) {
         out.append(' ');
       }
-      out.append(termAtt.toString());
+      out.append(termAtt);
       in.clearAttributes();
       termAtt.setEmpty().append("bogusTerm");
     }

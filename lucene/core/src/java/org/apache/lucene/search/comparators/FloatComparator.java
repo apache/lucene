@@ -18,9 +18,10 @@
 package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
-import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.LeafFieldComparator;
+import org.apache.lucene.search.Pruning;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Comparator based on {@link Float#compare} for {@code numHits}. This comparator provides a
@@ -32,8 +33,8 @@ public class FloatComparator extends NumericComparator<Float> {
   protected float bottom;
 
   public FloatComparator(
-      int numHits, String field, Float missingValue, boolean reverse, int sortPos) {
-    super(field, missingValue != null ? missingValue : 0.0f, reverse, sortPos, Float.BYTES);
+      int numHits, String field, Float missingValue, boolean reverse, Pruning pruning) {
+    super(field, missingValue != null ? missingValue : 0.0f, reverse, pruning, Float.BYTES);
     values = new float[numHits];
   }
 
@@ -51,6 +52,16 @@ public class FloatComparator extends NumericComparator<Float> {
   @Override
   public Float value(int slot) {
     return Float.valueOf(values[slot]);
+  }
+
+  @Override
+  protected long missingValueAsComparableLong() {
+    return NumericUtils.floatToSortableInt(missingValue);
+  }
+
+  @Override
+  protected long sortableBytesToLong(byte[] bytes) {
+    return NumericUtils.sortableBytesToInt(bytes, 0);
   }
 
   @Override
@@ -96,19 +107,13 @@ public class FloatComparator extends NumericComparator<Float> {
     }
 
     @Override
-    protected boolean isMissingValueCompetitive() {
-      int result = Float.compare(missingValue, bottom);
-      return reverse ? (result >= 0) : (result <= 0);
+    protected long bottomAsComparableLong() {
+      return NumericUtils.floatToSortableInt(bottom);
     }
 
     @Override
-    protected void encodeBottom(byte[] packedValue) {
-      FloatPoint.encodeDimension(bottom, packedValue, 0);
-    }
-
-    @Override
-    protected void encodeTop(byte[] packedValue) {
-      FloatPoint.encodeDimension(topValue, packedValue, 0);
+    protected long topAsComparableLong() {
+      return NumericUtils.floatToSortableInt(topValue);
     }
   }
 }

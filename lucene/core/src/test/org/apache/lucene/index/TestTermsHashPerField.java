@@ -20,7 +20,7 @@ package org.apache.lucene.index;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -28,11 +28,12 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestTermsHashPerField extends LuceneTestCase {
 
@@ -256,21 +257,19 @@ public class TestTermsHashPerField extends LuceneTestCase {
           RandomStrings.randomRealisticUnicodeOfCodepointLengthBetween(random(), 1, 10);
       postingMap.putIfAbsent(newBytesRef(randomString), new Posting());
     }
-    List<BytesRef> bytesRefs = Arrays.asList(postingMap.keySet().toArray(new BytesRef[0]));
+    List<BytesRef> bytesRefs = new ArrayList<>(postingMap.keySet());
     Collections.sort(bytesRefs);
     int numDocs = 1 + random().nextInt(200);
     int termOrd = 0;
-    for (int i = 0; i < numDocs; i++) {
+    for (int doc = 0; doc < numDocs; doc++) {
       int numTerms = 1 + random().nextInt(200);
-      int doc = i;
       for (int j = 0; j < numTerms; j++) {
         BytesRef ref = RandomPicks.randomFrom(random(), bytesRefs);
         Posting posting = postingMap.get(ref);
         if (posting.termId == -1) {
           posting.termId = termOrd++;
         }
-        posting.docAndFreq.putIfAbsent(doc, 0);
-        posting.docAndFreq.compute(doc, (key, oldVal) -> oldVal + 1);
+        posting.docAndFreq.merge(doc, 1, Integer::sum);
         hash.add(ref, doc);
       }
       hash.finish();
@@ -296,6 +295,30 @@ public class TestTermsHashPerField extends LuceneTestCase {
         prefDoc = entry.getKey();
       }
       assertTrue("the last posting must be EOF on the reader", eof);
+    }
+  }
+
+  public void testWriteBytes() throws IOException {
+    for (int i = 0; i < 100; i++) {
+      AtomicInteger newCalled = new AtomicInteger(0);
+      AtomicInteger addCalled = new AtomicInteger(0);
+      TermsHashPerField hash = createNewHash(newCalled, addCalled);
+      hash.start(null, true);
+      hash.add(newBytesRef("start"), 0); // tid = 0;
+      int size = TestUtil.nextInt(random(), 50000, 100000);
+      byte[] randomData = new byte[size];
+      random().nextBytes(randomData);
+      int offset = 0;
+      while (offset < randomData.length) {
+        int writeLength = Math.min(randomData.length - offset, TestUtil.nextInt(random(), 1, 200));
+        hash.writeBytes(0, randomData, offset, writeLength);
+        offset += writeLength;
+      }
+      ByteSliceReader reader = new ByteSliceReader();
+      reader.init(hash.bytePool, 0, hash.bytePool.byteOffset + hash.bytePool.byteUpto);
+      for (byte expected : randomData) {
+        assertEquals(expected, reader.readByte());
+      }
     }
   }
 }

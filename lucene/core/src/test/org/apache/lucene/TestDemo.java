@@ -27,12 +27,17 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
 
 /**
  * A very simple demo used in the API documentation (src/java/overview.html).
@@ -65,11 +70,12 @@ public class TestDemo extends LuceneTestCase {
 
         Query query = new TermQuery(new Term("fieldname", "text"));
         TopDocs hits = searcher.search(query, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         // Iterate through the results.
+        StoredFields storedFields = searcher.storedFields();
         for (int i = 0; i < hits.scoreDocs.length; i++) {
-          Document hitDoc = searcher.doc(hits.scoreDocs[i].doc);
+          Document hitDoc = storedFields.document(hits.scoreDocs[i].doc);
           assertEquals(text, hitDoc.get("fieldname"));
         }
 

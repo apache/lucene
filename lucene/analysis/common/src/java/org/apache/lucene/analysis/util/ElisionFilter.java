@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.util;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -40,7 +41,7 @@ public final class ElisionFilter extends TokenFilter {
    */
   public ElisionFilter(TokenStream input, CharArraySet articles) {
     super(input);
-    this.articles = articles;
+    this.articles = Objects.requireNonNull(articles, "articles");
   }
 
   /** Increments the {@link TokenStream} with a {@link CharTermAttribute} without elisioned start */

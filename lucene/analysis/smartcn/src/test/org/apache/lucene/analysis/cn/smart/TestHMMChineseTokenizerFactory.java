@@ -19,9 +19,9 @@ package org.apache.lucene.analysis.cn.smart;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.HashMap;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.TokenizerFactory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 /** Tests for {@link HMMChineseTokenizerFactory} */
 public class TestHMMChineseTokenizerFactory extends BaseTokenStreamTestCase {

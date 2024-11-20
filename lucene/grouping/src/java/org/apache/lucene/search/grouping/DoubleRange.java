@@ -26,6 +26,7 @@ public class DoubleRange {
 
   /** The inclusive minimum value of this range */
   public double min;
+
   /** The exclusive maximum value of this range */
   public double max;
 

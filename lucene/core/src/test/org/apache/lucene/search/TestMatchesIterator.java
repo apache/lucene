@@ -33,6 +33,8 @@ import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.tests.search.AssertingMatches;
+import org.apache.lucene.tests.search.MatchesTestBase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestMatchesIterator extends MatchesTestBase {
@@ -497,7 +499,7 @@ public class TestMatchesIterator extends MatchesTestBase {
     SeekCountingLeafReader reader = new SeekCountingLeafReader(getOnlyLeafReader(this.reader));
     this.searcher = new IndexSearcher(reader);
     Query query = new PrefixQuery(new Term(FIELD_WITH_OFFSETS, "w"));
-    Weight w = searcher.createWeight(query.rewrite(reader), ScoreMode.COMPLETE, 1);
+    Weight w = searcher.createWeight(query.rewrite(searcher), ScoreMode.COMPLETE, 1);
 
     // docs 0-3 match several different terms here, but we only seek to the first term and
     // then short-cut return; other terms are ignored until we try and iterate over matches

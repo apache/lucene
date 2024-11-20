@@ -18,10 +18,10 @@ package org.apache.lucene.analysis.ckb;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Tests normalization for Sorani (this is more critical than stemming...) */
 public class TestSoraniNormalizationFilter extends BaseTokenStreamTestCase {

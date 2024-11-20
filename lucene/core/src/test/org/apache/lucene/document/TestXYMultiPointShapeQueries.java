@@ -17,11 +17,12 @@
 package org.apache.lucene.document;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Component2D;
-import org.apache.lucene.geo.ShapeTestUtil;
 import org.apache.lucene.geo.XYPoint;
+import org.apache.lucene.tests.geo.ShapeTestUtil;
 
 /**
  * random cartesian bounding box, line, and polygon query tests for random indexed arrays of {@code
@@ -38,7 +39,7 @@ public class TestXYMultiPointShapeQueries extends BaseXYShapeTestCase {
     int n = random().nextInt(4) + 1;
     XYPoint[] points = new XYPoint[n];
     for (int i = 0; i < n; i++) {
-      points[i] = ShapeTestUtil.nextPoint();
+      points[i] = ShapeTestUtil.nextXYPoint();
     }
     return points;
   }
@@ -49,11 +50,9 @@ public class TestXYMultiPointShapeQueries extends BaseXYShapeTestCase {
     List<Field> allFields = new ArrayList<>();
     for (XYPoint point : points) {
       Field[] fields = XYShape.createIndexableFields(name, point.getX(), point.getY());
-      for (Field field : fields) {
-        allFields.add(field);
-      }
+      Collections.addAll(allFields, fields);
     }
-    return allFields.toArray(new Field[allFields.size()]);
+    return allFields.toArray(new Field[0]);
   }
 
   @Override
@@ -61,7 +60,7 @@ public class TestXYMultiPointShapeQueries extends BaseXYShapeTestCase {
     return new MultiPointValidator(ENCODER);
   }
 
-  protected class MultiPointValidator extends Validator {
+  protected static class MultiPointValidator extends Validator {
     TestXYPointShapeQueries.PointValidator POINTVALIDATOR;
 
     MultiPointValidator(Encoder encoder) {
@@ -95,7 +94,6 @@ public class TestXYMultiPointShapeQueries extends BaseXYShapeTestCase {
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {

@@ -22,9 +22,9 @@
 # gather baselines for operations like indexing (if reading from the content 
 # source takes 'X' time, we cannot index faster).
 #
-# To use this, first cd to benchmark and then run:
+# To use this run:
 #
-#   ant run-task -Dtask.alg=conf/readContentSource.alg
+#   gradlew :lucene:benchmark:run -Ptask.alg=conf/readContentSource.alg
 #
 
 # Where to get documents from:

@@ -16,8 +16,13 @@
  */
 package org.apache.lucene.spatial.prefix;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.*;
-import static org.locationtech.spatial4j.shape.SpatialRelation.*;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomInt;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static org.locationtech.spatial4j.shape.SpatialRelation.CONTAINS;
+import static org.locationtech.spatial4j.shape.SpatialRelation.DISJOINT;
+import static org.locationtech.spatial4j.shape.SpatialRelation.INTERSECTS;
+import static org.locationtech.spatial4j.shape.SpatialRelation.WITHIN;
 
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
@@ -341,16 +346,16 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
         case 0:
           queryShape = randomPoint();
           break;
-          // LUCENE-5549
-          // TODO debug: -Dtests.method=testWithin -Dtests.multiplier=3
-          // -Dtests.seed=5F5294CE2E075A3E:AAD2F0F79288CA64
-          //        case 1:case 2:case 3:
-          //          if (!indexedAtLeastOneShapePair) {
-          // // avoids ShapePair.relate(ShapePair), which isn't reliable
-          //            queryShape = randomShapePairRect(!biasContains);
-          // // invert biasContains for query side
-          //            break;
-          //          }
+        // LUCENE-5549
+        // TODO debug: -Dtests.method=testWithin -Dtests.multiplier=3
+        // -Dtests.seed=5F5294CE2E075A3E:AAD2F0F79288CA64
+        //        case 1:case 2:case 3:
+        //          if (!indexedAtLeastOneShapePair) {
+        // // avoids ShapePair.relate(ShapePair), which isn't reliable
+        //            queryShape = randomShapePairRect(!biasContains);
+        // // invert biasContains for query side
+        //            break;
+        //          }
 
         case 4:
           // choose an existing indexed shape
@@ -361,7 +366,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
               break;
             }
           }
-          // fall-through
+        // fall-through
 
         default:
           queryShape = randomRectangle();

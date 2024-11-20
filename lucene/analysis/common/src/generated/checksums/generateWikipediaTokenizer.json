@@ -1,5 +1,5 @@
 {
-    "gradle/generation/jflex/skeleton.default.txt": "883b32da9ff37f859964af9c2c665361c621b2c2",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.java": "743fb4cc4b88d36242b3d227320c85e89a6868a8",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.jflex": "a23a4b7cbcdba1fc864c0b85bc2784c8893a0f9f"
+    "gradle/generation/jflex/skeleton.default.txt": "58944f66c9113a940dfaf6a17210ec8219024390",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.java": "2b5df5ff35543a6380c82f298225eb5fa06e4453",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.jflex": "0b8c7774b98e8237702013e82c352d4711509bd0"
 }

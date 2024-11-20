@@ -133,9 +133,6 @@ public interface Analysis {
     }
   }
 
-  /** Returns built-in {@link Analyzer}s. */
-  Collection<Class<? extends Analyzer>> getPresetAnalyzerTypes();
-
   /** Returns available char filter names. */
   Collection<String> getAvailableCharFilters();
 

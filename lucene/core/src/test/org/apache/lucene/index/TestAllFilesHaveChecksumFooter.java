@@ -17,13 +17,15 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Test that a plain default puts CRC32 footers in all files. */
 public class TestAllFilesHaveChecksumFooter extends LuceneTestCase {
@@ -45,7 +47,7 @@ public class TestAllFilesHaveChecksumFooter extends LuceneTestCase {
       }
       if (random().nextInt(15) == 0) {
         riw.updateNumericDocValue(
-            new Term("docid", Integer.toString(i)), "docid_intDV", Long.valueOf(i));
+            new Term("docid", Integer.toString(i)), "page_views", Long.valueOf(i));
       }
     }
     riw.close();
@@ -63,10 +65,7 @@ public class TestAllFilesHaveChecksumFooter extends LuceneTestCase {
       }
       if (si.info.getUseCompoundFile()) {
         try (Directory cfsDir =
-            si.info
-                .getCodec()
-                .compoundFormat()
-                .getCompoundReader(dir, si.info, newIOContext(random()))) {
+            si.info.getCodec().compoundFormat().getCompoundReader(dir, si.info)) {
           for (String cfsFile : cfsDir.listAll()) {
             checkFooter(cfsDir, cfsFile);
           }
@@ -76,7 +75,7 @@ public class TestAllFilesHaveChecksumFooter extends LuceneTestCase {
   }
 
   private void checkFooter(Directory dir, String file) throws IOException {
-    try (IndexInput in = dir.openInput(file, newIOContext(random()))) {
+    try (IndexInput in = dir.openInput(file, IOContext.READONCE)) {
       CodecUtil.checksumEntireFile(in);
     }
   }

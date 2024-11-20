@@ -22,6 +22,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.vectorhighlight.FieldTermStack.TermInfo;
+import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.util.AttributeImpl;
 
 public class TestIndexTimeSynonym extends AbstractTestCase {

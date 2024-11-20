@@ -114,7 +114,7 @@ public class JapaneseTokenizerFactory extends TokenizerFactory implements Resour
    * /箱根山-箱根/成田空港-成田/ requests "箱根" and "成田" to be in the result in NBEST output.
    */
   private final String nbestExamples;
-  private int nbestCost = -1;
+  private int nbestCost;
 
   /** Creates a new JapaneseTokenizerFactory */
   public JapaneseTokenizerFactory(Map<String, String> args) {

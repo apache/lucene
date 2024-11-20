@@ -17,7 +17,6 @@
 
 package org.apache.lucene.search;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.LongAccumulator;
 
 /** Maintains the maximum score and its corresponding document id concurrently */
@@ -26,7 +25,7 @@ final class MaxScoreAccumulator {
   static final int DEFAULT_INTERVAL = 0x3ff;
 
   // scores are always positive
-  final LongAccumulator acc = new LongAccumulator(Long::max, Long.MIN_VALUE);
+  final LongAccumulator acc = new LongAccumulator(MaxScoreAccumulator::maxEncode, Long.MIN_VALUE);
 
   // non-final and visible for tests
   long modInterval;
@@ -35,56 +34,38 @@ final class MaxScoreAccumulator {
     this.modInterval = DEFAULT_INTERVAL;
   }
 
-  void accumulate(int docID, float score) {
-    assert docID >= 0 && score >= 0;
-    long encode = (((long) Float.floatToIntBits(score)) << 32) | docID;
+  /**
+   * Return the max encoded docId and score found in the two longs, following the encoding in {@link
+   * #accumulate}.
+   */
+  private static long maxEncode(long v1, long v2) {
+    float score1 = Float.intBitsToFloat((int) (v1 >> 32));
+    float score2 = Float.intBitsToFloat((int) (v2 >> 32));
+    int cmp = Float.compare(score1, score2);
+    if (cmp == 0) {
+      // tie-break on the minimum doc base
+      return (int) v1 < (int) v2 ? v1 : v2;
+    } else if (cmp > 0) {
+      return v1;
+    }
+    return v2;
+  }
+
+  void accumulate(int docId, float score) {
+    assert docId >= 0 && score >= 0;
+    long encode = (((long) Float.floatToIntBits(score)) << 32) | docId;
     acc.accumulate(encode);
   }
 
-  DocAndScore get() {
-    long value = acc.get();
-    if (value == Long.MIN_VALUE) {
-      return null;
-    }
-    float score = Float.intBitsToFloat((int) (value >> 32));
-    int docID = (int) value;
-    return new DocAndScore(docID, score);
+  public static float toScore(long value) {
+    return Float.intBitsToFloat((int) (value >> 32));
   }
 
-  static class DocAndScore implements Comparable<DocAndScore> {
-    final int docID;
-    final float score;
+  public static int docId(long value) {
+    return (int) value;
+  }
 
-    DocAndScore(int docID, float score) {
-      this.docID = docID;
-      this.score = score;
-    }
-
-    @Override
-    public int compareTo(DocAndScore o) {
-      int cmp = Float.compare(score, o.score);
-      if (cmp == 0) {
-        return Integer.compare(docID, o.docID);
-      }
-      return cmp;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      DocAndScore result = (DocAndScore) o;
-      return docID == result.docID && Float.compare(result.score, score) == 0;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(docID, score);
-    }
-
-    @Override
-    public String toString() {
-      return "DocAndScore{" + "docID=" + docID + ", score=" + score + '}';
-    }
+  long getRaw() {
+    return acc.get();
   }
 }

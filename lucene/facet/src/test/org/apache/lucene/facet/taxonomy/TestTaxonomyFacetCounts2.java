@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
@@ -33,6 +32,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -46,6 +46,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -121,8 +122,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     doc.add(new StringField(A.field(), A.text(), Store.NO));
   }
 
-  private static void addFacets(Document doc, FacetsConfig config, boolean updateTermExpectedCounts)
-      throws IOException {
+  private static void addFacets(Document doc, boolean updateTermExpectedCounts) throws IOException {
     List<FacetField> docCategories = randomCategories(random());
     for (FacetField ff : docCategories) {
       doc.add(ff);
@@ -162,29 +162,27 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     indexWriter.commit(); // flush a segment
   }
 
-  private static void indexDocsWithFacetsNoTerms(
-      IndexWriter indexWriter, TaxonomyWriter taxoWriter, Map<String, Integer> expectedCounts)
+  private static void indexDocsWithFacetsNoTerms(IndexWriter indexWriter, TaxonomyWriter taxoWriter)
       throws IOException {
     Random random = random();
     int numDocs = atLeast(random, 2);
     FacetsConfig config = getConfig();
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
-      addFacets(doc, config, false);
+      addFacets(doc, false);
       indexWriter.addDocument(config.build(taxoWriter, doc));
     }
     indexWriter.commit(); // flush a segment
   }
 
   private static void indexDocsWithFacetsAndTerms(
-      IndexWriter indexWriter, TaxonomyWriter taxoWriter, Map<String, Integer> expectedCounts)
-      throws IOException {
+      IndexWriter indexWriter, TaxonomyWriter taxoWriter) throws IOException {
     Random random = random();
     int numDocs = atLeast(random, 2);
     FacetsConfig config = getConfig();
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
-      addFacets(doc, config, true);
+      addFacets(doc, true);
       addField(doc);
       indexWriter.addDocument(config.build(taxoWriter, doc));
     }
@@ -192,8 +190,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
   }
 
   private static void indexDocsWithFacetsAndSomeTerms(
-      IndexWriter indexWriter, TaxonomyWriter taxoWriter, Map<String, Integer> expectedCounts)
-      throws IOException {
+      IndexWriter indexWriter, TaxonomyWriter taxoWriter) throws IOException {
     Random random = random();
     int numDocs = atLeast(random, 2);
     FacetsConfig config = getConfig();
@@ -203,7 +200,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
       if (hasContent) {
         addField(doc);
       }
-      addFacets(doc, config, hasContent);
+      addFacets(doc, hasContent);
       indexWriter.addDocument(config.build(taxoWriter, doc));
     }
     indexWriter.commit(); // flush a segment
@@ -255,13 +252,13 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     indexDocsNoFacets(indexWriter);
 
     // segment w/ categories, no content
-    indexDocsWithFacetsNoTerms(indexWriter, taxoWriter, allExpectedCounts);
+    indexDocsWithFacetsNoTerms(indexWriter, taxoWriter);
 
     // segment w/ categories and content
-    indexDocsWithFacetsAndTerms(indexWriter, taxoWriter, allExpectedCounts);
+    indexDocsWithFacetsAndTerms(indexWriter, taxoWriter);
 
     // segment w/ categories and some content
-    indexDocsWithFacetsAndSomeTerms(indexWriter, taxoWriter, allExpectedCounts);
+    indexDocsWithFacetsAndSomeTerms(indexWriter, taxoWriter);
 
     indexWriter.close();
     IOUtils.close(taxoWriter);
@@ -274,9 +271,8 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = new FacetsCollector();
     TermQuery q = new TermQuery(A);
-    searcher.search(q, sfc);
+    FacetsCollector sfc = searcher.search(q, new FacetsCollectorManager());
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
     FacetResult result = facets.getTopChildren(NUM_CHILDREN_CP_A, CP_A);
     assertEquals(-1, result.value.intValue());
@@ -298,8 +294,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
 
@@ -340,8 +335,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
 
@@ -365,8 +359,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = new FacetsCollector();
-    searcher.search(new MatchAllDocsQuery(), sfc);
+    FacetsCollector sfc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
 

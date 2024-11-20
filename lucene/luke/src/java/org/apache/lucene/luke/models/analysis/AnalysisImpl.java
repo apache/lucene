@@ -20,7 +20,6 @@ package org.apache.lucene.luke.models.analysis;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.FileSystems;
@@ -28,15 +27,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharFilterFactory;
 import org.apache.lucene.analysis.TokenFilterFactory;
@@ -44,9 +40,9 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.TokenizerFactory;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.luke.models.LukeException;
-import org.apache.lucene.luke.util.reflection.ClassScanner;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IOUtils;
@@ -54,9 +50,7 @@ import org.apache.lucene.util.IOUtils;
 /** Default implementation of {@link AnalysisImpl} */
 public final class AnalysisImpl implements Analysis {
 
-  private List<Class<? extends Analyzer>> presetAnalyzerTypes;
-
-  private Analyzer analyzer;
+  private Analyzer analyzer = defaultAnalyzer();
 
   @Override
   public void addExternalJars(List<String> jarFiles) {
@@ -85,50 +79,18 @@ public final class AnalysisImpl implements Analysis {
   }
 
   @Override
-  public Collection<Class<? extends Analyzer>> getPresetAnalyzerTypes() {
-    if (Objects.isNull(presetAnalyzerTypes)) {
-      List<Class<? extends Analyzer>> types = new ArrayList<>();
-      for (Class<? extends Analyzer> clazz : getInstantiableSubTypesBuiltIn(Analyzer.class)) {
-        try {
-          // add to presets if no args constructor is available
-          clazz.getConstructor();
-          types.add(clazz);
-        } catch (
-            @SuppressWarnings("unused")
-            NoSuchMethodException e) {
-        }
-      }
-      presetAnalyzerTypes = List.copyOf(types);
-    }
-    return presetAnalyzerTypes;
-  }
-
-  @Override
   public Collection<String> getAvailableCharFilters() {
-    return CharFilterFactory.availableCharFilters().stream().sorted().collect(Collectors.toList());
+    return CharFilterFactory.availableCharFilters().stream().sorted().toList();
   }
 
   @Override
   public Collection<String> getAvailableTokenizers() {
-    return TokenizerFactory.availableTokenizers().stream().sorted().collect(Collectors.toList());
+    return TokenizerFactory.availableTokenizers().stream().sorted().toList();
   }
 
   @Override
   public Collection<String> getAvailableTokenFilters() {
-    return TokenFilterFactory.availableTokenFilters().stream()
-        .sorted()
-        .collect(Collectors.toList());
-  }
-
-  private <T> List<Class<? extends T>> getInstantiableSubTypesBuiltIn(Class<T> superType) {
-    ClassScanner scanner =
-        new ClassScanner("org.apache.lucene.analysis", getClass().getClassLoader());
-    Set<Class<? extends T>> types = scanner.scanSubTypes(superType);
-    return types.stream()
-        .filter(type -> !Modifier.isAbstract(type.getModifiers()))
-        .filter(type -> !type.getSimpleName().startsWith("Mock"))
-        .sorted(Comparator.comparing(Class::getName))
-        .collect(Collectors.toList());
+    return TokenFilterFactory.availableTokenFilters().stream().sorted().toList();
   }
 
   @Override
@@ -188,6 +150,10 @@ public final class AnalysisImpl implements Analysis {
     }
   }
 
+  private Analyzer defaultAnalyzer() {
+    return new StandardAnalyzer();
+  }
+
   @Override
   public Analyzer buildCustomAnalyzer(CustomAnalyzerConfig config) {
     Objects.requireNonNull(config);
@@ -197,20 +163,20 @@ public final class AnalysisImpl implements Analysis {
           config
               .getConfigDir()
               .map(path -> CustomAnalyzer.builder(FileSystems.getDefault().getPath(path)))
-              .orElse(CustomAnalyzer.builder());
+              .orElseGet(CustomAnalyzer::builder);
 
       // set tokenizer
       builder.withTokenizer(
-          config.getTokenizerConfig().getName(), config.getTokenizerConfig().getParams());
+          config.getTokenizerConfig().name(), config.getTokenizerConfig().params());
 
       // add char filters
       for (CustomAnalyzerConfig.ComponentConfig cfConf : config.getCharFilterConfigs()) {
-        builder.addCharFilter(cfConf.getName(), cfConf.getParams());
+        builder.addCharFilter(cfConf.name(), cfConf.params());
       }
 
       // add token filters
       for (CustomAnalyzerConfig.ComponentConfig tfConf : config.getTokenFilterConfigs()) {
-        builder.addTokenFilter(tfConf.getName(), tfConf.getParams());
+        builder.addTokenFilter(tfConf.name(), tfConf.params());
       }
 
       // build analyzer

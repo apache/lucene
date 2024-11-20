@@ -15,23 +15,61 @@
  * limitations under the License.
  */
 
-// Try to detect IntelliJ model loader ("reimport") early.
-def isIdea = System.getProperty("idea.active") != null ||
-    gradle.startParameter.taskNames.contains('idea') ||
-    gradle.startParameter.taskNames.contains('cleanIdea')
+// Try to detect IntelliJ model loader project structure "sync"
+//
+rootProject.ext.isIdea = Boolean.parseBoolean(System.getProperty("idea.active", "false"))
+rootProject.ext.isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"))
+rootProject.ext.isIdeaBuild = (isIdea && !isIdeaSync)
 
 if (isIdea) {
   logger.warn("IntelliJ Idea IDE detected.")
+
+  allprojects {
+    apply plugin: 'idea'
+
+    idea {
+      module {
+        outputDir file('build/idea/classes/main')
+        testOutputDir file('build/idea/classes/test')
+        downloadSources = true
+      }
+    }
+  }
 }
 
-allprojects {
-  apply plugin: 'idea'
+if (isIdeaSync) {
+  allprojects {
+    // disable all MR-JAR folders by hiding them from IDE after evaluation:
+    plugins.withType(JavaPlugin) {
+      sourceSets.matching{ it.name ==~ /main\d+/ }.all{ SourceSet sourceSet ->
+        project.afterEvaluate {
+          logger.lifecycle("Skipping MR-JAR sourceSet on IntelliJ Idea: " + sourceSet.name)
+          sourceSet.java.srcDirs = []
+          sourceSet.resources.srcDirs = []
+        }
+      }
+    }
+  }
+}
 
-  idea {
-    module {
-      outputDir file('build/idea/classes/main')
-      testOutputDir file('build/idea/classes/test')
-      downloadSources = true
+if (isIdeaBuild) {
+  // Skip certain long tasks that are dependencies
+  // of 'assemble' if we're building from within IntelliJ.
+  gradle.taskGraph.whenReady { taskGraph ->
+    def tasks = taskGraph.getAllTasks()
+
+    def skipTasks = [
+            // Skip site javadoc rendering
+            ".*:(renderSiteJavadoc)",
+    ]
+
+    logger.lifecycle("Skipping certain tasks on IntelliJ builds")
+    tasks.each { task ->
+      def taskPath = task.path
+      if (skipTasks.any { pattern -> taskPath ==~ pattern }) {
+        logger.debug("Skipping task on IntelliJ: " + taskPath)
+        task.enabled = false
+      }
     }
   }
 }

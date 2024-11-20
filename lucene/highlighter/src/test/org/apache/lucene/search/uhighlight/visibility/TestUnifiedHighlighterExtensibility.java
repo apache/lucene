@@ -20,12 +20,12 @@ package org.apache.lucene.search.uhighlight.visibility;
 import java.io.IOException;
 import java.text.BreakIterator;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanQuery;
@@ -44,8 +44,9 @@ import org.apache.lucene.search.uhighlight.PhraseHelper;
 import org.apache.lucene.search.uhighlight.SplittingBreakIterator;
 import org.apache.lucene.search.uhighlight.UHComponents;
 import org.apache.lucene.search.uhighlight.UnifiedHighlighter;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Helps us be aware of visibility/extensibility concerns. */
@@ -97,8 +98,10 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
   @Test
   public void testUnifiedHighlighterExtensibility() {
     final int maxLength = 1000;
+    UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder(null, new MockAnalyzer(random()));
     UnifiedHighlighter uh =
-        new UnifiedHighlighter(null, new MockAnalyzer(random())) {
+        new UnifiedHighlighter(uhBuilder) {
 
           @Override
           protected Map<String, Object[]> highlightFieldsAsObjects(
@@ -125,6 +128,11 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
           @Override
           protected PassageFormatter getFormatter(String field) {
             return super.getFormatter(field);
+          }
+
+          @Override
+          protected Comparator<Passage> getPassageSortComparator(String field) {
+            return super.getPassageSortComparator(field);
           }
 
           @Override
@@ -167,14 +175,14 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
             OffsetSource offsetSource = getOptimizedOffsetSource(components);
 
             // test all is accessible
-            components.getField();
-            components.getFieldMatcher();
-            components.getQuery();
-            components.getTerms();
-            components.getPhraseHelper();
-            components.getAutomata();
+            components.field();
+            components.fieldMatcher();
+            components.query();
+            components.terms();
+            components.phraseHelper();
+            components.automata();
             components.hasUnrecognizedQueryPart();
-            components.getHighlightFlags();
+            components.highlightFlags();
 
             return new CustomFieldHighlighter(
                 field,
@@ -184,7 +192,8 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
                 getScorer(field),
                 maxPassages,
                 getMaxNoHighlightPassages(field),
-                getFormatter(field));
+                getFormatter(field),
+                getPassageSortComparator(field));
           }
 
           @Override
@@ -238,7 +247,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
   public void testFieldHiglighterExtensibility() {
     final String fieldName = "fieldName";
     FieldHighlighter fieldHighlighter =
-        new FieldHighlighter(fieldName, null, null, null, 1, 1, null) {
+        new FieldHighlighter(fieldName, null, null, null, 1, 1, null, null) {
           @Override
           protected Passage[] highlightOffsetsEnums(OffsetsEnum offsetsEnums) throws IOException {
             return super.highlightOffsetsEnums(offsetsEnums);
@@ -252,7 +261,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
    * Tests maintaining extensibility/visibility of {@link
    * org.apache.lucene.search.uhighlight.FieldHighlighter} out of package.
    */
-  private static class CustomFieldHighlighter extends FieldHighlighter {
+  protected static class CustomFieldHighlighter extends FieldHighlighter {
     CustomFieldHighlighter(
         String field,
         FieldOffsetStrategy fieldOffsetStrategy,
@@ -260,7 +269,8 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
         PassageScorer passageScorer,
         int maxPassages,
         int maxNoHighlightPassages,
-        PassageFormatter passageFormatter) {
+        PassageFormatter passageFormatter,
+        Comparator<Passage> passageSortComparator) {
       super(
           field,
           fieldOffsetStrategy,
@@ -268,7 +278,8 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
           passageScorer,
           maxPassages,
           maxNoHighlightPassages,
-          passageFormatter);
+          passageFormatter,
+          passageSortComparator);
     }
 
     @Override

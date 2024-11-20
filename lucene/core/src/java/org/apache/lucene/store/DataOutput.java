@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Abstract base class for performing write operations of Lucene's low-level data types.
@@ -29,6 +30,7 @@ import org.apache.lucene.util.BytesRef;
  * internal state like file position).
  */
 public abstract class DataOutput {
+  private byte[] groupVIntBytes;
 
   /**
    * Writes a single byte.
@@ -63,11 +65,10 @@ public abstract class DataOutput {
   public abstract void writeBytes(byte[] b, int offset, int length) throws IOException;
 
   /**
-   * Writes an int as four bytes.
-   *
-   * <p>32-bit unsigned integer written as four bytes, high-order bytes first.
+   * Writes an int as four bytes (LE byte order).
    *
    * @see DataInput#readInt()
+   * @see BitUtil#VH_LE_INT
    */
   public void writeInt(int i) throws IOException {
     writeByte((byte) i);
@@ -77,9 +78,10 @@ public abstract class DataOutput {
   }
 
   /**
-   * Writes a short as two bytes.
+   * Writes a short as two bytes (LE byte order).
    *
    * @see DataInput#readShort()
+   * @see BitUtil#VH_LE_SHORT
    */
   public void writeShort(short i) throws IOException {
     writeByte((byte) i);
@@ -188,8 +190,6 @@ public abstract class DataOutput {
    *
    * <p>This provides compression while still being efficient to decode.
    *
-   * <p>This provides compression while still being efficient to decode.
-   *
    * @param i Smaller values take fewer bytes. Negative numbers are supported, but should be
    *     avoided.
    * @throws IOException If there is an I/O error writing to the underlying medium.
@@ -215,11 +215,10 @@ public abstract class DataOutput {
   }
 
   /**
-   * Writes a long as eight bytes.
-   *
-   * <p>64-bit unsigned integer written as eight bytes, high-order bytes first.
+   * Writes a long as eight bytes (LE byte order).
    *
    * @see DataInput#readLong()
+   * @see BitUtil#VH_LE_LONG
    */
   public void writeLong(long i) throws IOException {
     writeInt((int) i);
@@ -324,5 +323,36 @@ public abstract class DataOutput {
     for (String value : set) {
       writeString(value);
     }
+  }
+
+  /**
+   * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
+   * values that are not enough for a group. we need a long[] because this is what postings are
+   * using, all longs are actually required to be integers.
+   *
+   * @param values the values to write
+   * @param limit the number of values to write.
+   * @lucene.experimental
+   */
+  public void writeGroupVInts(long[] values, int limit) throws IOException {
+    if (groupVIntBytes == null) {
+      groupVIntBytes = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];
+    }
+    GroupVIntUtil.writeGroupVInts(this, groupVIntBytes, values, limit);
+  }
+
+  /**
+   * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
+   * values that are not enough for a group.
+   *
+   * @param values the values to write
+   * @param limit the number of values to write.
+   * @lucene.experimental
+   */
+  public void writeGroupVInts(int[] values, int limit) throws IOException {
+    if (groupVIntBytes == null) {
+      groupVIntBytes = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];
+    }
+    GroupVIntUtil.writeGroupVInts(this, groupVIntBytes, values, limit);
   }
 }

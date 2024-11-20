@@ -29,14 +29,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.valuesource.BytesRefFieldSource;
 import org.apache.lucene.search.IndexSearcher;
@@ -44,6 +42,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.mutable.MutableValue;
 import org.apache.lucene.util.mutable.MutableValueStr;
@@ -462,7 +462,7 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
     DirectoryReader reader = w.getReader();
     if (VERBOSE) {
       for (int docID = 0; docID < reader.maxDoc(); docID++) {
-        Document doc = reader.document(docID);
+        Document doc = reader.storedFields().document(docID);
         System.out.println(
             "docID="
                 + docID
@@ -485,24 +485,11 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
         contentStrings.toArray(new String[contentStrings.size()]));
   }
 
-  private static class IndexContext {
-
-    final Directory directory;
-    final DirectoryReader indexReader;
-    final Map<String, Map<String, Set<String>>> searchTermToGroupCounts;
-    final String[] contentStrings;
-
-    IndexContext(
-        Directory directory,
-        DirectoryReader indexReader,
-        Map<String, Map<String, Set<String>>> searchTermToGroupCounts,
-        String[] contentStrings) {
-      this.directory = directory;
-      this.indexReader = indexReader;
-      this.searchTermToGroupCounts = searchTermToGroupCounts;
-      this.contentStrings = contentStrings;
-    }
-  }
+  private record IndexContext(
+      Directory directory,
+      DirectoryReader indexReader,
+      Map<String, Map<String, Set<String>>> searchTermToGroupCounts,
+      String[] contentStrings) {}
 
   private static class NullComparator implements Comparator<Comparable<?>> {
 

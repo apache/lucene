@@ -32,7 +32,6 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -127,7 +126,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
         int removeIdx = -1;
         int i = 0;
         for (ClassificationResult<BytesRef> cr : ret) {
-          if (cr.getAssignedClass().equals(cclass)) {
+          if (cr.assignedClass().equals(cclass)) {
             removeIdx = i;
             break;
           }
@@ -138,7 +137,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
           ClassificationResult<BytesRef> toRemove = ret.get(removeIdx);
           ret.add(
               new ClassificationResult<>(
-                  toRemove.getAssignedClass(), toRemove.getScore() + Math.log(wordProbability)));
+                  toRemove.assignedClass(), toRemove.score() + Math.log(wordProbability)));
           ret.remove(removeIdx);
         }
       }
@@ -179,10 +178,8 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
         if (query != null) {
           booleanQuery.add(query, BooleanClause.Occur.MUST);
         }
-        TotalHitCountCollector totalHitCountCollector = new TotalHitCountCollector();
-        indexSearcher.search(booleanQuery.build(), totalHitCountCollector);
 
-        int ret = totalHitCountCollector.getTotalHits();
+        int ret = indexSearcher.count(booleanQuery.build());
         if (ret != 0) {
           searched.put(cclass, ret);
         }

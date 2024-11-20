@@ -30,11 +30,11 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.NullInfoStream;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.NullInfoStream;
 
 public class TestReaderPool extends LuceneTestCase {
 
@@ -118,7 +118,7 @@ public class TestReaderPool extends LuceneTestCase {
     }
     for (SegmentCommitInfo commitInfo : segmentInfos) {
       ReadersAndUpdates readersAndUpdates = pool.get(commitInfo, true);
-      SegmentReader readOnlyClone = readersAndUpdates.getReadOnlyClone(IOContext.READ);
+      SegmentReader readOnlyClone = readersAndUpdates.getReadOnlyClone(IOContext.DEFAULT);
       PostingsEnum postings = readOnlyClone.postings(new Term("id", "" + id));
       boolean expectUpdate = false;
       int doc = -1;
@@ -162,7 +162,7 @@ public class TestReaderPool extends LuceneTestCase {
       assertEquals(expectUpdate, writtenToDisk);
       if (expectUpdate) {
         readersAndUpdates = pool.get(commitInfo, true);
-        SegmentReader updatedReader = readersAndUpdates.getReadOnlyClone(IOContext.READ);
+        SegmentReader updatedReader = readersAndUpdates.getReadOnlyClone(IOContext.DEFAULT);
         assertNotSame(-1, doc);
         NumericDocValues number = updatedReader.getNumericDocValues("number");
         assertEquals(doc, number.advance(doc));
@@ -195,7 +195,7 @@ public class TestReaderPool extends LuceneTestCase {
     }
     for (SegmentCommitInfo commitInfo : segmentInfos) {
       ReadersAndUpdates readersAndUpdates = pool.get(commitInfo, true);
-      SegmentReader readOnlyClone = readersAndUpdates.getReadOnlyClone(IOContext.READ);
+      SegmentReader readOnlyClone = readersAndUpdates.getReadOnlyClone(IOContext.DEFAULT);
       PostingsEnum postings = readOnlyClone.postings(new Term("id", "" + id));
       boolean expectUpdate = false;
       int doc = -1;
@@ -217,7 +217,7 @@ public class TestReaderPool extends LuceneTestCase {
       assertEquals(expectUpdate, writtenToDisk);
       if (expectUpdate) {
         readersAndUpdates = pool.get(commitInfo, true);
-        SegmentReader updatedReader = readersAndUpdates.getReadOnlyClone(IOContext.READ);
+        SegmentReader updatedReader = readersAndUpdates.getReadOnlyClone(IOContext.DEFAULT);
         assertNotSame(-1, doc);
         assertFalse(updatedReader.getLiveDocs().get(doc));
         readersAndUpdates.release(updatedReader);
@@ -255,7 +255,7 @@ public class TestReaderPool extends LuceneTestCase {
                 while (isDone.get() == false) {
                   for (SegmentCommitInfo commitInfo : segmentInfos) {
                     ReadersAndUpdates readersAndUpdates = pool.get(commitInfo, true);
-                    SegmentReader segmentReader = readersAndUpdates.getReader(IOContext.READ);
+                    SegmentReader segmentReader = readersAndUpdates.getReader(IOContext.DEFAULT);
                     readersAndUpdates.release(segmentReader);
                     pool.release(readersAndUpdates, random().nextBoolean());
                   }
@@ -279,7 +279,7 @@ public class TestReaderPool extends LuceneTestCase {
     for (int i = 0; i < reader.maxDoc(); i++) {
       for (SegmentCommitInfo commitInfo : segmentInfos) {
         ReadersAndUpdates readersAndUpdates = pool.get(commitInfo, true);
-        SegmentReader sr = readersAndUpdates.getReadOnlyClone(IOContext.READ);
+        SegmentReader sr = readersAndUpdates.getReadOnlyClone(IOContext.DEFAULT);
         PostingsEnum postings = sr.postings(new Term("id", "" + i));
         sr.decRef();
         if (postings != null) {

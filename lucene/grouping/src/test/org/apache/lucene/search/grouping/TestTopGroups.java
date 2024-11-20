@@ -19,7 +19,7 @@ package org.apache.lucene.search.grouping;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestTopGroups extends LuceneTestCase {
 
@@ -128,8 +128,8 @@ public class TestTopGroups extends LuceneTestCase {
           new TopGroups<String>(
               sort.getSort() /* groupSort */,
               sort.getSort() /* withinGroupSort */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalHitCount */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalGroupedHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalGroupedHitCount */,
               combineGroupDocs(group1, group2) /* groups */,
               (haveBlueWhale
                   ? blueWhaleScore
@@ -162,8 +162,8 @@ public class TestTopGroups extends LuceneTestCase {
           new TopGroups<String>(
               sort.getSort() /* groupSort */,
               sort.getSort() /* withinGroupSort */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalHitCount */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalGroupedHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalGroupedHitCount */,
               combineGroupDocs(group1, group2) /* groups */,
               (haveRedSquirrel
                   ? redSquirrelScore
@@ -191,16 +191,16 @@ public class TestTopGroups extends LuceneTestCase {
 
     assertEquals(2, mergedTopGroups.groups.length);
     {
-      assertEquals(blueGroupValue, mergedTopGroups.groups[0].groupValue);
+      assertEquals(blueGroupValue, mergedTopGroups.groups[0].groupValue());
       final float expectedBlueMaxScore =
           (haveBlueWhale ? blueWhaleScore : (haveBlueDragonfly ? blueDragonflyScore : Float.NaN));
-      checkMaxScore(expectedBlueMaxScore, mergedTopGroups.groups[0].maxScore);
+      checkMaxScore(expectedBlueMaxScore, mergedTopGroups.groups[0].maxScore());
     }
     {
-      assertEquals(redGroupValue, mergedTopGroups.groups[1].groupValue);
+      assertEquals(redGroupValue, mergedTopGroups.groups[1].groupValue());
       final float expectedRedMaxScore =
           (haveRedSquirrel ? redSquirrelScore : (haveRedAnt ? redAntScore : Float.NaN));
-      checkMaxScore(expectedRedMaxScore, mergedTopGroups.groups[1].maxScore);
+      checkMaxScore(expectedRedMaxScore, mergedTopGroups.groups[1].maxScore());
     }
 
     final float expectedMaxScore =

@@ -20,179 +20,242 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import org.apache.lucene.index.KnnGraphValues;
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.SparseFixedBitSet;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.PrimitiveIterator;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 
 /**
- * Navigable Small-world graph. Provides efficient approximate nearest neighbor search for high
- * dimensional vectors. See <a href="https://doi.org/10.1016/j.is.2013.10.006">Approximate nearest
- * neighbor algorithm based on navigable small world graphs [2014]</a> and <a
- * href="https://arxiv.org/abs/1603.09320">this paper [2018]</a> for details.
+ * Hierarchical Navigable Small World graph. Provides efficient approximate nearest neighbor search
+ * for high dimensional vectors. See <a href="https://arxiv.org/abs/1603.09320">Efficient and robust
+ * approximate nearest neighbor search using Hierarchical Navigable Small World graphs [2018]</a>
+ * paper for details.
  *
- * <p>The nomenclature is a bit different here from what's used in those papers:
+ * <p>The nomenclature is a bit different here from what's used in the paper:
  *
  * <h2>Hyperparameters</h2>
  *
  * <ul>
- *   <li><code>numSeed</code> is the equivalent of <code>m</code> in the 2012 paper; it controls the
- *       number of random entry points to sample.
  *   <li><code>beamWidth</code> in {@link HnswGraphBuilder} has the same meaning as <code>efConst
- *       </code> in the 2016 paper. It is the number of nearest neighbor candidates to track while
+ *       </code> in the paper. It is the number of nearest neighbor candidates to track while
  *       searching the graph for each newly inserted node.
- *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the later paper; it controls
- *       how many of the <code>efConst</code> neighbors are connected to the new node
+ *   <li><code>maxConn</code> has the same meaning as <code>M</code> in the paper; it controls how
+ *       many of the <code>efConst</code> neighbors are connected to the new node
  * </ul>
  *
  * <p>Note: The graph may be searched by multiple threads concurrently, but updates are not
- * thread-safe. Also note: there is no notion of deletions. Document searching built on top of this
- * must do its own deletion-filtering.
+ * thread-safe. The search method optionally takes a set of "accepted nodes", which can be used to
+ * exclude deleted documents.
  */
-public final class HnswGraph extends KnnGraphValues {
+public abstract class HnswGraph {
 
-  private final int maxConn;
+  /** Sole constructor */
+  protected HnswGraph() {}
 
-  // Each entry lists the top maxConn neighbors of a node. The nodes correspond to vectors added to
-  // HnswBuilder, and the
-  // node values are the ordinals of those vectors.
-  private final List<NeighborArray> graph;
+  /**
+   * Move the pointer to exactly the given {@code level}'s {@code target}. After this method
+   * returns, call {@link #nextNeighbor()} to return successive (ordered) connected node ordinals.
+   *
+   * @param level level of the graph
+   * @param target ordinal of a node in the graph, must be &ge; 0 and &lt; {@link
+   *     FloatVectorValues#size()}.
+   */
+  public abstract void seek(int level, int target) throws IOException;
 
-  // KnnGraphValues iterator members
-  private int upto;
-  private NeighborArray cur;
+  /** Returns the number of nodes in the graph */
+  public abstract int size();
 
-  HnswGraph(int maxConn) {
-    graph = new ArrayList<>();
-    // Typically with diversity criteria we see nodes not fully occupied; average fanout seems to be
-    // about 1/2 maxConn. There is some indexing time penalty for under-allocating, but saves RAM
-    graph.add(new NeighborArray(Math.max(32, maxConn / 4)));
-    this.maxConn = maxConn;
+  /** Returns max node id, inclusive. Normally this value will be size - 1. */
+  public int maxNodeId() {
+    return size() - 1;
   }
 
   /**
-   * Searches for the nearest neighbors of a query vector.
+   * Iterates over the neighbor list. It is illegal to call this method after it returns
+   * NO_MORE_DOCS without calling {@link #seek(int, int)}, which resets the iterator.
    *
-   * @param query search query vector
-   * @param topK the number of nodes to be returned
-   * @param numSeed the size of the queue maintained while searching, and controls the number of
-   *     random entry points to sample
-   * @param vectors vector values
-   * @param graphValues the graph values. May represent the entire graph, or a level in a
-   *     hierarchical graph.
-   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
-   *     {@code null} if they are all allowed to match.
-   * @param random a source of randomness, used for generating entry points to the graph
-   * @return a priority queue holding the closest neighbors found
+   * @return a node ordinal in the graph, or NO_MORE_DOCS if the iteration is complete.
    */
-  public static NeighborQueue search(
-      float[] query,
-      int topK,
-      int numSeed,
-      RandomAccessVectorValues vectors,
-      VectorSimilarityFunction similarityFunction,
-      KnnGraphValues graphValues,
-      Bits acceptOrds,
-      Random random)
-      throws IOException {
-    int size = graphValues.size();
+  public abstract int nextNeighbor() throws IOException;
 
-    // MIN heap, holding the top results
-    NeighborQueue results = new NeighborQueue(numSeed, similarityFunction.reversed);
-    // MAX heap, from which to pull the candidate nodes
-    NeighborQueue candidates = new NeighborQueue(numSeed, !similarityFunction.reversed);
+  /** Returns the number of levels of the graph */
+  public abstract int numLevels() throws IOException;
 
-    // set of ordinals that have been visited by search on this layer, used to avoid backtracking
-    SparseFixedBitSet visited = new SparseFixedBitSet(size);
-    // get initial candidates at random
-    int boundedNumSeed = Math.min(numSeed, 2 * size);
-    for (int i = 0; i < boundedNumSeed; i++) {
-      int entryPoint = random.nextInt(size);
-      if (visited.get(entryPoint) == false) {
-        visited.set(entryPoint);
-        // explore the topK starting points of some random numSeed probes
-        float score = similarityFunction.compare(query, vectors.vectorValue(entryPoint));
-        candidates.add(entryPoint, score);
-        if (acceptOrds == null || acceptOrds.get(entryPoint)) {
-          results.add(entryPoint, score);
-        }
-      }
-    }
-
-    // Set the bound to the worst current result and below reject any newly-generated candidates
-    // failing
-    // to exceed this bound
-    BoundsChecker bound = BoundsChecker.create(similarityFunction.reversed);
-    bound.set(results.topScore());
-    while (candidates.size() > 0) {
-      // get the best candidate (closest or best scoring)
-      float topCandidateScore = candidates.topScore();
-      if (results.size() >= topK) {
-        if (bound.check(topCandidateScore)) {
-          break;
-        }
-      }
-      int topCandidateNode = candidates.pop();
-      graphValues.seek(topCandidateNode);
-      int friendOrd;
-      while ((friendOrd = graphValues.nextNeighbor()) != NO_MORE_DOCS) {
-        assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.get(friendOrd)) {
-          continue;
-        }
-        visited.set(friendOrd);
-
-        float score = similarityFunction.compare(query, vectors.vectorValue(friendOrd));
-        if (results.size() < numSeed || bound.check(score) == false) {
-          candidates.add(friendOrd, score);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-            results.insertWithOverflow(friendOrd, score);
-            bound.set(results.topScore());
-          }
-        }
-      }
-    }
-    while (results.size() > topK) {
-      results.pop();
-    }
-    results.setVisitedCount(visited.approximateCardinality());
-    return results;
-  }
+  /** Returns graph's entry point on the top level * */
+  public abstract int entryNode() throws IOException;
 
   /**
-   * Returns the {@link NeighborQueue} connected to the given node.
+   * Get all nodes on a given level as node 0th ordinals. The nodes are NOT guaranteed to be
+   * presented in any particular order.
    *
-   * @param node the node whose neighbors are returned
+   * @param level level for which to get all nodes
+   * @return an iterator over nodes where {@code nextInt} returns a next node on the level
    */
-  public NeighborArray getNeighbors(int node) {
-    return graph.get(node);
-  }
+  public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
 
-  @Override
-  public int size() {
-    return graph.size();
-  }
+  /** Empty graph value */
+  public static HnswGraph EMPTY =
+      new HnswGraph() {
 
-  int addNode() {
-    graph.add(new NeighborArray(maxConn + 1));
-    return graph.size() - 1;
-  }
+        @Override
+        public int nextNeighbor() {
+          return NO_MORE_DOCS;
+        }
 
-  @Override
-  public void seek(int targetNode) {
-    cur = getNeighbors(targetNode);
-    upto = -1;
-  }
+        @Override
+        public void seek(int level, int target) {}
 
-  @Override
-  public int nextNeighbor() {
-    if (++upto < cur.size()) {
-      return cur.node[upto];
+        @Override
+        public int size() {
+          return 0;
+        }
+
+        @Override
+        public int numLevels() {
+          return 0;
+        }
+
+        @Override
+        public int entryNode() {
+          return 0;
+        }
+
+        @Override
+        public NodesIterator getNodesOnLevel(int level) {
+          return ArrayNodesIterator.EMPTY;
+        }
+      };
+
+  /**
+   * Iterator over the graph nodes on a certain level. Iterator also provides the size – the total
+   * number of nodes to be iterated over. The nodes are NOT guaranteed to be presented in any
+   * particular order.
+   */
+  public abstract static class NodesIterator implements PrimitiveIterator.OfInt {
+    protected final int size;
+
+    /** Constructor for iterator based on the size */
+    public NodesIterator(int size) {
+      this.size = size;
     }
-    return NO_MORE_DOCS;
+
+    /** The number of elements in this iterator * */
+    public int size() {
+      return size;
+    }
+
+    /**
+     * Consume integers from the iterator and place them into the `dest` array.
+     *
+     * @param dest where to put the integers
+     * @return The number of integers written to `dest`
+     */
+    public abstract int consume(int[] dest);
+
+    public static int[] getSortedNodes(NodesIterator nodesOnLevel) {
+      int[] sortedNodes = new int[nodesOnLevel.size()];
+      for (int n = 0; nodesOnLevel.hasNext(); n++) {
+        sortedNodes[n] = nodesOnLevel.nextInt();
+      }
+      Arrays.sort(sortedNodes);
+      return sortedNodes;
+    }
+  }
+
+  /** NodesIterator that accepts nodes as an integer array. */
+  public static class ArrayNodesIterator extends NodesIterator {
+    static NodesIterator EMPTY = new ArrayNodesIterator(0);
+
+    private final int[] nodes;
+    private int cur = 0;
+
+    /** Constructor for iterator based on integer array representing nodes */
+    public ArrayNodesIterator(int[] nodes, int size) {
+      super(size);
+      assert nodes != null;
+      assert size <= nodes.length;
+      this.nodes = nodes;
+    }
+
+    /** Constructor for iterator based on the size */
+    public ArrayNodesIterator(int size) {
+      super(size);
+      this.nodes = null;
+    }
+
+    @Override
+    public int consume(int[] dest) {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      int numToCopy = Math.min(size - cur, dest.length);
+      if (nodes == null) {
+        for (int i = 0; i < numToCopy; i++) {
+          dest[i] = cur + i;
+        }
+        return numToCopy;
+      }
+      System.arraycopy(nodes, cur, dest, 0, numToCopy);
+      cur += numToCopy;
+      return numToCopy;
+    }
+
+    @Override
+    public int nextInt() {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      if (nodes == null) {
+        return cur++;
+      } else {
+        return nodes[cur++];
+      }
+    }
+
+    @Override
+    public boolean hasNext() {
+      return cur < size;
+    }
+  }
+
+  /** Nodes iterator based on set representation of nodes. */
+  public static class CollectionNodesIterator extends NodesIterator {
+    Iterator<IntCursor> nodes;
+
+    /** Constructor for iterator based on collection representing nodes */
+    public CollectionNodesIterator(IntArrayList nodes) {
+      super(nodes.size());
+      this.nodes = nodes.iterator();
+    }
+
+    @Override
+    public int consume(int[] dest) {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+
+      int destIndex = 0;
+      while (hasNext() && destIndex < dest.length) {
+        dest[destIndex++] = nextInt();
+      }
+
+      return destIndex;
+    }
+
+    @Override
+    public int nextInt() {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      return nodes.next().value;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nodes.hasNext();
+    }
   }
 }

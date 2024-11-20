@@ -19,7 +19,6 @@ package org.apache.lucene.queries.function;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.DoubleValues;
@@ -32,6 +31,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -57,12 +57,16 @@ public final class FunctionScoreQuery extends Query {
     this.source = source;
   }
 
-  /** @return the wrapped Query */
+  /**
+   * @return the wrapped Query
+   */
   public Query getWrappedQuery() {
     return in;
   }
 
-  /** @return the underlying value source */
+  /**
+   * @return the underlying value source
+   */
   public DoubleValuesSource getSource() {
     return source;
   }
@@ -118,8 +122,8 @@ public final class FunctionScoreQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    Query rewritten = in.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    Query rewritten = in.rewrite(indexSearcher);
     if (rewritten == in) {
       return this;
     }
@@ -227,30 +231,37 @@ public final class FunctionScoreQuery extends Query {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      Scorer in = inner.scorer(context);
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Scorer in = inner.scorer(context);
       if (in == null) {
         return null;
       }
       DoubleValues scores = valueSource.getValues(context, DoubleValuesSource.fromScorer(in));
-      return new FilterScorer(in) {
-        @Override
-        public float score() throws IOException {
-          if (scores.advanceExact(docID())) {
-            double factor = scores.doubleValue();
-            if (factor >= 0) {
-              return (float) (factor * boost);
+      final var scorer =
+          new FilterScorer(in) {
+            @Override
+            public float score() throws IOException {
+              if (scores.advanceExact(docID())) {
+                double factor = scores.doubleValue();
+                if (factor >= 0) {
+                  return (float) (factor * boost);
+                }
+              }
+              // default: missing value, negative value or NaN
+              return 0;
             }
-          }
-          // default: missing value, negative value or NaN
-          return 0;
-        }
 
-        @Override
-        public float getMaxScore(int upTo) throws IOException {
-          return Float.POSITIVE_INFINITY;
-        }
-      };
+            @Override
+            public float getMaxScore(int upTo) throws IOException {
+              return Float.POSITIVE_INFINITY;
+            }
+          };
+      return new DefaultScorerSupplier(scorer);
+    }
+
+    @Override
+    public int count(LeafReaderContext context) throws IOException {
+      return inner.count(context);
     }
 
     @Override

@@ -16,27 +16,46 @@
  */
 package org.apache.lucene.index;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.store.BaseDirectoryWrapper;
+import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.AwaitsFix;
-import org.apache.lucene.util.LuceneTestCase.SuppressFileSystems;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressFileSystems;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
 /** Test that a plain default detects index file truncation early (on opening a reader). */
 @SuppressFileSystems("ExtrasFS")
-@AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-9409")
 public class TestAllFilesDetectTruncation extends LuceneTestCase {
+
   public void test() throws Exception {
+    doTest(false);
+  }
+
+  public void testCFS() throws Exception {
+    doTest(true);
+  }
+
+  private void doTest(boolean cfs) throws Exception {
     Directory dir = newDirectory();
 
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -44,31 +63,46 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
 
     // Disable CFS 80% of the time so we can truncate individual files, but the other 20% of the
     // time we test truncation of .cfs/.cfe too:
-    if (random().nextInt(5) != 1) {
+    if (cfs == false) {
       conf.setUseCompoundFile(false);
       conf.getMergePolicy().setNoCFSRatio(0.0);
     }
 
     RandomIndexWriter riw = new RandomIndexWriter(random(), dir, conf);
-    // Use LineFileDocs so we (hopefully) get most Lucene features
-    // tested, e.g. IntPoint was recently added to it:
-    LineFileDocs docs = new LineFileDocs(random());
+    Document doc = new Document();
+    FieldType textWithTermVectorsType = new FieldType(TextField.TYPE_STORED);
+    textWithTermVectorsType.setStoreTermVectors(true);
+    Field text = new Field("text", "", textWithTermVectorsType);
+    doc.add(text);
+    Field termString = new StringField("string", "", Store.YES);
+    doc.add(termString);
+    Field dvString = new SortedDocValuesField("string", new BytesRef());
+    doc.add(dvString);
+    Field pointNumber = new LongPoint("long", 0L);
+    doc.add(pointNumber);
+    Field dvNumber = new NumericDocValuesField("long", 0L);
+    doc.add(dvNumber);
+    KnnFloatVectorField vector = new KnnFloatVectorField("vector", new float[16]);
+    doc.add(vector);
+
     for (int i = 0; i < 100; i++) {
-      riw.addDocument(docs.nextDoc());
-      if (random().nextInt(7) == 0) {
-        riw.commit();
-      }
-      if (random().nextInt(20) == 0) {
-        riw.deleteDocuments(new Term("docid", Integer.toString(i)));
-      }
-      if (random().nextInt(15) == 0) {
-        riw.updateNumericDocValue(
-            new Term("docid", Integer.toString(i)), "docid_intDV", Long.valueOf(i));
-      }
+      text.setStringValue(TestUtil.randomAnalysisString(random(), 20, true));
+      String randomString = TestUtil.randomSimpleString(random(), 5);
+      termString.setStringValue(randomString);
+      dvString.setBytesValue(new BytesRef(randomString));
+      long number = random().nextInt(10);
+      pointNumber.setLongValue(number);
+      dvNumber.setLongValue(number);
+      Arrays.fill(vector.vectorValue(), i % 4);
+      riw.addDocument(doc);
     }
+
     if (TEST_NIGHTLY == false) {
       riw.forceMerge(1);
     }
+
+    riw.deleteDocuments(LongPoint.newRangeQuery("long", 0, 2));
+
     riw.close();
     checkTruncation(dir);
     dir.close();
@@ -104,24 +138,39 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
         if (name.equals(victim) == false) {
           dirCopy.copyFrom(dir, name, name, IOContext.DEFAULT);
         } else {
+          try (ChecksumIndexInput in = dir.openChecksumInput(name)) {
+            try {
+              CodecUtil.checkFooter(in);
+              // In some rare cases, the codec footer would still appear as correct even though the
+              // file has been truncated. We just skip the test is this rare case.
+              return;
+            } catch (
+                @SuppressWarnings("unused")
+                CorruptIndexException e) {
+              // expected
+            }
+          }
+
           try (IndexOutput out = dirCopy.createOutput(name, IOContext.DEFAULT);
-              IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
+              IndexInput in = dir.openInput(name, IOContext.READONCE)) {
             out.copyBytes(in, victimLength - lostBytes);
           }
         }
         dirCopy.sync(Collections.singleton(name));
       }
 
+      // There needs to be an exception thrown, but we don't care about its type, it's too heroic to
+      // ensure that a specific exception type gets throws upon opening an index.
       // NOTE: we .close so that if the test fails (truncation not detected) we don't also get all
       // these confusing errors about open files:
-      expectThrowsAnyOf(
-          Arrays.asList(CorruptIndexException.class, EOFException.class),
-          () -> DirectoryReader.open(dirCopy).close());
+      expectThrows(Exception.class, () -> DirectoryReader.open(dirCopy).close());
 
       // CheckIndex should also fail:
-      expectThrowsAnyOf(
-          Arrays.asList(CorruptIndexException.class, EOFException.class),
-          () -> TestUtil.checkIndex(dirCopy, true, true, null));
+      expectThrows(
+          Exception.class,
+          () ->
+              TestUtil.checkIndex(
+                  dirCopy, CheckIndex.Level.MIN_LEVEL_FOR_SLOW_CHECKS, true, true, null));
     }
   }
 }

@@ -22,21 +22,22 @@ import java.util.List;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConjunctionUtils;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * Computes facets counts, assuming the default encoding into DocValues was used.
  *
  * @lucene.experimental
  */
-public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
+public class FastTaxonomyFacetCounts extends TaxonomyFacets {
 
   /** Create {@code FastTaxonomyFacetCounts}, which also counts all facet labels. */
   public FastTaxonomyFacetCounts(TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
@@ -68,31 +69,46 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     countAll(reader);
   }
 
-  private final void count(List<MatchingDocs> matchingDocs) throws IOException {
+  private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      BinaryDocValues dv = hits.context.reader().getBinaryDocValues(indexFieldName);
-      if (dv == null) { // this reader does not have DocValues for the requested category list
+      if (hits.totalHits() == 0) {
         continue;
       }
+      SortedNumericDocValues multiValued =
+          hits.context().reader().getSortedNumericDocValues(indexFieldName);
+      if (multiValued == null) {
+        continue;
+      }
+      initializeValueCounters();
 
+      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
+
+      DocIdSetIterator valuesIt = singleValued != null ? singleValued : multiValued;
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), valuesIt));
 
-      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-        final BytesRef bytesRef = dv.binaryValue();
-        byte[] bytes = bytesRef.bytes;
-        int end = bytesRef.offset + bytesRef.length;
-        int ord = 0;
-        int offset = bytesRef.offset;
-        int prev = 0;
-        while (offset < end) {
-          byte b = bytes[offset++];
-          if (b >= 0) {
-            prev = ord = ((ord << 7) | b) + prev;
-            increment(ord);
-            ord = 0;
-          } else {
-            ord = (ord << 7) | (b & 0x7F);
+      if (singleValued != null) {
+        if (counts != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            counts[(int) singleValued.longValue()]++;
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            sparseCounts.addTo((int) singleValued.longValue(), 1);
+          }
+        }
+      } else {
+        if (counts != null) {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              counts[(int) multiValued.nextValue()]++;
+            }
+          }
+        } else {
+          while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              sparseCounts.addTo((int) multiValued.nextValue(), 1);
+            }
           }
         }
       }
@@ -101,33 +117,55 @@ public class FastTaxonomyFacetCounts extends IntTaxonomyFacets {
     rollup();
   }
 
-  private final void countAll(IndexReader reader) throws IOException {
+  private void countAll(IndexReader reader) throws IOException {
     for (LeafReaderContext context : reader.leaves()) {
-      BinaryDocValues dv = context.reader().getBinaryDocValues(indexFieldName);
-      if (dv == null) { // this reader does not have DocValues for the requested category list
+      SortedNumericDocValues multiValued =
+          context.reader().getSortedNumericDocValues(indexFieldName);
+      if (multiValued == null) {
         continue;
       }
+      initializeValueCounters();
+      assert counts != null;
 
       Bits liveDocs = context.reader().getLiveDocs();
 
-      for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
-        if (liveDocs != null && liveDocs.get(doc) == false) {
-          continue;
+      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
+      if (singleValued != null) {
+        if (liveDocs == null) {
+          for (int doc = singleValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = singleValued.nextDoc()) {
+            counts[(int) singleValued.longValue()]++;
+          }
+        } else {
+          for (int doc = singleValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = singleValued.nextDoc()) {
+            if (liveDocs.get(doc) == false) {
+              continue;
+            }
+            counts[(int) singleValued.longValue()]++;
+          }
         }
-        final BytesRef bytesRef = dv.binaryValue();
-        byte[] bytes = bytesRef.bytes;
-        int end = bytesRef.offset + bytesRef.length;
-        int ord = 0;
-        int offset = bytesRef.offset;
-        int prev = 0;
-        while (offset < end) {
-          byte b = bytes[offset++];
-          if (b >= 0) {
-            prev = ord = ((ord << 7) | b) + prev;
-            increment(ord);
-            ord = 0;
-          } else {
-            ord = (ord << 7) | (b & 0x7F);
+      } else {
+        if (liveDocs == null) {
+          for (int doc = multiValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = multiValued.nextDoc()) {
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              counts[(int) multiValued.nextValue()]++;
+            }
+          }
+        } else {
+          for (int doc = multiValued.nextDoc();
+              doc != DocIdSetIterator.NO_MORE_DOCS;
+              doc = multiValued.nextDoc()) {
+            if (liveDocs.get(doc) == false) {
+              continue;
+            }
+            for (int i = 0; i < multiValued.docValueCount(); i++) {
+              counts[(int) multiValued.nextValue()]++;
+            }
           }
         }
       }

@@ -20,6 +20,7 @@ package org.apache.lucene.codecs.uniformsplit.sharedterms;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.uniformsplit.TestUniformSplitPostingFormat;
 import org.apache.lucene.codecs.uniformsplit.UniformSplitTermsWriter;
+import org.apache.lucene.tests.codecs.uniformsplit.sharedterms.STUniformSplitRot13PostingsFormat;
 
 /** Tests {@link STUniformSplitPostingsFormat} with block encoding using ROT13 cypher. */
 public class TestSTUniformSplitPostingFormat extends TestUniformSplitPostingFormat {

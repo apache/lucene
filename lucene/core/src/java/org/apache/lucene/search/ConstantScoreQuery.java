@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.Bits;
 
@@ -40,8 +39,24 @@ public final class ConstantScoreQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    Query rewritten = query.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+
+    Query rewritten = query.rewrite(indexSearcher);
+
+    // Do some extra simplifications that are legal since scores are not needed on the wrapped
+    // query.
+    if (rewritten instanceof BoostQuery) {
+      rewritten = ((BoostQuery) rewritten).getQuery();
+    } else if (rewritten instanceof ConstantScoreQuery) {
+      rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+    } else if (rewritten instanceof BooleanQuery) {
+      rewritten = ((BooleanQuery) rewritten).rewriteNoScoring();
+    }
+
+    if (rewritten.getClass() == MatchNoDocsQuery.class) {
+      // bubble up MatchNoDocsQuery
+      return rewritten;
+    }
 
     if (rewritten != query) {
       return new ConstantScoreQuery(rewritten);
@@ -55,7 +70,7 @@ public final class ConstantScoreQuery extends Query {
       return new ConstantScoreQuery(((BoostQuery) rewritten).getQuery());
     }
 
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
@@ -109,20 +124,18 @@ public final class ConstantScoreQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    final Weight innerWeight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    // If the score mode is exhaustive then pass COMPLETE_NO_SCORES, otherwise pass TOP_DOCS to make
+    // sure to not disable any of the dynamic pruning optimizations for queries sorted by field or
+    // top scores.
+    final ScoreMode innerScoreMode;
+    if (scoreMode.isExhaustive()) {
+      innerScoreMode = ScoreMode.COMPLETE_NO_SCORES;
+    } else {
+      innerScoreMode = ScoreMode.TOP_DOCS;
+    }
+    final Weight innerWeight = searcher.createWeight(query, innerScoreMode, 1f);
     if (scoreMode.needsScores()) {
       return new ConstantScoreWeight(this, boost) {
-        @Override
-        public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-          if (scoreMode.isExhaustive() == false) {
-            return super.bulkScorer(context);
-          }
-          final BulkScorer innerScorer = innerWeight.bulkScorer(context);
-          if (innerScorer == null) {
-            return null;
-          }
-          return new ConstantBulkScorer(innerScorer, this, score());
-        }
 
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
@@ -136,11 +149,22 @@ public final class ConstantScoreQuery extends Query {
               final Scorer innerScorer = innerScorerSupplier.get(leadCost);
               final TwoPhaseIterator twoPhaseIterator = innerScorer.twoPhaseIterator();
               if (twoPhaseIterator == null) {
-                return new ConstantScoreScorer(
-                    innerWeight, score(), scoreMode, innerScorer.iterator());
+                return new ConstantScoreScorer(score(), scoreMode, innerScorer.iterator());
               } else {
-                return new ConstantScoreScorer(innerWeight, score(), scoreMode, twoPhaseIterator);
+                return new ConstantScoreScorer(score(), scoreMode, twoPhaseIterator);
               }
+            }
+
+            @Override
+            public BulkScorer bulkScorer() throws IOException {
+              if (scoreMode.isExhaustive() == false) {
+                return super.bulkScorer();
+              }
+              final BulkScorer innerScorer = innerScorerSupplier.bulkScorer();
+              if (innerScorer == null) {
+                return null;
+              }
+              return new ConstantBulkScorer(innerScorer, innerWeight, score());
             }
 
             @Override
@@ -156,17 +180,13 @@ public final class ConstantScoreQuery extends Query {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          ScorerSupplier scorerSupplier = scorerSupplier(context);
-          if (scorerSupplier == null) {
-            return null;
-          }
-          return scorerSupplier.get(Long.MAX_VALUE);
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return innerWeight.isCacheable(ctx);
         }
 
         @Override
-        public boolean isCacheable(LeafReaderContext ctx) {
-          return innerWeight.isCacheable(ctx);
+        public int count(LeafReaderContext context) throws IOException {
+          return innerWeight.count(context);
         }
       };
     } else {

@@ -36,6 +36,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
  * Regular Expression extension to <code>Automaton</code>.
@@ -150,21 +152,6 @@ import java.util.Set;
  * <td></td>
  * <td>|</td>
  * <td><i>complexp</i></td>
- * <td></td>
- * <td></td>
- * </tr>
- *
- * <tr>
- * <td><i>complexp</i></td>
- * <td>::=</td>
- * <td><code><b>~</b></code>&nbsp;<i>complexp</i></td>
- * <td>(complement)</td>
- * <td><small>[OPTIONAL]</small></td>
- * </tr>
- * <tr>
- * <td></td>
- * <td>|</td>
- * <td><i>charclassexp</i></td>
  * <td></td>
  * <td></td>
  * </tr>
@@ -381,7 +368,7 @@ public class RegExp {
     REGEXP_REPEAT_MIN,
     /** An expression that repeats a minimum and maximum number of times */
     REGEXP_REPEAT_MINMAX,
-    /** The complement of an expression */
+    /** The complement of a character class */
     REGEXP_COMPLEMENT,
     /** A Character */
     REGEXP_CHAR,
@@ -400,15 +387,19 @@ public class RegExp {
     /** An Interval expression */
     REGEXP_INTERVAL,
     /** An expression for a pre-defined class e.g. \w */
-    REGEXP_PRE_CLASS
+    REGEXP_PRE_CLASS,
+    /**
+     * The complement of an expression.
+     *
+     * @deprecated Will be removed in Lucene 11
+     */
+    @Deprecated
+    REGEXP_DEPRECATED_COMPLEMENT
   }
 
   // -----  Syntax flags ( <= 0xff )  ------
   /** Syntax flag, enables intersection (<code>&amp;</code>). */
   public static final int INTERSECTION = 0x0001;
-
-  /** Syntax flag, enables complement (<code>~</code>). */
-  public static final int COMPLEMENT = 0x0002;
 
   /** Syntax flag, enables empty language (<code>#</code>). */
   public static final int EMPTY = 0x0004;
@@ -428,22 +419,39 @@ public class RegExp {
   /** Syntax flag, enables no optional regexp syntax. */
   public static final int NONE = 0x0000;
 
-  // -----  Matching flags ( > 0xff )  ------
+  // -----  Matching flags ( > 0xff <= 0xffff )  ------
 
   /** Allows case insensitive matching of ASCII characters. */
   public static final int ASCII_CASE_INSENSITIVE = 0x0100;
 
+  // -----  Deprecated flags ( > 0xffff )  ------
+
+  /**
+   * Allows regexp parsing of the complement (<code>~</code>).
+   *
+   * <p>Note that processing the complement can require exponential time, but will be bounded by an
+   * internal limit. Regexes exceeding the limit will fail with TooComplexToDeterminizeException.
+   *
+   * @deprecated This method will be removed in Lucene 11
+   */
+  @Deprecated public static final int DEPRECATED_COMPLEMENT = 0x10000;
+
   // Immutable parsed state
   /** The type of expression */
   public final Kind kind;
+
   /** Child expressions held by a container type expression */
   public final RegExp exp1, exp2;
+
   /** String expression */
   public final String s;
+
   /** Character expression */
   public final int c;
+
   /** Limits for repeatable type expressions */
   public final int min, max, digits;
+
   /** Extents for range type expressions */
   public final int from, to;
 
@@ -472,6 +480,7 @@ public class RegExp {
   public RegExp(String s, int syntax_flags) throws IllegalArgumentException {
     this(s, syntax_flags, 0);
   }
+
   /**
    * Constructs new <code>RegExp</code> from a string.
    *
@@ -481,7 +490,7 @@ public class RegExp {
    * @exception IllegalArgumentException if an error occurred while parsing the regular expression
    */
   public RegExp(String s, int syntax_flags, int match_flags) throws IllegalArgumentException {
-    if (syntax_flags > ALL) {
+    if ((syntax_flags & ~DEPRECATED_COMPLEMENT) > ALL) {
       throw new IllegalArgumentException("Illegal syntax flag");
     }
 
@@ -556,165 +565,90 @@ public class RegExp {
    * toAutomaton(null)</code> (empty automaton map).
    */
   public Automaton toAutomaton() {
-    return toAutomaton(null, null, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    return toAutomaton(null, null);
   }
 
   /**
-   * Constructs new <code>Automaton</code> from this <code>RegExp</code>. The constructed automaton
-   * is minimal and deterministic and has no transitions to dead states.
-   *
-   * @param determinizeWorkLimit maximum effort to spend while determinizing the automata. If
-   *     determinizing the automata would require more than this effort,
-   *     TooComplexToDeterminizeException is thrown. Higher numbers require more space but can
-   *     process more complex regexes. Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a
-   *     decent default if you don't otherwise know what to specify.
-   * @exception IllegalArgumentException if this regular expression uses a named identifier that is
-   *     not available from the automaton provider
-   * @exception TooComplexToDeterminizeException if determinizing this regexp requires more effort
-   *     than determinizeWorkLimit states
-   */
-  public Automaton toAutomaton(int determinizeWorkLimit)
-      throws IllegalArgumentException, TooComplexToDeterminizeException {
-    return toAutomaton(null, null, determinizeWorkLimit);
-  }
-
-  /**
-   * Constructs new <code>Automaton</code> from this <code>RegExp</code>. The constructed automaton
-   * is minimal and deterministic and has no transitions to dead states.
+   * Constructs new <code>Automaton</code> from this <code>RegExp</code>.
    *
    * @param automaton_provider provider of automata for named identifiers
-   * @param determinizeWorkLimit maximum effort to spend while determinizing the automata. If
-   *     determinizing the automata would require more than this effort,
-   *     TooComplexToDeterminizeException is thrown. Higher numbers require more space but can
-   *     process more complex regexes. Use {@link Operations#DEFAULT_DETERMINIZE_WORK_LIMIT} as a
-   *     decent default if you don't otherwise know what to specify.
    * @exception IllegalArgumentException if this regular expression uses a named identifier that is
    *     not available from the automaton provider
-   * @exception TooComplexToDeterminizeException if determinizing this regexp requires more effort
-   *     than determinizeWorkLimit states
    */
-  public Automaton toAutomaton(AutomatonProvider automaton_provider, int determinizeWorkLimit)
+  public Automaton toAutomaton(AutomatonProvider automaton_provider)
       throws IllegalArgumentException, TooComplexToDeterminizeException {
-    return toAutomaton(null, automaton_provider, determinizeWorkLimit);
+    return toAutomaton(null, automaton_provider);
   }
 
   /**
-   * Constructs new <code>Automaton</code> from this <code>RegExp</code>. The constructed automaton
-   * is minimal and deterministic and has no transitions to dead states.
+   * Constructs new <code>Automaton</code> from this <code>RegExp</code>.
    *
    * @param automata a map from automaton identifiers to automata (of type <code>Automaton</code>).
-   * @param determinizeWorkLimit maximum effort to spend while determinizing the automata. If
-   *     determinizing the automata would require more than this effort,
-   *     TooComplexToDeterminizeException is thrown. Higher numbers require more space but can
-   *     process more complex regexes.
    * @exception IllegalArgumentException if this regular expression uses a named identifier that
    *     does not occur in the automaton map
-   * @exception TooComplexToDeterminizeException if determinizing this regexp requires more effort
-   *     than determinizeWorkLimit states
    */
-  public Automaton toAutomaton(Map<String, Automaton> automata, int determinizeWorkLimit)
+  public Automaton toAutomaton(Map<String, Automaton> automata)
       throws IllegalArgumentException, TooComplexToDeterminizeException {
-    return toAutomaton(automata, null, determinizeWorkLimit);
+    return toAutomaton(automata, null);
   }
 
   private Automaton toAutomaton(
-      Map<String, Automaton> automata,
-      AutomatonProvider automaton_provider,
-      int determinizeWorkLimit)
-      throws IllegalArgumentException, TooComplexToDeterminizeException {
-    try {
-      return toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit);
-    } catch (TooComplexToDeterminizeException e) {
-      throw new TooComplexToDeterminizeException(this, e);
-    }
-  }
-
-  private Automaton toAutomatonInternal(
-      Map<String, Automaton> automata,
-      AutomatonProvider automaton_provider,
-      int determinizeWorkLimit)
+      Map<String, Automaton> automata, AutomatonProvider automaton_provider)
       throws IllegalArgumentException {
     List<Automaton> list;
     Automaton a = null;
     switch (kind) {
       case REGEXP_PRE_CLASS:
         RegExp expanded = expandPredefined();
-        a = expanded.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit);
+        a = expanded.toAutomaton(automata, automaton_provider);
         break;
       case REGEXP_UNION:
         list = new ArrayList<>();
-        findLeaves(
-            exp1, Kind.REGEXP_UNION, list, automata, automaton_provider, determinizeWorkLimit);
-        findLeaves(
-            exp2, Kind.REGEXP_UNION, list, automata, automaton_provider, determinizeWorkLimit);
+        findLeaves(exp1, Kind.REGEXP_UNION, list, automata, automaton_provider);
+        findLeaves(exp2, Kind.REGEXP_UNION, list, automata, automaton_provider);
         a = Operations.union(list);
-        a = MinimizationOperations.minimize(a, determinizeWorkLimit);
         break;
       case REGEXP_CONCATENATION:
         list = new ArrayList<>();
-        findLeaves(
-            exp1,
-            Kind.REGEXP_CONCATENATION,
-            list,
-            automata,
-            automaton_provider,
-            determinizeWorkLimit);
-        findLeaves(
-            exp2,
-            Kind.REGEXP_CONCATENATION,
-            list,
-            automata,
-            automaton_provider,
-            determinizeWorkLimit);
+        findLeaves(exp1, Kind.REGEXP_CONCATENATION, list, automata, automaton_provider);
+        findLeaves(exp2, Kind.REGEXP_CONCATENATION, list, automata, automaton_provider);
         a = Operations.concatenate(list);
-        a = MinimizationOperations.minimize(a, determinizeWorkLimit);
         break;
       case REGEXP_INTERSECTION:
         a =
             Operations.intersection(
-                exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit),
-                exp2.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit));
-        a = MinimizationOperations.minimize(a, determinizeWorkLimit);
+                exp1.toAutomaton(automata, automaton_provider),
+                exp2.toAutomaton(automata, automaton_provider));
         break;
       case REGEXP_OPTIONAL:
-        a =
-            Operations.optional(
-                exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit));
-        a = MinimizationOperations.minimize(a, determinizeWorkLimit);
+        a = Operations.optional(exp1.toAutomaton(automata, automaton_provider));
         break;
       case REGEXP_REPEAT:
-        a =
-            Operations.repeat(
-                exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit));
-        a = MinimizationOperations.minimize(a, determinizeWorkLimit);
+        a = Operations.repeat(exp1.toAutomaton(automata, automaton_provider));
         break;
       case REGEXP_REPEAT_MIN:
-        a = exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit);
-        int minNumStates = (a.getNumStates() - 1) * min;
-        if (minNumStates > determinizeWorkLimit) {
-          throw new TooComplexToDeterminizeException(a, minNumStates);
-        }
+        a = exp1.toAutomaton(automata, automaton_provider);
         a = Operations.repeat(a, min);
-        a = MinimizationOperations.minimize(a, determinizeWorkLimit);
         break;
       case REGEXP_REPEAT_MINMAX:
-        a = exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit);
-        int minMaxNumStates = (a.getNumStates() - 1) * max;
-        if (minMaxNumStates > determinizeWorkLimit) {
-          throw new TooComplexToDeterminizeException(a, minMaxNumStates);
-        }
+        a = exp1.toAutomaton(automata, automaton_provider);
         a = Operations.repeat(a, min, max);
         break;
       case REGEXP_COMPLEMENT:
-        a =
-            Operations.complement(
-                exp1.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit),
-                determinizeWorkLimit);
-        a = MinimizationOperations.minimize(a, determinizeWorkLimit);
+        // we don't support arbitrary complement, just "negated character class"
+        // this is just a list of characters (e.g. "a") or ranges (e.g. "b-d")
+        a = exp1.toAutomaton(automata, automaton_provider);
+        a = Operations.complement(a, Integer.MAX_VALUE);
+        break;
+      case REGEXP_DEPRECATED_COMPLEMENT:
+        // to ease transitions for users only, support arbitrary complement
+        // but bounded by DEFAULT_DETERMINIZE_WORK_LIMIT: must not be configurable.
+        a = exp1.toAutomaton(automata, automaton_provider);
+        a = Operations.complement(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
         break;
       case REGEXP_CHAR:
         if (check(ASCII_CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveChar(c, determinizeWorkLimit);
+          a = toCaseInsensitiveChar(c);
         } else {
           a = Automata.makeChar(c);
         }
@@ -730,7 +664,7 @@ public class RegExp {
         break;
       case REGEXP_STRING:
         if (check(ASCII_CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveString(determinizeWorkLimit);
+          a = toCaseInsensitiveString();
         } else {
           a = Automata.makeString(s);
         }
@@ -762,7 +696,7 @@ public class RegExp {
     return a;
   }
 
-  private Automaton toCaseInsensitiveChar(int codepoint, int determinizeWorkLimit) {
+  private Automaton toCaseInsensitiveChar(int codepoint) {
     Automaton case1 = Automata.makeChar(codepoint);
     // For now we only work with ASCII characters
     if (codepoint > 128) {
@@ -775,23 +709,20 @@ public class RegExp {
     Automaton result;
     if (altCase != codepoint) {
       result = Operations.union(case1, Automata.makeChar(altCase));
-      result = MinimizationOperations.minimize(result, determinizeWorkLimit);
     } else {
       result = case1;
     }
     return result;
   }
 
-  private Automaton toCaseInsensitiveString(int determinizeWorkLimit) {
+  private Automaton toCaseInsensitiveString() {
     List<Automaton> list = new ArrayList<>();
 
     Iterator<Integer> iter = s.codePoints().iterator();
     while (iter.hasNext()) {
-      list.add(toCaseInsensitiveChar(iter.next(), determinizeWorkLimit));
+      list.add(toCaseInsensitiveChar(iter.next()));
     }
-    Automaton a = Operations.concatenate(list);
-    a = MinimizationOperations.minimize(a, determinizeWorkLimit);
-    return a;
+    return Operations.concatenate(list);
   }
 
   private void findLeaves(
@@ -799,13 +730,12 @@ public class RegExp {
       Kind kind,
       List<Automaton> list,
       Map<String, Automaton> automata,
-      AutomatonProvider automaton_provider,
-      int determinizeWorkLimit) {
+      AutomatonProvider automaton_provider) {
     if (exp.kind == kind) {
-      findLeaves(exp.exp1, kind, list, automata, automaton_provider, determinizeWorkLimit);
-      findLeaves(exp.exp2, kind, list, automata, automaton_provider, determinizeWorkLimit);
+      findLeaves(exp.exp1, kind, list, automata, automaton_provider);
+      findLeaves(exp.exp2, kind, list, automata, automaton_provider);
     } else {
-      list.add(exp.toAutomatonInternal(automata, automaton_provider, determinizeWorkLimit));
+      list.add(exp.toAutomaton(automata, automaton_provider));
     }
   }
 
@@ -863,6 +793,7 @@ public class RegExp {
         b.append("){").append(min).append(",").append(max).append("}");
         break;
       case REGEXP_COMPLEMENT:
+      case REGEXP_DEPRECATED_COMPLEMENT:
         b.append("~(");
         exp1.toStringBuilder(b);
         b.append(")");
@@ -912,7 +843,7 @@ public class RegExp {
 
   void toStringTree(StringBuilder b, String indent) {
     switch (kind) {
-        // binary
+      // binary
       case REGEXP_UNION:
       case REGEXP_CONCATENATION:
       case REGEXP_INTERSECTION:
@@ -922,10 +853,11 @@ public class RegExp {
         exp1.toStringTree(b, indent + "  ");
         exp2.toStringTree(b, indent + "  ");
         break;
-        // unary
+      // unary
       case REGEXP_OPTIONAL:
       case REGEXP_REPEAT:
       case REGEXP_COMPLEMENT:
+      case REGEXP_DEPRECATED_COMPLEMENT:
         b.append(indent);
         b.append(kind);
         b.append('\n');
@@ -1030,6 +962,7 @@ public class RegExp {
       case REGEXP_REPEAT_MIN:
       case REGEXP_REPEAT_MINMAX:
       case REGEXP_COMPLEMENT:
+      case REGEXP_DEPRECATED_COMPLEMENT:
         exp1.getIdentifiers(set);
         break;
       case REGEXP_AUTOMATON:
@@ -1106,6 +1039,16 @@ public class RegExp {
     return newContainerNode(flags, Kind.REGEXP_COMPLEMENT, exp, null);
   }
 
+  /**
+   * Creates node that will compute complement of arbitrary expression.
+   *
+   * @deprecated Will be removed in Lucene 11
+   */
+  @Deprecated
+  static RegExp makeDeprecatedComplement(int flags, RegExp exp) {
+    return newContainerNode(flags, Kind.REGEXP_DEPRECATED_COMPLEMENT, exp, null);
+  }
+
   static RegExp makeChar(int flags, int c) {
     return newLeafNode(flags, Kind.REGEXP_CHAR, null, c, 0, 0, 0, 0, 0);
   }
@@ -1170,22 +1113,39 @@ public class RegExp {
   }
 
   final RegExp parseUnionExp() throws IllegalArgumentException {
-    RegExp e = parseInterExp();
-    if (match('|')) e = makeUnion(flags, e, parseUnionExp());
-    return e;
+    return iterativeParseExp(this::parseInterExp, () -> match('|'), RegExp::makeUnion);
   }
 
   final RegExp parseInterExp() throws IllegalArgumentException {
-    RegExp e = parseConcatExp();
-    if (check(INTERSECTION) && match('&')) e = makeIntersection(flags, e, parseInterExp());
-    return e;
+    return iterativeParseExp(
+        this::parseConcatExp, () -> check(INTERSECTION) && match('&'), RegExp::makeIntersection);
   }
 
   final RegExp parseConcatExp() throws IllegalArgumentException {
-    RegExp e = parseRepeatExp();
-    if (more() && !peek(")|") && (!check(INTERSECTION) || !peek("&")))
-      e = makeConcatenation(flags, e, parseConcatExp());
-    return e;
+    return iterativeParseExp(
+        this::parseRepeatExp,
+        () -> (more() && !peek(")|") && (!check(INTERSECTION) || !peek("&"))),
+        RegExp::makeConcatenation);
+  }
+
+  /**
+   * Custom Functional Interface for a Supplying methods with signature of RegExp(int int1, RegExp
+   * exp1, RegExp exp2)
+   */
+  @FunctionalInterface
+  private interface MakeRegexGroup {
+    RegExp get(int int1, RegExp exp1, RegExp exp2);
+  }
+
+  final RegExp iterativeParseExp(
+      Supplier<RegExp> gather, BooleanSupplier stop, MakeRegexGroup associativeReduce)
+      throws IllegalArgumentException {
+    RegExp result = gather.get();
+    while (stop.getAsBoolean() == true) {
+      RegExp e = gather.get();
+      result = associativeReduce.get(flags, result, e);
+    }
+    return result;
   }
 
   final RegExp parseRepeatExp() throws IllegalArgumentException {
@@ -1206,6 +1166,10 @@ public class RegExp {
           if (start != pos) m = Integer.parseInt(originalString.substring(start, pos));
         } else m = n;
         if (!match('}')) throw new IllegalArgumentException("expected '}' at position " + pos);
+        if (m != -1 && n > m) {
+          throw new IllegalArgumentException(
+              "invalid repetition range(out of order): " + n + ".." + m);
+        }
         if (m == -1) e = makeRepeat(flags, e, n);
         else e = makeRepeat(flags, e, n, m);
       }
@@ -1214,7 +1178,8 @@ public class RegExp {
   }
 
   final RegExp parseComplExp() throws IllegalArgumentException {
-    if (check(COMPLEMENT) && match('~')) return makeComplement(flags, parseComplExp());
+    if (check(DEPRECATED_COMPLEMENT) && match('~'))
+      return makeDeprecatedComplement(flags, parseComplExp());
     else return parseCharClassExp();
   }
 
@@ -1320,7 +1285,7 @@ public class RegExp {
           if (i == 0 || i == s.length() - 1 || i != s.lastIndexOf('-'))
             throw new NumberFormatException();
           String smin = s.substring(0, i);
-          String smax = s.substring(i + 1, s.length());
+          String smax = s.substring(i + 1);
           int imin = Integer.parseInt(smin);
           int imax = Integer.parseInt(smax);
           int digits;

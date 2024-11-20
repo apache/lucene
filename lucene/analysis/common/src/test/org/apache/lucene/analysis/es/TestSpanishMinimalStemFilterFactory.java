@@ -19,12 +19,17 @@ package org.apache.lucene.analysis.es;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
 
-/** Simple tests to ensure the spanish minimal stem factory is working. */
+/**
+ * Simple tests to ensure the spanish minimal stem factory is working.
+ *
+ * @deprecated Remove with SpanishMinimalStemFilterFactory
+ */
+@Deprecated
 public class TestSpanishMinimalStemFilterFactory extends BaseTokenStreamFactoryTestCase {
   public void testStemming() throws Exception {
     Reader reader = new StringReader("camisetas");

@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.spatial.StrategyTestCase;
 import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
@@ -282,13 +281,12 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
     Query filter =
         new IntersectsPrefixTreeQuery(
             pt, strategy.getFieldName(), grid, facetLevel, grid.getMaxLevels());
-    final TotalHitCountCollector collector = new TotalHitCountCollector();
-    indexSearcher.search(filter, collector);
+    int totalHits = indexSearcher.count(filter);
     cellsValidated++;
-    if (collector.getTotalHits() > 0) {
+    if (totalHits > 0) {
       cellValidatedNonZero++;
     }
-    return collector.getTotalHits();
+    return totalHits;
   }
 
   private Shape randomIndexedShape() {

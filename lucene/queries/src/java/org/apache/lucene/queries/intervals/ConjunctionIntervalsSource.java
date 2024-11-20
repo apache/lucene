@@ -20,24 +20,18 @@ package org.apache.lucene.queries.intervals;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BooleanClause;
-import org.apache.lucene.search.FilterMatchesIterator;
-import org.apache.lucene.search.MatchesIterator;
-import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 
 abstract class ConjunctionIntervalsSource extends IntervalsSource {
 
   protected final List<IntervalsSource> subSources;
-  protected final boolean isMinimizing;
 
-  protected ConjunctionIntervalsSource(List<IntervalsSource> subSources, boolean isMinimizing) {
+  protected ConjunctionIntervalsSource(List<IntervalsSource> subSources) {
     assert subSources.size() > 1;
     this.subSources = subSources;
-    this.isMinimizing = isMinimizing;
   }
 
   @Override
@@ -64,6 +58,15 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
 
   protected abstract IntervalIterator combine(List<IntervalIterator> iterators);
 
+  /**
+   * Create matches iterator from an advanced and validated interval iterator and a list of matches
+   * iterator of all the sub-sources
+   */
+  protected IntervalMatchesIterator createMatchesIterator(
+      IntervalIterator it, List<IntervalMatchesIterator> subs) {
+    return new ConjunctionMatchesIterator(it, subs);
+  }
+
   @Override
   public final IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc)
       throws IOException {
@@ -73,119 +76,16 @@ abstract class ConjunctionIntervalsSource extends IntervalsSource {
       if (mi == null) {
         return null;
       }
-      if (isMinimizing) {
-        mi = new CachingMatchesIterator(mi);
-      }
       subs.add(mi);
     }
     IntervalIterator it =
-        combine(
-            subs.stream()
-                .map(m -> IntervalMatches.wrapMatches(m, doc))
-                .collect(Collectors.toList()));
+        combine(subs.stream().map(m -> IntervalMatches.wrapMatches(m, doc)).toList());
     if (it.advance(doc) != doc) {
       return null;
     }
     if (it.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
       return null;
     }
-    return isMinimizing
-        ? new MinimizingConjunctionMatchesIterator(it, subs)
-        : new ConjunctionMatchesIterator(it, subs);
-  }
-
-  private static class ConjunctionMatchesIterator implements IntervalMatchesIterator {
-
-    final IntervalIterator iterator;
-    final List<IntervalMatchesIterator> subs;
-    boolean cached = true;
-
-    private ConjunctionMatchesIterator(
-        IntervalIterator iterator, List<IntervalMatchesIterator> subs) {
-      this.iterator = iterator;
-      this.subs = subs;
-    }
-
-    @Override
-    public boolean next() throws IOException {
-      if (cached) {
-        cached = false;
-        return true;
-      }
-      return iterator.nextInterval() != IntervalIterator.NO_MORE_INTERVALS;
-    }
-
-    @Override
-    public int startPosition() {
-      return iterator.start();
-    }
-
-    @Override
-    public int endPosition() {
-      return iterator.end();
-    }
-
-    @Override
-    public int startOffset() throws IOException {
-      int start = Integer.MAX_VALUE;
-      for (MatchesIterator s : subs) {
-        start = Math.min(start, s.startOffset());
-      }
-      return start;
-    }
-
-    @Override
-    public int endOffset() throws IOException {
-      int end = -1;
-      for (MatchesIterator s : subs) {
-        end = Math.max(end, s.endOffset());
-      }
-      return end;
-    }
-
-    @Override
-    public MatchesIterator getSubMatches() throws IOException {
-      List<MatchesIterator> subMatches = new ArrayList<>();
-      for (MatchesIterator mi : subs) {
-        MatchesIterator sub = mi.getSubMatches();
-        if (sub == null) {
-          sub = new SingletonMatchesIterator(mi);
-        }
-        subMatches.add(sub);
-      }
-      return MatchesUtils.disjunction(subMatches);
-    }
-
-    @Override
-    public Query getQuery() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int gaps() {
-      return iterator.gaps();
-    }
-
-    @Override
-    public int width() {
-      return iterator.width();
-    }
-  }
-
-  static class SingletonMatchesIterator extends FilterMatchesIterator {
-
-    boolean exhausted = false;
-
-    SingletonMatchesIterator(MatchesIterator in) {
-      super(in);
-    }
-
-    @Override
-    public boolean next() {
-      if (exhausted) {
-        return false;
-      }
-      return exhausted = true;
-    }
+    return createMatchesIterator(it, subs);
   }
 }

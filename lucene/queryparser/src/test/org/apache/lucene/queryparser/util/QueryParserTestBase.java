@@ -25,10 +25,6 @@ import java.util.Locale;
 import java.util.TimeZone;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.LowerCaseFilter;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockSynonymFilter;
-import org.apache.lucene.analysis.MockTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -63,9 +59,14 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockSynonymFilter;
+import org.apache.lucene.tests.analysis.MockTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -560,7 +561,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertQueryEquals("{ a TO z]", null, "{a TO z]");
 
     assertEquals(
-        MultiTermQuery.CONSTANT_SCORE_REWRITE,
+        MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
         ((TermRangeQuery) getQuery("[ a TO z]")).getRewriteMethod());
 
     CommonQueryParserConfiguration qp =
@@ -653,7 +654,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   }
 
   private String escapeDateString(String s) {
-    if (s.indexOf(" ") > -1) {
+    if (s.indexOf(' ') > -1) {
       return "\"" + s + "\"";
     } else {
       return s;
@@ -1019,6 +1020,29 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   //    iw.addDocument(d);
   //  }
 
+  public void testParsesBracketsIfQuoted() throws Exception {
+    Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
+
+    assertQueryEquals("[\"a[i]\" TO \"b[i]\"]", a, "[a[i] TO b[i]]");
+    assertQueryEquals("{\"a[i]\" TO \"b[i]\"}", a, "{a[i] TO b[i]}");
+    assertQueryEquals("[\"a[i]\" TO \"b[i]\"}", a, "[a[i] TO b[i]}");
+    assertQueryEquals("{\"a[i]\" TO \"b[i]\"]", a, "{a[i] TO b[i]]");
+
+    assertQueryEquals("[\"a[i\\]\" TO \"b[i\\]\"]", a, "[a[i] TO b[i]]");
+    assertQueryEquals("[\"a\\[i\\]\" TO \"b\\[i\\]\"]", a, "[a[i] TO b[i]]");
+
+    assertQueryEquals("[\"a[i][j]\" TO \"b[i][j]\"]", a, "[a[i][j] TO b[i][j]]");
+
+    assertQueryEquals(
+        "[ \"2024-01-01T01:01:01+01:00[Europe/Warsaw]\" TO \"2025-01-01T01:01:01+01:00[Europe/Warsaw]\" ]",
+        null,
+        "[2024-01-01t01:01:01+01:00[europe/warsaw] TO 2025-01-01t01:01:01+01:00[europe/warsaw]]");
+
+    // If the range terms aren't wrapped in quotes, a closing bracket will throw
+    assertParseException("[a[i] TO b[i]]");
+    assertParseException("[a\\[i\\] TO b\\[i\\]]");
+  }
+
   public abstract void testStarParsing() throws Exception;
 
   public void testEscapedWildcard() throws Exception {
@@ -1035,16 +1059,6 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertEquals(q, getQuery("/[a-z][123]/", qp));
     assertEquals(q, getQuery("/[A-Z][123]/", qp));
     assertEquals(new BoostQuery(q, 0.5f), getQuery("/[A-Z][123]/^0.5", qp));
-    qp.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    q.setRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
-    assertTrue(getQuery("/[A-Z][123]/^0.5", qp) instanceof BoostQuery);
-    assertTrue(((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery() instanceof RegexpQuery);
-    assertEquals(
-        MultiTermQuery.SCORING_BOOLEAN_REWRITE,
-        ((RegexpQuery) ((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery())
-            .getRewriteMethod());
-    assertEquals(new BoostQuery(q, 0.5f), getQuery("/[A-Z][123]/^0.5", qp));
-    qp.setMultiTermRewriteMethod(MultiTermQuery.CONSTANT_SCORE_REWRITE);
 
     Query escaped = new RegexpQuery(new Term("field", "[a-z]\\/[123]"));
     assertEquals(escaped, getQuery("/[a-z]\\/[123]/", qp));
@@ -1080,6 +1094,23 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     two.add(new RegexpQuery(new Term("field", "bar")), Occur.SHOULD);
     assertEquals(two.build(), getQuery("field:/foo/ field:/bar/", qp));
     assertEquals(two.build(), getQuery("/foo/ /bar/", qp));
+
+    qp.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    q =
+        new RegexpQuery(
+            new Term("field", "[a-z][123]"),
+            RegExp.ALL,
+            0,
+            name -> null,
+            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+    assertTrue(getQuery("/[A-Z][123]/^0.5", qp) instanceof BoostQuery);
+    assertTrue(((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery() instanceof RegexpQuery);
+    assertEquals(
+        MultiTermQuery.SCORING_BOOLEAN_REWRITE,
+        ((RegexpQuery) ((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery())
+            .getRewriteMethod());
+    assertEquals(new BoostQuery(q, 0.5f), getQuery("/[A-Z][123]/^0.5", qp));
   }
 
   public void testStopwords() throws Exception {
@@ -1137,7 +1168,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     BooleanQuery bq = (BooleanQuery) getQuery("+*:* -*:*", qp);
     assertEquals(2, bq.clauses().size());
     for (BooleanClause clause : bq) {
-      assertTrue(clause.getQuery() instanceof MatchAllDocsQuery);
+      assertTrue(clause.query() instanceof MatchAllDocsQuery);
     }
   }
 
@@ -1176,7 +1207,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     IndexSearcher s = newSearcher(r);
 
     Query q = getQuery("\"wizard of ozzy\"", a);
-    assertEquals(1, s.search(q, 1).totalHits.value);
+    assertEquals(1, s.search(q, 1).totalHits.value());
     r.close();
     dir.close();
   }

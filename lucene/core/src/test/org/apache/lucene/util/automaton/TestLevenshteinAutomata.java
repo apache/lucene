@@ -20,7 +20,8 @@ import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WO
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
 public class TestLevenshteinAutomata extends LuceneTestCase {
 
@@ -73,51 +74,53 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
       assertNotNull(tautomata[n]);
       assertTrue(automata[n].isDeterministic());
       assertTrue(tautomata[n].isDeterministic());
-      assertTrue(Operations.isFinite(automata[n]));
-      assertTrue(Operations.isFinite(tautomata[n]));
+      assertTrue(AutomatonTestUtil.isFinite(automata[n]));
+      assertTrue(AutomatonTestUtil.isFinite(tautomata[n]));
       assertFalse(Operations.hasDeadStatesFromInitial(automata[n]));
       assertFalse(Operations.hasDeadStatesFromInitial(tautomata[n]));
       // check that the dfa for n-1 accepts a subset of the dfa for n
       if (n > 0) {
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(automata[n - 1]),
                 Operations.removeDeadStates(automata[n])));
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(automata[n - 1]),
                 Operations.removeDeadStates(tautomata[n])));
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(tautomata[n - 1]),
                 Operations.removeDeadStates(automata[n])));
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(tautomata[n - 1]),
                 Operations.removeDeadStates(tautomata[n])));
         assertNotSame(automata[n - 1], automata[n]);
       }
       // check that Lev(N) is a subset of LevT(N)
       assertTrue(
-          Operations.subsetOf(
+          AutomatonTestUtil.subsetOf(
               Operations.removeDeadStates(automata[n]), Operations.removeDeadStates(tautomata[n])));
       // special checks for specific n
       switch (n) {
         case 0:
           // easy, matches the string itself
           assertTrue(
-              Operations.sameLanguage(
+              AutomatonTestUtil.sameLanguage(
                   Automata.makeString(s), Operations.removeDeadStates(automata[0])));
           assertTrue(
-              Operations.sameLanguage(
+              AutomatonTestUtil.sameLanguage(
                   Automata.makeString(s), Operations.removeDeadStates(tautomata[0])));
           break;
         case 1:
           // generate a lev1 naively, and check the accepted lang is the same.
           assertTrue(
-              Operations.sameLanguage(naiveLev1(s), Operations.removeDeadStates(automata[1])));
+              AutomatonTestUtil.sameLanguage(
+                  naiveLev1(s), Operations.removeDeadStates(automata[1])));
           assertTrue(
-              Operations.sameLanguage(naiveLev1T(s), Operations.removeDeadStates(tautomata[1])));
+              AutomatonTestUtil.sameLanguage(
+                  naiveLev1T(s), Operations.removeDeadStates(tautomata[1])));
           break;
         default:
           assertBruteForce(s, automata[n], n);
@@ -212,10 +215,10 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
     List<Automaton> list = new ArrayList<>();
     for (int i = 0; i < s.length() - 1; i++) {
       StringBuilder sb = new StringBuilder();
-      sb.append(s.substring(0, i));
+      sb.append(s, 0, i);
       sb.append(s.charAt(i + 1));
       sb.append(s.charAt(i));
-      sb.append(s.substring(i + 2, s.length()));
+      sb.append(s, i + 2, s.length());
       String st = sb.toString();
       if (!st.equals(s)) {
         list.add(Automata.makeString(st));

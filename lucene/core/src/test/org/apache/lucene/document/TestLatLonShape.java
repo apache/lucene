@@ -22,11 +22,11 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
+import java.io.IOException;
 import org.apache.lucene.document.ShapeField.QueryRelation;
 import org.apache.lucene.geo.Circle;
 import org.apache.lucene.geo.Component2D;
 import org.apache.lucene.geo.GeoEncodingUtils;
-import org.apache.lucene.geo.GeoTestUtil;
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.LatLonGeometry;
 import org.apache.lucene.geo.Line;
@@ -38,15 +38,16 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.geo.GeoTestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Ignore;
 
 /** Test case for indexing polygons and querying by bounding box */
@@ -64,7 +65,7 @@ public class TestLatLonShape extends LuceneTestCase {
   }
 
   protected void addPolygonsToDoc(String field, Document doc, Polygon polygon) {
-    Field[] fields = LatLonShape.createIndexableFields(field, polygon);
+    Field[] fields = LatLonShape.createIndexableFields(field, polygon, random().nextBoolean());
     for (Field f : fields) {
       doc.add(f);
     }
@@ -304,14 +305,9 @@ public class TestLatLonShape extends LuceneTestCase {
             new double[] {15d, -7.5d, -15d, -10d, 15d, 15d},
             new double[] {180d, 180d, 176d, 174d, 176d, 180d});
 
-    Field[] fields = LatLonShape.createIndexableFields("test", indexPoly1);
-    for (Field f : fields) {
-      doc.add(f);
-    }
-    fields = LatLonShape.createIndexableFields("test", indexPoly2);
-    for (Field f : fields) {
-      doc.add(f);
-    }
+    addPolygonsToDoc("test", doc, indexPoly1);
+    addPolygonsToDoc("test", doc, indexPoly2);
+
     w.addDocument(doc);
     w.forceMerge(1);
 
@@ -369,14 +365,9 @@ public class TestLatLonShape extends LuceneTestCase {
         new Polygon(
             new double[] {-2d, -2d, 2d, 2d, -2d}, new double[] {-180d, -178d, -178d, -180d, -180d});
 
-    Field[] fields = LatLonShape.createIndexableFields("test", indexPoly1);
-    for (Field f : fields) {
-      doc.add(f);
-    }
-    fields = LatLonShape.createIndexableFields("test", indexPoly2);
-    for (Field f : fields) {
-      doc.add(f);
-    }
+    addPolygonsToDoc("test", doc, indexPoly1);
+    addPolygonsToDoc("test", doc, indexPoly2);
+
     w.addDocument(doc);
     w.forceMerge(1);
 
@@ -795,7 +786,7 @@ public class TestLatLonShape extends LuceneTestCase {
                   GeoEncodingUtils.encodeLongitude(polygon.getPolyLon(i)));
         }
         polygon = new Polygon(lats, lons);
-        Tessellator.tessellate(polygon);
+        Tessellator.tessellate(polygon, random().nextBoolean());
         break;
       } catch (
           @SuppressWarnings("unused")
@@ -925,24 +916,80 @@ public class TestLatLonShape extends LuceneTestCase {
     IOUtils.close(r, dir);
   }
 
-  public void testContainsIndexedGeometryCollection() throws Exception {
-    Directory dir = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+  public void testContainsGeometryCollectionIntersectsPoint() throws Exception {
     Polygon polygon =
         new Polygon(
             new double[] {-64, -64, 64, 64, -64}, new double[] {-132, 132, 132, -132, -132});
-    Field[] polygonFields = LatLonShape.createIndexableFields(FIELDNAME, polygon);
-    // POINT(5, 5) inside the indexed polygon
-    Field[] pointFields = LatLonShape.createIndexableFields(FIELDNAME, 5, 5);
+    doTestContainsGeometryCollectionIntersects(
+        LatLonShape.createIndexableFields(FIELDNAME, polygon),
+        // point inside the indexed polygon
+        LatLonShape.createIndexableFields(FIELDNAME, 5, 5));
+  }
+
+  public void testContainsGeometryCollectionIntersectsLine() throws Exception {
+    Polygon polygon =
+        new Polygon(
+            new double[] {-64, -64, 64, 64, -64}, new double[] {-132, 132, 132, -132, -132});
+    Line line = new Line(new double[] {5, 5.1}, new double[] {5, 5.1});
+    doTestContainsGeometryCollectionIntersects(
+        LatLonShape.createIndexableFields(FIELDNAME, polygon),
+        // Line inside the polygon
+        LatLonShape.createIndexableFields(FIELDNAME, line));
+  }
+
+  public void testContainsGeometryCollectionIntersectsPolygon() throws Exception {
+    Polygon polygon =
+        new Polygon(
+            new double[] {-64, -64, 64, 64, -64}, new double[] {-132, 132, 132, -132, -132});
+    Polygon polygonInside =
+        new Polygon(new double[] {5, 5, 5.1, 5.1, 5}, new double[] {5, 5.1, 5.1, 5, 5});
+    doTestContainsGeometryCollectionIntersects(
+        LatLonShape.createIndexableFields(FIELDNAME, polygon),
+        // this polygon is inside the other polygon
+        LatLonShape.createIndexableFields(FIELDNAME, polygonInside));
+  }
+
+  public void testFlatPolygonDoesNotContainIntersectingLine() throws IOException {
+    // Create line intersecting very flat polygon (but not contained)
+    double[] lons = new double[] {-0.001, -0.001, 0.001, 0.001, -0.001};
+    double[] lats = new double[] {1e-10, 0, -1e-10, 0, 1e-10};
+    Polygon polygon = new Polygon(lats, lons);
+    Line line = new Line(new double[] {0.0, 0.001}, new double[] {0.0, 0.0});
+
+    // Index the polygon
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    Document document = new Document();
+    addPolygonsToDoc(FIELDNAME, document, polygon);
+    writer.addDocument(document);
+
+    // search
+    IndexReader r = writer.getReader();
+    writer.close();
+    IndexSearcher s = newSearcher(r);
+
+    // search for line within the polygon
+    Query q = LatLonShape.newGeometryQuery(FIELDNAME, QueryRelation.CONTAINS, line);
+    TopDocs topDocs = s.search(q, 1);
+    assertEquals("Polygon should not contain the line,", 0, topDocs.scoreDocs.length);
+
+    // cleanup
+    IOUtils.close(r, dir);
+  }
+
+  private void doTestContainsGeometryCollectionIntersects(
+      Field[] containsFields, Field[] intersectsField) throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     int numDocs = random().nextInt(1000);
     // index the same multi geometry many times
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
-      for (Field f : polygonFields) {
+      for (Field f : containsFields) {
         doc.add(f);
       }
       for (int j = 0; j < 10; j++) {
-        for (Field f : pointFields) {
+        for (Field f : intersectsField) {
           doc.add(f);
         }
       }
@@ -956,8 +1003,8 @@ public class TestLatLonShape extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     // Contains is only true if the query geometry is inside a geometry and does not intersect with
     // any other geometry
-    // belonging to the same document. In this case the query geometry contains the indexed polygon
-    // but the point is
+    // belonging to the same document. In this case the query geometry contains the indexed fields
+    // but the intersectsFields are
     // inside the query as well, hence the result is 0.
     Polygon polygonQuery = new Polygon(new double[] {4, 4, 6, 6, 4}, new double[] {4, 6, 6, 4, 4});
     Query query = LatLonShape.newGeometryQuery(FIELDNAME, QueryRelation.CONTAINS, polygonQuery);

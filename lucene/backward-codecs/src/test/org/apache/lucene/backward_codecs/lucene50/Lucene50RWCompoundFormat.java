@@ -68,6 +68,7 @@ public final class Lucene50RWCompoundFormat extends CompoundFormat {
 
   /** Extension of compound file */
   static final String DATA_EXTENSION = "cfs";
+
   /** Extension of compound file entries */
   static final String ENTRIES_EXTENSION = "cfe";
 
@@ -80,9 +81,8 @@ public final class Lucene50RWCompoundFormat extends CompoundFormat {
   public Lucene50RWCompoundFormat() {}
 
   @Override
-  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si, IOContext context)
-      throws IOException {
-    return new Lucene50CompoundReader(dir, si, context);
+  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si) throws IOException {
+    return new Lucene50CompoundReader(dir, si);
   }
 
   @Override

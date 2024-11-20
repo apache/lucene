@@ -19,11 +19,11 @@ package org.apache.lucene.backward_codecs.lucene50.compressing;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.backward_codecs.compressing.CompressionMode;
+import org.apache.lucene.backward_codecs.compressing.Decompressor;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
-import org.apache.lucene.codecs.compressing.CompressionMode;
-import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -54,10 +54,13 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
 
   /** Extension of stored fields file */
   public static final String FIELDS_EXTENSION = "fdt";
+
   /** Extension of stored fields index */
   public static final String INDEX_EXTENSION = "fdx";
+
   /** Extension of stored fields meta */
   public static final String META_EXTENSION = "fdm";
+
   /** Codec name for the index. */
   public static final String INDEX_CODEC_NAME = "Lucene85FieldsIndex";
 
@@ -73,8 +76,10 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
 
   static final int VERSION_START = 1;
   static final int VERSION_OFFHEAP_INDEX = 2;
+
   /** Version where all metadata were moved to the meta file. */
   static final int VERSION_META = 3;
+
   /**
    * Version where numChunks is explicitly recorded in meta file and a dirty chunk bit is recorded
    * in each chunk
@@ -262,7 +267,9 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  /** @throws AlreadyClosedException if this FieldsReader is closed */
+  /**
+   * @throws AlreadyClosedException if this FieldsReader is closed
+   */
   private void ensureOpen() throws AlreadyClosedException {
     if (closed) {
       throw new AlreadyClosedException("this FieldsReader is closed");
@@ -283,9 +290,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
         int length = in.readVInt();
-        byte[] data = new byte[length];
-        in.readBytes(data, 0, length);
-        visitor.binaryField(info, data);
+        visitor.binaryField(info, in, length);
         break;
       case STRING:
         visitor.stringField(info, in.readString());
@@ -535,7 +540,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
         if (bitsPerLength == 0) {
           final int length = fieldsStream.readVInt();
           for (int i = 0; i < chunkDocs; ++i) {
-            offsets[1 + i] = (1 + i) * length;
+            offsets[1 + i] = (1 + i) * (long) length;
           }
         } else if (bitsPerStoredFields > 31) {
           throw new CorruptIndexException("bitsPerLength=" + bitsPerLength, fieldsStream);
@@ -690,7 +695,7 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
     }
   }
 
-  SerializedDocument document(int docID) throws IOException {
+  SerializedDocument serializedDocument(int docID) throws IOException {
     if (state.contains(docID) == false) {
       fieldsStream.seek(indexReader.getStartPointer(docID));
       state.reset(docID);
@@ -700,9 +705,9 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
   }
 
   @Override
-  public void visitDocument(int docID, StoredFieldVisitor visitor) throws IOException {
+  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
 
-    final SerializedDocument doc = document(docID);
+    final SerializedDocument doc = serializedDocument(docID);
 
     for (int fieldIDX = 0; fieldIDX < doc.numStoredFields; fieldIDX++) {
       final long infoAndBits = doc.in.readVLong();

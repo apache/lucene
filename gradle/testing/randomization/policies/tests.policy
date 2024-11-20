@@ -33,41 +33,29 @@ grant {
 
   // misc HardlinkCopyDirectoryWrapper needs this to test if hardlinks can be created
   permission java.nio.file.LinkPermission "hard";
-  // needed by SSD detection tests in TestIOUtils (creates symlinks)
-  permission java.nio.file.LinkPermission "symbolic";
 
-  // needed by randomizedtesting runner to identify test methods.
+  // needed by RamUsageEstimator, and randomizedtesting runner to identify test methods.
   permission java.lang.RuntimePermission "accessDeclaredMembers";
   // needed by certain tests to capture sysout/syserr:
   permission java.lang.RuntimePermission "setIO";
-  // needed by randomized runner to catch failures from other threads:
+  // needed by luke and randomized runner to catch failures from other threads:
   permission java.lang.RuntimePermission "setDefaultUncaughtExceptionHandler";
-  // needed by randomized runner getTopThreadGroup:
-  permission java.lang.RuntimePermission "modifyThreadGroup";
   // needed by tests e.g. shutting down executors:
   permission java.lang.RuntimePermission "modifyThread";
   // needed for tons of test hacks etc
   permission java.lang.RuntimePermission "getStackTrace";
   // needed for mock filesystems in tests
   permission java.lang.RuntimePermission "fileSystemProvider";
-  // analyzers/uima: needed by lucene expressions' JavascriptCompiler
-  permission java.lang.RuntimePermission "createClassLoader";
-  // needed to test unmap hack on platforms that support it
-  permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
-  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
   // needed by cyberneko usage by benchmarks on J9
   permission java.lang.RuntimePermission "accessClassInPackage.org.apache.xerces.util";
-  // needed by org.apache.logging.log4j
-  permission java.lang.RuntimePermission "getenv.*";
-  permission java.lang.RuntimePermission "getClassLoader";
-  permission java.lang.RuntimePermission "setContextClassLoader";
 
-  // Needed for loading native library (lucene:misc:native) in lucene:misc
+  // Needed for DirectIODirectory to retrieve block size
   permission java.lang.RuntimePermission "getFileStoreAttributes";
-  permission java.lang.RuntimePermission "writeFileDescriptor";
 
   // TestLockFactoriesMultiJVM opens a random port on 127.0.0.1 (port 0 = ephemeral port range):
   permission java.net.SocketPermission "127.0.0.1:0", "accept,listen,resolve";
+  // Replicator tests connect to ephemeral ports
+  permission java.net.SocketPermission "127.0.0.1:1024-", "connect,resolve";
 
   // read access to all system properties:
   permission java.util.PropertyPermission "*", "read";
@@ -83,11 +71,6 @@ grant {
   // used by nested tests? (e.g. TestLeaveFilesIfTestFails). TODO: look into this
   permission java.util.PropertyPermission "tests.runnested", "write";
 
-  // solr properties. TODO: move these out to SolrTestCase
-  permission java.util.PropertyPermission "solr.data.dir", "write";
-  permission java.util.PropertyPermission "solr.solr.home", "write";
-  permission java.util.PropertyPermission "solr.directoryFactory", "write";
-
   // allows LuceneTestCase#runWithRestrictedPermissions to execute with lower (or no) permission
   permission java.security.SecurityPermission "createAccessControlContext";
 
@@ -99,13 +82,6 @@ grant {
   permission java.io.FilePermission "${hunspell.dictionaries}${/}-", "read";
 };
 
-// Permissions to support ant build
-grant {
-  permission java.io.FilePermission "${user.home}${/}.ivy2${/}cache${/}-", "read";
-  permission java.io.FilePermission "${junit4.tempDir}${/}*", "read,write,delete";
-  permission java.io.FilePermission "${clover.db.dir}${/}-", "read,write,delete";
-};
-
 // Permissions for jacoco code coverage
 grant {
   // permission to write the per-jvm code coverage output
@@ -114,6 +90,8 @@ grant {
   permission java.lang.RuntimePermission "shutdownHooks";
   // needed by jacoco to instrument classes
   permission java.lang.RuntimePermission "defineClass";
+  // needed by jacoco for God knows what.
+  permission java.lang.RuntimePermission "createClassLoader";
 };
 
 // Grant all permissions to Gradle test runner classes.
@@ -132,3 +110,14 @@ grant {
   permission java.io.FilePermission "${gradle.user.home}${/}-", "read";
 };
 
+// Grant permissions to certain test-related JARs (https://github.com/apache/lucene/pull/13146)
+grant codeBase "file:${randomizedtesting.jar}" {
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+  permission java.lang.RuntimePermission "modifyThreadGroup";
+};
+grant codeBase "file:${junit.jar}" {
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+};
+grant codeBase "file:${lucene.test.framework}${/}-" {
+  permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+};

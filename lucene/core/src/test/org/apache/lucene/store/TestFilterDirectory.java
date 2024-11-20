@@ -21,6 +21,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.junit.Test;
 
 public class TestFilterDirectory extends BaseDirectoryTestCase {
@@ -38,7 +39,7 @@ public class TestFilterDirectory extends BaseDirectoryTestCase {
     exclude.add(
         Directory.class.getMethod(
             "copyFrom", Directory.class, String.class, String.class, IOContext.class));
-    exclude.add(Directory.class.getMethod("openChecksumInput", String.class, IOContext.class));
+    exclude.add(Directory.class.getMethod("openChecksumInput", String.class));
     for (Method m : FilterDirectory.class.getMethods()) {
       if (m.getDeclaringClass() == Directory.class) {
         assertTrue("method " + m.getName() + " not overridden!", exclude.contains(m));

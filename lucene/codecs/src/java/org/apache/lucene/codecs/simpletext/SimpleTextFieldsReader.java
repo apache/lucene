@@ -25,10 +25,10 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.PAYLOAD
 import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.POS;
 import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.START_OFFSET;
 import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.TERM;
+import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -38,6 +38,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
@@ -45,20 +46,17 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.FST;
@@ -120,11 +118,15 @@ class SimpleTextFieldsReader extends FieldsProducer {
     private int docFreq;
     private long totalTermFreq;
     private long docsStart;
+    private long skipPointer;
     private boolean ended;
-    private final BytesRefFSTEnum<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>> fstEnum;
+    private final BytesRefFSTEnum<
+            PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
+        fstEnum;
 
     public SimpleTextTermsEnum(
-        FST<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>> fst, IndexOptions indexOptions) {
+        FST<PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>> fst,
+        IndexOptions indexOptions) {
       this.indexOptions = indexOptions;
       fstEnum = new BytesRefFSTEnum<>(fst);
     }
@@ -132,12 +134,16 @@ class SimpleTextFieldsReader extends FieldsProducer {
     @Override
     public boolean seekExact(BytesRef text) throws IOException {
 
-      final BytesRefFSTEnum.InputOutput<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>>
+      final BytesRefFSTEnum.InputOutput<
+              PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
           result = fstEnum.seekExact(text);
       if (result != null) {
-        PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>> pair1 = result.output;
-        PairOutputs.Pair<Long, Long> pair2 = pair1.output2;
+        PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> pair =
+            result.output;
+        PairOutputs.Pair<Long, Long> pair1 = pair.output1;
+        PairOutputs.Pair<Long, Long> pair2 = pair.output2;
         docsStart = pair1.output1;
+        skipPointer = pair1.output2;
         docFreq = pair2.output1.intValue();
         totalTermFreq = pair2.output2;
         return true;
@@ -150,16 +156,20 @@ class SimpleTextFieldsReader extends FieldsProducer {
     public SeekStatus seekCeil(BytesRef text) throws IOException {
 
       // System.out.println("seek to text=" + text.utf8ToString());
-      final BytesRefFSTEnum.InputOutput<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>>
+      final BytesRefFSTEnum.InputOutput<
+              PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
           result = fstEnum.seekCeil(text);
       if (result == null) {
         // System.out.println("  end");
         return SeekStatus.END;
       } else {
         // System.out.println("  got text=" + term.utf8ToString());
-        PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>> pair1 = result.output;
-        PairOutputs.Pair<Long, Long> pair2 = pair1.output2;
+        PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> pair =
+            result.output;
+        PairOutputs.Pair<Long, Long> pair1 = pair.output1;
+        PairOutputs.Pair<Long, Long> pair2 = pair.output2;
         docsStart = pair1.output1;
+        skipPointer = pair1.output2;
         docFreq = pair2.output1.intValue();
         totalTermFreq = pair2.output2;
 
@@ -176,12 +186,16 @@ class SimpleTextFieldsReader extends FieldsProducer {
     @Override
     public BytesRef next() throws IOException {
       assert !ended;
-      final BytesRefFSTEnum.InputOutput<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>>
+      final BytesRefFSTEnum.InputOutput<
+              PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
           result = fstEnum.next();
       if (result != null) {
-        PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>> pair1 = result.output;
-        PairOutputs.Pair<Long, Long> pair2 = pair1.output2;
+        PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> pair =
+            result.output;
+        PairOutputs.Pair<Long, Long> pair1 = pair.output1;
+        PairOutputs.Pair<Long, Long> pair2 = pair.output2;
         docsStart = pair1.output1;
+        skipPointer = pair1.output2;
         docFreq = pair2.output1.intValue();
         totalTermFreq = pair2.output2;
         return result.input;
@@ -229,7 +243,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
         } else {
           docsAndPositionsEnum = new SimpleTextPostingsEnum();
         }
-        return docsAndPositionsEnum.reset(docsStart, indexOptions, docFreq);
+        return docsAndPositionsEnum.reset(docsStart, indexOptions, docFreq, skipPointer);
       }
 
       SimpleTextDocsEnum docsEnum;
@@ -240,16 +254,20 @@ class SimpleTextFieldsReader extends FieldsProducer {
       } else {
         docsEnum = new SimpleTextDocsEnum();
       }
-      return docsEnum.reset(docsStart, indexOptions == IndexOptions.DOCS, docFreq);
+      return docsEnum.reset(docsStart, indexOptions == IndexOptions.DOCS, docFreq, skipPointer);
     }
 
     @Override
     public ImpactsEnum impacts(int flags) throws IOException {
-      return new SlowImpactsEnum(postings(null, flags));
+      if (docFreq <= SimpleTextSkipWriter.BLOCK_SIZE) {
+        // no skip data
+        return new SlowImpactsEnum(postings(null, flags));
+      }
+      return (ImpactsEnum) postings(null, flags);
     }
   }
 
-  private class SimpleTextDocsEnum extends PostingsEnum {
+  private class SimpleTextDocsEnum extends ImpactsEnum {
     private final IndexInput inStart;
     private final IndexInput in;
     private boolean omitTF;
@@ -259,21 +277,31 @@ class SimpleTextFieldsReader extends FieldsProducer {
     private final CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
     private int cost;
 
+    // for skip list data
+    private SimpleTextSkipReader skipReader;
+    private int nextSkipDoc = 0;
+    private long seekTo = -1;
+
     public SimpleTextDocsEnum() {
       this.inStart = SimpleTextFieldsReader.this.in;
       this.in = this.inStart.clone();
+      this.skipReader = new SimpleTextSkipReader(this.inStart.clone());
     }
 
     public boolean canReuse(IndexInput in) {
       return in == inStart;
     }
 
-    public SimpleTextDocsEnum reset(long fp, boolean omitTF, int docFreq) throws IOException {
+    public SimpleTextDocsEnum reset(long fp, boolean omitTF, int docFreq, long skipPointer)
+        throws IOException {
       in.seek(fp);
       this.omitTF = omitTF;
       docID = -1;
       tf = 1;
       cost = docFreq;
+      skipReader.reset(skipPointer, docFreq);
+      nextSkipDoc = 0;
+      seekTo = -1;
       return this;
     }
 
@@ -309,6 +337,10 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public int nextDoc() throws IOException {
+      return advance(docID + 1);
+    }
+
+    private int readDoc() throws IOException {
       if (docID == NO_MORE_DOCS) {
         return docID;
       }
@@ -341,7 +373,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
         } else if (StringHelper.startsWith(scratch.get(), PAYLOAD)) {
           // skip
         } else {
-          assert StringHelper.startsWith(scratch.get(), TERM)
+          assert StringHelper.startsWith(scratch.get(), SimpleTextSkipWriter.SKIP_LIST)
+                  || StringHelper.startsWith(scratch.get(), TERM)
                   || StringHelper.startsWith(scratch.get(), FIELD)
                   || StringHelper.startsWith(scratch.get(), END)
               : "scratch=" + scratch.get().utf8ToString();
@@ -357,19 +390,50 @@ class SimpleTextFieldsReader extends FieldsProducer {
       }
     }
 
+    private int advanceTarget(int target) throws IOException {
+      if (seekTo > 0) {
+        in.seek(seekTo);
+        seekTo = -1;
+      }
+      assert docID() < target;
+      int doc;
+      do {
+        doc = readDoc();
+      } while (doc < target);
+      return doc;
+    }
+
     @Override
     public int advance(int target) throws IOException {
-      // Naive -- better to index skip data
-      return slowAdvance(target);
+      advanceShallow(target);
+      return advanceTarget(target);
     }
 
     @Override
     public long cost() {
       return cost;
     }
+
+    @Override
+    public void advanceShallow(int target) throws IOException {
+      if (target > nextSkipDoc) {
+        skipReader.skipTo(target);
+        if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          seekTo = skipReader.getNextSkipDocFP();
+        }
+        nextSkipDoc = skipReader.getNextSkipDoc();
+      }
+      assert nextSkipDoc >= target;
+    }
+
+    @Override
+    public Impacts getImpacts() throws IOException {
+      advanceShallow(docID);
+      return skipReader.getImpacts();
+    }
   }
 
-  private class SimpleTextPostingsEnum extends PostingsEnum {
+  private class SimpleTextPostingsEnum extends ImpactsEnum {
     private final IndexInput inStart;
     private final IndexInput in;
     private int docID = -1;
@@ -387,16 +451,23 @@ class SimpleTextFieldsReader extends FieldsProducer {
     private int endOffset;
     private int cost;
 
+    // for skip list data
+    private SimpleTextSkipReader skipReader;
+    private int nextSkipDoc = 0;
+    private long seekTo = -1;
+
     public SimpleTextPostingsEnum() {
       this.inStart = SimpleTextFieldsReader.this.in;
       this.in = inStart.clone();
+      this.skipReader = new SimpleTextSkipReader(this.inStart.clone());
     }
 
     public boolean canReuse(IndexInput in) {
       return in == inStart;
     }
 
-    public SimpleTextPostingsEnum reset(long fp, IndexOptions indexOptions, int docFreq) {
+    public SimpleTextPostingsEnum reset(
+        long fp, IndexOptions indexOptions, int docFreq, long skipPointer) throws IOException {
       nextDocStart = fp;
       docID = -1;
       readPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
@@ -407,6 +478,9 @@ class SimpleTextFieldsReader extends FieldsProducer {
         endOffset = -1;
       }
       cost = docFreq;
+      skipReader.reset(skipPointer, docFreq);
+      nextSkipDoc = 0;
+      seekTo = -1;
       return this;
     }
 
@@ -422,6 +496,10 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public int nextDoc() throws IOException {
+      return advance(docID + 1);
+    }
+
+    private int readDoc() throws IOException {
       boolean first = true;
       in.seek(nextDocStart);
       long posStart = 0;
@@ -452,7 +530,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
         } else if (StringHelper.startsWith(scratch.get(), PAYLOAD)) {
           // skip
         } else {
-          assert StringHelper.startsWith(scratch.get(), TERM)
+          assert StringHelper.startsWith(scratch.get(), SimpleTextSkipWriter.SKIP_LIST)
+              || StringHelper.startsWith(scratch.get(), TERM)
               || StringHelper.startsWith(scratch.get(), FIELD)
               || StringHelper.startsWith(scratch.get(), END);
           if (!first) {
@@ -465,10 +544,23 @@ class SimpleTextFieldsReader extends FieldsProducer {
       }
     }
 
+    private int advanceTarget(int target) throws IOException {
+      if (seekTo > 0) {
+        nextDocStart = seekTo;
+        seekTo = -1;
+      }
+      assert docID() < target;
+      int doc;
+      do {
+        doc = readDoc();
+      } while (doc < target);
+      return doc;
+    }
+
     @Override
     public int advance(int target) throws IOException {
-      // Naive -- better to index skip data
-      return slowAdvance(target);
+      advanceShallow(target);
+      return advanceTarget(target);
     }
 
     @Override
@@ -503,7 +595,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
       SimpleTextUtil.readLine(in, scratch);
       if (StringHelper.startsWith(scratch.get(), PAYLOAD)) {
         final int len = scratch.length() - PAYLOAD.length;
-        scratch2.grow(len);
+        scratch2.growNoCopy(len);
         System.arraycopy(scratch.bytes(), PAYLOAD.length, scratch2.bytes(), 0, len);
         scratch2.setLength(len);
         payload = scratch2.get();
@@ -533,21 +625,34 @@ class SimpleTextFieldsReader extends FieldsProducer {
     public long cost() {
       return cost;
     }
+
+    @Override
+    public void advanceShallow(int target) throws IOException {
+      if (target > nextSkipDoc) {
+        skipReader.skipTo(target);
+        if (skipReader.getNextSkipDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          seekTo = skipReader.getNextSkipDocFP();
+        }
+      }
+      nextSkipDoc = skipReader.getNextSkipDoc();
+      assert nextSkipDoc >= target;
+    }
+
+    @Override
+    public Impacts getImpacts() throws IOException {
+      advanceShallow(docID);
+      return skipReader.getImpacts();
+    }
   }
 
-  private static final long TERMS_BASE_RAM_BYTES_USED =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleTextTerms.class)
-          + RamUsageEstimator.shallowSizeOfInstance(BytesRef.class)
-          + RamUsageEstimator.shallowSizeOfInstance(CharsRef.class);
-
-  private class SimpleTextTerms extends Terms implements Accountable {
+  private class SimpleTextTerms extends Terms {
     private final long termsStart;
     private final FieldInfo fieldInfo;
     private final int maxDoc;
     private long sumTotalTermFreq;
     private long sumDocFreq;
     private int docCount;
-    private FST<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>> fst;
+    private FST<PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>> fst;
     private int termCount;
     private final BytesRefBuilder scratch = new BytesRefBuilder();
     private final CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
@@ -561,17 +666,21 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     private void loadTerms() throws IOException {
       PositiveIntOutputs posIntOutputs = PositiveIntOutputs.getSingleton();
-      final FSTCompiler<PairOutputs.Pair<Long, PairOutputs.Pair<Long, Long>>> fstCompiler;
+      final FSTCompiler<
+              PairOutputs.Pair<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>>>
+          fstCompiler;
+      final PairOutputs<Long, Long> outputsOuter = new PairOutputs<>(posIntOutputs, posIntOutputs);
       final PairOutputs<Long, Long> outputsInner = new PairOutputs<>(posIntOutputs, posIntOutputs);
-      final PairOutputs<Long, PairOutputs.Pair<Long, Long>> outputs =
-          new PairOutputs<>(posIntOutputs, outputsInner);
-      fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+      final PairOutputs<PairOutputs.Pair<Long, Long>, PairOutputs.Pair<Long, Long>> outputs =
+          new PairOutputs<>(outputsOuter, outputsInner);
+      fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
       IndexInput in = SimpleTextFieldsReader.this.in.clone();
       in.seek(termsStart);
       final BytesRefBuilder lastTerm = new BytesRefBuilder();
       long lastDocsStart = -1;
       int docFreq = 0;
       long totalTermFreq = 0;
+      long skipPointer = 0;
       FixedBitSet visitedDocs = new FixedBitSet(maxDoc);
       final IntsRefBuilder scratchIntsRef = new IntsRefBuilder();
       while (true) {
@@ -581,7 +690,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
             fstCompiler.add(
                 Util.toIntsRef(lastTerm.get(), scratchIntsRef),
                 outputs.newPair(
-                    lastDocsStart, outputsInner.newPair((long) docFreq, totalTermFreq)));
+                    outputsOuter.newPair(lastDocsStart, skipPointer),
+                    outputsInner.newPair((long) docFreq, totalTermFreq)));
             sumTotalTermFreq += totalTermFreq;
           }
           break;
@@ -595,26 +705,30 @@ class SimpleTextFieldsReader extends FieldsProducer {
         } else if (StringHelper.startsWith(scratch.get(), FREQ)) {
           scratchUTF16.copyUTF8Bytes(scratch.bytes(), FREQ.length, scratch.length() - FREQ.length);
           totalTermFreq += ArrayUtil.parseInt(scratchUTF16.chars(), 0, scratchUTF16.length()) - 1;
+        } else if (StringHelper.startsWith(scratch.get(), SKIP_LIST)) {
+          skipPointer = in.getFilePointer();
         } else if (StringHelper.startsWith(scratch.get(), TERM)) {
           if (lastDocsStart != -1) {
             fstCompiler.add(
                 Util.toIntsRef(lastTerm.get(), scratchIntsRef),
                 outputs.newPair(
-                    lastDocsStart, outputsInner.newPair((long) docFreq, totalTermFreq)));
+                    outputsOuter.newPair(lastDocsStart, skipPointer),
+                    outputsInner.newPair((long) docFreq, totalTermFreq)));
           }
           lastDocsStart = in.getFilePointer();
           final int len = scratch.length() - TERM.length;
-          lastTerm.grow(len);
+          lastTerm.growNoCopy(len);
           System.arraycopy(scratch.bytes(), TERM.length, lastTerm.bytes(), 0, len);
           lastTerm.setLength(len);
           docFreq = 0;
           sumTotalTermFreq += totalTermFreq;
           totalTermFreq = 0;
           termCount++;
+          skipPointer = 0;
         }
       }
       docCount = visitedDocs.cardinality();
-      fst = fstCompiler.compile();
+      fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       /*
       PrintStream ps = new PrintStream("out.dot");
       fst.toDot(ps);
@@ -622,23 +736,6 @@ class SimpleTextFieldsReader extends FieldsProducer {
       System.out.println("SAVED out.dot");
       */
       // System.out.println("FST " + fst.sizeInBytes());
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      return TERMS_BASE_RAM_BYTES_USED
-          + (fst != null ? fst.ramBytesUsed() : 0)
-          + RamUsageEstimator.sizeOf(scratch.bytes())
-          + RamUsageEstimator.sizeOf(scratchUTF16.chars());
-    }
-
-    @Override
-    public Collection<Accountable> getChildResources() {
-      if (fst == null) {
-        return Collections.emptyList();
-      } else {
-        return Collections.singletonList(Accountables.namedAccountable("term cache", fst));
-      }
     }
 
     @Override

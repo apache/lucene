@@ -18,7 +18,6 @@ package org.apache.lucene.queries.payloads;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
@@ -26,7 +25,6 @@ import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
@@ -34,18 +32,20 @@ import org.apache.lucene.queries.spans.SpanWeight;
 import org.apache.lucene.queries.spans.Spans;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.CheckHits;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.English;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.English;
-import org.apache.lucene.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -162,7 +162,7 @@ public class TestPayloadTermQuery extends LuceneTestCase {
     TopDocs hits = searcher.search(query, 100);
     assertTrue("hits is null and it shouldn't be", hits != null);
     assertTrue(
-        "hits Size: " + hits.totalHits.value + " is not: " + 100, hits.totalHits.value == 100);
+        "hits Size: " + hits.totalHits.value() + " is not: " + 100, hits.totalHits.value() == 100);
 
     // they should all have the exact same score, because they all contain seventy once, and we set
     // all the other similarity factors to be 1
@@ -216,7 +216,7 @@ public class TestPayloadTermQuery extends LuceneTestCase {
     TopDocs hits = searcher.search(query, 100);
     assertTrue("hits is null and it shouldn't be", hits != null);
     assertTrue(
-        "hits Size: " + hits.totalHits.value + " is not: " + 100, hits.totalHits.value == 100);
+        "hits Size: " + hits.totalHits.value() + " is not: " + 100, hits.totalHits.value() == 100);
 
     // they should all have the exact same score, because they all contain seventy once, and we set
     // all the other similarity factors to be 1
@@ -260,7 +260,8 @@ public class TestPayloadTermQuery extends LuceneTestCase {
             PayloadDecoder.FLOAT_DECODER);
     TopDocs hits = searcher.search(query, 100);
     assertTrue("hits is null and it shouldn't be", hits != null);
-    assertTrue("hits Size: " + hits.totalHits.value + " is not: " + 0, hits.totalHits.value == 0);
+    assertTrue(
+        "hits Size: " + hits.totalHits.value() + " is not: " + 0, hits.totalHits.value() == 0);
   }
 
   public void testNoPayload() throws Exception {
@@ -281,7 +282,8 @@ public class TestPayloadTermQuery extends LuceneTestCase {
     query.add(c2);
     TopDocs hits = searcher.search(query.build(), 100);
     assertTrue("hits is null and it shouldn't be", hits != null);
-    assertTrue("hits Size: " + hits.totalHits.value + " is not: " + 1, hits.totalHits.value == 1);
+    assertTrue(
+        "hits Size: " + hits.totalHits.value() + " is not: " + 1, hits.totalHits.value() == 1);
     int[] results = new int[1];
     results[0] = 0; // hits.scoreDocs[0].doc;
     CheckHits.checkHitCollector(

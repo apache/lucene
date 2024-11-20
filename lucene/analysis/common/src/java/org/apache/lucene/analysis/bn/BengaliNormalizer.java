@@ -25,7 +25,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.delete;
  * encoding for Bangla and its application in spelling checker</i> Naushad UzZaman and Mumit Khan.
  * http://www.panl10n.net/english/final%20reports/pdf%20files/Bangladesh/BAN16.pdf
  */
-public class BengaliNormalizer {
+class BengaliNormalizer {
   /**
    * Normalize an input buffer of Bengali text
    *
@@ -33,27 +33,27 @@ public class BengaliNormalizer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  public int normalize(char[] s, int len) {
+  int normalize(char[] s, int len) {
 
     for (int i = 0; i < len; i++) {
       switch (s[i]) {
-          // delete Chandrabindu
+        // delete Chandrabindu
         case '\u0981':
           len = delete(s, i, len);
           i--;
           break;
 
-          // DirghoI kar -> RosshoI kar
+        // DirghoI kar -> RosshoI kar
         case '\u09C0':
           s[i] = '\u09BF';
           break;
 
-          // DirghoU kar -> RosshoU kar
+        // DirghoU kar -> RosshoU kar
         case '\u09C2':
           s[i] = '\u09C1';
           break;
 
-          // Khio (Ka + Hoshonto + Murdorno Sh)
+        // Khio (Ka + Hoshonto + Murdorno Sh)
         case '\u0995':
           if (i + 2 < len && s[i + 1] == '\u09CD' && s[i + 2] == '\u09BF') {
             if (i == 0) {
@@ -67,12 +67,12 @@ public class BengaliNormalizer {
           }
           break;
 
-          // Nga to Anusvara
+        // Nga to Anusvara
         case '\u0999':
           s[i] = '\u0982';
           break;
 
-          // Ja Phala
+        // Ja Phala
         case '\u09AF':
           if (i - 2 == 0 && s[i - 1] == '\u09CD') {
             s[i - 1] = '\u09C7';
@@ -89,7 +89,7 @@ public class BengaliNormalizer {
           }
           break;
 
-          // Ba Phalaa
+        // Ba Phalaa
         case '\u09AC':
           if ((i >= 1 && s[i - 1] != '\u09CD') || i == 0) {
             break;
@@ -109,7 +109,7 @@ public class BengaliNormalizer {
           }
           break;
 
-          // Visarga
+        // Visarga
         case '\u0983':
           if (i == len - 1) {
             if (len <= 3) {
@@ -122,18 +122,18 @@ public class BengaliNormalizer {
           }
           break;
 
-          // All sh
+        // All sh
         case '\u09B6':
         case '\u09B7':
           s[i] = '\u09B8';
           break;
 
-          // check na
+        // check na
         case '\u09A3':
           s[i] = '\u09A8';
           break;
 
-          // check ra
+        // check ra
         case '\u09DC':
         case '\u09DD':
           s[i] = '\u09B0';

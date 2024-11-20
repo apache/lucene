@@ -56,17 +56,13 @@ class FeatureDoubleValuesSource extends DoubleValuesSource {
 
   @Override
   public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
-    Terms terms = ctx.reader().terms(field);
-    if (terms == null) {
-      return DoubleValues.EMPTY;
+    Terms terms = Terms.getTerms(ctx.reader(), field);
+    TermsEnum termsEnum = terms.iterator();
+    if (termsEnum.seekExact(featureName)) {
+      PostingsEnum currentReaderPostingsValues = termsEnum.postings(null, PostingsEnum.FREQS);
+      return new FeatureDoubleValues(currentReaderPostingsValues);
     } else {
-      TermsEnum termsEnum = terms.iterator();
-      if (termsEnum.seekExact(featureName) == false) {
-        return DoubleValues.EMPTY;
-      } else {
-        PostingsEnum currentReaderPostingsValues = termsEnum.postings(null, PostingsEnum.FREQS);
-        return new FeatureDoubleValues(currentReaderPostingsValues);
-      }
+      return DoubleValues.EMPTY;
     }
   }
 

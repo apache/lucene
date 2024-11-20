@@ -17,10 +17,10 @@
 
 package org.apache.lucene.analysis.miscellaneous;
 
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestDelimitedTermFrequencyTokenFilter extends BaseTokenStreamTestCase {
 

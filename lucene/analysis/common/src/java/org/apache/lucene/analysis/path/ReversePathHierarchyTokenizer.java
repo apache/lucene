@@ -17,13 +17,13 @@
 package org.apache.lucene.analysis.path;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.AttributeFactory;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Tokenizer for domain-like hierarchies.
@@ -43,6 +43,7 @@ import org.apache.lucene.util.AttributeFactory;
  * uk
  * </pre>
  */
+@IgnoreRandomChains(reason = "broken offsets")
 public class ReversePathHierarchyTokenizer extends Tokenizer {
 
   public ReversePathHierarchyTokenizer() {
@@ -97,7 +98,7 @@ public class ReversePathHierarchyTokenizer extends Tokenizer {
     this.skip = skip;
     resultToken = new StringBuilder(bufferSize);
     resultTokenBuffer = new char[bufferSize];
-    delimiterPositions = new ArrayList<>(bufferSize / 10);
+    delimiterPositions = new IntArrayList(bufferSize / 10);
   }
 
   private static final int DEFAULT_BUFFER_SIZE = 1024;
@@ -110,14 +111,15 @@ public class ReversePathHierarchyTokenizer extends Tokenizer {
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-  private final PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
+  private final PositionIncrementAttribute posIncAtt =
+      addAttribute(PositionIncrementAttribute.class);
 
   private int endPosition = 0;
   private int finalOffset = 0;
   private int skipped = 0;
   private StringBuilder resultToken;
 
-  private List<Integer> delimiterPositions;
+  private IntArrayList delimiterPositions;
   private int delimitersCount = -1;
   private char[] resultTokenBuffer;
 
@@ -156,10 +158,8 @@ public class ReversePathHierarchyTokenizer extends Tokenizer {
         endPosition = delimiterPositions.get(idx);
       }
       finalOffset = correctOffset(length);
-      posAtt.setPositionIncrement(1);
-    } else {
-      posAtt.setPositionIncrement(0);
     }
+    posIncAtt.setPositionIncrement(1);
 
     while (skipped < delimitersCount - skip - 1) {
       int start = delimiterPositions.get(skipped);

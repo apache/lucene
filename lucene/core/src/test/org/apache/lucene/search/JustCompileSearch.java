@@ -118,7 +118,7 @@ final class JustCompileSearch {
 
     @Override
     public FieldComparator<?> newComparator(
-        String fieldname, int numHits, int sortPos, boolean reversed) {
+        String fieldname, int numHits, Pruning pruning, boolean reversed) {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
   }
@@ -164,11 +164,6 @@ final class JustCompileSearch {
   }
 
   static final class JustCompileScorer extends Scorer {
-
-    protected JustCompileScorer(Weight weight) {
-      super(weight);
-    }
-
     @Override
     public float score() {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
@@ -248,8 +243,18 @@ final class JustCompileSearch {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) {
-      throw new UnsupportedOperationException(UNSUPPORTED_MSG);
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) {
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          throw new UnsupportedOperationException(UNSUPPORTED_MSG);
+        }
+
+        @Override
+        public long cost() {
+          throw new UnsupportedOperationException(UNSUPPORTED_MSG);
+        }
+      };
     }
 
     @Override

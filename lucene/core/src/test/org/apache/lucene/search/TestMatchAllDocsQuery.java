@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -26,7 +25,8 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Tests MatchAllDocsQuery. */
 public class TestMatchAllDocsQuery extends LuceneTestCase {
@@ -56,9 +56,9 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
 
     hits = is.search(new MatchAllDocsQuery(), 1000).scoreDocs;
     assertEquals(3, hits.length);
-    assertEquals("one", is.doc(hits[0].doc).get("key"));
-    assertEquals("two", is.doc(hits[1].doc).get("key"));
-    assertEquals("three four", is.doc(hits[2].doc).get("key"));
+    assertEquals("one", is.storedFields().document(hits[0].doc).get("key"));
+    assertEquals("two", is.storedFields().document(hits[1].doc).get("key"));
+    assertEquals("three four", is.storedFields().document(hits[2].doc).get("key"));
 
     // some artificial queries to trigger the use of skipTo():
 
@@ -115,20 +115,21 @@ public class TestMatchAllDocsQuery extends LuceneTestCase {
     }
     IndexReader ir = DirectoryReader.open(iw);
 
-    IndexSearcher is = newSearcher(ir);
-
+    IndexSearcher singleThreadedSearcher = newSearcher(ir, true, true, false);
     final int totalHitsThreshold = 200;
-    TopScoreDocCollector c = TopScoreDocCollector.create(10, null, totalHitsThreshold);
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(10, totalHitsThreshold);
 
-    is.search(new MatchAllDocsQuery(), c);
-    assertEquals(totalHitsThreshold + 1, c.totalHits);
-    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, c.totalHitsRelation);
+    TopDocs topDocs = singleThreadedSearcher.search(new MatchAllDocsQuery(), collectorManager);
+    assertEquals(totalHitsThreshold + 1, topDocs.totalHits.value());
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
-    TopScoreDocCollector c1 = TopScoreDocCollector.create(10, null, numDocs);
+    IndexSearcher is = newSearcher(ir);
+    collectorManager = new TopScoreDocCollectorManager(10, numDocs);
 
-    is.search(new MatchAllDocsQuery(), c1);
-    assertEquals(numDocs, c1.totalHits);
-    assertEquals(TotalHits.Relation.EQUAL_TO, c1.totalHitsRelation);
+    topDocs = is.search(new MatchAllDocsQuery(), collectorManager);
+    assertEquals(numDocs, topDocs.totalHits.value());
+    assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
 
     iw.close();
     ir.close();

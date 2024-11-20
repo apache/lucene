@@ -18,7 +18,6 @@
 package org.apache.lucene.analysis.opennlp.tools;
 
 import java.io.IOException;
-import java.io.InputStream;
 import opennlp.tools.lemmatizer.DictionaryLemmatizer;
 import opennlp.tools.lemmatizer.LemmatizerME;
 import opennlp.tools.lemmatizer.LemmatizerModel;
@@ -36,11 +35,11 @@ public class NLPLemmatizerOp {
   private final DictionaryLemmatizer dictionaryLemmatizer;
   private final LemmatizerME lemmatizerME;
 
-  public NLPLemmatizerOp(InputStream dictionary, LemmatizerModel lemmatizerModel)
+  public NLPLemmatizerOp(DictionaryLemmatizer dictionaryLemmatizer, LemmatizerModel lemmatizerModel)
       throws IOException {
-    assert dictionary != null || lemmatizerModel != null
+    assert dictionaryLemmatizer != null || lemmatizerModel != null
         : "At least one parameter must be non-null";
-    dictionaryLemmatizer = dictionary == null ? null : new DictionaryLemmatizer(dictionary);
+    this.dictionaryLemmatizer = dictionaryLemmatizer;
     lemmatizerME = lemmatizerModel == null ? null : new LemmatizerME(lemmatizerModel);
   }
 

@@ -55,6 +55,7 @@ import org.apache.lucene.util.NumericUtils;
 public class XYPointField extends Field {
   /** XYPoint is encoded as integer values so number of bytes is 4 */
   public static final int BYTES = Integer.BYTES;
+
   /**
    * Type for an indexed XYPoint
    *

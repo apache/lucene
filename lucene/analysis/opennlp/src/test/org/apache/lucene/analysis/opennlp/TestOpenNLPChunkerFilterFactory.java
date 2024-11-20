@@ -19,9 +19,9 @@ package org.apache.lucene.analysis.opennlp;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.custom.CustomAnalyzer;
 import org.apache.lucene.analysis.payloads.TypeAsPayloadTokenFilterFactory;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.ClasspathResourceLoader;
 
 /**
@@ -58,7 +58,7 @@ public class TestOpenNLPChunkerFilterFactory extends BaseTokenStreamTestCase {
     8, 15, 17, 21, 23, 29, 30, 39, 46, 48, 49, 51, 57, 58
   };
   private static final String[] SENTENCES_chunks = {
-    "B-NP", "I-NP", "I-NP", "B-VP", "B-NP", "I-NP", "O", "B-NP", "I-NP", "I-NP", "O", "B-NP",
+    "B-NP", "I-NP", "I-NP", "I-NP", "I-NP", "I-NP", "O", "B-NP", "I-NP", "I-NP", "O", "B-NP",
     "I-NP", "O"
   };
 
@@ -113,5 +113,17 @@ public class TestOpenNLPChunkerFilterFactory extends BaseTokenStreamTestCase {
         null,
         true,
         toPayloads(SENTENCES_chunks));
+  }
+
+  public void testEmptyField() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter("opennlpPOS", "posTaggerModel", posTaggerModelFile)
+            .addTokenFilter("opennlpChunker", "chunkerModel", chunkerModelFile)
+            .addTokenFilter(TypeAsPayloadTokenFilterFactory.class)
+            .build();
+    assertAnalyzesTo(analyzer, "", new String[0], null, null, null, null, null, true);
   }
 }

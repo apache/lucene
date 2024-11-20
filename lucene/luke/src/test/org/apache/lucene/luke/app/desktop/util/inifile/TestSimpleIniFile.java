@@ -24,8 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestSimpleIniFile extends LuceneTestCase {
@@ -37,7 +36,7 @@ public class TestSimpleIniFile extends LuceneTestCase {
     assertTrue(Files.isRegularFile(path));
 
     try (BufferedReader br = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-      List<String> lines = br.lines().collect(Collectors.toList());
+      List<String> lines = br.lines().toList();
       assertEquals(8, lines.size());
       assertEquals("[section1]", lines.get(0));
       assertEquals("s1 = aaa", lines.get(1));

@@ -18,8 +18,10 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 /**
  * Expert: A <code>Scorer</code> for documents matching a <code>Term</code>.
@@ -28,30 +30,42 @@ import org.apache.lucene.index.SlowImpactsEnum;
  */
 public final class TermScorer extends Scorer {
   private final PostingsEnum postingsEnum;
-  private final ImpactsEnum impactsEnum;
   private final DocIdSetIterator iterator;
-  private final LeafSimScorer docScorer;
+  private final SimScorer scorer;
+  private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
+  private final MaxScoreCache maxScoreCache;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
-  public TermScorer(Weight weight, PostingsEnum postingsEnum, LeafSimScorer docScorer) {
-    super(weight);
+  public TermScorer(PostingsEnum postingsEnum, SimScorer scorer, NumericDocValues norms) {
     iterator = this.postingsEnum = postingsEnum;
-    impactsEnum = new SlowImpactsEnum(postingsEnum);
-    impactsDisi = new ImpactsDISI(impactsEnum, impactsEnum, docScorer.getSimScorer());
-    this.docScorer = docScorer;
+    ImpactsEnum impactsEnum = new SlowImpactsEnum(postingsEnum);
+    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
+    impactsDisi = null;
+    this.scorer = scorer;
+    this.norms = norms;
   }
 
   /**
    * Construct a {@link TermScorer} that will use impacts to skip blocks of non-competitive
    * documents.
    */
-  TermScorer(Weight weight, ImpactsEnum impactsEnum, LeafSimScorer docScorer) {
-    super(weight);
-    postingsEnum = this.impactsEnum = impactsEnum;
-    impactsDisi = new ImpactsDISI(impactsEnum, impactsEnum, docScorer.getSimScorer());
-    iterator = impactsDisi;
-    this.docScorer = docScorer;
+  public TermScorer(
+      ImpactsEnum impactsEnum,
+      SimScorer scorer,
+      NumericDocValues norms,
+      boolean topLevelScoringClause) {
+    postingsEnum = impactsEnum;
+    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
+    if (topLevelScoringClause) {
+      impactsDisi = new ImpactsDISI(impactsEnum, maxScoreCache);
+      iterator = impactsDisi;
+    } else {
+      impactsDisi = null;
+      iterator = impactsEnum;
+    }
+    this.scorer = scorer;
+    this.norms = norms;
   }
 
   @Override
@@ -71,33 +85,39 @@ public final class TermScorer extends Scorer {
 
   @Override
   public float score() throws IOException {
-    assert docID() != DocIdSetIterator.NO_MORE_DOCS;
-    return docScorer.score(postingsEnum.docID(), postingsEnum.freq());
+    var postingsEnum = this.postingsEnum;
+    var norms = this.norms;
+
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(postingsEnum.docID())) {
+      norm = norms.longValue();
+    }
+    return scorer.score(postingsEnum.freq(), norm);
   }
 
   @Override
   public float smoothingScore(int docId) throws IOException {
-    return docScorer.score(docId, 0);
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(docId)) {
+      norm = norms.longValue();
+    }
+    return scorer.score(0, norm);
   }
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    return impactsDisi.advanceShallow(target);
+    return maxScoreCache.advanceShallow(target);
   }
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    return impactsDisi.getMaxScore(upTo);
+    return maxScoreCache.getMaxScore(upTo);
   }
 
   @Override
   public void setMinCompetitiveScore(float minScore) {
-    impactsDisi.setMinCompetitiveScore(minScore);
-  }
-
-  /** Returns a string representation of this <code>TermScorer</code>. */
-  @Override
-  public String toString() {
-    return "scorer(" + weight + ")[" + super.toString() + "]";
+    if (impactsDisi != null) {
+      impactsDisi.setMinCompetitiveScore(minScore);
+    }
   }
 }

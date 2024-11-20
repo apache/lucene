@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -32,10 +31,11 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOSupplier;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 /** Tests for IndexWriter when the disk runs out of space */
 public class TestIndexWriterOnDiskFull extends LuceneTestCase {
@@ -77,8 +77,20 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
           if (VERBOSE) {
             System.out.println("TEST: done adding docs; now commit");
           }
-          writer.commit();
-          indexExists = true;
+          try {
+            // when calling commit(), if the writer is asynchronously closed
+            // by a fatal tragedy (e.g. from disk-full-on-merge with CMS),
+            // then we may receive either AlreadyClosedException OR IllegalStateException,
+            // depending on when it happens.
+            writer.commit();
+            indexExists = true;
+          } catch (IOException | IllegalStateException e) {
+            if (VERBOSE) {
+              System.out.println("TEST: exception on commit");
+              e.printStackTrace(System.out);
+            }
+            hitError = true;
+          }
         } catch (IOException e) {
           if (VERBOSE) {
             System.out.println("TEST: exception on addDoc");
@@ -99,7 +111,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
                 System.out.println("TEST: now close");
               }
               writer.close();
-            } catch (IOException e) {
+            } catch (IOException | IllegalStateException e) {
               if (VERBOSE) {
                 System.out.println("TEST: exception on close; retry w/ no disk space limit");
                 e.printStackTrace(System.out);
@@ -352,7 +364,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               done = true;
             }
 
-          } catch (IllegalStateException | IOException e) {
+          } catch (IllegalStateException | IOException | MergePolicy.MergeException e) {
             success = false;
             err = e;
             if (VERBOSE) {
@@ -360,7 +372,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
               e.printStackTrace(System.out);
             }
 
-            if (1 == x) {
+            if (1 == x && (e instanceof MergePolicy.MergeException == false)) {
               e.printStackTrace(System.out);
               fail(methodName + " hit IOException after disk space was freed up");
             }
@@ -539,6 +551,8 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
     MockDirectoryWrapper dir = newMockDirectory();
     // IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new
     // MockAnalyzer(random)).setReaderPooling(true));
+    LogDocMergePolicy mp = new LogDocMergePolicy();
+    mp.setMergeFactor(2);
     IndexWriter w =
         new IndexWriter(
             dir,
@@ -546,7 +560,7 @@ public class TestIndexWriterOnDiskFull extends LuceneTestCase {
                 .setMergeScheduler(new SerialMergeScheduler())
                 .setReaderPooling(true)
                 .setMergePolicy(
-                    new FilterMergePolicy(newLogMergePolicy(2)) {
+                    new FilterMergePolicy(mp) {
                       @Override
                       public boolean keepFullyDeletedSegment(
                           IOSupplier<CodecReader> readerIOSupplier) throws IOException {

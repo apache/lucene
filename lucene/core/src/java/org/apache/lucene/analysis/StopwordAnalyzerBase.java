@@ -61,34 +61,6 @@ public abstract class StopwordAnalyzerBase extends Analyzer {
   }
 
   /**
-   * Creates a CharArraySet from a file resource associated with a class. (See {@link
-   * Class#getResourceAsStream(String)}).
-   *
-   * @param ignoreCase <code>true</code> if the set should ignore the case of the stopwords,
-   *     otherwise <code>false</code>
-   * @param aClass a class that is associated with the given stopwordResource
-   * @param resource name of the resource file associated with the given class
-   * @param comment comment string to ignore in the stopword file
-   * @return a CharArraySet containing the distinct stopwords from the given file
-   * @throws IOException if loading the stopwords throws an {@link IOException}
-   */
-  protected static CharArraySet loadStopwordSet(
-      final boolean ignoreCase,
-      final Class<? extends Analyzer> aClass,
-      final String resource,
-      final String comment)
-      throws IOException {
-    Reader reader = null;
-    try {
-      reader =
-          IOUtils.getDecodingReader(aClass.getResourceAsStream(resource), StandardCharsets.UTF_8);
-      return WordlistLoader.getWordSet(reader, comment, new CharArraySet(16, ignoreCase));
-    } finally {
-      IOUtils.close(reader);
-    }
-  }
-
-  /**
    * Creates a CharArraySet from a path.
    *
    * @param stopwords the stopwords file to load
@@ -96,12 +68,8 @@ public abstract class StopwordAnalyzerBase extends Analyzer {
    * @throws IOException if loading the stopwords throws an {@link IOException}
    */
   protected static CharArraySet loadStopwordSet(Path stopwords) throws IOException {
-    Reader reader = null;
-    try {
-      reader = Files.newBufferedReader(stopwords, StandardCharsets.UTF_8);
+    try (Reader reader = Files.newBufferedReader(stopwords, StandardCharsets.UTF_8)) {
       return WordlistLoader.getWordSet(reader);
-    } finally {
-      IOUtils.close(reader);
     }
   }
 

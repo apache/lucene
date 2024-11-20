@@ -16,8 +16,8 @@
  */
 package org.apache.lucene.analysis.ko;
 
-import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Set;
 import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -34,11 +34,23 @@ public final class KoreanPartOfSpeechStopFilter extends FilteringTokenFilter {
 
   /** Default list of tags to filter. */
   public static final Set<POS.Tag> DEFAULT_STOP_TAGS =
-      new HashSet<>(
-          Arrays.asList(
-              POS.Tag.E,
+      Collections.unmodifiableSet(
+          EnumSet.of(
+              POS.Tag.EP,
+              POS.Tag.EF,
+              POS.Tag.EC,
+              POS.Tag.ETN,
+              POS.Tag.ETM,
               POS.Tag.IC,
-              POS.Tag.J,
+              POS.Tag.JKS,
+              POS.Tag.JKC,
+              POS.Tag.JKG,
+              POS.Tag.JKO,
+              POS.Tag.JKB,
+              POS.Tag.JKV,
+              POS.Tag.JKQ,
+              POS.Tag.JX,
+              POS.Tag.JC,
               POS.Tag.MAG,
               POS.Tag.MAJ,
               POS.Tag.MM,

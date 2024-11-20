@@ -19,8 +19,8 @@ package org.apache.lucene.analysis.util;
 import java.text.BreakIterator;
 import java.text.CharacterIterator;
 import java.util.Locale;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestCharArrayIterator extends LuceneTestCase {
 
@@ -156,7 +156,6 @@ public class TestCharArrayIterator extends LuceneTestCase {
 
   private void consume(BreakIterator bi, CharacterIterator ci) {
     bi.setText(ci);
-    while (bi.next() != BreakIterator.DONE)
-      ;
+    while (bi.next() != BreakIterator.DONE) {}
   }
 }

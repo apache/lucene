@@ -47,6 +47,11 @@ public final class SimpleTextKnnVectorsFormat extends KnnVectorsFormat {
     return new SimpleTextKnnVectorsReader(state);
   }
 
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return KnnVectorsFormat.DEFAULT_MAX_DIMENSIONS;
+  }
+
   /** Extension of vectors data file */
   static final String VECTOR_EXTENSION = "vec";
 

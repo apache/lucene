@@ -23,7 +23,6 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.queries.function.valuesource.DoubleConstValueSource;
 import org.apache.lucene.queries.function.valuesource.DoubleFieldSource;
 import org.apache.lucene.queries.function.valuesource.FloatFieldSource;
@@ -40,7 +39,8 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Test that functionquery's getSortField() actually works */
 public class TestFunctionQuerySort extends LuceneTestCase {
@@ -134,7 +134,7 @@ public class TestFunctionQuerySort extends LuceneTestCase {
     // Verify that sorting works in general
     int i = 0;
     for (ScoreDoc hit : hits.scoreDocs) {
-      int valueFromDoc = Integer.parseInt(reader.document(hit.doc).get("value"));
+      int valueFromDoc = Integer.parseInt(reader.storedFields().document(hit.doc).get("value"));
       assertEquals(++i, valueFromDoc);
     }
 
@@ -149,7 +149,7 @@ public class TestFunctionQuerySort extends LuceneTestCase {
     // Verify that hits are actually "after"
     int afterValue = ((Double) afterHit.fields[0]).intValue();
     for (ScoreDoc hit : hits.scoreDocs) {
-      int val = Integer.parseInt(reader.document(hit.doc).get("value"));
+      int val = Integer.parseInt(reader.storedFields().document(hit.doc).get("value"));
       assertTrue(afterValue <= val);
       assertFalse(hit.doc == afterHit.doc);
     }

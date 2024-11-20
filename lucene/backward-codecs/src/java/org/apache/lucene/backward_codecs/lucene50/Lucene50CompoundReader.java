@@ -19,7 +19,6 @@ package org.apache.lucene.backward_codecs.lucene50;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
@@ -32,6 +31,8 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -57,8 +58,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
   /** Create a new CompoundFileDirectory. */
   // TODO: we should just pre-strip "entries" and append segment name up-front like simpletext?
   // this need not be a "general purpose" directory anymore (it only writes index files)
-  public Lucene50CompoundReader(Directory directory, SegmentInfo si, IOContext context)
-      throws IOException {
+  public Lucene50CompoundReader(Directory directory, SegmentInfo si) throws IOException {
     this.directory = directory;
     this.segmentName = si.name;
     String dataFileName =
@@ -74,7 +74,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
     }
     expectedLength += CodecUtil.footerLength();
 
-    handle = directory.openInput(dataFileName, context);
+    handle = directory.openInput(dataFileName, IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL));
     // DirectoryUtil.openInput(directory, dataFileName, context);
     try {
       CodecUtil.checkIndexHeader(
@@ -132,7 +132,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
 
   private Map<String, FileEntry> readMapping(IndexInput entriesStream) throws IOException {
     final int numEntries = entriesStream.readVInt();
-    Map<String, FileEntry> mapping = new HashMap<>(numEntries);
+    Map<String, FileEntry> mapping = CollectionUtil.newHashMap(numEntries);
     for (int i = 0; i < numEntries; i++) {
       final FileEntry fileEntry = new FileEntry();
       final String id = entriesStream.readString();
@@ -170,7 +170,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    return handle.slice(name, entry.offset, entry.length);
+    return handle.slice(name, entry.offset, entry.length, context.readAdvice());
   }
 
   /** Returns an array of strings, one for each file in the directory. */

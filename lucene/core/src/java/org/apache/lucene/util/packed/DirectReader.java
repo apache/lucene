@@ -17,6 +17,7 @@
 package org.apache.lucene.util.packed;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.LongValues;
 
@@ -26,7 +27,7 @@ import org.apache.lucene.util.LongValues;
  * <p>Example usage:
  *
  * <pre class="prettyprint">
- *   int bitsPerValue = 100;
+ *   int bitsPerValue = DirectWriter.bitsRequired(100);
  *   IndexInput in = dir.openInput("packed", IOContext.DEFAULT);
  *   LongValues values = DirectReader.getInstance(in.randomAccessSlice(start, end), bitsPerValue);
  *   for (int i = 0; i &lt; numValues; i++) {
@@ -37,6 +38,10 @@ import org.apache.lucene.util.LongValues;
  * @see DirectWriter
  */
 public class DirectReader {
+
+  static final int MERGE_BUFFER_SHIFT = 7;
+  private static final int MERGE_BUFFER_SIZE = 1 << MERGE_BUFFER_SHIFT;
+  private static final int MERGE_BUFFER_MASK = MERGE_BUFFER_SIZE - 1;
 
   /**
    * Retrieves an instance from the specified slice written decoding {@code bitsPerValue} for each
@@ -83,6 +88,102 @@ public class DirectReader {
       default:
         throw new IllegalArgumentException("unsupported bitsPerValue: " + bitsPerValue);
     }
+  }
+
+  /**
+   * Retrieves an instance that is specialized for merges and is typically faster at sequential
+   * access but slower at random access.
+   */
+  public static LongValues getMergeInstance(
+      RandomAccessInput slice, int bitsPerValue, long numValues) {
+    return getMergeInstance(slice, bitsPerValue, 0L, numValues);
+  }
+
+  /**
+   * Retrieves an instance that is specialized for merges and is typically faster at sequential
+   * access.
+   */
+  public static LongValues getMergeInstance(
+      RandomAccessInput slice, int bitsPerValue, long baseOffset, long numValues) {
+    return new LongValues() {
+
+      private final long[] buffer = new long[MERGE_BUFFER_SIZE];
+      private long blockIndex = -1;
+
+      @Override
+      public long get(long index) {
+        assert index < numValues;
+        final long blockIndex = index >>> MERGE_BUFFER_SHIFT;
+        if (this.blockIndex != blockIndex) {
+          try {
+            fillBuffer(blockIndex << MERGE_BUFFER_SHIFT);
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+          this.blockIndex = blockIndex;
+        }
+        return buffer[(int) (index & MERGE_BUFFER_MASK)];
+      }
+
+      private void fillBuffer(long index) throws IOException {
+        // NOTE: we're not allowed to read more than 3 bytes past the last value
+        if (index >= numValues - MERGE_BUFFER_SIZE) {
+          // 128 values left or less
+          final LongValues slowInstance = getInstance(slice, bitsPerValue, baseOffset);
+          final int numValuesLastBlock = Math.toIntExact(numValues - index);
+          for (int i = 0; i < numValuesLastBlock; ++i) {
+            buffer[i] = slowInstance.get(index + i);
+          }
+        } else if ((bitsPerValue & 0x07) == 0) {
+          // bitsPerValue is a multiple of 8: 8, 16, 24, 32, 30, 48, 56, 64
+          final int bytesPerValue = bitsPerValue / Byte.SIZE;
+          final long mask = bitsPerValue == 64 ? ~0L : (1L << bitsPerValue) - 1;
+          long offset = baseOffset + (index * bitsPerValue) / 8;
+          for (int i = 0; i < MERGE_BUFFER_SIZE; ++i) {
+            if (bitsPerValue > Integer.SIZE) {
+              buffer[i] = slice.readLong(offset) & mask;
+            } else if (bitsPerValue > Short.SIZE) {
+              buffer[i] = slice.readInt(offset) & mask;
+            } else if (bitsPerValue > Byte.SIZE) {
+              buffer[i] = Short.toUnsignedLong(slice.readShort(offset));
+            } else {
+              buffer[i] = Byte.toUnsignedLong(slice.readByte(offset));
+            }
+            offset += bytesPerValue;
+          }
+        } else if (bitsPerValue < 8) {
+          // bitsPerValue is 1, 2 or 4
+          final int valuesPerLong = Long.SIZE / bitsPerValue;
+          final long mask = (1L << bitsPerValue) - 1;
+          long offset = baseOffset + (index * bitsPerValue) / 8;
+          int i = 0;
+          for (int l = 0; l < 2 * bitsPerValue; ++l) {
+            final long bits = slice.readLong(offset);
+            for (int j = 0; j < valuesPerLong; ++j) {
+              buffer[i++] = (bits >>> (j * bitsPerValue)) & mask;
+            }
+            offset += Long.BYTES;
+          }
+        } else {
+          // bitsPerValue is 12, 20 or 28
+          // Read values 2 by 2
+          final int numBytesFor2Values = bitsPerValue * 2 / Byte.SIZE;
+          final long mask = (1L << bitsPerValue) - 1;
+          long offset = baseOffset + (index * bitsPerValue) / 8;
+          for (int i = 0; i < MERGE_BUFFER_SIZE; i += 2) {
+            final long l;
+            if (numBytesFor2Values > Integer.BYTES) {
+              l = slice.readLong(offset);
+            } else {
+              l = slice.readInt(offset);
+            }
+            buffer[i] = l & mask;
+            buffer[i + 1] = (l >>> bitsPerValue) & mask;
+            offset += numBytesFor2Values;
+          }
+        }
+      }
+    };
   }
 
   static final class DirectPackedReader1 extends LongValues {
@@ -132,7 +233,6 @@ public class DirectReader {
     DirectPackedReader4(RandomAccessInput in, long offset) {
       this.in = in;
       this.offset = offset;
-      ;
     }
 
     @Override
@@ -229,7 +329,6 @@ public class DirectReader {
   static final class DirectPackedReader24 extends LongValues {
     final RandomAccessInput in;
     final long offset;
-    ;
 
     DirectPackedReader24(RandomAccessInput in, long offset) {
       this.in = in;

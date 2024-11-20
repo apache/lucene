@@ -20,12 +20,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer; // javadocs
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.index.VectorValues;
 
 /** Describes the properties of a field. */
 public class FieldType implements IndexableFieldType {
@@ -40,10 +42,12 @@ public class FieldType implements IndexableFieldType {
   private IndexOptions indexOptions = IndexOptions.NONE;
   private boolean frozen;
   private DocValuesType docValuesType = DocValuesType.NONE;
+  private DocValuesSkipIndexType docValuesSkipIndex = DocValuesSkipIndexType.NONE;
   private int dimensionCount;
   private int indexDimensionCount;
   private int dimensionNumBytes;
   private int vectorDimension;
+  private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
   private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
   private Map<String, String> attributes;
 
@@ -58,10 +62,12 @@ public class FieldType implements IndexableFieldType {
     this.omitNorms = ref.omitNorms();
     this.indexOptions = ref.indexOptions();
     this.docValuesType = ref.docValuesType();
+    this.docValuesSkipIndex = ref.docValuesSkipIndexType();
     this.dimensionCount = ref.pointDimensionCount();
     this.indexDimensionCount = ref.pointIndexDimensionCount();
     this.dimensionNumBytes = ref.pointNumBytes();
     this.vectorDimension = ref.vectorDimension();
+    this.vectorEncoding = ref.vectorEncoding();
     this.vectorSimilarityFunction = ref.vectorSimilarityFunction();
     if (ref.getAttributes() != null) {
       this.attributes = new HashMap<>(ref.getAttributes());
@@ -344,10 +350,8 @@ public class FieldType implements IndexableFieldType {
           "when dimensionCount is > 0, indexDimensionCount must be > 0; got "
               + indexDimensionCount);
     } else if (dimensionNumBytes == 0) {
-      if (dimensionCount != 0) {
-        throw new IllegalArgumentException(
-            "when dimensionNumBytes is 0, dimensionCount must be 0; got " + dimensionCount);
-      }
+      throw new IllegalArgumentException(
+          "when dimensionNumBytes is 0, dimensionCount must be 0; got " + dimensionCount);
     }
 
     this.dimensionCount = dimensionCount;
@@ -371,26 +375,25 @@ public class FieldType implements IndexableFieldType {
   }
 
   /** Enable vector indexing, with the specified number of dimensions and distance function. */
-  public void setVectorDimensionsAndSimilarityFunction(
-      int numDimensions, VectorSimilarityFunction distFunc) {
+  public void setVectorAttributes(
+      int numDimensions, VectorEncoding encoding, VectorSimilarityFunction similarity) {
     checkIfFrozen();
     if (numDimensions <= 0) {
       throw new IllegalArgumentException("vector numDimensions must be > 0; got " + numDimensions);
     }
-    if (numDimensions > VectorValues.MAX_DIMENSIONS) {
-      throw new IllegalArgumentException(
-          "vector numDimensions must be <= VectorValues.MAX_DIMENSIONS (="
-              + VectorValues.MAX_DIMENSIONS
-              + "); got "
-              + numDimensions);
-    }
     this.vectorDimension = numDimensions;
-    this.vectorSimilarityFunction = Objects.requireNonNull(distFunc);
+    this.vectorSimilarityFunction = Objects.requireNonNull(similarity);
+    this.vectorEncoding = Objects.requireNonNull(encoding);
   }
 
   @Override
   public int vectorDimension() {
     return vectorDimension;
+  }
+
+  @Override
+  public VectorEncoding vectorEncoding() {
+    return vectorEncoding;
   }
 
   @Override
@@ -506,6 +509,22 @@ public class FieldType implements IndexableFieldType {
   }
 
   @Override
+  public DocValuesSkipIndexType docValuesSkipIndexType() {
+    return docValuesSkipIndex;
+  }
+
+  /**
+   * Set whether to enable a skip index for doc values on this field. This is typically useful on
+   * fields that are part of the {@link IndexWriterConfig#setIndexSort index sort}, or that
+   * correlate with fields that are part of the index sort, so that values can be expected to be
+   * clustered in the doc ID space.
+   */
+  public void setDocValuesSkipIndexType(DocValuesSkipIndexType docValuesSkipIndex) {
+    checkIfFrozen();
+    this.docValuesSkipIndex = docValuesSkipIndex;
+  }
+
+  @Override
   public int hashCode() {
     final int prime = 31;
     int result = 1;
@@ -513,6 +532,7 @@ public class FieldType implements IndexableFieldType {
     result = prime * result + indexDimensionCount;
     result = prime * result + dimensionNumBytes;
     result = prime * result + ((docValuesType == null) ? 0 : docValuesType.hashCode());
+    result = prime * result + (docValuesSkipIndex == null ? 0 : docValuesSkipIndex.hashCode());
     result = prime * result + indexOptions.hashCode();
     result = prime * result + (omitNorms ? 1231 : 1237);
     result = prime * result + (storeTermVectorOffsets ? 1231 : 1237);
@@ -534,6 +554,7 @@ public class FieldType implements IndexableFieldType {
     if (indexDimensionCount != other.indexDimensionCount) return false;
     if (dimensionNumBytes != other.dimensionNumBytes) return false;
     if (docValuesType != other.docValuesType) return false;
+    if (docValuesSkipIndex != other.docValuesSkipIndex) return false;
     if (indexOptions != other.indexOptions) return false;
     if (omitNorms != other.omitNorms) return false;
     if (storeTermVectorOffsets != other.storeTermVectorOffsets) return false;

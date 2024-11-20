@@ -18,11 +18,15 @@ package org.apache.lucene.util;
 
 import static org.apache.lucene.util.ArrayUtil.copyOfSubArray;
 import static org.apache.lucene.util.ArrayUtil.growExact;
+import static org.apache.lucene.util.ArrayUtil.growInRange;
+import static org.apache.lucene.util.ArrayUtil.oversize;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Random;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestArrayUtil extends LuceneTestCase {
 
@@ -162,7 +166,6 @@ public class TestArrayUtil extends LuceneTestCase {
 
   // This is a test for LUCENE-3054 (which fails without the merge sort fall back with stack
   // overflow in most cases)
-  @Slow
   public void testQuickToHeapSortFallback() {
     int num = atLeast(10);
     for (int i = 0; i < num; i++) {
@@ -194,13 +197,7 @@ public class TestArrayUtil extends LuceneTestCase {
     }
   }
 
-  static class Item implements Comparable<Item> {
-    final int val, order;
-
-    Item(int val, int order) {
-      this.val = val;
-      this.order = order;
-    }
+  record Item(int val, int order) implements Comparable<Item> {
 
     @Override
     public int compareTo(Item other) {
@@ -370,6 +367,36 @@ public class TestArrayUtil extends LuceneTestCase {
         () -> growExact(new String[] {"a", "b", "c"}, random().nextInt(3)));
   }
 
+  public void testGrowInRange() {
+    int[] array = new int[] {1, 2, 3};
+
+    // If minLength is negative, maxLength does not matter
+    expectThrows(AssertionError.class, () -> growInRange(array, -1, 4));
+    expectThrows(AssertionError.class, () -> growInRange(array, -1, 0));
+    expectThrows(AssertionError.class, () -> growInRange(array, -1, -1));
+
+    // If minLength > maxLength, we throw an exception
+    expectThrows(IllegalArgumentException.class, () -> growInRange(array, 1, 0));
+    expectThrows(IllegalArgumentException.class, () -> growInRange(array, 4, 3));
+    expectThrows(IllegalArgumentException.class, () -> growInRange(array, 5, 4));
+
+    // If minLength is sufficient, we return the array
+    assertSame(array, growInRange(array, 1, 4));
+    assertSame(array, growInRange(array, 1, 2));
+    assertSame(array, growInRange(array, 1, 1));
+
+    int minLength = 4;
+    int maxLength = Integer.MAX_VALUE;
+
+    // The array grows normally if maxLength permits
+    assertEquals(
+        oversize(minLength, Integer.BYTES),
+        growInRange(new int[] {1, 2, 3}, minLength, maxLength).length);
+
+    // The array grows to maxLength if maxLength is limiting
+    assertEquals(minLength, growInRange(new int[] {1, 2, 3}, minLength, minLength).length);
+  }
+
   public void testCopyOfSubArray() {
     short[] shortArray = {1, 2, 3};
     assertArrayEquals(new short[] {1}, copyOfSubArray(shortArray, 0, 1));
@@ -430,5 +457,55 @@ public class TestArrayUtil extends LuceneTestCase {
     assertArrayEquals(new String[] {"a1", "b2", "c3"}, copyOfSubArray(objectArray, 0, 3));
     assertEquals(0, copyOfSubArray(objectArray, 1, 1).length);
     expectThrows(IndexOutOfBoundsException.class, () -> copyOfSubArray(objectArray, 2, 5));
+  }
+
+  public void testCompareUnsigned4() {
+    int aOffset = TestUtil.nextInt(random(), 0, 3);
+    byte[] a = new byte[Integer.BYTES + aOffset];
+    int bOffset = TestUtil.nextInt(random(), 0, 3);
+    byte[] b = new byte[Integer.BYTES + bOffset];
+
+    for (int i = 0; i < Integer.BYTES; ++i) {
+      a[aOffset + i] = (byte) random().nextInt(1 << 8);
+      do {
+        b[bOffset + i] = (byte) random().nextInt(1 << 8);
+      } while (b[bOffset + i] == a[aOffset + i]);
+    }
+
+    for (int i = 0; i < Integer.BYTES; ++i) {
+      int expected =
+          Arrays.compareUnsigned(
+              a, aOffset, aOffset + Integer.BYTES, b, bOffset, bOffset + Integer.BYTES);
+      int actual = ArrayUtil.compareUnsigned4(a, aOffset, b, bOffset);
+      assertEquals(Integer.signum(expected), Integer.signum(actual));
+      b[bOffset + i] = a[aOffset + i];
+    }
+
+    assertEquals(0, ArrayUtil.compareUnsigned4(a, aOffset, b, bOffset));
+  }
+
+  public void testCompareUnsigned8() {
+    int aOffset = TestUtil.nextInt(random(), 0, 7);
+    byte[] a = new byte[Long.BYTES + aOffset];
+    int bOffset = TestUtil.nextInt(random(), 0, 7);
+    byte[] b = new byte[Long.BYTES + bOffset];
+
+    for (int i = 0; i < Long.BYTES; ++i) {
+      a[aOffset + i] = (byte) random().nextInt(1 << 8);
+      do {
+        b[bOffset + i] = (byte) random().nextInt(1 << 8);
+      } while (b[bOffset + i] == a[aOffset + i]);
+    }
+
+    for (int i = 0; i < Long.BYTES; ++i) {
+      int expected =
+          Arrays.compareUnsigned(
+              a, aOffset, aOffset + Long.BYTES, b, bOffset, bOffset + Long.BYTES);
+      int actual = ArrayUtil.compareUnsigned8(a, aOffset, b, bOffset);
+      assertEquals(Integer.signum(expected), Integer.signum(actual));
+      b[bOffset + i] = a[aOffset + i];
+    }
+
+    assertEquals(0, ArrayUtil.compareUnsigned8(a, aOffset, b, bOffset));
   }
 }

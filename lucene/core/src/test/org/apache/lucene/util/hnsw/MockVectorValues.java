@@ -17,45 +17,46 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.index.RandomAccessVectorValues;
-import org.apache.lucene.index.RandomAccessVectorValuesProducer;
-import org.apache.lucene.index.VectorValues;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.ArrayUtil;
 
-class MockVectorValues extends VectorValues
-    implements RandomAccessVectorValues, RandomAccessVectorValuesProducer {
-  private final float[] scratch;
-
-  protected final int dimension;
-  protected final float[][] denseValues;
+class MockVectorValues extends FloatVectorValues {
+  private final int dimension;
+  private final float[][] denseValues;
   protected final float[][] values;
   private final int numVectors;
+  private final float[] scratch;
 
-  private int pos = -1;
-
-  MockVectorValues(float[][] values) {
-    this.dimension = values[0].length;
-    this.values = values;
+  static MockVectorValues fromValues(float[][] values) {
+    float[] firstNonNull = null;
+    int j = 0;
+    while (firstNonNull == null && j < values.length) {
+      firstNonNull = values[j++];
+    }
+    int dimension = firstNonNull.length;
     int maxDoc = values.length;
-    denseValues = new float[maxDoc][];
+    float[][] denseValues = new float[maxDoc][];
     int count = 0;
     for (int i = 0; i < maxDoc; i++) {
       if (values[i] != null) {
         denseValues[count++] = values[i];
       }
     }
-    numVectors = count;
-    scratch = new float[dimension];
+    return new MockVectorValues(values, dimension, denseValues, count);
   }
 
-  public MockVectorValues copy() {
-    return new MockVectorValues(values);
+  MockVectorValues(float[][] values, int dimension, float[][] denseValues, int numVectors) {
+    this.dimension = dimension;
+    this.values = values;
+    this.denseValues = denseValues;
+    this.numVectors = numVectors;
+    this.scratch = new float[dimension];
   }
 
   @Override
   public int size() {
-    return numVectors;
+    return values.length;
   }
 
   @Override
@@ -64,65 +65,26 @@ class MockVectorValues extends VectorValues
   }
 
   @Override
-  public float[] vectorValue() {
+  public MockVectorValues copy() {
+    return new MockVectorValues(
+        ArrayUtil.copyArray(values), dimension, ArrayUtil.copyArray(denseValues), numVectors);
+  }
+
+  @Override
+  public float[] vectorValue(int ord) {
     if (LuceneTestCase.random().nextBoolean()) {
-      return values[pos];
+      return values[ord];
     } else {
       // Sometimes use the same scratch array repeatedly, mimicing what the codec will do.
-      // This should help us catch cases of aliasing where the same VectorValues source is used
-      // twice in a
-      // single computation.
-      System.arraycopy(values[pos], 0, scratch, 0, dimension);
+      // This should help us catch cases of aliasing where the same vector values source is used
+      // twice in a single computation.
+      System.arraycopy(values[ord], 0, scratch, 0, dimension);
       return scratch;
     }
   }
 
   @Override
-  public RandomAccessVectorValues randomAccess() {
-    return copy();
-  }
-
-  @Override
-  public float[] vectorValue(int targetOrd) {
-    return denseValues[targetOrd];
-  }
-
-  @Override
-  public BytesRef binaryValue(int targetOrd) {
-    return null;
-  }
-
-  private boolean seek(int target) {
-    if (target >= 0 && target < values.length && values[target] != null) {
-      pos = target;
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  @Override
-  public int docID() {
-    return pos;
-  }
-
-  @Override
-  public int nextDoc() {
-    return advance(pos + 1);
-  }
-
-  @Override
-  public int advance(int target) {
-    while (++pos < values.length) {
-      if (seek(pos)) {
-        return pos;
-      }
-    }
-    return NO_MORE_DOCS;
-  }
-
-  @Override
-  public long cost() {
-    return size();
+  public DocIndexIterator iterator() {
+    return createDenseIterator();
   }
 }

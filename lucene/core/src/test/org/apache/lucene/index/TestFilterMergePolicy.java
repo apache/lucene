@@ -18,7 +18,7 @@ package org.apache.lucene.index;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestFilterMergePolicy extends LuceneTestCase {
 

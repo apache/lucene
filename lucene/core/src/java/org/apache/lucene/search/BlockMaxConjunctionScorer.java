@@ -31,16 +31,13 @@ final class BlockMaxConjunctionScorer extends Scorer {
   final Scorer[] scorers;
   final DocIdSetIterator[] approximations;
   final TwoPhaseIterator[] twoPhases;
-  final MaxScoreSumPropagator maxScorePropagator;
   float minScore;
 
   /** Create a new {@link BlockMaxConjunctionScorer} from scoring clauses. */
-  BlockMaxConjunctionScorer(Weight weight, Collection<Scorer> scorersList) throws IOException {
-    super(weight);
+  BlockMaxConjunctionScorer(Collection<Scorer> scorersList) throws IOException {
     this.scorers = scorersList.toArray(new Scorer[scorersList.size()]);
     // Sort scorer by cost
     Arrays.sort(this.scorers, Comparator.comparingLong(s -> s.iterator().cost()));
-    this.maxScorePropagator = new MaxScoreSumPropagator(Arrays.asList(scorers));
 
     this.approximations = new DocIdSetIterator[scorers.length];
     List<TwoPhaseIterator> twoPhaseList = new ArrayList<>();
@@ -112,8 +109,13 @@ final class BlockMaxConjunctionScorer extends Scorer {
       }
 
       private void moveToNextBlock(int target) throws IOException {
-        upTo = advanceShallow(target);
-        maxScore = getMaxScore(upTo);
+        if (minScore == 0) {
+          upTo = target;
+          maxScore = Float.POSITIVE_INFINITY;
+        } else {
+          upTo = advanceShallow(target);
+          maxScore = getMaxScore(upTo);
+        }
       }
 
       private int advanceTarget(int target) throws IOException {
@@ -237,7 +239,6 @@ final class BlockMaxConjunctionScorer extends Scorer {
   @Override
   public void setMinCompetitiveScore(float score) throws IOException {
     minScore = score;
-    maxScorePropagator.setMinCompetitiveScore(score);
   }
 
   @Override

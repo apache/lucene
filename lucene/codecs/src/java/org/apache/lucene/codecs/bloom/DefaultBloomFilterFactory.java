@@ -31,7 +31,7 @@ public class DefaultBloomFilterFactory extends BloomFilterFactory {
   public FuzzySet getSetForField(SegmentWriteState state, FieldInfo info) {
     // Assume all of the docs have a unique term (e.g. a primary key) and we hope to maintain a set
     // with 10% of bits set
-    return FuzzySet.createSetBasedOnQuality(state.segmentInfo.maxDoc(), 0.10f);
+    return FuzzySet.createOptimalSet(state.segmentInfo.maxDoc(), 0.1023f);
   }
 
   @Override

@@ -22,13 +22,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.charfilter.MappingCharFilter;
 import org.apache.lucene.analysis.charfilter.NormalizeCharMap;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestPatternTokenizer extends BaseTokenStreamTestCase {
   public void testSplitting() throws Exception {
@@ -46,10 +46,10 @@ public class TestPatternTokenizer extends BaseTokenStreamTestCase {
     };
 
     for (String[] test : tests) {
-      TokenStream stream =
+      Tokenizer stream =
           new PatternTokenizer(
               newAttributeFactory(), Pattern.compile(test[1]), Integer.parseInt(test[0]));
-      ((Tokenizer) stream).setReader(new StringReader(test[2]));
+      stream.setReader(new StringReader(test[2]));
       String out = tsToString(stream);
       // System.out.println( test[2] + " ==> " + out );
 
@@ -73,8 +73,6 @@ public class TestPatternTokenizer extends BaseTokenStreamTestCase {
     final String INPUT = "G&uuml;nther G&uuml;nther is here";
 
     // create MappingCharFilter
-    List<String> mappingRules = new ArrayList<>();
-    mappingRules.add("\"&uuml;\" => \"ü\"");
     NormalizeCharMap.Builder builder = new NormalizeCharMap.Builder();
     builder.add("&uuml;", "ü");
     NormalizeCharMap normMap = builder.build();
@@ -113,7 +111,7 @@ public class TestPatternTokenizer extends BaseTokenStreamTestCase {
     in.reset();
     while (in.incrementToken()) {
       if (out.length() > 0) out.append(' ');
-      out.append(termAtt.toString());
+      out.append(termAtt);
       in.clearAttributes();
       termAtt.setEmpty().append("bogusTerm");
     }
@@ -155,7 +153,7 @@ public class TestPatternTokenizer extends BaseTokenStreamTestCase {
     // TODO: can we move this to BaseTSTC to catch other "hangs onto heap"ers?
 
     // Build a 1MB string:
-    StringBuilder b = new StringBuilder();
+    StringBuilder b = new StringBuilder(1024 * 1024);
     for (int i = 0; i < 1024; i++) {
       // 1023 spaces, then an x
       for (int j = 0; j < 1023; j++) {

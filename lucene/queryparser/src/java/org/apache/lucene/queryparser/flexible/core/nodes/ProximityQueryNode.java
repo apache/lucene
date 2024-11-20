@@ -57,9 +57,9 @@ public class ProximityQueryNode extends BooleanQueryNode {
 
   /** utility class containing the distance condition and number */
   public static class ProximityType {
-    int pDistance = 0;
+    int pDistance;
 
-    Type pType = null;
+    Type pType;
 
     public ProximityType(Type type) {
       this(type, 0);
@@ -71,10 +71,10 @@ public class ProximityQueryNode extends BooleanQueryNode {
     }
   }
 
-  private Type proximityType = Type.SENTENCE;
+  private Type proximityType;
   private int distance = -1;
-  private boolean inorder = false;
-  private CharSequence field = null;
+  private final boolean inorder;
+  private CharSequence field;
 
   /**
    * @param clauses - QueryNode children
@@ -198,7 +198,9 @@ public class ProximityQueryNode extends BooleanQueryNode {
     return clone;
   }
 
-  /** @return the distance */
+  /**
+   * @return the distance
+   */
   public int getDistance() {
     return this.distance;
   }
@@ -222,12 +224,16 @@ public class ProximityQueryNode extends BooleanQueryNode {
     else return this.field.toString();
   }
 
-  /** @param field the field to set */
+  /**
+   * @param field the field to set
+   */
   public void setField(CharSequence field) {
     this.field = field;
   }
 
-  /** @return terms must be matched in the specified order */
+  /**
+   * @return terms must be matched in the specified order
+   */
   public boolean isInOrder() {
     return this.inorder;
   }

@@ -33,10 +33,13 @@ public interface GeoArea extends Membership {
 
   /** The referenced shape CONTAINS this area */
   public static final int CONTAINS = 0;
+
   /** The referenced shape IS WITHIN this area */
   public static final int WITHIN = 1;
+
   /** The referenced shape OVERLAPS this area */
   public static final int OVERLAPS = 2;
+
   /** The referenced shape has no relation to this area */
   public static final int DISJOINT = 3;
 

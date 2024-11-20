@@ -244,7 +244,9 @@ public class SegmentCommitInfo {
     // updates) and then maybe even be able to remove LiveDocsFormat.files().
 
     // Must separately add any live docs files:
-    info.getCodec().liveDocsFormat().files(this, files);
+    if (hasDeletions()) {
+      info.getCodec().liveDocsFormat().files(this, files);
+    }
 
     // must separately add any field updates files
     for (Set<String> updatefiles : dvUpdatesFiles.values()) {
@@ -406,8 +408,8 @@ public class SegmentCommitInfo {
 
   /**
    * Returns and Id that uniquely identifies this segment commit or <code>null</code> if there is no
-   * ID assigned. This ID changes each time the the segment changes due to a delete, doc-value or
-   * field update.
+   * ID assigned. This ID changes each time the segment changes due to a delete, doc-value or field
+   * update.
    */
   public byte[] getId() {
     return id == null ? null : id.clone();

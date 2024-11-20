@@ -16,13 +16,16 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.DOCCOUNT;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.END;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.FIELD;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.LENGTH;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MAXLENGTH;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MAXVALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MINVALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.NUMVALUES;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ORDPATTERN;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ORIGIN;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.PATTERN;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.TYPE;
 
@@ -40,6 +43,7 @@ import java.util.function.IntFunction;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -59,12 +63,15 @@ import org.apache.lucene.util.StringHelper;
 class SimpleTextDocValuesReader extends DocValuesProducer {
 
   static class OneField {
+    int docCount;
     long dataStartFilePointer;
     String pattern;
     String ordPattern;
     int maxLength;
     boolean fixedLength;
+    long origin;
     long minValue;
+    long maxValue;
     long numValues;
   }
 
@@ -99,17 +106,34 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       DocValuesType dvType = DocValuesType.valueOf(stripPrefix(TYPE));
       assert dvType != DocValuesType.NONE;
-      if (dvType == DocValuesType.NUMERIC) {
+
+      if (dvType == DocValuesType.NUMERIC || dvType == DocValuesType.SORTED_NUMERIC) {
         readLine();
         assert startsWith(MINVALUE)
             : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
         field.minValue = Long.parseLong(stripPrefix(MINVALUE));
         readLine();
+        assert startsWith(MAXVALUE)
+            : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
+        field.maxValue = Long.parseLong(stripPrefix(MAXVALUE));
+      }
+
+      readLine();
+      assert startsWith(DOCCOUNT)
+          : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
+      field.docCount = Integer.parseInt(stripPrefix(DOCCOUNT));
+
+      if (dvType == DocValuesType.NUMERIC) {
+        readLine();
+        assert startsWith(ORIGIN)
+            : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
+        field.origin = Long.parseLong(stripPrefix(ORIGIN));
+        readLine();
         assert startsWith(PATTERN);
         field.pattern = stripPrefix(PATTERN);
         field.dataStartFilePointer = data.getFilePointer();
-        data.seek(data.getFilePointer() + (1 + field.pattern.length() + 2) * maxDoc);
-      } else if (dvType == DocValuesType.BINARY) {
+        data.seek(data.getFilePointer() + (1 + field.pattern.length() + 2) * (long) maxDoc);
+      } else if (dvType == DocValuesType.BINARY || dvType == DocValuesType.SORTED_NUMERIC) {
         readLine();
         assert startsWith(MAXLENGTH);
         field.maxLength = Integer.parseInt(stripPrefix(MAXLENGTH));
@@ -118,7 +142,8 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         field.pattern = stripPrefix(PATTERN);
         field.dataStartFilePointer = data.getFilePointer();
         data.seek(
-            data.getFilePointer() + (9 + field.pattern.length() + field.maxLength + 2) * maxDoc);
+            data.getFilePointer()
+                + (9 + field.pattern.length() + field.maxLength + 2) * (long) maxDoc);
       } else if (dvType == DocValuesType.SORTED || dvType == DocValuesType.SORTED_SET) {
         readLine();
         assert startsWith(NUMVALUES);
@@ -136,7 +161,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         data.seek(
             data.getFilePointer()
                 + (9 + field.pattern.length() + field.maxLength) * field.numValues
-                + (1 + field.ordPattern.length()) * maxDoc);
+                + (1 + field.ordPattern.length()) * (long) maxDoc);
       } else {
         throw new AssertionError();
       }
@@ -214,7 +239,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
             throw new IndexOutOfBoundsException(
                 "docID must be 0 .. " + (maxDoc - 1) + "; got " + docID);
           }
-          in.seek(field.dataStartFilePointer + (1 + field.pattern.length() + 2) * docID);
+          in.seek(field.dataStartFilePointer + (1 + field.pattern.length() + 2) * (long) docID);
           SimpleTextUtil.readLine(in, scratch);
           // System.out.println("parsing delta: " + scratch.utf8ToString());
           BigDecimal bd;
@@ -224,7 +249,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
             throw new CorruptIndexException("failed to parse BigDecimal value", in, pe);
           }
           SimpleTextUtil.readLine(in, scratch); // read the line telling us if it's real or not
-          return BigInteger.valueOf(field.minValue).add(bd.toBigIntegerExact()).longValue();
+          return BigInteger.valueOf(field.origin).add(bd.toBigIntegerExact()).longValue();
         } catch (IOException ioe) {
           throw new RuntimeException(ioe);
         }
@@ -262,7 +287,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       @Override
       public int advance(int target) throws IOException {
         for (int i = target; i < maxDoc; ++i) {
-          in.seek(field.dataStartFilePointer + (1 + field.pattern.length() + 2) * i);
+          in.seek(field.dataStartFilePointer + (1 + field.pattern.length() + 2) * (long) i);
           SimpleTextUtil.readLine(in, scratch); // data
           SimpleTextUtil.readLine(in, scratch); // 'T' or 'F'
           if (scratch.byteAt(0) == (byte) 'T') {
@@ -275,7 +300,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       @Override
       boolean advanceExact(int target) throws IOException {
         this.doc = target;
-        in.seek(field.dataStartFilePointer + (1 + field.pattern.length() + 2) * target);
+        in.seek(field.dataStartFilePointer + (1 + field.pattern.length() + 2) * (long) target);
         SimpleTextUtil.readLine(in, scratch); // data
         SimpleTextUtil.readLine(in, scratch); // 'T' or 'F'
         return scratch.byteAt(0) == (byte) 'T';
@@ -301,6 +326,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     IntFunction<BytesRef> values =
         new IntFunction<BytesRef>() {
           final BytesRefBuilder term = new BytesRefBuilder();
+          final BytesRefBuilder termByteArray = new BytesRefBuilder();
 
           @Override
           public BytesRef apply(int docID) {
@@ -311,7 +337,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
               }
               in.seek(
                   field.dataStartFilePointer
-                      + (9 + field.pattern.length() + field.maxLength + 2) * docID);
+                      + (9 + field.pattern.length() + field.maxLength + 2) * (long) docID);
               SimpleTextUtil.readLine(in, scratch);
               assert StringHelper.startsWith(scratch.get(), LENGTH);
               int len;
@@ -328,9 +354,10 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
               } catch (ParseException pe) {
                 throw new CorruptIndexException("failed to parse int length", in, pe);
               }
-              term.grow(len);
-              term.setLength(len);
-              in.readBytes(term.bytes(), 0, len);
+              termByteArray.growNoCopy(len);
+              termByteArray.setLength(len);
+              in.readBytes(termByteArray.bytes(), 0, len);
+              term.copyBytes(SimpleTextUtil.fromBytesRefString(termByteArray.get().utf8ToString()));
               return term.get();
             } catch (IOException ioe) {
               throw new RuntimeException(ioe);
@@ -401,7 +428,8 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       public int advance(int target) throws IOException {
         for (int i = target; i < maxDoc; ++i) {
           in.seek(
-              field.dataStartFilePointer + (9 + field.pattern.length() + field.maxLength + 2) * i);
+              field.dataStartFilePointer
+                  + (9 + field.pattern.length() + field.maxLength + 2) * (long) i);
           SimpleTextUtil.readLine(in, scratch);
           assert StringHelper.startsWith(scratch.get(), LENGTH);
           int len;
@@ -435,7 +463,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         this.doc = target;
         in.seek(
             field.dataStartFilePointer
-                + (9 + field.pattern.length() + field.maxLength + 2) * target);
+                + (9 + field.pattern.length() + field.maxLength + 2) * (long) target);
         SimpleTextUtil.readLine(in, scratch);
         assert StringHelper.startsWith(scratch.get(), LENGTH);
         int len;
@@ -504,7 +532,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
           in.seek(
               field.dataStartFilePointer
                   + field.numValues * (9 + field.pattern.length() + field.maxLength)
-                  + i * (1 + field.ordPattern.length()));
+                  + i * (long) (1 + field.ordPattern.length()));
           SimpleTextUtil.readLine(in, scratch);
           try {
             ord = (int) ordDecoder.parse(scratch.get().utf8ToString()).longValue() - 1;
@@ -524,7 +552,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         in.seek(
             field.dataStartFilePointer
                 + field.numValues * (9 + field.pattern.length() + field.maxLength)
-                + target * (1 + field.ordPattern.length()));
+                + target * (long) (1 + field.ordPattern.length()));
         SimpleTextUtil.readLine(in, scratch);
         try {
           ord = (int) ordDecoder.parse(scratch.get().utf8ToString()).longValue() - 1;
@@ -547,7 +575,9 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
           throw new IndexOutOfBoundsException(
               "ord must be 0 .. " + (field.numValues - 1) + "; got " + ord);
         }
-        in.seek(field.dataStartFilePointer + ord * (9 + field.pattern.length() + field.maxLength));
+        in.seek(
+            field.dataStartFilePointer
+                + ord * (long) (9 + field.pattern.length() + field.maxLength));
         SimpleTextUtil.readLine(in, scratch);
         assert StringHelper.startsWith(scratch.get(), LENGTH)
             : "got " + scratch.get().utf8ToString() + " in=" + in;
@@ -565,7 +595,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         } catch (ParseException pe) {
           throw new CorruptIndexException("failed to parse int length", in, pe);
         }
-        term.grow(len);
+        term.growNoCopy(len);
         term.setLength(len);
         in.readBytes(term.bytes(), 0, len);
         return term.get();
@@ -688,8 +718,8 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         for (int i = target; i < maxDoc; ++i) {
           in.seek(
               field.dataStartFilePointer
-                  + field.numValues * (9 + field.pattern.length() + field.maxLength)
-                  + i * (1 + field.ordPattern.length()));
+                  + field.numValues * (long) (9 + field.pattern.length() + field.maxLength)
+                  + i * (long) (1 + field.ordPattern.length()));
           SimpleTextUtil.readLine(in, scratch);
           String ordList = scratch.get().utf8ToString().trim();
           if (ordList.isEmpty() == false) {
@@ -705,8 +735,8 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       public boolean advanceExact(int target) throws IOException {
         in.seek(
             field.dataStartFilePointer
-                + field.numValues * (9 + field.pattern.length() + field.maxLength)
-                + target * (1 + field.ordPattern.length()));
+                + field.numValues * (long) (9 + field.pattern.length() + field.maxLength)
+                + target * (long) (1 + field.ordPattern.length()));
         SimpleTextUtil.readLine(in, scratch);
         String ordList = scratch.get().utf8ToString().trim();
         doc = target;
@@ -720,11 +750,12 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       @Override
       public long nextOrd() throws IOException {
-        if (currentIndex == currentOrds.length) {
-          return NO_MORE_ORDS;
-        } else {
-          return Long.parseLong(currentOrds[currentIndex++]);
-        }
+        return Long.parseLong(currentOrds[currentIndex++]);
+      }
+
+      @Override
+      public int docValueCount() {
+        return currentOrds.length;
       }
 
       @Override
@@ -751,7 +782,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         } catch (ParseException pe) {
           throw new CorruptIndexException("failed to parse int length", in, pe);
         }
-        term.grow(len);
+        term.growNoCopy(len);
         term.setLength(len);
         in.readBytes(term.bytes(), 0, len);
         return term.get();
@@ -798,7 +829,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     clone.seek(0);
     // checksum is fixed-width encoded with 20 bytes, plus 1 byte for newline (the space is included
     // in SimpleTextUtil.CHECKSUM):
-    long footerStartPos = data.length() - (SimpleTextUtil.CHECKSUM.length + 21);
+    long footerStartPos = clone.length() - (SimpleTextUtil.CHECKSUM.length + 21);
     ChecksumIndexInput input = new BufferedChecksumIndexInput(clone);
     while (true) {
       SimpleTextUtil.readLine(input, scratch);
@@ -816,5 +847,83 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         break;
       }
     }
+  }
+
+  @Override
+  public DocValuesSkipper getSkipper(FieldInfo fieldInfo) {
+    final boolean numeric =
+        fieldInfo.getDocValuesType() == DocValuesType.NUMERIC
+            || fieldInfo.getDocValuesType() == DocValuesType.SORTED_NUMERIC;
+    final OneField field = fields.get(fieldInfo.name);
+
+    // SegmentCoreReaders already verifies this field is
+    // valid:
+    assert field != null;
+
+    return new DocValuesSkipper() {
+      int doc = -1;
+
+      @Override
+      public int numLevels() {
+        return 1;
+      }
+
+      @Override
+      public long minValue(int level) {
+        return minValue();
+      }
+
+      @Override
+      public long maxValue(int level) {
+        return maxValue();
+      }
+
+      @Override
+      public int docCount(int level) {
+        return docCount();
+      }
+
+      @Override
+      public long minValue() {
+        return numeric ? field.minValue : 0;
+      }
+
+      @Override
+      public long maxValue() {
+        return numeric ? field.maxValue : field.numValues - 1;
+      }
+
+      @Override
+      public int docCount() {
+        return field.docCount;
+      }
+
+      @Override
+      public int minDocID(int level) {
+        if (doc == -1) {
+          return -1;
+        } else if (doc >= maxDoc || field.docCount == 0) {
+          return DocIdSetIterator.NO_MORE_DOCS;
+        } else {
+          return 0;
+        }
+      }
+
+      @Override
+      public int maxDocID(int level) {
+        if (doc == -1) {
+          return -1;
+        } else if (doc >= maxDoc || field.docCount == 0) {
+          return DocIdSetIterator.NO_MORE_DOCS;
+        } else {
+          return maxDoc;
+        }
+      }
+
+      @Override
+      public void advance(int target) {
+        doc = target;
+      }
+    };
   }
 }

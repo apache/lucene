@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.analysis.core;
 
+import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.analysis.FilteringTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -38,7 +39,7 @@ public final class TypeTokenFilter extends FilteringTokenFilter {
    */
   public TypeTokenFilter(TokenStream input, Set<String> stopTypes, boolean useWhiteList) {
     super(input);
-    this.stopTypes = stopTypes;
+    this.stopTypes = Objects.requireNonNull(stopTypes, "stopTypes");
     this.useWhiteList = useWhiteList;
   }
 

@@ -18,8 +18,6 @@ package org.apache.lucene.search.vectorhighlight;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -177,23 +175,25 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
       throws IOException {
     // according to javadoc, doc.getFields(fieldName) cannot be used with lazy loaded field???
     final List<Field> fields = new ArrayList<>();
-    reader.document(
-        docId,
-        new StoredFieldVisitor() {
+    reader
+        .storedFields()
+        .document(
+            docId,
+            new StoredFieldVisitor() {
 
-          @Override
-          public void stringField(FieldInfo fieldInfo, String value) {
-            Objects.requireNonNull(value, "String value should not be null");
-            FieldType ft = new FieldType(TextField.TYPE_STORED);
-            ft.setStoreTermVectors(fieldInfo.hasVectors());
-            fields.add(new Field(fieldInfo.name, value, ft));
-          }
+              @Override
+              public void stringField(FieldInfo fieldInfo, String value) {
+                Objects.requireNonNull(value, "String value should not be null");
+                FieldType ft = new FieldType(TextField.TYPE_STORED);
+                ft.setStoreTermVectors(fieldInfo.hasTermVectors());
+                fields.add(new Field(fieldInfo.name, value, ft));
+              }
 
-          @Override
-          public Status needsField(FieldInfo fieldInfo) {
-            return fieldInfo.name.equals(fieldName) ? Status.YES : Status.NO;
-          }
-        });
+              @Override
+              public Status needsField(FieldInfo fieldInfo) {
+                return fieldInfo.name.equals(fieldName) ? Status.YES : Status.NO;
+              }
+            });
     return fields.toArray(new Field[fields.size()]);
   }
 
@@ -213,18 +213,18 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
             buffer, index, values, s, fragInfo.getEndOffset(), modifiedStartOffset);
     int srcIndex = 0;
     for (SubInfo subInfo : fragInfo.getSubInfos()) {
-      for (Toffs to : subInfo.getTermsOffsets()) {
+      for (Toffs to : subInfo.termsOffsets()) {
         fragment
             .append(
                 encoder.encodeText(
                     src.substring(srcIndex, to.getStartOffset() - modifiedStartOffset[0])))
-            .append(getPreTag(preTags, subInfo.getSeqnum()))
+            .append(getPreTag(preTags, subInfo.seqnum()))
             .append(
                 encoder.encodeText(
                     src.substring(
                         to.getStartOffset() - modifiedStartOffset[0],
                         to.getEndOffset() - modifiedStartOffset[0])))
-            .append(getPostTag(postTags, subInfo.getSeqnum()));
+            .append(getPostTag(postTags, subInfo.seqnum()));
         srcIndex = to.getEndOffset() - modifiedStartOffset[0];
       }
     }
@@ -296,7 +296,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
           continue fragInfos;
         }
 
-        Toffs firstToffs = fragInfo.getSubInfos().get(0).getTermsOffsets().get(0);
+        Toffs firstToffs = fragInfo.getSubInfos().get(0).termsOffsets().get(0);
         if (fragInfo.getStartOffset() >= fieldEnd || firstToffs.getStartOffset() >= fieldEnd) {
           continue;
         }
@@ -318,7 +318,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
         while (subInfoIterator.hasNext()) {
           SubInfo subInfo = subInfoIterator.next();
           List<Toffs> toffsList = new ArrayList<>();
-          Iterator<Toffs> toffsIterator = subInfo.getTermsOffsets().iterator();
+          Iterator<Toffs> toffsIterator = subInfo.termsOffsets().iterator();
           while (toffsIterator.hasNext()) {
             Toffs toffs = toffsIterator.next();
             if (toffs.getStartOffset() >= fieldEnd) {
@@ -357,12 +357,11 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
             }
           }
           if (!toffsList.isEmpty()) {
-            subInfos.add(
-                new SubInfo(subInfo.getText(), toffsList, subInfo.getSeqnum(), subInfo.getBoost()));
-            boost += subInfo.getBoost();
+            subInfos.add(new SubInfo(subInfo.text(), toffsList, subInfo.seqnum(), subInfo.boost()));
+            boost += subInfo.boost();
           }
 
-          if (subInfo.getTermsOffsets().isEmpty()) {
+          if (subInfo.termsOffsets().isEmpty()) {
             subInfoIterator.remove();
           }
         }
@@ -376,16 +375,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
     for (List<WeightedFragInfo> weightedFragInfos : fieldNameToFragInfos.values()) {
       result.addAll(weightedFragInfos);
     }
-    Collections.sort(
-        result,
-        new Comparator<WeightedFragInfo>() {
-
-          @Override
-          public int compare(
-              FieldFragList.WeightedFragInfo info1, FieldFragList.WeightedFragInfo info2) {
-            return info1.getStartOffset() - info2.getStartOffset();
-          }
-        });
+    result.sort((info1, info2) -> info1.getStartOffset() - info2.getStartOffset());
 
     return result;
   }

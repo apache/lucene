@@ -24,17 +24,12 @@ import java.util.Random;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.CharacterUtils;
 import org.apache.lucene.analysis.FilteringTokenFilter;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.ValidatingTokenFilter;
 import org.apache.lucene.analysis.classic.ClassicTokenizer;
 import org.apache.lucene.analysis.core.TypeTokenFilter;
 import org.apache.lucene.analysis.de.GermanStemFilter;
@@ -49,6 +44,11 @@ import org.apache.lucene.analysis.synonym.SynonymMap;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.Token;
+import org.apache.lucene.tests.analysis.ValidatingTokenFilter;
 
 public class TestConditionalTokenFilter extends BaseTokenStreamTestCase {
 

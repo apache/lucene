@@ -27,7 +27,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
 import org.junit.Before;
 
@@ -58,12 +58,12 @@ public abstract class DocumentClassificationTestBase<T> extends ClassificationTe
   protected double checkCorrectDocumentClassification(
       DocumentClassifier<T> classifier, Document inputDoc, T expectedResult) throws Exception {
     ClassificationResult<T> classificationResult = classifier.assignClass(inputDoc);
-    assertNotNull(classificationResult.getAssignedClass());
+    assertNotNull(classificationResult.assignedClass());
     assertEquals(
-        "got an assigned class of " + classificationResult.getAssignedClass(),
+        "got an assigned class of " + classificationResult.assignedClass(),
         expectedResult,
-        classificationResult.getAssignedClass());
-    double score = classificationResult.getScore();
+        classificationResult.assignedClass());
+    double score = classificationResult.score();
     assertTrue("score should be between 0 and 1, got:" + score, score <= 1 && score >= 0);
     return score;
   }

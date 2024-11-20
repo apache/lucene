@@ -16,12 +16,8 @@
  */
 package org.apache.lucene.document;
 
-import java.io.IOException;
-import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.Query;
 
@@ -40,9 +36,27 @@ public class NumericDocValuesField extends Field {
   /** Type for numeric DocValues. */
   public static final FieldType TYPE = new FieldType();
 
+  private static final FieldType INDEXED_TYPE;
+
   static {
     TYPE.setDocValuesType(DocValuesType.NUMERIC);
     TYPE.freeze();
+
+    INDEXED_TYPE = new FieldType(TYPE);
+    INDEXED_TYPE.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
+    INDEXED_TYPE.freeze();
+  }
+
+  /**
+   * Creates a new {@link NumericDocValuesField} with the specified 64-bit long value that also
+   * creates a {@link FieldType#docValuesSkipIndexType() skip index}.
+   *
+   * @param name field name
+   * @param value 64-bit long value
+   * @throws IllegalArgumentException if the field name is null
+   */
+  public static NumericDocValuesField indexedField(String name, long value) {
+    return new NumericDocValuesField(name, value, INDEXED_TYPE);
   }
 
   /**
@@ -65,7 +79,11 @@ public class NumericDocValuesField extends Field {
    * @throws IllegalArgumentException if the field name is null
    */
   public NumericDocValuesField(String name, Long value) {
-    super(name, TYPE);
+    this(name, value, TYPE);
+  }
+
+  private NumericDocValuesField(String name, Long value, FieldType fieldType) {
+    super(name, fieldType);
     fieldsData = value;
   }
 
@@ -83,18 +101,31 @@ public class NumericDocValuesField extends Field {
    * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
    * in an {@link IndexOrDocValuesQuery}, alongside a range query that executes on points, such as
    * {@link LongPoint#newRangeQuery}.
+   *
+   * @see IntField#newRangeQuery
+   * @see LongField#newRangeQuery
+   * @see FloatField#newRangeQuery
+   * @see DoubleField#newRangeQuery
    */
   public static Query newSlowRangeQuery(String field, long lowerValue, long upperValue) {
-    return new SortedNumericDocValuesRangeQuery(field, lowerValue, upperValue) {
-      @Override
-      SortedNumericDocValues getValues(LeafReader reader, String field) throws IOException {
-        NumericDocValues values = reader.getNumericDocValues(field);
-        if (values == null) {
-          return null;
-        }
-        return DocValues.singleton(values);
-      }
-    };
+    return new SortedNumericDocValuesRangeQuery(field, lowerValue, upperValue);
+  }
+
+  /**
+   * Create a query matching any of the specified values.
+   *
+   * <p><b>NOTE</b>: Such queries cannot efficiently advance to the next match, which makes them
+   * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
+   * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on points, such as
+   * {@link LongPoint#newSetQuery}.
+   *
+   * @see IntField#newSetQuery
+   * @see LongField#newSetQuery
+   * @see FloatField#newSetQuery
+   * @see DoubleField#newSetQuery
+   */
+  public static Query newSlowSetQuery(String field, long... values) {
+    return new SortedNumericDocValuesSetQuery(field, values.clone());
   }
 
   /**
@@ -104,6 +135,11 @@ public class NumericDocValuesField extends Field {
    * slow if they are not ANDed with a selective query. As a consequence, they are best used wrapped
    * in an {@link IndexOrDocValuesQuery}, alongside a range query that executes on points, such as
    * {@link LongPoint#newExactQuery}.
+   *
+   * @see IntField#newExactQuery
+   * @see LongField#newExactQuery
+   * @see FloatField#newExactQuery
+   * @see DoubleField#newExactQuery
    */
   public static Query newSlowExactQuery(String field, long value) {
     return newSlowRangeQuery(field, value, value);

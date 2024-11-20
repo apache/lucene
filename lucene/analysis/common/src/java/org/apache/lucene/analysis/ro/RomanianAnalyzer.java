@@ -26,9 +26,11 @@ import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.StopwordAnalyzerBase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.WordlistLoader;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.analysis.snowball.SnowballFilter;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
+import org.apache.lucene.util.IOUtils;
 import org.tartarus.snowball.ext.RomanianStemmer;
 
 /**
@@ -41,6 +43,7 @@ public final class RomanianAnalyzer extends StopwordAnalyzerBase {
 
   /** File containing default Romanian stopwords. */
   public static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
+
   /** The comment character in the stopwords file. All lines prefixed with this will be ignored. */
   private static final String STOPWORDS_COMMENT = "#";
 
@@ -63,8 +66,11 @@ public final class RomanianAnalyzer extends StopwordAnalyzerBase {
     static {
       try {
         DEFAULT_STOP_SET =
-            loadStopwordSet(
-                false, RomanianAnalyzer.class, DEFAULT_STOPWORD_FILE, STOPWORDS_COMMENT);
+            WordlistLoader.getWordSet(
+                IOUtils.requireResourceNonNull(
+                    RomanianAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                    DEFAULT_STOPWORD_FILE),
+                STOPWORDS_COMMENT);
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)
@@ -105,13 +111,15 @@ public final class RomanianAnalyzer extends StopwordAnalyzerBase {
    *
    * @return A {@link org.apache.lucene.analysis.Analyzer.TokenStreamComponents} built from an
    *     {@link StandardTokenizer} filtered with {@link LowerCaseFilter}, {@link StopFilter}, {@link
-   *     SetKeywordMarkerFilter} if a stem exclusion set is provided and {@link SnowballFilter}.
+   *     RomanianNormalizationFilter}, {@link SetKeywordMarkerFilter} if a stem exclusion set is
+   *     provided and {@link SnowballFilter}.
    */
   @Override
   protected TokenStreamComponents createComponents(String fieldName) {
     final Tokenizer source = new StandardTokenizer();
     TokenStream result = new LowerCaseFilter(source);
     result = new StopFilter(result, stopwords);
+    result = new RomanianNormalizationFilter(result);
     if (!stemExclusionSet.isEmpty()) result = new SetKeywordMarkerFilter(result, stemExclusionSet);
     result = new SnowballFilter(result, new RomanianStemmer());
     return new TokenStreamComponents(source, result);
@@ -119,6 +127,8 @@ public final class RomanianAnalyzer extends StopwordAnalyzerBase {
 
   @Override
   protected TokenStream normalize(String fieldName, TokenStream in) {
-    return new LowerCaseFilter(in);
+    TokenStream result = new LowerCaseFilter(in);
+    result = new RomanianNormalizationFilter(result);
+    return result;
   }
 }

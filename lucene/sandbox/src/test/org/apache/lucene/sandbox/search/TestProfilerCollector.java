@@ -26,15 +26,17 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.hamcrest.MatcherAssert;
 
 public class TestProfilerCollector extends LuceneTestCase {
@@ -42,7 +44,7 @@ public class TestProfilerCollector extends LuceneTestCase {
   public void testCollector() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    final int numDocs = TestUtil.nextInt(random(), 1, 20);
+    final int numDocs = TestUtil.nextInt(random(), 1, 100);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
       doc.add(new StringField("foo", "bar", Store.NO));
@@ -51,17 +53,47 @@ public class TestProfilerCollector extends LuceneTestCase {
     IndexReader reader = w.getReader();
     w.close();
 
-    ProfilerCollector collector =
-        new ProfilerCollector(new TotalHitCountCollector(), "total_hits", List.of());
-    IndexSearcher searcher = new IndexSearcher(reader);
-    Query query = new TermQuery(new Term("foo", "bar"));
-    searcher.search(query, collector);
+    IndexSearcher searcher = newSearcher(reader);
 
-    ProfilerCollectorResult profileResult = collector.getProfileResult();
+    ProfilerCollectorManager profilerCollectorManager =
+        new ProfilerCollectorManager("total_hits") {
+          @Override
+          protected Collector createCollector() {
+            return new TotalHitCountCollector();
+          }
+        };
+    Query query = new TermQuery(new Term("foo", "bar"));
+    ProfilerCollectorResult profileResult = searcher.search(query, profilerCollectorManager);
+
     MatcherAssert.assertThat(profileResult.getReason(), equalTo("total_hits"));
+    MatcherAssert.assertThat(profileResult.getName(), equalTo("TotalHitCountCollector"));
     MatcherAssert.assertThat(profileResult.getTime(), greaterThan(0L));
 
     reader.close();
     dir.close();
+  }
+
+  public void testProfilerCollectorCustomName() {
+    ProfilerCollector collector =
+        new ProfilerCollector(
+            new TestCollector(new TotalHitCountCollector()), "filter", List.of()) {
+          @Override
+          protected String deriveCollectorName(Collector c) {
+            return c.toString();
+          }
+        };
+
+    assertEquals("TestCollector(TotalHitCountCollector)", collector.getName());
+  }
+
+  private static final class TestCollector extends FilterCollector {
+    TestCollector(Collector in) {
+      super(in);
+    }
+
+    @Override
+    public String toString() {
+      return getClass().getSimpleName() + "(" + in.getClass().getSimpleName() + ")";
+    }
   }
 }

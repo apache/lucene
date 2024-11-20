@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -31,8 +30,10 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.PerFieldSimilarityWrapper;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /**
  * Test that norms info is preserved during index life - including separate norms, addDocument,
@@ -47,8 +48,9 @@ public class TestNorms extends LuceneTestCase {
     DirectoryReader open = DirectoryReader.open(dir);
     NumericDocValues normValues = MultiDocValues.getNormValues(open, BYTE_TEST_FIELD);
     assertNotNull(normValues);
+    StoredFields storedFields = open.storedFields();
     for (int i = 0; i < open.maxDoc(); i++) {
-      Document document = open.document(i);
+      Document document = storedFields.document(i);
       int expected = Integer.parseInt(document.get(BYTE_TEST_FIELD).split(" ")[0]);
       assertEquals(i, normValues.nextDoc());
       assertEquals(expected, normValues.longValue());

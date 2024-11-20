@@ -26,6 +26,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * A {@link TokenFilter} that normalizes Korean numbers to regular Arabic decimal numbers in
@@ -39,9 +40,9 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
  * <p>Notice that this analyzer uses a token composition scheme and relies on punctuation tokens
  * being found in the token stream. Please make sure your {@link KoreanTokenizer} has {@code
  * discardPunctuation} set to false. In case punctuation characters, such as ． (U+FF0E FULLWIDTH
- * FULL STOP), is removed from the token stream, this filter would find input tokens tokens ３ and ２천
- * and give outputs 3 and 2000 instead of 3200, which is likely not the intended result. If you want
- * to remove punctuation characters from your index that are not part of normalized numbers, add a
+ * FULL STOP), is removed from the token stream, this filter would find input tokens ３ and ２천 and
+ * give outputs 3 and 2000 instead of 3200, which is likely not the intended result. If you want to
+ * remove punctuation characters from your index that are not part of normalized numbers, add a
  * {@link org.apache.lucene.analysis.StopFilter} with the punctuation you wish to remove after
  * {@link KoreanNumberFilter} in your analyzer chain.
  *
@@ -59,8 +60,8 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
  *   <li>15,7 becomes 157 (be aware of this weakness)
  * </ul>
  *
- * <p>Tokens preceded by a token with {@link PositionIncrementAttribute} of zero are left left
- * untouched and emitted as-is.
+ * <p>Tokens preceded by a token with {@link PositionIncrementAttribute} of zero are left untouched
+ * and emitted as-is.
  *
  * <p>This filter does not use any part-of-speech information for its normalization and the
  * motivation for this is to also support n-grammed token streams in the future.
@@ -72,6 +73,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
  *
  * @lucene.experimental
  */
+@IgnoreRandomChains(reason = "LUCENE-10361: KoreanNumberFilter messes up offsets")
 public class KoreanNumberFilter extends TokenFilter {
 
   private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);

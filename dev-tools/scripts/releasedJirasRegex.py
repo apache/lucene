@@ -26,15 +26,15 @@ import re
 # under the given version in the given CHANGES.txt file
 # and prints a regular expression that will match all of them
 #
-# Caveat: In ancient versions (Lucene v1.9 and older; Solr v1.1 and older),
+# Caveat: In ancient versions (Lucene v1.9 and older),
 # does not find Bugzilla bugs or JIRAs not mentioned at the beginning of
 # bullets or numbered entries.
 #
 def print_released_jiras_regex(version, filename):
   release_boundary_re = re.compile(r'\s*====*\s+(.*)\s+===')
   version_re = re.compile(r'%s(?:$|[^-])' % version)
-  bullet_re = re.compile(r'\s*(?:[-*]|\d+\.(?=(?:\s|(?:LUCENE|SOLR)-)))(.*)')
-  jira_ptn = r'(?:LUCENE|SOLR)-\d+'
+  bullet_re = re.compile(r'\s*(?:[-*]|\d+\.(?=(?:\s|(?:LUCENE)-)))(.*)')
+  jira_ptn = r'(?:LUCENE)-\d+'
   jira_re = re.compile(jira_ptn)
   jira_list_ptn = r'(?:[:,/()\s]*(?:%s))+' % jira_ptn
   jira_list_re = re.compile(jira_list_ptn)
@@ -43,7 +43,6 @@ def print_released_jiras_regex(version, filename):
   requested_version_found = False
   more_jiras_on_next_line = False
   lucene_jiras = []
-  solr_jiras = []
   with open(filename, 'r') as changes:
     for line in changes:
       version_boundary = release_boundary_re.match(line)
@@ -63,18 +62,15 @@ def print_released_jiras_regex(version, filename):
             if jira_list_match is not None:
               jira_match = jira_re.findall(jira_list_match.group(0))
               for jira in jira_match:
-                (lucene_jiras if jira.startswith('LUCENE-') else solr_jiras).append(jira.rsplit('-', 1)[-1])
+                lucene_jiras.append(jira.rsplit('-', 1)[-1])
             more_jiras_on_next_line = more_jiras_on_next_line_re.match(content)
   if not requested_version_found:
     raise Exception('Could not find %s in %s' % (version, filename))
   print()
-  if (len(lucene_jiras) == 0 and len(solr_jiras) == 0):
+  if (len(lucene_jiras) == 0):
     print('(No JIRAs => no regex)', end='')
   else:
-    if len(lucene_jiras) > 0:
-      print(r'LUCENE-(?:%s)\b%s' % ('|'.join(lucene_jiras), '|' if len(solr_jiras) > 0 else ''), end='')
-    if len(solr_jiras) > 0:
-      print(r'SOLR-(?:%s)\b' % '|'.join(solr_jiras), end='')
+    print(r'LUCENE-(?:%s)\b' % '|'.join(lucene_jiras), end='')
   print()
 
 def read_config():

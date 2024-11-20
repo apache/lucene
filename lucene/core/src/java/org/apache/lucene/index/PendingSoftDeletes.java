@@ -21,7 +21,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
@@ -53,8 +53,7 @@ final class PendingSoftDeletes extends PendingDeletes {
     FixedBitSet mutableBits = getMutableBits();
     // hardDeletes
     if (hardDeletes.delete(docID)) {
-      if (mutableBits.get(docID)) { // delete it here too!
-        mutableBits.clear(docID);
+      if (mutableBits.getAndClear(docID)) { // delete it here too!
         assert hardDeletes.delete(docID) == false;
       } else {
         // if it was deleted subtract the delCount
@@ -77,15 +76,14 @@ final class PendingSoftDeletes extends PendingDeletes {
     hardDeletes.onNewReader(reader, info);
     // only re-calculate this if we haven't seen this generation
     if (dvGeneration < info.getDocValuesGen()) {
-      final DocIdSetIterator iterator =
-          DocValuesFieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
-      int newDelCount;
-      if (iterator
-          != null) { // nothing is deleted we don't have a soft deletes field in this segment
-        assert info.info.maxDoc() > 0 : "maxDoc is 0";
+      final int newDelCount;
+      var iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
+      if (iterator != null && iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
         newDelCount = applySoftDeletes(iterator, getMutableBits());
         assert newDelCount >= 0 : " illegal pending delete count: " + newDelCount;
       } else {
+        // nothing is deleted we don't have a soft deletes field in this segment
         newDelCount = 0;
       }
       assert info.getSoftDelCount() == newDelCount
@@ -135,16 +133,14 @@ final class PendingSoftDeletes extends PendingDeletes {
             : null;
     while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       if (hasValue == null || hasValue.hasValue()) {
-        if (bits.get(docID)) { // doc is live - clear it
-          bits.clear(docID);
+        if (bits.getAndClear(docID)) { // doc is live - clear it
           newDeletes++;
           // now that we know we deleted it and we fully control the hard deletes we can do correct
           // accounting
           // below.
         }
       } else {
-        if (bits.get(docID) == false) {
-          bits.set(docID);
+        if (bits.getAndSet(docID) == false) {
           newDeletes--;
         }
       }
@@ -172,7 +168,7 @@ final class PendingSoftDeletes extends PendingDeletes {
 
   private boolean assertPendingDeletes() {
     assert pendingDeleteCount + info.getSoftDelCount() >= 0
-        : " illegal pending delete count: " + pendingDeleteCount + info.getSoftDelCount();
+        : "illegal pending delete count: " + (pendingDeleteCount + info.getSoftDelCount());
     assert info.info.maxDoc() >= getDelCount();
     return true;
   }
@@ -199,13 +195,13 @@ final class PendingSoftDeletes extends PendingDeletes {
     if (dvGeneration == -2) {
       FieldInfos fieldInfos = readFieldInfos();
       FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
-      // we try to only open a reader if it's really necessary ie. indices that are mainly append
+      // we try to only open a reader if it's really necessary i.e. indices that are mainly append
       // only might have
       // big segments that don't even have any docs in the soft deletes field. In such a case it's
       // simply
       // enough to look at the FieldInfo for the field and check if the field has DocValues
       if (fieldInfo != null && fieldInfo.getDocValuesType() != DocValuesType.NONE) {
-        // in order to get accurate numbers we need to have a least one reader see here.
+        // in order to get accurate numbers we need to have at least one reader see here.
         onNewReader(readerIOSupplier.get(), info);
       } else {
         // we are safe here since we don't have any doc values for the soft-delete field on disk
@@ -230,12 +226,7 @@ final class PendingSoftDeletes extends PendingDeletes {
       // updates always outside of CFS
       Closeable toClose;
       if (segInfo.getUseCompoundFile()) {
-        toClose =
-            dir =
-                segInfo
-                    .getCodec()
-                    .compoundFormat()
-                    .getCompoundReader(segInfo.dir, segInfo, IOContext.READONCE);
+        toClose = dir = segInfo.getCodec().compoundFormat().getCompoundReader(segInfo.dir, segInfo);
       } else {
         toClose = null;
         dir = segInfo.dir;

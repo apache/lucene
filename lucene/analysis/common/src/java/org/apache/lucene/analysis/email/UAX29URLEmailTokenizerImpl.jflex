@@ -40,10 +40,9 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  *   <li>&lt;EMOJI&gt;: A sequence of Emoji characters</li>
  * </ul>
  */
-@SuppressWarnings({"unused","fallthrough"})
 %%
 
-%unicode 9.0
+%unicode 12.1
 %integer
 %final
 %public
@@ -59,12 +58,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 ExtFmtZwj           = [\p{WB:Format}\p{WB:Extend}\p{WB:ZWJ}]*
 
 
-//////////////////////////////////////////////////////////////////////////
-// Begin Emoji Macros - see documentation below, near the EMOJI_TYPE rule
-
-// TODO: Remove this include file when JFlex supports these properties directly (in Unicode 11.0+)
-%include ../../../../../../../../../core/src/data/jflex/UnicodeEmojiProperties.jflex
-
 // UAX#29 WB4.  X (Extend | Format | ZWJ)* --> X
 //
 //   \uFE0E (Text Presentation Selector) and \uFE0F (Emoji Presentation Selector) - included in \p{WB:Extend}
@@ -79,18 +72,14 @@ KeyCapEx = {KeyCap} {ExtFmtZwjSansPresSel}
 
 // # \u3030 = WAVY DASH; \u303D = PART ALTERNATION MARK
 AccidentalEmoji = [©®™\u3030\u303D]
-EmojiRKAM = ( \p{WB:Regional_Indicator} | {KeyCapBaseChar} | {AccidentalEmoji} | {Emoji_Modifier} )
+EmojiRKAM = [\p{WB:Regional_Indicator}{KeyCapBaseChar}{AccidentalEmoji}\p{Emoji_Modifier}]
+EmojiSansRKAM = [\p{Emoji}--{EmojiRKAM}]
 
-// Unlike Unicode properties, macros are not allowed in character classes, so we achieve set difference
-// by applying DeMorgan: the expression that matches everything of 'a' not matched by 'b' is: !(!a|b)
-// TODO: Convert this expression to character class difference when JFlex supports the properties directly (in Unicode 11.0+)
-EmojiSansRKAM = !( ! {Emoji} | {EmojiRKAM} )
+EmojiChar = ( \p{Extended_Pictographic} | {EmojiSansRKAM} )
 
-EmojiChar = ( {Extended_Pictographic} | {EmojiSansRKAM} )
-
-EmojiCharEx         = {EmojiChar}           {ExtFmtZwjSansPresSel}
-EmojiModifierBaseEx = {Emoji_Modifier_Base} {ExtFmtZwjSansPresSel}
-EmojiModifierEx     = {Emoji_Modifier}      {ExtFmtZwjSansPresSel}
+EmojiCharEx         = {EmojiChar}             {ExtFmtZwjSansPresSel}
+EmojiModifierBaseEx = \p{Emoji_Modifier_Base} {ExtFmtZwjSansPresSel}
+EmojiModifierEx     = \p{Emoji_Modifier}      {ExtFmtZwjSansPresSel}
 
 EmojiPresentationSelector = \uFE0F
 EmojiCharOrPresSeqOrModSeq = ( \p{WB:ZWJ}* {EmojiCharEx} {EmojiPresentationSelector}? ) | ( ( \p{WB:ZWJ}* {EmojiModifierBaseEx} )? {EmojiModifierEx} )
@@ -107,7 +96,7 @@ ExtFmtZwj           = [\p{WB:Format}\p{WB:Extend}\p{WB:ZWJ}]*
 
 HangulEx            = [\p{Script:Hangul}&&[\p{WB:ALetter}\p{WB:Hebrew_Letter}]] {ExtFmtZwj}
 AHLetterEx          = [\p{WB:ALetter}\p{WB:Hebrew_Letter}]                      {ExtFmtZwj}
-NumericEx           = [\p{WB:Numeric}[\p{Blk:HalfAndFullForms}&&\p{Nd}]]        {ExtFmtZwj}
+NumericEx           = [\p{WB:Numeric}]                                          {ExtFmtZwj}
 KatakanaEx          = \p{WB:Katakana}                                           {ExtFmtZwj} 
 MidLetterEx         = [\p{WB:MidLetter}\p{WB:MidNumLet}\p{WB:SingleQuote}]      {ExtFmtZwj} 
 MidNumericEx        = [\p{WB:MidNum}\p{WB:MidNumLet}\p{WB:SingleQuote}]         {ExtFmtZwj}
@@ -250,7 +239,8 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   /** Character count processed so far */
   public final int yychar()
   {
-    return yychar;
+    // jflex supports > 2GB docs but not lucene
+    return (int) yychar;
   }
 
   /**
@@ -307,13 +297,11 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   {EMAIL} { yybegin(YYINITIAL); return EMAIL_TYPE; }
 
 
-  // Instead of these: UAX#29 WB3c. ZWJ × (Glue_After_Zwj | EBG)
-  //                          WB14. (E_Base | EBG) × E_Modifier
+  // Instead of these: UAX#29 WB3c. ZWJ × \p{Extended_Pictographic}
   //                          WB15. ^ (RI RI)* RI × RI
   //                          WB16. [^RI] (RI RI)* RI × RI
   //
-  // We use the "emoji_sequence" rule from http://www.unicode.org/reports/tr51/tr51-14.html (Unicode 11.0)
-  // and the Emoji data from http://unicode.org/Public/emoji/11.0/emoji-data.txt (in included file UnicodeEmojiProperties.jflex)
+  // We use the "emoji_sequence" rule from http://www.unicode.org/reports/tr51/tr51-16.html (Unicode 12.0)
   // 
   // emoji_sequence :=
   //    Top-level EBNF           Expanded #1                       Expanded #2                       Expanded #3
@@ -335,7 +323,7 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   //                             tag_spec                                                            [\u{E0020}-\u{E007E}]+
   //                             tag_term                                                            \u{E007F}
   //
-  // [1] https://unicode.org/Public/emoji/11.0/emoji-test.txt includes key cap sequences 
+  // [1] https://unicode.org/Public/emoji/12.1/emoji-test.txt includes key cap sequences 
   //     WITHOUT \uFE0F (emoji presentation indicator), annotating them as "non-fully-qualified";
   //     TR#51 says about non-fully-qualified *ZWJ sequences* that implementations may
   //     choose whether to support them for segmentation.  This implementation will
@@ -346,7 +334,7 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   //
   //     In particular, the above docs recommend a modified UAX#29 WB3c rule (covered by TR#51's "emoji_zwj_sequence"):
   //
-  //         WB3c′ ZWJ × ​(Extended_Pictographic | EmojiNRK)
+  //         WB3c′ ZWJ × (Extended_Pictographic | EmojiNRK)
   //
     {EmojiCharOrPresSeqOrModSeq} ( ( \p{WB:ZWJ} {EmojiCharOrPresSeqOrModSeq} )* | {TagSpec}+ {TagTerm} ) 
   | {KeyCapBaseCharEx} {EmojiPresentationSelector}? {KeyCapEx} 

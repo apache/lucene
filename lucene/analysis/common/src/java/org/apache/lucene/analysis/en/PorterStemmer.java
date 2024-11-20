@@ -23,7 +23,7 @@ package org.apache.lucene.analysis.en;
        Porter, 1980, An algorithm for suffix stripping, Program, Vol. 14,
        no. 3, pp 130-137,
 
-   See also http://www.tartarus.org/~martin/PorterStemmer/index.html
+   See also https://snowballstem.org/algorithms/porter/stemmer.html
 
    Bug 1 (reported by Gonzalo Parra 16/10/99) fixed as marked below.
    Tthe words 'aed', 'eed', 'oed' leave k at 'a' for step 3, and b[k-1]
@@ -456,7 +456,7 @@ class PorterStemmer {
         /* j >= 0 fixes Bug 2 */
         if (ends("ou")) break;
         return;
-        /* takes care of -ous */
+      /* takes care of -ous */
       case 's':
         if (ends("ism")) break;
         return;

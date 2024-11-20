@@ -17,7 +17,6 @@
 package org.apache.lucene.expressions;
 
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -25,12 +24,13 @@ import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestExpressionValueSource extends LuceneTestCase {
   DirectoryReader reader;
@@ -150,6 +150,30 @@ public class TestExpressionValueSource extends LuceneTestCase {
     assertEquals(fib(n), (int) values.doubleValue());
   }
 
+  public void testLazyDependencies() throws Exception {
+    SimpleBindings bindings = new SimpleBindings();
+    bindings.add("f0", DoubleValuesSource.constant(1));
+    bindings.add("f1", DoubleValuesSource.constant(42));
+    bindings.add("f2", new NoAdvanceDoubleValuesSource());
+
+    // f2 should never be evaluated:
+    Expression expression = JavascriptCompiler.compile("f0 == 1 ? f1 : f2");
+    DoubleValuesSource dvs = expression.getDoubleValuesSource(bindings);
+    DoubleValues dv = dvs.getValues(reader.leaves().get(0), null);
+    dv.advanceExact(0);
+    double value = dv.doubleValue();
+    assertEquals(42, value, 0);
+
+    // one more example to show that we will also correctly short-circuit a condition (f2 should
+    // not be advanced or evaluated):
+    expression = JavascriptCompiler.compile("(1 == 1 || f2) ? f1 : 0");
+    dvs = expression.getDoubleValuesSource(bindings);
+    dv = dvs.getValues(reader.leaves().get(0), null);
+    dv.advanceExact(0);
+    value = dv.doubleValue();
+    assertEquals(42, value, 0);
+  }
+
   private int fib(int n) {
     if (n == 0) {
       return 0;
@@ -214,5 +238,52 @@ public class TestExpressionValueSource extends LuceneTestCase {
         return false;
       }
     };
+  }
+
+  private static class NoAdvanceDoubleValuesSource extends DoubleValuesSource {
+    @Override
+    public DoubleValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+      return new DoubleValues() {
+        @Override
+        public double doubleValue() throws IOException {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean advanceExact(int doc) throws IOException {
+          throw new UnsupportedOperationException();
+        }
+      };
+    }
+
+    @Override
+    public boolean needsScores() {
+      return false;
+    }
+
+    @Override
+    public DoubleValuesSource rewrite(IndexSearcher reader) throws IOException {
+      return this;
+    }
+
+    @Override
+    public int hashCode() {
+      return 0;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return false;
+    }
+
+    @Override
+    public String toString() {
+      return null;
+    }
+
+    @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return false;
+    }
   }
 }

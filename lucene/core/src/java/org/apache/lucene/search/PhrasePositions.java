@@ -17,7 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
 
 /** Position of a term in a document that takes into account the term offset within the phrase. */
 final class PhrasePositions {

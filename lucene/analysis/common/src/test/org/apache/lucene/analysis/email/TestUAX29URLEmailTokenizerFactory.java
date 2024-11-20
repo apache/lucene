@@ -18,8 +18,8 @@ package org.apache.lucene.analysis.email;
 
 import java.io.Reader;
 import java.io.StringReader;
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 
 /** A few tests based on org.apache.lucene.analysis.TestUAX29URLEmailTokenizer */
 public class TestUAX29URLEmailTokenizerFactory extends BaseTokenStreamFactoryTestCase {

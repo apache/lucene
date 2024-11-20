@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +31,8 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.CollectionUtil;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.Version;
 
@@ -90,7 +91,8 @@ public final class StandardDirectoryReader extends DirectoryReader {
         try {
           for (int i = sis.size() - 1; i >= 0; i--) {
             readers[i] =
-                new SegmentReader(sis.info(i), sis.getIndexCreatedVersionMajor(), IOContext.READ);
+                new SegmentReader(
+                    sis.info(i), sis.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
           }
           // This may throw CorruptIndexException if there are too many docs, so
           // it must be inside try clause so we close readers in that case:
@@ -111,7 +113,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
   /** Used by near real-time search */
   static StandardDirectoryReader open(
       IndexWriter writer,
-      IOUtils.IOFunction<SegmentCommitInfo, SegmentReader> readerFunction,
+      IOFunction<SegmentCommitInfo, SegmentReader> readerFunction,
       SegmentInfos infos,
       boolean applyAllDeletes,
       boolean writeAllDeletes)
@@ -183,10 +185,10 @@ public final class StandardDirectoryReader extends DirectoryReader {
 
     // we put the old SegmentReaders in a map, that allows us
     // to lookup a reader using its segment name
-    final Map<String, Integer> segmentReaders =
-        (oldReaders == null ? Collections.emptyMap() : new HashMap<>(oldReaders.size()));
+    Map<String, Integer> segmentReaders = Collections.emptyMap();
 
     if (oldReaders != null) {
+      segmentReaders = CollectionUtil.newHashMap(oldReaders.size());
       // create a Map SegmentName->SegmentReader
       for (int i = 0, c = oldReaders.size(); i < c; i++) {
         final SegmentReader sr = (SegmentReader) oldReaders.get(i);
@@ -228,7 +230,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
                 != oldReader.getSegmentInfo().info.getUseCompoundFile()) {
           // this is a new reader; in case we hit an exception we can decRef it safely
           newReader =
-              new SegmentReader(commitInfo, infos.getIndexCreatedVersionMajor(), IOContext.READ);
+              new SegmentReader(commitInfo, infos.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
           newReaders[i] = newReader;
         } else {
           if (oldReader.isNRT) {
@@ -579,7 +581,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
       };
 
   @Override
-  void notifyReaderClosedListeners() throws IOException {
+  protected void notifyReaderClosedListeners() throws IOException {
     synchronized (readerClosedListeners) {
       IOUtils.applyToAll(readerClosedListeners, l -> l.onClose(cacheHelper.getKey()));
     }

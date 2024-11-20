@@ -16,18 +16,15 @@
  */
 package org.apache.lucene.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CrankyTokenFilter;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.MockVariableLengthPayloadFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.asserting.AssertingCodec;
-import org.apache.lucene.codecs.cranky.CrankyCodec;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -41,13 +38,18 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.analysis.CrankyTokenFilter;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.MockVariableLengthPayloadFilter;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
+import org.apache.lucene.tests.codecs.cranky.CrankyCodec;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.Rethrow;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.Rethrow;
-import org.apache.lucene.util.TestUtil;
 
 /**
  * Causes a bunch of non-aborting and aborting exceptions and checks that no index corruption is
@@ -67,7 +69,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
 
     // log all exceptions we hit, in case we fail (for debugging)
     ByteArrayOutputStream exceptionLog = new ByteArrayOutputStream();
-    PrintStream exceptionStream = new PrintStream(exceptionLog, true, "UTF-8");
+    PrintStream exceptionStream = new PrintStream(exceptionLog, true, UTF_8);
     // PrintStream exceptionStream = System.out;
 
     // create lots of non-aborting exceptions with a broken analyzer
@@ -271,14 +273,14 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
     } catch (Throwable t) {
       System.out.println("Unexpected exception: dumping fake-exception-log:...");
       exceptionStream.flush();
-      System.out.println(exceptionLog.toString("UTF-8"));
+      System.out.println(exceptionLog.toString(UTF_8));
       System.out.flush();
       Rethrow.rethrow(t);
     }
 
     if (VERBOSE) {
       System.out.println("TEST PASSED: dumping fake-exception-log:...");
-      System.out.println(exceptionLog.toString("UTF-8"));
+      System.out.println(exceptionLog.toString(UTF_8));
     }
   }
 }

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -27,33 +26,14 @@ import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.AlreadyClosedException;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** Unit test for {@link DocumentsWriterDeleteQueue} */
 public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
 
-  public void testAdvanceReferencesOriginal() {
-    WeakAndNext weakAndNext = new WeakAndNext();
-    DocumentsWriterDeleteQueue next = weakAndNext.next;
-    assertNotNull(next);
-    System.gc();
-    assertNull(weakAndNext.weak.get());
-  }
-
-  class WeakAndNext {
-    final WeakReference<DocumentsWriterDeleteQueue> weak;
-    final DocumentsWriterDeleteQueue next;
-
-    WeakAndNext() {
-      DocumentsWriterDeleteQueue deleteQueue = new DocumentsWriterDeleteQueue(null);
-      weak = new WeakReference<>(deleteQueue);
-      next = deleteQueue.advanceQueue(2);
-    }
-  }
-
-  public void testUpdateDelteSlices() throws Exception {
+  public void testUpdateDeleteSlices() throws Exception {
     DocumentsWriterDeleteQueue queue = new DocumentsWriterDeleteQueue(null);
     final int size = 200 + random().nextInt(500) * RANDOM_MULTIPLIER;
     Integer[] ids = new Integer[size];
@@ -87,7 +67,7 @@ public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
         assertAllBetween(last2, j, bd2, ids);
         last2 = j + 1;
       }
-      assertEquals(j + 1, queue.numGlobalTermDeletes());
+      assertEquals(uniqueValues.size(), queue.numGlobalTermDeletes());
     }
     assertEquals(uniqueValues, bd1.deleteTerms.keySet());
     assertEquals(uniqueValues, bd2.deleteTerms.keySet());
@@ -104,8 +84,7 @@ public class TestDocumentsWriterDeleteQueue extends LuceneTestCase {
 
   private void assertAllBetween(int start, int end, BufferedUpdates deletes, Integer[] ids) {
     for (int i = start; i <= end; i++) {
-      assertEquals(
-          Integer.valueOf(end), deletes.deleteTerms.get(new Term("id", ids[i].toString())));
+      assertEquals(end, deletes.deleteTerms.get(new Term("id", ids[i].toString())));
     }
   }
 

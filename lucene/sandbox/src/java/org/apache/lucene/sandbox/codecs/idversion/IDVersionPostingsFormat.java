@@ -26,6 +26,7 @@ import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.LiveFieldValues;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
@@ -108,14 +109,7 @@ public class IDVersionPostingsFormat extends PostingsFormat {
   }
 
   public static long bytesToLong(BytesRef bytes) {
-    return ((bytes.bytes[bytes.offset] & 0xFFL) << 56)
-        | ((bytes.bytes[bytes.offset + 1] & 0xFFL) << 48)
-        | ((bytes.bytes[bytes.offset + 2] & 0xFFL) << 40)
-        | ((bytes.bytes[bytes.offset + 3] & 0xFFL) << 32)
-        | ((bytes.bytes[bytes.offset + 4] & 0xFFL) << 24)
-        | ((bytes.bytes[bytes.offset + 5] & 0xFFL) << 16)
-        | ((bytes.bytes[bytes.offset + 6] & 0xFFL) << 8)
-        | (bytes.bytes[bytes.offset + 7] & 0xFFL);
+    return (long) BitUtil.VH_BE_LONG.get(bytes.bytes, bytes.offset);
   }
 
   public static void longToBytes(long v, BytesRef bytes) {
@@ -131,14 +125,7 @@ public class IDVersionPostingsFormat extends PostingsFormat {
     }
     bytes.offset = 0;
     bytes.length = 8;
-    bytes.bytes[0] = (byte) (v >> 56);
-    bytes.bytes[1] = (byte) (v >> 48);
-    bytes.bytes[2] = (byte) (v >> 40);
-    bytes.bytes[3] = (byte) (v >> 32);
-    bytes.bytes[4] = (byte) (v >> 24);
-    bytes.bytes[5] = (byte) (v >> 16);
-    bytes.bytes[6] = (byte) (v >> 8);
-    bytes.bytes[7] = (byte) v;
+    BitUtil.VH_BE_LONG.set(bytes.bytes, 0, v);
     assert bytesToLong(bytes) == v : bytesToLong(bytes) + " vs " + v + " bytes=" + bytes;
   }
 }

@@ -62,7 +62,6 @@ public class TestLatLonDocValuesPointPointQueries extends BaseLatLonDocValueTest
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {

@@ -18,6 +18,7 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.PointValues;
 
 /**
@@ -40,7 +41,10 @@ public abstract class PointsReader implements Closeable {
    */
   public abstract void checkIntegrity() throws IOException;
 
-  /** Return {@link PointValues} for the given {@code field}. */
+  /**
+   * Return {@link PointValues} for the given {@code field}. The behavior is undefined if the given
+   * field doesn't have points enabled on its {@link FieldInfo}.
+   */
   public abstract PointValues getValues(String field) throws IOException;
 
   /**

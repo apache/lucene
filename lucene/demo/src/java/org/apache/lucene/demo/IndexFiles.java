@@ -28,15 +28,16 @@ import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
+import java.util.Objects;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.demo.knn.DemoEmbeddings;
 import org.apache.lucene.demo.knn.KnnVectorDict;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnVectorField;
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.KeywordField;
+import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -77,7 +78,7 @@ public class IndexFiles implements AutoCloseable {
     String usage =
         "java org.apache.lucene.demo.IndexFiles"
             + " [-index INDEX_PATH] [-docs DOCS_PATH] [-update] [-knn_dict DICT_PATH]\n\n"
-            + "This indexes the documents in DOCS_PATH, creating a Lucene index"
+            + "This indexes the documents in DOCS_PATH, creating a Lucene index "
             + "in INDEX_PATH that can be searched with SearchFiles\n"
             + "IF DICT_PATH contains a KnnVector dictionary, the index will also support KnnVector search";
     String indexPath = "index";
@@ -140,7 +141,7 @@ public class IndexFiles implements AutoCloseable {
       // Optional: for better indexing performance, if you
       // are indexing many documents, increase the RAM
       // buffer.  But if you do this, increase the max heap
-      // size to the JVM (eg add -Xmx512m or -Xmx1g):
+      // size to the JVM (e.g. add -Xmx512m or -Xmx1g):
       //
       // iwc.setRAMBufferSizeMB(256.0);
 
@@ -174,8 +175,11 @@ public class IndexFiles implements AutoCloseable {
                 + reader.numDocs()
                 + " documents in "
                 + (end.getTime() - start.getTime())
-                + " milliseconds");
-        if (reader.numDocs() > 100 && vectorDictSize < 1_000_000) {
+                + " ms");
+        if (Objects.isNull(vectorDictSource) == false
+            && reader.numDocs() > 100
+            && vectorDictSize < 1_000_000
+            && System.getProperty("smoketester") == null) {
           throw new RuntimeException(
               "Are you (ab)using the toy vector dictionary? See the package javadocs to understand why you got this exception.");
         }
@@ -232,17 +236,17 @@ public class IndexFiles implements AutoCloseable {
       // field that is indexed (i.e. searchable), but don't tokenize
       // the field into separate words and don't index term frequency
       // or positional information:
-      Field pathField = new StringField("path", file.toString(), Field.Store.YES);
-      doc.add(pathField);
+      doc.add(new KeywordField("path", file.toString(), Field.Store.YES));
 
       // Add the last modified date of the file a field named "modified".
-      // Use a LongPoint that is indexed (i.e. efficiently filterable with
-      // PointRangeQuery).  This indexes to milli-second resolution, which
+      // Use a LongField that is indexed with points and doc values, and is efficient
+      // for both filtering (LongField#newRangeQuery) and sorting
+      // (LongField#newSortField).  This indexes to millisecond resolution, which
       // is often too fine.  You could instead create a number based on
       // year/month/day/hour/minutes/seconds, down the resolution you require.
       // For example the long value 2011021714 would mean
       // February 17, 2011, 2-3 PM.
-      doc.add(new LongPoint("modified", lastModified));
+      doc.add(new LongField("modified", lastModified, Field.Store.NO));
 
       // Add the contents of the file to a field named "contents".  Specify a Reader,
       // so that the text of the file is tokenized and indexed, but not stored.
@@ -259,7 +263,8 @@ public class IndexFiles implements AutoCloseable {
               demoEmbeddings.computeEmbedding(
                   new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
           doc.add(
-              new KnnVectorField("contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
+              new KnnFloatVectorField(
+                  "contents-vector", vector, VectorSimilarityFunction.DOT_PRODUCT));
         }
       }
 

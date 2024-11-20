@@ -21,6 +21,7 @@ import org.apache.lucene.codecs.compressing.CompressionMode;
 import org.apache.lucene.codecs.compressing.Compressor;
 import org.apache.lucene.codecs.compressing.Decompressor;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -38,8 +39,8 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
   // Shoot for 10 sub blocks
   private static final int NUM_SUB_BLOCKS = 10;
-  // And a dictionary whose size is about 16x smaller than sub blocks
-  private static final int DICT_SIZE_FACTOR = 16;
+  // And a dictionary whose size is about 2x smaller than sub blocks
+  private static final int DICT_SIZE_FACTOR = 2;
 
   /** Sole constructor. */
   public LZ4WithPresetDictCompressionMode() {}
@@ -74,8 +75,9 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
       in.readVInt(); // compressed length of the dictionary, unused
       int totalLength = dictLength;
       int i = 0;
+      compressedLengths = ArrayUtil.growNoCopy(compressedLengths, originalLength / blockLength + 1);
       while (totalLength < originalLength) {
-        compressedLengths = ArrayUtil.grow(compressedLengths, i + 1);
+
         compressedLengths[i++] = in.readVInt();
         totalLength += blockLength;
       }
@@ -97,7 +99,7 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
 
       final int numBlocks = readCompressedLengths(in, originalLength, dictLength, blockLength);
 
-      buffer = ArrayUtil.grow(buffer, dictLength + blockLength);
+      buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
       bytes.length = 0;
       // Read the dictionary
       if (LZ4.decompress(in, dictLength, buffer, 0) != dictLength) {
@@ -120,16 +122,18 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
         in.skipBytes(numBytesToSkip);
       } else {
         // The dictionary contains some bytes we need, copy its content to the BytesRef
-        bytes.bytes = ArrayUtil.grow(bytes.bytes, dictLength);
+        bytes.bytes = ArrayUtil.growNoCopy(bytes.bytes, dictLength);
         System.arraycopy(buffer, 0, bytes.bytes, 0, dictLength);
         bytes.length = dictLength;
       }
 
       // Read blocks that intersect with the interval we need
+      if (offsetInBlock < offset + length) {
+        bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + offset + length - offsetInBlock);
+      }
       while (offsetInBlock < offset + length) {
         final int bytesToDecompress = Math.min(blockLength, offset + length - offsetInBlock);
         LZ4.decompress(in, bytesToDecompress, buffer, dictLength);
-        bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + bytesToDecompress);
         System.arraycopy(buffer, dictLength, bytes.bytes, bytes.length, bytesToDecompress);
         bytes.length += bytesToDecompress;
         offsetInBlock += blockLength;
@@ -166,23 +170,23 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     }
 
     @Override
-    public void compress(byte[] bytes, int off, int len, DataOutput out) throws IOException {
-      final int dictLength = len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR);
+    public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
+      final int len = (int) (buffersInput.length() - buffersInput.position());
+      final int dictLength = Math.min(LZ4.MAX_DISTANCE, len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR));
       final int blockLength = (len - dictLength + NUM_SUB_BLOCKS - 1) / NUM_SUB_BLOCKS;
-      buffer = ArrayUtil.grow(buffer, dictLength + blockLength);
+      buffer = ArrayUtil.growNoCopy(buffer, dictLength + blockLength);
       out.writeVInt(dictLength);
       out.writeVInt(blockLength);
-      final int end = off + len;
 
       compressed.reset();
       // Compress the dictionary first
-      System.arraycopy(bytes, off, buffer, 0, dictLength);
+      buffersInput.readBytes(buffer, 0, dictLength);
       doCompress(buffer, 0, dictLength, out);
 
       // And then sub blocks
-      for (int start = off + dictLength; start < end; start += blockLength) {
-        int l = Math.min(blockLength, off + len - start);
-        System.arraycopy(bytes, start, buffer, dictLength, l);
+      for (int start = dictLength; start < len; start += blockLength) {
+        int l = Math.min(blockLength, len - start);
+        buffersInput.readBytes(buffer, dictLength, l);
         doCompress(buffer, dictLength, l, out);
       }
 

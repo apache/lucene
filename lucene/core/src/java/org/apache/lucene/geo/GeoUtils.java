@@ -43,10 +43,13 @@ public final class GeoUtils {
 
   /** min longitude value in radians */
   public static final double MIN_LON_RADIANS = Math.toRadians(MIN_LON_INCL);
+
   /** min latitude value in radians */
   public static final double MIN_LAT_RADIANS = Math.toRadians(MIN_LAT_INCL);
+
   /** max longitude value in radians */
   public static final double MAX_LON_RADIANS = Math.toRadians(MAX_LON_INCL);
+
   /** max latitude value in radians */
   public static final double MAX_LAT_RADIANS = Math.toRadians(MAX_LAT_INCL);
 
@@ -224,11 +227,24 @@ public final class GeoUtils {
       double a2y,
       double b2x,
       double b2y) {
-    if (orient(a2x, a2y, b2x, b2y, a1x, a1y) * orient(a2x, a2y, b2x, b2y, b1x, b1y) < 0
-        && orient(a1x, a1y, b1x, b1y, a2x, a2y) * orient(a1x, a1y, b1x, b1y, b2x, b2y) < 0) {
-      return true;
-    }
-    return false;
+    return orient(a2x, a2y, b2x, b2y, a1x, a1y) * orient(a2x, a2y, b2x, b2y, b1x, b1y) < 0
+        && orient(a1x, a1y, b1x, b1y, a2x, a2y) * orient(a1x, a1y, b1x, b1y, b2x, b2y) < 0;
+  }
+
+  /** uses orient method to compute whether two line overlap each other */
+  public static boolean lineOverlapLine(
+      double a1x,
+      double a1y,
+      double b1x,
+      double b1y,
+      double a2x,
+      double a2y,
+      double b2x,
+      double b2y) {
+    return orient(a2x, a2y, b2x, b2y, a1x, a1y) == 0
+        && orient(a2x, a2y, b2x, b2y, b1x, b1y) == 0
+        && orient(a1x, a1y, b1x, b1y, a2x, a2y) == 0
+        && orient(a1x, a1y, b1x, b1y, b2x, b2y) == 0;
   }
 
   /**

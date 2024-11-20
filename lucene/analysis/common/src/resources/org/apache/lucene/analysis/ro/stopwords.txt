@@ -1,6 +1,7 @@
 # This file was created by Jacques Savoy and is distributed under the BSD license.
 # See http://members.unine.ch/jacques.savoy/clef/index.html.
 # Also see http://www.opensource.org/licenses/bsd-license.html
+# Updated to include s&t with comma (ș/ț), which are more standard than cedilla (ş/ţ)
 acea
 aceasta
 această
@@ -15,7 +16,9 @@ acest
 acesta
 aceste
 acestea
+acești
 aceşti
+aceștia
 aceştia
 acolo
 acum
@@ -33,7 +36,9 @@ altcineva
 am
 ar
 are
+aș
 aş
+așadar
 aşadar
 asemenea
 asta
@@ -41,12 +46,15 @@ asta
 astăzi
 astea
 ăstea
+ăștia
 ăştia
 asupra
+ați
 aţi
 au
 avea
 avem
+aveți
 aveţi
 azi
 bine
@@ -62,6 +70,7 @@ căror
 cărui
 cât
 câte
+câți
 câţi
 către
 câtva
@@ -74,6 +83,7 @@ cine
 cineva
 cît
 cîte
+cîți
 cîţi
 cîtva
 contra
@@ -92,6 +102,7 @@ deci
 deja
 deoarece
 departe
+deși
 deşi
 din
 dinaintea
@@ -105,6 +116,7 @@ el
 ele
 eram
 este
+ești
 eşti
 eu
 face
@@ -114,6 +126,7 @@ fie
 fiecare
 fii
 fim
+fiți
 fiţi
 iar
 ieri
@@ -130,6 +143,7 @@ ieri
 între
 întrucât
 întrucît
+îți
 îţi
 la
 lângă
@@ -149,15 +163,18 @@ mi
 mine
 mult
 multă
+mulți
 mulţi
 ne
 nicăieri
 nici
 nimeni
+niște
 nişte
 noastră
 noastre
 noi
+noștri
 noştri
 nostru
 nu
@@ -190,27 +207,34 @@ sale
 sau
 său
 se
+și
 şi
 sînt
 sîntem
+sînteți
 sînteţi
 spre
 sub
 sunt
 suntem
+sunteți
 sunteţi
 ta
 tăi
 tale
 tău
 te
+ți
 ţi
+ție
 ţie
 tine
 toată
 toate
 tot
+toți
 toţi
+totuși
 totuşi
 tu
 un
@@ -226,6 +250,7 @@ vi
 voastră
 voastre
 voi
+voștri
 voştri
 vostru
 vouă

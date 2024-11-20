@@ -26,8 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -39,11 +39,12 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.MockDirectoryWrapper;
-import org.apache.lucene.store.MockDirectoryWrapper.FakeIOException;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper.FakeIOException;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestDirectoryReaderReopen extends LuceneTestCase {
 
@@ -132,7 +133,9 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
           if (i > 0) {
             int k = i - 1;
             int n = j + k * M;
-            Document prevItereationDoc = reader.document(n);
+            final DocumentStoredFieldVisitor visitor = new DocumentStoredFieldVisitor();
+            reader.storedFields().document(n, visitor);
+            Document prevItereationDoc = visitor.getDocument();
             assertNotNull(prevItereationDoc);
             String id = prevItereationDoc.get("id");
             assertEquals(k + "_" + j, id);
@@ -285,7 +288,7 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
                                 1000)
                             .scoreDocs;
                     if (hits.length > 0) {
-                      searcher.doc(hits[0].doc);
+                      searcher.storedFields().document(hits[0].doc);
                     }
                     if (refreshed != r) {
                       refreshed.close();
@@ -651,7 +654,8 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
   public void testOverDecRefDuringReopen() throws Exception {
     MockDirectoryWrapper dir = newMockDirectory();
 
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    IndexWriterConfig iwc =
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setCodec(TestUtil.getDefaultCodec());
     IndexWriter w = new IndexWriter(dir, iwc);
     Document doc = new Document();
@@ -815,7 +819,8 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
   /** test reopening backwards from a non-NRT reader (with document deletes) */
   public void testNRTMdeletes() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    IndexWriterConfig iwc =
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
     SnapshotDeletionPolicy snapshotter =
         new SnapshotDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy());
     iwc.setIndexDeletionPolicy(snapshotter);
@@ -865,7 +870,8 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
   /** test reopening backwards from an NRT reader (with document deletes) */
   public void testNRTMdeletes2() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    IndexWriterConfig iwc =
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
     SnapshotDeletionPolicy snapshotter =
         new SnapshotDeletionPolicy(new KeepOnlyLastCommitDeletionPolicy());
     iwc.setIndexDeletionPolicy(snapshotter);

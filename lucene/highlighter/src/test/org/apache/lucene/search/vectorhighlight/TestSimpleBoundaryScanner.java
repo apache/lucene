@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.search.vectorhighlight;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSimpleBoundaryScanner extends LuceneTestCase {
   static final String TEXT =

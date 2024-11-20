@@ -24,8 +24,9 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 /** Test indexing and searching some byte[] terms */
 public class TestBinaryTerms extends LuceneTestCase {
@@ -56,8 +57,8 @@ public class TestBinaryTerms extends LuceneTestCase {
       bytes.bytes[1] = (byte) (255 - i);
       bytes.length = 2;
       TopDocs docs = is.search(new TermQuery(new Term("bytes", bytes)), 5);
-      assertEquals(1, docs.totalHits.value);
-      assertEquals("" + i, is.doc(docs.scoreDocs[0].doc).get("id"));
+      assertEquals(1, docs.totalHits.value());
+      assertEquals("" + i, is.storedFields().document(docs.scoreDocs[0].doc).get("id"));
     }
 
     ir.close();

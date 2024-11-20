@@ -35,12 +35,12 @@
  * alternate views or to take in command line options. When reporting benchmarking runs you should
  * state any alterations you have made.
  *
- * <p>To run the short version of the StandardBenchmarker, call "ant run-micro-standard". This
- * should take a minute or so to complete and give you a preliminary idea of how your change affects
- * the code.
+ * <p>To run the short version of the StandardBenchmarker, call "./gradlew -p lucene/benchmark run".
+ * This should take a minute or so to complete and give you a preliminary idea of how your change
+ * affects the code.
  *
- * <p>To run the long version of the StandardBenchmarker, call "ant run-standard". This takes
- * considerably longer.
+ * <p>To run the long version of the StandardBenchmarker, call "./gradlew -p lucene/benchmark run
+ * -PtaskAlg=conf/standard.alg". This takes considerably longer, maybe 10 minutes.
  *
  * <p>The original code for these classes was donated by Andrzej Bialecki at
  * http://issues.apache.org/jira/browse/LUCENE-675 and has been updated by Grant Ingersoll to make

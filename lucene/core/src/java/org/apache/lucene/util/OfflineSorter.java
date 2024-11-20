@@ -38,7 +38,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 
 /**
- * On-disk sorting of byte arrays. Each byte array (entry) is a composed of the following fields:
+ * On-disk sorting of byte arrays. Each byte array (entry) is composed of the following fields:
  *
  * <ul>
  *   <li>(two bytes) length of the following byte array,
@@ -53,6 +53,7 @@ public class OfflineSorter {
 
   /** Convenience constant for megabytes */
   public static final long MB = 1024 * 1024;
+
   /** Convenience constant for gigabytes */
   public static final long GB = MB * 1024;
 
@@ -86,7 +87,7 @@ public class OfflineSorter {
     private BufferSize(long bytes) {
       if (bytes > Integer.MAX_VALUE) {
         throw new IllegalArgumentException(
-            "Buffer too large for Java (" + (Integer.MAX_VALUE / MB) + "mb max): " + bytes);
+            "Buffer too large for Java (" + (Integer.MAX_VALUE / MB) + "MB max): " + bytes);
       }
 
       if (bytes < ABSOLUTE_MIN_SORT_BUFFER_SIZE) {
@@ -119,7 +120,7 @@ public class OfflineSorter {
       // by free mem (attempting to not grow the heap for this)
       long sortBufferByteSize = free / 2;
       final long minBufferSizeBytes = MIN_BUFFER_SIZE_MB * MB;
-      // lets see if we need/should to grow the heap
+      // let's see if we need/should to grow the heap
       if (sortBufferByteSize < minBufferSizeBytes
           || totalAvailableBytes > 10 * minBufferSizeBytes) {
         // there is enough mem for a reasonable buffer
@@ -130,7 +131,7 @@ public class OfflineSorter {
           sortBufferByteSize = Math.max(ABSOLUTE_MIN_SORT_BUFFER_SIZE, sortBufferByteSize);
         }
       }
-      return new BufferSize(Math.min((long) Integer.MAX_VALUE, sortBufferByteSize));
+      return new BufferSize(Math.min(Integer.MAX_VALUE, sortBufferByteSize));
     }
   }
 
@@ -138,18 +139,25 @@ public class OfflineSorter {
   public class SortInfo {
     /** number of temporary files created when merging partitions */
     public int tempMergeFiles;
+
     /** number of partition merges */
     public int mergeRounds;
+
     /** number of lines of data read */
-    public int lineCount;
+    public long lineCount;
+
     /** time spent merging sorted partitions (in milliseconds) */
     public final AtomicLong mergeTimeMS = new AtomicLong();
+
     /** time spent sorting data (in milliseconds) */
     public final AtomicLong sortTimeMS = new AtomicLong();
+
     /** total time spent (in milliseconds) */
     public long totalTimeMS;
+
     /** time spent in i/o read (in milliseconds) */
     public long readTimeMS;
+
     /** read buffer size (in bytes) */
     public final long bufferSize = ramBufferSize.bytes;
 
@@ -175,7 +183,7 @@ public class OfflineSorter {
   private final BufferSize ramBufferSize;
 
   SortInfo sortInfo;
-  private int maxTempFiles;
+  private final int maxTempFiles;
   private final Comparator<BytesRef> comparator;
 
   /** Default comparator: sorts in binary (codepoint) order */
@@ -283,8 +291,7 @@ public class OfflineSorter {
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
 
     boolean success = false;
-    try (ByteSequencesReader is =
-        getReader(dir.openChecksumInput(inputFileName, IOContext.READONCE), inputFileName)) {
+    try (ByteSequencesReader is = getReader(dir.openChecksumInput(inputFileName), inputFileName)) {
       while (true) {
         Partition part = readPartition(is);
         if (part.count == 0) {
@@ -367,7 +374,7 @@ public class OfflineSorter {
    */
   private void verifyChecksum(Throwable priorException, ByteSequencesReader reader)
       throws IOException {
-    try (ChecksumIndexInput in = dir.openChecksumInput(reader.name, IOContext.READONCE)) {
+    try (ChecksumIndexInput in = dir.openChecksumInput(reader.name)) {
       CodecUtil.checkFooter(in, priorException);
     }
   }
@@ -562,7 +569,7 @@ public class OfflineSorter {
     protected final String name;
     protected final ChecksumIndexInput in;
     protected final long end;
-    private final BytesRefBuilder ref = new BytesRefBuilder();
+    protected final BytesRefBuilder ref = new BytesRefBuilder();
 
     /** Constructs a ByteSequencesReader from the provided IndexInput */
     public ByteSequencesReader(ChecksumIndexInput in, String name) {
@@ -586,7 +593,7 @@ public class OfflineSorter {
       }
 
       short length = in.readShort();
-      ref.grow(length);
+      ref.growNoCopy(length);
       ref.setLength(length);
       in.readBytes(ref.bytes(), 0, length);
       return ref.get();
@@ -622,7 +629,7 @@ public class OfflineSorter {
     public Partition call() throws IOException {
       try (IndexOutput tempFile =
               dir.createTempOutput(tempFileNamePrefix, "sort", IOContext.DEFAULT);
-          ByteSequencesWriter out = getWriter(tempFile, part.buffer.size()); ) {
+          ByteSequencesWriter out = getWriter(tempFile, part.buffer.size())) {
 
         BytesRef spare;
 
@@ -680,7 +687,7 @@ public class OfflineSorter {
       }
 
       PriorityQueue<FileAndTop> queue =
-          new PriorityQueue<FileAndTop>(segmentsToMerge.size()) {
+          new PriorityQueue<>(segmentsToMerge.size()) {
             @Override
             protected boolean lessThan(FileAndTop a, FileAndTop b) {
               return comparator.compare(a.current, b.current) < 0;
@@ -701,9 +708,7 @@ public class OfflineSorter {
         // Open streams and read the top for each file
         for (int i = 0; i < segmentsToMerge.size(); i++) {
           Partition segment = getPartition(segmentsToMerge.get(i));
-          streams[i] =
-              getReader(
-                  dir.openChecksumInput(segment.fileName, IOContext.READONCE), segment.fileName);
+          streams[i] = getReader(dir.openChecksumInput(segment.fileName), segment.fileName);
 
           BytesRef item = null;
           try {

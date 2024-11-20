@@ -43,6 +43,13 @@ public final class DocIdSetBuilder {
    */
   public abstract static class BulkAdder {
     public abstract void add(int doc);
+
+    public void add(DocIdSetIterator iterator) throws IOException {
+      int docID;
+      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        add(docID);
+      }
+    }
   }
 
   private static class FixedBitSetAdder extends BulkAdder {
@@ -55,6 +62,11 @@ public final class DocIdSetBuilder {
     @Override
     public void add(int doc) {
       bitSet.set(doc);
+    }
+
+    @Override
+    public void add(DocIdSetIterator iterator) throws IOException {
+      bitSet.or(iterator);
     }
   }
 
@@ -150,12 +162,12 @@ public final class DocIdSetBuilder {
    * RoaringDocIdSet.Builder}.
    */
   public void add(DocIdSetIterator iter) throws IOException {
+    int cost = (int) Math.min(Integer.MAX_VALUE, iter.cost());
+    BulkAdder adder = grow(cost);
     if (bitSet != null) {
       bitSet.or(iter);
       return;
     }
-    int cost = (int) Math.min(Integer.MAX_VALUE, iter.cost());
-    BulkAdder adder = grow(cost);
     for (int i = 0; i < cost; ++i) {
       int doc = iter.nextDoc();
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {

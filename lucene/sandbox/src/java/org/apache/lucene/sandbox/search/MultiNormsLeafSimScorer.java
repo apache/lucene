@@ -16,22 +16,22 @@
  */
 package org.apache.lucene.sandbox.search;
 
-import static org.apache.lucene.sandbox.search.CombinedFieldQuery.FieldAndWeight;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.sandbox.search.CombinedFieldQuery.FieldAndWeight;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.SmallFloat;
 
 /**
- * Copy of {@link LeafSimScorer} that sums document's norms from multiple fields.
+ * Scorer that sums document's norms from multiple fields.
  *
  * <p>For all fields, norms must be encoded using {@link SmallFloat#intToByte4}. This scorer also
  * requires that either all fields or no fields have norms enabled. Having only some fields with
@@ -61,11 +61,17 @@ final class MultiNormsLeafSimScorer {
     if (needsScores) {
       final List<NumericDocValues> normsList = new ArrayList<>();
       final List<Float> weightList = new ArrayList<>();
+      final Set<String> duplicateCheckingSet = new HashSet<>();
       for (FieldAndWeight field : normFields) {
-        NumericDocValues norms = reader.getNormValues(field.field);
+        assert duplicateCheckingSet.add(field.field())
+            : "There is a duplicated field ["
+                + field.field()
+                + "] used to construct MultiNormsLeafSimScorer";
+
+        NumericDocValues norms = reader.getNormValues(field.field());
         if (norms != null) {
           normsList.add(norms);
-          weightList.add(field.weight);
+          weightList.add(field.weight());
         }
       }
 

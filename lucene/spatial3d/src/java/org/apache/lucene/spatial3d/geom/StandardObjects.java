@@ -19,6 +19,7 @@ package org.apache.lucene.spatial3d.geom;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 
 /**
  * Lookup tables for classes that can be serialized using a code.
@@ -29,8 +30,9 @@ class StandardObjects {
 
   /** Registry of standard classes to corresponding code */
   static Map<Class<?>, Integer> classRegsitry = new HashMap<>();
+
   /** Registry of codes to corresponding classes */
-  static Map<Integer, Class<?>> codeRegsitry = new HashMap<>();
+  static IntObjectHashMap<Class<?>> codeRegsitry = new IntObjectHashMap<>();
 
   static {
     classRegsitry.put(GeoPoint.class, 0);

@@ -22,6 +22,9 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * A spell checker whose sole function is to offer suggestions by combining multiple terms into one
@@ -127,7 +130,7 @@ public class WordBreakSpellChecker {
    * returned {@link CombineSuggestion} contains both a {@link SuggestWord} and also an array
    * detailing which passed-in terms were involved in creating this combination. The scores returned
    * are equal to the number of word combinations needed, also one less than the length of the array
-   * {@link CombineSuggestion#originalTermIndexes}. Generally, a suggestion with a lower score is
+   * {@link CombineSuggestion#originalTermIndexes()}. Generally, a suggestion with a lower score is
    * preferred over a higher score.
    *
    * <p>To prevent two adjacent terms from being combined (for instance, if one is mandatory and the
@@ -246,57 +249,84 @@ public class WordBreakSpellChecker {
       int totalEvaluations,
       BreakSuggestionSortMethod sortMethod)
       throws IOException {
-    String termText = term.text();
-    int termLength = termText.codePointCount(0, termText.length());
-    int useMinBreakWordLength = minBreakWordLength;
-    if (useMinBreakWordLength < 1) {
-      useMinBreakWordLength = 1;
-    }
+    final String termText = term.text();
+    final int termLength = termText.codePointCount(0, termText.length());
+    final int useMinBreakWordLength = Math.max(minBreakWordLength, 1);
+
     if (termLength < (useMinBreakWordLength * 2)) {
-      return 0;
+      return totalEvaluations;
     }
 
-    int thisTimeEvaluations = 0;
-    for (int i = useMinBreakWordLength; i <= (termLength - useMinBreakWordLength); i++) {
-      int end = termText.offsetByCodePoints(0, i);
-      String leftText = termText.substring(0, end);
-      String rightText = termText.substring(end);
-      SuggestWord leftWord = generateSuggestWord(ir, term.field(), leftText);
+    // Two phase breadth first search.
+    //
+    // Phase #1: checking for bi-sects of our termText, and recording the
+    // positions of valid leftText splits for later
 
+    final int maxSplitPosition = termLength - useMinBreakWordLength;
+    final BitSet validLeftSplitPositions = new FixedBitSet(termText.length());
+
+    for (int i = useMinBreakWordLength; i <= maxSplitPosition; i++) {
+      if (totalEvaluations >= maxEvaluations) {
+        return totalEvaluations;
+      }
+      totalEvaluations++;
+
+      final int end = termText.offsetByCodePoints(0, i);
+      final String leftText = termText.substring(0, end);
+      final String rightText = termText.substring(end);
+
+      final SuggestWord leftWord = generateSuggestWord(ir, term.field(), leftText);
       if (leftWord.freq >= useMinSuggestionFrequency) {
-        SuggestWord rightWord = generateSuggestWord(ir, term.field(), rightText);
+        validLeftSplitPositions.set(end);
+        final SuggestWord rightWord = generateSuggestWord(ir, term.field(), rightText);
         if (rightWord.freq >= useMinSuggestionFrequency) {
-          SuggestWordArrayWrapper suggestion =
-              new SuggestWordArrayWrapper(newSuggestion(prefix, leftWord, rightWord));
-          suggestions.offer(suggestion);
+          suggestions.offer(
+              new SuggestWordArrayWrapper(newSuggestion(prefix, leftWord, rightWord)));
           if (suggestions.size() > maxSuggestions) {
             suggestions.poll();
           }
         }
-        int newNumberBreaks = numberBreaks + 1;
-        if (newNumberBreaks <= maxChanges) {
-          int evaluations =
-              generateBreakUpSuggestions(
-                  new Term(term.field(), rightWord.string),
-                  ir,
-                  newNumberBreaks,
-                  maxSuggestions,
-                  useMinSuggestionFrequency,
-                  newPrefix(prefix, leftWord),
-                  suggestions,
-                  totalEvaluations,
-                  sortMethod);
-          totalEvaluations += evaluations;
-        }
       }
+    }
 
-      thisTimeEvaluations++;
-      totalEvaluations++;
+    // if we are about to exceed our maxChanges *OR* we have a full list of
+    // suggestions, we can return now.
+    //
+    // (because any subsequent suggestions are garunteed to have more changes
+    // then anything currently in the queue, and not be competitive)
+
+    final int newNumberBreaks = numberBreaks + 1;
+    if (totalEvaluations >= maxEvaluations
+        || newNumberBreaks > maxChanges
+        || suggestions.size() >= maxSuggestions) {
+      return totalEvaluations;
+    }
+
+    // Phase #2: recursing on the right side of any valid leftText terms
+    final BitSetIterator leftIter = new BitSetIterator(validLeftSplitPositions, 0);
+    for (int pos = leftIter.nextDoc();
+        pos != BitSetIterator.NO_MORE_DOCS;
+        pos = leftIter.nextDoc()) {
+      final String leftText = termText.substring(0, pos);
+      final String rightText = termText.substring(pos);
+      final SuggestWord leftWord = generateSuggestWord(ir, term.field(), leftText);
+      totalEvaluations =
+          generateBreakUpSuggestions(
+              new Term(term.field(), rightText),
+              ir,
+              newNumberBreaks,
+              maxSuggestions,
+              useMinSuggestionFrequency,
+              newPrefix(prefix, leftWord),
+              suggestions,
+              totalEvaluations,
+              sortMethod);
       if (totalEvaluations >= maxEvaluations) {
         break;
       }
     }
-    return thisTimeEvaluations;
+
+    return totalEvaluations;
   }
 
   private SuggestWord[] newPrefix(SuggestWord[] oldPrefix, SuggestWord append) {
@@ -461,8 +491,8 @@ public class WordBreakSpellChecker {
       if (o1.numCombinations != o2.numCombinations) {
         return o2.numCombinations - o1.numCombinations;
       }
-      if (o1.combineSuggestion.suggestion.freq != o2.combineSuggestion.suggestion.freq) {
-        return o1.combineSuggestion.suggestion.freq - o2.combineSuggestion.suggestion.freq;
+      if (o1.combineSuggestion.suggestion().freq != o2.combineSuggestion.suggestion().freq) {
+        return o1.combineSuggestion.suggestion().freq - o2.combineSuggestion.suggestion().freq;
       }
       return 0;
     }
@@ -486,13 +516,6 @@ public class WordBreakSpellChecker {
     }
   }
 
-  private static class CombineSuggestionWrapper {
-    final CombineSuggestion combineSuggestion;
-    final int numCombinations;
-
-    CombineSuggestionWrapper(CombineSuggestion combineSuggestion, int numCombinations) {
-      this.combineSuggestion = combineSuggestion;
-      this.numCombinations = numCombinations;
-    }
-  }
+  private record CombineSuggestionWrapper(
+      CombineSuggestion combineSuggestion, int numCombinations) {}
 }

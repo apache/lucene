@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
@@ -31,6 +30,8 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -56,8 +57,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   /** Create a new CompoundFileDirectory. */
   // TODO: we should just pre-strip "entries" and append segment name up-front like simpletext?
   // this need not be a "general purpose" directory anymore (it only writes index files)
-  public Lucene90CompoundReader(Directory directory, SegmentInfo si, IOContext context)
-      throws IOException {
+  public Lucene90CompoundReader(Directory directory, SegmentInfo si) throws IOException {
     this.directory = directory;
     this.segmentName = si.name;
     String dataFileName =
@@ -75,7 +75,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
                 .orElseGet(() -> CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, ""))
             + CodecUtil.footerLength();
 
-    handle = directory.openInput(dataFileName, context);
+    handle = directory.openInput(dataFileName, IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL));
     try {
       CodecUtil.checkIndexHeader(
           handle, Lucene90CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
@@ -106,8 +106,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   private Map<String, FileEntry> readEntries(
       byte[] segmentID, Directory dir, String entriesFileName) throws IOException {
     Map<String, FileEntry> mapping = null;
-    try (ChecksumIndexInput entriesStream =
-        dir.openChecksumInput(entriesFileName, IOContext.READONCE)) {
+    try (ChecksumIndexInput entriesStream = dir.openChecksumInput(entriesFileName)) {
       Throwable priorE = null;
       try {
         version =
@@ -132,7 +131,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
 
   private Map<String, FileEntry> readMapping(IndexInput entriesStream) throws IOException {
     final int numEntries = entriesStream.readVInt();
-    Map<String, FileEntry> mapping = new HashMap<>(numEntries);
+    Map<String, FileEntry> mapping = CollectionUtil.newHashMap(numEntries);
     for (int i = 0; i < numEntries; i++) {
       final FileEntry fileEntry = new FileEntry();
       final String id = entriesStream.readString();
@@ -170,7 +169,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    return handle.slice(name, entry.offset, entry.length);
+    return handle.slice(name, entry.offset, entry.length, context.readAdvice());
   }
 
   /** Returns an array of strings, one for each file in the directory. */

@@ -17,7 +17,6 @@
 package org.apache.lucene.search.highlight;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +28,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.memory.MemoryIndex;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * {@link Scorer} implementation which scores text fragments by the number of unique query terms
@@ -53,7 +53,9 @@ public class QueryScorer implements Scorer {
   private int maxCharsToAnalyze;
   private boolean usePayloads = false;
 
-  /** @param query Query to use for highlighting */
+  /**
+   * @param query Query to use for highlighting
+   */
   public QueryScorer(Query query) {
     init(query, null, null, true);
   }
@@ -85,24 +87,28 @@ public class QueryScorer implements Scorer {
     init(query, field, reader, true);
   }
 
-  /** @param defaultField - The default field for queries with the field name unspecified */
+  /**
+   * @param defaultField - The default field for queries with the field name unspecified
+   */
   public QueryScorer(Query query, String field, String defaultField) {
     this.defaultField = defaultField;
     init(query, field, null, true);
   }
 
-  /** @param weightedTerms an array of pre-created {@link WeightedSpanTerm}s */
+  /**
+   * @param weightedTerms an array of pre-created {@link WeightedSpanTerm}s
+   */
   public QueryScorer(WeightedSpanTerm[] weightedTerms) {
-    this.fieldWeightedSpanTerms = new HashMap<>(weightedTerms.length);
+    this.fieldWeightedSpanTerms = CollectionUtil.newHashMap(weightedTerms.length);
 
-    for (int i = 0; i < weightedTerms.length; i++) {
-      WeightedSpanTerm existingTerm = fieldWeightedSpanTerms.get(weightedTerms[i].term);
+    for (WeightedSpanTerm weightedTerm : weightedTerms) {
+      WeightedSpanTerm existingTerm = fieldWeightedSpanTerms.get(weightedTerm.term);
 
-      if ((existingTerm == null) || (existingTerm.weight < weightedTerms[i].weight)) {
+      if ((existingTerm == null) || (existingTerm.weight < weightedTerm.weight)) {
         // if a term is defined more than once, always use the highest
         // scoring weight
-        fieldWeightedSpanTerms.put(weightedTerms[i].term, weightedTerms[i]);
-        maxTermWeight = Math.max(maxTermWeight, weightedTerms[i].getWeight());
+        fieldWeightedSpanTerms.put(weightedTerm.term, weightedTerm);
+        maxTermWeight = Math.max(maxTermWeight, weightedTerm.getWeight());
       }
     }
     skipInitExtractor = true;
@@ -150,9 +156,8 @@ public class QueryScorer implements Scorer {
     float score = weightedSpanTerm.getWeight();
 
     // found a query term - is it unique in this doc?
-    if (!foundTerms.contains(termText)) {
+    if (foundTerms.add(termText)) {
       totalScore += score;
-      foundTerms.add(termText);
     }
 
     return score;
@@ -228,7 +233,9 @@ public class QueryScorer implements Scorer {
     totalScore = 0;
   }
 
-  /** @return true if multi-term queries should be expanded */
+  /**
+   * @return true if multi-term queries should be expanded
+   */
   public boolean isExpandMultiTermQuery() {
     return expandMultiTermQuery;
   }

@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis;
 
 import java.io.IOException;
+import org.apache.lucene.util.Unwrappable;
 
 /**
  * A TokenFilter is a TokenStream whose input is another TokenStream.
@@ -25,7 +26,7 @@ import java.io.IOException;
  *
  * @see TokenStream
  */
-public abstract class TokenFilter extends TokenStream {
+public abstract class TokenFilter extends TokenStream implements Unwrappable<TokenStream> {
   /** The source of tokens for this filter. */
   protected final TokenStream input;
 
@@ -66,5 +67,10 @@ public abstract class TokenFilter extends TokenStream {
   @Override
   public void reset() throws IOException {
     input.reset();
+  }
+
+  @Override
+  public TokenStream unwrap() {
+    return input;
   }
 }

@@ -20,40 +20,15 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDisjunctionScoreBlockBoundaryPropagator extends LuceneTestCase {
-
-  private static class FakeWeight extends Weight {
-
-    FakeWeight() {
-      super(new MatchNoDocsQuery());
-    }
-
-    @Override
-    public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-      return null;
-    }
-
-    @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      return null;
-    }
-
-    @Override
-    public boolean isCacheable(LeafReaderContext ctx) {
-      return false;
-    }
-  }
-
   private static class FakeScorer extends Scorer {
 
     final int boundary;
     final float maxScore;
 
     FakeScorer(int boundary, float maxScore) throws IOException {
-      super(new FakeWeight());
       this.boundary = boundary;
       this.maxScore = maxScore;
     }

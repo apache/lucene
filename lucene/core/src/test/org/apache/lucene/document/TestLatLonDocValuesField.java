@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.document;
 
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for LatLonDocValuesField */
 public class TestLatLonDocValuesField extends LuceneTestCase {

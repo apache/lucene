@@ -32,10 +32,11 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -56,10 +57,13 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
   /** Extension of stored fields file */
   public static final String FIELDS_EXTENSION = "fdt";
+
   /** Extension of stored fields index */
   public static final String INDEX_EXTENSION = "fdx";
+
   /** Extension of stored fields meta */
   public static final String META_EXTENSION = "fdm";
+
   /** Codec name for the index. */
   public static final String INDEX_CODEC_NAME = "Lucene90FieldsIndex";
 
@@ -242,26 +246,21 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       lengths[i] = endOffsets[i] - endOffsets[i - 1];
       assert lengths[i] >= 0;
     }
-    final boolean sliced = bufferedDocs.size() >= 2 * chunkSize;
+    final boolean sliced = bufferedDocs.size() >= 2L * chunkSize;
     final boolean dirtyChunk = force;
     writeHeader(docBase, numBufferedDocs, numStoredFields, lengths, sliced, dirtyChunk);
-
+    ByteBuffersDataInput bytebuffers = bufferedDocs.toDataInput();
     // compress stored fields to fieldsStream.
-    //
-    // TODO: do we need to slice it since we already have the slices in the buffer? Perhaps
-    // we should use max-block-bits restriction on the buffer itself, then we won't have to check it
-    // here.
-    byte[] content = bufferedDocs.toArrayCopy();
-    bufferedDocs.reset();
-
     if (sliced) {
-      // big chunk, slice it
-      for (int compressed = 0; compressed < content.length; compressed += chunkSize) {
-        compressor.compress(
-            content, compressed, Math.min(chunkSize, content.length - compressed), fieldsStream);
+      // big chunk, slice it, using ByteBuffersDataInput ignore memory copy
+      final int capacity = (int) bytebuffers.length();
+      for (int compressed = 0; compressed < capacity; compressed += chunkSize) {
+        int l = Math.min(chunkSize, capacity - compressed);
+        ByteBuffersDataInput bbdi = bytebuffers.slice(compressed, l);
+        compressor.compress(bbdi, fieldsStream);
       }
     } else {
-      compressor.compress(content, 0, content.length, fieldsStream);
+      compressor.compress(bytebuffers, fieldsStream);
     }
 
     // reset
@@ -271,67 +270,61 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   }
 
   @Override
-  public void writeField(FieldInfo info, IndexableField field) throws IOException {
-
+  public void writeField(FieldInfo info, int value) throws IOException {
     ++numStoredFieldsInDoc;
-
-    int bits = 0;
-    final BytesRef bytes;
-    final String string;
-
-    Number number = field.numericValue();
-    if (number != null) {
-      if (number instanceof Byte || number instanceof Short || number instanceof Integer) {
-        bits = NUMERIC_INT;
-      } else if (number instanceof Long) {
-        bits = NUMERIC_LONG;
-      } else if (number instanceof Float) {
-        bits = NUMERIC_FLOAT;
-      } else if (number instanceof Double) {
-        bits = NUMERIC_DOUBLE;
-      } else {
-        throw new IllegalArgumentException("cannot store numeric type " + number.getClass());
-      }
-      string = null;
-      bytes = null;
-    } else {
-      bytes = field.binaryValue();
-      if (bytes != null) {
-        bits = BYTE_ARR;
-        string = null;
-      } else {
-        bits = STRING;
-        string = field.stringValue();
-        if (string == null) {
-          throw new IllegalArgumentException(
-              "field "
-                  + field.name()
-                  + " is stored but does not have binaryValue, stringValue nor numericValue");
-        }
-      }
-    }
-
-    final long infoAndBits = (((long) info.number) << TYPE_BITS) | bits;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_INT;
     bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeZInt(value);
+  }
 
-    if (bytes != null) {
-      bufferedDocs.writeVInt(bytes.length);
-      bufferedDocs.writeBytes(bytes.bytes, bytes.offset, bytes.length);
-    } else if (string != null) {
-      bufferedDocs.writeString(string);
-    } else {
-      if (number instanceof Byte || number instanceof Short || number instanceof Integer) {
-        bufferedDocs.writeZInt(number.intValue());
-      } else if (number instanceof Long) {
-        writeTLong(bufferedDocs, number.longValue());
-      } else if (number instanceof Float) {
-        writeZFloat(bufferedDocs, number.floatValue());
-      } else if (number instanceof Double) {
-        writeZDouble(bufferedDocs, number.doubleValue());
-      } else {
-        throw new AssertionError("Cannot get here");
-      }
-    }
+  @Override
+  public void writeField(FieldInfo info, long value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_LONG;
+    bufferedDocs.writeVLong(infoAndBits);
+    writeTLong(bufferedDocs, value);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, float value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_FLOAT;
+    bufferedDocs.writeVLong(infoAndBits);
+    writeZFloat(bufferedDocs, value);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, double value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | NUMERIC_DOUBLE;
+    bufferedDocs.writeVLong(infoAndBits);
+    writeZDouble(bufferedDocs, value);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, BytesRef value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | BYTE_ARR;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeVInt(value.length);
+    bufferedDocs.writeBytes(value.bytes, value.offset, value.length);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, DataInput value, int length) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | BYTE_ARR;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeVInt(length);
+    bufferedDocs.copyBytes(value, length);
+  }
+
+  @Override
+  public void writeField(FieldInfo info, String value) throws IOException {
+    ++numStoredFieldsInDoc;
+    final long infoAndBits = (((long) info.number) << TYPE_BITS) | STRING;
+    bufferedDocs.writeVLong(infoAndBits);
+    bufferedDocs.writeString(value);
   }
 
   // -0 isn't compressed.
@@ -517,7 +510,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   private void copyOneDoc(Lucene90CompressingStoredFieldsReader reader, int docID)
       throws IOException {
     assert reader.getVersion() == VERSION_CURRENT;
-    SerializedDocument doc = reader.document(docID);
+    SerializedDocument doc = reader.serializedDocument(docID);
     startDocument();
     bufferedDocs.copyBytes(doc.in, doc.length);
     numStoredFieldsInDoc = doc.numStoredFields;
@@ -645,7 +638,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       } else if (sub.mergeStrategy == MergeStrategy.VISITOR) {
         assert visitors[sub.readerIndex] != null;
         startDocument();
-        reader.visitDocument(sub.docID, visitors[sub.readerIndex]);
+        reader.document(sub.docID, visitors[sub.readerIndex]);
         finishDocument();
         ++docCount;
         sub = docIDMerger.next();
@@ -733,7 +726,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   @Override
   public long ramBytesUsed() {
     return bufferedDocs.ramBytesUsed()
-        + numStoredFields.length * Integer.BYTES
-        + endOffsets.length * Integer.BYTES;
+        + numStoredFields.length * (long) Integer.BYTES
+        + endOffsets.length * (long) Integer.BYTES;
   }
 }

@@ -19,16 +19,19 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.HashMap;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongValues;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.RamUsageTester;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.packed.PackedInts;
+import org.apache.lucene.util.packed.PackedLongValues;
 
 public class TestOrdinalMap extends LuceneTestCase {
 
@@ -51,7 +54,9 @@ public class TestOrdinalMap extends LuceneTestCase {
             long shallowSize,
             java.util.Map<Field, Object> fieldValues,
             java.util.Collection<Object> queue) {
-          if (o == LongValues.ZEROES || o == LongValues.IDENTITY) {
+          if (o == LongValues.ZEROES
+              || o == LongValues.IDENTITY
+              || o == PackedInts.NullReader.forCount(PackedLongValues.DEFAULT_PAGE_SIZE)) {
             return 0L;
           }
           if (o instanceof OrdinalMap) {
@@ -93,12 +98,12 @@ public class TestOrdinalMap extends LuceneTestCase {
     SortedDocValues sdv = MultiDocValues.getSortedValues(r, "sdv");
     if (sdv instanceof MultiDocValues.MultiSortedDocValues) {
       OrdinalMap map = ((MultiDocValues.MultiSortedDocValues) sdv).mapping;
-      assertEquals(RamUsageTester.sizeOf(map, ORDINAL_MAP_ACCUMULATOR), map.ramBytesUsed());
+      assertEquals(RamUsageTester.ramUsed(map, ORDINAL_MAP_ACCUMULATOR), map.ramBytesUsed());
     }
     SortedSetDocValues ssdv = MultiDocValues.getSortedSetValues(r, "ssdv");
     if (ssdv instanceof MultiDocValues.MultiSortedSetDocValues) {
       OrdinalMap map = ((MultiDocValues.MultiSortedSetDocValues) ssdv).mapping;
-      assertEquals(RamUsageTester.sizeOf(map, ORDINAL_MAP_ACCUMULATOR), map.ramBytesUsed());
+      assertEquals(RamUsageTester.ramUsed(map, ORDINAL_MAP_ACCUMULATOR), map.ramBytesUsed());
     }
     iw.close();
     r.close();
@@ -134,7 +139,7 @@ public class TestOrdinalMap extends LuceneTestCase {
     }
     iw.commit();
 
-    DirectoryReader r = iw.getReader();
+    DirectoryReader r = DirectoryReader.open(iw);
     SortedDocValues sdv = MultiDocValues.getSortedValues(r, "sdv");
     assertNotNull(sdv);
     assertTrue(sdv instanceof MultiDocValues.MultiSortedDocValues);

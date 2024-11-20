@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
@@ -63,7 +65,8 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
@@ -158,16 +161,16 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
       };
 
   @Test
-  public void testTermQueryWithOffsets() throws IOException {
+  public void testTermQueryWithOffsets() throws Exception {
     checkTermQuery(FLD_TEXT_POS_OFFS);
   }
 
   @Test
-  public void testTermQueryWithPositions() throws IOException {
+  public void testTermQueryWithPositions() throws Exception {
     checkTermQuery(FLD_TEXT_POS);
   }
 
-  private void checkTermQuery(String field) throws IOException {
+  private void checkTermQuery(String field) throws Exception {
     new IndexBuilder(this::toField)
         .doc(field, "foo bar baz")
         .doc(field, "bar foo baz")
@@ -176,7 +179,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, new TermQuery(new Term(field, "foo"))),
                   containsInAnyOrder(
                       fmt("0: (%s: '>foo< bar baz')", field),
@@ -186,16 +189,16 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
   }
 
   @Test
-  public void testBooleanMultifieldQueryWithOffsets() throws IOException {
+  public void testBooleanMultifieldQueryWithOffsets() throws Exception {
     checkBooleanMultifieldQuery(FLD_TEXT_POS_OFFS);
   }
 
   @Test
-  public void testBooleanMultifieldQueryWithPositions() throws IOException {
+  public void testBooleanMultifieldQueryWithPositions() throws Exception {
     checkBooleanMultifieldQuery(FLD_TEXT_POS);
   }
 
-  private void checkBooleanMultifieldQuery(String field) throws IOException {
+  private void checkBooleanMultifieldQuery(String field) throws Exception {
     Query query =
         new BooleanQuery.Builder()
             .add(new PhraseQuery(1, field, "foo", "baz"), BooleanClause.Occur.SHOULD)
@@ -210,7 +213,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, query),
                   containsInAnyOrder(
                       fmt("0: (%s: '>foo bar baz< abc')", field),
@@ -219,16 +222,16 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
   }
 
   @Test
-  public void testVariousQueryTypesWithOffsets() throws IOException {
+  public void testVariousQueryTypesWithOffsets() throws Exception {
     checkVariousQueryTypes(FLD_TEXT_POS_OFFS);
   }
 
   @Test
-  public void testVariousQueryTypesWithPositions() throws IOException {
+  public void testVariousQueryTypesWithPositions() throws Exception {
     checkVariousQueryTypes(FLD_TEXT_POS);
   }
 
-  private void checkVariousQueryTypes(String field) throws IOException {
+  private void checkVariousQueryTypes(String field) throws Exception {
     new IndexBuilder(this::toField)
         .doc(field, "foo bar baz abc")
         .doc(field, "bar foo baz def")
@@ -236,46 +239,46 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("foo baz", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: '>foo< bar >baz< abc')", field),
                       fmt("1: (%s: 'bar >foo< >baz< def')", field),
                       fmt("2: (%s: 'bar >baz< >foo< xyz')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("foo OR xyz", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: '>foo< bar baz abc')", field),
                       fmt("1: (%s: 'bar >foo< baz def')", field),
                       fmt("2: (%s: 'bar baz >foo< >xyz<')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("bas~2", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: 'foo >bar< >baz< >abc<')", field),
                       fmt("1: (%s: '>bar< foo >baz< def')", field),
                       fmt("2: (%s: '>bar< >baz< foo xyz')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("\"foo bar\"", field)),
                   containsInAnyOrder((fmt("0: (%s: '>foo bar< baz abc')", field))));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("\"foo bar\"~3", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: '>foo bar< baz abc')", field),
                       fmt("1: (%s: '>bar foo< baz def')", field),
                       fmt("2: (%s: '>bar baz foo< xyz')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("ba*", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: 'foo >bar< >baz< abc')", field),
                       fmt("1: (%s: '>bar< foo >baz< def')", field),
                       fmt("2: (%s: '>bar< >baz< foo xyz')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("[bar TO bas]", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: 'foo >bar< baz abc')", field),
@@ -284,14 +287,15 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
 
               // Note how document '2' has 'bar' that isn't highlighted (because this
               // document is excluded in the first clause).
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("([bar TO baz] -xyz) OR baz", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: 'foo >bar< >>baz<< abc')", field),
                       fmt("1: (%s: '>bar< foo >>baz<< def')", field),
                       fmt("2: (%s: 'bar >baz< foo xyz')", field)));
 
-              assertThat(highlights(reader, new MatchAllDocsQuery()), Matchers.hasSize(0));
+              MatcherAssert.assertThat(
+                  highlights(reader, new MatchAllDocsQuery()), Matchers.hasSize(0));
             });
 
     new IndexBuilder(this::toField)
@@ -301,7 +305,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("[bar TO baz] -bar", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: 'foo >baz< foo')", field),
@@ -310,14 +314,14 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
   }
 
   @Test
-  public void testIntervalQueryHighlightCrossingMultivalueBoundary() throws IOException {
+  public void testIntervalQueryHighlightCrossingMultivalueBoundary() throws Exception {
     String field = FLD_TEXT_POS;
     new IndexBuilder(this::toField)
         .doc(field, "foo", "bar")
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(
@@ -328,7 +332,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
   }
 
   @Test
-  public void testIntervalQueries() throws IOException {
+  public void testIntervalQueries() throws Exception {
     String field = FLD_TEXT_POS_OFFS;
 
     new IndexBuilder(this::toField)
@@ -338,7 +342,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(
@@ -349,7 +353,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                               Intervals.term("baz")))),
                   containsInAnyOrder(fmt("1: (field_text_offs: '>bas baz foo<')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(
@@ -359,7 +363,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                               Intervals.unordered(Intervals.term("foo"), Intervals.term("bar"))))),
                   containsInAnyOrder(fmt("2: (field_text_offs: '>bar baz foo< xyz')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(
@@ -369,7 +373,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                               Intervals.term("foo")))),
                   containsInAnyOrder(fmt("2: (field_text_offs: '>bar baz foo< xyz')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(
@@ -377,47 +381,43 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                           Intervals.containedBy(
                               Intervals.term("foo"),
                               Intervals.unordered(Intervals.term("foo"), Intervals.term("bar"))))),
-                  containsInAnyOrder(fmt("2: (field_text_offs: '>bar baz foo< xyz')", field)));
+                  containsInAnyOrder(fmt("2: (field_text_offs: 'bar baz >foo< xyz')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(
                           field,
                           Intervals.overlapping(
-                              Intervals.unordered(Intervals.term("foo"), Intervals.term("bar")),
-                              Intervals.term("foo")))),
-                  containsInAnyOrder(fmt("2: (field_text_offs: '>bar baz foo< xyz')", field)));
+                              Intervals.term("foo"),
+                              Intervals.unordered(Intervals.term("foo"), Intervals.term("bar"))))),
+                  containsInAnyOrder(fmt("2: (field_text_offs: 'bar baz >foo< xyz')", field)));
             });
   }
 
   @Test
-  public void testDegenerateIntervalsWithPositions() throws IOException {
+  public void testDegenerateIntervalsWithPositions() throws Exception {
     testDegenerateIntervals(FLD_TEXT_POS);
   }
 
   @Test
-  @AwaitsFix(
-      bugUrl =
-          "https://issues.apache.org/jira/browse/LUCENE-9634: "
-              + "Highlighting of degenerate spans on fields with offsets doesn't work properly")
-  public void testDegenerateIntervalsWithOffsets() throws IOException {
+  public void testDegenerateIntervalsWithOffsets() throws Exception {
     testDegenerateIntervals(FLD_TEXT_POS_OFFS);
   }
 
-  public void testDegenerateIntervals(String field) throws IOException {
+  public void testDegenerateIntervals(String field) throws Exception {
     new IndexBuilder(this::toField)
         .doc(field, fmt("foo %s bar", STOPWORD1))
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(field, Intervals.extend(Intervals.term("bar"), 1, 3))),
                   containsInAnyOrder(fmt("0: (%s: 'foo %s >bar<')", field, STOPWORD1)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(field, Intervals.extend(Intervals.term("bar"), 5, 100))),
@@ -426,16 +426,16 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
   }
 
   @Test
-  public void testMultivaluedFieldsWithOffsets() throws IOException {
+  public void testMultivaluedFieldsWithOffsets() throws Exception {
     checkMultivaluedFields(FLD_TEXT_POS_OFFS);
   }
 
   @Test
-  public void testMultivaluedFieldsWithPositions() throws IOException {
+  public void testMultivaluedFieldsWithPositions() throws Exception {
     checkMultivaluedFields(FLD_TEXT_POS);
   }
 
-  public void checkMultivaluedFields(String field) throws IOException {
+  public void checkMultivaluedFields(String field) throws Exception {
     new IndexBuilder(this::toField)
         .doc(field, "foo bar", "baz abc", "bad baz")
         .doc(field, "bar foo", "baz def")
@@ -443,7 +443,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply("baz", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: '>baz< abc | bad >baz<')", field),
@@ -453,7 +453,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
   }
 
   @Test
-  public void testMultiFieldHighlights() throws IOException {
+  public void testMultiFieldHighlights() throws Exception {
     for (String[] fieldPairs :
         new String[][] {
           {FLD_TEXT_POS_OFFS1, FLD_TEXT_POS_OFFS2},
@@ -477,7 +477,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                         .sorted()
                         .collect(Collectors.joining(""));
 
-                assertThat(
+                MatcherAssert.assertThat(
                     highlights(
                         reader,
                         stdQueryParser.apply(field1 + ":baz" + " OR " + field2 + ":bar", field1)),
@@ -491,7 +491,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
    * org.apache.lucene.search.BooleanClause.Occur#SHOULD} clauses. Check that this isn't the case.
    */
   @Test
-  public void testNoRewrite() throws IOException {
+  public void testNoRewrite() throws Exception {
     String field1 = FLD_TEXT_POS_OFFS1;
     String field2 = FLD_TEXT_POS_OFFS2;
 
@@ -510,13 +510,13 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             analyzer,
             reader -> {
               String expected = fmt("0: (%s: '>0100<')(%s: 'loo >bar<')", field1, field2);
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       stdQueryParser.apply(fmt("+%s:01* OR %s:bar", field1, field2), field1)),
                   containsInAnyOrder(expected));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       stdQueryParser.apply(fmt("+%s:01* AND %s:bar", field1, field2), field1)),
@@ -525,22 +525,22 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
   }
 
   @Test
-  public void testNestedQueryHitsWithOffsets() throws IOException {
+  public void testNestedQueryHitsWithOffsets() throws Exception {
     checkNestedQueryHits(FLD_TEXT_POS_OFFS);
   }
 
   @Test
-  public void testNestedQueryHitsWithPositions() throws IOException {
+  public void testNestedQueryHitsWithPositions() throws Exception {
     checkNestedQueryHits(FLD_TEXT_POS);
   }
 
-  public void checkNestedQueryHits(String field) throws IOException {
+  public void checkNestedQueryHits(String field) throws Exception {
     new IndexBuilder(this::toField)
         .doc(field, "foo bar baz abc")
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new BooleanQuery.Builder()
@@ -549,7 +549,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                           .build()),
                   containsInAnyOrder(fmt("0: (%s: '>foo >bar< baz< abc')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new BooleanQuery.Builder()
@@ -571,7 +571,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     checkGraphQuery(FLD_TEXT_SYNONYMS_POS);
   }
 
-  private void checkGraphQuery(String field) throws IOException {
+  private void checkGraphQuery(String field) throws Exception {
     new IndexBuilder(this::toField)
         .doc(field, "foo bar baz")
         .doc(field, "bar foo baz")
@@ -580,25 +580,25 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, new TermQuery(new Term(field, "syn1"))),
                   containsInAnyOrder(fmt("0: (%s: '>foo bar< baz')", field)));
 
               // [syn2 syn3] = baz
               // so both these queries highlight baz.
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, new TermQuery(new Term(field, "syn3"))),
                   containsInAnyOrder(
                       fmt("0: (%s: 'foo bar >baz<')", field),
                       fmt("1: (%s: 'bar foo >baz<')", field),
                       fmt("2: (%s: 'bar >baz< foo')", field)));
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply(field + ":\"syn2 syn3\"", field)),
                   containsInAnyOrder(
                       fmt("0: (%s: 'foo bar >baz<')", field),
                       fmt("1: (%s: 'bar foo >baz<')", field),
                       fmt("2: (%s: 'bar >baz< foo')", field)));
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, stdQueryParser.apply(field + ":\"foo syn2 syn3\"", field)),
                   containsInAnyOrder(fmt("1: (%s: 'bar >foo baz<')", field)));
             });
@@ -614,7 +614,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     checkSpanQueries(FLD_TEXT_POS);
   }
 
-  private void checkSpanQueries(String field) throws IOException {
+  private void checkSpanQueries(String field) throws Exception {
     new IndexBuilder(this::toField)
         .doc(field, "foo bar baz")
         .doc(field, "bar foo baz")
@@ -623,7 +623,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       SpanNearQuery.newOrderedNearQuery(field)
@@ -632,7 +632,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                           .build()),
                   containsInAnyOrder(fmt("1: (%s: '>bar foo< baz')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       SpanNearQuery.newOrderedNearQuery(field)
@@ -642,7 +642,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                           .build()),
                   containsInAnyOrder(fmt("2: (%s: '>bar baz foo<')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       SpanNearQuery.newUnorderedNearQuery(field)
@@ -653,7 +653,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                       fmt("0: (%s: '>foo bar< baz')", field),
                       fmt("1: (%s: '>bar foo< baz')", field)));
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       SpanNearQuery.newUnorderedNearQuery(field)
@@ -694,7 +694,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                     }
                   };
 
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(customSuppliers, reader, new TermQuery(new Term(field, "bar"))),
                   containsInAnyOrder(
                       fmt("0: (%s: '>foo bar<')", field),
@@ -721,7 +721,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(reader, new TermQuery(new Term(field, "bar"))),
                   containsInAnyOrder(
                       fmt("0: (%s: 'foo >bar<')", field),
@@ -748,10 +748,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     AsciiMatchRangeHighlighter formatter = new AsciiMatchRangeHighlighter(analyzer);
 
     MatchRegionRetriever.MatchOffsetsConsumer highlightCollector =
-        (docId, leafReader, leafDocId, fieldHighlights) -> {
+        (docId, leafReader, leafDocId, fieldValueProvider, fieldHighlights) -> {
           StringBuilder sb = new StringBuilder();
 
-          Document document = leafReader.document(leafDocId);
+          Document document = leafReader.storedFields().document(leafDocId);
           formatter
               .apply(document, new TreeMap<>(fieldHighlights))
               .forEach(
@@ -767,9 +767,23 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
           }
         };
 
+    Predicate<String> fieldsToLoadUnconditionally = fieldName -> false;
+    Predicate<String> fieldsToLoadIfWithHits = fieldName -> true;
     MatchRegionRetriever highlighter =
-        new MatchRegionRetriever(searcher, rewrittenQuery, offsetsStrategySupplier);
-    highlighter.highlightDocuments(topDocs, highlightCollector);
+        new MatchRegionRetriever(
+            searcher,
+            rewrittenQuery,
+            offsetsStrategySupplier,
+            fieldsToLoadUnconditionally,
+            fieldsToLoadIfWithHits);
+    int maxBlocksProcessedInParallel = RandomizedTest.randomIntBetween(1, 5);
+    int maxBlockSize = RandomizedTest.randomFrom(new int[] {2, 10, 100});
+    highlighter.highlightDocuments(
+        Arrays.stream(topDocs.scoreDocs).mapToInt(scoreDoc -> scoreDoc.doc).sorted().iterator(),
+        highlightCollector,
+        field -> Integer.MAX_VALUE,
+        maxBlockSize,
+        maxBlocksProcessedInParallel);
 
     return highlights;
   }

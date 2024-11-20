@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.simpletext;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseFieldInfoFormatTestCase;
+import org.apache.lucene.tests.index.BaseFieldInfoFormatTestCase;
 
 /** Tests SimpleTextFieldInfoFormat */
 public class TestSimpleTextFieldInfoFormat extends BaseFieldInfoFormatTestCase {

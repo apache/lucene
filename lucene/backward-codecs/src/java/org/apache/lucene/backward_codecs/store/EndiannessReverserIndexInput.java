@@ -17,34 +17,15 @@
 package org.apache.lucene.backward_codecs.store;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
+import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 
 /** A {@link IndexInput} wrapper that changes the endianness of the provided index input. */
-final class EndiannessReverserIndexInput extends IndexInput {
-
-  private final IndexInput in;
+final class EndiannessReverserIndexInput extends FilterIndexInput {
 
   EndiannessReverserIndexInput(IndexInput in) {
-    super("Endianness reverser Index Input wrapper");
-    this.in = in;
-  }
-
-  @Override
-  public byte readByte() throws IOException {
-    return in.readByte();
-  }
-
-  @Override
-  public void readBytes(byte[] b, int offset, int len) throws IOException {
-    in.readBytes(b, offset, len);
-  }
-
-  @Override
-  public void readBytes(byte[] b, int offset, int len, boolean useBuffer) throws IOException {
-    in.readBytes(b, offset, len, useBuffer);
+    super("Endianness reverser Index Input wrapper", in);
   }
 
   @Override
@@ -58,45 +39,33 @@ final class EndiannessReverserIndexInput extends IndexInput {
   }
 
   @Override
-  public int readVInt() throws IOException {
-    return in.readVInt();
-  }
-
-  @Override
-  public int readZInt() throws IOException {
-    return in.readZInt();
-  }
-
-  @Override
   public long readLong() throws IOException {
     return Long.reverseBytes(in.readLong());
   }
 
   @Override
   public void readLongs(long[] dst, int offset, int length) throws IOException {
-    // used to be called readLELongs
     in.readLongs(dst, offset, length);
+    for (int i = 0; i < length; ++i) {
+      dst[offset + i] = Long.reverseBytes(dst[offset + i]);
+    }
+  }
+
+  @Override
+  public void readInts(int[] dst, int offset, int length) throws IOException {
+    in.readInts(dst, offset, length);
+    for (int i = 0; i < length; ++i) {
+      dst[offset + i] = Integer.reverseBytes(dst[offset + i]);
+    }
   }
 
   @Override
   public void readFloats(float[] dst, int offset, int length) throws IOException {
-    // used to be called readLEFloats
     in.readFloats(dst, offset, length);
-  }
-
-  @Override
-  public long readVLong() throws IOException {
-    return in.readVLong();
-  }
-
-  @Override
-  public long readZLong() throws IOException {
-    return in.readZLong();
-  }
-
-  @Override
-  public String readString() throws IOException {
-    return in.readString();
+    for (int i = 0; i < length; ++i) {
+      dst[offset + i] =
+          Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(dst[offset + i])));
+    }
   }
 
   @Override
@@ -107,46 +76,6 @@ final class EndiannessReverserIndexInput extends IndexInput {
   @Override
   public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
     return new EndiannessReverserIndexInput(in.slice(sliceDescription, offset, length));
-  }
-
-  @Override
-  public Map<String, String> readMapOfStrings() throws IOException {
-    return in.readMapOfStrings();
-  }
-
-  @Override
-  public Set<String> readSetOfStrings() throws IOException {
-    return in.readSetOfStrings();
-  }
-
-  @Override
-  public void skipBytes(final long numBytes) throws IOException {
-    in.skipBytes(numBytes);
-  }
-
-  @Override
-  public void close() throws IOException {
-    in.close();
-  }
-
-  @Override
-  public long getFilePointer() {
-    return in.getFilePointer();
-  }
-
-  @Override
-  public void seek(long pos) throws IOException {
-    in.seek(pos);
-  }
-
-  @Override
-  public long length() {
-    return in.length();
-  }
-
-  @Override
-  public String toString() {
-    return in.toString();
   }
 
   @Override
@@ -165,6 +94,11 @@ final class EndiannessReverserIndexInput extends IndexInput {
 
     public EndiannessReverserRandomAccessInput(RandomAccessInput in) {
       this.in = in;
+    }
+
+    @Override
+    public long length() {
+      return in.length();
     }
 
     @Override

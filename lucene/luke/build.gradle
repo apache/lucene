@@ -21,33 +21,31 @@ apply plugin: 'java-library'
 description = 'Luke - Lucene Toolbox'
 
 ext {
-  standaloneDistDir = file("$buildDir/${archivesBaseName}-${project.version}")
+  standaloneDistDir = file("$buildDir/${project.base.archivesName.get()}-${project.version}")
 }
 
 dependencies {
-  api project(':lucene:core')
+  moduleApi project(':lucene:core')
 
-  implementation 'org.apache.logging.log4j:log4j-core'
+  moduleImplementation project(':lucene:codecs')
+  moduleImplementation project(':lucene:backward-codecs')
+  moduleImplementation project(':lucene:analysis:common')
+  moduleImplementation project(':lucene:queries')
+  moduleImplementation project(':lucene:queryparser')
+  moduleImplementation project(':lucene:misc')
 
-  implementation project(':lucene:codecs')
-  implementation project(':lucene:backward-codecs')
-  implementation project(':lucene:analysis:common')
-  implementation project(':lucene:queries')
-  implementation project(':lucene:queryparser')
-  implementation project(':lucene:misc')
+  moduleImplementation project(":lucene:highlighter")
+  moduleImplementation project(':lucene:analysis:icu')
+  moduleImplementation project(':lucene:analysis:kuromoji')
+  moduleImplementation project(':lucene:analysis:morfologik')
+  moduleImplementation project(':lucene:analysis:nori')
+  moduleImplementation project(':lucene:analysis:opennlp')
+  moduleImplementation project(':lucene:analysis:phonetic')
+  moduleImplementation project(':lucene:analysis:smartcn')
+  moduleImplementation project(':lucene:analysis:stempel')
+  moduleImplementation project(':lucene:suggest')
 
-  implementation project(":lucene:highlighter")
-  implementation project(':lucene:analysis:icu')
-  implementation project(':lucene:analysis:kuromoji')
-  implementation project(':lucene:analysis:morfologik')
-  implementation project(':lucene:analysis:nori')
-  implementation project(':lucene:analysis:opennlp')
-  implementation project(':lucene:analysis:phonetic')
-  implementation project(':lucene:analysis:smartcn')
-  implementation project(':lucene:analysis:stempel')
-  implementation project(':lucene:suggest')
-
-  testImplementation project(':lucene:test-framework')
+  moduleTestImplementation project(':lucene:test-framework')
 }
 
 // Configure main class name for all JARs.
@@ -57,19 +55,24 @@ tasks.withType(Jar) {
   }
 }
 
-// Configure the default JAR without any class path information
-// (this may actually be wrong - perhaps we should add the
-// "distribution" paths here.
-jar {
-  manifest {
-  }
+// Configure the main class and version attribute for the module system.
+tasks.compileJava.configure {
+  options.javaModuleMainClass.set("org.apache.lucene.luke.app.desktop.LukeMain")
+}
+
+// Process UTF8 property files to unicode escapes.
+tasks.withType(ProcessResources).configureEach { task ->
+  task.filesMatching("**/messages*.properties", {
+    filteringCharset = 'UTF-8'
+    filter(EscapeUnicode)
+  })
 }
 
 // Configure "stand-alone" JAR with proper dependency classpath links.
 task standaloneJar(type: Jar) {
   dependsOn classes
 
-  archiveFileName = "${archivesBaseName}-${project.version}-standalone.jar"
+  archiveFileName = "${project.base.archivesName.get()}-${project.version}-standalone.jar"
 
   from(sourceSets.main.output)
 
@@ -107,8 +110,13 @@ task standaloneAssemble(type: Sync) {
   into standaloneDistDir
 
   doLast {
-    logger.lifecycle("Standalone Luke distribution assembled. You can run it with:\n"
-        + "java -jar " + file("${standaloneDistDir}/${standaloneJar.archiveFileName.get()}"))
+    logger.lifecycle(
+        """
+Standalone Luke distribution assembled. You can run it with:
+java -jar "${standaloneDistDir}/${standaloneJar.archiveFileName.get()}"
+java --module-path "${standaloneDistDir}" -m org.apache.lucene.luke
+        """
+    )
   }
 }
 
@@ -119,10 +127,10 @@ assemble.dependsOn standaloneAssemble
 task standalonePackage(type: Tar) {
   from standaloneAssemble
 
-  into "${archivesBaseName}-${project.version}/"
+  into "${project.base.archivesName.get()}-${project.version}/"
 
   compression = Compression.GZIP
-  archiveFileName = "${archivesBaseName}-${project.version}-standalone.tgz"
+  archiveFileName = "${project.base.archivesName.get()}-${project.version}-standalone.tgz"
 }
 
 // Utility to launch Luke (and fork it from the build).
@@ -133,13 +141,8 @@ task run() {
 
   doFirst {
     logger.lifecycle("Launching Luke ${project.version} right now...")
-    def javaExecutable = {
-      def registry = project.extensions.getByType(JavaInstallationRegistry)
-      def currentJvm = registry.installationForCurrentVirtualMachine.get()
-      currentJvm.getJavaExecutable().asFile
-    }()
     ant.exec(
-        executable: javaExecutable,
+        executable: rootProject.ext.runtimeJavaExecutable,
         spawn: true,
         vmlauncher: true
     ) {
@@ -148,3 +151,4 @@ task run() {
     }
   }
 }
+

@@ -22,8 +22,8 @@ import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.DocValuesFieldExistsQuery;
 import org.apache.lucene.search.DoubleValuesSource;
+import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 
@@ -51,7 +51,7 @@ public class TestDoubleRangeGroupSelector extends BaseGroupSelectorTestCase<Doub
     if (groupValue == null) {
       return new BooleanQuery.Builder()
           .add(new MatchAllDocsQuery(), BooleanClause.Occur.FILTER)
-          .add(new DocValuesFieldExistsQuery("double"), BooleanClause.Occur.MUST_NOT)
+          .add(new FieldExistsQuery("double"), BooleanClause.Occur.MUST_NOT)
           .build();
     }
     return DoublePoint.newRangeQuery("double", groupValue.min, Math.nextDown(groupValue.max));

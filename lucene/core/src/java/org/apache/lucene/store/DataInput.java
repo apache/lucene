@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Abstract base class for performing read operations of Lucene's low-level data types.
@@ -73,9 +74,10 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Reads two bytes and returns a short.
+   * Reads two bytes and returns a short (LE byte order).
    *
-   * @see DataOutput#writeByte(byte)
+   * @see DataOutput#writeShort(short)
+   * @see BitUtil#VH_LE_SHORT
    */
   public short readShort() throws IOException {
     final byte b1 = readByte();
@@ -84,9 +86,10 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Reads four bytes and returns an int.
+   * Reads four bytes and returns an int (LE byte order).
    *
    * @see DataOutput#writeInt(int)
+   * @see BitUtil#VH_LE_INT
    */
   public int readInt() throws IOException {
     final byte b1 = readByte();
@@ -94,6 +97,16 @@ public abstract class DataInput implements Cloneable {
     final byte b3 = readByte();
     final byte b4 = readByte();
     return ((b4 & 0xFF) << 24) | ((b3 & 0xFF) << 16) | ((b2 & 0xFF) << 8) | (b1 & 0xFF);
+  }
+
+  /**
+   * Override if you have an efficient implementation. In general this is when the input supports
+   * random access.
+   *
+   * @lucene.experimental
+   */
+  public void readGroupVInt(int[] dst, int offset) throws IOException {
+    GroupVIntUtil.readGroupVInt(this, dst, offset);
   }
 
   /**
@@ -105,9 +118,6 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeVInt(int)
    */
   public int readVInt() throws IOException {
-    /* This is the original code of this method,
-     * but a Hotspot bug (see LUCENE-2975) corrupts the for-loop if
-     * readByte() is inlined. So the loop was unwinded!
     byte b = readByte();
     int i = b & 0x7F;
     for (int shift = 7; (b & 0x80) != 0; shift += 7) {
@@ -115,24 +125,6 @@ public abstract class DataInput implements Cloneable {
       i |= (b & 0x7F) << shift;
     }
     return i;
-    */
-    byte b = readByte();
-    if (b >= 0) return b;
-    int i = b & 0x7F;
-    b = readByte();
-    i |= (b & 0x7F) << 7;
-    if (b >= 0) return i;
-    b = readByte();
-    i |= (b & 0x7F) << 14;
-    if (b >= 0) return i;
-    b = readByte();
-    i |= (b & 0x7F) << 21;
-    if (b >= 0) return i;
-    b = readByte();
-    // Warning: the next ands use 0x0F / 0xF0 - beware copy/paste errors:
-    i |= (b & 0x0F) << 28;
-    if ((b & 0xF0) == 0) return i;
-    throw new IOException("Invalid vInt detected (too many bits)");
   }
 
   /**
@@ -146,9 +138,10 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Reads eight bytes and returns a long.
+   * Reads eight bytes and returns a long (LE byte order).
    *
    * @see DataOutput#writeLong(long)
+   * @see BitUtil#VH_LE_LONG
    */
   public long readLong() throws IOException {
     return (readInt() & 0xFFFFFFFFL) | (((long) readInt()) << 32);
@@ -163,6 +156,20 @@ public abstract class DataInput implements Cloneable {
     Objects.checkFromIndexSize(offset, length, dst.length);
     for (int i = 0; i < length; ++i) {
       dst[offset + i] = readLong();
+    }
+  }
+
+  /**
+   * Reads a specified number of ints into an array at the specified offset.
+   *
+   * @param dst the array to read bytes into
+   * @param offset the offset in the array to start storing ints
+   * @param length the number of ints to read
+   */
+  public void readInts(int[] dst, int offset, int length) throws IOException {
+    Objects.checkFromIndexSize(offset, length, dst.length);
+    for (int i = 0; i < length; ++i) {
+      dst[offset + i] = readInt();
     }
   }
 
@@ -189,13 +196,6 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeVLong(long)
    */
   public long readVLong() throws IOException {
-    return readVLong(false);
-  }
-
-  private long readVLong(boolean allowNegative) throws IOException {
-    /* This is the original code of this method,
-     * but a Hotspot bug (see LUCENE-2975) corrupts the for-loop if
-     * readByte() is inlined. So the loop was unwinded!
     byte b = readByte();
     long i = b & 0x7F;
     for (int shift = 7; (b & 0x80) != 0; shift += 7) {
@@ -203,42 +203,6 @@ public abstract class DataInput implements Cloneable {
       i |= (b & 0x7FL) << shift;
     }
     return i;
-    */
-    byte b = readByte();
-    if (b >= 0) return b;
-    long i = b & 0x7FL;
-    b = readByte();
-    i |= (b & 0x7FL) << 7;
-    if (b >= 0) return i;
-    b = readByte();
-    i |= (b & 0x7FL) << 14;
-    if (b >= 0) return i;
-    b = readByte();
-    i |= (b & 0x7FL) << 21;
-    if (b >= 0) return i;
-    b = readByte();
-    i |= (b & 0x7FL) << 28;
-    if (b >= 0) return i;
-    b = readByte();
-    i |= (b & 0x7FL) << 35;
-    if (b >= 0) return i;
-    b = readByte();
-    i |= (b & 0x7FL) << 42;
-    if (b >= 0) return i;
-    b = readByte();
-    i |= (b & 0x7FL) << 49;
-    if (b >= 0) return i;
-    b = readByte();
-    i |= (b & 0x7FL) << 56;
-    if (b >= 0) return i;
-    if (allowNegative) {
-      b = readByte();
-      i |= (b & 0x7FL) << 63;
-      if (b == 0 || b == 1) return i;
-      throw new IOException("Invalid vLong detected (more than 64 bits)");
-    } else {
-      throw new IOException("Invalid vLong detected (negative values disallowed)");
-    }
   }
 
   /**
@@ -248,7 +212,7 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeZLong(long)
    */
   public long readZLong() throws IOException {
-    return BitUtil.zigZagDecode(readVLong(true));
+    return BitUtil.zigZagDecode(readVLong());
   }
 
   /**

@@ -138,7 +138,7 @@ final class BinaryDocValuesFieldUpdates extends DocValuesFieldUpdates {
         + lengths.ramBytesUsed()
         + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
         + 2 * Integer.BYTES
-        + 3 * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+        + 3 * (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF
         + values.bytes().length;
   }
 }

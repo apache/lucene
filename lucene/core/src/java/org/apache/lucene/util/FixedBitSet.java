@@ -73,17 +73,27 @@ public final class FixedBitSet extends BitSet {
    */
   public static long intersectionCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
-    return BitUtil.pop_intersect(a.bits, b.bits, 0, Math.min(a.numWords, b.numWords));
+    long tot = 0;
+    final int numCommonWords = Math.min(a.numWords, b.numWords);
+    for (int i = 0; i < numCommonWords; ++i) {
+      tot += Long.bitCount(a.bits[i] & b.bits[i]);
+    }
+    return tot;
   }
 
   /** Returns the popcount or cardinality of the union of the two sets. Neither set is modified. */
   public static long unionCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
-    long tot = BitUtil.pop_union(a.bits, b.bits, 0, Math.min(a.numWords, b.numWords));
-    if (a.numWords < b.numWords) {
-      tot += BitUtil.pop_array(b.bits, a.numWords, b.numWords - a.numWords);
-    } else if (a.numWords > b.numWords) {
-      tot += BitUtil.pop_array(a.bits, b.numWords, a.numWords - b.numWords);
+    long tot = 0;
+    final int numCommonWords = Math.min(a.numWords, b.numWords);
+    for (int i = 0; i < numCommonWords; ++i) {
+      tot += Long.bitCount(a.bits[i] | b.bits[i]);
+    }
+    for (int i = numCommonWords; i < a.numWords; ++i) {
+      tot += Long.bitCount(a.bits[i]);
+    }
+    for (int i = numCommonWords; i < b.numWords; ++i) {
+      tot += Long.bitCount(b.bits[i]);
     }
     return tot;
   }
@@ -94,15 +104,19 @@ public final class FixedBitSet extends BitSet {
    */
   public static long andNotCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
-    long tot = BitUtil.pop_andnot(a.bits, b.bits, 0, Math.min(a.numWords, b.numWords));
-    if (a.numWords > b.numWords) {
-      tot += BitUtil.pop_array(a.bits, b.numWords, a.numWords - b.numWords);
+    long tot = 0;
+    final int numCommonWords = Math.min(a.numWords, b.numWords);
+    for (int i = 0; i < numCommonWords; ++i) {
+      tot += Long.bitCount(a.bits[i] & ~b.bits[i]);
+    }
+    for (int i = numCommonWords; i < a.numWords; ++i) {
+      tot += Long.bitCount(a.bits[i]);
     }
     return tot;
   }
 
   /**
-   * Creates a new LongBitSet. The internally allocated long array will be exactly the size needed
+   * Creates a new FixedBitSet. The internally allocated long array will be exactly the size needed
    * to accommodate the numBits specified.
    *
    * @param numBits the number of bits needed
@@ -114,9 +128,9 @@ public final class FixedBitSet extends BitSet {
   }
 
   /**
-   * Creates a new LongBitSet using the provided long[] array as backing store. The storedBits array
-   * must be large enough to accommodate the numBits specified, but may be larger. In that case the
-   * 'extra' or 'ghost' bits must be clear (or they may provoke spurious side-effects)
+   * Creates a new FixedBitSet using the provided long[] array as backing store. The storedBits
+   * array must be large enough to accommodate the numBits specified, but may be larger. In that
+   * case the 'extra' or 'ghost' bits must be clear (or they may provoke spurious side-effects)
    *
    * @param storedBits the array to use as backing store
    * @param numBits the number of bits actually needed
@@ -131,6 +145,11 @@ public final class FixedBitSet extends BitSet {
     this.bits = storedBits;
 
     assert verifyGhostBitsClear();
+  }
+
+  @Override
+  public void clear() {
+    Arrays.fill(bits, 0L);
   }
 
   /**
@@ -173,7 +192,37 @@ public final class FixedBitSet extends BitSet {
   @Override
   public int cardinality() {
     // Depends on the ghost bits being clear!
-    return (int) BitUtil.pop_array(bits, 0, numWords);
+    long tot = 0;
+    for (int i = 0; i < numWords; ++i) {
+      tot += Long.bitCount(bits[i]);
+    }
+    return Math.toIntExact(tot);
+  }
+
+  @Override
+  public int approximateCardinality() {
+    // Naive sampling: compute the number of bits that are set on the first 16 longs every 1024
+    // longs and scale the result by 1024/16.
+    // This computes the pop count on ranges instead of single longs in order to take advantage of
+    // vectorization.
+
+    final int rangeLength = 16;
+    final int interval = 1024;
+
+    if (numWords <= interval) {
+      return cardinality();
+    }
+
+    long popCount = 0;
+    int maxWord;
+    for (maxWord = 0; maxWord + interval < numWords; maxWord += interval) {
+      for (int i = 0; i < rangeLength; ++i) {
+        popCount += Long.bitCount(bits[maxWord + i]);
+      }
+    }
+
+    popCount *= (interval / rangeLength) * numWords / maxWord;
+    return (int) popCount;
   }
 
   @Override
@@ -194,6 +243,7 @@ public final class FixedBitSet extends BitSet {
     bits[wordNum] |= bitmask;
   }
 
+  @Override
   public boolean getAndSet(int index) {
     assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
     int wordNum = index >> 6; // div 64
@@ -222,16 +272,36 @@ public final class FixedBitSet extends BitSet {
 
   @Override
   public int nextSetBit(int index) {
+    // Override with a version that skips the bound check on the result since we know it will not
+    // go OOB:
+    return nextSetBitInRange(index, numBits);
+  }
+
+  @Override
+  public int nextSetBit(int start, int upperBound) {
+    int res = nextSetBitInRange(start, upperBound);
+    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Returns the next set bit in the specified range, but treats `upperBound` as a best-effort hint
+   * rather than a hard requirement. Note that this may return a result that is >= upperBound in
+   * some cases, so callers must add their own check if `upperBound` is a hard requirement.
+   */
+  private int nextSetBitInRange(int start, int upperBound) {
     // Depends on the ghost bits being clear!
-    assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
-    int i = index >> 6;
-    long word = bits[i] >> index; // skip all the bits to the right of index
+    assert start >= 0 && start < numBits : "index=" + start + ", numBits=" + numBits;
+    assert start < upperBound : "index=" + start + ", upperBound=" + upperBound;
+    assert upperBound <= numBits : "upperBound=" + upperBound + ", numBits=" + numBits;
+    int i = start >> 6;
+    long word = bits[i] >> start; // skip all the bits to the right of index
 
     if (word != 0) {
-      return index + Long.numberOfTrailingZeros(word);
+      return start + Long.numberOfTrailingZeros(word);
     }
 
-    while (++i < numWords) {
+    int limit = upperBound == numBits ? numWords : bits2words(upperBound);
+    while (++i < limit) {
       word = bits[i];
       if (word != 0) {
         return (i << 6) + Long.numberOfTrailingZeros(word);
@@ -268,6 +338,10 @@ public final class FixedBitSet extends BitSet {
       checkUnpositioned(iter);
       final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
       or(bits);
+    } else if (iter instanceof DocBaseBitSetIterator) {
+      checkUnpositioned(iter);
+      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
+      or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
       super.or(iter);
     }
@@ -275,15 +349,20 @@ public final class FixedBitSet extends BitSet {
 
   /** this = this OR other */
   public void or(FixedBitSet other) {
-    or(other.bits, other.numWords);
+    or(0, other.bits, other.numWords);
   }
 
-  private void or(final long[] otherArr, final int otherNumWords) {
-    assert otherNumWords <= numWords : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
+  private void or(final int otherOffsetWords, FixedBitSet other) {
+    or(otherOffsetWords, other.bits, other.numWords);
+  }
+
+  private void or(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
+    assert otherNumWords + otherOffsetWords <= numWords
+        : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
+    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
-    int pos = Math.min(numWords, otherNumWords);
     while (--pos >= 0) {
-      thisArr[pos] |= otherArr[pos];
+      thisArr[pos + otherOffsetWords] |= otherArr[pos];
     }
   }
 
@@ -341,16 +420,38 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
-  /** this = this AND NOT other */
-  public void andNot(FixedBitSet other) {
-    andNot(other.bits, other.numWords);
+  public void andNot(DocIdSetIterator iter) throws IOException {
+    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
+      checkUnpositioned(iter);
+      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
+      assert bits != null;
+      andNot(bits);
+    } else if (iter instanceof DocBaseBitSetIterator) {
+      checkUnpositioned(iter);
+      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
+      andNot(baseIter.getDocBase() >> 6, baseIter.getBitSet());
+    } else {
+      checkUnpositioned(iter);
+      for (int doc = iter.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iter.nextDoc()) {
+        clear(doc);
+      }
+    }
   }
 
-  private void andNot(final long[] otherArr, final int otherNumWords) {
+  /** this = this AND NOT other */
+  public void andNot(FixedBitSet other) {
+    andNot(0, other.bits, other.numWords);
+  }
+
+  private void andNot(final int otherOffsetWords, FixedBitSet other) {
+    andNot(otherOffsetWords, other.bits, other.numWords);
+  }
+
+  private void andNot(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
+    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
-    int pos = Math.min(this.numWords, otherNumWords);
     while (--pos >= 0) {
-      thisArr[pos] &= ~otherArr[pos];
+      thisArr[pos + otherOffsetWords] &= ~otherArr[pos];
     }
   }
 

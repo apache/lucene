@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Locale;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
@@ -29,6 +28,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSet;
 
@@ -101,7 +101,7 @@ public class ToChildBlockJoinQuery extends Query {
     // NOTE: acceptDocs applies (and is checked) only in the
     // child document space
     @Override
-    public Scorer scorer(LeafReaderContext readerContext) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext readerContext) throws IOException {
 
       final Scorer parentScorer = in.scorer(readerContext);
 
@@ -118,7 +118,8 @@ public class ToChildBlockJoinQuery extends Query {
         return null;
       }
 
-      return new ToChildBlockJoinScorer(this, parentScorer, parents, doScores);
+      final var scorer = new ToChildBlockJoinScorer(parentScorer, parents, doScores);
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override
@@ -147,9 +148,7 @@ public class ToChildBlockJoinQuery extends Query {
     private int childDoc = -1;
     private int parentDoc = 0;
 
-    public ToChildBlockJoinScorer(
-        Weight weight, Scorer parentScorer, BitSet parentBits, boolean doScores) {
-      super(weight);
+    public ToChildBlockJoinScorer(Scorer parentScorer, BitSet parentBits, boolean doScores) {
       this.doScores = doScores;
       this.parentBits = parentBits;
       this.parentScorer = parentScorer;
@@ -305,12 +304,12 @@ public class ToChildBlockJoinQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    final Query parentRewrite = parentQuery.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    final Query parentRewrite = parentQuery.rewrite(indexSearcher);
     if (parentRewrite != parentQuery) {
       return new ToChildBlockJoinQuery(parentRewrite, parentsFilter);
     } else {
-      return super.rewrite(reader);
+      return super.rewrite(indexSearcher);
     }
   }
 

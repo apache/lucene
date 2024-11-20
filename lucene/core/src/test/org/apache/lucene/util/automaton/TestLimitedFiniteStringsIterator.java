@@ -19,10 +19,11 @@ package org.apache.lucene.util.automaton;
 import static org.apache.lucene.util.automaton.TestFiniteStringsIterator.getFiniteStrings;
 
 import java.util.List;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.fst.Util;
 
 /** Test for {@link FiniteStringsIterator}. */
@@ -39,11 +40,11 @@ public class TestLimitedFiniteStringsIterator extends LuceneTestCase {
         getFiniteStrings(new LimitedFiniteStringsIterator(a, TestUtil.nextInt(random(), 1, 1000)));
         // NOTE: cannot do this, because the method is not
         // guaranteed to detect cycles when you have a limit
-        // assertTrue(Operations.isFinite(a));
+        // assertTrue(AutomatonTestUtil.isFinite(a));
       } catch (
           @SuppressWarnings("unused")
           IllegalArgumentException iae) {
-        assertFalse(Operations.isFinite(a));
+        assertFalse(AutomatonTestUtil.isFinite(a));
       }
     }
   }

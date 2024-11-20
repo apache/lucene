@@ -41,7 +41,8 @@ public class PathQueryNode extends QueryNodeImpl {
 
   /** Term text with a beginning and end position */
   public static class QueryText implements Cloneable {
-    CharSequence value = null;
+    CharSequence value;
+
     /** != null The term's begin position. */
     int begin;
 
@@ -69,17 +70,23 @@ public class PathQueryNode extends QueryNodeImpl {
       return clone;
     }
 
-    /** @return the value */
+    /**
+     * @return the value
+     */
     public CharSequence getValue() {
       return value;
     }
 
-    /** @return the begin */
+    /**
+     * @return the begin
+     */
     public int getBegin() {
       return begin;
     }
 
-    /** @return the end */
+    /**
+     * @return the end
+     */
     public int getEnd() {
       return end;
     }
@@ -90,9 +97,11 @@ public class PathQueryNode extends QueryNodeImpl {
     }
   }
 
-  private List<QueryText> values = null;
+  private List<QueryText> values;
 
-  /** @param pathElements - List of QueryText objects */
+  /**
+   * @param pathElements - List of QueryText objects
+   */
   public PathQueryNode(List<QueryText> pathElements) {
     this.values = pathElements;
     if (pathElements.size() <= 1) {

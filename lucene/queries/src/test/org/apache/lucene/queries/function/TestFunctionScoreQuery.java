@@ -30,6 +30,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -40,12 +41,12 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryUtils;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.search.QueryUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -152,7 +153,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
 
     int[] expectedDocs = new int[] {4, 7, 9};
     TopDocs docs = searcher.search(q, 4);
-    assertEquals(expectedDocs.length, docs.totalHits.value);
+    assertEquals(expectedDocs.length, docs.totalHits.value());
     for (int i = 0; i < expectedDocs.length; i++) {
       assertEquals(docs.scoreDocs[i].doc, expectedDocs[i]);
     }
@@ -175,7 +176,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
 
     int[] expectedDocs = new int[] {4, 7, 9, 8, 12};
     TopDocs docs = searcher.search(fq, 5);
-    assertEquals(plain.totalHits.value, docs.totalHits.value);
+    assertEquals(plain.totalHits.value(), docs.totalHits.value());
     for (int i = 0; i < expectedDocs.length; i++) {
       assertEquals(expectedDocs[i], docs.scoreDocs[i].doc);
     }
@@ -198,7 +199,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
 
     int[] expectedDocs = new int[] {6, 1, 0, 2, 8};
     TopDocs docs = searcher.search(fq, 20);
-    assertEquals(plain.totalHits.value, docs.totalHits.value);
+    assertEquals(plain.totalHits.value(), docs.totalHits.value());
     for (int i = 0; i < expectedDocs.length; i++) {
       assertEquals(expectedDocs[i], docs.scoreDocs[i].doc);
     }
@@ -222,7 +223,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
 
     Query boosted = new BoostQuery(q1, 2);
     TopDocs afterboost = searcher.search(boosted, 5);
-    assertEquals(plain.totalHits.value, afterboost.totalHits.value);
+    assertEquals(plain.totalHits.value(), afterboost.totalHits.value());
     for (int i = 0; i < 5; i++) {
       assertEquals(plain.scoreDocs[i].doc, afterboost.scoreDocs[i].doc);
       assertEquals(plain.scoreDocs[i].score, afterboost.scoreDocs[i].score / 2, 0.0001);
@@ -357,8 +358,23 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
                 q, new PhraseQuery(1, "ExampleText", "function", "plot"), 2);
         q = FunctionScoreQuery.boostByValue(q, DoubleValuesSource.SCORES);
 
-        assertEquals(1, new IndexSearcher(reader).search(q, 10).totalHits.value);
+        assertEquals(1, new IndexSearcher(reader).search(q, 10).totalHits.value());
       }
     }
+  }
+
+  // Weight#count is delegated to the inner weight
+  public void testQueryMatchesCount() throws Exception {
+    TermQuery query = new TermQuery(new Term(TEXT_FIELD, "first"));
+    FunctionScoreQuery fq =
+        FunctionScoreQuery.boostByValue(query, DoubleValuesSource.fromIntField("iii"));
+
+    final int searchCount = searcher.count(fq);
+    final Weight weight = searcher.createWeight(fq, ScoreMode.COMPLETE, 1);
+    int weightCount = 0;
+    for (LeafReaderContext leafReaderContext : reader.leaves()) {
+      weightCount += weight.count(leafReaderContext);
+    }
+    assertEquals(searchCount, weightCount);
   }
 }

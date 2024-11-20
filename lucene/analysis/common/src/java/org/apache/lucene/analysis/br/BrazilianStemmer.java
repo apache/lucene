@@ -19,8 +19,8 @@ package org.apache.lucene.analysis.br;
 import java.util.Locale;
 
 /** A stemmer for Brazilian Portuguese words. */
-public class BrazilianStemmer {
-  private static final Locale locale = new Locale("pt", "BR");
+class BrazilianStemmer {
+  private static final Locale locale = new Locale.Builder().setLanguageTag("pt-BR").build();
 
   /** Changed term */
   private String TERM;
@@ -278,7 +278,7 @@ public class BrazilianStemmer {
       return false;
     }
 
-    return value.substring(value.length() - suffix.length()).equals(suffix);
+    return value.endsWith(suffix);
   }
 
   /**
@@ -1124,7 +1124,7 @@ public class BrazilianStemmer {
    *
    * @return TERM, CT, RV, R1 and R2
    */
-  public String log() {
+  String log() {
     return " (TERM = "
         + TERM
         + ")"

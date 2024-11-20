@@ -16,25 +16,28 @@
  */
 package org.apache.lucene.spatial;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.*;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomDouble;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomGaussian;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.distance.DistanceUtils;
 import org.locationtech.spatial4j.shape.Point;
@@ -104,12 +107,13 @@ public abstract class SpatialTestCase extends LuceneTestCase {
   protected SearchResults executeQuery(Query query, int numDocs) {
     try {
       TopDocs topDocs = indexSearcher.search(query, numDocs);
+      StoredFields storedFields = indexSearcher.storedFields();
 
       List<SearchResult> results = new ArrayList<>();
       for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-        results.add(new SearchResult(scoreDoc.score, indexSearcher.doc(scoreDoc.doc)));
+        results.add(new SearchResult(scoreDoc.score, storedFields.document(scoreDoc.doc)));
       }
-      return new SearchResults(topDocs.totalHits.value, results);
+      return new SearchResults(topDocs.totalHits.value(), results);
     } catch (IOException ioe) {
       throw new RuntimeException("IOException thrown while executing query", ioe);
     }

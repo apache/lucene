@@ -28,7 +28,9 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
@@ -132,9 +134,11 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
     if (query != null) {
       q.add(new BooleanClause(query, BooleanClause.Occur.MUST));
     }
+    TermVectors termVectors = indexReader.termVectors();
+    StoredFields storedFields = indexReader.storedFields();
     // run the search and use stored field values
     for (ScoreDoc scoreDoc : indexSearcher.search(q.build(), Integer.MAX_VALUE).scoreDocs) {
-      Document doc = indexSearcher.doc(scoreDoc.doc);
+      Document doc = storedFields.document(scoreDoc.doc);
 
       IndexableField textField = doc.getField(textFieldName);
 
@@ -144,13 +148,13 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
       if (textField != null && classField != null) {
         // assign class to the doc
         ClassificationResult<Boolean> classificationResult = assignClass(textField.stringValue());
-        Boolean assignedClass = classificationResult.getAssignedClass();
+        Boolean assignedClass = classificationResult.assignedClass();
 
         Boolean correctClass = Boolean.valueOf(classField.stringValue());
-        long modifier = correctClass.compareTo(assignedClass);
-        if (modifier != 0) {
+        double modifier = Math.signum(correctClass.compareTo(assignedClass));
+        if (modifier != 0D) {
           updateWeights(
-              indexReader,
+              termVectors,
               scoreDoc.doc,
               assignedClass,
               weights,
@@ -164,7 +168,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
   }
 
   private void updateWeights(
-      IndexReader indexReader,
+      TermVectors termVectors,
       int docId,
       Boolean assignedClass,
       SortedMap<String, Double> weights,
@@ -174,7 +178,7 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
     TermsEnum cte = textTerms.iterator();
 
     // get the doc term vectors
-    Terms terms = indexReader.getTermVector(docId, textFieldName);
+    Terms terms = termVectors.get(docId, textFieldName);
 
     if (terms == null) {
       throw new IOException("term vectors must be stored for field " + textFieldName);
@@ -203,7 +207,8 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
 
   private void updateFST(SortedMap<String, Double> weights) throws IOException {
     PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
-    FSTCompiler<Long> fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    FSTCompiler<Long> fstCompiler =
+        new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
     BytesRefBuilder scratchBytes = new BytesRefBuilder();
     IntsRefBuilder scratchInts = new IntsRefBuilder();
     for (Map.Entry<String, Double> entry : weights.entrySet()) {
@@ -211,12 +216,12 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
       fstCompiler.add(
           Util.toIntsRef(scratchBytes.get(), scratchInts), entry.getValue().longValue());
     }
-    fst = fstCompiler.compile();
+    fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   @Override
   public ClassificationResult<Boolean> assignClass(String text) throws IOException {
-    Long output = 0L;
+    long output = 0L;
     try (TokenStream tokenStream = analyzer.tokenStream(textFieldName, text)) {
       CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
       tokenStream.reset();
@@ -230,17 +235,17 @@ public class BooleanPerceptronClassifier implements Classifier<Boolean> {
       tokenStream.end();
     }
 
-    double score = 1 - Math.exp(-1 * Math.abs(bias - output.doubleValue()) / bias);
+    double score = 1 - Math.exp(-1 * Math.abs(bias - (double) output) / bias);
     return new ClassificationResult<>(output >= bias, score);
   }
 
   @Override
-  public List<ClassificationResult<Boolean>> getClasses(String text) throws IOException {
+  public List<ClassificationResult<Boolean>> getClasses(String text) {
     return null;
   }
 
   @Override
-  public List<ClassificationResult<Boolean>> getClasses(String text, int max) throws IOException {
+  public List<ClassificationResult<Boolean>> getClasses(String text, int max) {
     return null;
   }
 }

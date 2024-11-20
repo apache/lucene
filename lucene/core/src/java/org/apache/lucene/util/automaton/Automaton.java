@@ -16,14 +16,10 @@
  */
 package org.apache.lucene.util.automaton;
 
-// import java.io.IOException;
-// import java.io.PrintWriter;
-
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.InPlaceMergeSorter;
@@ -46,7 +42,7 @@ import org.apache.lucene.util.Sorter;
  *
  * @lucene.experimental
  */
-public class Automaton implements Accountable {
+public class Automaton implements Accountable, TransitionAccessor {
 
   /**
    * Where we next write to the int[] states; this increments by 2 for each added state because we
@@ -340,9 +336,10 @@ public class Automaton implements Accountable {
     return nextTransition / 3;
   }
 
-  /** How many transitions this state has. */
+  @Override
   public int getNumTransitions(int state) {
     assert state >= 0;
+    assert state < getNumStates();
     int count = states[2 * state + 1];
     if (count == -1) {
       return 0;
@@ -381,7 +378,6 @@ public class Automaton implements Accountable {
           swapOne(iStart + 1, jStart + 1);
           swapOne(iStart + 2, jStart + 2);
         }
-        ;
 
         @Override
         protected int compare(int i, int j) {
@@ -437,7 +433,6 @@ public class Automaton implements Accountable {
           swapOne(iStart + 1, jStart + 1);
           swapOne(iStart + 2, jStart + 2);
         }
-        ;
 
         @Override
         protected int compare(int i, int j) {
@@ -475,11 +470,7 @@ public class Automaton implements Accountable {
         }
       };
 
-  /**
-   * Initialize the provided Transition to iterate through all transitions leaving the specified
-   * state. You must call {@link #getNextTransition} to get each transition. Returns the number of
-   * transitions leaving this state.
-   */
+  @Override
   public int initTransition(int state, Transition t) {
     assert state < nextState / 2 : "state=" + state + " nextState=" + nextState;
     t.source = state;
@@ -487,7 +478,7 @@ public class Automaton implements Accountable {
     return getNumTransitions(state);
   }
 
-  /** Iterate to the next transition after the provided one */
+  @Override
   public void getNextTransition(Transition t) {
     // Make sure there is still a transition left:
     assert (t.transitionUpto + 3 - states[2 * t.source]) <= 3 * states[2 * t.source + 1];
@@ -535,9 +526,7 @@ public class Automaton implements Accountable {
     return false;
   }
 
-  /**
-   * Fill the provided {@link Transition} with the index'th transition leaving the specified state.
-   */
+  @Override
   public void getTransition(int state, int index, Transition t) {
     int i = states[2 * state] + 3 * index;
     t.source = state;
@@ -582,8 +571,6 @@ public class Automaton implements Accountable {
    * visualizing the automaton.
    */
   public String toDot() {
-    // TODO: breadth first search so we can get layered output...
-
     StringBuilder b = new StringBuilder();
     b.append("digraph Automaton {\n");
     b.append("  rankdir = LR\n");
@@ -630,8 +617,8 @@ public class Automaton implements Accountable {
   }
 
   /** Returns sorted array of all interval start points. */
-  int[] getStartPoints() {
-    Set<Integer> pointset = new HashSet<>();
+  public int[] getStartPoints() {
+    IntHashSet pointset = new IntHashSet();
     pointset.add(Character.MIN_CODE_POINT);
     // System.out.println("getStartPoints");
     for (int s = 0; s < nextState; s += 2) {
@@ -649,11 +636,7 @@ public class Automaton implements Accountable {
         trans += 3;
       }
     }
-    int[] points = new int[pointset.size()];
-    int n = 0;
-    for (Integer m : pointset) {
-      points[n++] = m;
-    }
+    int[] points = pointset.toArray();
     Arrays.sort(points);
     return points;
   }
@@ -821,7 +804,6 @@ public class Automaton implements Accountable {
             swapOne(iStart + 2, jStart + 2);
             swapOne(iStart + 3, jStart + 3);
           }
-          ;
 
           @Override
           protected int compare(int i, int j) {
@@ -952,7 +934,7 @@ public class Automaton implements Accountable {
         + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
         + (isAccept.size() / 8)
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-        + 2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+        + 2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF
         + 3 * Integer.BYTES
         + 1;
   }

@@ -19,6 +19,7 @@ package org.apache.lucene.spatial.prefix.tree;
 
 import com.google.common.geometry.S2CellId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,7 @@ import org.locationtech.spatial4j.shape.SpatialRelation;
 class S2PrefixTreeCell implements CellCanPrune {
 
   // Faces of S2 Geometry
-  private static S2CellId[] FACES = new S2CellId[6];
+  private static final S2CellId[] FACES = new S2CellId[6];
 
   static {
     FACES[0] = S2CellId.fromFacePosLevel(0, 0, 0);
@@ -59,10 +60,11 @@ class S2PrefixTreeCell implements CellCanPrune {
   private static final Map<Byte, Integer> PIXELS;
 
   static {
-    PIXELS = new HashMap<>(TOKENS.length);
+    Map<Byte, Integer> pixels = new HashMap<>();
     for (int i = 0; i < TOKENS.length; i++) {
-      PIXELS.put(TOKENS[i], i);
+      pixels.put(TOKENS[i], i);
     }
+    PIXELS = Collections.unmodifiableMap(pixels);
   }
 
   S2CellId cellId;

@@ -423,7 +423,9 @@ public class Highlighter {
     textFragmenter = Objects.requireNonNull(fragmenter);
   }
 
-  /** @return Object used to score each text fragment */
+  /**
+   * @return Object used to score each text fragment
+   */
   public Scorer getFragmentScorer() {
     return fragmentScorer;
   }

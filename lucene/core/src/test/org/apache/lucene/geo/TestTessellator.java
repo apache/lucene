@@ -16,11 +16,14 @@
  */
 package org.apache.lucene.geo;
 
-import static org.apache.lucene.geo.GeoTestUtil.nextBoxNotCrossingDateline;
+import static org.apache.lucene.tests.geo.GeoTestUtil.nextBoxNotCrossingDateline;
+import static org.hamcrest.Matchers.greaterThan;
 
 import java.text.ParseException;
 import java.util.List;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.geo.GeoTestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
 
 /** Test case for the Polygon {@link Tessellator} class */
 public class TestTessellator extends LuceneTestCase {
@@ -64,7 +67,7 @@ public class TestTessellator extends LuceneTestCase {
             new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
             new double[] {-2.0, -4.0, -3.5, -4.0, -2.0, -2.5, -2.0});
     poly = new Polygon(poly.getPolyLats(), poly.getPolyLons(), inner, inner2);
-    assertTrue(Tessellator.tessellate(poly).size() > 0);
+    assertTrue(Tessellator.tessellate(poly, random().nextBoolean()).size() > 0);
   }
 
   @Nightly
@@ -79,7 +82,7 @@ public class TestTessellator extends LuceneTestCase {
             new double[] {-1.0, -1.0, 0.5, 1.0, 1.0, 0.5, -1.0},
             new double[] {-2.0, -4.0, -3.5, -4.0, -2.0, -2.5, -2.0});
     poly = new Polygon(poly.getPolyLats(), poly.getPolyLons(), inner, inner2);
-    assertTrue(Tessellator.tessellate(poly).size() > 0);
+    assertTrue(Tessellator.tessellate(poly, random().nextBoolean()).size() > 0);
   }
 
   public void testLUCENE8454() throws ParseException {
@@ -99,7 +102,7 @@ public class TestTessellator extends LuceneTestCase {
             + "[[168.1652103335658, -29.3030088541673], [168.16605788758287, -29.446580625201833], [168.16556735186845, -29.303245228857072], [168.165381, -29.303246], [168.16537977124085, -29.303008170411644], [168.1652103335658, -29.3030088541673]], "
             + "[[168.02088551865063, -29.647294313012004], [168.02133932508806, -29.811843292379823], [168.02135614030843, -29.811843274349446], [168.021356, -29.811809], [168.02162340579383, -29.811807949652078], [168.02088551865063, -29.647294313012004]]]}";
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    List<Tessellator.Triangle> result = Tessellator.tessellate(polygons[0]);
+    List<Tessellator.Triangle> result = Tessellator.tessellate(polygons[0], random().nextBoolean());
     assertEquals(result.size(), 84);
   }
 
@@ -120,25 +123,50 @@ public class TestTessellator extends LuceneTestCase {
             + "[[168.71121460687698,-31.795031659971823],[168.71136127361123,-31.79503081865431],[168.71038567290682,-31.657182838382653],[168.71121460687698,-31.795031659971823]],"
             + "[[167.81624041598312,-31.53023516975434],[167.81634270442586,-31.530235525706665],[167.81676369867318,-31.434841665952604],[167.81624041598312,-31.53023516975434]]]}";
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    List<Tessellator.Triangle> result = Tessellator.tessellate(polygons[0]);
+    List<Tessellator.Triangle> result = Tessellator.tessellate(polygons[0], random().nextBoolean());
     assertEquals(113, result.size());
   }
 
-  public void testInvalidPolygon() throws Exception {
+  public void testInvalidPolygonIntersects() throws Exception {
     String wkt = "POLYGON((0 0, 1 1, 0 1, 1 0, 0 0))";
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          Tessellator.tessellate(polygon);
-        });
+    {
+      IllegalArgumentException ex =
+          expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
+      assertEquals("Polygon self-intersection at lat=0.5 lon=0.5", ex.getMessage());
+    }
+    {
+      IllegalArgumentException ex =
+          expectThrows(
+              IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, false));
+      assertEquals(
+          "Unable to Tessellate shape. Possible malformed shape detected.", ex.getMessage());
+    }
   }
 
-  public void testLUCENE8550() throws Exception {
+  public void testInvalidPolygonOverlap() throws Exception {
+    // holes are equal
     String wkt =
-        "POLYGON((24.04725 59.942,24.04825 59.94125,24.04875 59.94125,24.04875 59.94175,24.048 59.9425,24.0475 59.94275,24.0465 59.94225,24.046 59.94225,24.04575 59.9425,24.04525 59.94225,24.04725 59.942))";
+        "POLYGON((6.0373903 52.0927095, 6.0363363 52.0924929, 6.0364421 52.0925414, 6.0366551 52.0927136, 6.0367463 52.092781, 6.0370682 52.0929958, 6.0372052 52.093085, 6.0373191 52.0931397, 6.037441 52.0931853, 6.0387158 52.0935294, 6.0388509 52.093564, 6.0388904 52.093572, 6.03894 52.0935172, 6.0389929 52.093481, 6.0390607 52.0934904, 6.0395233 52.0936092, 6.0397184 52.0936688, 6.0398596 52.0937371, 6.0399905 52.0938164, 6.0401399 52.0939142, 6.0402279 52.0939553, 6.0403145 52.0939837, 6.0405561 52.0940279, 6.0437818 52.0947554, 6.043835 52.0947734,"
+            + " 6.0438704 52.0947948, 6.0438877 52.0948026, 6.0439294 52.0948214, 6.0440239 52.0948431, 6.0440735 52.0948507, 6.0441791 52.0948543, 6.045512 52.0947949, 6.0455192 52.0948216, 6.0456981 52.0947986, 6.0459013 52.0947863, 6.0460089 52.0947857, 6.0461408 52.0948108, 6.0462669 52.0948578, 6.0463578 52.0949239, 6.0463764 52.0949825, 6.0463582 52.0950124, 6.0463968 52.0950234, 6.0463915 52.0950928, 6.0473354 52.0963349, 6.0485817 52.0963608, 6.0490603 52.0962177, 6.0489671 52.0960387, 6.0462486 52.0946473, 6.0438777 52.094124, 6.0425991 52.0938519,"
+            + " 6.0415155 52.0936271, 6.0413498 52.093569, 6.040999 52.0934704, 6.0406499 52.0933945, 6.040265 52.0933135, 6.0401695 52.0926941, 6.0401431 52.092505, 6.0393746 52.0924531, 6.0392555 52.0924338, 6.039146 52.0923841, 6.0390625 52.0923275, 6.0389748 52.0922443, 6.0378985 52.0913116, 6.0376887 52.0914018, 6.0375636 52.0914061, 6.037535 52.0914026, 6.037483 52.0913363, 6.0374139 52.0912876, 6.037277 52.0912639, 6.0370897 52.091257, 6.0370336 52.0913821, 6.0368773 52.0915326, 6.0366141 52.0917119, 6.0361993 52.091979, 6.0360755 52.0920244,"
+            + " 6.0360358 52.0920367, 6.0359538 52.0920908, 6.035886 52.0921313, 6.0358394 52.0921889, 6.0358354 52.0922414, 6.035836 52.0922822, 6.0358481 52.0923161, 6.0358538 52.0923315, 6.0358873 52.0923605, 6.0376211 52.0927082, 6.0379741 52.0927953, 6.0379461 52.0928399, 6.0376294 52.0927647, 6.0373903 52.0927095), "
+            + " (6.0391557 52.0929189, 6.0388667 52.0928373, 6.0387045 52.0928107, 6.038578 52.0927855, 6.0384897 52.0927195, 6.0384626 52.0927036, 6.0384412 52.0926911, 6.0382642 52.0926086, 6.0380309 52.092529, 6.0377877 52.0924683, 6.0377571 52.0924499, 6.0377263 52.0924189, 6.037857 52.0923747, 6.0383203 52.0923097, 6.0385012 52.0922528, 6.0385416 52.0922588, 6.0385632 52.0923458, 6.0386452 52.0924386, 6.0387875 52.0925001, 6.0391495 52.0926998, 6.0393437 52.0928496, 6.0393774 52.0928918, 6.0393715 52.092914, 6.0393239 52.0929308, 6.039246 52.0929349, 6.0391557 52.0929189),"
+            + " (6.0377263 52.0924189, 6.0377571 52.0924499, 6.0377877 52.0924683, 6.0380309 52.092529, 6.0382642 52.0926086, 6.0384412 52.0926911, 6.0384626 52.0927036, 6.0384897 52.0927195, 6.038578 52.0927855, 6.0387045 52.0928107, 6.0388667 52.0928373, 6.0391557 52.0929189, 6.039246 52.0929349, 6.0393239 52.0929308, 6.0393715 52.092914, 6.0393774 52.0928918, 6.0393437 52.0928496, 6.0391495 52.0926998, 6.0387875 52.0925001, 6.0386452 52.0924386, 6.0385632 52.0923458, 6.0385416 52.0922588, 6.0385012 52.0922528, 6.0383203 52.0923097, 6.037857 52.0923747, 6.0377263 52.0924189))";
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    assertTrue(Tessellator.tessellate(polygon).size() == 8);
+    {
+      IllegalArgumentException ex =
+          expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
+      assertEquals(
+          "Polygon ring self-intersection at lat=52.0924189 lon=6.0377263", ex.getMessage());
+    }
+    {
+      IllegalArgumentException ex =
+          expectThrows(
+              IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, false));
+      assertEquals(
+          "Unable to Tessellate shape. Possible malformed shape detected.", ex.getMessage());
+    }
   }
 
   public void testLUCENE8559() throws Exception {
@@ -160,6 +188,15 @@ public class TestTessellator extends LuceneTestCase {
             + "-111.5025 68.32375,-111.50275 68.3235,-111.504 68.32375,-111.50425 68.3235,-111.50525 68.32325,-111.5055 68.3235,-111.506 68.3235,-111.50625 68.32325,-111.5065 68.3225,-111.5075 68.3225,-111.50775 68.32275,-111.50825 68.32275,"
             + "-111.5085 68.3225,-111.50875 68.3225,-111.509 68.32275,-111.5125 68.32275,-111.51325 68.32225,-111.4765 68.321))";
     checkPolygon(wkt);
+  }
+
+  public void testInvalidPolygonCollinear() throws Exception {
+    String wkt =
+        "POLYGON ((18.9401790919516 -33.9681188869036, 18.9401790919516 -33.9681188869036, 18.9401790919517 -33.9681188869036, 18.9401790919517 -33.9681188869036, 18.9401790919516 -33.9681188869036))";
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    IllegalArgumentException ex =
+        expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
+    assertEquals("at least three non-collinear points required", ex.getMessage());
   }
 
   public void testComplexPolygon01() throws Exception {
@@ -302,7 +339,11 @@ public class TestTessellator extends LuceneTestCase {
         "POLYGON((14.1989238 40.8274753, 14.1990593 40.8275004, 14.1991793 40.8275226, 14.1993451 40.8275478, 14.1993761 40.8275525, 14.1994599 40.8275746, 14.1996909 40.8276174, 14.1996769 40.8276728, 14.1993975 40.8277665, "
             + "14.1993717 40.8277752, 14.1992074 40.8278304, 14.1990929 40.8278688, 14.1989635 40.8279122, 14.1988594 40.8276864, 14.1989238 40.8274753), (14.1993717 40.8277752, 14.1993975 40.8277665, 14.1995864 40.8276576, 14.1994599 40.8275746,"
             + " 14.1993761 40.8275525, 14.1993451 40.8275478, 14.1993073 40.8276704, 14.1993717 40.8277752), (14.1990593 40.8275004, 14.1989907 40.8276889, 14.1990929 40.8278688, 14.1992074 40.8278304, 14.1991335 40.8276763, 14.1991793 40.8275226, 14.1990593 40.8275004))";
-    checkPolygon(wkt);
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    IllegalArgumentException ex =
+        expectThrows(IllegalArgumentException.class, () -> Tessellator.tessellate(polygon, true));
+    assertEquals(
+        "Polygon ring self-intersection at lat=40.8278688 lon=14.1990929", ex.getMessage());
   }
 
   public void testComplexPolygon18() throws Exception {
@@ -362,9 +403,7 @@ public class TestTessellator extends LuceneTestCase {
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          Tessellator.tessellate(polygon);
-        });
+        () -> Tessellator.tessellate(polygon, random().nextBoolean()));
   }
 
   public void testComplexPolygon25() throws Exception {
@@ -375,9 +414,7 @@ public class TestTessellator extends LuceneTestCase {
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          Tessellator.tessellate(polygon);
-        });
+        () -> Tessellator.tessellate(polygon, random().nextBoolean()));
   }
 
   public void testComplexPolygon26() throws Exception {
@@ -393,10 +430,7 @@ public class TestTessellator extends LuceneTestCase {
             + "(6.9735097 51.6245538,6.9736199 51.624605,6.9736853 51.6246203,6.9737516 51.6246231,6.9738024 51.6246107,6.9738324 51.6245878,6.9738425 51.6245509,6.9738332 51.6245122,6.9738039 51.6244869,6.9737616 51.6244687,6.9737061 51.6244625,6.9736445 51.6244749,6.9735736 51.6245046,6.9735097 51.6245538)),"
             + "((6.9731576 51.6249947,6.9731361 51.6250664,6.9731161 51.6251037,6.9731022 51.6250803,6.9731277 51.62502,6.9731576 51.6249947)))";
     Polygon[] polygons = (Polygon[]) SimpleWKTShapeParser.parse(wkt);
-    for (Polygon polygon : polygons) {
-      List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon);
-      assertTrue(tessellation.size() > 0);
-    }
+    checkMultiPolygon(polygons, 0.0);
   }
 
   public void testComplexPolygon27() throws Exception {
@@ -646,12 +680,7 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon40() throws Exception {
     String wkt = GeoTestUtil.readShape("lucene-9251.wkt.gz");
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon);
-    // calculate the area of big polygons have numerical error
-    assertEquals(area(polygon), area(tessellation), 1e-12);
-    for (Tessellator.Triangle t : tessellation) {
-      checkTriangleEdgesFromPolygon(polygon, t);
-    }
+    checkPolygon(polygon, 1e-12);
   }
 
   public void testComplexPolygon41() throws Exception {
@@ -667,14 +696,7 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon42() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-9417.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    for (int i = 0; i < polygons.length; i++) {
-      List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygons[i]);
-      // calculate the area of big polygons have numerical error
-      assertEquals(area(polygons[i]), area(tessellation), 1e-11);
-      for (Tessellator.Triangle t : tessellation) {
-        checkTriangleEdgesFromPolygon(polygons[i], t);
-      }
-    }
+    checkMultiPolygon(polygons, 1e-11);
   }
 
   public void testComplexPolygon43() throws Exception {
@@ -687,17 +709,230 @@ public class TestTessellator extends LuceneTestCase {
             + "(-88.3245325358123 41.9306419084828,-88.3245478066552 41.9305086556331,-88.3245658060855 41.930351580587,-88.3242368660096 41.9303327977821,-88.3242200926128 41.9304905242189,-88.324206161464 41.9306215207536,-88.3245325358123 41.9306419084828),"
             + "(-88.3236767661893 41.9307089429871,-88.3237008716322 41.930748885445,-88.323876104365 41.9306891087739,-88.324063438129 41.9306252050871,-88.3239244290607 41.930399373909,-88.3237349076233 41.9304653056436,-88.3235653339759 41.9305242981369,-88.3236767661893 41.9307089429871))";
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon);
-    assertEquals(area(polygon), area(tessellation), 1e-11);
-    for (Tessellator.Triangle t : tessellation) {
-      checkTriangleEdgesFromPolygon(polygon, t);
+    checkPolygon(polygon, 1e-11);
+  }
+
+  public void testComplexPolygon44() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-9538-invalid.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (int i = 0; i < polygons.length; i++) {
+      if (i == 21) {
+        final Polygon illegalPolygon = polygons[i];
+        IllegalArgumentException ex =
+            expectThrows(
+                IllegalArgumentException.class, () -> Tessellator.tessellate(illegalPolygon, true));
+        assertEquals(
+            "Polygon self-intersection at lat=34.21165542666664 lon=-83.88787058666672",
+            ex.getMessage());
+      } else {
+        checkPolygon(polygons[i], 0.0);
+      }
+    }
+  }
+
+  public void testComplexPolygon45() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10470.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    checkMultiPolygon(polygons, 1e-11);
+  }
+
+  public void testComplexPolygon46() throws Exception {
+    String wkt = GeoTestUtil.readShape("lucene-10470.wkt.gz");
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    checkPolygon(polygon, 1e-11);
+  }
+
+  public void testComplexPolygon47() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10470-2.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    checkMultiPolygon(polygons, 1e-11);
+  }
+
+  @Nightly
+  public void testComplexPolygon48() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10470-3.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    checkMultiPolygon(polygons, 1e-11);
+  }
+
+  public void testComplexPolygon49() throws Exception {
+    String wkt =
+        "POLYGON((77.500 13.500, 77.550 13.500, 77.530 13.470, 77.570 13.470,"
+            + "77.550 13.500, 77.600 13.500, 77.600 13.400, 77.500 13.400, 77.500 13.500))";
+    Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    checkPolygon(polygon, 1e-11);
+  }
+
+  public void testComplexPolygon50() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10563-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    assertEquals("Only one polygon", 1, polygons.length);
+    checkPolygon(polygons[0], 1e-11);
+  }
+
+  public void testComplexPolygon50_WithMonitor() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10563-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    assertEquals("Only one polygon", 1, polygons.length);
+    Polygon polygon = polygons[0];
+    TestCountingMonitor monitor = new TestCountingMonitor();
+    Tessellator.tessellate(polygon, true, monitor);
+    MatcherAssert.assertThat("Expected many monitor calls", monitor.count, greaterThan(390));
+    assertEquals("Expected specific number of splits", 3, monitor.splitsStarted);
+    assertEquals("Expected splits to start and end", monitor.splitsEnded, monitor.splitsStarted);
+  }
+
+  public void testComplexPolygon51() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10563-2.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    assertEquals("Only one polygon", 1, polygons.length);
+    Polygon polygon = polygons[0];
+    boolean checkSelfIntersections = random().nextBoolean();
+    IllegalArgumentException ex =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> Tessellator.tessellate(polygon, checkSelfIntersections));
+    String error =
+        checkSelfIntersections
+            ? "Polygon self-intersection at lat=2.8440144262027296 lon=177.96701124393607"
+            : "Unable to Tessellate shape. Possible malformed shape detected.";
+    assertEquals(
+        "Expected specific error depending on checkSelfIntersections=" + checkSelfIntersections,
+        error,
+        ex.getMessage());
+  }
+
+  public void testComplexPolygon52() throws Exception {
+    String geoJson = GeoTestUtil.readShape("lucene-10563-3.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    assertEquals("Only one polygon", 1, polygons.length);
+    Polygon polygon = polygons[0];
+    boolean checkSelfIntersections = random().nextBoolean();
+    IllegalArgumentException ex =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> Tessellator.tessellate(polygon, checkSelfIntersections));
+    String error =
+        checkSelfIntersections
+            ? "Polygon self-intersection at lat=-11.22876335157631 lon=126.94854431224186"
+            : "Unable to Tessellate shape. Possible malformed shape detected.";
+    assertEquals(
+        "Expected specific error depending on checkSelfIntersections=" + checkSelfIntersections,
+        error,
+        ex.getMessage());
+  }
+
+  public void testComplexPolygon53() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-11986-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    checkMultiPolygon(polygons, 0.0);
+  }
+
+  public void testComplexPolygon54() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-11986-2.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    checkMultiPolygon(polygons, 0.0);
+  }
+
+  public void testComplexPolygon55() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-12352-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation =
+          Tessellator.tessellate(polygon, random().nextBoolean());
+      assertEquals(area(polygon), area(tessellation), 0.0);
+      // don't check edges as it takes several minutes
+    }
+  }
+
+  public void testComplexPolygon56() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-12352-2.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    for (Polygon polygon : polygons) {
+      List<Tessellator.Triangle> tessellation =
+          Tessellator.tessellate(polygon, random().nextBoolean());
+      assertEquals(area(polygon), area(tessellation), 0.0);
+      // don't check edges as it takes several minutes
+    }
+  }
+
+  public void testComplexPolygon57() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-13841-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    checkMultiPolygon(polygons, 3e-11);
+  }
+
+  @Nightly
+  public void testComplexPolygon58() throws Exception {
+    String wkt = GeoTestUtil.readShape("github-13841-2.wkt.gz");
+    checkMultiPolygon(wkt);
+  }
+
+  @Nightly
+  public void testComplexPolygon59() throws Exception {
+    String wkt = GeoTestUtil.readShape("github-13841-3.wkt.gz");
+    Polygon[] polygons = (Polygon[]) SimpleWKTShapeParser.parse(wkt);
+    checkMultiPolygon(polygons, 1e-11);
+  }
+
+  public void testComplexPolygon60() throws Exception {
+    String wkt =
+        "POLYGON((0 0, 5 1, 10 0, 11 5, 10 10,5 11, 0 10, 1 5, 0 0),"
+            + "(1 5, 1 7, 2 7, 1 5), (1 5, 4 8, 5 8, 1 5),"
+            + "(1 5, 3 6, 7 7, 1 5), (1 5, 2 3, 1 3, 1 5),"
+            + "(1 5, 3 4, 4 4, 1 5), (1 5, 5 6, 6 6, 1 5),"
+            + "(11 5, 10 3, 10 4, 11 5), (11 5,8 3, 8 4, 11 5),"
+            + "(11 5,5 4, 5 5, 11 5), (11 5, 4.5 3, 4 3, 11 5),"
+            + "(11 5, 8 6, 9 7, 11 5), (11 5, 10 8, 10 7, 11 5),"
+            + "(5 11, 2 10, 3 10, 5 11), (5 11, 3 9, 4 9, 5 11),"
+            + "(5 11, 5.5  8, 6 7, 5 11), (5 11, 8 8, 9 8, 5 11),"
+            + "(5 1, 2 0.5, 3 1, 5 1), (5 1, 8 0.5, 7 2, 5 1),"
+            + "(5 1, 3 2, 3 3, 5 1), (5 1, 5 2, 6 2, 5 1))";
+    checkPolygon(wkt);
+  }
+
+  private static class TestCountingMonitor implements Tessellator.Monitor {
+    private int count = 0;
+    private int splitsStarted = 0;
+    private int splitsEnded = 0;
+
+    @Override
+    public void currentState(
+        String status, List<Point> points, List<Tessellator.Triangle> tessellation) {
+      count++;
+    }
+
+    @Override
+    public void startSplit(String status, List<Point> leftPolygon, List<Point> rightPolygon) {
+      splitsStarted++;
+    }
+
+    @Override
+    public void endSplit(String status) {
+      splitsEnded++;
+    }
+  }
+
+  private void checkMultiPolygon(String wkt) throws Exception {
+    Polygon[] polygons = (Polygon[]) SimpleWKTShapeParser.parse(wkt);
+    checkMultiPolygon(polygons, 0.0);
+  }
+
+  private void checkMultiPolygon(Polygon[] polygons, double delta) {
+    for (Polygon polygon : polygons) {
+      checkPolygon(polygon, delta);
     }
   }
 
   private void checkPolygon(String wkt) throws Exception {
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon);
-    assertEquals(area(polygon), area(tessellation), 0.0);
+    checkPolygon(polygon, 0.0);
+  }
+
+  private void checkPolygon(Polygon polygon, double delta) {
+    List<Tessellator.Triangle> tessellation =
+        Tessellator.tessellate(polygon, random().nextBoolean());
+    assertEquals(area(polygon), area(tessellation), delta);
     for (Tessellator.Triangle t : tessellation) {
       checkTriangleEdgesFromPolygon(polygon, t);
     }
@@ -790,7 +1025,7 @@ public class TestTessellator extends LuceneTestCase {
         }
       }
     }
-    if (p.getHoles() != null && p.getHoles().length > 0) {
+    if (p.getHoles() != null) {
       for (Polygon hole : p.getHoles()) {
         if (isEdgeFromPolygon(hole, aLon, aLat, bLon, bLat)) {
           return true;

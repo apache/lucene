@@ -26,12 +26,12 @@ import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Stack;
 import org.apache.lucene.benchmark.byTask.utils.Config;
 
 /**
@@ -81,7 +81,7 @@ public class DirContentSource extends ContentSource {
 
     int count = 0;
 
-    Stack<Path> stack = new Stack<>();
+    ArrayDeque<Path> stack = new ArrayDeque<>();
 
     /* this seems silly ... there must be a better way ...
     not that this is good, but can it matter? */
@@ -93,7 +93,7 @@ public class DirContentSource extends ContentSource {
     }
 
     void find() throws IOException {
-      if (stack.empty()) {
+      if (stack.isEmpty()) {
         return;
       }
       if (!Files.isDirectory(stack.peek())) {

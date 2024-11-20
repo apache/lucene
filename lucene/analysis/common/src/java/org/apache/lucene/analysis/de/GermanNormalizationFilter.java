@@ -24,8 +24,8 @@ import org.apache.lucene.analysis.util.StemmerUtil;
 
 /**
  * Normalizes German characters according to the heuristics of the <a
- * href="http://snowball.tartarus.org/algorithms/german2/stemmer.html">German2 snowball
- * algorithm</a>. It allows for the fact that ä, ö and ü are sometimes written as ae, oe and ue.
+ * href="https://snowballstem.org/algorithms/german/stemmer.html">German snowball algorithm</a>. It
+ * allows for the fact that ä, ö and ü are sometimes written as ae, oe and ue.
  *
  * <ul>
  *   <li>'ß' is replaced by 'ss'
@@ -34,7 +34,7 @@ import org.apache.lucene.analysis.util.StemmerUtil;
  *   <li>'ue' is replaced by 'u', when not following a vowel or q.
  * </ul>
  *
- * This is useful if you want this normalization without using the German2 stemmer, or perhaps no
+ * This is useful if you want this normalization without using the German stemmer, or perhaps no
  * stemming at all.
  */
 public final class GermanNormalizationFilter extends TokenFilter {

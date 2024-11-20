@@ -50,7 +50,6 @@ abstract class GlobalOrdinalsWithScoreCollector implements Collector {
     this.doMinMax = min > 1 || max < Integer.MAX_VALUE;
     this.min = min;
     this.max = max;
-    ;
     this.ordinalMap = ordinalMap;
     this.collectedOrds = new LongBitSet(valueCount);
     if (scoreMode != ScoreMode.None) {

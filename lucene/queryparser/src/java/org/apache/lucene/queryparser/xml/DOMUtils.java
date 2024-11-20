@@ -86,7 +86,7 @@ public class DOMUtils {
    */
   public static String getAttributeWithInheritance(Element element, String attributeName) {
     String result = element.getAttribute(attributeName);
-    if ((result == null) || ("".equals(result))) {
+    if ((result == null) || (result.isEmpty())) {
       Node n = element.getParentNode();
       if ((n == element) || (n == null)) {
         return null;
@@ -118,22 +118,22 @@ public class DOMUtils {
 
   public static String getAttribute(Element element, String attributeName, String deflt) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || ("".equals(result)) ? deflt : result;
+    return (result == null) || (result.isEmpty()) ? deflt : result;
   }
 
   public static float getAttribute(Element element, String attributeName, float deflt) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || ("".equals(result)) ? deflt : Float.parseFloat(result);
+    return (result == null) || (result.isEmpty()) ? deflt : Float.parseFloat(result);
   }
 
   public static int getAttribute(Element element, String attributeName, int deflt) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || ("".equals(result)) ? deflt : Integer.parseInt(result);
+    return (result == null) || (result.isEmpty()) ? deflt : Integer.parseInt(result);
   }
 
   public static boolean getAttribute(Element element, String attributeName, boolean deflt) {
     String result = element.getAttribute(attributeName);
-    return (result == null) || ("".equals(result)) ? deflt : Boolean.valueOf(result);
+    return (result == null) || (result.isEmpty()) ? deflt : Boolean.valueOf(result);
   }
 
   /* Returns text of node and all child nodes - without markup */

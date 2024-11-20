@@ -29,6 +29,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
@@ -169,7 +170,8 @@ final class GlobalOrdinalsQuery extends Query implements Accountable {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Scorer scorer;
       SortedDocValues values = DocValues.getSorted(context.reader(), joinField);
       if (values == null) {
         return null;
@@ -180,18 +182,18 @@ final class GlobalOrdinalsQuery extends Query implements Accountable {
         return null;
       }
       if (globalOrds != null) {
-        return new OrdinalMapScorer(
-            this,
-            score(),
-            foundOrds,
-            values,
-            approximationScorer.iterator(),
-            globalOrds.getGlobalOrds(context.ord));
+        scorer =
+            new OrdinalMapScorer(
+                score(),
+                foundOrds,
+                values,
+                approximationScorer.iterator(),
+                globalOrds.getGlobalOrds(context.ord));
+      } else {
+        scorer =
+            new SegmentOrdinalScorer(score(), foundOrds, values, approximationScorer.iterator());
       }
-      {
-        return new SegmentOrdinalScorer(
-            this, score(), foundOrds, values, approximationScorer.iterator());
-      }
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override
@@ -209,13 +211,12 @@ final class GlobalOrdinalsQuery extends Query implements Accountable {
     final LongValues segmentOrdToGlobalOrdLookup;
 
     public OrdinalMapScorer(
-        Weight weight,
         float score,
         LongBitSet foundOrds,
         SortedDocValues values,
         DocIdSetIterator approximationScorer,
         LongValues segmentOrdToGlobalOrdLookup) {
-      super(weight, values, approximationScorer);
+      super(values, approximationScorer, 1);
       this.score = score;
       this.foundOrds = foundOrds;
       this.segmentOrdToGlobalOrdLookup = segmentOrdToGlobalOrdLookup;
@@ -250,12 +251,11 @@ final class GlobalOrdinalsQuery extends Query implements Accountable {
     final LongBitSet foundOrds;
 
     public SegmentOrdinalScorer(
-        Weight weight,
         float score,
         LongBitSet foundOrds,
         SortedDocValues values,
         DocIdSetIterator approximationScorer) {
-      super(weight, values, approximationScorer);
+      super(values, approximationScorer, 1);
       this.score = score;
       this.foundOrds = foundOrds;
     }

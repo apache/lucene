@@ -42,9 +42,6 @@ public abstract class Scorable {
     return 0f;
   }
 
-  /** Returns the doc ID that is currently being scored. */
-  public abstract int docID();
-
   /**
    * Optional method: Tell the scorer that its iterator may safely ignore all documents whose score
    * is less than the given {@code minScore}. This is a no-op by default.
@@ -66,25 +63,15 @@ public abstract class Scorable {
   }
 
   /**
-   * A child Scorer and its relationship to its parent. the meaning of the relationship depends upon
+   * A child Scorer and its relationship to its parent. The meaning of the relationship depends upon
    * the parent query.
    *
+   * <p>The relationship can be any string that makes sense to the parent Scorer.
+   *
+   * @param child Child Scorer. (note this is typically a direct child, and may itself also have
+   *     children).
+   * @param relationship An arbitrary string relating this scorer to the parent.
    * @lucene.experimental
    */
-  public static class ChildScorable {
-    /** Child Scorer. (note this is typically a direct child, and may itself also have children). */
-    public final Scorable child;
-    /** An arbitrary string relating this scorer to the parent. */
-    public final String relationship;
-
-    /**
-     * Creates a new ChildScorer node with the specified relationship.
-     *
-     * <p>The relationship can be any be any string that makes sense to the parent Scorer.
-     */
-    public ChildScorable(Scorable child, String relationship) {
-      this.child = child;
-      this.relationship = relationship;
-    }
-  }
+  public record ChildScorable(Scorable child, String relationship) {}
 }

@@ -17,11 +17,11 @@
 
 package org.apache.lucene.analysis.miscellaneous;
 
-import org.apache.lucene.analysis.BaseTokenStreamFactoryTestCase;
-import org.apache.lucene.analysis.CannedTokenStream;
-import org.apache.lucene.analysis.Token;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
+import org.apache.lucene.tests.analysis.CannedTokenStream;
+import org.apache.lucene.tests.analysis.Token;
 
 /** This test just ensures the factory works, detailed tests in {@link TestDropIfFlaggedFilter} */
 public class TestDropIfFlaggedFilterFactory extends BaseTokenStreamFactoryTestCase {

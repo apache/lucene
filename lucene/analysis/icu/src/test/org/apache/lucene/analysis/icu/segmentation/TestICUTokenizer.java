@@ -24,10 +24,10 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.icu.tokenattributes.ScriptAttribute;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 
 public class TestICUTokenizer extends BaseTokenStreamTestCase {
 
@@ -581,5 +581,20 @@ public class TestICUTokenizer extends BaseTokenStreamTestCase {
     for (int i = 0; i < threads.length; i++) {
       threads[i].join();
     }
+  }
+
+  /** test use of http://www.unicode.org/reports/tr24/#Script_Extensions */
+  public void testScriptExtensions() throws Exception {
+    assertAnalyzesTo(a, "𑅗०", new String[] {"𑅗०"});
+  }
+
+  /** don't change scripts for category Mc */
+  public void testScriptSpacingMark() throws Exception {
+    assertAnalyzesTo(a, "𑅗ा", new String[] {"𑅗ा"});
+  }
+
+  /** don't change scripts for category Me */
+  public void testScriptEnclosingMark() throws Exception {
+    assertAnalyzesTo(a, "𑅗᪾", new String[] {"𑅗᪾"});
   }
 }

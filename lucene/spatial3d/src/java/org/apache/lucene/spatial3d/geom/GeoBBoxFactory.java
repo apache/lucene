@@ -55,24 +55,22 @@ public class GeoBBoxFactory {
     if (rightLon > Math.PI) {
       rightLon = Math.PI;
     }
-    if ((Math.abs(leftLon + Math.PI) < Vector.MINIMUM_ANGULAR_RESOLUTION
-            && Math.abs(rightLon - Math.PI) < Vector.MINIMUM_ANGULAR_RESOLUTION)
-        || (Math.abs(rightLon + Math.PI) < Vector.MINIMUM_ANGULAR_RESOLUTION
-            && Math.abs(leftLon - Math.PI) < Vector.MINIMUM_ANGULAR_RESOLUTION)) {
-      if (Math.abs(topLat - Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION
-          && Math.abs(bottomLat + Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+    if ((longitudesEquals(leftLon, -Math.PI) && longitudesEquals(rightLon, Math.PI))
+        || (longitudesEquals(rightLon, -Math.PI) && longitudesEquals(leftLon, Math.PI))) {
+      if (isNorthPole(topLat) && isSouthPole(bottomLat)) {
         return new GeoWorld(planetModel);
       }
-      if (Math.abs(topLat - bottomLat) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
-        if (Math.abs(topLat - Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION
-            || Math.abs(topLat + Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+      if (latitudesEquals(topLat, bottomLat)) {
+        if (isNorthPole(topLat)) {
           return new GeoDegeneratePoint(planetModel, topLat, 0.0);
+        } else if (isSouthPole(bottomLat)) {
+          return new GeoDegeneratePoint(planetModel, bottomLat, 0.0);
         }
         return new GeoDegenerateLatitudeZone(planetModel, topLat);
       }
-      if (Math.abs(topLat - Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+      if (isNorthPole(topLat)) {
         return new GeoNorthLatitudeZone(planetModel, bottomLat);
-      } else if (Math.abs(bottomLat + Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+      } else if (isSouthPole(bottomLat)) {
         return new GeoSouthLatitudeZone(planetModel, topLat);
       }
       return new GeoLatitudeZone(planetModel, topLat, bottomLat);
@@ -82,10 +80,10 @@ public class GeoBBoxFactory {
     if (extent < 0.0) {
       extent += Math.PI * 2.0;
     }
-    if (topLat == Math.PI * 0.5 && bottomLat == -Math.PI * 0.5) {
-      if (Math.abs(leftLon - rightLon) < Vector.MINIMUM_ANGULAR_RESOLUTION)
+    if (isNorthPole(topLat) && isSouthPole(bottomLat)) {
+      if (longitudesEquals(leftLon, rightLon)) {
         return new GeoDegenerateLongitudeSlice(planetModel, leftLon);
-
+      }
       if (extent >= Math.PI) {
         return new GeoWideLongitudeSlice(planetModel, leftLon, rightLon);
       }
@@ -93,47 +91,66 @@ public class GeoBBoxFactory {
       return new GeoLongitudeSlice(planetModel, leftLon, rightLon);
     }
     // System.err.println(" not longitude slice");
-    if (Math.abs(leftLon - rightLon) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
-      if (Math.abs(topLat - bottomLat) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+    if (longitudesEquals(leftLon, rightLon)) {
+      if (latitudesEquals(topLat, bottomLat)) {
         return new GeoDegeneratePoint(planetModel, topLat, leftLon);
       }
       return new GeoDegenerateVerticalLine(planetModel, topLat, bottomLat, leftLon);
     }
     // System.err.println(" not vertical line");
-    if (extent >= Math.PI) {
-      if (Math.abs(topLat - bottomLat) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
-        if (Math.abs(topLat - Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+    if (extent >= GeoWideRectangle.MIN_WIDE_EXTENT) {
+      if (latitudesEquals(topLat, bottomLat)) {
+        if (isNorthPole(topLat)) {
           return new GeoDegeneratePoint(planetModel, topLat, 0.0);
-        } else if (Math.abs(bottomLat + Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+        } else if (isSouthPole(bottomLat)) {
           return new GeoDegeneratePoint(planetModel, bottomLat, 0.0);
         }
         // System.err.println(" wide degenerate line");
         return new GeoWideDegenerateHorizontalLine(planetModel, topLat, leftLon, rightLon);
       }
-      if (Math.abs(topLat - Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+      if (isNorthPole(topLat)) {
         return new GeoWideNorthRectangle(planetModel, bottomLat, leftLon, rightLon);
-      } else if (Math.abs(bottomLat + Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+      } else if (isSouthPole(bottomLat)) {
         return new GeoWideSouthRectangle(planetModel, topLat, leftLon, rightLon);
       }
       // System.err.println(" wide rect");
       return new GeoWideRectangle(planetModel, topLat, bottomLat, leftLon, rightLon);
     }
-    if (Math.abs(topLat - bottomLat) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
-      if (Math.abs(topLat - Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+    if (latitudesEquals(topLat, bottomLat)) {
+      if (isNorthPole(topLat)) {
         return new GeoDegeneratePoint(planetModel, topLat, 0.0);
-      } else if (Math.abs(bottomLat + Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+      } else if (isSouthPole(bottomLat)) {
         return new GeoDegeneratePoint(planetModel, bottomLat, 0.0);
       }
       // System.err.println(" horizontal line");
       return new GeoDegenerateHorizontalLine(planetModel, topLat, leftLon, rightLon);
     }
-    if (Math.abs(topLat - Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+    if (isNorthPole(topLat)) {
       return new GeoNorthRectangle(planetModel, bottomLat, leftLon, rightLon);
-    } else if (Math.abs(bottomLat + Math.PI * 0.5) < Vector.MINIMUM_ANGULAR_RESOLUTION) {
+    } else if (isSouthPole(bottomLat)) {
       return new GeoSouthRectangle(planetModel, topLat, leftLon, rightLon);
     }
     // System.err.println(" rectangle");
     return new GeoRectangle(planetModel, topLat, bottomLat, leftLon, rightLon);
+  }
+
+  private static boolean isNorthPole(double lat) {
+    return latitudesEquals(lat, Math.PI * 0.5);
+  }
+
+  private static boolean isSouthPole(double lat) {
+    return latitudesEquals(lat, -Math.PI * 0.5);
+  }
+
+  private static boolean latitudesEquals(double lat1, double lat2) {
+    // it is not enough with using the MINIMUM_ANGULAR_RESOLUTION, check as well the sin values
+    // just in case they describe the same plane
+    return Math.abs(lat1 - lat2) < Vector.MINIMUM_ANGULAR_RESOLUTION
+        || Math.abs(Math.sin(lat1) - Math.sin(lat2)) < Vector.MINIMUM_RESOLUTION;
+  }
+
+  private static boolean longitudesEquals(double lon1, double lon2) {
+    return Math.abs(lon1 - lon2) < Vector.MINIMUM_ANGULAR_RESOLUTION;
   }
 
   /**

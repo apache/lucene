@@ -27,6 +27,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
@@ -42,6 +43,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.MergedIterator;
 
@@ -77,21 +79,13 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     super(PER_FIELD_NAME);
   }
 
-  /** Group of fields written by one PostingsFormat */
-  static class FieldsGroup {
-    final List<String> fields;
-    final int suffix;
-    /**
-     * Custom SegmentWriteState for this group of fields, with the segmentSuffix uniqueified for
-     * this PostingsFormat
-     */
-    final SegmentWriteState state;
-
-    private FieldsGroup(List<String> fields, int suffix, SegmentWriteState state) {
-      this.fields = fields;
-      this.suffix = suffix;
-      this.state = state;
-    }
+  /**
+   * Group of fields written by one PostingsFormat
+   *
+   * @param state Custom SegmentWriteState for this group of fields, with the segmentSuffix
+   *     uniqueified for this PostingsFormat
+   */
+  record FieldsGroup(List<String> fields, int suffix, SegmentWriteState state) {
 
     static class Builder {
       final Set<String> fields;
@@ -116,7 +110,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       }
     }
   }
-  ;
 
   static String getSuffix(String formatName, String suffix) {
     return formatName + "_" + suffix;
@@ -185,12 +178,12 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
               new MergedIterator<>(
                   true,
                   Arrays.stream(mergeState.fieldsProducers)
+                      .filter(Objects::nonNull)
                       .map(FieldsProducer::iterator)
                       .toArray(Iterator[]::new));
       Map<PostingsFormat, FieldsGroup> formatToGroups = buildFieldsGroupMapping(indexedFieldNames);
 
       // Merge postings
-      PerFieldMergeState pfMergeState = new PerFieldMergeState(mergeState);
       boolean success = false;
       try {
         for (Map.Entry<PostingsFormat, FieldsGroup> ent : formatToGroups.entrySet()) {
@@ -199,11 +192,10 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
 
           FieldsConsumer consumer = format.fieldsConsumer(group.state);
           toClose.add(consumer);
-          consumer.merge(pfMergeState.apply(group.fields), norms);
+          consumer.merge(PerFieldMergeState.restrictFields(mergeState, group.fields), norms);
         }
         success = true;
       } finally {
-        pfMergeState.reset();
         if (!success) {
           IOUtils.closeWhileHandlingException(toClose);
         }
@@ -264,7 +256,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
       }
 
       Map<PostingsFormat, FieldsGroup> formatToGroups =
-          new HashMap<>((int) (formatToGroupBuilders.size() / 0.75f) + 1);
+          CollectionUtil.newHashMap(formatToGroupBuilders.size());
       formatToGroupBuilders.forEach(
           (postingsFormat, builder) -> formatToGroups.put(postingsFormat, builder.build()));
       return formatToGroups;

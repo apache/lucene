@@ -18,17 +18,34 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Locale;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.DocValuesConsumer;
+import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.NormsProducer;
+import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
+import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
+import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.MockDirectoryWrapper;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
 public class TestIndexWriterForceMerge extends LuceneTestCase {
   public void testPartialMerge() throws IOException {
@@ -226,10 +243,7 @@ public class TestIndexWriterForceMerge extends LuceneTestCase {
       }
       if (info.info.getUseCompoundFile()) {
         try (Directory cfs =
-            info.info
-                .getCodec()
-                .compoundFormat()
-                .getCompoundReader(dir, info.info, IOContext.DEFAULT)) {
+            info.info.getCodec().compoundFormat().getCompoundReader(dir, info.info)) {
           for (String file : cfs.listAll()) {
             sb.append(
                 String.format(
@@ -288,5 +302,181 @@ public class TestIndexWriterForceMerge extends LuceneTestCase {
     }
 
     dir.close();
+  }
+
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/13478")
+  public void testMergePerField() throws IOException {
+    IndexWriterConfig config = new IndexWriterConfig();
+    ConcurrentMergeScheduler mergeScheduler =
+        new ConcurrentMergeScheduler() {
+          @Override
+          public Executor getIntraMergeExecutor(MergePolicy.OneMerge merge) {
+            // always enable parallel merges
+            return intraMergeExecutor;
+          }
+        };
+    mergeScheduler.setMaxMergesAndThreads(4, 4);
+    config.setMergeScheduler(mergeScheduler);
+    Codec codec = TestUtil.getDefaultCodec();
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    config.setCodec(
+        new FilterCodec(codec.getName(), codec) {
+          @Override
+          public PostingsFormat postingsFormat() {
+            return new PerFieldPostingsFormat() {
+              @Override
+              public PostingsFormat getPostingsFormatForField(String field) {
+                return new BlockingOnMergePostingsFormat(
+                    TestUtil.getDefaultPostingsFormat(), barrier);
+              }
+            };
+          }
+
+          @Override
+          public DocValuesFormat docValuesFormat() {
+            return new PerFieldDocValuesFormat() {
+              @Override
+              public DocValuesFormat getDocValuesFormatForField(String field) {
+                return new BlockingOnMergeDocValuesFormat(
+                    TestUtil.getDefaultDocValuesFormat(), barrier);
+              }
+            };
+          }
+        });
+    try (Directory directory = newDirectory();
+        IndexWriter writer = new IndexWriter(directory, config)) {
+      int numDocs = 50 + random().nextInt(100);
+      int numFields = 5 + random().nextInt(5);
+      for (int d = 0; d < numDocs; d++) {
+        Document doc = new Document();
+        for (int f = 0; f < numFields * 2; f++) {
+          String field = "f" + f;
+          String value = "v-" + random().nextInt(100);
+          if (f % 2 == 0) {
+            doc.add(new StringField(field, value, Field.Store.NO));
+          } else {
+            doc.add(new BinaryDocValuesField(field, new BytesRef(value)));
+          }
+          doc.add(new LongPoint("p" + f, random().nextInt(10000)));
+        }
+        writer.addDocument(doc);
+        if (random().nextInt(100) < 10) {
+          writer.flush();
+        }
+      }
+      writer.forceMerge(1);
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        assertEquals(numDocs, reader.numDocs());
+      }
+    }
+  }
+
+  static class BlockingOnMergePostingsFormat extends PostingsFormat {
+    private final PostingsFormat postingsFormat;
+    private final CyclicBarrier barrier;
+
+    BlockingOnMergePostingsFormat(PostingsFormat postingsFormat, CyclicBarrier barrier) {
+      super(postingsFormat.getName());
+      this.postingsFormat = postingsFormat;
+      this.barrier = barrier;
+    }
+
+    @Override
+    public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
+      var in = postingsFormat.fieldsConsumer(state);
+      return new FieldsConsumer() {
+        @Override
+        public void write(Fields fields, NormsProducer norms) throws IOException {
+          in.write(fields, norms);
+        }
+
+        @Override
+        public void merge(MergeState mergeState, NormsProducer norms) throws IOException {
+          try {
+            barrier.await(1, TimeUnit.SECONDS);
+          } catch (Exception e) {
+            throw new AssertionError("broken barrier", e);
+          }
+          in.merge(mergeState, norms);
+        }
+
+        @Override
+        public void close() throws IOException {
+          in.close();
+        }
+      };
+    }
+
+    @Override
+    public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
+      return postingsFormat.fieldsProducer(state);
+    }
+  }
+
+  static class BlockingOnMergeDocValuesFormat extends DocValuesFormat {
+    private final DocValuesFormat docValuesFormat;
+    private final CyclicBarrier barrier;
+
+    BlockingOnMergeDocValuesFormat(DocValuesFormat docValuesFormat, CyclicBarrier barrier) {
+      super(docValuesFormat.getName());
+      this.docValuesFormat = docValuesFormat;
+      this.barrier = barrier;
+    }
+
+    @Override
+    public DocValuesConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
+      DocValuesConsumer in = docValuesFormat.fieldsConsumer(state);
+      return new DocValuesConsumer() {
+        @Override
+        public void addNumericField(FieldInfo field, DocValuesProducer valuesProducer)
+            throws IOException {
+          in.addNumericField(field, valuesProducer);
+        }
+
+        @Override
+        public void addBinaryField(FieldInfo field, DocValuesProducer valuesProducer)
+            throws IOException {
+          in.addBinaryField(field, valuesProducer);
+        }
+
+        @Override
+        public void addSortedField(FieldInfo field, DocValuesProducer valuesProducer)
+            throws IOException {
+          in.addSortedField(field, valuesProducer);
+        }
+
+        @Override
+        public void addSortedNumericField(FieldInfo field, DocValuesProducer valuesProducer)
+            throws IOException {
+          in.addSortedNumericField(field, valuesProducer);
+        }
+
+        @Override
+        public void addSortedSetField(FieldInfo field, DocValuesProducer valuesProducer)
+            throws IOException {
+          in.addSortedSetField(field, valuesProducer);
+        }
+
+        @Override
+        public void merge(MergeState mergeState) throws IOException {
+          try {
+            barrier.await(1, TimeUnit.SECONDS);
+          } catch (Exception e) {
+            throw new AssertionError("broken barrier", e);
+          }
+          in.merge(mergeState);
+        }
+
+        @Override
+        public void close() throws IOException {
+          in.close();
+        }
+      };
+    }
+
+    @Override
+    public DocValuesProducer fieldsProducer(SegmentReadState state) throws IOException {
+      return docValuesFormat.fieldsProducer(state);
+    }
   }
 }

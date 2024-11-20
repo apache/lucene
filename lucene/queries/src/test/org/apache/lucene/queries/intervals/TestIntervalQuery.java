@@ -17,20 +17,26 @@
 
 package org.apache.lucene.queries.intervals;
 
+import static org.apache.lucene.queries.intervals.Intervals.containing;
+import static org.apache.lucene.queries.intervals.Intervals.extend;
+import static org.apache.lucene.queries.intervals.Intervals.or;
+import static org.apache.lucene.queries.intervals.Intervals.term;
+
 import java.io.IOException;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.BoostQuery;
-import org.apache.lucene.search.CheckHits;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 
 public class TestIntervalQuery extends LuceneTestCase {
 
@@ -49,9 +55,9 @@ public class TestIntervalQuery extends LuceneTestCase {
             random(),
             directory,
             newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
-    for (int i = 0; i < docFields.length; i++) {
+    for (String docField : docFields) {
       Document doc = new Document();
-      doc.add(newTextField(field, docFields[i], Field.Store.YES));
+      doc.add(newTextField(field, docField, Field.Store.YES));
       writer.addDocument(doc);
     }
     reader = writer.getReader();
@@ -66,7 +72,7 @@ public class TestIntervalQuery extends LuceneTestCase {
     super.tearDown();
   }
 
-  private String[] docFields = {
+  private final String[] docFields = {
     "w1 w2 w3 w4 w5",
     "w1 w3 w2 w3",
     "w1 xx w2 w4 yy w3",
@@ -77,7 +83,9 @@ public class TestIntervalQuery extends LuceneTestCase {
     "coordinate genome research",
     "greater new york",
     "x x x x x intend x x x message x x x message x x x addressed x x",
-    "issue with intervals queries from search engine. So it's a big issue for us as we need to do ordered searches. Thank you to help us concerning that issue"
+    "issue with intervals queries from search engine. So it's a big issue for us as we need to do ordered searches. Thank you to help us concerning that issue",
+    "場外好朋友",
+    "alice bob alice alice carl alice bob alice carl"
   };
 
   private void checkHits(Query query, int[] results) throws IOException {
@@ -166,7 +174,7 @@ public class TestIntervalQuery extends LuceneTestCase {
     assertTrue(explain.toString().contains(field));
   }
 
-  public void testNullConstructorArgs() throws IOException {
+  public void testNullConstructorArgs() {
     expectThrows(NullPointerException.class, () -> new IntervalQuery(null, Intervals.term("z")));
     expectThrows(NullPointerException.class, () -> new IntervalQuery("field", null));
   }
@@ -330,6 +338,18 @@ public class TestIntervalQuery extends LuceneTestCase {
     checkHits(q, new int[] {6, 7});
   }
 
+  public void testUnorderedWithNoGap() throws IOException {
+    Query q =
+        new IntervalQuery(
+            field,
+            Intervals.maxgaps(
+                0,
+                Intervals.unordered(
+                    Intervals.term("w3"),
+                    Intervals.unordered(Intervals.term("w1"), Intervals.term("w5")))));
+    checkHits(q, new int[] {0});
+  }
+
   public void testOrderedWithGaps() throws IOException {
     Query q =
         new IntervalQuery(
@@ -339,6 +359,29 @@ public class TestIntervalQuery extends LuceneTestCase {
                 Intervals.ordered(
                     Intervals.term("issue"), Intervals.term("search"), Intervals.term("ordered"))));
     checkHits(q, new int[] {});
+  }
+
+  public void testOrderedWithGaps2() throws IOException {
+    Query q =
+        new IntervalQuery(
+            field,
+            Intervals.maxgaps(
+                1,
+                Intervals.ordered(
+                    Intervals.term("alice"), Intervals.term("bob"), Intervals.term("carl"))));
+    checkHits(q, new int[] {12});
+  }
+
+  public void testOrderedWithNoGap() throws IOException {
+    Query q =
+        new IntervalQuery(
+            field,
+            Intervals.maxgaps(
+                0,
+                Intervals.ordered(
+                    Intervals.ordered(Intervals.term("w1"), Intervals.term("w4")),
+                    Intervals.term("w5"))));
+    checkHits(q, new int[] {0});
   }
 
   public void testNestedOrInContainedBy() throws IOException {
@@ -369,7 +412,7 @@ public class TestIntervalQuery extends LuceneTestCase {
 
     Query q = new IntervalQuery(field, source);
     TopDocs td = searcher.search(q, 10);
-    assertEquals(5, td.totalHits.value);
+    assertEquals(5, td.totalHits.value());
     assertEquals(1, td.scoreDocs[0].doc);
     assertEquals(3, td.scoreDocs[1].doc);
     assertEquals(0, td.scoreDocs[2].doc);
@@ -378,7 +421,7 @@ public class TestIntervalQuery extends LuceneTestCase {
 
     Query boostQ = new BoostQuery(q, 2);
     TopDocs boostTD = searcher.search(boostQ, 10);
-    assertEquals(5, boostTD.totalHits.value);
+    assertEquals(5, boostTD.totalHits.value());
     for (int i = 0; i < 5; i++) {
       assertEquals(td.scoreDocs[i].score * 2, boostTD.scoreDocs[i].score, 0);
     }
@@ -386,7 +429,7 @@ public class TestIntervalQuery extends LuceneTestCase {
     // change the pivot - order should remain the same
     Query q1 = new IntervalQuery(field, source, 2);
     TopDocs td1 = searcher.search(q1, 10);
-    assertEquals(5, td1.totalHits.value);
+    assertEquals(5, td1.totalHits.value());
     assertEquals(0.5f, td1.scoreDocs[0].score, 0); // freq=pivot
     for (int i = 0; i < 5; i++) {
       assertEquals(td.scoreDocs[i].doc, td1.scoreDocs[i].doc);
@@ -395,7 +438,7 @@ public class TestIntervalQuery extends LuceneTestCase {
     // increase the exp, docs higher than pivot should get a higher score, and vice versa
     Query q2 = new IntervalQuery(field, source, 1.2f, 2f);
     TopDocs td2 = searcher.search(q2, 10);
-    assertEquals(5, td2.totalHits.value);
+    assertEquals(5, td2.totalHits.value());
     for (int i = 0; i < 5; i++) {
       assertEquals(td.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (i < 2) {
@@ -415,5 +458,37 @@ public class TestIntervalQuery extends LuceneTestCase {
         new IntervalQuery(
             field, Intervals.containing(Intervals.term("w1"), new OneTimeIntervalSource()));
     checkHits(q, new int[] {0, 1, 2, 3});
+  }
+
+  public void testUnicodePrefix() throws IOException {
+    Query q = new IntervalQuery(field, Intervals.prefix(new BytesRef("場")));
+    checkHits(q, new int[] {11});
+  }
+
+  public void testExtendDisjunctions() throws IOException {
+    Query q =
+        new IntervalQuery(
+            field, or(term("XXX"), containing(extend(term("message"), 0, 10), term("intend"))));
+    checkHits(q, new int[] {});
+  }
+
+  public void testEquality() {
+    assertEquals(
+        new IntervalQuery("f", Intervals.regexp(new BytesRef(".*foo"))),
+        new IntervalQuery("f", Intervals.regexp(new BytesRef(".*foo"))));
+    assertEquals(
+        new IntervalQuery("f", Intervals.prefix(new BytesRef("p"), 1)),
+        new IntervalQuery("f", Intervals.prefix(new BytesRef("p"), 1)));
+    assertEquals(
+        new IntervalQuery("f", Intervals.fuzzyTerm("kot", 1)),
+        new IntervalQuery("f", Intervals.fuzzyTerm("kot", 1)));
+    assertEquals(
+        new IntervalQuery("f", Intervals.wildcard(new BytesRef("*.txt"))),
+        new IntervalQuery("f", Intervals.wildcard(new BytesRef("*.txt"))));
+    assertEquals(
+        new IntervalQuery(
+            "f", Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true)),
+        new IntervalQuery(
+            "f", Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true)));
   }
 }

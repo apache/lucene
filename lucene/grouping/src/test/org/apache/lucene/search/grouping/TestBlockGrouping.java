@@ -25,7 +25,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -37,6 +36,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
 
 public class TestBlockGrouping extends AbstractGroupingTestCase {
@@ -57,11 +57,12 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     // We're sorting by score, so the score of the top group should be the same as the
     // score of the top document from the same query with no grouping
     TopDocs topDoc = searcher.search(topLevel, 1);
-    assertEquals(topDoc.scoreDocs[0].score, tg.groups[0].scoreDocs[0].score, 0);
-    assertEquals(topDoc.scoreDocs[0].doc, tg.groups[0].scoreDocs[0].doc);
+    assertEquals(topDoc.scoreDocs[0].score, tg.groups[0].scoreDocs()[0].score, 0);
+    assertEquals(topDoc.scoreDocs[0].doc, tg.groups[0].scoreDocs()[0].doc);
 
     for (int i = 0; i < tg.groups.length; i++) {
-      String bookName = searcher.doc(tg.groups[i].scoreDocs[0].doc).get("book");
+      String bookName =
+          searcher.storedFields().document(tg.groups[i].scoreDocs()[0].doc).get("book");
       // The contents of each group should be equal to the results of a search for
       // that group alone
       Query filtered =
@@ -70,7 +71,7 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
               .add(new TermQuery(new Term("book", bookName)), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10);
-      assertScoreDocsEquals(td.scoreDocs, tg.groups[i].scoreDocs);
+      assertScoreDocsEquals(td.scoreDocs, tg.groups[i].scoreDocs());
     }
 
     shard.close();
@@ -96,10 +97,11 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     // The sort value of the top doc in the top group should be the same as the sort value
     // of the top result from the same search done with no grouping
     TopDocs topDoc = searcher.search(topLevel, 1, sort);
-    assertEquals(((FieldDoc) topDoc.scoreDocs[0]).fields[0], tg.groups[0].groupSortValues[0]);
+    assertEquals(((FieldDoc) topDoc.scoreDocs[0]).fields[0], tg.groups[0].groupSortValues()[0]);
 
     for (int i = 0; i < tg.groups.length; i++) {
-      String bookName = searcher.doc(tg.groups[i].scoreDocs[0].doc).get("book");
+      String bookName =
+          searcher.storedFields().document(tg.groups[i].scoreDocs()[0].doc).get("book");
       // The contents of each group should be equal to the results of a search for
       // that group alone, sorted by score
       Query filtered =
@@ -108,7 +110,7 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
               .add(new TermQuery(new Term("book", bookName)), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10);
-      assertScoreDocsEquals(td.scoreDocs, tg.groups[i].scoreDocs);
+      assertScoreDocsEquals(td.scoreDocs, tg.groups[i].scoreDocs());
       if (i > 1) {
         assertSortsBefore(tg.groups[i - 1], tg.groups[i]);
       }
@@ -137,10 +139,11 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     // We're sorting by score, so the score of the top group should be the same as the
     // score of the top document from the same query with no grouping
     TopDocs topDoc = searcher.search(topLevel, 1);
-    assertEquals(topDoc.scoreDocs[0].score, (float) tg.groups[0].groupSortValues[0], 0);
+    assertEquals(topDoc.scoreDocs[0].score, (float) tg.groups[0].groupSortValues()[0], 0);
 
     for (int i = 0; i < tg.groups.length; i++) {
-      String bookName = searcher.doc(tg.groups[i].scoreDocs[0].doc).get("book");
+      String bookName =
+          searcher.storedFields().document(tg.groups[i].scoreDocs()[0].doc).get("book");
       // The contents of each group should be equal to the results of a search for
       // that group alone, sorted by length
       Query filtered =
@@ -149,12 +152,12 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
               .add(new TermQuery(new Term("book", bookName)), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10, sort);
-      assertFieldDocsEquals(td.scoreDocs, tg.groups[i].scoreDocs);
+      assertFieldDocsEquals(td.scoreDocs, tg.groups[i].scoreDocs());
       // We're sorting by score, so the group sort value for each group should be a float,
       // and the value for the previous group should be higher or equal to the value for this one
       if (i > 0) {
-        float prevScore = (float) tg.groups[i - 1].groupSortValues[0];
-        float thisScore = (float) tg.groups[i].groupSortValues[0];
+        float prevScore = (float) tg.groups[i - 1].groupSortValues()[0];
+        float thisScore = (float) tg.groups[i].groupSortValues()[0];
         assertTrue(prevScore >= thisScore);
       }
     }
@@ -210,8 +213,8 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
   }
 
   private void assertSortsBefore(GroupDocs<?> first, GroupDocs<?> second) {
-    Object[] groupSortValues = second.groupSortValues;
-    Object[] prevSortValues = first.groupSortValues;
+    Object[] groupSortValues = second.groupSortValues();
+    Object[] prevSortValues = first.groupSortValues();
     assertTrue(((Long) prevSortValues[0]).compareTo((Long) groupSortValues[0]) <= 0);
   }
 

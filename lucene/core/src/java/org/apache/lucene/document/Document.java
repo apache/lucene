@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.document;
 
-import java.util.*;
-import org.apache.lucene.index.IndexReader; // for javadoc
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.search.IndexSearcher; // for javadoc
+import org.apache.lucene.index.StoredFields; // for javadoc
 import org.apache.lucene.search.ScoreDoc; // for javadoc
 import org.apache.lucene.util.BytesRef;
 
@@ -33,7 +35,7 @@ import org.apache.lucene.util.BytesRef;
  *
  * <p>Note that fields which are <i>not</i> {@link
  * org.apache.lucene.index.IndexableFieldType#stored() stored} are <i>not</i> available in documents
- * retrieved from the index, e.g. with {@link ScoreDoc#doc} or {@link IndexReader#document(int)}.
+ * retrieved from the index, e.g. with {@link ScoreDoc#doc} or {@link StoredFields#document(int)}.
  */
 public final class Document implements Iterable<IndexableField> {
 
@@ -177,7 +179,7 @@ public final class Document implements Iterable<IndexableField> {
    * Returns a List of all the fields in a document.
    *
    * <p>Note that fields which are <i>not</i> stored are <i>not</i> available in documents retrieved
-   * from the index, e.g. {@link IndexSearcher#doc(int)} or {@link IndexReader#document(int)}.
+   * from the index, e.g. {@link StoredFields#document(int)}.
    *
    * @return an immutable <code>List&lt;Field&gt;</code>
    */

@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.payloads;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -45,7 +46,7 @@ public final class DelimitedPayloadTokenFilter extends TokenFilter {
   public DelimitedPayloadTokenFilter(TokenStream input, char delimiter, PayloadEncoder encoder) {
     super(input);
     this.delimiter = delimiter;
-    this.encoder = encoder;
+    this.encoder = Objects.requireNonNull(encoder, "encoder");
   }
 
   @Override

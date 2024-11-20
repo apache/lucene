@@ -22,8 +22,8 @@ import java.util.Collections;
 import java.util.function.BiPredicate;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestQueryTermFilter extends LuceneTestCase {
 
@@ -31,8 +31,8 @@ public class TestQueryTermFilter extends LuceneTestCase {
 
   public void testFiltersAreRemoved() throws IOException {
 
-    try (QueryIndex qi =
-        new QueryIndex(new MonitorConfiguration(), new TermFilteredPresearcher())) {
+    try (WritableQueryIndex qi =
+        new WritableQueryIndex(new MonitorConfiguration(), new TermFilteredPresearcher())) {
       qi.commit(
           Collections.singletonList(new MonitorQuery("1", new TermQuery(new Term(FIELD, "term")))));
       assertEquals(1, qi.termFilters.size());

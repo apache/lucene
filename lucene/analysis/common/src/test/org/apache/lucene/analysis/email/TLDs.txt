@@ -1,6 +1,5 @@
 # Generated from IANA TLD Database (gradlew generateTlds).aaa
 aarp
-abarth
 abb
 abbott
 abbvie
@@ -16,7 +15,6 @@ accountants
 aco
 actor
 ad
-adac
 ads
 adult
 ae
@@ -24,7 +22,6 @@ aeg
 aero
 aetna
 af
-afamilycompany
 afl
 africa
 ag
@@ -37,7 +34,6 @@ airforce
 airtel
 akdn
 al
-alfaromeo
 alibaba
 alipay
 allfinanz
@@ -88,7 +84,6 @@ auspost
 author
 auto
 autos
-avianca
 aw
 aws
 ax
@@ -99,7 +94,6 @@ ba
 baby
 baidu
 banamex
-bananarepublic
 band
 bank
 bar
@@ -176,8 +170,6 @@ brother
 brussels
 bs
 bt
-budapest
-bugatti
 build
 builders
 business
@@ -197,7 +189,6 @@ calvinklein
 cam
 camera
 camp
-cancerresearch
 canon
 capetown
 capital
@@ -219,7 +210,6 @@ catholic
 cba
 cbn
 cbre
-cbs
 cc
 cd
 center
@@ -248,7 +238,6 @@ citadel
 citi
 citic
 city
-cityeats
 ck
 cl
 claims
@@ -269,7 +258,6 @@ coffee
 college
 cologne
 com
-comcast
 commbank
 community
 company
@@ -282,7 +270,6 @@ consulting
 contact
 contractors
 cooking
-cookingchannel
 cool
 coop
 corsica
@@ -300,7 +287,6 @@ crown
 crs
 cruise
 cruises
-csc
 cu
 cuisinella
 cv
@@ -359,7 +345,6 @@ download
 drive
 dtv
 dubai
-duck
 dunlop
 dupont
 durban
@@ -390,7 +375,6 @@ es
 esq
 estate
 et
-etisalat
 eu
 eurovision
 eus
@@ -416,7 +400,6 @@ feedback
 ferrari
 ferrero
 fi
-fiat
 fidelity
 fido
 film
@@ -442,7 +425,6 @@ fm
 fo
 foo
 food
-foodnetwork
 football
 ford
 forex
@@ -455,7 +437,6 @@ free
 fresenius
 frl
 frogans
-frontdoor
 frontier
 ftr
 fujitsu
@@ -493,7 +474,6 @@ gifts
 gives
 giving
 gl
-glade
 glass
 gle
 global
@@ -528,7 +508,6 @@ group
 gs
 gt
 gu
-guardian
 gucci
 guge
 guide
@@ -549,7 +528,6 @@ help
 helsinki
 here
 hermes
-hgtv
 hiphop
 hisamitsu
 hitachi
@@ -571,7 +549,6 @@ hospital
 host
 hosting
 hot
-hoteles
 hotels
 hotmail
 house
@@ -657,8 +634,8 @@ kg
 kh
 ki
 kia
+kids
 kim
-kinder
 kindle
 kitchen
 kiwi
@@ -683,7 +660,6 @@ lacaixa
 lamborghini
 lamer
 lancaster
-lancia
 land
 landrover
 lanxess
@@ -714,12 +690,10 @@ lilly
 limited
 limo
 lincoln
-linde
 link
 lipsy
 live
 living
-lixil
 lk
 llc
 llp
@@ -727,7 +701,6 @@ loan
 loans
 locker
 locus
-loft
 lol
 london
 lotte
@@ -747,7 +720,6 @@ luxury
 lv
 ly
 ma
-macys
 madrid
 maif
 maison
@@ -761,7 +733,6 @@ marketing
 markets
 marriott
 marshalls
-maserati
 mattel
 mba
 mc
@@ -820,7 +791,7 @@ mtn
 mtr
 mu
 museum
-mutual
+music
 mv
 mw
 mx
@@ -861,7 +832,6 @@ nissay
 nl
 no
 nokia
-northwesternmutual
 norton
 now
 nowruz
@@ -876,12 +846,10 @@ nyc
 nz
 obi
 observer
-off
 office
 okinawa
 olayan
 olayangroup
-oldnavy
 ollo
 om
 omega
@@ -908,7 +876,6 @@ pars
 partners
 parts
 party
-passagens
 pay
 pccw
 pe
@@ -975,10 +942,8 @@ qa
 qpon
 quebec
 quest
-qvc
 racing
 radio
-raid
 re
 read
 realestate
@@ -1010,9 +975,7 @@ ricoh
 ril
 rio
 rip
-rmit
 ro
-rocher
 rocks
 rodeo
 rogers
@@ -1047,7 +1010,6 @@ sb
 sbi
 sbs
 sc
-sca
 scb
 schaeffler
 schmidt
@@ -1056,7 +1018,6 @@ school
 schule
 schwarz
 science
-scjohnson
 scot
 sd
 se
@@ -1068,7 +1029,6 @@ seek
 select
 sener
 services
-ses
 seven
 sew
 sex
@@ -1087,7 +1047,6 @@ shop
 shopping
 shouji
 show
-showtime
 si
 silk
 sina
@@ -1149,7 +1108,6 @@ surgery
 suzuki
 sv
 swatch
-swiftcover
 swiss
 sx
 sy
@@ -1186,7 +1144,6 @@ theatre
 tiaa
 tickets
 tienda
-tiffany
 tips
 tires
 tirol
@@ -1216,7 +1173,6 @@ trade
 trading
 training
 travel
-travelchannel
 travelers
 travelersinsurance
 trust
@@ -1271,14 +1227,12 @@ vivo
 vlaanderen
 vn
 vodka
-volkswagen
 volvo
 vote
 voting
 voto
 voyage
 vu
-vuelos
 wales
 walmart
 walter
@@ -1316,7 +1270,6 @@ wtc
 wtf
 xbox
 xerox
-xfinity
 xihuan
 xin
 xn--11b4c3d
@@ -1328,7 +1281,6 @@ xn--3bst00m
 xn--3ds443g
 xn--3e0b707e
 xn--3hcrj9c
-xn--3oq18vl8pn36a
 xn--3pxu8k
 xn--42c2d9a
 xn--45br5cyl
@@ -1397,7 +1349,6 @@ xn--j1aef
 xn--j1amh
 xn--j6w193g
 xn--jlq480n2rg
-xn--jlq61u9w7b
 xn--jvr189m
 xn--kcrx77d1x4a
 xn--kprw13d
@@ -1409,7 +1360,6 @@ xn--mgb9awbf
 xn--mgba3a3ejt
 xn--mgba3a4f16a
 xn--mgba7c0bbn0a
-xn--mgbaakc7dvf
 xn--mgbaam7a8h
 xn--mgbab2bd
 xn--mgbah1a3hjkrd

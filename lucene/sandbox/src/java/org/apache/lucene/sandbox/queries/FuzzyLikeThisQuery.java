@@ -38,6 +38,7 @@ import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.FuzzyTermsEnum;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermQuery;
@@ -223,10 +224,7 @@ public class FuzzyLikeThisQuery extends Query {
             float score = boostAtt.getBoost();
             if (variantsQ.size() < MAX_VARIANTS_PER_TERM || score > minScore) {
               ScoreTerm st =
-                  new ScoreTerm(
-                      new Term(startTerm.field(), BytesRef.deepCopyOf(possibleMatch)),
-                      score,
-                      startTerm);
+                  new ScoreTerm(new Term(startTerm.field(), possibleMatch), score, startTerm);
               variantsQ.insertWithOverflow(st);
               minScore = variantsQ.top().score; // maintain minScore
             }
@@ -265,13 +263,11 @@ public class FuzzyLikeThisQuery extends Query {
       // equal to 1
       TermStates context = new TermStates(reader.getContext());
       for (LeafReaderContext leafContext : reader.leaves()) {
-        Terms terms = leafContext.reader().terms(term.field());
-        if (terms != null) {
-          TermsEnum termsEnum = terms.iterator();
-          if (termsEnum.seekExact(term.bytes())) {
-            int freq = 1 - context.docFreq(); // we want the total df and ttf to be 1
-            context.register(termsEnum.termState(), leafContext.ord, freq, freq);
-          }
+        Terms terms = Terms.getTerms(leafContext.reader(), term.field());
+        TermsEnum termsEnum = terms.iterator();
+        if (termsEnum.seekExact(term.bytes())) {
+          int freq = 1 - context.docFreq(); // we want the total df and ttf to be 1
+          context.register(termsEnum.termState(), leafContext.ord, freq, freq);
         }
       }
       return new TermQuery(term, context);
@@ -284,7 +280,8 @@ public class FuzzyLikeThisQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    IndexReader reader = indexSearcher.getIndexReader();
     ScoreTermQueue q = new ScoreTermQueue(maxNumTerms);
     // load up the list of possible terms
     for (FieldVals f : fieldVals) {

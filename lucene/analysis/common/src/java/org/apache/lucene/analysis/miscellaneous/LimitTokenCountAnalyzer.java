@@ -40,6 +40,7 @@ public final class LimitTokenCountAnalyzer extends AnalyzerWrapper {
   public LimitTokenCountAnalyzer(Analyzer delegate, int maxTokenCount) {
     this(delegate, maxTokenCount, false);
   }
+
   /**
    * Build an analyzer that limits the maximum number of tokens per field.
    *

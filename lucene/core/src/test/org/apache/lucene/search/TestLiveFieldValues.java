@@ -23,9 +23,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
@@ -34,8 +34,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLiveFieldValues extends LuceneTestCase {
   public void test() throws Exception {
@@ -63,11 +64,11 @@ public class TestLiveFieldValues extends LuceneTestCase {
           protected Integer lookupFromSearcher(IndexSearcher s, String id) throws IOException {
             TermQuery tq = new TermQuery(new Term("id", id));
             TopDocs hits = s.search(tq, 1);
-            assertTrue(hits.totalHits.value <= 1);
-            if (hits.totalHits.value == 0) {
+            assertTrue(hits.totalHits.value() <= 1);
+            if (hits.totalHits.value() == 0) {
               return null;
             } else {
-              Document doc = s.doc(hits.scoreDocs[0].doc);
+              Document doc = s.storedFields().document(hits.scoreDocs[0].doc);
               return (Integer) doc.getField("field").numericValue();
             }
           }
@@ -148,7 +149,7 @@ public class TestLiveFieldValues extends LuceneTestCase {
                   if (allIDs.size() > 0) {
                     String randomID = allIDs.get(threadRandom.nextInt(allIDs.size()));
                     Integer expected = values.get(randomID);
-                    if (expected == missing) {
+                    if (Objects.equals(expected, missing)) {
                       expected = null;
                     }
                     assertEquals("id=" + randomID, expected, rt.get(randomID));

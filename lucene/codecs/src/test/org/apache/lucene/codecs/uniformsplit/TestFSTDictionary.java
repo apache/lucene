@@ -22,10 +22,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.tests.codecs.uniformsplit.Rot13CypherTestUtil;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 /** Tests {@link FSTDictionary}. */
 public class TestFSTDictionary extends LuceneTestCase {
@@ -106,7 +106,7 @@ public class TestFSTDictionary extends LuceneTestCase {
     for (int i = 0; i < blockFPs.length; i++) {
       blockFPs[i] = i;
     }
-    List<BytesRef> blockKeys = vocab.stream().map(BytesRef::new).collect(Collectors.toList());
+    List<BytesRef> blockKeys = vocab.stream().map(BytesRef::new).toList();
     FSTDictionary indexDictionary = createFSTDictionary(blockKeys, blockFPs);
     IndexDictionary.Browser browser = indexDictionary.browser();
     for (int i = 0; i < vocab.size(); i++) {

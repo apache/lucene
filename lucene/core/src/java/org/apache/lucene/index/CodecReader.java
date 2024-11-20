@@ -25,7 +25,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
-import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 
 /** LeafReader implemented by codec APIs. */
@@ -35,18 +35,17 @@ public abstract class CodecReader extends LeafReader {
   protected CodecReader() {}
 
   /**
-   * Expert: retrieve thread-private StoredFieldsReader
+   * Expert: retrieve underlying StoredFieldsReader
    *
    * @lucene.internal
    */
   public abstract StoredFieldsReader getFieldsReader();
 
   /**
-   * Expert: retrieve TermVectorsReader
+   * Expert: retrieve underlying TermVectorsReader
    *
    * @lucene.internal
    */
-  @Override
   public abstract TermVectorsReader getTermVectorsReader();
 
   /**
@@ -85,21 +84,43 @@ public abstract class CodecReader extends LeafReader {
   public abstract KnnVectorsReader getVectorReader();
 
   @Override
-  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    checkBounds(docID);
-    getFieldsReader().visitDocument(docID, visitor);
+  public final StoredFields storedFields() throws IOException {
+    final StoredFields reader = getFieldsReader();
+    return new StoredFields() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        // Don't trust the codec to do proper checks
+        Objects.checkIndex(docID, maxDoc());
+        reader.prefetch(docID);
+      }
+
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        // Don't trust the codec to do proper checks
+        Objects.checkIndex(docID, maxDoc());
+        reader.document(docID, visitor);
+      }
+    };
   }
 
-  private void checkBounds(int docID) {
-    Objects.checkIndex(docID, maxDoc());
+  @Override
+  public final TermVectors termVectors() throws IOException {
+    TermVectorsReader reader = getTermVectorsReader();
+    if (reader == null) {
+      return TermVectors.EMPTY;
+    } else {
+      return reader;
+    }
   }
 
   @Override
   public final Terms terms(String field) throws IOException {
-    // ensureOpen(); no; getPostingsReader calls this
-    // We could check the FieldInfo IndexOptions but there's no point since
-    //   PostingsReader will simply return null for fields that don't exist or that have no terms
-    // index.
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.getIndexOptions() == IndexOptions.NONE) {
+      // Field does not exist or does not index postings
+      return null;
+    }
     return getPostingsReader().terms(field);
   }
 
@@ -176,6 +197,16 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
+  public final DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.docValuesSkipIndexType() == DocValuesSkipIndexType.NONE) {
+      return null;
+    }
+    return getDocValuesReader().getSkipper(fi);
+  }
+
+  @Override
   public final NumericDocValues getNormValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
@@ -200,28 +231,59 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final VectorValues getVectorValues(String field) throws IOException {
+  public final FloatVectorValues getFloatVectorValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       // Field does not exist or does not index vectors
       return null;
     }
 
-    return getVectorReader().getVectorValues(field);
+    return getVectorReader().getFloatVectorValues(field);
   }
 
   @Override
-  public final TopDocs searchNearestVectors(String field, float[] target, int k, Bits acceptDocs)
-      throws IOException {
+  public final ByteVectorValues getByteVectorValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
-    if (fi == null || fi.getVectorDimension() == 0) {
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
       // Field does not exist or does not index vectors
       return null;
     }
 
-    return getVectorReader().search(field, target, k, acceptDocs);
+    return getVectorReader().getByteVectorValues(field);
+  }
+
+  @Override
+  public final void searchNearestVectors(
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+      // Field does not exist or does not index vectors
+      return;
+    }
+    getVectorReader().search(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public final void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.BYTE) {
+      // Field does not exist or does not index vectors
+      return;
+    }
+    getVectorReader().search(field, target, knnCollector, acceptDocs);
   }
 
   @Override
@@ -232,7 +294,9 @@ public abstract class CodecReader extends LeafReader {
     ensureOpen();
 
     // terms/postings
-    getPostingsReader().checkIntegrity();
+    if (getPostingsReader() != null) {
+      getPostingsReader().checkIntegrity();
+    }
 
     // norms
     if (getNormsReader() != null) {

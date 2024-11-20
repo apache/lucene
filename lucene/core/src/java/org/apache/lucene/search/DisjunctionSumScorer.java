@@ -18,19 +18,21 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.util.MathUtil;
 
 /** A Scorer for OR like queries, counterpart of <code>ConjunctionScorer</code>. */
 final class DisjunctionSumScorer extends DisjunctionScorer {
 
+  private final List<Scorer> scorers;
+
   /**
    * Construct a <code>DisjunctionScorer</code>.
    *
-   * @param weight The weight to be used.
    * @param subScorers Array of at least two subscorers.
    */
-  DisjunctionSumScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode)
-      throws IOException {
-    super(weight, subScorers, scoreMode);
+  DisjunctionSumScorer(List<Scorer> subScorers, ScoreMode scoreMode) throws IOException {
+    super(subScorers, scoreMode);
+    this.scorers = subScorers;
   }
 
   @Override
@@ -44,9 +46,24 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
   }
 
   @Override
+  public int advanceShallow(int target) throws IOException {
+    int min = DocIdSetIterator.NO_MORE_DOCS;
+    for (Scorer scorer : scorers) {
+      if (scorer.docID() <= target) {
+        min = Math.min(min, scorer.advanceShallow(target));
+      }
+    }
+    return min;
+  }
+
+  @Override
   public float getMaxScore(int upTo) throws IOException {
-    // It's ok to return a bad upper bound here since we use WANDScorer when
-    // we actually care about block scores.
-    return Float.MAX_VALUE;
+    double maxScore = 0;
+    for (Scorer scorer : scorers) {
+      if (scorer.docID() <= upTo) {
+        maxScore += scorer.getMaxScore(upTo);
+      }
+    }
+    return (float) MathUtil.sumUpperBound(maxScore, scorers.size());
   }
 }

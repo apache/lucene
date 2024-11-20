@@ -22,17 +22,26 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.queries.function.valuesource.SortedSetFieldSource;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestSortedSetFieldSource extends LuceneTestCase {
   public void testSimple() throws Exception {
     Directory dir = newDirectory();
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(null));
+    IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
+    conf.setMaxBufferedDocs(2); // generate few segments
+    conf.setMergePolicy(NoMergePolicy.INSTANCE); // prevent merges for this test
+    IndexWriter writer = new IndexWriter(dir, conf);
     Document doc = new Document();
     doc.add(new SortedSetDocValuesField("value", new BytesRef("baz")));
     doc.add(newStringField("id", "2", Field.Store.YES));
@@ -42,7 +51,6 @@ public class TestSortedSetFieldSource extends LuceneTestCase {
     doc.add(new SortedSetDocValuesField("value", new BytesRef("bar")));
     doc.add(newStringField("id", "1", Field.Store.YES));
     writer.addDocument(doc);
-    writer.forceMerge(1);
     writer.close();
 
     DirectoryReader ir = DirectoryReader.open(dir);
@@ -67,14 +75,7 @@ public class TestSortedSetFieldSource extends LuceneTestCase {
     // test scorer
     vs = new SortedSetFieldSource("value");
     values = vs.getValues(Collections.emptyMap(), ar.getContext());
-    ValueSourceScorer vss =
-        values.getRangeScorer(
-            new MatchAllDocsQuery().createWeight(searcher, ScoreMode.TOP_SCORES, 1),
-            ar.getContext(),
-            "a",
-            "z",
-            true,
-            true);
+    ValueSourceScorer vss = values.getRangeScorer(ar.getContext(), "a", "z", true, true);
 
     DocIdSetIterator iterator = vss.iterator();
     assertEquals("baz", values.strVal(iterator.nextDoc()));

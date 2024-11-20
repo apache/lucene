@@ -39,7 +39,6 @@ import org.apache.lucene.index.IndexReader.ClosedListener;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IOUtils;
 
 /** Holds core readers that are shared (unchanged) when SegmentReader is cloned or reopened */
@@ -57,28 +56,17 @@ final class SegmentCoreReaders {
   final NormsProducer normsProducer;
 
   final StoredFieldsReader fieldsReaderOrig;
-  final TermVectorsReader termVectorsReader;
+  final TermVectorsReader termVectorsReaderOrig;
   final PointsReader pointsReader;
   final KnnVectorsReader knnVectorsReader;
   final CompoundDirectory cfsReader;
   final String segment;
+
   /**
    * fieldinfos for this core: means gen=-1. this is the exact fieldinfos these codec components saw
    * at write. in the case of DV updates, SR may hold a newer version.
    */
   final FieldInfos coreFieldInfos;
-
-  // TODO: make a single thread local w/ a
-  // Thingy class holding fieldsReader, termVectorsReader,
-  // normsProducer
-
-  final CloseableThreadLocal<StoredFieldsReader> fieldsReaderLocal =
-      new CloseableThreadLocal<StoredFieldsReader>() {
-        @Override
-        protected StoredFieldsReader initialValue() {
-          return fieldsReaderOrig.clone();
-        }
-      };
 
   private final Set<IndexReader.ClosedListener> coreClosedListeners =
       Collections.synchronizedSet(new LinkedHashSet<IndexReader.ClosedListener>());
@@ -92,7 +80,7 @@ final class SegmentCoreReaders {
 
     try {
       if (si.info.getUseCompoundFile()) {
-        cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info, context);
+        cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info);
       } else {
         cfsReader = null;
         cfsDir = dir;
@@ -104,10 +92,14 @@ final class SegmentCoreReaders {
 
       final SegmentReadState segmentReadState =
           new SegmentReadState(cfsDir, si.info, coreFieldInfos, context);
-      final PostingsFormat format = codec.postingsFormat();
-      // Ask codec for its Fields
-      fields = format.fieldsProducer(segmentReadState);
-      assert fields != null;
+      if (coreFieldInfos.hasPostings()) {
+        final PostingsFormat format = codec.postingsFormat();
+        // Ask codec for its Fields
+        fields = format.fieldsProducer(segmentReadState);
+        assert fields != null;
+      } else {
+        fields = null;
+      }
       // ask codec for its Norms:
       // TODO: since we don't write any norms file if there are no norms,
       // kinda jaky to assume the codec handles the case of no norms file at all gracefully?!
@@ -125,14 +117,14 @@ final class SegmentCoreReaders {
               .storedFieldsFormat()
               .fieldsReader(cfsDir, si.info, coreFieldInfos, context);
 
-      if (coreFieldInfos.hasVectors()) { // open term vector files only as needed
-        termVectorsReader =
+      if (coreFieldInfos.hasTermVectors()) { // open term vector files only as needed
+        termVectorsReaderOrig =
             si.info
                 .getCodec()
                 .termVectorsFormat()
                 .vectorsReader(cfsDir, si.info, coreFieldInfos, context);
       } else {
-        termVectorsReader = null;
+        termVectorsReaderOrig = null;
       }
 
       if (coreFieldInfos.hasPointValues()) {
@@ -178,9 +170,8 @@ final class SegmentCoreReaders {
     if (ref.decrementAndGet() == 0) {
       try (Closeable finalizer = this::notifyCoreClosedListeners) {
         IOUtils.close(
-            fieldsReaderLocal,
             fields,
-            termVectorsReader,
+            termVectorsReaderOrig,
             fieldsReaderOrig,
             cfsReader,
             normsProducer,

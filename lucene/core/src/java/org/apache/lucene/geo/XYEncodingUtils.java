@@ -74,7 +74,13 @@ public final class XYEncodingUtils {
     return decode(NumericUtils.sortableBytesToInt(src, offset));
   }
 
-  static double[] floatArrayToDoubleArray(float[] f) {
+  /**
+   * Convert an array of {@code float} numbers to {@code double} numbers.
+   *
+   * @param f The input floats
+   * @return Corresponding double array.
+   */
+  public static double[] floatArrayToDoubleArray(float[] f) {
     double[] d = new double[f.length];
     for (int i = 0; i < f.length; i++) {
       d[i] = f[i];

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import org.apache.lucene.tests.util.LuceneTestCase;
+
 public class TestIntsRef extends LuceneTestCase {
   public void testEmpty() {
     IntsRef i = new IntsRef();

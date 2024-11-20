@@ -68,13 +68,15 @@ import org.apache.lucene.search.similarities.Normalization.NoNormalization;
 public class IBSimilarity extends SimilarityBase {
   /** The probabilistic distribution used to model term occurrence. */
   protected final Distribution distribution;
+
   /** The <em>lambda (&lambda;<sub>w</sub>)</em> parameter. */
   protected final Lambda lambda;
+
   /** The term frequency normalization. */
   protected final Normalization normalization;
 
   /**
-   * Creates IBSimilarity from the three components.
+   * Creates IBSimilarity from the three components and using default discountOverlaps value.
    *
    * <p>Note that <code>null</code> values are not allowed: if you want no normalization, instead
    * pass {@link NoNormalization}.
@@ -84,6 +86,26 @@ public class IBSimilarity extends SimilarityBase {
    * @param normalization term frequency normalization
    */
   public IBSimilarity(Distribution distribution, Lambda lambda, Normalization normalization) {
+    this(distribution, lambda, normalization, true);
+  }
+
+  /**
+   * Creates IBSimilarity from the three components and with the specified discountOverlaps value.
+   *
+   * <p>Note that <code>null</code> values are not allowed: if you want no normalization, instead
+   * pass {@link NoNormalization}.
+   *
+   * @param distribution probabilistic distribution modeling term occurrence
+   * @param lambda distribution's &lambda;<sub>w</sub> parameter
+   * @param normalization term frequency normalization
+   * @param discountOverlaps true if overlap tokens should not impact document length for scoring.
+   */
+  public IBSimilarity(
+      Distribution distribution,
+      Lambda lambda,
+      Normalization normalization,
+      boolean discountOverlaps) {
+    super(discountOverlaps);
     this.distribution = distribution;
     this.lambda = lambda;
     this.normalization = normalization;

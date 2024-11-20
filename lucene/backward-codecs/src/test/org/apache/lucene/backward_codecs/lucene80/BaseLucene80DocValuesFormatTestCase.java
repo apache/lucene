@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_codecs.lucene80;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,10 +27,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
-import org.apache.lucene.codecs.asserting.AssertingCodec;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -40,7 +39,6 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.BaseCompressingDocValuesFormatTestCase;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValues;
@@ -51,25 +49,125 @@ import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
+import org.apache.lucene.tests.index.LegacyBaseDocValuesFormatTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.packed.PackedInts;
 
 /** Tests Lucene80DocValuesFormat */
 public abstract class BaseLucene80DocValuesFormatTestCase
-    extends BaseCompressingDocValuesFormatTestCase {
+    extends LegacyBaseDocValuesFormatTestCase {
+
+  private static long dirSize(Directory d) throws IOException {
+    long size = 0;
+    for (String file : d.listAll()) {
+      size += d.fileLength(file);
+    }
+    return size;
+  }
+
+  public void testUniqueValuesCompression() throws IOException {
+    try (final Directory dir = new ByteBuffersDirectory()) {
+      final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      final IndexWriter iwriter = new IndexWriter(dir, iwc);
+
+      final int uniqueValueCount = TestUtil.nextInt(random(), 1, 256);
+      final List<Long> values = new ArrayList<>();
+
+      final Document doc = new Document();
+      final NumericDocValuesField dvf = new NumericDocValuesField("dv", 0);
+      doc.add(dvf);
+      for (int i = 0; i < 300; ++i) {
+        final long value;
+        if (values.size() < uniqueValueCount) {
+          value = random().nextLong();
+          values.add(value);
+        } else {
+          value = RandomPicks.randomFrom(random(), values);
+        }
+        dvf.setLongValue(value);
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size1 = dirSize(dir);
+      for (int i = 0; i < 20; ++i) {
+        dvf.setLongValue(RandomPicks.randomFrom(random(), values));
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size2 = dirSize(dir);
+      // make sure the new longs did not cost 8 bytes each
+      assertTrue(size2 < size1 + 8 * 20);
+    }
+  }
+
+  public void testDateCompression() throws IOException {
+    try (final Directory dir = new ByteBuffersDirectory()) {
+      final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      final IndexWriter iwriter = new IndexWriter(dir, iwc);
+
+      final long base = 13; // prime
+      final long day = 1000L * 60 * 60 * 24;
+
+      final Document doc = new Document();
+      final NumericDocValuesField dvf = new NumericDocValuesField("dv", 0);
+      doc.add(dvf);
+      for (int i = 0; i < 300; ++i) {
+        dvf.setLongValue(base + random().nextInt(1000) * day);
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size1 = dirSize(dir);
+      for (int i = 0; i < 50; ++i) {
+        dvf.setLongValue(base + random().nextInt(1000) * day);
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size2 = dirSize(dir);
+      // make sure the new longs costed less than if they had only been packed
+      assertTrue(size2 < size1 + (PackedInts.bitsRequired(day) * 50) / 8);
+    }
+  }
+
+  public void testSingleBigValueCompression() throws IOException {
+    try (final Directory dir = new ByteBuffersDirectory()) {
+      final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      final IndexWriter iwriter = new IndexWriter(dir, iwc);
+
+      final Document doc = new Document();
+      final NumericDocValuesField dvf = new NumericDocValuesField("dv", 0);
+      doc.add(dvf);
+      for (int i = 0; i < 20000; ++i) {
+        dvf.setLongValue(i & 1023);
+        iwriter.addDocument(doc);
+      }
+      iwriter.forceMerge(1);
+      final long size1 = dirSize(dir);
+      dvf.setLongValue(Long.MAX_VALUE);
+      iwriter.addDocument(doc);
+      iwriter.forceMerge(1);
+      final long size2 = dirSize(dir);
+      // make sure the new value did not grow the bpv for every other value
+      assertTrue(size2 < size1 + (20000 * (63 - 10)) / 8);
+    }
+  }
 
   // TODO: these big methods can easily blow up some of the other ram-hungry codecs...
   // for now just keep them here, as we want to test this for this format.
@@ -90,7 +188,6 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     }
   }
 
-  @Slow
   public void testSortedVariableLengthBigVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -153,7 +250,6 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     }
   }
 
-  @Slow
   public void testSparseDocValuesVsStoredFields() throws Exception {
     int numIterations = atLeast(1);
     for (int i = 0; i < numIterations; i++) {
@@ -227,8 +323,9 @@ public abstract class BaseLucene80DocValuesFormatTestCase
 
       final SortedSetDocValues sortedSet = DocValues.getSortedSet(reader, "sorted_set");
 
+      StoredFields storedFields = reader.storedFields();
       for (int i = 0; i < reader.maxDoc(); ++i) {
-        final Document doc = reader.document(i);
+        final Document doc = storedFields.document(i);
         final IndexableField valueField = doc.getField("value");
         final Long value = valueField == null ? null : valueField.numericValue().longValue();
 
@@ -259,16 +356,12 @@ public abstract class BaseLucene80DocValuesFormatTestCase
             assertTrue(valueSet.contains(sortedNumeric.nextValue()));
           }
           assertEquals(i, sortedSet.nextDoc());
-          int sortedSetCount = 0;
-          while (true) {
+
+          assertEquals(valueSet.size(), sortedSet.docValueCount());
+          for (int j = 0; j < sortedSet.docValueCount(); ++j) {
             long ord = sortedSet.nextOrd();
-            if (ord == SortedSetDocValues.NO_MORE_ORDS) {
-              break;
-            }
             assertTrue(valueSet.contains(Long.parseLong(sortedSet.lookupOrd(ord).utf8ToString())));
-            sortedSetCount++;
           }
-          assertEquals(valueSet.size(), sortedSetCount);
         }
       }
     }
@@ -482,6 +575,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
       for (int i = 0; i < maxDoc; ++i) {
         assertEquals(i, values.nextDoc());
         final int numValues = in.readVInt();
+        assertEquals(numValues, values.docValueCount());
 
         for (int j = 0; j < numValues; ++j) {
           b.setLength(in.readVInt());
@@ -489,8 +583,6 @@ public abstract class BaseLucene80DocValuesFormatTestCase
           in.readBytes(b.bytes(), 0, b.length());
           assertEquals(b.get(), values.lookupOrd(values.nextOrd()));
         }
-
-        assertEquals(SortedSetDocValues.NO_MORE_ORDS, values.nextOrd());
       }
       r.close();
       dir.close();
@@ -671,11 +763,12 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
       SortedNumericDocValues docValues = DocValues.getSortedNumeric(r, "dv");
+      StoredFields storedFields = r.storedFields();
       for (int i = 0; i < r.maxDoc(); i++) {
         if (i > docValues.docID()) {
           docValues.nextDoc();
         }
-        String[] expectedStored = r.document(i).getValues("stored");
+        String[] expectedStored = storedFields.document(i).getValues("stored");
         if (i < docValues.docID()) {
           assertEquals(0, expectedStored.length);
         } else {
@@ -743,6 +836,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
     TestUtil.checkReader(ir);
     for (LeafReaderContext context : ir.leaves()) {
       LeafReader r = context.reader();
+      StoredFields storedFields = r.storedFields();
 
       for (int jump = jumpStep; jump < r.maxDoc(); jump += jumpStep) {
         // Create a new instance each time to ensure jumps from the beginning
@@ -757,7 +851,7 @@ public abstract class BaseLucene80DocValuesFormatTestCase
                   + jump
                   + " from #"
                   + (docID - jump);
-          String storedValue = r.document(docID).get("stored");
+          String storedValue = storedFields.document(docID).get("stored");
           if (storedValue == null) {
             assertFalse("There should be no DocValue for " + base, docValues.advanceExact(docID));
           } else {

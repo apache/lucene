@@ -28,6 +28,8 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRefHash.MaxBytesLengthExceededException;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,8 +50,7 @@ public class TestBytesRefHash extends LuceneTestCase {
   private ByteBlockPool newPool() {
     return random().nextBoolean() && pool != null
         ? pool
-        : new ByteBlockPool(
-            new RecyclingByteBlockAllocator(ByteBlockPool.BYTE_BLOCK_SIZE, random().nextInt(25)));
+        : new ByteBlockPool(new RecyclingByteBlockAllocator(random().nextInt(25)));
   }
 
   private BytesRefHash newHash(ByteBlockPool blockPool) {
@@ -175,13 +176,17 @@ public class TestBytesRefHash extends LuceneTestCase {
         hash.add(ref.get());
         strings.add(str);
       }
-      int[] sort = hash.sort();
-      assertTrue(strings.size() < sort.length);
-      int i = 0;
-      BytesRef scratch = new BytesRef();
-      for (String string : strings) {
-        ref.copyChars(string);
-        assertEquals(ref.get(), hash.get(sort[i++], scratch));
+      for (int iter = 0; iter < 3; iter++) {
+        // Test duplicate sort on a BytesRefHash instance work well. This makes no sense but some
+        // users need that.
+        int[] sort = hash.sort();
+        assertTrue(strings.size() < sort.length);
+        int i = 0;
+        BytesRef scratch = new BytesRef();
+        for (String string : strings) {
+          ref.copyChars(string);
+          assertEquals(ref.get(), hash.get(sort[i++], scratch));
+        }
       }
       hash.clear();
       assertEquals(0, hash.size());

@@ -18,7 +18,7 @@
 package org.apache.lucene.analysis;
 
 import org.apache.lucene.analysis.standard.StandardTokenizerFactory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestAbstractAnalysisFactory extends LuceneTestCase {
 

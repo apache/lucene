@@ -20,8 +20,7 @@ package org.apache.lucene.sandbox.search;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.Query;
+import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
@@ -30,24 +29,24 @@ import org.apache.lucene.search.Weight;
  * Weight wrapper that will compute how much time it takes to build the {@link Scorer} and then
  * return a {@link Scorer} that is wrapped in order to compute timings as well.
  */
-class QueryProfilerWeight extends Weight {
+class QueryProfilerWeight extends FilterWeight {
 
-  private final Weight subQueryWeight;
   private final QueryProfilerBreakdown profile;
 
-  public QueryProfilerWeight(Query query, Weight subQueryWeight, QueryProfilerBreakdown profile) {
-    super(query);
-    this.subQueryWeight = subQueryWeight;
+  public QueryProfilerWeight(Weight subQueryWeight, QueryProfilerBreakdown profile) {
+    super(subQueryWeight);
     this.profile = profile;
   }
 
   @Override
-  public Scorer scorer(LeafReaderContext context) throws IOException {
-    ScorerSupplier supplier = scorerSupplier(context);
-    if (supplier == null) {
-      return null;
+  public int count(LeafReaderContext context) throws IOException {
+    QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.COUNT);
+    timer.start();
+    try {
+      return in.count(context);
+    } finally {
+      timer.stop();
     }
-    return supplier.get(Long.MAX_VALUE);
   }
 
   @Override
@@ -56,25 +55,35 @@ class QueryProfilerWeight extends Weight {
     timer.start();
     final ScorerSupplier subQueryScorerSupplier;
     try {
-      subQueryScorerSupplier = subQueryWeight.scorerSupplier(context);
+      subQueryScorerSupplier = in.scorerSupplier(context);
     } finally {
       timer.stop();
     }
     if (subQueryScorerSupplier == null) {
       return null;
     }
-
-    final QueryProfilerWeight weight = this;
     return new ScorerSupplier() {
 
       @Override
       public Scorer get(long loadCost) throws IOException {
         timer.start();
         try {
-          return new QueryProfilerScorer(weight, subQueryScorerSupplier.get(loadCost), profile);
+          return new QueryProfilerScorer(subQueryScorerSupplier.get(loadCost), profile);
         } finally {
           timer.stop();
         }
+      }
+
+      @Override
+      public BulkScorer bulkScorer() throws IOException {
+        // We use the default bulk scorer instead of the specialized one. The reason
+        // is that BulkScorers do everything at once: finding matches,
+        // scoring them and calling the collector, so they make it impossible to
+        // see where time is spent, which is the purpose of query profiling.
+        // The default bulk scorer will pull a scorer and iterate over matches,
+        // this might be a significantly different execution path for some queries
+        // like disjunctions, but in general this is what is done anyway
+        return super.bulkScorer();
       }
 
       @Override
@@ -86,24 +95,12 @@ class QueryProfilerWeight extends Weight {
           timer.stop();
         }
       }
+
+      @Override
+      public void setTopLevelScoringClause() throws IOException {
+        subQueryScorerSupplier.setTopLevelScoringClause();
+      }
     };
-  }
-
-  @Override
-  public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-    // We use the default bulk scorer instead of the specialized one. The reason
-    // is that Lucene's BulkScorers do everything at once: finding matches,
-    // scoring them and calling the collector, so they make it impossible to
-    // see where time is spent, which is the purpose of query profiling.
-    // The default bulk scorer will pull a scorer and iterate over matches,
-    // this might be a significantly different execution path for some queries
-    // like disjunctions, but in general this is what is done anyway
-    return super.bulkScorer(context);
-  }
-
-  @Override
-  public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-    return subQueryWeight.explain(context, doc);
   }
 
   @Override

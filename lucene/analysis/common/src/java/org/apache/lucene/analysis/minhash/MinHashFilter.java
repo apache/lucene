@@ -28,6 +28,7 @@ import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TypeAttribute;
+import org.apache.lucene.util.BitUtil;
 
 /**
  * Generate min hash tokens from an incoming stream of tokens. The incoming tokens would typically
@@ -58,11 +59,11 @@ public class MinHashFilter extends TokenFilter {
 
   private final List<List<FixedSizeTreeSet<LongPair>>> minHashSets;
 
-  private int hashSetSize = DEFAULT_HASH_SET_SIZE;
+  private final int hashSetSize;
 
-  private int bucketCount = DEFAULT_BUCKET_COUNT;
+  private final int bucketCount;
 
-  private int hashCount = DEFAULT_HASH_COUNT;
+  private final int hashCount;
 
   private boolean requiresInitialisation = true;
 
@@ -97,10 +98,7 @@ public class MinHashFilter extends TokenFilter {
 
   static byte[] getBytes(int i) {
     byte[] answer = new byte[4];
-    answer[3] = (byte) (i);
-    answer[2] = (byte) (i >> 8);
-    answer[1] = (byte) (i >> 16);
-    answer[0] = (byte) (i >> 24);
+    BitUtil.VH_BE_INT.set(answer, 0, i);
     return answer;
   }
 
@@ -335,7 +333,7 @@ public class MinHashFilter extends TokenFilter {
     public boolean add(final E toAdd) {
       if (capacity <= size()) {
         final E lastElm = last();
-        if (toAdd.compareTo(lastElm) > -1) {
+        if (toAdd.compareTo(lastElm) >= 0) {
           return false;
         } else {
           pollLast();

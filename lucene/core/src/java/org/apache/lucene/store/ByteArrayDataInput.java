@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import java.io.IOException;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -81,91 +83,51 @@ public final class ByteArrayDataInput extends DataInput {
 
   @Override
   public short readShort() {
-    final byte b1 = bytes[pos++];
-    final byte b2 = bytes[pos++];
-    return (short) ((b2 & 0xFF) << 8 | (b1 & 0xFF));
+    try {
+      return (short) BitUtil.VH_LE_SHORT.get(bytes, pos);
+    } finally {
+      pos += Short.BYTES;
+    }
   }
 
   @Override
   public int readInt() {
-    final byte b1 = bytes[pos++];
-    final byte b2 = bytes[pos++];
-    final byte b3 = bytes[pos++];
-    final byte b4 = bytes[pos++];
-    return (b4 & 0xFF) << 24 | (b3 & 0xFF) << 16 | (b2 & 0xFF) << 8 | (b1 & 0xFF);
+    try {
+      return (int) BitUtil.VH_LE_INT.get(bytes, pos);
+    } finally {
+      pos += Integer.BYTES;
+    }
   }
 
   @Override
   public long readLong() {
-    final byte b1 = bytes[pos++];
-    final byte b2 = bytes[pos++];
-    final byte b3 = bytes[pos++];
-    final byte b4 = bytes[pos++];
-    final byte b5 = bytes[pos++];
-    final byte b6 = bytes[pos++];
-    final byte b7 = bytes[pos++];
-    final byte b8 = bytes[pos++];
-    return (b8 & 0xFFL) << 56
-        | (b7 & 0xFFL) << 48
-        | (b6 & 0xFFL) << 40
-        | (b5 & 0xFFL) << 32
-        | (b4 & 0xFFL) << 24
-        | (b3 & 0xFFL) << 16
-        | (b2 & 0xFFL) << 8
-        | (b1 & 0xFFL);
+    try {
+      return (long) BitUtil.VH_LE_LONG.get(bytes, pos);
+    } finally {
+      pos += Long.BYTES;
+    }
   }
 
   @Override
   public int readVInt() {
-    byte b = bytes[pos++];
-    if (b >= 0) return b;
-    int i = b & 0x7F;
-    b = bytes[pos++];
-    i |= (b & 0x7F) << 7;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    i |= (b & 0x7F) << 14;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    i |= (b & 0x7F) << 21;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    // Warning: the next ands use 0x0F / 0xF0 - beware copy/paste errors:
-    i |= (b & 0x0F) << 28;
-    if ((b & 0xF0) == 0) return i;
-    throw new RuntimeException("Invalid vInt detected (too many bits)");
+    try {
+      return super.readVInt();
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
+      throw new AssertionError("ByteArrayDataInput#readByte should not throw IOException");
+    }
   }
 
   @Override
   public long readVLong() {
-    byte b = bytes[pos++];
-    if (b >= 0) return b;
-    long i = b & 0x7FL;
-    b = bytes[pos++];
-    i |= (b & 0x7FL) << 7;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    i |= (b & 0x7FL) << 14;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    i |= (b & 0x7FL) << 21;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    i |= (b & 0x7FL) << 28;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    i |= (b & 0x7FL) << 35;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    i |= (b & 0x7FL) << 42;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    i |= (b & 0x7FL) << 49;
-    if (b >= 0) return i;
-    b = bytes[pos++];
-    i |= (b & 0x7FL) << 56;
-    if (b >= 0) return i;
-    throw new RuntimeException("Invalid vLong detected (negative values disallowed)");
+    try {
+      return super.readVLong();
+    } catch (
+        @SuppressWarnings("unused")
+        IOException e) {
+      throw new AssertionError("ByteArrayDataInput#readByte should not throw IOException");
+    }
   }
 
   // NOTE: AIOOBE not EOF if you read too much

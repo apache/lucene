@@ -161,6 +161,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             "test",
             10,
             false,
+            false,
             Codec.getDefault(),
             Collections.emptyMap(),
             StringHelper.randomId(),
@@ -174,7 +175,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
     }
     writer.forceMerge(1);
     writer.commit();
-    DirectoryReader reader = writer.getReader();
+    DirectoryReader reader = DirectoryReader.open(writer);
     assertEquals(1, reader.leaves().size());
     SegmentReader segmentReader = (SegmentReader) reader.leaves().get(0).reader();
     PendingSoftDeletes deletes = newPendingDeletes(commitInfo);
@@ -190,14 +191,17 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             false,
             IndexOptions.NONE,
             DocValuesType.NUMERIC,
+            DocValuesSkipIndexType.NONE,
             0,
             Collections.emptyMap(),
             0,
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            true);
+            true,
+            false);
     List<Integer> docsDeleted = Arrays.asList(1, 3, 7, 8, DocIdSetIterator.NO_MORE_DOCS);
     List<DocValuesFieldUpdates> updates = Arrays.asList(singleUpdate(docsDeleted, 10, true));
     for (DocValuesFieldUpdates update : updates) {
@@ -227,14 +231,17 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             false,
             IndexOptions.NONE,
             DocValuesType.NUMERIC,
+            DocValuesSkipIndexType.NONE,
             1,
             Collections.emptyMap(),
             0,
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            true);
+            true,
+            false);
     for (DocValuesFieldUpdates update : updates) {
       deletes.onDocValuesUpdate(fieldInfo, update.iterator());
     }
@@ -260,6 +267,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             newIndexWriterConfig()
                 .setSoftDeletesField("_soft_deletes")
                 .setMaxBufferedDocs(3) // make sure we write one segment
+                .setMergePolicy(NoMergePolicy.INSTANCE) // prevent deletes from triggering merges
                 .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH));
     Document doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.YES));
@@ -289,14 +297,17 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             false,
             IndexOptions.NONE,
             DocValuesType.NUMERIC,
+            DocValuesSkipIndexType.NONE,
             segmentInfo.getNextDocValuesGen(),
             Collections.emptyMap(),
             0,
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            true);
+            true,
+            false);
     List<Integer> docsDeleted = Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS);
     List<DocValuesFieldUpdates> updates = Arrays.asList(singleUpdate(docsDeleted, 3, true));
     for (DocValuesFieldUpdates update : updates) {
@@ -327,6 +338,7 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             newIndexWriterConfig()
                 .setSoftDeletesField("_soft_deletes")
                 .setMaxBufferedDocs(3) // make sure we write one segment
+                .setMergePolicy(NoMergePolicy.INSTANCE) // prevent deletes from triggering merges
                 .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH));
     Document doc = new Document();
     doc.add(new StringField("id", "1", Field.Store.YES));
@@ -356,14 +368,17 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             false,
             IndexOptions.NONE,
             DocValuesType.NUMERIC,
+            DocValuesSkipIndexType.NONE,
             segmentInfo.getNextDocValuesGen(),
             Collections.emptyMap(),
             0,
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            true);
+            true,
+            false);
     List<DocValuesFieldUpdates> updates =
         Arrays.asList(singleUpdate(Arrays.asList(0, 1, DocIdSetIterator.NO_MORE_DOCS), 3, false));
     for (DocValuesFieldUpdates update : updates) {
@@ -392,14 +407,17 @@ public class TestPendingSoftDeletes extends TestPendingDeletes {
             false,
             IndexOptions.NONE,
             DocValuesType.NUMERIC,
+            DocValuesSkipIndexType.NONE,
             segmentInfo.getNextDocValuesGen(),
             Collections.emptyMap(),
             0,
             0,
             0,
             0,
+            VectorEncoding.FLOAT32,
             VectorSimilarityFunction.EUCLIDEAN,
-            true);
+            true,
+            false);
     updates = Arrays.asList(singleUpdate(Arrays.asList(1, DocIdSetIterator.NO_MORE_DOCS), 3, true));
     for (DocValuesFieldUpdates update : updates) {
       deletes.onDocValuesUpdate(fieldInfo, update.iterator());

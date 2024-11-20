@@ -20,15 +20,16 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.CharFilter;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Ignore;
 
 /** Tests {@link PatternReplaceCharFilter} */
@@ -81,8 +82,8 @@ public class TestPatternReplaceCharFilter extends BaseTokenStreamTestCase {
       indexMatched.append((cs.correctOffset(i) < 0 ? "-" : input.charAt(cs.correctOffset(i))));
     }
 
-    boolean outputGood = expectedOutput.equals(output.toString());
-    boolean indexMatchedGood = expectedIndexMatchedOutput.equals(indexMatched.toString());
+    boolean outputGood = expectedOutput.contentEquals(output);
+    boolean indexMatchedGood = expectedIndexMatchedOutput.contentEquals(indexMatched);
 
     if (!outputGood || !indexMatchedGood || false) {
       System.out.println("Pattern : " + pattern);
@@ -257,11 +258,11 @@ public class TestPatternReplaceCharFilter extends BaseTokenStreamTestCase {
         "[;<!--aecbbaa--><    febcfdc fbb = \"fbeeebff\" fc = dd   >\\';<eefceceaa e= babae\" eacbaff =\"fcfaccacd\" = bcced>>><  bccaafe edb = ecfccdff\"   <?</script><    edbd ebbcd=\"faacfcc\" aeca= bedbc ceeaac =adeafde aadccdaf = \"afcc ffda=aafbe &#x16921ed5\"1843785582']";
     for (int i = 0; i < input.length(); i++) {
       Matcher matcher = p.matcher(input.substring(0, i));
-      long t = System.currentTimeMillis();
+      long t = System.nanoTime();
       if (matcher.find()) {
         System.out.println(matcher.group());
       }
-      System.out.println(i + " > " + (System.currentTimeMillis() - t) / 1000.0);
+      System.out.println(i + " > " + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - t));
     }
   }
 

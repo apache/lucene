@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.analysis.TokenStream;
@@ -31,6 +30,7 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.IntsRef;
@@ -45,6 +45,8 @@ import org.apache.lucene.util.automaton.Transition;
  * different paths of the {@link Automaton}.
  */
 public final class GraphTokenStreamFiniteStrings {
+  /** Maximum level of recursion allowed in recursive operations. */
+  private static final int MAX_RECURSION_LEVEL = 1000;
 
   private AttributeSource[] tokens = new AttributeSource[4];
   private final Automaton det;
@@ -180,10 +182,9 @@ public final class GraphTokenStreamFiniteStrings {
     int[] low = new int[det.getNumStates()];
     int[] parent = new int[det.getNumStates()];
     Arrays.fill(parent, -1);
-    List<Integer> points = new ArrayList<>();
+    IntArrayList points = new IntArrayList();
     articulationPointsRecurse(undirect.finish(), 0, 0, depth, low, parent, visited, points);
-    Collections.reverse(points);
-    return points.stream().mapToInt(p -> p).toArray();
+    return points.reverse().toArray();
   }
 
   /** Build an automaton from the provided {@link TokenStream}. */
@@ -259,7 +260,7 @@ public final class GraphTokenStreamFiniteStrings {
       int[] low,
       int[] parent,
       BitSet visited,
-      List<Integer> points) {
+      IntArrayList points) {
     visited.set(state);
     depth[state] = d;
     low[state] = d;
@@ -271,7 +272,12 @@ public final class GraphTokenStreamFiniteStrings {
       a.getNextTransition(t);
       if (visited.get(t.dest) == false) {
         parent[t.dest] = state;
-        articulationPointsRecurse(a, t.dest, d + 1, depth, low, parent, visited, points);
+        if (d < MAX_RECURSION_LEVEL) {
+          articulationPointsRecurse(a, t.dest, d + 1, depth, low, parent, visited, points);
+        } else {
+          throw new IllegalArgumentException(
+              "Exceeded maximum recursion level during graph analysis");
+        }
         childCount++;
         if (low[t.dest] >= depth[state]) {
           isArticulation = true;

@@ -257,8 +257,8 @@ final class IDVersionSegmentTermsEnumFrame {
 
   // Decodes next entry; returns true if it's a sub-block
   public boolean nextLeaf() {
-    // if (DEBUG) System.out.println("  frame.next ord=" + ord + " nextEnt=" + nextEnt + "
-    // entCount=" + entCount);
+    // if (DEBUG) System.out.println("  frame.next ord=" + ord + " nextEnt=" + nextEnt +
+    // " entCount=" + entCount);
     assert nextEnt != -1 && nextEnt < entCount
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
     nextEnt++;
@@ -273,8 +273,8 @@ final class IDVersionSegmentTermsEnumFrame {
   }
 
   public boolean nextNonLeaf() {
-    // if (DEBUG) System.out.println("  frame.next ord=" + ord + " nextEnt=" + nextEnt + "
-    // entCount=" + entCount);
+    // if (DEBUG) System.out.println("  frame.next ord=" + ord + " nextEnt=" + nextEnt +
+    // " entCount=" + entCount);
     assert nextEnt != -1 && nextEnt < entCount
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
     nextEnt++;
@@ -338,8 +338,8 @@ final class IDVersionSegmentTermsEnumFrame {
       newFP = fpOrig + (code >>> 1);
       hasTerms = (code & 1) != 0;
       // if (DEBUG) {
-      //    System.out.println("      label=" + ((char) nextFloorLabel) + " fp=" + newFP + "
-      // hasTerms?=" + hasTerms + " numFollowFloor=" + numFollowFloorBlocks);
+      //    System.out.println("      label=" + ((char) nextFloorLabel) + " fp=" + newFP +
+      // " hasTerms?=" + hasTerms + " numFollowFloor=" + numFollowFloorBlocks);
       //  }
 
       isLastInFloor = numFollowFloorBlocks == 1;
@@ -379,8 +379,8 @@ final class IDVersionSegmentTermsEnumFrame {
 
   public void decodeMetaData() throws IOException {
 
-    // if (DEBUG) System.out.println("\nBTTR.decodeMetadata seg=" + ste.fr.parent.segment + "
-    // mdUpto=" + metaDataUpto + " vs termBlockOrd=" + state.termBlockOrd);
+    // if (DEBUG) System.out.println("\nBTTR.decodeMetadata seg=" + ste.fr.parent.segment +
+    // " mdUpto=" + metaDataUpto + " vs termBlockOrd=" + state.termBlockOrd);
 
     assert nextEnt >= 0;
 
@@ -473,10 +473,10 @@ final class IDVersionSegmentTermsEnumFrame {
   // scan the entries check if the suffix matches.
   public SeekStatus scanToTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
-    // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix + "
-    // nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
-    // IDVersionSegmentTermsEnum.brToString(target) + " term=" +
-    // IDVersionSegmentTermsEnum.brToString(ste.term));
+    // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix +
+    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
+    // ToStringUtils.bytesRefToString(target) +
+    // " term=" + ToStringUtils.bytesRefToString(ste.term));
 
     assert nextEnt != -1;
 
@@ -506,7 +506,7 @@ final class IDVersionSegmentTermsEnumFrame {
       //    suffixBytesRef.offset = suffixesReader.getPosition();
       //    suffixBytesRef.length = suffix;
       //    System.out.println("      cycle: term " + (nextEnt-1) + " (of " + entCount + ") suffix="
-      // + IDVersionSegmentTermsEnum.brToString(suffixBytesRef));
+      // + ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
       final int termLen = prefix + suffix;
@@ -606,8 +606,8 @@ final class IDVersionSegmentTermsEnumFrame {
 
     // if (DEBUG) System.out.println("    scanToTermNonLeaf: block fp=" + fp + " prefix=" + prefix +
     // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
-    // IDVersionSegmentTermsEnum.brToString(target) + " term=" +
-    // IDVersionSegmentTermsEnum.brToString(ste.term));
+    // ToStringUtils.bytesRefToString(target) + " term=" +
+    // ToStringUtils.bytesRefToString(ste.term));
 
     assert nextEnt != -1;
 
@@ -635,7 +635,8 @@ final class IDVersionSegmentTermsEnumFrame {
       //   suffixBytesRef.offset = suffixesReader.getPosition();
       //   suffixBytesRef.length = suffix;
       //   System.out.println("      cycle: " + ((code&1)==1 ? "sub-block" : "term") + " " +
-      // (nextEnt-1) + " (of " + entCount + ") suffix=" + brToString(suffixBytesRef));
+      // (nextEnt-1) + " (of " + entCount + ") suffix=" +
+      // ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
       ste.termExists = (code & 1) == 0;

@@ -256,8 +256,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     final SegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
     f.arc = arc;
     if (f.fpOrig == fp && f.nextEnt != -1) {
-      // if (DEBUG) System.out.println("      push reused frame ord=" + f.ord + " fp=" + f.fp + "
-      // isFloor?=" + f.isFloor + " hasTerms=" + f.hasTerms + " pref=" + term + " nextEnt=" +
+      // if (DEBUG) System.out.println("      push reused frame ord=" + f.ord + " fp=" + f.fp +
+      // " isFloor?=" + f.isFloor + " hasTerms=" + f.hasTerms + " pref=" + term + " nextEnt=" +
       // f.nextEnt + " targetBeforeCurrentLength=" + targetBeforeCurrentLength + " term.length=" +
       // term.length + " vs prefix=" + f.prefix);
       // if (f.prefix > targetBeforeCurrentLength) {
@@ -279,7 +279,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       //   final int sav = term.length;
       //   term.length = length;
       //   System.out.println("      push new frame ord=" + f.ord + " fp=" + f.fp + " hasTerms=" +
-      // f.hasTerms + " isFloor=" + f.isFloor + " pref=" + brToString(term));
+      // f.hasTerms + " isFloor=" + f.isFloor + " pref=" + ToStringUtils.bytesRefToString(term));
       //   term.length = sav;
       // }
     }
@@ -299,27 +299,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     return true;
   }
 
-  /*
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      // If BytesRef isn't actually UTF8, or it's eg a
-      // prefix of UTF8 that ends mid-unicode-char, we
-      // fallback to hex:
-      return b.toString();
-    }
-  }
-
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(BytesRefBuilder b) {
-    return brToString(b.get());
-  }
-  */
-
   @Override
   public boolean seekExact(BytesRef target) throws IOException {
 
@@ -337,8 +316,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     // if (DEBUG) {
     //   System.out.println("\nBTTR.seekExact seg=" + fr.parent.segment + " target=" +
-    // fr.fieldInfo.name + ":" + brToString(target) + " current=" + brToString(term) + " (exists?="
-    // + termExists + ") validIndexPrefix=" + validIndexPrefix);
+    // fr.fieldInfo.name + ":" + ToStringUtils.bytesRefToString(target) + " current=" +
+    // ToStringUtils.bytesRefToString(term) + " (exists?=" + termExists +
+    // ") validIndexPrefix=" + validIndexPrefix);
     //   printSeekState(System.out);
     // }
 
@@ -496,8 +476,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
 
     // if (DEBUG) {
-    //   System.out.println("  start index loop targetUpto=" + targetUpto + " output=" + output + "
-    // currentFrame.ord=" + currentFrame.ord + " targetBeforeCurrentLength=" +
+    //   System.out.println("  start index loop targetUpto=" + targetUpto + " output=" + output +
+    // " currentFrame.ord=" + currentFrame.ord + " targetBeforeCurrentLength=" +
     // targetBeforeCurrentLength);
     // }
 
@@ -528,7 +508,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           term.setByteAt(targetUpto, (byte) targetLabel);
           term.setLength(1 + targetUpto);
           // if (DEBUG) {
-          //   System.out.println("  FAST NOT_FOUND term=" + brToString(term));
+          //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
           // }
           return false;
         }
@@ -544,7 +524,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         } else {
           // if (DEBUG) {
           //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-          // brToString(term));
+          // ToStringUtils.bytesRefToString(term));
           // }
           return false;
         }
@@ -587,7 +567,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       termExists = false;
       term.setLength(targetUpto);
       // if (DEBUG) {
-      //   System.out.println("  FAST NOT_FOUND term=" + brToString(term));
+      //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
       // }
       return false;
     }
@@ -623,7 +603,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     // if (DEBUG) {
     //   System.out.println("\nBTTR.seekCeil seg=" + fr.parent.segment + " target=" +
-    // fr.fieldInfo.name + ":" + brToString(target) + " " + target + " current=" + brToString(term)
+    // fr.fieldInfo.name + ":" + ToStringUtils.bytesRefToString(target) +
+    // " current=" + ToStringUtils.bytesRefToString(term)
     // + " (exists?=" + termExists + ") validIndexPrefix=  " + validIndexPrefix);
     //   printSeekState(System.out);
     // }
@@ -667,9 +648,9 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         cmp = (term.byteAt(targetUpto) & 0xFF) - (target.bytes[target.offset + targetUpto] & 0xFF);
         // if (DEBUG) {
         // System.out.println("    cycle targetUpto=" + targetUpto + " (vs limit=" + targetLimit +
-        // ") cmp=" + cmp + " (targetLabel=" + (char) (target.bytes[target.offset + targetUpto]) + "
-        // vs termLabel=" + (char) (term.byteAt(targetUpto)) + ")"   + " arc.output=" + arc.output +
-        // " output=" + output);
+        // ") cmp=" + cmp + " (targetLabel=" + (char) (target.bytes[target.offset + targetUpto]) +
+        // " vs termLabel=" + (char) (term.byteAt(targetUpto)) + ")"   + " arc.output=" + arc.output
+        // + " output=" + output);
         // }
         if (cmp != 0) {
           break;
@@ -781,8 +762,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     }
 
     // if (DEBUG) {
-    // System.out.println("  start index loop targetUpto=" + targetUpto + " output=" + output + "
-    // currentFrame.ord+1=" + currentFrame.ord + " targetBeforeCurrentLength=" +
+    // System.out.println("  start index loop targetUpto=" + targetUpto + " output=" + output +
+    // " currentFrame.ord+1=" + currentFrame.ord + " targetBeforeCurrentLength=" +
     // targetBeforeCurrentLength);
     // }
 
@@ -818,7 +799,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
           if (next() != null) {
             // if (DEBUG) {
-            // System.out.println("  return NOT_FOUND term=" + brToString(term));
+            // System.out.println("  return NOT_FOUND term=" +
+            // ToStringUtils.bytesRefToString(term));
             // }
             return SeekStatus.NOT_FOUND;
           } else {
@@ -829,7 +811,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           }
         } else {
           // if (DEBUG) {
-          // System.out.println("  return " + result + " term=" + brToString(term));
+          // System.out.println("  return " + result + " term=" +
+          // ToStringUtils.bytesRefToString(term));
           // }
           return result;
         }
@@ -1029,9 +1012,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
     assert !eof;
     // if (DEBUG) {
-    //   System.out.println("\nBTTR.next seg=" + fr.parent.segment + " term=" + brToString(term) + "
-    // termExists?=" + termExists + " field=" + fr.fieldInfo.name + " termBlockOrd=" +
-    // currentFrame.state.termBlockOrd + " validIndexPrefix=" + validIndexPrefix);
+    //   System.out.println("\nBTTR.next seg=" + fr.parent.segment + " term=" +
+    //   ToStringUtils.bytesRefToString(term) + " termExists?=" + termExists + " field=" +
+    // fr.fieldInfo.name + " termBlockOrd=" + currentFrame.state.termBlockOrd +
+    // " validIndexPrefix=" + validIndexPrefix);
     //   printSeekState(System.out);
     // }
 
@@ -1095,8 +1079,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // try to scan to the right floor frame:
         currentFrame.loadBlock();
       } else {
-        // if (DEBUG) System.out.println("  return term=" + brToString(term) + " currentFrame.ord="
-        // + currentFrame.ord);
+        // if (DEBUG) System.out.println("  return term=" + ToStringUtils.bytesRefToString(term) +
+        // " currentFrame.ord=" + currentFrame.ord);
         return term.get();
       }
     }

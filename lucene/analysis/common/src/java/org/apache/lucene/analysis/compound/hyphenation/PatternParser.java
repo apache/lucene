@@ -142,7 +142,7 @@ public class PatternParser extends DefaultHandler {
         break;
       }
     }
-    token.append(chars.toString().substring(0, i));
+    token.append(chars, 0, i);
     // chars.delete(0,i);
     for (int countr = i; countr < chars.length(); countr++) {
       chars.setCharAt(countr - i, chars.charAt(countr));
@@ -314,7 +314,9 @@ public class PatternParser extends DefaultHandler {
     }
   }
 
-  /** @see org.xml.sax.ContentHandler#characters(char[], int, int) */
+  /**
+   * @see org.xml.sax.ContentHandler#characters(char[], int, int)
+   */
   @SuppressWarnings({"unchecked", "rawtypes"})
   @Override
   public void characters(char[] ch, int start, int length) {

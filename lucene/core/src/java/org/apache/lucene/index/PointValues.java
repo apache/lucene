@@ -17,9 +17,9 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.util.Arrays;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
@@ -29,6 +29,9 @@ import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LatLonPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.bkd.BKDConfig;
 
 /**
@@ -165,16 +168,11 @@ public abstract class PointValues {
       } else {
         final int numDimensions = values.getNumIndexDimensions();
         final int numBytesPerDimension = values.getBytesPerDimension();
+        final ByteArrayComparator comparator =
+            ArrayUtil.getUnsignedComparator(numBytesPerDimension);
         for (int i = 0; i < numDimensions; ++i) {
           int offset = i * numBytesPerDimension;
-          if (Arrays.compareUnsigned(
-                  leafMinValue,
-                  offset,
-                  offset + numBytesPerDimension,
-                  minValue,
-                  offset,
-                  offset + numBytesPerDimension)
-              < 0) {
+          if (comparator.compare(leafMinValue, offset, minValue, offset) < 0) {
             System.arraycopy(leafMinValue, offset, minValue, offset, numBytesPerDimension);
           }
         }
@@ -205,16 +203,11 @@ public abstract class PointValues {
       } else {
         final int numDimensions = values.getNumIndexDimensions();
         final int numBytesPerDimension = values.getBytesPerDimension();
+        final ByteArrayComparator comparator =
+            ArrayUtil.getUnsignedComparator(numBytesPerDimension);
         for (int i = 0; i < numDimensions; ++i) {
           int offset = i * numBytesPerDimension;
-          if (Arrays.compareUnsigned(
-                  leafMaxValue,
-                  offset,
-                  offset + numBytesPerDimension,
-                  maxValue,
-                  offset,
-                  offset + numBytesPerDimension)
-              > 0) {
+          if (comparator.compare(leafMaxValue, offset, maxValue, offset) > 0) {
             System.arraycopy(leafMaxValue, offset, maxValue, offset, numBytesPerDimension);
           }
         }
@@ -236,8 +229,55 @@ public abstract class PointValues {
     CELL_CROSSES_QUERY
   };
 
+  /** Create a new {@link PointTree} to navigate the index */
+  public abstract PointTree getPointTree() throws IOException;
+
   /**
-   * We recurse the BKD tree, using a provided instance of this to guide the recursion.
+   * Basic operations to read the KD-tree.
+   *
+   * @lucene.experimental
+   */
+  public interface PointTree extends Cloneable {
+
+    /** Clone, the current node becomes the root of the new tree. */
+    PointTree clone();
+
+    /**
+     * Move to the first child node and return {@code true} upon success. Returns {@code false} for
+     * leaf nodes and {@code true} otherwise.
+     */
+    boolean moveToChild() throws IOException;
+
+    /**
+     * Move to the next sibling node and return {@code true} upon success. Returns {@code false} if
+     * the current node has no more siblings.
+     */
+    boolean moveToSibling() throws IOException;
+
+    /**
+     * Move to the parent node and return {@code true} upon success. Returns {@code false} for the
+     * root node and {@code true} otherwise.
+     */
+    boolean moveToParent() throws IOException;
+
+    /** Return the minimum packed value of the current node. */
+    byte[] getMinPackedValue();
+
+    /** Return the maximum packed value of the current node. */
+    byte[] getMaxPackedValue();
+
+    /** Return the number of points below the current node. */
+    long size();
+
+    /** Visit all the docs below the current node. */
+    void visitDocIDs(IntersectVisitor visitor) throws IOException;
+
+    /** Visit all the docs and values below the current node. */
+    void visitDocValues(IntersectVisitor visitor) throws IOException;
+  }
+
+  /**
+   * We recurse the {@link PointTree}, using a provided instance of this to guide the recursion.
    *
    * @lucene.experimental
    */
@@ -247,6 +287,28 @@ public abstract class PointValues {
      * should blindly accept the docID.
      */
     void visit(int docID) throws IOException;
+
+    /**
+     * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implementations may have
+     * their optimizations.
+     */
+    default void visit(DocIdSetIterator iterator) throws IOException {
+      int docID;
+      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        visit(docID);
+      }
+    }
+
+    /**
+     * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implements may have
+     * their optimizations. Even if the implementation does the same thing this method, this may be
+     * a speed improvement due to fewer virtual calls.
+     */
+    default void visit(IntsRef ref) throws IOException {
+      for (int i = ref.offset; i < ref.length + ref.offset; i++) {
+        visit(ref.ints[i]);
+      }
+    }
 
     /**
      * Called for all documents in a leaf cell that crosses the query. The consumer should
@@ -275,20 +337,109 @@ public abstract class PointValues {
 
     /** Notifies the caller that this many documents are about to be visited */
     default void grow(int count) {}
-    ;
   }
 
   /**
    * Finds all documents and points matching the provided visitor. This method does not enforce live
    * documents, so it's up to the caller to test whether each document is deleted, if necessary.
    */
-  public abstract void intersect(IntersectVisitor visitor) throws IOException;
+  public final void intersect(IntersectVisitor visitor) throws IOException {
+    final PointTree pointTree = getPointTree();
+    intersect(visitor, pointTree);
+    assert pointTree.moveToParent() == false;
+  }
+
+  private void intersect(IntersectVisitor visitor, PointTree pointTree) throws IOException {
+    Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
+    switch (r) {
+      case CELL_OUTSIDE_QUERY:
+        // This cell is fully outside the query shape: stop recursing
+        break;
+      case CELL_INSIDE_QUERY:
+        // This cell is fully inside the query shape: recursively add all points in this cell
+        // without filtering
+        pointTree.visitDocIDs(visitor);
+        break;
+      case CELL_CROSSES_QUERY:
+        // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
+        // through and do full filtering:
+        if (pointTree.moveToChild()) {
+          do {
+            intersect(visitor, pointTree);
+          } while (pointTree.moveToSibling());
+          pointTree.moveToParent();
+        } else {
+          // TODO: we can assert that the first value here in fact matches what the pointTree
+          // claimed?
+          // Leaf node; scan and filter all points in this block:
+          pointTree.visitDocValues(visitor);
+        }
+        break;
+      default:
+        throw new IllegalArgumentException("Unreachable code");
+    }
+  }
 
   /**
    * Estimate the number of points that would be visited by {@link #intersect} with the given {@link
    * IntersectVisitor}. This should run many times faster than {@link #intersect(IntersectVisitor)}.
    */
-  public abstract long estimatePointCount(IntersectVisitor visitor);
+  public final long estimatePointCount(IntersectVisitor visitor) {
+    try {
+      final PointTree pointTree = getPointTree();
+      final long count = estimatePointCount(visitor, pointTree, Long.MAX_VALUE);
+      assert pointTree.moveToParent() == false;
+      return count;
+    } catch (IOException ioe) {
+      throw new UncheckedIOException(ioe);
+    }
+  }
+
+  /**
+   * Estimate if the point count that would be matched by {@link #intersect} with the given {@link
+   * IntersectVisitor} is greater than or equal to the upperBound.
+   *
+   * @lucene.internal
+   */
+  public static boolean isEstimatedPointCountGreaterThanOrEqualTo(
+      IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
+    return estimatePointCount(visitor, pointTree, upperBound) >= upperBound;
+  }
+
+  /**
+   * Estimate the number of documents that would be matched by {@link #intersect} with the given
+   * {@link IntersectVisitor}. The estimation will terminate when the point count gets greater than
+   * or equal to the upper bound.
+   *
+   * <p>TODO: will broad-first help estimation terminate earlier?
+   */
+  private static long estimatePointCount(
+      IntersectVisitor visitor, PointTree pointTree, long upperBound) throws IOException {
+    Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
+    switch (r) {
+      case CELL_OUTSIDE_QUERY:
+        // This cell is fully outside the query shape: no points added
+        return 0L;
+      case CELL_INSIDE_QUERY:
+        // This cell is fully inside the query shape: add all points
+        return pointTree.size();
+      case CELL_CROSSES_QUERY:
+        // The cell crosses the shape boundary: keep recursing
+        if (pointTree.moveToChild()) {
+          long cost = 0;
+          do {
+            cost += estimatePointCount(visitor, pointTree, upperBound - cost);
+          } while (cost < upperBound && pointTree.moveToSibling());
+          pointTree.moveToParent();
+          return cost;
+        } else {
+          // Assume half the points matched
+          return (pointTree.size() + 1) / 2;
+        }
+      default:
+        throw new IllegalArgumentException("Unreachable code");
+    }
+  }
 
   /**
    * Estimate the number of documents that would be matched by {@link #intersect} with the given
@@ -297,7 +448,7 @@ public abstract class PointValues {
    *
    * @see DocIdSetIterator#cost
    */
-  public long estimateDocCount(IntersectVisitor visitor) {
+  public final long estimateDocCount(IntersectVisitor visitor) {
     long estimatedPointCount = estimatePointCount(visitor);
     int docCount = getDocCount();
     double size = size();

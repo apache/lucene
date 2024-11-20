@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.demo.knn;
 
+import static org.apache.lucene.util.fst.FST.readMetadata;
+
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
@@ -57,15 +59,15 @@ public class KnnVectorDict implements Closeable {
    *     '.bin' file.
    */
   public KnnVectorDict(Directory directory, String dictName) throws IOException {
-    try (IndexInput fstIn = directory.openInput(dictName + ".fst", IOContext.READ)) {
-      fst = new FST<>(fstIn, fstIn, PositiveIntOutputs.getSingleton());
+    try (IndexInput fstIn = directory.openInput(dictName + ".fst", IOContext.DEFAULT)) {
+      fst = new FST<>(readMetadata(fstIn, PositiveIntOutputs.getSingleton()), fstIn);
     }
 
-    vectors = directory.openInput(dictName + ".bin", IOContext.READ);
+    vectors = directory.openInput(dictName + ".bin", IOContext.DEFAULT);
     long size = vectors.length();
     vectors.seek(size - Integer.BYTES);
     dimension = vectors.readInt();
-    if ((size - Integer.BYTES) % (dimension * Float.BYTES) != 0) {
+    if ((size - Integer.BYTES) % (dimension * (long) Float.BYTES) != 0) {
       throw new IllegalStateException(
           "vector file size " + size + " is not consonant with the vector dimension " + dimension);
     }
@@ -133,12 +135,17 @@ public class KnnVectorDict implements Closeable {
     private static final Pattern SPACE_RE = Pattern.compile(" ");
 
     private final IntsRefBuilder intsRefBuilder = new IntsRefBuilder();
-    private final FSTCompiler<Long> fstCompiler =
-        new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton());
+    private final FSTCompiler<Long> fstCompiler;
     private float[] scratch;
     private ByteBuffer byteBuffer;
     private long ordinal = 1;
     private int numFields;
+
+    Builder() throws IOException {
+      fstCompiler =
+          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, PositiveIntOutputs.getSingleton())
+              .build();
+    }
 
     void build(Path gloveInput, Directory directory, String dictName) throws IOException {
       try (BufferedReader in = Files.newBufferedReader(gloveInput);
@@ -148,7 +155,7 @@ public class KnnVectorDict implements Closeable {
         while (addOneLine(in, binOut)) {
           // continue;
         }
-        fstCompiler.compile().save(fstOut, fstOut);
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()).save(fstOut, fstOut);
         binOut.writeInt(numFields - 1);
       }
     }

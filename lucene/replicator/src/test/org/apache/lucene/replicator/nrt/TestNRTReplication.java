@@ -17,15 +17,18 @@
 
 package org.apache.lucene.replicator.nrt;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -33,14 +36,13 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.LockObtainFailedException;
-import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LineFileDocs;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
+import org.apache.lucene.tests.util.TestRuleIgnoreTestSuites;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SuppressForbidden;
-import org.apache.lucene.util.TestRuleIgnoreTestSuites;
-import org.apache.lucene.util.TestUtil;
 
 // MockRandom's .sd file has no index header/footer:
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
@@ -103,8 +105,10 @@ public class TestNRTReplication extends LuceneTestCase {
     long seed = random().nextLong() * nodeStartCounter.incrementAndGet();
     cmd.add("-Dtests.seed=" + SeedUtils.formatSeed(seed));
     cmd.add("-ea");
-    cmd.add("-cp");
-    cmd.add(System.getProperty("java.class.path"));
+    cmd.add("-Djava.io.tmpdir=" + childTempDir.toFile());
+
+    cmd.addAll(getJvmForkArguments());
+
     cmd.add("org.junit.runner.JUnitCore");
     cmd.add(TestSimpleServer.class.getName());
 
@@ -117,17 +121,12 @@ public class TestNRTReplication extends LuceneTestCase {
 
     Process p = pb.start();
 
-    BufferedReader r;
-    try {
-      r = new BufferedReader(new InputStreamReader(p.getInputStream(), IOUtils.UTF_8));
-    } catch (UnsupportedEncodingException uee) {
-      throw new RuntimeException(uee);
-    }
+    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), UTF_8));
 
     int tcpPort = -1;
     long initCommitVersion = -1;
     long initInfosVersion = -1;
-    Pattern logTimeStart = Pattern.compile("^[0-9\\.]+s .*");
+    Pattern logTimeStart = Pattern.compile("^[0-9.]+s .*");
 
     while (true) {
       String l = r.readLine();
@@ -170,24 +169,21 @@ public class TestNRTReplication extends LuceneTestCase {
     AtomicBoolean nodeClosing = new AtomicBoolean();
     Thread pumper =
         ThreadPumper.start(
-            new Runnable() {
-              @Override
-              public void run() {
-                message("now wait for process " + p);
-                try {
-                  p.waitFor();
-                } catch (Throwable t) {
-                  throw new RuntimeException(t);
-                }
+            () -> {
+              message("now wait for process " + p);
+              try {
+                p.waitFor();
+              } catch (Throwable t) {
+                throw new RuntimeException(t);
+              }
 
-                message("done wait for process " + p);
-                int exitValue = p.exitValue();
-                message("exit value=" + exitValue + " willCrash=" + finalWillCrash);
-                if (exitValue != 0 && finalWillCrash == false) {
-                  // should fail test
-                  throw new RuntimeException(
-                      "node " + id + " process had unexpected non-zero exit status=" + exitValue);
-                }
+              message("done wait for process " + p);
+              int exitValue = p.exitValue();
+              message("exit value=" + exitValue + " willCrash=" + finalWillCrash);
+              if (exitValue != 0 && finalWillCrash == false) {
+                // should fail test
+                throw new RuntimeException(
+                    "node " + id + " process had unexpected non-zero exit status=" + exitValue);
               }
             },
             r,
@@ -213,7 +209,8 @@ public class TestNRTReplication extends LuceneTestCase {
         primaryTCPPort == -1,
         initCommitVersion,
         initInfosVersion,
-        nodeClosing);
+        nodeClosing,
+        Optional.empty());
   }
 
   @Override
@@ -353,7 +350,6 @@ public class TestNRTReplication extends LuceneTestCase {
   // Start up, index 10 docs, replicate, but crash and restart the replica without committing it:
   @Nightly
   public void testReplicaCrashNoCommit() throws Exception {
-
     Path primaryPath = createTempDir("primary");
     NodeProcess primary = startNode(-1, 0, primaryPath, -1, false);
 
@@ -654,7 +650,7 @@ public class TestNRTReplication extends LuceneTestCase {
     primary.crash();
 
     // At this point replica is "in the future": it has 10 docs committed, but the primary crashed
-    // before committing so it has 0 docs
+    // before committing, so it has 0 docs
 
     // Restart primary:
     primary = startNode(-1, 0, path1, -1, true);
@@ -683,6 +679,7 @@ public class TestNRTReplication extends LuceneTestCase {
   }
 
   @Nightly
+  @SuppressForbidden(reason = "Thread sleep")
   public void testCrashPrimaryWhileCopying() throws Exception {
 
     Path path1 = createTempDir("1");
@@ -733,13 +730,11 @@ public class TestNRTReplication extends LuceneTestCase {
   private void assertWriteLockHeld(Path path) throws Exception {
     try (FSDirectory dir = FSDirectory.open(path)) {
       expectThrows(
-          LockObtainFailedException.class,
-          () -> {
-            dir.obtainLock(IndexWriter.WRITE_LOCK_NAME);
-          });
+          LockObtainFailedException.class, () -> dir.obtainLock(IndexWriter.WRITE_LOCK_NAME));
     }
   }
 
+  @Nightly
   public void testCrashReplica() throws Exception {
 
     Path path1 = createTempDir("1");
@@ -802,6 +797,70 @@ public class TestNRTReplication extends LuceneTestCase {
     docs.close();
     replica.close();
     primary.close();
+  }
+
+  @Nightly
+  public void testPrimaryCloseWhileCopyingNoWait() throws Exception {
+    Path path1 = createTempDir("A");
+    NodeProcess primary = startNode(-1, 0, path1, -1, true);
+
+    Path path2 = createTempDir("B");
+    NodeProcess replica = startNode(primary.tcpPort, 1, path2, -1, true);
+
+    assertWriteLockHeld(path2);
+
+    sendReplicasToPrimary(primary, replica);
+
+    LineFileDocs docs = new LineFileDocs(random());
+    try (Connection c = new Connection(primary.tcpPort)) {
+      c.out.writeByte(SimplePrimaryNode.CMD_INDEXING);
+      Document doc = docs.nextDoc();
+      primary.addOrUpdateDocument(c, doc, false);
+    }
+
+    // Refresh primary, which also pushes to replica:
+    long primaryVersion1 = primary.flush(0);
+    assertTrue(primaryVersion1 > 0);
+
+    // Wait for replica to sync up:
+    waitForVersionAndHits(replica, primaryVersion1, 1);
+
+    primary.setRemoteCloseTimeoutMs(0);
+    primary.leakCopyState();
+    primary.close();
+    replica.close();
+  }
+
+  @Nightly
+  public void testPrimaryCloseWhileCopyingShortWait() throws Exception {
+    Path path1 = createTempDir("A");
+    NodeProcess primary = startNode(-1, 0, path1, -1, true);
+
+    Path path2 = createTempDir("B");
+    NodeProcess replica = startNode(primary.tcpPort, 1, path2, -1, true);
+
+    assertWriteLockHeld(path2);
+
+    sendReplicasToPrimary(primary, replica);
+
+    LineFileDocs docs = new LineFileDocs(random());
+    try (Connection c = new Connection(primary.tcpPort)) {
+      c.out.writeByte(SimplePrimaryNode.CMD_INDEXING);
+      Document doc = docs.nextDoc();
+      primary.addOrUpdateDocument(c, doc, false);
+    }
+
+    // Refresh primary, which also pushes to replica:
+    long primaryVersion1 = primary.flush(0);
+    assertTrue(primaryVersion1 > 0);
+
+    // Wait for replica to sync up:
+    waitForVersionAndHits(replica, primaryVersion1, 1);
+
+    primary.setRemoteCloseTimeoutMs(1000);
+    primary.leakCopyState();
+    primary.close();
+    replica.close();
   }
 
   @Nightly
@@ -881,8 +940,7 @@ public class TestNRTReplication extends LuceneTestCase {
     try (Connection c = new Connection(primary.tcpPort)) {
       c.out.writeByte(SimplePrimaryNode.CMD_SET_REPLICAS);
       c.out.writeVInt(replicas.length);
-      for (int id = 0; id < replicas.length; id++) {
-        NodeProcess replica = replicas[id];
+      for (NodeProcess replica : replicas) {
         c.out.writeVInt(replica.id);
         c.out.writeVInt(replica.tcpPort);
       }
@@ -909,6 +967,7 @@ public class TestNRTReplication extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   private void waitForVersionAndHits(NodeProcess node, long expectedVersion, int expectedHitCount)
       throws Exception {
     try (Connection c = new Connection(node.tcpPort)) {
@@ -931,12 +990,11 @@ public class TestNRTReplication extends LuceneTestCase {
 
   static void message(String message) {
     long now = System.nanoTime();
-    System.out.println(
-        String.format(
-            Locale.ROOT,
-            "%5.3fs       :     parent [%11s] %s",
-            (now - Node.globalStartNS) / 1000000000.,
-            Thread.currentThread().getName(),
-            message));
+    System.out.printf(
+        Locale.ROOT,
+        "%5.3fs       :     parent [%11s] %s%n",
+        (now - Node.globalStartNS) / (double) TimeUnit.SECONDS.toNanos(1),
+        Thread.currentThread().getName(),
+        message);
   }
 }

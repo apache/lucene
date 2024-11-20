@@ -26,6 +26,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.BytesRef;
 
 /** Holder for a document field's information and data. */
@@ -54,6 +55,10 @@ public final class DocumentField {
   private int pointDimensionCount;
   private int pointNumBytes;
 
+  // knn vector values
+  private int vectorDimension;
+  private VectorSimilarityFunction vectorSimilarity;
+
   static DocumentField of(FieldInfo finfo, IndexReader reader, int docId) throws IOException {
     return of(finfo, null, reader, docId);
   }
@@ -68,7 +73,7 @@ public final class DocumentField {
 
     dfield.name = finfo.name;
     dfield.idxOptions = finfo.getIndexOptions();
-    dfield.hasTermVectors = finfo.hasVectors();
+    dfield.hasTermVectors = finfo.hasTermVectors();
     dfield.hasPayloads = finfo.hasPayloads();
     dfield.hasNorms = finfo.hasNorms();
 
@@ -83,6 +88,9 @@ public final class DocumentField {
 
     dfield.pointDimensionCount = finfo.getPointDimensionCount();
     dfield.pointNumBytes = finfo.getPointNumBytes();
+
+    dfield.vectorDimension = finfo.getVectorDimension();
+    dfield.vectorSimilarity = finfo.getVectorSimilarityFunction();
 
     if (field != null) {
       dfield.isStored = field.fieldType().stored();
@@ -148,6 +156,14 @@ public final class DocumentField {
     return pointNumBytes;
   }
 
+  public int getVectorDimension() {
+    return vectorDimension;
+  }
+
+  public VectorSimilarityFunction getVectorSimilarity() {
+    return vectorSimilarity;
+  }
+
   @Override
   public String toString() {
     return "DocumentField{"
@@ -164,6 +180,8 @@ public final class DocumentField {
         + dvType
         + ", pointDimensionCount="
         + pointDimensionCount
+        + ", vectorDimension="
+        + vectorDimension
         + '}';
   }
 

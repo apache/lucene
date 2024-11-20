@@ -33,21 +33,19 @@ def resources = scriptResources(buildscript)
 // Configure different icu4j dependencies.
 configure(rootProject) {
   configurations {
-    icu_62
-    icu_68
+    icu_current
   }
 
   dependencies {
-    icu_62 "com.ibm.icu:icu4j:62.2"
-    icu_68 "com.ibm.icu:icu4j:68.2"
-  }
-
-  // Exclude ICU config from palantir's version unification.
-  versionRecommendations {
-    excludeConfigurations "icu_68", "icu_62"
+    icu_current deps.icu4j
   }
 }
 
+// This retrieves the module name/ version for ICU from the given
+// configuration (if present).
+def icuVersionFromConfiguration(Configuration configuration) {
+  return configuration.resolvedConfiguration.getFirstLevelModuleDependencies({ dep -> dep.group.startsWith("com.ibm.icu") }).collect { dep -> dep.module.id }.join(", ")
+}
 
 configure(project(":lucene:analysis:icu")) {
   def utr30DataDir = file("src/data/utr30")
@@ -67,14 +65,15 @@ configure(project(":lucene:analysis:icu")) {
     icupkg = file("${icuBinDir}/icupkg")
   }
 
-  // Resolve version lazily (can't resolve at configuration time).
-  def icu4jVersionProvider = project.provider { getVersion('com.ibm.icu', 'icu4j') }
   // lazy gstring with ICU version.
-  def icu4jVersion = "${-> icu4jVersionProvider.get()}"
+  def icu4jVersion = deps.icu4j.get().version
 
   def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
 
   task genUtr30DataFilesInternal() {
+    def icuConfig = rootProject.configurations.icu_current
+
+    dependsOn icuConfig
     dependsOn icuCompileTask
 
     // May be undefined yet, so use a provider.
@@ -85,7 +84,7 @@ configure(project(":lucene:analysis:icu")) {
     def outputFile = file("src/resources/org/apache/lucene/analysis/icu/utr30.nrm")
 
     inputs.files inputFiles
-    inputs.property "icu4j", icu4jVersionProvider
+    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
     outputs.file outputFile
 
     doFirst {
@@ -125,6 +124,10 @@ configure(project(":lucene:analysis:icu")) {
   }
 
   task genRbbiInternal() {
+    def icuConfig = rootProject.configurations.icu_current
+
+    dependsOn icuConfig
+
     // May be undefined yet, so use a provider.
     dependsOn { sourceSets.tools.runtimeClasspath }
 
@@ -132,7 +135,7 @@ configure(project(":lucene:analysis:icu")) {
     def targetDir = file("src/resources/org/apache/lucene/analysis/icu/segmentation")
 
     inputs.files fileTree(dir: sourceDir, include: "*.rbbi")
-    inputs.property "icu4j", icu4jVersionProvider
+    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
     outputs.files fileTree(dir: targetDir, include: "*.brk")
 
     doFirst {
@@ -147,8 +150,13 @@ configure(project(":lucene:analysis:icu")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFilesInternal, [ ignoreWithSource: icuCompileTask ])
-  regenerate.dependsOn wrapWithPersistentChecksums(genRbbiInternal)
+  regenerate.dependsOn wrapWithPersistentChecksums(genUtr30DataFilesInternal, [
+    ignoreWithSource: icuCompileTask,
+    mustRunBefore: [ "compileJava" ]
+  ])
+  regenerate.dependsOn wrapWithPersistentChecksums(genRbbiInternal, [
+    mustRunBefore: [ "compileJava" ]
+  ])
 
   task compileIcuWindows() {
     doFirst {
@@ -244,7 +252,7 @@ configure(project(":lucene:analysis:icu")) {
 // Regenerates UnicodeProps.java
 configure(project(":lucene:analysis:common")) {
   task generateUnicodePropsInternal() {
-    def icuConfig = rootProject.configurations.icu_68
+    def icuConfig = rootProject.configurations.icu_current
     def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
 
     description "Regenerate ${outputFile} (with ${icuConfig.name})"
@@ -252,7 +260,7 @@ configure(project(":lucene:analysis:common")) {
 
     dependsOn icuConfig
 
-    inputs.property "icuConfig", icuConfig.name
+    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
     outputs.file outputFile
 
     doFirst {
@@ -269,37 +277,8 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
-}
-
-
-// UnicodeEmojiProperties.jflex
-configure(project(":lucene:core")) {
-  task generateEmojiPropertiesInternal() {
-    def icuConfig = rootProject.configurations.icu_62
-    def outputFile = file("src/data/jflex/UnicodeEmojiProperties.jflex")
-
-    description "Regenerate ${outputFile} (with ${icuConfig.name})"
-    group "generation"
-
-    dependsOn icuConfig
-
-    inputs.property "icuConfig", icuConfig.name
-    outputs.file outputFile
-
-    doFirst {
-      project.javaexec {
-        main "groovy.lang.GroovyShell"
-        classpath icuConfig, rootProject.configurations.groovy
-
-        args = [
-            "--encoding", "UTF-8",
-            file("${resources}/GenerateEmojiProperties.groovy"),
-            outputFile
-        ]
-      }
-    }
-  }
-
-  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiPropertiesInternal)
+  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
 }

@@ -28,14 +28,19 @@ import org.apache.lucene.index.PointValues.Relation;
 final class Polygon2D implements Component2D {
   /** minimum Y of this geometry's bounding box area */
   private final double minY;
+
   /** maximum Y of this geometry's bounding box area */
   private final double maxY;
+
   /** minimum X of this geometry's bounding box area */
   private final double minX;
+
   /** maximum X of this geometry's bounding box area */
   private final double maxX;
+
   /** tree of holes, or null */
   protected final Component2D holes;
+
   /** Edges of the polygon represented as a 2-d interval tree. */
   final EdgeTree tree;
 
@@ -257,10 +262,13 @@ final class Polygon2D implements Component2D {
       boolean ab,
       double bX,
       double bY) {
-    if (ab == true
-        && Component2D.disjoint(this.minX, this.maxX, this.minY, this.maxY, minX, maxX, minY, maxY)
-            == false
-        && tree.crossesLine(minX, maxX, minY, maxY, aX, aY, bX, bY, true)) {
+    if (Component2D.disjoint(this.minX, this.maxX, this.minY, this.maxY, minX, maxX, minY, maxY)) {
+      return WithinRelation.DISJOINT;
+    }
+    if (contains(aX, aY) || contains(bX, bY)) {
+      return WithinRelation.NOTWITHIN;
+    }
+    if (ab == true && tree.crossesLine(minX, maxX, minY, maxY, aX, aY, bX, bY, true)) {
       return WithinRelation.NOTWITHIN;
     }
     return WithinRelation.DISJOINT;

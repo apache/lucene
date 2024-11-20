@@ -43,8 +43,21 @@ public abstract class BitSet implements Bits, Accountable {
     return set;
   }
 
+  /**
+   * Clear all the bits of the set.
+   *
+   * <p>Depending on the implementation, this may be significantly faster than clear(0, length).
+   */
+  public void clear() {
+    // default implementation for compatibility
+    clear(0, length());
+  }
+
   /** Set the bit at <code>i</code>. */
   public abstract void set(int i);
+
+  /** Set the bit at <code>i</code>, returning <code>true</code> if it was previously set. */
+  public abstract boolean getAndSet(int i);
 
   /** Clear the bit at <code>i</code>. */
   public abstract void clear(int i);
@@ -65,9 +78,7 @@ public abstract class BitSet implements Bits, Accountable {
    * for speed if they have the ability to estimate the cardinality of the set without iterating
    * over all the data. The default implementation returns {@link #cardinality()}.
    */
-  public int approximateCardinality() {
-    return cardinality();
-  }
+  public abstract int approximateCardinality();
 
   /**
    * Returns the index of the last set bit before or on the index specified. -1 is returned if there
@@ -79,7 +90,17 @@ public abstract class BitSet implements Bits, Accountable {
    * Returns the index of the first set bit starting at the index specified. {@link
    * DocIdSetIterator#NO_MORE_DOCS} is returned if there are no more set bits.
    */
-  public abstract int nextSetBit(int index);
+  public int nextSetBit(int index) {
+    // Default implementation. Subclasses may be able to override with a more performant
+    // implementation.
+    return nextSetBit(index, length());
+  }
+
+  /**
+   * Returns the index of the first set bit from start (inclusive) until end (exclusive). {@link
+   * DocIdSetIterator#NO_MORE_DOCS} is returned if there are no more set bits.
+   */
+  public abstract int nextSetBit(int start, int end);
 
   /** Assert that the current doc is -1. */
   protected final void checkUnpositioned(DocIdSetIterator iter) {

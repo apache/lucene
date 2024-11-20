@@ -48,7 +48,7 @@ import org.apache.lucene.search.PhraseWeight;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SloppyPhraseMatcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
@@ -56,6 +56,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.mutable.MutableValueBool;
 
 /**
@@ -113,14 +114,14 @@ public class PhraseWildcardQuery extends Query {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (phraseTerms.isEmpty()) {
       return NO_MATCH_QUERY;
     }
     if (phraseTerms.size() == 1) {
       return phraseTerms.get(0).getQuery();
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
@@ -229,7 +230,7 @@ public class PhraseWildcardQuery extends Query {
   protected Weight noMatchWeight() {
     return new ConstantScoreWeight(this, 0) {
       @Override
-      public Scorer scorer(LeafReaderContext leafReaderContext) {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         return null;
       }
 
@@ -375,7 +376,7 @@ public class PhraseWildcardQuery extends Query {
     TermData termData = termsData.getOrCreateTermData(singleTerm.termPosition);
     Term term = singleTerm.term;
     termData.terms.add(term);
-    TermStates termStates = TermStates.build(searcher.getIndexReader().getContext(), term, true);
+    TermStates termStates = TermStates.build(searcher, term, true);
 
     // Collect TermState per segment.
     int numMatches = 0;
@@ -387,7 +388,8 @@ public class PhraseWildcardQuery extends Query {
       Terms terms = leafReaderContext.reader().terms(term.field());
       if (terms != null) {
         checkTermsHavePositions(terms);
-        TermState termState = termStates.get(leafReaderContext);
+        IOSupplier<TermState> supplier = termStates.get(leafReaderContext);
+        TermState termState = supplier == null ? null : supplier.get();
         if (termState != null) {
           termMatchesInSegment = true;
           numMatches++;
@@ -1034,8 +1036,8 @@ public class PhraseWildcardQuery extends Query {
     }
 
     private long getTermsSize(LeafReaderContext leafReaderContext) throws IOException {
-      Terms terms = leafReaderContext.reader().terms(field);
-      return terms == null ? 0 : terms.size();
+      Terms terms = Terms.getTerms(leafReaderContext.reader(), field);
+      return terms.size();
     }
   }
 

@@ -17,16 +17,13 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingStoredFieldsWriter;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexNotFoundException;
@@ -34,10 +31,12 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.TestIndexWriterReader;
-import org.apache.lucene.mockfile.FilterPath;
-import org.apache.lucene.mockfile.WindowsFS;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.mockfile.WindowsFS;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.TestUtil;
 
 public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
 
@@ -72,23 +71,23 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
     // we should see only fdx,fdt files here
     String[] files = primaryDir.listAll();
     assertTrue(files.length > 0);
-    for (int x = 0; x < files.length; x++) {
-      String ext = FileSwitchDirectory.getExtension(files[x]);
+    for (String file : files) {
+      String ext = FileSwitchDirectory.getExtension(file);
       assertTrue(fileExtensions.contains(ext));
     }
     files = secondaryDir.listAll();
     assertTrue(files.length > 0);
     // we should not see fdx,fdt files here
-    for (int x = 0; x < files.length; x++) {
-      String ext = FileSwitchDirectory.getExtension(files[x]);
+    for (String file : files) {
+      String ext = FileSwitchDirectory.getExtension(file);
       assertFalse(fileExtensions.contains(ext));
     }
     reader.close();
     writer.close();
 
     files = fsd.listAll();
-    for (int i = 0; i < files.length; i++) {
-      assertNotNull(files[i]);
+    for (String file : files) {
+      assertNotNull(file);
     }
     fsd.close();
   }
@@ -111,12 +110,8 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
   public void testNoDir() throws Throwable {
     Path primDir = createTempDir("foo");
     Path secondDir = createTempDir("bar");
-    Directory dir = newFSSwitchDirectory(primDir, secondDir, Collections.<String>emptySet());
-    expectThrows(
-        IndexNotFoundException.class,
-        () -> {
-          DirectoryReader.open(dir);
-        });
+    Directory dir = newFSSwitchDirectory(primDir, secondDir, Collections.emptySet());
+    expectThrows(IndexNotFoundException.class, () -> DirectoryReader.open(dir));
 
     dir.close();
   }
@@ -152,7 +147,7 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
 
   @Override
   protected Directory getDirectory(Path path) throws IOException {
-    Set<String> extensions = new HashSet<String>();
+    Set<String> extensions = new HashSet<>();
     if (random().nextBoolean()) {
       extensions.add("cfs");
     }
@@ -178,8 +173,8 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
     // relies on windows semantics
     Path path = createTempDir();
     assumeFalse("Irony we seem to not emulate windows well enough", Constants.WINDOWS);
-    FileSystem fs = new WindowsFS(path.getFileSystem()).getFileSystem(URI.create("file:///"));
-    Path indexPath = new FilterPath(path, fs);
+    WindowsFS provider = new WindowsFS(path.getFileSystem());
+    Path indexPath = provider.wrapPath(path);
     try (final FileSwitchDirectory dir =
         new FileSwitchDirectory(
             Collections.singleton("tim"),
@@ -188,8 +183,7 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
             true)) {
       dir.createOutput("foo.tim", IOContext.DEFAULT).close();
       Function<String[], Long> stripExtra =
-          array ->
-              Arrays.asList(array).stream().filter(f -> f.startsWith("extra") == false).count();
+          array -> Arrays.stream(array).filter(f -> f.startsWith("extra") == false).count();
       try (IndexInput indexInput = dir.openInput("foo.tim", IOContext.DEFAULT)) {
         assert indexInput != null;
         dir.deleteFile("foo.tim");

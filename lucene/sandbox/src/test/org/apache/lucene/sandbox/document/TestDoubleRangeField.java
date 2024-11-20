@@ -18,7 +18,7 @@ package org.apache.lucene.sandbox.document;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleRange;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Random testing for RangeField type. */
 public class TestDoubleRangeField extends LuceneTestCase {

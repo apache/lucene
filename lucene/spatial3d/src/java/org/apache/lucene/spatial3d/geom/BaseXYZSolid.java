@@ -25,13 +25,16 @@ abstract class BaseXYZSolid extends BasePlanetObject implements XYZSolid {
 
   /** Unit vector in x */
   protected static final Vector xUnitVector = new Vector(1.0, 0.0, 0.0);
+
   /** Unit vector in y */
   protected static final Vector yUnitVector = new Vector(0.0, 1.0, 0.0);
+
   /** Unit vector in z */
   protected static final Vector zUnitVector = new Vector(0.0, 0.0, 1.0);
 
   /** Vertical plane normal to x unit vector passing through origin */
   protected static final Plane xVerticalPlane = new Plane(0.0, 1.0, 0.0, 0.0);
+
   /** Vertical plane normal to y unit vector passing through origin */
   protected static final Plane yVerticalPlane = new Plane(1.0, 0.0, 0.0, 0.0);
 
@@ -80,10 +83,13 @@ abstract class BaseXYZSolid extends BasePlanetObject implements XYZSolid {
 
   /** All edgepoints inside shape */
   protected static final int ALL_INSIDE = 0;
+
   /** Some edgepoints inside shape */
   protected static final int SOME_INSIDE = 1;
+
   /** No edgepoints inside shape */
   protected static final int NONE_INSIDE = 2;
+
   /** No edgepoints at all (means a shape that is the whole world) */
   protected static final int NO_EDGEPOINTS = 3;
 

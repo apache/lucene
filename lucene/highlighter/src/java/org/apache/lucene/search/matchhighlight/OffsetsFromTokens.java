@@ -51,7 +51,7 @@ public final class OffsetsFromTokens implements OffsetsRetrievalStrategy {
   public List<OffsetRange> get(
       MatchesIterator matchesIterator, MatchRegionRetriever.FieldValueProvider doc)
       throws IOException {
-    List<CharSequence> values = doc.getValues(field);
+    List<String> values = doc.getValues(field);
 
     Set<BytesRef> matchTerms = new HashSet<>();
     while (matchesIterator.next()) {
@@ -72,7 +72,7 @@ public final class OffsetsFromTokens implements OffsetsRetrievalStrategy {
     ArrayList<OffsetRange> ranges = new ArrayList<>();
     int valueOffset = 0;
     for (int valueIndex = 0, max = values.size(); valueIndex < max; valueIndex++) {
-      final String value = values.get(valueIndex).toString();
+      final String value = values.get(valueIndex);
 
       TokenStream ts = analyzer.tokenStream(field, value);
       OffsetAttribute offsetAttr = ts.getAttribute(OffsetAttribute.class);
@@ -90,10 +90,5 @@ public final class OffsetsFromTokens implements OffsetsRetrievalStrategy {
       ts.close();
     }
     return ranges;
-  }
-
-  @Override
-  public boolean requiresDocument() {
-    return true;
   }
 }

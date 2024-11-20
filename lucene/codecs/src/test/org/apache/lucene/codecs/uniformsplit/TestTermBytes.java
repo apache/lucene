@@ -22,8 +22,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 /** Tests {@link TermBytes}. */
 public class TestTermBytes extends LuceneTestCase {
@@ -144,15 +144,14 @@ public class TestTermBytes extends LuceneTestCase {
   }
 
   private void validateExpectedSuffix(Map<String, String> vocab) {
-    List<BytesRef> src =
-        vocab.keySet().stream().sorted().map(BytesRef::new).collect(Collectors.toList());
+    List<BytesRef> src = vocab.keySet().stream().sorted().map(BytesRef::new).toList();
     List<TermBytes> output = compressPrefixes(src);
     validateMapList(
         vocab,
-        src.stream().map(BytesRef::utf8ToString).collect(Collectors.toList()),
+        src.stream().map(BytesRef::utf8ToString).toList(),
         output.stream()
             .map(e -> e.getSuffixOffset() + createSuffixBytes(e).utf8ToString())
-            .collect(Collectors.toList()));
+            .toList());
   }
 
   private BytesRef createSuffixBytes(TermBytes termBytes) {
@@ -167,21 +166,19 @@ public class TestTermBytes extends LuceneTestCase {
   }
 
   private void validateExpectedMDP(Map<String, String> vocab) {
-    List<BytesRef> src =
-        vocab.keySet().stream().sorted().map(BytesRef::new).collect(Collectors.toList());
+    List<BytesRef> src = vocab.keySet().stream().sorted().map(BytesRef::new).toList();
     List<TermBytes> output = compressPrefixes(src);
     validateMapList(
         vocab,
-        src.stream().map(BytesRef::utf8ToString).collect(Collectors.toList()),
+        src.stream().map(BytesRef::utf8ToString).toList(),
         output.stream()
             .map(e -> new BytesRef(e.getTerm().bytes, 0, e.getMdpLength()).utf8ToString())
-            .collect(Collectors.toList()));
+            .toList());
   }
 
   private void validateIncrementalDecoding(Map<String, String> vocab) {
     BytesRef previous = new BytesRef(80);
-    List<BytesRef> src =
-        vocab.keySet().stream().sorted().map(BytesRef::new).collect(Collectors.toList());
+    List<BytesRef> src = vocab.keySet().stream().sorted().map(BytesRef::new).toList();
     List<TermBytes> output = compressPrefixes(src);
 
     for (int i = 0; i < src.size(); i++) {

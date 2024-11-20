@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import org.apache.lucene.util.BitUtil; // javadocs
 
 /**
  * Random Access Index API. Unlike {@link IndexInput}, this has no concept of file position, all
@@ -24,28 +25,56 @@ import java.io.IOException;
  */
 public interface RandomAccessInput {
 
+  /** The number of bytes in the file. */
+  long length();
+
   /**
    * Reads a byte at the given position in the file
    *
    * @see DataInput#readByte
    */
-  public byte readByte(long pos) throws IOException;
+  byte readByte(long pos) throws IOException;
+
   /**
-   * Reads a short at the given position in the file
+   * Reads a specified number of bytes starting at a given position into an array at the specified
+   * offset.
+   *
+   * @see DataInput#readBytes
+   */
+  default void readBytes(long pos, byte[] bytes, int offset, int length) throws IOException {
+    for (int i = 0; i < length; i++) {
+      bytes[offset + i] = readByte(pos + i);
+    }
+  }
+
+  /**
+   * Reads a short (LE byte order) at the given position in the file
    *
    * @see DataInput#readShort
+   * @see BitUtil#VH_LE_SHORT
    */
-  public short readShort(long pos) throws IOException;
+  short readShort(long pos) throws IOException;
+
   /**
-   * Reads an integer at the given position in the file
+   * Reads an integer (LE byte order) at the given position in the file
    *
    * @see DataInput#readInt
+   * @see BitUtil#VH_LE_INT
    */
-  public int readInt(long pos) throws IOException;
+  int readInt(long pos) throws IOException;
+
   /**
-   * Reads a long at the given position in the file
+   * Reads a long (LE byte order) at the given position in the file
    *
    * @see DataInput#readLong
+   * @see BitUtil#VH_LE_LONG
    */
-  public long readLong(long pos) throws IOException;
+  long readLong(long pos) throws IOException;
+
+  /**
+   * Prefetch data in the background.
+   *
+   * @see IndexInput#prefetch
+   */
+  default void prefetch(long offset, long length) throws IOException {}
 }

@@ -21,7 +21,9 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.CollectionTerminatedException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Weight;
 
 /**
@@ -62,18 +64,24 @@ public class SuggestIndexSearcher extends IndexSearcher {
   public void suggest(CompletionQuery query, TopSuggestDocsCollector collector) throws IOException {
     // TODO use IndexSearcher.rewrite instead
     // have to implement equals() and hashCode() in CompletionQuerys and co
-    query = (CompletionQuery) query.rewrite(getIndexReader());
+    query = (CompletionQuery) query.rewrite(this);
     Weight weight = query.createWeight(this, collector.scoreMode(), 1f);
     for (LeafReaderContext context : getIndexReader().leaves()) {
       BulkScorer scorer = weight.bulkScorer(context);
       if (scorer != null) {
+        LeafCollector leafCollector = null;
         try {
-          scorer.score(collector.getLeafCollector(context), context.reader().getLiveDocs());
+          leafCollector = collector.getLeafCollector(context);
+          scorer.score(
+              leafCollector, context.reader().getLiveDocs(), 0, DocIdSetIterator.NO_MORE_DOCS);
         } catch (
             @SuppressWarnings("unused")
             CollectionTerminatedException e) {
           // collection was terminated prematurely
           // continue with the following leaf
+        }
+        if (leafCollector != null) {
+          leafCollector.finish();
         }
       }
     }

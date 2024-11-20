@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public abstract class BaseCompositeReader<R extends IndexReader> extends CompositeReader {
   private final R[] subReaders;
+
   /** A comparator for sorting sub-readers */
   protected final Comparator<R> subReadersSorter;
 
@@ -112,27 +113,27 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
-  public final TermVectors getTermVectorsReader() {
-    TermVectors[] termVectors = new TermVectors[subReaders.length];
-
+  public final TermVectors termVectors() throws IOException {
+    ensureOpen();
+    TermVectors[] subVectors = new TermVectors[subReaders.length];
     return new TermVectors() {
       @Override
-      public Fields get(int doc) throws IOException {
-        ensureOpen();
-        final int i = readerIndex(doc); // find subreader num
-
-        if (termVectors[i] != null) {
-          return termVectors[i].get(doc - starts[i]); // dispatch to subreader
-        } else {
-          TermVectors reader = subReaders[i].getTermVectorsReader();
-          if (reader != null) {
-            // the getTermVectorsReader would clone a new instance, hence saving it into an array
-            // to avoid re-cloning from direct subReaders[i].getTermVectorsReader() call
-            termVectors[i] = reader;
-            return reader.get(doc - starts[i]);
-          }
-          return null;
+      public void prefetch(int docID) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        if (subVectors[i] == null) {
+          subVectors[i] = subReaders[i].termVectors();
         }
+        subVectors[i].prefetch(docID - starts[i]);
+      }
+
+      @Override
+      public Fields get(int docID) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        // dispatch to subreader, reusing if possible
+        if (subVectors[i] == null) {
+          subVectors[i] = subReaders[i].termVectors();
+        }
+        return subVectors[i].get(docID - starts[i]);
       }
     };
   }
@@ -167,10 +168,29 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
   }
 
   @Override
-  public final void document(int docID, StoredFieldVisitor visitor) throws IOException {
+  public final StoredFields storedFields() throws IOException {
     ensureOpen();
-    final int i = readerIndex(docID); // find subreader num
-    subReaders[i].document(docID - starts[i], visitor); // dispatch to subreader
+    StoredFields[] subFields = new StoredFields[subReaders.length];
+    return new StoredFields() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        if (subFields[i] == null) {
+          subFields[i] = subReaders[i].storedFields();
+        }
+        subFields[i].prefetch(docID - starts[i]);
+      }
+
+      @Override
+      public void document(int docID, StoredFieldVisitor visitor) throws IOException {
+        final int i = readerIndex(docID); // find subreader num
+        // dispatch to subreader, reusing if possible
+        if (subFields[i] == null) {
+          subFields[i] = subReaders[i].storedFields();
+        }
+        subFields[i].document(docID - starts[i], visitor);
+      }
+    };
   }
 
   @Override

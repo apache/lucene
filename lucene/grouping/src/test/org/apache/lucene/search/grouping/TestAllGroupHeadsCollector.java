@@ -19,7 +19,6 @@ package org.apache.lucene.search.grouping;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,7 +26,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -38,7 +36,6 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.queries.function.valuesource.BytesRefFieldSource;
@@ -49,11 +46,13 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestAllGroupHeadsCollector extends LuceneTestCase {
 
@@ -185,8 +184,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     int numberOfRuns = atLeast(1);
     for (int iter = 0; iter < numberOfRuns; iter++) {
       if (VERBOSE) {
-        System.out.println(
-            String.format(Locale.ROOT, "TEST: iter=%d total=%d", iter, numberOfRuns));
+        System.out.printf(Locale.ROOT, "TEST: iter=%d total=%d%n", iter, numberOfRuns);
       }
 
       final int numDocs = TestUtil.nextInt(random(), 100, 1000) * RANDOM_MULTIPLIER;
@@ -205,7 +203,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
           // For that reason we don't generate empty string groups.
           randomValue = TestUtil.randomRealisticUnicodeString(random());
           // randomValue = TestUtil.randomSimpleString(random());
-        } while ("".equals(randomValue));
+        } while (randomValue.isEmpty());
         groups.add(new BytesRef(randomValue));
       }
       final String[] contentStrings = new String[TestUtil.nextInt(random(), 2, 20)];
@@ -221,7 +219,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
         }
         contentStrings[contentIDX] = sb.toString();
         if (VERBOSE) {
-          System.out.println("  content=" + sb.toString());
+          System.out.println("  content=" + sb);
         }
       }
 
@@ -231,8 +229,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
 
       Document doc = new Document();
       Document docNoGroup = new Document();
-      Field valuesField = null;
-      valuesField = new SortedDocValuesField("group", new BytesRef());
+      Field valuesField = new SortedDocValuesField("group", new BytesRef());
       doc.add(valuesField);
       Field sort1 = new SortedDocValuesField("sort1", new BytesRef());
       doc.add(sort1);
@@ -373,32 +370,30 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
             GroupDoc expectedGroupDoc = groupDocs[expectedDocId];
             String expectedGroup =
                 expectedGroupDoc.group == null ? null : expectedGroupDoc.group.utf8ToString();
-            System.out.println(
-                String.format(
-                    Locale.ROOT,
-                    "Group:%10s score%5f Sort1:%10s Sort2:%10s Sort3:%10s doc:%5d",
-                    expectedGroup,
-                    expectedGroupDoc.score,
-                    expectedGroupDoc.sort1.utf8ToString(),
-                    expectedGroupDoc.sort2.utf8ToString(),
-                    expectedGroupDoc.sort3.utf8ToString(),
-                    expectedDocId));
+            System.out.printf(
+                Locale.ROOT,
+                "Group:%10s score%5f Sort1:%10s Sort2:%10s Sort3:%10s doc:%5d%n",
+                expectedGroup,
+                expectedGroupDoc.score,
+                expectedGroupDoc.sort1.utf8ToString(),
+                expectedGroupDoc.sort2.utf8ToString(),
+                expectedGroupDoc.sort3.utf8ToString(),
+                expectedDocId);
           }
           System.out.println("\n=== Actual: \n");
           for (int actualDocId : actualGroupHeads) {
             GroupDoc actualGroupDoc = groupDocs[actualDocId];
             String actualGroup =
                 actualGroupDoc.group == null ? null : actualGroupDoc.group.utf8ToString();
-            System.out.println(
-                String.format(
-                    Locale.ROOT,
-                    "Group:%10s score%5f Sort1:%10s Sort2:%10s Sort3:%10s doc:%5d",
-                    actualGroup,
-                    actualGroupDoc.score,
-                    actualGroupDoc.sort1.utf8ToString(),
-                    actualGroupDoc.sort2.utf8ToString(),
-                    actualGroupDoc.sort3.utf8ToString(),
-                    actualDocId));
+            System.out.printf(
+                Locale.ROOT,
+                "Group:%10s score%5f Sort1:%10s Sort2:%10s Sort3:%10s doc:%5d%n",
+                actualGroup,
+                actualGroupDoc.score,
+                actualGroupDoc.sort1.utf8ToString(),
+                actualGroupDoc.sort2.utf8ToString(),
+                actualGroupDoc.sort3.utf8ToString(),
+                actualDocId);
           }
           System.out.println(
               "\n===================================================================================");
@@ -487,7 +482,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     int i = 0;
     for (BytesRef groupValue : groupHeads.keySet()) {
       List<GroupDoc> docs = groupHeads.get(groupValue);
-      Collections.sort(docs, getComparator(docSort, sortByScoreOnly, fieldIdToDocID));
+      docs.sort(getComparator(docSort, sortByScoreOnly, fieldIdToDocID));
       allGroupHeads[i++] = docs.get(0).id;
     }
 
@@ -516,47 +511,43 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     } else if (!scoreOnly) {
       sortFields.add(new SortField("id", SortField.Type.INT));
     }
-    return new Sort(sortFields.toArray(new SortField[sortFields.size()]));
+    return new Sort(sortFields.toArray(new SortField[0]));
   }
 
   private Comparator<GroupDoc> getComparator(
       Sort sort, final boolean sortByScoreOnly, final int[] fieldIdToDocID) {
     final SortField[] sortFields = sort.getSort();
-    return new Comparator<GroupDoc>() {
-      @Override
-      public int compare(GroupDoc d1, GroupDoc d2) {
-        for (SortField sf : sortFields) {
-          final int cmp;
-          if (sf.getType() == SortField.Type.SCORE) {
-            if (d1.score > d2.score) {
-              cmp = -1;
-            } else if (d1.score < d2.score) {
-              cmp = 1;
-            } else {
-              cmp = sortByScoreOnly ? fieldIdToDocID[d1.id] - fieldIdToDocID[d2.id] : 0;
-            }
-          } else if (sf.getField().equals("sort1")) {
-            cmp = d1.sort1.compareTo(d2.sort1);
-          } else if (sf.getField().equals("sort2")) {
-            cmp = d1.sort2.compareTo(d2.sort2);
-          } else if (sf.getField().equals("sort3")) {
-            cmp = d1.sort3.compareTo(d2.sort3);
+    return (d1, d2) -> {
+      for (SortField sf : sortFields) {
+        final int cmp;
+        if (sf.getType() == SortField.Type.SCORE) {
+          if (d1.score > d2.score) {
+            cmp = -1;
+          } else if (d1.score < d2.score) {
+            cmp = 1;
           } else {
-            assertEquals(sf.getField(), "id");
-            cmp = d1.id - d2.id;
+            cmp = sortByScoreOnly ? fieldIdToDocID[d1.id] - fieldIdToDocID[d2.id] : 0;
           }
-          if (cmp != 0) {
-            return sf.getReverse() ? -cmp : cmp;
-          }
+        } else if (sf.getField().equals("sort1")) {
+          cmp = d1.sort1.compareTo(d2.sort1);
+        } else if (sf.getField().equals("sort2")) {
+          cmp = d1.sort2.compareTo(d2.sort2);
+        } else if (sf.getField().equals("sort3")) {
+          cmp = d1.sort3.compareTo(d2.sort3);
+        } else {
+          assertEquals(sf.getField(), "id");
+          cmp = d1.id - d2.id;
         }
-        // Our sort always fully tie breaks:
-        fail();
-        return 0;
+        if (cmp != 0) {
+          return sf.getReverse() ? -cmp : cmp;
+        }
       }
+      // Our sort always fully tie breaks:
+      fail();
+      return 0;
     };
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
   private AllGroupHeadsCollector<?> createRandomCollector(String groupField, Sort sortWithinGroup) {
     if (random().nextBoolean()) {
       ValueSource vs = new BytesRefFieldSource(groupField);

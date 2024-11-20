@@ -17,8 +17,11 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.tests.util.BaseBitSetTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
@@ -31,6 +34,20 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       set.set(doc);
     }
     return set;
+  }
+
+  @SuppressWarnings("NarrowCalculation")
+  public void testApproximateCardinality() {
+    // The approximate cardinality works in such a way that it should be pretty accurate on a bitset
+    // whose bits are uniformly distributed.
+    final FixedBitSet set = new FixedBitSet(TestUtil.nextInt(random(), 100_000, 200_000));
+    final int first = random().nextInt(10);
+    final int interval = TestUtil.nextInt(random(), 10, 20);
+    for (int i = first; i < set.length(); i += interval) {
+      set.set(i);
+    }
+    final int cardinality = set.cardinality();
+    assertEquals(cardinality, set.approximateCardinality(), cardinality / 20); // 5% error at most
   }
 
   void doGet(java.util.BitSet a, FixedBitSet b) {
@@ -81,26 +98,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   }
 
   // test interleaving different FixedBitSetIterator.next()/skipTo()
-  void doIterate(java.util.BitSet a, FixedBitSet b, int mode) throws IOException {
-    if (mode == 1) doIterate1(a, b);
-    if (mode == 2) doIterate2(a, b);
-  }
-
-  void doIterate1(java.util.BitSet a, FixedBitSet b) throws IOException {
-    assertEquals(a.cardinality(), b.cardinality());
-    int aa = -1, bb = -1;
-    DocIdSetIterator iterator = new BitSetIterator(b, 0);
-    do {
-      aa = a.nextSetBit(aa + 1);
-      bb =
-          (bb < b.length() && random().nextBoolean())
-              ? iterator.nextDoc()
-              : iterator.advance(bb + 1);
-      assertEquals(aa == -1 ? DocIdSetIterator.NO_MORE_DOCS : aa, bb);
-    } while (aa >= 0);
-  }
-
-  void doIterate2(java.util.BitSet a, FixedBitSet b) throws IOException {
+  void doIterate(java.util.BitSet a, FixedBitSet b) throws IOException {
     assertEquals(a.cardinality(), b.cardinality());
     int aa = -1, bb = -1;
     DocIdSetIterator iterator = new BitSetIterator(b, 0);
@@ -111,7 +109,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     } while (aa >= 0);
   }
 
-  void doRandomSets(int maxSize, int iter, int mode) throws IOException {
+  void doRandomSets(int maxSize, int iter) throws IOException {
     java.util.BitSet a0 = null;
     FixedBitSet b0 = null;
 
@@ -164,7 +162,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       FixedBitSet bb = b.clone();
       bb.flip(fromIndex, toIndex);
 
-      doIterate(aa, bb, mode); // a problem here is from flip or doIterate
+      doIterate(aa, bb); // a problem here is from flip or doIterate
 
       fromIndex = random().nextInt(sz / 2);
       toIndex = fromIndex + random().nextInt(sz - fromIndex);
@@ -213,10 +211,10 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         assertEquals(a0.cardinality(), b0.cardinality());
         assertEquals(a_or.cardinality(), b_or.cardinality());
 
-        doIterate(a_and, b_and, mode);
-        doIterate(a_or, b_or, mode);
-        doIterate(a_andn, b_andn, mode);
-        doIterate(a_xor, b_xor, mode);
+        doIterate(a_and, b_and);
+        doIterate(a_or, b_or);
+        doIterate(a_andn, b_andn);
+        doIterate(a_xor, b_xor);
 
         assertEquals(a_and.cardinality(), b_and.cardinality());
         assertEquals(a_or.cardinality(), b_or.cardinality());
@@ -233,8 +231,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   // larger testsuite.
   public void testSmall() throws IOException {
     final int iters = TEST_NIGHTLY ? atLeast(1000) : 100;
-    doRandomSets(atLeast(1200), iters, 1);
-    doRandomSets(atLeast(1200), iters, 2);
+    doRandomSets(atLeast(1200), iters);
   }
 
   // uncomment to run a bigger test (~2 minutes).
@@ -444,6 +441,56 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     bitSet1.and(bitSet2);
 
     assertEquals(bitSet1.cardinality(), intersectionCount);
+  }
+
+  public void testAndNot() throws IOException {
+    Random random = random();
+
+    int numBits2 = TestUtil.nextInt(random, 1000, 2000);
+    int numBits1 = TestUtil.nextInt(random, 1000, numBits2);
+
+    int count1 = TestUtil.nextInt(random, 0, numBits1 - 1);
+    int count2 = TestUtil.nextInt(random, 0, numBits2 - 1);
+
+    int min = TestUtil.nextInt(random, 0, numBits1 - 1);
+    int offSetWord1 = min >> 6;
+    int offset1 = offSetWord1 << 6;
+    int[] bits1 = makeIntArray(random, count1, min, numBits1 - 1);
+    int[] bits2 = makeIntArray(random, count2, 0, numBits2 - 1);
+
+    java.util.BitSet bitSet1 = makeBitSet(bits1);
+    java.util.BitSet bitSet2 = makeBitSet(bits2);
+    bitSet2.andNot(bitSet1);
+
+    {
+      // test BitSetIterator
+      FixedBitSet fixedBitSet2 = makeFixedBitSet(bits2, numBits2);
+      DocIdSetIterator disi = new BitSetIterator(makeFixedBitSet(bits1, numBits1), count1);
+      fixedBitSet2.andNot(disi);
+      doGet(bitSet2, fixedBitSet2);
+    }
+
+    {
+      // test DocBaseBitSetIterator
+      FixedBitSet fixedBitSet2 = makeFixedBitSet(bits2, numBits2);
+      int[] offsetBits = Arrays.stream(bits1).map(i -> i - offset1).toArray();
+      DocIdSetIterator disi =
+          new DocBaseBitSetIterator(
+              makeFixedBitSet(offsetBits, numBits1 - offset1), count1, offset1);
+      fixedBitSet2.andNot(disi);
+      doGet(bitSet2, fixedBitSet2);
+    }
+
+    {
+      // test other
+      FixedBitSet fixedBitSet2 = makeFixedBitSet(bits2, numBits2);
+      int[] sorted = new int[bits1.length + 1];
+      System.arraycopy(bits1, 0, sorted, 0, bits1.length);
+      sorted[bits1.length] = DocIdSetIterator.NO_MORE_DOCS;
+      DocIdSetIterator disi = new IntArrayDocIdSet.IntArrayDocIdSetIterator(sorted, count1);
+      fixedBitSet2.andNot(disi);
+      doGet(bitSet2, fixedBitSet2);
+    }
   }
 
   // Demonstrates that the presence of ghost bits in the last used word can cause spurious failures

@@ -18,7 +18,7 @@ package org.apache.lucene.demo.facet;
 
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDistanceFacetsExample extends LuceneTestCase {
 
@@ -36,7 +36,7 @@ public class TestDistanceFacetsExample extends LuceneTestCase {
     DistanceFacetsExample example = new DistanceFacetsExample();
     example.index();
     TopDocs hits = example.drillDown(example.FIVE_KM);
-    assertEquals(2, hits.totalHits.value);
+    assertEquals(2, hits.totalHits.value());
     example.close();
   }
 }

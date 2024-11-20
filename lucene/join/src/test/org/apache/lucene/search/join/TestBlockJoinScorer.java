@@ -16,26 +16,34 @@
  */
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.search.ScoreMode.TOP_SCORES;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestBlockJoinScorer extends LuceneTestCase {
   public void testScoreNone() throws IOException {
@@ -75,10 +83,9 @@ public class TestBlockJoinScorer extends LuceneTestCase {
 
     Query childQuery = new MatchAllDocsQuery();
     ToParentBlockJoinQuery query =
-        new ToParentBlockJoinQuery(
-            childQuery, parentsFilter, org.apache.lucene.search.join.ScoreMode.None);
+        new ToParentBlockJoinQuery(childQuery, parentsFilter, ScoreMode.None);
 
-    Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+    Weight weight = searcher.createWeight(searcher.rewrite(query), TOP_SCORES, 1);
     LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
 
     Scorer scorer = weight.scorer(context);
@@ -90,7 +97,9 @@ public class TestBlockJoinScorer extends LuceneTestCase {
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer = weight.scorer(context);
+    ScorerSupplier ss = weight.scorerSupplier(context);
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     scorer.setMinCompetitiveScore(0f);
     parent = 0;
     for (int i = 0; i < 9; i++) {
@@ -99,16 +108,135 @@ public class TestBlockJoinScorer extends LuceneTestCase {
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer = weight.scorer(context);
+    ss = weight.scorerSupplier(context);
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     scorer.setMinCompetitiveScore(Math.nextUp(0f));
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
-    scorer = weight.scorer(context);
+    ss = weight.scorerSupplier(context);
+    ss.setTopLevelScoringClause();
+    scorer = ss.get(Long.MAX_VALUE);
     assertEquals(2, scorer.iterator().nextDoc());
     scorer.setMinCompetitiveScore(Math.nextUp(0f));
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
 
     reader.close();
     dir.close();
+  }
+
+  public void testScoreMax() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (RandomIndexWriter w =
+          new RandomIndexWriter(
+              random(),
+              dir,
+              newIndexWriterConfig()
+                  .setMergePolicy(
+                      // retain doc id order
+                      newLogMergePolicy(random().nextBoolean())))) {
+
+        for (String[][] values :
+            Arrays.asList(
+                new String[][] {{"A", "B"}, {"A", "B", "C"}},
+                new String[][] {{"A"}, {"B"}},
+                new String[][] {{}},
+                new String[][] {{"A", "B", "C"}, {"A", "B", "C", "D"}},
+                new String[][] {{"B"}},
+                new String[][] {{"B", "C"}, {"A", "B"}, {"A", "C"}})) {
+
+          List<Document> docs = new ArrayList<>();
+          for (String[] value : values) {
+            Document childDoc = new Document();
+            childDoc.add(newStringField("type", "child", Field.Store.NO));
+            for (String v : value) {
+              childDoc.add(newStringField("value", v, Field.Store.NO));
+            }
+            docs.add(childDoc);
+          }
+
+          Document parentDoc = new Document();
+          parentDoc.add(newStringField("type", "parent", Field.Store.NO));
+          docs.add(parentDoc);
+
+          w.addDocuments(docs);
+        }
+
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        BooleanQuery childQuery =
+            new BooleanQuery.Builder()
+                .add(
+                    new BoostQuery(
+                        new ConstantScoreQuery(new TermQuery(new Term("value", "A"))), 2),
+                    BooleanClause.Occur.SHOULD)
+                .add(
+                    new ConstantScoreQuery(new TermQuery(new Term("value", "B"))),
+                    BooleanClause.Occur.SHOULD)
+                .add(
+                    new BoostQuery(
+                        new ConstantScoreQuery(new TermQuery(new Term("value", "C"))), 3),
+                    BooleanClause.Occur.SHOULD)
+                .add(
+                    new BoostQuery(
+                        new ConstantScoreQuery(new TermQuery(new Term("value", "D"))), 4),
+                    BooleanClause.Occur.SHOULD)
+                .build();
+        BitSetProducer parentsFilter =
+            new QueryBitSetProducer(new TermQuery(new Term("type", "parent")));
+        ToParentBlockJoinQuery parentQuery =
+            new ToParentBlockJoinQuery(childQuery, parentsFilter, ScoreMode.Max);
+
+        Weight weight = searcher.createWeight(searcher.rewrite(parentQuery), TOP_SCORES, 1);
+        ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        Scorer scorer = ss.get(Long.MAX_VALUE);
+
+        assertEquals(2, scorer.iterator().nextDoc());
+        assertEquals(2 + 1 + 3, scorer.score(), 0);
+
+        assertEquals(5, scorer.iterator().nextDoc());
+        assertEquals(2, scorer.score(), 0);
+
+        assertEquals(10, scorer.iterator().nextDoc());
+        assertEquals(2 + 1 + 3 + 4, scorer.score(), 0);
+
+        assertEquals(12, scorer.iterator().nextDoc());
+        assertEquals(1, scorer.score(), 0);
+
+        assertEquals(16, scorer.iterator().nextDoc());
+        assertEquals(2 + 3, scorer.score(), 0);
+
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
+
+        ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
+        scorer.setMinCompetitiveScore(6);
+
+        assertEquals(2, scorer.iterator().nextDoc());
+        assertEquals(2 + 1 + 3, scorer.score(), 0);
+
+        assertEquals(10, scorer.iterator().nextDoc());
+        assertEquals(2 + 1 + 3 + 4, scorer.score(), 0);
+
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
+
+        ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
+        ss.setTopLevelScoringClause();
+        scorer = ss.get(Long.MAX_VALUE);
+
+        assertEquals(2, scorer.iterator().nextDoc());
+        assertEquals(2 + 1 + 3, scorer.score(), 0);
+
+        scorer.setMinCompetitiveScore(11);
+
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, scorer.iterator().nextDoc());
+      }
+    }
   }
 }

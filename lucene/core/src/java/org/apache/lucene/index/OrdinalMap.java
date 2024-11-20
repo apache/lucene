@@ -24,8 +24,6 @@ import java.util.Collection;
 import java.util.List;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.PriorityQueue;
@@ -48,19 +46,15 @@ public class OrdinalMap implements Accountable {
   // need it
   // TODO: use more efficient packed ints structures?
 
-  private static class TermsEnumIndex {
-    final int subIndex;
-    final TermsEnum termsEnum;
-    BytesRef currentTerm;
+  private static class TermsEnumPriorityQueue extends PriorityQueue<TermsEnumIndex> {
 
-    public TermsEnumIndex(TermsEnum termsEnum, int subIndex) {
-      this.termsEnum = termsEnum;
-      this.subIndex = subIndex;
+    TermsEnumPriorityQueue(int size) {
+      super(size);
     }
 
-    public BytesRef next() throws IOException {
-      currentTerm = termsEnum.next();
-      return currentTerm;
+    @Override
+    protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
+      return a.compareTermTo(b) < 0;
     }
   }
 
@@ -187,9 +181,10 @@ public class OrdinalMap implements Accountable {
 
   /** Cache key of whoever asked for this awful thing */
   public final IndexReader.CacheKey owner;
+
   // number of global ordinals
   final long valueCount;
-  // globalOrd -> (globalOrd - segmentOrd) where segmentOrd is the the ordinal in the first segment
+  // globalOrd -> (globalOrd - segmentOrd) where segmentOrd is the ordinal in the first segment
   // that contains this term
   final LongValues globalOrdDeltas;
   // globalOrd -> first segment container
@@ -201,6 +196,50 @@ public class OrdinalMap implements Accountable {
   // ram usage
   final long ramBytesUsed;
 
+  /**
+   * Here is how the OrdinalMap encodes the mapping from global ords to local segment ords. Assume
+   * we have the following global mapping for a doc values field: <br>
+   * bar -&gt; 0, cat -&gt; 1, dog -&gt; 2, foo -&gt; 3 <br>
+   * And our index is split into 2 segments with the following local mappings for that same doc
+   * values field: <br>
+   * Segment 0: bar -&gt; 0, foo -&gt; 1 <br>
+   * Segment 1: cat -&gt; 0, dog -&gt; 1 <br>
+   * We will then encode delta between the local and global mapping in a packed 2d array keyed by
+   * (segmentIndex, segmentOrd). So the following 2d array will be created by OrdinalMap: <br>
+   * [[0, 2], [1, 1]]
+   *
+   * <p>The general algorithm for creating an OrdinalMap (skipping over some implementation details
+   * and optimizations) is as follows:
+   *
+   * <p>[1] Create and populate a PQ with ({@link TermsEnum}, index) tuples where index is the
+   * position of the termEnum in an array of termEnum's sorted by descending size. The PQ itself
+   * will be ordered by {@link TermsEnum#term()}
+   *
+   * <p>[2] We will iterate through every term in the index now. In order to do so, we will start
+   * with the first term at the top of the PQ . We keep track of a global ord, and track the
+   * difference between the global ord and {@link TermsEnum#ord()} in ordDeltas, which maps: <br>
+   * (segmentIndex, {@link TermsEnum#ord()}) -> globalTermOrdinal - {@link TermsEnum#ord()} <br>
+   * We then call {@link TermsEnum#next()} then update the PQ to iterate (remember the PQ maintains
+   * and order based on {@link TermsEnum#term()} which changes on the next() calls). If the current
+   * term exists in some other segment, the top of the queue will contain that segment. If not, the
+   * top of the queue will contain a segment with the next term in the index and the global ord will
+   * also be incremented.
+   *
+   * <p>[3] We use some information gathered in the previous step to perform optimizations on memory
+   * usage and building time in the following steps, for more detail on those, look at the code.
+   *
+   * <p>[4] We will then populate segmentToGlobalOrds, which maps (segmentIndex, segmentOrd) -&gt;
+   * globalOrd. Using the information we tracked in ordDeltas, we can construct this information
+   * relatively easily.
+   *
+   * @param owner For caching purposes
+   * @param subs A TermsEnum[], where each index corresponds to a segment
+   * @param segmentMap Provides two maps, newToOld which lists segments in descending 'weight' order
+   *     (see {@link SegmentMap} for more details) and a oldToNew map which maps each original
+   *     segment index to their position in newToOld
+   * @param acceptableOverheadRatio Acceptable overhead memory usage for some packed data structures
+   * @throws IOException throws IOException
+   */
   OrdinalMap(
       IndexReader.CacheKey owner,
       TermsEnum[] subs,
@@ -226,13 +265,7 @@ public class OrdinalMap implements Accountable {
     long[] segmentOrds = new long[subs.length];
 
     // Just merge-sorts by term:
-    PriorityQueue<TermsEnumIndex> queue =
-        new PriorityQueue<TermsEnumIndex>(subs.length) {
-          @Override
-          protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
-            return a.currentTerm.compareTo(b.currentTerm) < 0;
-          }
-        };
+    TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
 
     for (int i = 0; i < subs.length; i++) {
       TermsEnumIndex sub = new TermsEnumIndex(subs[segmentMap.newToOld(i)], i);
@@ -241,19 +274,18 @@ public class OrdinalMap implements Accountable {
       }
     }
 
-    BytesRefBuilder scratch = new BytesRefBuilder();
+    TermsEnumIndex.TermState topState = new TermsEnumIndex.TermState();
 
     long globalOrd = 0;
     while (queue.size() != 0) {
       TermsEnumIndex top = queue.top();
-      scratch.copyBytes(top.currentTerm);
+      topState.copyFrom(top);
 
       int firstSegmentIndex = Integer.MAX_VALUE;
       long globalOrdDelta = Long.MAX_VALUE;
 
       // Advance past this term, recording the per-segment ord deltas:
       while (true) {
-        top = queue.top();
         long segmentOrd = top.termsEnum.ord();
         long delta = globalOrd - segmentOrd;
         int segmentIndex = top.subIndex;
@@ -283,10 +315,11 @@ public class OrdinalMap implements Accountable {
           if (queue.size() == 0) {
             break;
           }
+          top = queue.top();
         } else {
-          queue.updateTop();
+          top = queue.updateTop();
         }
-        if (queue.top().currentTerm.equals(scratch.get()) == false) {
+        if (top.termEquals(topState) == false) {
           break;
         }
       }

@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.core;
 
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Normalizes token text to lower case.
@@ -27,6 +28,7 @@ import org.apache.lucene.analysis.TokenStream;
  * @see org.apache.lucene.analysis.LowerCaseFilter
  * @see LowerCaseFilterFactory
  */
+@IgnoreRandomChains(reason = "clones of core's filters")
 public final class LowerCaseFilter extends org.apache.lucene.analysis.LowerCaseFilter {
 
   /**

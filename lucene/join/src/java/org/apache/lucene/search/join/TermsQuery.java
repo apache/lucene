@@ -63,7 +63,7 @@ class TermsQuery extends MultiTermQuery implements Accountable {
       String fromField,
       Query fromQuery,
       Object indexReaderContextId) {
-    super(toField);
+    super(toField, CONSTANT_SCORE_BLENDED_REWRITE);
     this.terms = terms;
     ords = terms.sort();
     this.fromField = fromField;
@@ -92,6 +92,11 @@ class TermsQuery extends MultiTermQuery implements Accountable {
     }
 
     return new SeekingTermSetTermsEnum(terms.iterator(), this.terms, ords);
+  }
+
+  @Override
+  public long getTermsCount() {
+    return terms.size();
   }
 
   @Override

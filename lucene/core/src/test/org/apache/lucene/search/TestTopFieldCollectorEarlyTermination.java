@@ -23,21 +23,24 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.MockRandomMergePolicy;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.IndexSearcher.LeafReaderContextPartition;
+import org.apache.lucene.search.IndexSearcher.LeafSlice;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.index.MockRandomMergePolicy;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
 
 public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
 
@@ -118,12 +121,22 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
     final int iters = atLeast(1);
     for (int i = 0; i < iters; ++i) {
       createRandomIndex(false);
-      int maxSegmentSize = 0;
-      for (LeafReaderContext ctx : reader.leaves()) {
-        maxSegmentSize = Math.max(ctx.reader().numDocs(), maxSegmentSize);
-      }
       for (int j = 0; j < iters; ++j) {
         final IndexSearcher searcher = newSearcher(reader);
+        int maxSliceSize = 0;
+        for (LeafSlice slice : searcher.getSlices()) {
+          int numDocs = 0; // number of live docs in the slice
+          for (LeafReaderContextPartition partition : slice.partitions) {
+            Bits liveDocs = partition.ctx.reader().getLiveDocs();
+            int maxDoc = Math.min(partition.maxDocId, partition.ctx.reader().maxDoc());
+            for (int doc = partition.minDocId; doc < maxDoc; ++doc) {
+              if (liveDocs == null || liveDocs.get(doc)) {
+                numDocs++;
+              }
+            }
+          }
+          maxSliceSize = Math.max(maxSliceSize, numDocs);
+        }
         final int numHits = TestUtil.nextInt(random(), 1, numDocs);
         FieldDoc after;
         if (paging) {
@@ -133,9 +146,10 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         } else {
           after = null;
         }
-        final TopFieldCollector collector1 =
-            TopFieldCollector.create(sort, numHits, after, Integer.MAX_VALUE);
-        final TopFieldCollector collector2 = TopFieldCollector.create(sort, numHits, after, 1);
+        final TopFieldCollectorManager manager1 =
+            new TopFieldCollectorManager(sort, numHits, after, Integer.MAX_VALUE);
+        final TopFieldCollectorManager manager2 =
+            new TopFieldCollectorManager(sort, numHits, after, 1);
 
         final Query query;
         if (random().nextBoolean()) {
@@ -143,21 +157,19 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         } else {
           query = new MatchAllDocsQuery();
         }
-        searcher.search(query, collector1);
-        searcher.search(query, collector2);
-        TopDocs td1 = collector1.topDocs();
-        TopDocs td2 = collector2.topDocs();
+        TopDocs td1 = searcher.search(query, manager1);
+        TopDocs td2 = searcher.search(query, manager2);
 
-        assertFalse(collector1.isEarlyTerminated());
-        if (paging == false && maxSegmentSize > numHits && query instanceof MatchAllDocsQuery) {
+        assertNotEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td1.totalHits.relation());
+        if (paging == false && maxSliceSize > numHits && query instanceof MatchAllDocsQuery) {
           // Make sure that we sometimes early terminate
-          assertTrue(collector2.isEarlyTerminated());
+          assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td2.totalHits.relation());
         }
-        if (collector2.isEarlyTerminated()) {
-          assertTrue(td2.totalHits.value >= td1.scoreDocs.length);
-          assertTrue(td2.totalHits.value <= reader.maxDoc());
+        if (td2.totalHits.relation() == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO) {
+          assertTrue(td2.totalHits.value() >= td1.scoreDocs.length);
+          assertTrue(td2.totalHits.value() <= reader.maxDoc());
         } else {
-          assertEquals(td2.totalHits.value, td1.totalHits.value);
+          assertEquals(td2.totalHits.value(), td1.totalHits.value());
         }
         CheckHits.checkEqual(query, td1.scoreDocs, td2.scoreDocs);
       }

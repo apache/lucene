@@ -142,6 +142,10 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
     return new TermNode(term);
   }
 
+  static Node<Query> newNode(Query query) {
+    return new QueryNode(query);
+  }
+
   static Node<DocValuesUpdate[]> newNode(DocValuesUpdate... updates) {
     return new DocValuesUpdatesNode(updates);
   }
@@ -388,8 +392,9 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
     }
   }
 
-  public int numGlobalTermDeletes() {
-    return globalBufferedUpdates.numTermDeletes.get();
+  /** For test purposes. */
+  int numGlobalTermDeletes() {
+    return globalBufferedUpdates.deleteTerms.size();
   }
 
   void clear() {
@@ -429,6 +434,23 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
     @Override
     void apply(BufferedUpdates bufferedDeletes, int docIDUpto) {
       bufferedDeletes.addTerm(item, docIDUpto);
+    }
+
+    @Override
+    public String toString() {
+      return "del=" + item;
+    }
+  }
+
+  private static final class QueryNode extends Node<Query> {
+
+    QueryNode(Query query) {
+      super(query);
+    }
+
+    @Override
+    void apply(BufferedUpdates bufferedDeletes, int docIDUpto) {
+      bufferedDeletes.addQuery(item, docIDUpto);
     }
 
     @Override
@@ -579,12 +601,12 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   /**
-   * Advances the queue to the next queue on flush. This carries over the the generation to the next
+   * Advances the queue to the next queue on flush. This carries over the generation to the next
    * queue and set the {@link #getMaxSeqNo()} based on the given maxNumPendingOps. This method can
    * only be called once, subsequently the returned queue should be used.
    *
    * @param maxNumPendingOps the max number of possible concurrent operations that will execute on
-   *     this queue after it was advanced. This corresponds the the number of DWPTs that own the
+   *     this queue after it was advanced. This corresponds to the number of DWPTs that own the
    *     current queue at the moment when this queue is advanced since each these DWPTs can
    *     increment the seqId after we advanced it.
    * @return a new queue as a successor of this queue.
@@ -614,7 +636,7 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
   }
 
   /** Returns <code>true</code> if it was advanced. */
-  boolean isAdvanced() {
+  synchronized boolean isAdvanced() {
     return advanced;
   }
 }

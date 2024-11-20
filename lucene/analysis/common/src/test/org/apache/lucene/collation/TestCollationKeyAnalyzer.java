@@ -19,14 +19,15 @@ package org.apache.lucene.collation;
 import java.text.Collator;
 import java.util.Locale;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.CollationTestBase;
+import org.apache.lucene.tests.analysis.CollationTestBase;
 import org.apache.lucene.util.BytesRef;
 
 public class TestCollationKeyAnalyzer extends CollationTestBase {
   // Neither Java 1.4.2 nor 1.5.0 has Farsi Locale collation available in
   // RuleBasedCollator.  However, the Arabic Locale seems to order the Farsi
   // characters properly.
-  private Collator collator = Collator.getInstance(new Locale("ar"));
+  private Collator collator =
+      Collator.getInstance(new Locale.Builder().setLanguageTag("ar").build());
   private Analyzer analyzer;
 
   @Override

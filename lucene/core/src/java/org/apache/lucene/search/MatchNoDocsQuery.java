@@ -44,13 +44,18 @@ public class MatchNoDocsQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         return null;
       }
 
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return true;
+      }
+
+      @Override
+      public int count(LeafReaderContext context) {
+        return 0;
       }
     };
   }

@@ -25,7 +25,7 @@ configure(rootProject) {
   }
 
   dependencies {
-    jflex "de.jflex:jflex:${scriptDepVersions['jflex']}"
+    jflex deps.jflex
   }
 }
 
@@ -41,9 +41,6 @@ configure(project(":lucene:core")) {
     jflexFile = file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.jflex')
     skeleton = skeletonNoBufferExpansion
 
-    // Add included files as inputs.
-    inputs.file project(":lucene:core").file('src/data/jflex/UnicodeEmojiProperties.jflex')
-
     doLast {
       ant.replace(
           file: file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java'),
@@ -54,11 +51,10 @@ configure(project(":lucene:core")) {
     }
   }
 
-  def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
-  configure(generateStandardTokenizer) {
-    // StandardTokenizerImpl.jflex includes UnicodeEmojiProperties.jflex so we make sure it's up to date.
-    dependsOn ":lucene:core:generateEmojiProperties"
-  }
+  def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
 
   regenerate.dependsOn generateStandardTokenizer
 }
@@ -141,7 +137,6 @@ configure(project(":lucene:analysis:common")) {
 
     // Add included files as inputs.
     inputs.file file('src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex')
-    inputs.file project(":lucene:core").file('src/data/jflex/UnicodeEmojiProperties.jflex')
 
     doFirst {
       logger.lifecycle("Regenerating UAX29URLEmailTokenizerImpl. This may take a long time (and requires ${heapSize} of memory!).")
@@ -157,11 +152,19 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
+
+  // UAX29URLEmailTokenizerImpl.jflex includes: ASCIITLD.jflex
+  // so we make sure it is up to date. Also, make sure the ordering of internal
+  // tasks is enforced (just scheduling top-level wrappers doesn't mean their subtask graphs cannot be reordered).
   configure (generateUAX29URLEmailTokenizer) {
-    // UAX29URLEmailTokenizerImpl.jflex includes: UnicodeEmojiProperties.jflex and ASCIITLD.jflex
-    // so we make sure both are up to date.
-    dependsOn ":lucene:core:generateEmojiProperties", "generateTlds"
+    dependsOn "generateTlds"
+  }
+  configure (generateUAX29URLEmailTokenizerInternal) {
+    mustRunAfter "generateTldsInternal"
   }
 
   task generateHTMLCharacterEntitiesInternal() {
@@ -201,18 +204,26 @@ configure(project(":lucene:analysis:common")) {
     skeleton = skeletonDefault
   }
 
-  def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  def extraConfig = [
+      andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+      mustRunBefore: [ "compileJava" ]
+  ]
+
+  def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, extraConfig)
+  // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
   configure(generateHTMLStripCharFilter) {
-    // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
     dependsOn "generateHTMLCharacterEntities"
   }
+  configure(generateHTMLStripCharFilterInternal) {
+    dependsOn "generateHTMLCharacterEntitiesInternal"
+  }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
-      wrapWithPersistentChecksums(generateClassicTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
+  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, extraConfig),
+      wrapWithPersistentChecksums(generateClassicTokenizerInternal, extraConfig),
       generateUAX29URLEmailTokenizer,
-      wrapWithPersistentChecksums(generateHTMLCharacterEntitiesInternal),
+      wrapWithPersistentChecksums(generateHTMLCharacterEntitiesInternal, extraConfig),
       generateHTMLStripCharFilter,
-      wrapWithPersistentChecksums(generateTldsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+      wrapWithPersistentChecksums(generateTldsInternal, extraConfig)
 }
 
 class JFlexTask extends DefaultTask {
@@ -269,6 +280,17 @@ class JFlexTask extends DefaultTask {
           jflexFile
       ]
     }
+
+    // fix invalid SuppressWarnings from jflex, so that it works with javac.
+    // we also need to suppress 'unused' because of dead code, so it passes ecjLint
+    // you can't "stack" SuppressWarnings annotations, jflex adds its own, this is the only way
+    // https://github.com/jflex-de/jflex/issues/762
+    project.ant.replace(
+          file: target,
+          encoding: "UTF-8",
+          token: 'SuppressWarnings("FallThrough")',
+          value: 'SuppressWarnings({"fallthrough","unused"})'
+    )
 
     // Correct line endings for Windows.
     project.ant.fixcrlf(

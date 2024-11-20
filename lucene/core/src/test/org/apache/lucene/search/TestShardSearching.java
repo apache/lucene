@@ -20,15 +20,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.tests.search.ShardSearchingTestBase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
 
 // TODO
 //   - other queries besides PrefixQuery & TermQuery (but:
@@ -109,7 +111,8 @@ public class TestShardSearching extends ShardSearchingTestBase {
         if (VERBOSE) {
           System.out.println(
               "\nTEST: follow-on query age="
-                  + ((System.nanoTime() - prevSearchState.searchTimeNanos) / 1000000000.0));
+                  + ((System.nanoTime() - prevSearchState.searchTimeNanos)
+                      / (double) TimeUnit.SECONDS.toNanos(1)));
         }
 
         try {
@@ -358,12 +361,12 @@ public class TestShardSearching extends ShardSearchingTestBase {
         System.out.println("  shard=" + shardID + " maxDoc=" + shardSearchers[shardID].searcher.getIndexReader().maxDoc());
       }
       */
-      System.out.println("  single searcher: " + hits.totalHits.value);
+      System.out.println("  single searcher: " + hits.totalHits.value());
       for (int i = 0; i < hits.scoreDocs.length; i++) {
         final ScoreDoc sd = hits.scoreDocs[i];
         System.out.println("    doc=" + sd.doc + " score=" + sd.score);
       }
-      System.out.println("  shard searcher: " + shardHits.totalHits.value);
+      System.out.println("  shard searcher: " + shardHits.totalHits.value());
       for (int i = 0; i < shardHits.scoreDocs.length; i++) {
         final ScoreDoc sd = shardHits.scoreDocs[i];
         System.out.println(
@@ -388,7 +391,7 @@ public class TestShardSearching extends ShardSearchingTestBase {
     final ScoreDoc bottomHit;
     final ScoreDoc bottomHitShards;
 
-    if (numHitsPaged < hits.totalHits.value) {
+    if (numHitsPaged < hits.totalHits.value()) {
       // More hits to page through
       moreHits = true;
       if (sort == null) {
@@ -405,7 +408,7 @@ public class TestShardSearching extends ShardSearchingTestBase {
       }
 
     } else {
-      assertEquals(hits.totalHits.value, numHitsPaged);
+      assertEquals(hits.totalHits.value(), numHitsPaged);
       bottomHit = null;
       bottomHitShards = null;
       moreHits = false;

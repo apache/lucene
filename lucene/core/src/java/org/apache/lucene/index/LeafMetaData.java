@@ -16,23 +16,37 @@
  */
 package org.apache.lucene.index;
 
+import org.apache.lucene.document.Field;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Version;
 
 /**
  * Provides read-only metadata about a leaf.
  *
+ * @param createdVersionMajor the Lucene version that created this index. This can be used to
+ *     implement backward compatibility on top of the codec API. A return value of {@code 6}
+ *     indicates that the created version is unknown.
+ * @param minVersion the minimum Lucene version that contributed documents to this index, or {@code
+ *     null} if this information is not available.
+ * @param sort the order in which documents from this index are sorted, or {@code null} if documents
+ *     are in no particular order.
+ * @param hasBlocks Returns <code>true</code> iff this index contains blocks created with {@link
+ *     IndexWriter#addDocument(Iterable)} or it's corresponding update methods with at least 2 or
+ *     more documents per call. Note: This property was not recorded before {@link Version
+ *     LUCENE_9_9_0} this method will return false for all leaves written before {@link Version
+ *     LUCENE_9_9_0}
+ * @see IndexWriter#updateDocuments(Term, Iterable)
+ * @see IndexWriter#updateDocuments(Query, Iterable)
+ * @see IndexWriter#softUpdateDocuments(Term, Iterable, Field...)
+ * @see IndexWriter#addDocuments(Iterable)
  * @lucene.experimental
  */
-public final class LeafMetaData {
-
-  private final int createdVersionMajor;
-  private final Version minVersion;
-  private final Sort sort;
+public record LeafMetaData(
+    int createdVersionMajor, Version minVersion, Sort sort, boolean hasBlocks) {
 
   /** Expert: Sole constructor. Public for use by custom {@link LeafReader} impls. */
-  public LeafMetaData(int createdVersionMajor, Version minVersion, Sort sort) {
-    this.createdVersionMajor = createdVersionMajor;
+  public LeafMetaData {
     if (createdVersionMajor > Version.LATEST.major) {
       throw new IllegalArgumentException(
           "createdVersionMajor is in the future: " + createdVersionMajor);
@@ -44,32 +58,5 @@ public final class LeafMetaData {
     if (createdVersionMajor >= 7 && minVersion == null) {
       throw new IllegalArgumentException("minVersion must be set when createdVersionMajor is >= 7");
     }
-    this.minVersion = minVersion;
-    this.sort = sort;
-  }
-
-  /**
-   * Get the Lucene version that created this index. This can be used to implement backward
-   * compatibility on top of the codec API. A return value of {@code 6} indicates that the created
-   * version is unknown.
-   */
-  public int getCreatedVersionMajor() {
-    return createdVersionMajor;
-  }
-
-  /**
-   * Return the minimum Lucene version that contributed documents to this index, or {@code null} if
-   * this information is not available.
-   */
-  public Version getMinVersion() {
-    return minVersion;
-  }
-
-  /**
-   * Return the order in which documents from this index are sorted, or {@code null} if documents
-   * are in no particular order.
-   */
-  public Sort getSort() {
-    return sort;
   }
 }

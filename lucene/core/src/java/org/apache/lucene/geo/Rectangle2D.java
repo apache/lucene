@@ -164,10 +164,13 @@ final class Rectangle2D implements Component2D {
       boolean ab,
       double bX,
       double bY) {
-    if (ab == true
-        && Component2D.disjoint(this.minX, this.maxX, this.minY, this.maxY, minX, maxX, minY, maxY)
-            == false
-        && edgesIntersect(aX, aY, bX, bY)) {
+    if (Component2D.disjoint(this.minX, this.maxX, this.minY, this.maxY, minX, maxX, minY, maxY)) {
+      return WithinRelation.DISJOINT;
+    }
+    if (contains(aX, aY) || contains(bX, bY)) {
+      return WithinRelation.NOTWITHIN;
+    }
+    if (ab == true && edgesIntersect(aX, aY, bX, bY)) {
       return WithinRelation.NOTWITHIN;
     }
     return WithinRelation.DISJOINT;
@@ -256,7 +259,10 @@ final class Rectangle2D implements Component2D {
     if (this == o) return true;
     if (!(o instanceof Rectangle2D)) return false;
     Rectangle2D that = (Rectangle2D) o;
-    return minX == that.minX && maxX == that.maxX && minY == that.minY && maxY == that.maxY;
+    return Double.compare(minX, that.minX) == 0
+        && Double.compare(maxX, that.maxX) == 0
+        && Double.compare(minY, that.minY) == 0
+        && Double.compare(maxY, that.maxY) == 0;
   }
 
   @Override
@@ -268,7 +274,7 @@ final class Rectangle2D implements Component2D {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("XYRectangle(x=");
+    sb.append("Rectangle2D(x=");
     sb.append(minX);
     sb.append(" TO ");
     sb.append(maxX);

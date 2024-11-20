@@ -26,8 +26,12 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.search.AssertingQuery;
+import org.apache.lucene.tests.search.BlockScoreQueryWrapper;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.RandomApproximationQuery;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestBlockMaxConjunction extends LuceneTestCase {
 
@@ -62,7 +66,10 @@ public class TestBlockMaxConjunction extends LuceneTestCase {
     }
     IndexReader reader = DirectoryReader.open(w);
     w.close();
-    IndexSearcher searcher = newSearcher(reader);
+    // Disable search concurrency for this test: it requires a single segment, and no intra-segment
+    // concurrency for its assertions to always be valid
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
 
     for (int iter = 0; iter < 100; ++iter) {
       int start = random().nextInt(10);

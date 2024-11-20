@@ -18,17 +18,17 @@
 package org.apache.lucene.queries.intervals;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.SimplePayloadFilter;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.search.MatchesIterator;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.SimplePayloadFilter;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestPayloadFilteredInterval extends LuceneTestCase {
 
@@ -88,5 +88,15 @@ public class TestPayloadFilteredInterval extends LuceneTestCase {
 
     reader.close();
     directory.close();
+  }
+
+  public void testPayloadFilteredTermIntervalsSourceEquals() {
+    IntervalsSource interval = Intervals.term("test", (payload) -> true);
+    IntervalsSource sameInterval = Intervals.term("test", (payload) -> true);
+    IntervalsSource differentInterval = Intervals.term("test");
+
+    assertTrue(interval.equals(sameInterval));
+    assertFalse(interval.equals(differentInterval));
+    assertFalse(interval.equals(null));
   }
 }

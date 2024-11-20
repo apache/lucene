@@ -20,7 +20,9 @@
 // 2) notice file
 // 3) checksum validation/ generation.
 
-import org.apache.commons.codec.digest.DigestUtils
+// WARNING: The tasks in this file share internal state between tasks without using files.
+// Because of this all tasks here must always execute together, so they cannot define task outputs.
+// TODO: Rewrite the internal state to use state files containing the ext.jarInfos and its referencedFiles
 
 // This should be false only for debugging.
 def failOnError = true
@@ -45,6 +47,7 @@ def licenseTypes = [
     "MIT"     : [name: "Massachusetts Institute of Tech. License", noticeOptional: true],
     "MPL"     : [name: "Mozilla Public License", noticeOptional: true /* NOT SURE on the required notice */],
     "PD"      : [name: "Public Domain", noticeOptional: true],
+    "PDDL"    : [name: "Public Domain Dedication and License", noticeOptional: true],
     "SUN"     : [name: "Sun Open Source License", noticeOptional: true],
     "COMPOUND": [name: "Compound license (details in NOTICE file)."],
 ]
@@ -58,6 +61,9 @@ allprojects {
 }
 
 subprojects {
+  // initialize empty, because no checks for benchmark-jmh module.
+  ext.jarInfos = []
+
   // Configure jarValidation configuration for all projects. Any dependency
   // declared on this configuration (or any configuration it extends from) will
   // be verified.
@@ -109,14 +115,21 @@ subprojects {
       }
 
       def visited = new HashSet<>()
+      def seenDeps = new HashSet<>()
       def infos = []
 
       while (!queue.isEmpty()) {
         def dep = queue.removeFirst()
+        seenDeps.add(dep)
 
         // Skip any artifacts from Lucene modules.
         if (!dep.moduleGroup.startsWith("org.apache.lucene")) {
-          queue.addAll(dep.children)
+          // Make sure we don't keep visiting the same children over and over again
+          dep.children.each { child ->
+            if (!seenDeps.contains(child)) {
+              queue.add(child)
+            }
+          }
           dep.moduleArtifacts.each { resolvedArtifact ->
             def file = resolvedArtifact.file
             if (visited.add(file)) {
@@ -125,7 +138,7 @@ subprojects {
                   jarName        : file.toPath().getFileName().toString(),
                   path           : file,
                   module         : resolvedArtifact.moduleVersion,
-                  checksum       : provider { new DigestUtils(DigestUtils.sha1Digest).digestAsHex(file).trim() },
+                  checksum       : provider { buildinfra.sha1Digest().digestAsHex(file).trim() },
                   // We keep track of the files referenced by this dependency (sha, license, notice, etc.)
                   // so that we can determine unused dangling files later on.
                   referencedFiles: []
@@ -180,7 +193,7 @@ subprojects {
   // where 'jar-or-prefix' can be any '-'-delimited prefix of the dependency JAR's name.
   // So for 'commons-io' it can be 'commons-io-LICENSE-foo.txt' or
   // 'commons-LICENSE.txt'
-  task validateJarLicenses() {
+  tasks.register('validateJarLicenses') {
     group = 'Dependency validation'
     description = "Validate license and notice files of dependencies"
     dependsOn collectJarInfos
@@ -304,7 +317,15 @@ configure(project(":lucene")) {
     dependsOn validationTasks
 
     ext {
-      exclude = []
+      // Exclude files that are not a result of direct dependencies but have to be there.
+      // It would be probably better to move non-dependency licenses into the actual project
+      // where they're used and only assemble them for the distribution package.
+      exclude = [
+          // Used by Luke.
+          "elegant-icon-font-*",
+          // glove knn dictionary.
+          "glove-LICENSE-PDDL.txt",
+      ]
     }
 
     doFirst {
@@ -332,18 +353,4 @@ configure(project(":lucene")) {
   }
 
   licenses.dependsOn checkDanglingLicenseFiles
-}
-
-// Exclude files that are not a result of direct dependencies but have to be there.
-// It would be probably better to move non-dependency licenses into the actual project
-// where they're used and only assemble them for the distribution package.
-configure(project(":lucene")) {
-  checkDanglingLicenseFiles {
-    exclude += [
-        "elegant-icon-font-*",
-        "ant-*",
-        "ivy-*",
-        "pddl-10.txt",
-    ]
-  }
 }

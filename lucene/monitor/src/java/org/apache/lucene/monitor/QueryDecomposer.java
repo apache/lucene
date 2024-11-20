@@ -25,6 +25,7 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * Split a disjunction query into its consituent parts, so that they can be indexed and run
@@ -81,11 +82,11 @@ public class QueryDecomposer {
     Set<Query> mandatory = new HashSet<>();
 
     for (BooleanClause clause : q) {
-      if (clause.getOccur() == BooleanClause.Occur.MUST
-          || clause.getOccur() == BooleanClause.Occur.FILTER) mandatory.add(clause.getQuery());
-      else if (clause.getOccur() == BooleanClause.Occur.MUST_NOT) exclusions.add(clause.getQuery());
+      if (clause.occur() == BooleanClause.Occur.MUST
+          || clause.occur() == BooleanClause.Occur.FILTER) mandatory.add(clause.query());
+      else if (clause.occur() == BooleanClause.Occur.MUST_NOT) exclusions.add(clause.query());
       else {
-        subqueries.addAll(decompose(clause.getQuery()));
+        subqueries.addAll(decompose(clause.query()));
       }
     }
 
@@ -103,7 +104,7 @@ public class QueryDecomposer {
 
     // If there are exclusions, then we need to add them to all the decomposed
     // queries
-    Set<Query> rewrittenSubqueries = new HashSet<>(subqueries.size());
+    Set<Query> rewrittenSubqueries = CollectionUtil.newHashSet(subqueries.size());
     for (Query subquery : subqueries) {
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       bq.add(subquery, BooleanClause.Occur.MUST);

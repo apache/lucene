@@ -17,22 +17,30 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.tests.search.RandomApproximationQuery.RandomTwoPhaseView;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestReqExclBulkScorer extends LuceneTestCase {
 
   public void testRandom() throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
-      doTestRandom();
+      doTestRandom(false);
     }
   }
 
-  public void doTestRandom() throws IOException {
+  public void testRandomTwoPhase() throws IOException {
+    final int iters = atLeast(10);
+    for (int iter = 0; iter < iters; ++iter) {
+      doTestRandom(true);
+    }
+  }
+
+  public void doTestRandom(boolean twoPhase) throws IOException {
     final int maxDoc = TestUtil.nextInt(random(), 1, 1000);
     DocIdSetBuilder reqBuilder = new DocIdSetBuilder(maxDoc);
     DocIdSetBuilder exclBuilder = new DocIdSetBuilder(maxDoc);
@@ -76,7 +84,13 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
           }
         };
 
-    ReqExclBulkScorer reqExcl = new ReqExclBulkScorer(reqBulkScorer, excl.iterator());
+    ReqExclBulkScorer reqExcl;
+    if (twoPhase) {
+      reqExcl =
+          new ReqExclBulkScorer(reqBulkScorer, new RandomTwoPhaseView(random(), excl.iterator()));
+    } else {
+      reqExcl = new ReqExclBulkScorer(reqBulkScorer, excl.iterator());
+    }
     final FixedBitSet actualMatches = new FixedBitSet(maxDoc);
     if (random().nextBoolean()) {
       reqExcl.score(
@@ -89,7 +103,9 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
               actualMatches.set(doc);
             }
           },
-          null);
+          null,
+          0,
+          DocIdSetIterator.NO_MORE_DOCS);
     } else {
       int next = 0;
       while (next < maxDoc) {

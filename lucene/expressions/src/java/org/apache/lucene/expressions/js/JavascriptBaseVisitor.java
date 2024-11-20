@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
  * @param <T> The return type of the visit operation. Use {@link Void} for operations with no return
  *     type.
  */
+@SuppressWarnings("CheckReturnValue")
 class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements JavascriptVisitor<T> {
   /**
    * {@inheritDoc}
@@ -21,6 +22,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitCompile(JavascriptParser.CompileContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -31,6 +33,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitConditional(JavascriptParser.ConditionalContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -41,6 +44,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitBoolor(JavascriptParser.BoolorContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -51,6 +55,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitBoolcomp(JavascriptParser.BoolcompContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -61,6 +66,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitNumeric(JavascriptParser.NumericContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -71,6 +77,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitAddsub(JavascriptParser.AddsubContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -81,6 +88,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitUnary(JavascriptParser.UnaryContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -91,6 +99,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitPrecedence(JavascriptParser.PrecedenceContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -101,6 +110,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitMuldiv(JavascriptParser.MuldivContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -111,6 +121,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitExternal(JavascriptParser.ExternalContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -121,6 +132,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitBwshift(JavascriptParser.BwshiftContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -131,6 +143,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitBwor(JavascriptParser.BworContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -141,6 +154,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitBooland(JavascriptParser.BoolandContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -151,6 +165,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitBwxor(JavascriptParser.BwxorContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *
@@ -161,6 +176,7 @@ class JavascriptBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Ja
   public T visitBwand(JavascriptParser.BwandContext ctx) {
     return visitChildren(ctx);
   }
+
   /**
    * {@inheritDoc}
    *

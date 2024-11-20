@@ -28,6 +28,8 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.memory.MemoryIndex;
 import org.apache.lucene.queries.spans.SpanQuery;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.Automata;
 
 /**
  * Uses an {@link Analyzer} on content to get offsets and then populates a {@link MemoryIndex}.
@@ -42,8 +44,7 @@ public class MemoryIndexOffsetStrategy extends AnalysisOffsetStrategy {
 
   public MemoryIndexOffsetStrategy(UHComponents components, Analyzer analyzer) {
     super(components, analyzer);
-    boolean storePayloads =
-        components.getPhraseHelper().hasPositionSensitivity(); // might be needed
+    boolean storePayloads = components.phraseHelper().hasPositionSensitivity(); // might be needed
     memoryIndex = new MemoryIndex(true, storePayloads); // true==store offsets
     memIndexLeafReader =
         (LeafReader) memoryIndex.createSearcher().getIndexReader(); // appears to be re-usable
@@ -54,20 +55,26 @@ public class MemoryIndexOffsetStrategy extends AnalysisOffsetStrategy {
   /** Build one {@link CharArrayMatcher} matching any term the query might match. */
   private static CharArrayMatcher buildCombinedAutomaton(UHComponents components) {
     // We don't know enough about the query to do this confidently
-    if (components.getTerms() == null || components.getAutomata() == null) {
+    if (components.terms() == null || components.automata() == null) {
       return null;
     }
 
     List<CharArrayMatcher> allAutomata = new ArrayList<>();
-    if (components.getTerms().length > 0) {
-      allAutomata.add(CharArrayMatcher.fromTerms(Arrays.asList(components.getTerms())));
+    if (components.terms().length > 0) {
+      // Filter out any long terms that would otherwise cause exceptions if we tried
+      // to build an automaton on them
+      List<BytesRef> filteredTerms =
+          Arrays.stream(components.terms())
+              .filter(b -> b.length < Automata.MAX_STRING_UNION_TERM_LENGTH)
+              .toList();
+      allAutomata.add(CharArrayMatcher.fromTerms(filteredTerms));
     }
-    Collections.addAll(allAutomata, components.getAutomata());
-    for (SpanQuery spanQuery : components.getPhraseHelper().getSpanQueries()) {
+    Collections.addAll(allAutomata, components.automata());
+    for (SpanQuery spanQuery : components.phraseHelper().getSpanQueries()) {
       Collections.addAll(
           allAutomata,
           MultiTermHighlighting.extractAutomata(
-              spanQuery, components.getFieldMatcher(), true)); // true==lookInSpan
+              spanQuery, components.fieldMatcher(), true)); // true==lookInSpan
     }
 
     if (allAutomata.size() == 1) {

@@ -17,13 +17,14 @@
 
 package org.apache.lucene.monitor;
 
-import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.Matchers.containsString;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 
 public class TestDocumentBatch extends LuceneTestCase {
@@ -40,7 +41,8 @@ public class TestDocumentBatch extends LuceneTestCase {
     Document doc = new Document();
     try (DocumentBatch batchDoc = DocumentBatch.of(ANALYZER, doc);
         DocumentBatch batchArr = DocumentBatch.of(ANALYZER, new Document[] {doc})) {
-      assertThat(batchDoc.getClass().getName(), containsString("SingletonDocumentBatch"));
+      MatcherAssert.assertThat(
+          batchDoc.getClass().getName(), containsString("SingletonDocumentBatch"));
       assertEquals(batchDoc.getClass(), batchArr.getClass());
     }
   }
@@ -53,7 +55,7 @@ public class TestDocumentBatch extends LuceneTestCase {
         DocumentBatch batch3 = DocumentBatch.of(ANALYZER, doc, doc, doc)) {
       assertNotEquals(batch1.getClass(), batch2.getClass());
       assertEquals(batch2.getClass(), batch3.getClass());
-      assertThat(batch3.getClass().getName(), containsString("MultiDocumentBatch"));
+      MatcherAssert.assertThat(batch3.getClass().getName(), containsString("MultiDocumentBatch"));
     }
   }
 }

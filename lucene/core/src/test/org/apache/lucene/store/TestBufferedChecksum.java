@@ -18,7 +18,7 @@ package org.apache.lucene.store;
 
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestBufferedChecksum extends LuceneTestCase {
 

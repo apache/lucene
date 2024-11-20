@@ -23,10 +23,13 @@ import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -90,9 +93,9 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     assertEquals("result count", expected, h.length);
     // System.out.println("TEST: now check");
     // bs2
-    TopScoreDocCollector collector = TopScoreDocCollector.create(1000, Integer.MAX_VALUE);
-    s.search(q, collector);
-    ScoreDoc[] h2 = collector.topDocs().scoreDocs;
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(1000, Integer.MAX_VALUE);
+    ScoreDoc[] h2 = s.search(q, collectorManager).scoreDocs;
     if (expected != h2.length) {
       printHits(getTestName(), h2, s);
     }
@@ -317,7 +320,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
           public void postCreate(BooleanQuery.Builder q) {
             int opt = 0;
             for (BooleanClause clause : q.build().clauses()) {
-              if (clause.getOccur() == BooleanClause.Occur.SHOULD) opt++;
+              if (clause.occur() == BooleanClause.Occur.SHOULD) opt++;
             }
             q.setMinimumNumberShouldMatch(random().nextInt(opt + 2));
             if (random().nextBoolean()) {
@@ -359,7 +362,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
   private void assertSubsetOfSameScores(Query q, TopDocs top1, TopDocs top2) {
     // The constrained query
     // should be a subset to the unconstrained query.
-    if (top2.totalHits.value > top1.totalHits.value) {
+    if (top2.totalHits.value() > top1.totalHits.value()) {
       fail(
           "Constrained results not a subset:\n"
               + CheckHits.topdocsString(top1, 0, 0)
@@ -368,12 +371,12 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
               + q.toString());
     }
 
-    for (int hit = 0; hit < top2.totalHits.value; hit++) {
+    for (int hit = 0; hit < top2.totalHits.value(); hit++) {
       int id = top2.scoreDocs[hit].doc;
       float score = top2.scoreDocs[hit].score;
       boolean found = false;
       // find this doc in other hits
-      for (int other = 0; other < top1.totalHits.value; other++) {
+      for (int other = 0; other < top1.totalHits.value(); other++) {
         if (top1.scoreDocs[other].doc == id) {
           found = true;
           float otherScore = top1.scoreDocs[other].score;
@@ -434,14 +437,40 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     assertSubsetOfSameScores(q2.build(), top1, top2);
   }
 
+  public void testFlattenInnerDisjunctions() throws Exception {
+    Query q =
+        new BooleanQuery.Builder()
+            .setMinimumNumberShouldMatch(2)
+            .add(new TermQuery(new Term("all", "all")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "1")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "2")), BooleanClause.Occur.MUST)
+            .build();
+    verifyNrHits(q, 1);
+
+    Query inner =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("all", "all")), BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "1")), BooleanClause.Occur.SHOULD)
+            .build();
+    q =
+        new BooleanQuery.Builder()
+            .setMinimumNumberShouldMatch(2)
+            .add(inner, BooleanClause.Occur.SHOULD)
+            .add(new TermQuery(new Term("data", "2")), BooleanClause.Occur.MUST)
+            .build();
+
+    verifyNrHits(q, 0);
+  }
+
   protected void printHits(String test, ScoreDoc[] h, IndexSearcher searcher) throws Exception {
 
     System.err.println("------- " + test + " -------");
 
     DecimalFormat f = new DecimalFormat("0.000000", DecimalFormatSymbols.getInstance(Locale.ROOT));
 
+    StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < h.length; i++) {
-      Document d = searcher.doc(h[i].doc);
+      Document d = storedFields.document(h[i].doc);
       float score = h[i].score;
       System.err.println(
           "#" + i + ": " + f.format(score) + " - " + d.get("id") + " - " + d.get("data"));

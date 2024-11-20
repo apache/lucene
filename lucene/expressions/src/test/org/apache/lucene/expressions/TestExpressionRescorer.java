@@ -22,7 +22,6 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.expressions.js.JavascriptCompiler;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
@@ -32,7 +31,8 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestExpressionRescorer extends LuceneTestCase {
   IndexSearcher searcher;
@@ -87,10 +87,10 @@ public class TestExpressionRescorer extends LuceneTestCase {
 
     // Just first pass query
     TopDocs hits = searcher.search(query, 10);
-    assertEquals(3, hits.totalHits.value);
-    assertEquals("3", r.document(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", r.document(hits.scoreDocs[1].doc).get("id"));
-    assertEquals("2", r.document(hits.scoreDocs[2].doc).get("id"));
+    assertEquals(3, hits.totalHits.value());
+    assertEquals("3", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("2", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
 
     // Now, rescore:
 
@@ -101,10 +101,10 @@ public class TestExpressionRescorer extends LuceneTestCase {
     Rescorer rescorer = e.getRescorer(bindings);
 
     hits = rescorer.rescore(searcher, hits, 10);
-    assertEquals(3, hits.totalHits.value);
-    assertEquals("2", r.document(hits.scoreDocs[0].doc).get("id"));
-    assertEquals("1", r.document(hits.scoreDocs[1].doc).get("id"));
-    assertEquals("3", r.document(hits.scoreDocs[2].doc).get("id"));
+    assertEquals(3, hits.totalHits.value());
+    assertEquals("2", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
+    assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
+    assertEquals("3", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
 
     String expl =
         rescorer

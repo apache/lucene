@@ -109,6 +109,7 @@ public class GeoPolygonFactory {
   public static class PolygonDescription {
     /** The list of points */
     public final List<? extends GeoPoint> points;
+
     /** The list of holes */
     public final List<? extends PolygonDescription> holes;
 
@@ -1716,17 +1717,16 @@ public class GeoPolygonFactory {
     return index;
   }
 
-  /** Class representing a single (unused) edge. */
-  private static class Edge {
-    /** Plane */
-    public final SidedPlane plane;
-    /** Start point */
-    public final GeoPoint startPoint;
-    /** End point */
-    public final GeoPoint endPoint;
-    /** Internal edge flag */
-    public final boolean isInternal;
-
+  /**
+   * Class representing a single (unused) edge.
+   *
+   * @param plane Plane
+   * @param startPoint Start point
+   * @param endPoint End point
+   * @param isInternal Internal edge flag
+   */
+  private record Edge(
+      GeoPoint startPoint, GeoPoint endPoint, SidedPlane plane, boolean isInternal) {
     /**
      * Constructor.
      *
@@ -1735,16 +1735,7 @@ public class GeoPolygonFactory {
      * @param plane the edge plane
      * @param isInternal true if internal edge
      */
-    public Edge(
-        final GeoPoint startPoint,
-        final GeoPoint endPoint,
-        final SidedPlane plane,
-        final boolean isInternal) {
-      this.startPoint = startPoint;
-      this.endPoint = endPoint;
-      this.plane = plane;
-      this.isInternal = isInternal;
-    }
+    private Edge {}
 
     @Override
     public int hashCode() {
@@ -1761,8 +1752,10 @@ public class GeoPolygonFactory {
   private static class EdgeBufferIterator implements Iterator<Edge> {
     /** Edge buffer */
     protected final EdgeBuffer edgeBuffer;
+
     /** First edge */
     protected final Edge firstEdge;
+
     /** Current edge */
     protected Edge currentEdge;
 
@@ -1804,10 +1797,13 @@ public class GeoPolygonFactory {
   private static class EdgeBuffer {
     /** Starting edge */
     protected Edge oneEdge;
+
     /** Full set of edges */
     protected final Set<Edge> edges = new HashSet<>();
+
     /** Map to previous edge */
     protected final Map<Edge, Edge> previousEdges = new HashMap<>();
+
     /** Map to next edge */
     protected final Map<Edge, Edge> nextEdges = new HashMap<>();
 

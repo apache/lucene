@@ -60,7 +60,6 @@ public class TestLatLonPointPointQueries extends BaseLatLonPointTestCase {
     }
   }
 
-  @Slow
   @Nightly
   @Override
   public void testRandomBig() throws Exception {

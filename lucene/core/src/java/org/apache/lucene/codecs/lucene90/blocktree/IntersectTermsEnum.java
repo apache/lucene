@@ -27,12 +27,10 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
-import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.RunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.Transition;
-import org.apache.lucene.util.fst.ByteSequenceOutputs;
+import org.apache.lucene.util.automaton.TransitionAccessor;
 import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.Outputs;
 
 /**
  * This is used to implement efficient {@link Terms#intersect} for block-tree. Note that it cannot
@@ -46,15 +44,14 @@ final class IntersectTermsEnum extends BaseTermsEnum {
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
   final IndexInput in;
-  static final Outputs<BytesRef> fstOutputs = ByteSequenceOutputs.getSingleton();
 
   IntersectTermsEnumFrame[] stack;
 
   @SuppressWarnings({"rawtypes", "unchecked"})
   private FST.Arc<BytesRef>[] arcs = new FST.Arc[5];
 
-  final RunAutomaton runAutomaton;
-  final Automaton automaton;
+  final ByteRunnable runAutomaton;
+  final TransitionAccessor automaton;
   final BytesRef commonSuffix;
 
   private IntersectTermsEnumFrame currentFrame;
@@ -68,12 +65,15 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
   private BytesRef savedStartTerm;
 
+  private final SegmentTermsEnum.OutputAccumulator outputAccumulator =
+      new SegmentTermsEnum.OutputAccumulator();
+
   // TODO: in some cases we can filter by length?  eg
   // regexp foo*bar must be at least length 6 bytes
   public IntersectTermsEnum(
       FieldReader fr,
-      Automaton automaton,
-      RunAutomaton runAutomaton,
+      TransitionAccessor automaton,
+      ByteRunnable runAutomaton,
       BytesRef commonSuffix,
       BytesRef startTerm)
       throws IOException {
@@ -114,13 +114,14 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     f.prefix = 0;
     f.setState(0);
     f.arc = arc;
-    f.outputPrefix = arc.output();
     f.load(fr.rootCode);
 
     // for assert:
     assert setSavedStartTerm(startTerm);
 
     currentFrame = f;
+    outputAccumulator.push(currentFrame.arc.output());
+
     if (startTerm != null) {
       seekToStartTerm(startTerm);
     }
@@ -184,7 +185,8 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     FST.Arc<BytesRef> arc = currentFrame.arc;
     int idx = currentFrame.prefix;
     assert currentFrame.suffix > 0;
-    BytesRef output = currentFrame.outputPrefix;
+
+    int initOutputCount = outputAccumulator.outputCount();
     while (idx < f.prefix) {
       final int target = term.bytes[idx] & 0xff;
       // TODO: we could be more efficient for the next()
@@ -192,14 +194,16 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       // passed to findTargetArc
       arc = fr.index.findTargetArc(target, arc, getArc(1 + idx), fstReader);
       assert arc != null;
-      output = fstOutputs.add(output, arc.output());
+      outputAccumulator.push(arc.output());
       idx++;
     }
 
     f.arc = arc;
-    f.outputPrefix = output;
+    f.outputNum = outputAccumulator.outputCount() - initOutputCount;
     assert arc.isFinal();
-    f.load(fstOutputs.add(output, arc.nextFinalOutput()));
+    outputAccumulator.push(arc.nextFinalOutput());
+    f.load(outputAccumulator);
+    outputAccumulator.pop(arc.nextFinalOutput());
     return f;
   }
 
@@ -342,6 +346,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
           throw NoMoreTermsException.INSTANCE;
         }
         final long lastFP = currentFrame.fpOrig;
+        outputAccumulator.pop(currentFrame.outputNum);
         currentFrame = stack[currentFrame.ord - 1];
         currentTransition = currentFrame.transition;
         assert currentFrame.lastSubFP == lastFP;
@@ -428,6 +433,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
               currentFrame = null;
               return null;
             }
+            outputAccumulator.pop(currentFrame.outputNum);
             currentFrame = stack[currentFrame.ord - 1];
             currentTransition = currentFrame.transition;
             isSubBlock = popPushNext();
@@ -540,19 +546,6 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       }
 
       isSubBlock = popPushNext();
-    }
-  }
-
-  // for debugging
-  @SuppressWarnings("unused")
-  static String brToString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      // If BytesRef isn't actually UTF8, or it's eg a
-      // prefix of UTF8 that ends mid-unicode-char, we
-      // fallback to hex:
-      return b.toString();
     }
   }
 

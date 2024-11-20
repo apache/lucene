@@ -53,13 +53,13 @@ final class NRTSuggesterBuilder {
   private int maxAnalyzedPathsPerOutput = 0;
 
   /** Create a builder for {@link NRTSuggester} */
-  public NRTSuggesterBuilder() {
+  public NRTSuggesterBuilder() throws IOException {
     this.payloadSep = PAYLOAD_SEP;
     this.endByte = END_BYTE;
     this.outputs =
         new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
     this.entries = new PriorityQueue<>();
-    this.fstCompiler = new FSTCompiler<>(FST.INPUT_TYPE.BYTE1, outputs);
+    this.fstCompiler = new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs).build();
   }
 
   /** Initializes an FST input term to add entries against */
@@ -104,7 +104,8 @@ final class NRTSuggesterBuilder {
    * CompletionPostingsFormat.FSTLoadMode)})}
    */
   public boolean store(DataOutput output) throws IOException {
-    final FST<PairOutputs.Pair<Long, BytesRef>> fst = fstCompiler.compile();
+    final FST<PairOutputs.Pair<Long, BytesRef>> fst =
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     if (fst == null) {
       return false;
     }
@@ -124,21 +125,18 @@ final class NRTSuggesterBuilder {
    * <p>TODO: is there a better way to make the fst built to be more TopNSearcher friendly?
    */
   private static int maxNumArcsForDedupByte(int currentNumDedupBytes) {
-    int maxArcs = 1 + (2 * currentNumDedupBytes);
+    long maxArcs = 2 * (long) currentNumDedupBytes + 1;
+    // return immediately when maxArcs is greater than 255 to prevent integer overflow
+    if (maxArcs >= 255) {
+      return 255;
+    }
     if (currentNumDedupBytes > 5) {
       maxArcs *= currentNumDedupBytes;
     }
-    return Math.min(maxArcs, 255);
+    return (int) Math.min(maxArcs, 255);
   }
 
-  private static final class Entry implements Comparable<Entry> {
-    final BytesRef payload;
-    final long weight;
-
-    public Entry(BytesRef payload, long weight) {
-      this.payload = payload;
-      this.weight = weight;
-    }
+  private record Entry(BytesRef payload, long weight) implements Comparable<Entry> {
 
     @Override
     public int compareTo(Entry o) {

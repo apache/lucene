@@ -21,10 +21,13 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment;
-import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.IOConsumer;
 
-/** @lucene.internal */
+/**
+ * @lucene.internal
+ */
 final class DocumentsWriterFlushQueue {
   private final Queue<FlushTicket> queue = new ArrayDeque<>();
   // we track tickets separately since count must be present even before the ticket is
@@ -32,23 +35,23 @@ final class DocumentsWriterFlushQueue {
   private final AtomicInteger ticketCount = new AtomicInteger();
   private final ReentrantLock purgeLock = new ReentrantLock();
 
-  synchronized boolean addDeletes(DocumentsWriterDeleteQueue deleteQueue) throws IOException {
+  synchronized FlushTicket addTicket(Supplier<FlushTicket> ticketSupplier) throws IOException {
     // first inc the ticket count - freeze opens a window for #anyChanges to fail
     incTickets();
     boolean success = false;
     try {
-      FrozenBufferedUpdates frozenBufferedUpdates = deleteQueue.maybeFreezeGlobalBuffer();
-      if (frozenBufferedUpdates != null) {
+      FlushTicket ticket = ticketSupplier.get();
+      if (ticket != null) {
         // no need to publish anything if we don't have any frozen updates
-        queue.add(new FlushTicket(frozenBufferedUpdates, false));
+        queue.add(ticket);
         success = true;
       }
+      return ticket;
     } finally {
       if (!success) {
         decTickets();
       }
     }
-    return success;
   }
 
   private void incTickets() {
@@ -59,24 +62,6 @@ final class DocumentsWriterFlushQueue {
   private void decTickets() {
     int numTickets = ticketCount.decrementAndGet();
     assert numTickets >= 0;
-  }
-
-  synchronized FlushTicket addFlushTicket(DocumentsWriterPerThread dwpt) throws IOException {
-    // Each flush is assigned a ticket in the order they acquire the ticketQueue
-    // lock
-    incTickets();
-    boolean success = false;
-    try {
-      // prepare flush freezes the global deletes - do in synced block!
-      final FlushTicket ticket = new FlushTicket(dwpt.prepareFlush(), true);
-      queue.add(ticket);
-      success = true;
-      return ticket;
-    } finally {
-      if (!success) {
-        decTickets();
-      }
-    }
   }
 
   synchronized void addSegment(FlushTicket ticket, FlushedSegment segment) {
@@ -97,7 +82,7 @@ final class DocumentsWriterFlushQueue {
     return ticketCount.get() != 0;
   }
 
-  private void innerPurge(IOUtils.IOConsumer<FlushTicket> consumer) throws IOException {
+  private void innerPurge(IOConsumer<FlushTicket> consumer) throws IOException {
     assert purgeLock.isHeldByCurrentThread();
     while (true) {
       final FlushTicket head;
@@ -131,7 +116,7 @@ final class DocumentsWriterFlushQueue {
     }
   }
 
-  void forcePurge(IOUtils.IOConsumer<FlushTicket> consumer) throws IOException {
+  void forcePurge(IOConsumer<FlushTicket> consumer) throws IOException {
     assert !Thread.holdsLock(this);
     purgeLock.lock();
     try {
@@ -141,7 +126,7 @@ final class DocumentsWriterFlushQueue {
     }
   }
 
-  void tryPurge(IOUtils.IOConsumer<FlushTicket> consumer) throws IOException {
+  void tryPurge(IOConsumer<FlushTicket> consumer) throws IOException {
     assert !Thread.holdsLock(this);
     if (purgeLock.tryLock()) {
       try {

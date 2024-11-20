@@ -34,8 +34,8 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LuceneTestCase;
 
 public class TestPerFieldConsistency extends LuceneTestCase {
 
@@ -94,7 +94,7 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     for (int i = 0; i < values.length; i++) {
       values[i] = randomFloat();
     }
-    return new KnnVectorField(fieldName, values, similarityFunction);
+    return new KnnFloatVectorField(fieldName, values, similarityFunction);
   }
 
   private static Field[] randomFieldsWithTheSameName(String fieldName) {
@@ -115,7 +115,9 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     }
     IllegalArgumentException exception =
         expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc));
-    assertTrue(exception.getMessage().contains(errorMsg));
+    assertTrue(
+        "'" + errorMsg + "' not found in '" + exception.getMessage() + "'",
+        exception.getMessage().contains(errorMsg));
   }
 
   private static void doTestDocWithExtraSchemaOptionsThrowsError(
@@ -125,7 +127,9 @@ public class TestPerFieldConsistency extends LuceneTestCase {
     doc.add(extra);
     IllegalArgumentException exception =
         expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc));
-    assertTrue(exception.getMessage().contains(errorMsg));
+    assertTrue(
+        "'" + errorMsg + "' not found in '" + exception.getMessage() + "'",
+        exception.getMessage().contains(errorMsg));
   }
 
   public void testDocWithMissingSchemaOptionsThrowsError() throws IOException {

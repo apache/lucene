@@ -21,7 +21,7 @@ import java.lang.reflect.Method;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** simple testcases for concrete impl of IndexableFieldType */
 public class TestFieldType extends LuceneTestCase {

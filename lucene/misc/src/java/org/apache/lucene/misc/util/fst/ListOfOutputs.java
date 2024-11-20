@@ -217,7 +217,7 @@ public final class ListOfOutputs<T> extends Outputs<Object> {
         bytes += outputs.ramBytesUsed(_output);
       }
       // 2 * to allow for ArrayList's oversizing:
-      bytes += 2 * outputList.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      bytes += 2L * outputList.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
     } else {
       bytes += outputs.ramBytesUsed((T) output);
     }

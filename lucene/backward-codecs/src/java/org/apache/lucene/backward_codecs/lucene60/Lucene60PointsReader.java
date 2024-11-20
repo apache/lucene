@@ -35,7 +35,7 @@ import org.apache.lucene.util.bkd.BKDReader;
 public class Lucene60PointsReader extends PointsReader {
   final IndexInput dataIn;
   final SegmentReadState readState;
-  final Map<Integer, BKDReader> readers = new HashMap<>();
+  final Map<Integer, PointValues> readers = new HashMap<>();
 
   /** Sole constructor */
   public Lucene60PointsReader(SegmentReadState readState) throws IOException {
@@ -102,7 +102,7 @@ public class Lucene60PointsReader extends PointsReader {
         int fieldNumber = ent.getKey();
         long fp = ent.getValue();
         dataIn.seek(fp);
-        BKDReader reader = new BKDReader(dataIn, dataIn, dataIn);
+        PointValues reader = new BKDReader(dataIn, dataIn, dataIn);
         readers.put(fieldNumber, reader);
       }
 
@@ -115,7 +115,7 @@ public class Lucene60PointsReader extends PointsReader {
   }
 
   /**
-   * Returns the underlying {@link BKDReader}.
+   * Returns the underlying {@link PointValues}.
    *
    * @lucene.internal
    */

@@ -17,10 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.index.Impacts;
-import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.ImpactsSource;
-import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 /**
  * {@link DocIdSetIterator} that skips non-competitive docs thanks to the indexed impacts. Call
@@ -32,9 +28,7 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 public final class ImpactsDISI extends DocIdSetIterator {
 
   private final DocIdSetIterator in;
-  private final ImpactsSource impactsSource;
   private final MaxScoreCache maxScoreCache;
-  private final float globalMaxScore;
   private float minCompetitiveScore = 0;
   private int upTo = DocIdSetIterator.NO_MORE_DOCS;
   private float maxScore = Float.MAX_VALUE;
@@ -42,15 +36,17 @@ public final class ImpactsDISI extends DocIdSetIterator {
   /**
    * Sole constructor.
    *
-   * @param in wrapped iterator
-   * @param impactsSource source of impacts
-   * @param scorer scorer
+   * @param in the iterator, typically an ImpactsEnum
+   * @param maxScoreCache the cache of maximum scores, typically computed from the same ImpactsEnum
    */
-  public ImpactsDISI(DocIdSetIterator in, ImpactsSource impactsSource, SimScorer scorer) {
+  public ImpactsDISI(DocIdSetIterator in, MaxScoreCache maxScoreCache) {
     this.in = in;
-    this.impactsSource = impactsSource;
-    this.maxScoreCache = new MaxScoreCache(impactsSource, scorer);
-    this.globalMaxScore = scorer.score(Float.MAX_VALUE, 1L);
+    this.maxScoreCache = maxScoreCache;
+  }
+
+  /** Get the {@link MaxScoreCache}. */
+  public MaxScoreCache getMaxScoreCache() {
+    return maxScoreCache;
   }
 
   /**
@@ -69,33 +65,6 @@ public final class ImpactsDISI extends DocIdSetIterator {
     }
   }
 
-  /**
-   * Implement the contract of {@link Scorer#advanceShallow(int)} based on the wrapped {@link
-   * ImpactsEnum}.
-   *
-   * @see Scorer#advanceShallow(int)
-   */
-  public int advanceShallow(int target) throws IOException {
-    impactsSource.advanceShallow(target);
-    Impacts impacts = impactsSource.getImpacts();
-    return impacts.getDocIdUpTo(0);
-  }
-
-  /**
-   * Implement the contract of {@link Scorer#getMaxScore(int)} based on the wrapped {@link
-   * ImpactsEnum} and {@link Scorer}.
-   *
-   * @see Scorer#getMaxScore(int)
-   */
-  public float getMaxScore(int upTo) throws IOException {
-    final int level = maxScoreCache.getLevel(upTo);
-    if (level == -1) {
-      return globalMaxScore;
-    } else {
-      return maxScoreCache.getMaxScoreForLevel(level);
-    }
-  }
-
   private int advanceTarget(int target) throws IOException {
     if (target <= upTo) {
       // we are still in the current block, which is considered competitive
@@ -103,8 +72,8 @@ public final class ImpactsDISI extends DocIdSetIterator {
       return target;
     }
 
-    upTo = advanceShallow(target);
-    maxScore = maxScoreCache.getMaxScoreForLevel(0);
+    upTo = maxScoreCache.advanceShallow(target);
+    maxScore = maxScoreCache.getMaxScoreForLevelZero();
 
     while (true) {
       assert upTo >= target;
@@ -125,8 +94,8 @@ public final class ImpactsDISI extends DocIdSetIterator {
       } else {
         target = skipUpTo + 1;
       }
-      upTo = advanceShallow(target);
-      maxScore = maxScoreCache.getMaxScoreForLevel(0);
+      upTo = maxScoreCache.advanceShallow(target);
+      maxScore = maxScoreCache.getMaxScoreForLevelZero();
     }
   }
 
@@ -137,6 +106,10 @@ public final class ImpactsDISI extends DocIdSetIterator {
 
   @Override
   public int nextDoc() throws IOException {
+    DocIdSetIterator in = this.in;
+    if (in.docID() < upTo) {
+      return in.nextDoc();
+    }
     return advance(in.docID() + 1);
   }
 

@@ -26,8 +26,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
@@ -98,7 +98,7 @@ public final class CommitsImpl extends LukeModel implements Commits {
 
     if (ic == null) {
       String msg = String.format(Locale.ENGLISH, "Commit generation %d not exists.", commitGen);
-      log.warn(msg);
+      log.warning(msg);
       return Optional.empty();
     }
 
@@ -111,7 +111,7 @@ public final class CommitsImpl extends LukeModel implements Commits {
 
     if (ic == null) {
       String msg = String.format(Locale.ENGLISH, "Commit generation %d not exists.", commitGen);
-      log.warn(msg);
+      log.warning(msg);
       return Collections.emptyList();
     }
 
@@ -119,7 +119,7 @@ public final class CommitsImpl extends LukeModel implements Commits {
       return ic.getFileNames().stream()
           .map(name -> File.of(indexPath, name))
           .sorted(Comparator.comparing(File::getFileName))
-          .collect(Collectors.toList());
+          .toList();
     } catch (IOException e) {
       throw new LukeException(
           String.format(Locale.ENGLISH, "Failed to load files for commit generation %d", commitGen),
@@ -138,7 +138,7 @@ public final class CommitsImpl extends LukeModel implements Commits {
       return infos.asList().stream()
           .map(Segment::of)
           .sorted(Comparator.comparing(Segment::getName))
-          .collect(Collectors.toList());
+          .toList();
     } catch (IOException e) {
       throw new LukeException(
           String.format(

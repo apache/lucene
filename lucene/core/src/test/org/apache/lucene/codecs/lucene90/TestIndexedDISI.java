@@ -24,12 +24,12 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.SparseFixedBitSet;
-import org.apache.lucene.util.TestUtil;
 
 // Copied from the lucene70 package for separation of codec-code
 public class TestIndexedDISI extends LuceneTestCase {
@@ -473,8 +473,9 @@ public class TestIndexedDISI extends LuceneTestCase {
   private void doTestRandom(Directory dir) throws IOException {
     Random random = random();
     final int maxStep = TestUtil.nextInt(random, 1, 1 << TestUtil.nextInt(random, 2, 20));
-    final int numDocs = TestUtil.nextInt(random, 1, Math.min(100000, Integer.MAX_VALUE / maxStep));
-    BitSet docs = new SparseFixedBitSet(numDocs * (maxStep + 1));
+    final int numDocs =
+        TestUtil.nextInt(random, 1, Math.min(100000, (Integer.MAX_VALUE - 1) / maxStep));
+    BitSet docs = new SparseFixedBitSet(numDocs * maxStep + 1);
     int lastDoc = -1;
     for (int doc = -1, i = 0; i < numDocs; ++i) {
       doc += TestUtil.nextInt(random, 1, maxStep);

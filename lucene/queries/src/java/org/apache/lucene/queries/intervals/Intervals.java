@@ -17,32 +17,51 @@
 
 package org.apache.lucene.queries.intervals;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CachingTokenFilter;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.RegexpQuery;
+import org.apache.lucene.search.TermRangeQuery;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.LevenshteinAutomata;
+import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.automaton.RegExp;
 
 /**
- * Constructor functions for {@link IntervalsSource} types
+ * Factory functions for creating {@link IntervalsSource interval sources}.
  *
  * <p>These sources implement minimum-interval algorithms taken from the paper <a
- * href="http://vigna.di.unimi.it/ftp/papers/EfficientAlgorithmsMinimalIntervalSemantics.pdf">
- * Efficient Optimally Lazy Algorithms for Minimal-Interval Semantics</a>
+ * href="https://vigna.di.unimi.it/ftp/papers/EfficientLazy.pdf">Efficient Optimally Lazy Algorithms
+ * for Minimal-Interval Semantics</a>
  *
- * <p>By default, sources that are sensitive to internal gaps (e.g. PHRASE and MAXGAPS) will rewrite
- * their sub-sources so that disjunctions of different lengths are pulled up to the top of the
- * interval tree. For example, PHRASE(or(PHRASE("a", "b", "c"), "b"), "c") will automatically
- * rewrite itself to OR(PHRASE("a", "b", "c", "c"), PHRASE("b", "c")) to ensure that documents
- * containing "b c" are matched. This can lead to less efficient queries, as more terms need to be
- * loaded (for example, the "c" iterator above is loaded twice), so if you care more about speed
- * than about accuracy you can use the {@link #or(boolean, IntervalsSource...)} factory method to
- * prevent rewriting.
+ * <p><em>Note:</em> by default, sources that are sensitive to internal gaps (e.g. {@code PHRASE}
+ * and {@code MAXGAPS}) will rewrite their sub-sources so that disjunctions of different lengths are
+ * pulled up to the top of the interval tree. For example, {@code PHRASE(or(PHRASE("a", "b", "c"),
+ * "b"), "c")} will automatically rewrite itself to {@code OR(PHRASE("a", "b", "c", "c"),
+ * PHRASE("b", "c"))} to ensure that documents containing {@code "b c"} are matched. This can lead
+ * to less efficient queries, as more terms need to be loaded (for example, the {@code "c"} iterator
+ * above is loaded twice), so if you care more about speed than about accuracy you can use the
+ * {@link #or(boolean, IntervalsSource...)} factory method to prevent rewriting.
  */
 public final class Intervals {
+  /**
+   * The default number of expansions in:
+   *
+   * <ul>
+   *   <li>{@link #multiterm(CompiledAutomaton, String)}
+   * </ul>
+   */
+  public static final int DEFAULT_MAX_EXPANSIONS = 128;
 
   private Intervals() {}
 
@@ -90,7 +109,7 @@ public final class Intervals {
 
   /**
    * Return an {@link IntervalsSource} exposing intervals for a phrase consisting of a list of
-   * IntervalsSources
+   * {@link IntervalsSource interval sources}
    */
   public static IntervalsSource phrase(IntervalsSource... subSources) {
     return BlockIntervalsSource.build(Arrays.asList(subSources));
@@ -135,44 +154,47 @@ public final class Intervals {
   /**
    * Return an {@link IntervalsSource} over the disjunction of all terms that begin with a prefix
    *
-   * @throws IllegalStateException if the prefix expands to more than 128 terms
+   * @throws IllegalStateException if the prefix expands to more than {@link
+   *     #DEFAULT_MAX_EXPANSIONS} terms
    */
   public static IntervalsSource prefix(BytesRef prefix) {
-    return prefix(prefix, 128);
+    return prefix(prefix, DEFAULT_MAX_EXPANSIONS);
   }
 
   /**
    * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that begin with a
    * prefix
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of 128 can be both
-   * slow and memory-intensive
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
    * @param prefix the prefix to expand
    * @param maxExpansions the maximum number of terms to expand to
    * @throws IllegalStateException if the prefix expands to more than {@code maxExpansions} terms
    */
   public static IntervalsSource prefix(BytesRef prefix, int maxExpansions) {
-    CompiledAutomaton ca = new CompiledAutomaton(PrefixQuery.toAutomaton(prefix));
+    CompiledAutomaton ca =
+        new CompiledAutomaton(PrefixQuery.toAutomaton(prefix), false, true, true);
     return new MultiTermIntervalsSource(ca, maxExpansions, prefix.utf8ToString() + "*");
   }
 
   /**
    * Return an {@link IntervalsSource} over the disjunction of all terms that match a wildcard glob
    *
-   * @throws IllegalStateException if the wildcard glob expands to more than 128 terms
+   * @throws IllegalStateException if the wildcard glob expands to more than {@link
+   *     #DEFAULT_MAX_EXPANSIONS} terms
    * @see WildcardQuery for glob format
    */
   public static IntervalsSource wildcard(BytesRef wildcard) {
-    return wildcard(wildcard, 128);
+    return wildcard(wildcard, DEFAULT_MAX_EXPANSIONS);
   }
 
   /**
    * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that match a
    * wildcard glob
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of 128 can be both
-   * slow and memory-intensive
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
    * @param wildcard the glob to expand
    * @param maxExpansions the maximum number of terms to expand to
@@ -181,8 +203,143 @@ public final class Intervals {
    * @see WildcardQuery for glob format
    */
   public static IntervalsSource wildcard(BytesRef wildcard, int maxExpansions) {
-    CompiledAutomaton ca = new CompiledAutomaton(WildcardQuery.toAutomaton(new Term("", wildcard)));
+    CompiledAutomaton ca =
+        new CompiledAutomaton(
+            WildcardQuery.toAutomaton(
+                new Term("", wildcard), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
     return new MultiTermIntervalsSource(ca, maxExpansions, wildcard.utf8ToString());
+  }
+
+  /**
+   * Return an {@link IntervalsSource} over the disjunction of all terms that match a regular
+   * expression
+   *
+   * @param regexp regular expression
+   * @throws IllegalStateException if the regex expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
+   *     terms
+   * @see RegexpQuery for regexp format
+   */
+  public static IntervalsSource regexp(BytesRef regexp) {
+    return regexp(regexp, DEFAULT_MAX_EXPANSIONS);
+  }
+
+  /**
+   * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that match a
+   * regular expression
+   *
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
+   *
+   * @param regexp regular expression
+   * @param maxExpansions the maximum number of terms to expand to
+   * @throws IllegalStateException if the regex expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
+   *     terms
+   * @see RegexpQuery for regexp format
+   */
+  public static IntervalsSource regexp(BytesRef regexp, int maxExpansions) {
+    Automaton automaton = new RegExp(new Term("", regexp).text()).toAutomaton();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    CompiledAutomaton ca = new CompiledAutomaton(automaton, false, true, false);
+    return new MultiTermIntervalsSource(ca, maxExpansions, regexp.utf8ToString());
+  }
+
+  /**
+   * Return an {@link IntervalsSource} over the disjunction of all terms that fall within the given
+   * range
+   *
+   * @param lowerTerm The term text at the lower end of the range; can be {@code null} to indicate
+   *     an open-ended range at this end
+   * @param upperTerm The term text at the upper end of the range; can be {@code null} to indicate
+   *     an open-ended range at this end
+   * @param includeLower If true, the <code>lowerTerm</code> is included in the range
+   * @param includeUpper If true, the <code>upperTerm</code> is included in the range
+   * @throws IllegalStateException if the range expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
+   *     terms
+   */
+  public static IntervalsSource range(
+      BytesRef lowerTerm, BytesRef upperTerm, boolean includeLower, boolean includeUpper) {
+    return range(lowerTerm, upperTerm, includeLower, includeUpper, DEFAULT_MAX_EXPANSIONS);
+  }
+
+  /**
+   * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that fall within
+   * the given range
+   *
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
+   *
+   * @param lowerTerm The term text at the lower end of the range; can be {@code null} to indicate
+   *     an open-ended range at this end
+   * @param upperTerm The term text at the upper end of the range; can be {@code null} to indicate
+   *     an open-ended range at this end
+   * @param includeLower If true, the <code>lowerTerm</code> is included in the range
+   * @param includeUpper If true, the <code>upperTerm</code> is included in the range
+   * @param maxExpansions the maximum number of terms to expand to
+   * @throws IllegalStateException if the wildcard glob expands to more than {@code maxExpansions}
+   *     terms
+   */
+  public static IntervalsSource range(
+      BytesRef lowerTerm,
+      BytesRef upperTerm,
+      boolean includeLower,
+      boolean includeUpper,
+      int maxExpansions) {
+    Automaton automaton =
+        TermRangeQuery.toAutomaton(lowerTerm, upperTerm, includeLower, includeUpper);
+    CompiledAutomaton ca = new CompiledAutomaton(automaton, false, true, true);
+
+    StringBuilder buffer = new StringBuilder();
+    buffer.append("{");
+    buffer.append(lowerTerm == null ? "* " : lowerTerm.utf8ToString());
+    buffer.append(",");
+    buffer.append(upperTerm == null ? "*" : upperTerm.utf8ToString());
+    buffer.append("}");
+    return new MultiTermIntervalsSource(ca, maxExpansions, buffer.toString());
+  }
+
+  /**
+   * A fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
+   * within the specified {@code maxEdits} from the provided term.
+   *
+   * @see #fuzzyTerm(String, int, int, boolean, int)
+   * @param term the term to search for
+   * @param maxEdits must be {@code >= 0} and {@code <=} {@link
+   *     LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}, use {@link FuzzyQuery#defaultMaxEdits} for
+   *     the default, if needed.
+   */
+  public static IntervalsSource fuzzyTerm(String term, int maxEdits) {
+    return fuzzyTerm(
+        term,
+        maxEdits,
+        FuzzyQuery.defaultPrefixLength,
+        FuzzyQuery.defaultTranspositions,
+        DEFAULT_MAX_EXPANSIONS);
+  }
+
+  /**
+   * A fuzzy term {@link IntervalsSource} matches the disjunction of intervals of terms that are
+   * within the specified {@code maxEdits} from the provided term.
+   *
+   * <p>The implementation is delegated to a {@link #multiterm(CompiledAutomaton, int, String)}
+   * interval source, with an automaton sourced from {@link org.apache.lucene.search.FuzzyQuery}.
+   *
+   * @param term the term to search for
+   * @param maxEdits must be {@code >= 0} and {@code <=} {@link
+   *     LevenshteinAutomata#MAXIMUM_SUPPORTED_DISTANCE}, use {@link FuzzyQuery#defaultMaxEdits} for
+   *     the default, if needed.
+   * @param prefixLength length of common (non-fuzzy) prefix
+   * @param maxExpansions the maximum number of terms to match. Setting {@code maxExpansions} to
+   *     higher than the default value of {@link #DEFAULT_MAX_EXPANSIONS} can be both slow and
+   *     memory-intensive
+   * @param transpositions true if transpositions should be treated as a primitive edit operation.
+   *     If this is false, comparisons will implement the classic Levenshtein algorithm.
+   */
+  public static IntervalsSource fuzzyTerm(
+      String term, int maxEdits, int prefixLength, boolean transpositions, int maxExpansions) {
+    return Intervals.multiterm(
+        FuzzyQuery.getFuzzyAutomaton(term, maxEdits, prefixLength, transpositions),
+        maxExpansions,
+        term + "~" + maxEdits);
   }
 
   /**
@@ -191,18 +348,19 @@ public final class Intervals {
    *
    * @param ca an automaton accepting matching terms
    * @param pattern string representation of the given automaton, mostly used in exception messages
-   * @throws IllegalStateException if the automaton accepts more than 128 terms
+   * @throws IllegalStateException if the automaton accepts more than {@link
+   *     #DEFAULT_MAX_EXPANSIONS} terms
    */
   public static IntervalsSource multiterm(CompiledAutomaton ca, String pattern) {
-    return multiterm(ca, 128, pattern);
+    return multiterm(ca, DEFAULT_MAX_EXPANSIONS, pattern);
   }
 
   /**
    * Expert: Return an {@link IntervalsSource} over the disjunction of all terms that are accepted
    * by the given automaton
    *
-   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of 128 can be both
-   * slow and memory-intensive
+   * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
+   * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
    * @param ca an automaton accepting matching terms
    * @param maxExpansions the maximum number of terms to expand to
@@ -267,7 +425,10 @@ public final class Intervals {
   }
 
   /**
-   * Create an unordered {@link IntervalsSource}
+   * Create an unordered {@link IntervalsSource}. Note that if there are multiple intervals ends at
+   * the same position are eligible, only the narrowest one will be returned. For example if asking
+   * for <code>unordered(term("apple"), term("banana"))</code> on field of "apple wolf apple orange
+   * banana", only the "apple orange banana" will be returned.
    *
    * <p>Returns intervals in which all the subsources appear. The subsources may overlap
    *
@@ -428,5 +589,60 @@ public final class Intervals {
     return ContainedByIntervalsSource.build(
         source,
         Intervals.extend(new OffsetIntervalsSource(reference, false), 0, Integer.MAX_VALUE));
+  }
+
+  /**
+   * Returns a source that produces no intervals
+   *
+   * @param reason A reason string that will appear in the toString output of this source
+   */
+  public static IntervalsSource noIntervals(String reason) {
+    return new NoMatchIntervalsSource(reason);
+  }
+
+  /**
+   * Returns intervals that correspond to tokens from a {@link TokenStream} returned for {@code
+   * text} by applying the provided {@link Analyzer} as if {@code text} was the content of the given
+   * {@code field}. The intervals can be ordered or unordered and can have optional gaps inside.
+   *
+   * @param text The text to analyze.
+   * @param analyzer The {@link Analyzer} to use to acquire a {@link TokenStream} which is then
+   *     converted into intervals.
+   * @param field The field {@code text} should be parsed as.
+   * @param maxGaps Maximum number of allowed gaps between sub-intervals resulting from tokens.
+   * @param ordered Whether sub-intervals should enforce token ordering or not.
+   * @return Returns an {@link IntervalsSource} that matches tokens acquired from analysis of {@code
+   *     text}. Possibly an empty interval source, never {@code null}.
+   * @throws IOException If an I/O exception occurs.
+   */
+  public static IntervalsSource analyzedText(
+      String text, Analyzer analyzer, String field, int maxGaps, boolean ordered)
+      throws IOException {
+    try (TokenStream ts = analyzer.tokenStream(field, text)) {
+      return analyzedText(ts, maxGaps, ordered);
+    }
+  }
+
+  /**
+   * Returns intervals that correspond to tokens from the provided {@link TokenStream}. This is a
+   * low-level counterpart to {@link #analyzedText(String, Analyzer, String, int, boolean)}. The
+   * intervals can be ordered or unordered and can have optional gaps inside.
+   *
+   * @param tokenStream The token stream to produce intervals for. The token stream may be fully or
+   *     partially consumed after returning from this method.
+   * @param maxGaps Maximum number of allowed gaps between sub-intervals resulting from tokens.
+   * @param ordered Whether sub-intervals should enforce token ordering or not.
+   * @return Returns an {@link IntervalsSource} that matches tokens acquired from analysis of {@code
+   *     text}. Possibly an empty interval source, never {@code null}.
+   * @throws IOException If an I/O exception occurs.
+   */
+  public static IntervalsSource analyzedText(TokenStream tokenStream, int maxGaps, boolean ordered)
+      throws IOException {
+    CachingTokenFilter stream =
+        tokenStream instanceof CachingTokenFilter
+            ? (CachingTokenFilter) tokenStream
+            : new CachingTokenFilter(tokenStream);
+
+    return IntervalBuilder.analyzeText(stream, maxGaps, ordered);
   }
 }

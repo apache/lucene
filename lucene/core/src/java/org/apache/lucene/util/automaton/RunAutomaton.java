@@ -56,20 +56,13 @@ public abstract class RunAutomaton implements Accountable {
    * Constructs a new <code>RunAutomaton</code> from a deterministic <code>Automaton</code>.
    *
    * @param a an automaton
+   * @throws IllegalArgumentException if the automaton is not deterministic
    */
   protected RunAutomaton(Automaton a, int alphabetSize) {
-    this(a, alphabetSize, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-  }
-
-  /**
-   * Constructs a new <code>RunAutomaton</code> from a deterministic <code>Automaton</code>.
-   *
-   * @param a an automaton
-   * @param determinizeWorkLimit maximum effort to spend while determinizing
-   */
-  protected RunAutomaton(Automaton a, int alphabetSize, int determinizeWorkLimit) {
     this.alphabetSize = alphabetSize;
-    a = Operations.determinize(a, determinizeWorkLimit);
+    if (!a.isDeterministic()) {
+      throw new IllegalArgumentException("Automaton must be deterministic");
+    }
     this.automaton = a;
     points = a.getStartPoints();
     size = Math.max(1, a.getNumStates());
@@ -137,7 +130,12 @@ public abstract class RunAutomaton implements Accountable {
     return size;
   }
 
-  /** Returns acceptance status for given state. */
+  /**
+   * Returns acceptance status for given state.
+   *
+   * @param state the state
+   * @return whether the state is accepted
+   */
   public final boolean isAccept(int state) {
     return accept.get(state);
   }

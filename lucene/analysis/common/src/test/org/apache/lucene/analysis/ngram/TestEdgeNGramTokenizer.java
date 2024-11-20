@@ -21,9 +21,9 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.Arrays;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests {@link EdgeNGramTokenizer} for correctness. */
 public class TestEdgeNGramTokenizer extends BaseTokenStreamTestCase {
@@ -69,7 +69,6 @@ public class TestEdgeNGramTokenizer extends BaseTokenStreamTestCase {
   public void testOversizedNgrams() throws Exception {
     EdgeNGramTokenizer tokenizer = new EdgeNGramTokenizer(6, 6);
     tokenizer.setReader(input);
-    ;
     assertTokenStreamContents(tokenizer, new String[0], new int[0], new int[0], 5 /* abcde */);
   }
 

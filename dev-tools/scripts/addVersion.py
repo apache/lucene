@@ -69,9 +69,7 @@ def add_constant(new_version, deprecate):
     if deprecate:
       buffer.append('%s * @deprecated Use latest\n' % spaces)
     else:
-      buffer.append(( '{0} * <p>\n'
-                    + '{0} * Use this to get the latest &amp; greatest settings, bug\n'
-                    + '{0} * fixes, etc, for Lucene.\n').format(spaces))
+      buffer.append(( '{0} * <p>Use this to get the latest &amp; greatest settings, bug fixes, etc, for Lucene.\n').format(spaces))
     buffer.append('%s */\n' % spaces)
     if deprecate:
       buffer.append('%s@Deprecated\n' % spaces)
@@ -111,10 +109,11 @@ def update_build_version(new_version):
   def edit(buffer, match, line):
     if new_version.dot in line:
       return None
-    buffer.append('  baseVersion = \'' + new_version.dot + '\'\n')
-    return True 
+    buffer.append('  String baseVersion = \'' + new_version.dot + '\'\n')
+    return True
 
-  changed = update_file(filename, scriptutil.version_prop_re, edit)
+  version_prop_re = re.compile(r'baseVersion\s*=\s*([\'"])(.*)\1')
+  changed = update_file(filename, version_prop_re, edit)
   print('done' if changed else 'uptodate')
 
 def update_latest_constant(new_version):
@@ -133,45 +132,13 @@ def update_latest_constant(new_version):
 def onerror(x):
   raise x
 
-def update_example_solrconfigs(new_version):
-  print('  updating example solrconfig.xml files')
-  matcher = re.compile('<luceneMatchVersion>')
-
-  paths = ['solr/server/solr/configsets', 'solr/example', 'solr/core/src/test-files/solr/configsets/_default']
-  for path in paths:
-    if not os.path.isdir(path):
-      raise RuntimeError("Can't locate configset dir (layout change?) : " + path)
-    for root,dirs,files in os.walk(path, onerror=onerror):
-      for f in files:
-        if f == 'solrconfig.xml':
-          update_solrconfig(os.path.join(root, f), matcher, new_version)
-
-def update_solrconfig(filename, matcher, new_version):
-  print('    %s...' % filename, end='', flush=True)
-  def edit(buffer, match, line):
-    if new_version.dot in line:
-      return None
-    match = new_version.previous_dot_matcher.search(line)
-    if match is None:
-      return False
-    buffer.append(line.replace(match.group(1), new_version.dot))
-    return True
-
-  changed = update_file(filename, matcher, edit)
-  print('done' if changed else 'uptodate')
-
 def check_lucene_version_tests():
   print('  checking lucene version tests...', end='', flush=True)
   run('./gradlew -p lucene/core test --tests TestVersion')
   print('ok')
 
-def check_solr_version_tests():
-  print('  checking solr version tests...', end='', flush=True)
-  run('./gradlew -p solr/core test --tests TestLuceneMatchVersion')
-  print('ok')
-
 def read_config(current_version):
-  parser = argparse.ArgumentParser(description='Add a new version to CHANGES, to Version.java, build.gradle and solrconfig.xml files')
+  parser = argparse.ArgumentParser(description='Add a new version to CHANGES, to Version.java and build.gradle files')
   parser.add_argument('version', type=Version.parse)
   newconf = parser.parse_args()
 
@@ -189,13 +156,7 @@ def parse_properties_file(filename):
   parser.read_string("[DUMMY_SECTION]\n" + contents)                         # Add required section
   return dict(parser.items('DUMMY_SECTION'))
 
-def get_solr_init_changes():
-  return dedent('''
-    Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
-    Docker and contrib modules have separate CHANGES.md files.
 
-    ''')
-  
 def main():
   if not os.path.exists('build.gradle'):
     sys.exit("Tool must be run from the root of a source checkout.")
@@ -207,8 +168,6 @@ def main():
   # See LUCENE-8883 for some thoughts on which categories to use
   update_changes('lucene/CHANGES.txt', newconf.version, '\n',
                  ['Bug Fixes'] if is_bugfix else ['API Changes', 'New Features', 'Improvements', 'Optimizations', 'Bug Fixes', 'Other'])
-  update_changes('solr/CHANGES.txt', newconf.version, get_solr_init_changes(),
-                 ['Bug Fixes'] if is_bugfix else ['New Features', 'Improvements', 'Optimizations', 'Bug Fixes', 'Other Changes'])
 
   latest_or_backcompat = newconf.is_latest_version or current_version.is_back_compat_with(newconf.version)
   if latest_or_backcompat:
@@ -220,7 +179,6 @@ def main():
     print('\nUpdating latest version')
     update_build_version(newconf.version)
     update_latest_constant(newconf.version)
-    update_example_solrconfigs(newconf.version)
 
   if newconf.version.is_major_release():
     print('\nTODO: ')
@@ -229,7 +187,6 @@ def main():
   elif latest_or_backcompat:
     print('\nTesting changes')
     check_lucene_version_tests()
-    check_solr_version_tests()
 
   print()
 

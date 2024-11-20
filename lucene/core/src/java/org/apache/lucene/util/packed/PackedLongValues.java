@@ -29,7 +29,7 @@ public class PackedLongValues extends LongValues implements Accountable {
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(PackedLongValues.class);
 
-  static final int DEFAULT_PAGE_SIZE = 256;
+  public static final int DEFAULT_PAGE_SIZE = 256;
   static final int MIN_PAGE_SIZE = 64;
   // More than 1M doesn't really makes sense with these appending buffers
   // since their goal is to try to have small numbers of bits per value
@@ -41,7 +41,9 @@ public class PackedLongValues extends LongValues implements Accountable {
     return new PackedLongValues.Builder(pageSize, acceptableOverheadRatio);
   }
 
-  /** @see #packedBuilder(int, float) */
+  /**
+   * @see #packedBuilder(int, float)
+   */
   public static PackedLongValues.Builder packedBuilder(float acceptableOverheadRatio) {
     return packedBuilder(DEFAULT_PAGE_SIZE, acceptableOverheadRatio);
   }
@@ -55,7 +57,9 @@ public class PackedLongValues extends LongValues implements Accountable {
     return new DeltaPackedLongValues.Builder(pageSize, acceptableOverheadRatio);
   }
 
-  /** @see #deltaPackedBuilder(int, float) */
+  /**
+   * @see #deltaPackedBuilder(int, float)
+   */
   public static PackedLongValues.Builder deltaPackedBuilder(float acceptableOverheadRatio) {
     return deltaPackedBuilder(DEFAULT_PAGE_SIZE, acceptableOverheadRatio);
   }
@@ -69,7 +73,9 @@ public class PackedLongValues extends LongValues implements Accountable {
     return new MonotonicLongValues.Builder(pageSize, acceptableOverheadRatio);
   }
 
-  /** @see #monotonicBuilder(int, float) */
+  /**
+   * @see #monotonicBuilder(int, float)
+   */
   public static PackedLongValues.Builder monotonicBuilder(float acceptableOverheadRatio) {
     return monotonicBuilder(DEFAULT_PAGE_SIZE, acceptableOverheadRatio);
   }
@@ -132,7 +138,7 @@ public class PackedLongValues extends LongValues implements Accountable {
     int currentCount; // number of entries of the current page
 
     Iterator() {
-      currentValues = new long[pageMask + 1];
+      currentValues = new long[(int) Math.min(size, pageMask + 1)];
       vOff = pOff = 0;
       fillBlock();
     }
@@ -270,7 +276,7 @@ public class PackedLongValues extends LongValues implements Accountable {
 
       // build a new packed reader
       if (minValue == 0 && maxValue == 0) {
-        this.values[block] = new PackedInts.NullReader(numValues);
+        this.values[block] = PackedInts.NullReader.forCount(numValues);
       } else {
         final int bitsRequired = minValue < 0 ? 64 : PackedInts.bitsRequired(maxValue);
         final PackedInts.Mutable mutable =

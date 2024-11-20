@@ -22,6 +22,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.util.AttributeFactory;
+import org.apache.lucene.util.IgnoreRandomChains;
 
 /**
  * Tokenizer for path-like hierarchies.
@@ -40,6 +41,7 @@ import org.apache.lucene.util.AttributeFactory;
  *  /something/something/else
  * </pre>
  */
+@IgnoreRandomChains(reason = "broken offsets")
 public class PathHierarchyTokenizer extends Tokenizer {
 
   public PathHierarchyTokenizer() {
@@ -98,7 +100,8 @@ public class PathHierarchyTokenizer extends Tokenizer {
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-  private final PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
+  private final PositionIncrementAttribute posIncAtt =
+      addAttribute(PositionIncrementAttribute.class);
   private int startPosition = 0;
   private int skipped = 0;
   private boolean endDelimiter = false;
@@ -110,11 +113,7 @@ public class PathHierarchyTokenizer extends Tokenizer {
   public final boolean incrementToken() throws IOException {
     clearAttributes();
     termAtt.append(resultToken);
-    if (resultToken.length() == 0) {
-      posAtt.setPositionIncrement(1);
-    } else {
-      posAtt.setPositionIncrement(0);
-    }
+    posIncAtt.setPositionIncrement(1);
     int length = 0;
     boolean added = false;
     if (endDelimiter) {

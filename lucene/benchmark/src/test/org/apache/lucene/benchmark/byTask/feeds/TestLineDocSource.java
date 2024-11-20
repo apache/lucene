@@ -160,13 +160,14 @@ public class TestLineDocSource extends BenchmarkTestCase {
       reader = DirectoryReader.open(runData.getDirectory());
       searcher = newSearcher(reader);
       TopDocs td = searcher.search(new TermQuery(new Term("body", "body")), 10);
-      assertEquals(numAdds, td.totalHits.value);
+      assertEquals(numAdds, td.totalHits.value());
       assertNotNull(td.scoreDocs[0]);
 
       if (storedField == null) {
         storedField = DocMaker.BODY_FIELD; // added to all docs and satisfies field-name == value
       }
-      assertEquals("Wrong field value", storedField, searcher.doc(0).get(storedField));
+      assertEquals(
+          "Wrong field value", storedField, searcher.storedFields().document(0).get(storedField));
     } finally {
       IOUtils.close(reader, runData);
     }

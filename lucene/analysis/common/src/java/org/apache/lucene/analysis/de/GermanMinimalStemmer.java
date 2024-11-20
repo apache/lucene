@@ -57,9 +57,9 @@ package org.apache.lucene.analysis.de;
  * <p>This stemmer implements the following algorithm: <i>Morphologie et recherche d'information</i>
  * Jacques Savoy.
  */
-public class GermanMinimalStemmer {
+class GermanMinimalStemmer {
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     if (len < 5) return len;
 
     for (int i = 0; i < len; i++)

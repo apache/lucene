@@ -24,13 +24,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockTokenizer;
-import org.apache.lucene.analysis.SimplePayloadFilter;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.payloads.SpanPayloadCheckQuery.MatchOperation;
 import org.apache.lucene.queries.payloads.SpanPayloadCheckQuery.PayloadType;
@@ -39,15 +36,19 @@ import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanPositionRangeQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
-import org.apache.lucene.search.CheckHits;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.analysis.SimplePayloadFilter;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.CheckHits;
+import org.apache.lucene.tests.util.English;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.English;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -89,8 +90,7 @@ public class TestPayloadCheckQuery extends LuceneTestCase {
 
   @AfterClass
   public static void afterClass() throws Exception {
-    reader.close();
-    directory.close();
+    IOUtils.close(reader, directory);
     searcher = null;
     reader = null;
     directory = null;
@@ -269,10 +269,11 @@ public class TestPayloadCheckQuery extends LuceneTestCase {
             MatchOperation.GT);
     checkHits(
         stringGT2,
-        new int[] { // spotless:off
-                 155,  255,  355,  455,  555,  655,  755,  855,  955,
-          1055, 1155, 1255, 1355, 1455, 1555, 1655, 1755, 1855, 1955
-        }); // spotless:on
+        alignedIntArray(
+            """
+                   155,  255,  355,  455,  555,  655,  755,  855,  955,
+            1055, 1155, 1255, 1355, 1455, 1555, 1655, 1755, 1855, 1955
+            """));
     SpanQuery stringGTE2 =
         new SpanPayloadCheckQuery(
             new SpanNearQuery(new SpanQuery[] {termFifty, termFive}, 0, true),
@@ -281,10 +282,11 @@ public class TestPayloadCheckQuery extends LuceneTestCase {
             MatchOperation.GTE);
     checkHits(
         stringGTE2,
-        new int[] { // spotless:off
-            55,  155,  255,  355,  455,  555,  655,  755,  855,  955,
-          1055, 1155, 1255, 1355, 1455, 1555, 1655, 1755, 1855, 1955
-        });  // spotless:on
+        alignedIntArray(
+            """
+              55,  155,  255,  355,  455,  555,  655,  755,  855,  955,
+            1055, 1155, 1255, 1355, 1455, 1555, 1655, 1755, 1855, 1955
+            """));
 
     SpanQuery stringLT2 =
         new SpanPayloadCheckQuery(
@@ -304,6 +306,23 @@ public class TestPayloadCheckQuery extends LuceneTestCase {
     // note: I can imagine support for SpanOrQuery might be interesting but that's for some other
     // time, currently such support is  made intractable by the fact that reset() gets called and
     // sets "upto" back to zero between SpanOrQuery subclauses.
+  }
+
+  /**
+   * Parses a comma-separated array of integers, ignoring white space around them. This allows for
+   * arbitrary alignment of integers in the source string to convey additional information about
+   * their mutual relations. For example:
+   *
+   * <pre>{@code
+   * var ints =
+   * """
+   *   1,  2,  3,
+   *  11, 12, 13
+   * """
+   * }</pre>
+   */
+  private static int[] alignedIntArray(String ints) {
+    return Arrays.stream(ints.split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray();
   }
 
   public void testUnorderedPayloadChecks() throws Exception {

@@ -20,8 +20,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -35,10 +35,10 @@ import org.apache.lucene.queries.spans.SpanWeight;
 import org.apache.lucene.queries.spans.Spans;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.util.BytesRef;
 
 /** Only return those matches that have a specific payload at the given position. */
@@ -48,6 +48,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
   protected final SpanQuery match;
   protected final MatchOperation operation;
   protected final PayloadType payloadType;
+
   /** The payload type. This specifies the decoding of the ByteRef for the payload. */
   public enum PayloadType {
     /** INT is for a 4 byte payload that is a packed integer */
@@ -116,13 +117,13 @@ public class SpanPayloadCheckQuery extends SpanQuery {
   }
 
   @Override
-  public Query rewrite(IndexReader reader) throws IOException {
-    Query matchRewritten = match.rewrite(reader);
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    Query matchRewritten = match.rewrite(indexSearcher);
     if (match != matchRewritten && matchRewritten instanceof SpanQuery) {
       return new SpanPayloadCheckQuery(
           (SpanQuery) matchRewritten, payloadToMatch, payloadType, operation);
     }
-    return super.rewrite(reader);
+    return super.rewrite(indexSearcher);
   }
 
   @Override
@@ -171,7 +172,7 @@ public class SpanPayloadCheckQuery extends SpanQuery {
     }
 
     @Override
-    public SpanScorer scorer(LeafReaderContext context) throws IOException {
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       if (field == null) {
         return null;
       }
@@ -190,8 +191,9 @@ public class SpanPayloadCheckQuery extends SpanQuery {
       if (spans == null) {
         return null;
       }
-      final LeafSimScorer docScorer = getSimScorer(context);
-      return new SpanScorer(this, spans, docScorer);
+      final NumericDocValues norms = context.reader().getNormValues(field);
+      final var scorer = new SpanScorer(spans, getSimScorer(), norms);
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override

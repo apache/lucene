@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.pl;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.LowerCaseFilter;
@@ -75,8 +74,9 @@ public final class PolishAnalyzer extends StopwordAnalyzerBase {
       try {
         DEFAULT_STOP_SET =
             WordlistLoader.getWordSet(
-                IOUtils.getDecodingReader(
-                    PolishAnalyzer.class, DEFAULT_STOPWORD_FILE, StandardCharsets.UTF_8),
+                IOUtils.requireResourceNonNull(
+                    PolishAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                    DEFAULT_STOPWORD_FILE),
                 "#");
       } catch (IOException ex) {
         // default set should always be present as it is part of the

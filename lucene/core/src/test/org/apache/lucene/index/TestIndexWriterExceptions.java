@@ -29,8 +29,6 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.MockAnalyzer;
-import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -49,32 +47,33 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.BaseDirectoryWrapper;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.MockDirectoryWrapper;
-import org.apache.lucene.store.MockDirectoryWrapper.FakeIOException;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
+import org.apache.lucene.tests.store.MockDirectoryWrapper.FakeIOException;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.InfoStream;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.apache.lucene.util.TestUtil;
 
 @SuppressCodecs("SimpleText") // too slow here
 public class TestIndexWriterExceptions extends LuceneTestCase {
 
-  private static class DocCopyIterator implements Iterable<Document> {
-    private final Document doc;
-    private final int count;
-
+  private record DocCopyIterator(Document doc, int count) implements Iterable<Document> {
     /* private field types */
     /* private field types */
 
@@ -101,11 +100,6 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       custom5.setStoreTermVectors(true);
       custom5.setStoreTermVectorPositions(true);
       custom5.setStoreTermVectorOffsets(true);
-    }
-
-    public DocCopyIterator(Document doc, int count) {
-      this.count = count;
-      this.doc = doc;
     }
 
     @Override
@@ -169,8 +163,8 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       final Field idField = newField(r, "id", "", DocCopyIterator.custom2);
       doc.add(idField);
 
-      final long stopTime = System.currentTimeMillis() + 500;
-
+      final int maxIterations = 250;
+      int iterations = 0;
       do {
         if (VERBOSE) {
           System.out.println(Thread.currentThread().getName() + ": TEST: IndexerThread: cycle");
@@ -218,7 +212,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           failure = t;
           break;
         }
-      } while (System.currentTimeMillis() < stopTime);
+      } while (++iterations < maxIterations);
     }
   }
 
@@ -469,6 +463,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     cms.setSuppressExceptions();
     conf.setMergeScheduler(cms);
     ((LogMergePolicy) conf.getMergePolicy()).setMergeFactor(2);
+    ((LogMergePolicy) conf.getMergePolicy()).setTargetSearchConcurrency(1);
     TestPoint3 testPoint = new TestPoint3();
     IndexWriter w = RandomIndexWriter.mockIndexWriter(random(), dir, conf, testPoint);
     testPoint.doFail = true;
@@ -697,11 +692,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         int numDel = 0;
         final Bits liveDocs = MultiBits.getLiveDocs(reader);
         assertNotNull(liveDocs);
+        StoredFields storedFields = reader.storedFields();
+        TermVectors termVectors = reader.termVectors();
         for (int j = 0; j < reader.maxDoc(); j++) {
           if (!liveDocs.get(j)) numDel++;
           else {
-            reader.document(j);
-            reader.getTermVectors(j);
+            storedFields.document(j);
+            termVectors.get(j);
           }
         }
         assertEquals(1, numDel);
@@ -721,9 +718,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertEquals(expected, reader.maxDoc());
       int numDel = 0;
       assertNull(MultiBits.getLiveDocs(reader));
+      StoredFields storedFields = reader.storedFields();
+      TermVectors termVectors = reader.termVectors();
       for (int j = 0; j < reader.maxDoc(); j++) {
-        reader.document(j);
-        reader.getTermVectors(j);
+        storedFields.document(j);
+        termVectors.get(j);
       }
       reader.close();
       assertEquals(0, numDel);
@@ -878,11 +877,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       int numDel = 0;
       final Bits liveDocs = MultiBits.getLiveDocs(reader);
       assertNotNull(liveDocs);
+      StoredFields storedFields = reader.storedFields();
+      TermVectors termVectors = reader.termVectors();
       for (int j = 0; j < reader.maxDoc(); j++) {
         if (!liveDocs.get(j)) numDel++;
         else {
-          reader.document(j);
-          reader.getTermVectors(j);
+          storedFields.document(j);
+          termVectors.get(j);
         }
       }
       reader.close();
@@ -902,9 +903,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertEquals(expected, reader.docFreq(new Term("contents", "here")));
       assertEquals(expected, reader.maxDoc());
       assertNull(MultiBits.getLiveDocs(reader));
+      storedFields = reader.storedFields();
+      termVectors = reader.termVectors();
       for (int j = 0; j < reader.maxDoc(); j++) {
-        reader.document(j);
-        reader.getTermVectors(j);
+        storedFields.document(j);
+        termVectors.get(j);
       }
       reader.close();
 
@@ -1265,7 +1268,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     assertTrue("segment generation should be > 0 but got " + gen, gen > 0);
 
     final String segmentsFileName = SegmentInfos.getLastCommitSegmentsFileName(dir);
-    IndexInput in = dir.openInput(segmentsFileName, newIOContext(random()));
+    IndexInput in = dir.openInput(segmentsFileName, IOContext.READONCE);
     IndexOutput out =
         dir.createOutput(
             IndexFileNames.fileNameFromGeneration(IndexFileNames.SEGMENTS, "", 1 + gen),
@@ -1310,7 +1313,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     String fileNameIn = SegmentInfos.getLastCommitSegmentsFileName(dir);
     String fileNameOut =
         IndexFileNames.fileNameFromGeneration(IndexFileNames.SEGMENTS, "", 1 + gen);
-    IndexInput in = dir.openInput(fileNameIn, newIOContext(random()));
+    IndexInput in = dir.openInput(fileNameIn, IOContext.READONCE);
     IndexOutput out = dir.createOutput(fileNameOut, newIOContext(random()));
     long length = in.length();
     for (int i = 0; i < length - 1; i++) {
@@ -1444,7 +1447,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
         assertTrue(reader.numDocs() > 0);
         SegmentInfos.readLatestCommit(dir);
         for (LeafReaderContext context : reader.leaves()) {
-          assertFalse(context.reader().getFieldInfos().hasVectors());
+          assertFalse(context.reader().getFieldInfos().hasTermVectors());
         }
         reader.close();
         dir.close();
@@ -1488,13 +1491,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       doc.add(newStringField("id", docCount + "", Field.Store.NO));
       doc.add(newTextField("content", "silly content " + docCount, Field.Store.NO));
       if (docCount == 4) {
-        Field f = newTextField("crash", "", Field.Store.NO);
-        doc.add(f);
         MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
         tokenizer.setReader(new StringReader("crash me on the 4th token"));
         tokenizer.setEnableChecks(
             false); // disable workflow checking as we forcefully close() in exceptional cases.
-        f.setTokenStream(new CrashingFilter("crash", tokenizer));
+        Field f =
+            new Field("crash", new CrashingFilter("crash", tokenizer), TextField.TYPE_NOT_STORED);
+        doc.add(f);
       }
     }
 
@@ -1564,13 +1567,13 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       doc.add(newStringField("id", docCount + "", Field.Store.NO));
       doc.add(newTextField("content", "silly content " + docCount, Field.Store.NO));
       if (docCount == crashAt) {
-        Field f = newTextField("crash", "", Field.Store.NO);
-        doc.add(f);
         MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
         tokenizer.setReader(new StringReader("crash me on the 4th token"));
         tokenizer.setEnableChecks(
             false); // disable workflow checking as we forcefully close() in exceptional cases.
-        f.setTokenStream(new CrashingFilter("crash", tokenizer));
+        Field f =
+            new Field("crash", new CrashingFilter("crash", tokenizer), TextField.TYPE_NOT_STORED);
+        doc.add(f);
       }
     }
 
@@ -2168,6 +2171,11 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           FakeIOException fioe) {
         // OK: e.g. SMS hit the exception
         break;
+      } catch (
+          @SuppressWarnings("unused")
+          IllegalStateException ise) {
+        // OK: Merge-on-refresh refuses to run because IndexWriter hit a tragedy
+        break;
       }
     }
 
@@ -2294,5 +2302,39 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
       assertTrue(DirectoryReader.indexExists(dir));
       DirectoryReader.open(dir).close();
     }
+  }
+
+  public void testExceptionJustBeforeFlushWithPointValues() throws Exception {
+    Directory dir = newDirectory();
+    Analyzer analyzer =
+        new Analyzer(Analyzer.PER_FIELD_REUSE_STRATEGY) {
+          @Override
+          public TokenStreamComponents createComponents(String fieldName) {
+            MockTokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+            tokenizer.setEnableChecks(
+                false); // disable workflow checking as we forcefully close() in exceptional cases.
+            TokenStream stream = new CrashingFilter(fieldName, tokenizer);
+            return new TokenStreamComponents(tokenizer, stream);
+          }
+        };
+    IndexWriterConfig iwc =
+        newIndexWriterConfig(analyzer).setCommitOnClose(false).setMaxBufferedDocs(3);
+    MergePolicy mp = iwc.getMergePolicy();
+    iwc.setMergePolicy(
+        new SoftDeletesRetentionMergePolicy("soft_delete", MatchAllDocsQuery::new, mp));
+    IndexWriter w = RandomIndexWriter.mockIndexWriter(dir, iwc, random());
+    Document newdoc = new Document();
+    newdoc.add(newTextField("crash", "do it on token 4", Field.Store.NO));
+    newdoc.add(new IntPoint("int", 42));
+    expectThrows(IOException.class, () -> w.addDocument(newdoc));
+    DirectoryReader r = w.getReader(false, false);
+    LeafReader onlyReader = getOnlyLeafReader(r);
+    // we mark the failed doc as deleted
+    assertEquals(onlyReader.numDeletedDocs(), 1);
+    // there are not points values (rather than an empty set of values)
+    assertNull(onlyReader.getPointValues("field"));
+    onlyReader.close();
+    w.close();
+    dir.close();
   }
 }

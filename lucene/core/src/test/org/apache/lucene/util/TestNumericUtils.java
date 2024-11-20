@@ -18,6 +18,8 @@ package org.apache.lucene.util;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests for NumericUtils static methods. */
 public class TestNumericUtils extends LuceneTestCase {

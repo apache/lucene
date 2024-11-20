@@ -16,24 +16,24 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
+import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetField;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
+import org.apache.lucene.facet.taxonomy.ParallelTaxonomyArrays;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter.MemoryOrdinalMap;
 import org.apache.lucene.facet.taxonomy.writercache.LruTaxonomyWriterCache;
 import org.apache.lucene.facet.taxonomy.writercache.TaxonomyWriterCache;
-import org.apache.lucene.facet.taxonomy.writercache.UTF8TaxonomyWriterCache;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -43,8 +43,9 @@ import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.TestUtil;
 import org.junit.Test;
 
 public class TestDirectoryTaxonomyWriter extends FacetTestCase {
@@ -169,7 +170,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     // Verifies that if rollback is called, DTW is closed.
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter dtw = new DirectoryTaxonomyWriter(dir);
-    assertTrue(dtw.getCache() instanceof UTF8TaxonomyWriterCache);
+    assertTrue(dtw.getCache() instanceof LruTaxonomyWriterCache);
     dtw.addCategory(new FacetLabel("a"));
     dtw.rollback();
     // should not have succeeded to add a category following rollback.
@@ -299,8 +300,8 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     final double d = random().nextDouble();
     final TaxonomyWriterCache cache;
     if (d < 0.7) {
-      // this is the fastest, yet most memory consuming
-      cache = new UTF8TaxonomyWriterCache();
+      // same as LruTaxonomyWriterCache but with the default cache size
+      cache = DirectoryTaxonomyWriter.defaultTaxonomyWriterCache();
     } else if (TEST_NIGHTLY && d > 0.98) {
       // this is the slowest, but tests the writer concurrency when no caching is done.
       // only pick it during NIGHTLY tests, and even then, with very low chances.
@@ -314,40 +315,38 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
       System.out.println("TEST: use cache=" + cache);
     }
     final DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(dir, OpenMode.CREATE, cache);
-    Thread[] addThreads = new Thread[atLeast(4)];
+    Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
     for (int z = 0; z < addThreads.length; z++) {
       addThreads[z] =
-          new Thread() {
-            @Override
-            public void run() {
-              Random random = random();
-              while (numCats.decrementAndGet() > 0) {
-                try {
-                  int value = random.nextInt(range);
-                  FacetLabel cp =
-                      new FacetLabel(
-                          Integer.toString(value / 1000),
-                          Integer.toString(value / 10000),
-                          Integer.toString(value / 100000),
-                          Integer.toString(value));
-                  int ord = tw.addCategory(cp);
-                  assertTrue(
-                      "invalid parent for ordinal " + ord + ", category " + cp,
-                      tw.getParent(ord) != -1);
-                  String l1 = FacetsConfig.pathToString(cp.components, 1);
-                  String l2 = FacetsConfig.pathToString(cp.components, 2);
-                  String l3 = FacetsConfig.pathToString(cp.components, 3);
-                  String l4 = FacetsConfig.pathToString(cp.components, 4);
-                  values.put(l1, l1);
-                  values.put(l2, l2);
-                  values.put(l3, l3);
-                  values.put(l4, l4);
-                } catch (IOException e) {
-                  throw new RuntimeException(e);
+          new Thread(
+              () -> {
+                Random random = random();
+                while (numCats.decrementAndGet() > 0) {
+                  try {
+                    int value = random.nextInt(range);
+                    FacetLabel cp =
+                        new FacetLabel(
+                            Integer.toString(value / 1000),
+                            Integer.toString(value / 10000),
+                            Integer.toString(value / 100000),
+                            Integer.toString(value));
+                    int ord = tw.addCategory(cp);
+                    assertTrue(
+                        "invalid parent for ordinal " + ord + ", category " + cp,
+                        tw.getParent(ord) != -1);
+                    String l1 = FacetsConfig.pathToString(cp.components, 1);
+                    String l2 = FacetsConfig.pathToString(cp.components, 2);
+                    String l3 = FacetsConfig.pathToString(cp.components, 3);
+                    String l4 = FacetsConfig.pathToString(cp.components, 4);
+                    values.put(l1, l1);
+                    values.put(l2, l2);
+                    values.put(l3, l3);
+                    values.put(l4, l4);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
                 }
-              }
-            }
-          };
+              });
     }
 
     for (Thread t : addThreads) t.start();
@@ -366,7 +365,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
       fail("mismatch number of categories");
     }
 
-    int[] parents = dtr.getParallelTaxonomyArrays().parents();
+    ParallelTaxonomyArrays.IntArray parents = dtr.getParallelTaxonomyArrays().parents();
     for (String cat : values.keySet()) {
       FacetLabel cp = new FacetLabel(FacetsConfig.stringToPath(cat));
       assertTrue("category not found " + cp, dtr.getOrdinal(cp) > 0);
@@ -376,7 +375,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
       for (int i = 0; i < level; i++) {
         path = cp.subpath(i + 1);
         int ord = dtr.getOrdinal(path);
-        assertEquals("invalid parent for cp=" + path, parentOrd, parents[ord]);
+        assertEquals("invalid parent for cp=" + path, parentOrd, parents.get(ord));
         parentOrd = ord; // next level should have this parent
       }
     }
@@ -505,8 +504,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     Directory indexDir = newDirectory(), taxoDir = newDirectory();
     IndexWriter indexWriter =
         new IndexWriter(indexDir, newIndexWriterConfig(new MockAnalyzer(random())));
-    DirectoryTaxonomyWriter taxoWriter =
-        new DirectoryTaxonomyWriter(taxoDir, OpenMode.CREATE, new UTF8TaxonomyWriterCache());
+    DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir, OpenMode.CREATE);
     FacetsConfig config = new FacetsConfig();
 
     // Add one huge label:
@@ -542,7 +540,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     IndexSearcher searcher = new IndexSearcher(indexReader);
     DrillDownQuery ddq = new DrillDownQuery(new FacetsConfig());
     ddq.add("dim", bigs);
-    assertEquals(1, searcher.search(ddq, 10).totalHits.value);
+    assertEquals(1, searcher.search(ddq, 10).totalHits.value());
 
     IOUtils.close(indexReader, taxoReader, indexDir, taxoDir);
   }

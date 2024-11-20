@@ -70,7 +70,6 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
 
   /** Called after a doc and all its fields have been added. */
   public void finishDocument() throws IOException {}
-  ;
 
   /**
    * Called before writing the terms of the field. {@link #startTerm(BytesRef, int)} will be called
@@ -82,7 +81,6 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
 
   /** Called after a field and all its terms have been added. */
   public void finishField() throws IOException {}
-  ;
 
   /**
    * Adds a term and its term frequency <code>freq</code>. If this field has positions and/or
@@ -145,7 +143,7 @@ public abstract class TermVectorsWriter implements Closeable, Accountable {
           if (payload == null) {
             payload = new BytesRefBuilder();
           }
-          payload.grow(payloadLength);
+          payload.growNoCopy(payloadLength);
 
           positions.readBytes(payload.bytes(), 0, payloadLength);
           payload.setLength(payloadLength);
