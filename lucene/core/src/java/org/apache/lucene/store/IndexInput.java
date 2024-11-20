@@ -235,6 +235,8 @@ public abstract class IndexInput extends DataInput implements Closeable {
    * in physical memory. A value of false does not imply that the contents are not resident in
    * physical memory. An empty optional is returned if it is not possible to determine.
    *
+   * <p>This runs in linear time with the {@link #length()} of this input / page size.
+   *
    * <p>The default implementation returns an empty optional.
    */
   public Optional<Boolean> isLoaded() {
