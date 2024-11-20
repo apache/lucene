@@ -407,9 +407,12 @@ final class WANDScorer extends Scorer {
     // per-window max scores over and over again. In the event when this makes us compute upTo as
     // NO_MORE_DOCS, this scorer will effectively implement WAND rather than block-max WAND.
     for (DisiWrapper w : head) {
-      if (w.doc <= newUpTo && w.cost <= leadCost) {
-        newUpTo = Math.min(w.scorer.advanceShallow(w.doc), newUpTo);
-        w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
+      if (w.doc <= newUpTo) {
+        // Note: it's important to call advanceShallow since it has side-effects.
+        int clauseUpto = w.scorer.advanceShallow(w.doc);
+        if (w.cost <= leadCost) {
+          newUpTo = Math.min(clauseUpto, newUpTo);
+        }
       }
     }
     // Only look at the tail if none of the `head` clauses had a block we could reuse and if its
@@ -423,6 +426,13 @@ final class WANDScorer extends Scorer {
       }
     }
     upTo = newUpTo;
+
+    // Now update the max scores of clauses that are before upTo.
+    for (DisiWrapper w : head) {
+      if (w.doc <= upTo) {
+        w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
+      }
+    }
 
     tailMaxScore = 0;
     for (int i = 0; i < tailSize; ++i) {
