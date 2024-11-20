@@ -557,7 +557,6 @@ public class TieredMergePolicy extends MergePolicy {
 
       for (int startIdx = 0; startIdx < sortedEligible.size(); startIdx++) {
 
-        long totAfterMergeBytes = 0;
         final List<SegmentCommitInfo> candidate = new ArrayList<>();
         boolean hitTooLarge = false;
         long bytesThisMerge = 0;
@@ -569,20 +568,20 @@ public class TieredMergePolicy extends MergePolicy {
                 // would be less than the floor segment size. This is important because segments
                 // below the floor segment size are more aggressively merged by this policy, so we
                 // need to grow them as quickly as possible.
-                && (candidate.size() < mergeFactor || totAfterMergeBytes < floorSegmentBytes)
+                && (candidate.size() < mergeFactor || bytesThisMerge < floorSegmentBytes)
                 && bytesThisMerge < maxMergedSegmentBytes
                 && (bytesThisMerge < floorSegmentBytes || docCountThisMerge <= allowedDocCount);
             idx++) {
           final SegmentSizeAndDocs segSizeDocs = sortedEligible.get(idx);
           final long segBytes = segSizeDocs.sizeInBytes;
           int segDocCount = segSizeDocs.maxDoc - segSizeDocs.delCount;
-          if (totAfterMergeBytes + segBytes > maxMergedSegmentBytes
-              || (totAfterMergeBytes > floorSegmentBytes
+          if (bytesThisMerge + segBytes > maxMergedSegmentBytes
+              || (bytesThisMerge > floorSegmentBytes
                   && docCountThisMerge + segDocCount > allowedDocCount)) {
             // Only set hitTooLarge when reaching the maximum byte size, as this will create
             // segments of the maximum size which will no longer be eligible for merging for a long
             // time (until they accumulate enough deletes).
-            hitTooLarge |= totAfterMergeBytes + segBytes > maxMergedSegmentBytes;
+            hitTooLarge |= bytesThisMerge + segBytes > maxMergedSegmentBytes;
             if (candidate.size() == 0) {
               // We should never have something coming in that _cannot_ be merged, so handle
               // singleton merges
@@ -593,7 +592,6 @@ public class TieredMergePolicy extends MergePolicy {
           candidate.add(segSizeDocs.segInfo);
           bytesThisMerge += segBytes;
           docCountThisMerge += segDocCount;
-          totAfterMergeBytes += segBytes;
         }
 
         // We should never see an empty candidate: we iterated over maxMergeAtOnce
@@ -642,7 +640,7 @@ public class TieredMergePolicy extends MergePolicy {
                   + " tooLarge="
                   + hitTooLarge
                   + " size="
-                  + String.format(Locale.ROOT, "%.3f MB", totAfterMergeBytes / 1024. / 1024.),
+                  + String.format(Locale.ROOT, "%.3f MB", bytesThisMerge / 1024. / 1024.),
               mergeContext);
         }
 
@@ -651,7 +649,7 @@ public class TieredMergePolicy extends MergePolicy {
           best = candidate;
           bestScore = score;
           bestTooLarge = hitTooLarge;
-          bestMergeBytes = totAfterMergeBytes;
+          bestMergeBytes = bytesThisMerge;
         }
       }
 
