@@ -564,7 +564,7 @@ public class TieredMergePolicy extends MergePolicy {
         for (int idx = startIdx;
             idx < sortedEligible.size()
                 && candidate.size() < maxMergeAtOnce
-                // We allow merging more that mergeFactor segments together if the merged segment
+                // We allow merging more than mergeFactor segments together if the merged segment
                 // would be less than the floor segment size. This is important because segments
                 // below the floor segment size are more aggressively merged by this policy, so we
                 // need to grow them as quickly as possible.
