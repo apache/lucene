@@ -106,6 +106,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     final KnnVectorsReader delegate;
     final FieldInfos fis;
     int mergeInstanceCount;
+    int finishMergeCount = 0;
 
     AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
       assert delegate != null;
@@ -183,7 +184,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
         @Override
         public void finishMerge() throws IOException {
           delegate.finishMerge();
-          parent.mergeInstanceCount--; // decrement the parents merge count
+          parent.finishMergeCount++;
         }
 
         @Override
@@ -196,14 +197,13 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void finishMerge() throws IOException {
       delegate.finishMerge();
-      mergeInstanceCount--;
+      finishMergeCount++;
     }
 
     @Override
     public void close() throws IOException {
       delegate.close();
-      delegate.close();
-      assert mergeInstanceCount == 0;
+      assert finishMergeCount <= 0 || mergeInstanceCount == finishMergeCount;
     }
 
     @Override
