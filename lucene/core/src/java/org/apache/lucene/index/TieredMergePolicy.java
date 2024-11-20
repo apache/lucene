@@ -582,11 +582,16 @@ public class TieredMergePolicy extends MergePolicy {
             // segments of the maximum size which will no longer be eligible for merging for a long
             // time (until they accumulate enough deletes).
             hitTooLarge |= bytesThisMerge + segBytes > maxMergedSegmentBytes;
-            if (candidate.size() == 0) {
-              // We should never have something coming in that _cannot_ be merged, so handle
-              // singleton merges
-              candidate.add(segSizeDocs.segInfo);
-              bytesThisMerge += segBytes;
+            // We should never have something coming in that _cannot_ be merged, so handle
+            // singleton merges
+            if (candidate.size() > 0) {
+              // NOTE: we continue, so that we can try
+              // "packing" smaller segments into this merge
+              // to see if we can get closer to the max
+              // size; this in general is not perfect since
+              // this is really "bin packing" and we'd have
+              // to try different permutations.
+              continue;
             }
           }
           candidate.add(segSizeDocs.segInfo);

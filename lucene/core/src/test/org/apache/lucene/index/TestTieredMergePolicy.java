@@ -163,9 +163,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
   @Override
   protected void assertMerge(MergePolicy policy, MergeSpecification merges) {
     TieredMergePolicy tmp = (TieredMergePolicy) policy;
-    final int mergeFactor = (int) Math.min(tmp.getMaxMergeAtOnce(), tmp.getSegmentsPerTier());
     for (OneMerge merge : merges.merges) {
-      assertTrue(merge.segments.size() <= mergeFactor);
+      assertTrue(merge.segments.size() <= tmp.getMaxMergeAtOnce());
     }
   }
 
@@ -993,7 +992,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     TieredMergePolicy mp = new TieredMergePolicy();
 
-    for (int i = 0; i < 11; ++i) {
+    for (int i = 0; i < 31; ++i) {
       segmentInfos.add(
           makeSegmentCommitInfo(
               "_" + segNameGenerator.getAndIncrement(),
