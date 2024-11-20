@@ -406,6 +406,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
   }
 
+  @Override
   public Optional<Boolean> isLoaded() {
     for (MemorySegment seg : segments) {
       if (seg.isLoaded() == false) {
