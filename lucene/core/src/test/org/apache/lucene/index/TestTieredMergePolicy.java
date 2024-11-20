@@ -983,7 +983,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     assertEquals(2, mergeSpec.merges.size());
     assertEquals(30, mergeSpec.merges.get(0).segments.size());
     assertEquals(20, mergeSpec.merges.get(1).segments.size());
-}
+  }
 
   public void testFullFlushMerges() throws IOException {
     AtomicLong segNameGenerator = new AtomicLong();
