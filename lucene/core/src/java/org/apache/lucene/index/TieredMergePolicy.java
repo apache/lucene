@@ -100,7 +100,13 @@ public class TieredMergePolicy extends MergePolicy {
     super(DEFAULT_NO_CFS_RATIO, MergePolicy.DEFAULT_MAX_CFS_SEGMENT_SIZE);
   }
 
-  /** Maximum number of segments to be merged at a time during "normal" merging. Default is 30. */
+  /**
+   * Maximum number of segments to be merged at a time during "normal" merging. Default is 30.
+   *
+   * <p><b>NOTE</b>: Merges above the {@link #setFloorSegmentMB(double) floor segment size} also
+   * bound the number of merged segments by {@link #setSegmentsPerTier(double) the number of
+   * segments per tier}.
+   */
   public TieredMergePolicy setMaxMergeAtOnce(int v) {
     if (v < 2) {
       throw new IllegalArgumentException("maxMergeAtOnce must be > 1 (got " + v + ")");
