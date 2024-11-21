@@ -73,7 +73,7 @@ public class RerankKnnFloatVectorQuery extends Query {
         int docId = iterator.docID();
         float[] vectorValue = floatVectorValues.vectorValue(docId);
         float score = comparer.compare(vectorValue, target);
-        queue.insertWithOverflow(new ScoreDoc(docId, score));
+        queue.insertWithOverflow(new ScoreDoc(leaf.docBase + docId, score));
       }
     }
     int i = 0;

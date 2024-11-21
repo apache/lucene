@@ -46,7 +46,6 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
       VectorSimilarityFunction.COSINE;
   private Directory directory;
   private IndexWriterConfig config;
-  private static final int NUM_VECTORS = 1000;
   private static final int VECTOR_DIMENSION = 128;
 
   @Before
@@ -66,15 +65,22 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
 
     Random random = random();
 
+    int numVectors = atLeast(1000);
+
     // Step 1: Index random vectors in quantized format
     try (IndexWriter writer = new IndexWriter(directory, config)) {
-      for (int i = 0; i < NUM_VECTORS; i++) {
+      for (int i = 0; i < numVectors; i++) {
         float[] vector = randomFloatVector(VECTOR_DIMENSION, random);
         Document doc = new Document();
         doc.add(new IntField("id", i, Field.Store.YES));
         doc.add(new KnnFloatVectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
         writer.addDocument(doc);
         vectors.put(i, vector);
+
+        // flush to create multiple segments
+        if (random.nextInt(10) == 0) {
+          writer.flush();
+        }
       }
     }
 
@@ -93,10 +99,11 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
       // Step 3: Verify that TopDocs scores match similarity with unquantized vectors
       for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
         Document retrievedDoc = searcher.storedFields().document(scoreDoc.doc);
-        float[] docVector = vectors.get(retrievedDoc.getField("id").numericValue().intValue());
+        int id = retrievedDoc.getField("id").numericValue().intValue();
+        float[] docVector = vectors.get(id);
         float expectedScore = VECTOR_SIMILARITY_FUNCTION.compare(targetVector, docVector);
         Assert.assertEquals(
-            "Score does not match expected similarity for docId: " + scoreDoc.doc,
+            "Score does not match expected similarity for doc ord: " + scoreDoc.doc + ", id: " + id,
             expectedScore,
             scoreDoc.score,
             1e-5);
