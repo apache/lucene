@@ -43,6 +43,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
 
+/** A union multiple ranges over SortedSetDocValuesField */
 public class SortedSetMultiRangeQuery extends Query {
   private final String field;
   private final int bytesPerDim;
@@ -60,6 +61,7 @@ public class SortedSetMultiRangeQuery extends Query {
     this.comparator = comparator;
   }
 
+  /** Builder for creating a SortedSetMultiRangeQuery. */
   public static class Builder {
     private final String name;
     protected final List<MultiRangeQuery.RangeClause> clauses = new ArrayList<>();
