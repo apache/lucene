@@ -105,13 +105,19 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
   static class AssertingKnnVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
     final KnnVectorsReader delegate;
     final FieldInfos fis;
+    final boolean mergeInstance;
     int mergeInstanceCount;
-    int finishMergeCount = 0;
+    int finishMergeCount;
 
     AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
+      this(delegate, fis, false);
+    }
+
+    AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis, boolean mergeInstance) {
       assert delegate != null;
       this.delegate = delegate;
       this.fis = fis;
+      this.mergeInstance = mergeInstance;
     }
 
     @Override
@@ -121,6 +127,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      assert mergeInstance || mergeInstanceCount == 0;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -135,6 +142,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      assert mergeInstance || mergeInstanceCount == 0;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -150,6 +158,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
+      assert mergeInstance || mergeInstanceCount == 0;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -160,6 +169,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
+      assert mergeInstance || mergeInstanceCount == 0;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -174,7 +184,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       mergeInstanceCount++;
 
       final var parent = this;
-      return new AssertingKnnVectorsReader(mergeVectorsReader, AssertingKnnVectorsReader.this.fis) {
+      return new AssertingKnnVectorsReader(
+          mergeVectorsReader, AssertingKnnVectorsReader.this.fis, true) {
         @Override
         public KnnVectorsReader getMergeInstance() {
           assert false; // merging from a merge instance it not allowed
@@ -196,12 +207,14 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public void finishMerge() throws IOException {
+      assert mergeInstance;
       delegate.finishMerge();
       finishMergeCount++;
     }
 
     @Override
     public void close() throws IOException {
+      assert !mergeInstance;
       delegate.close();
       assert finishMergeCount <= 0 || mergeInstanceCount == finishMergeCount;
     }
