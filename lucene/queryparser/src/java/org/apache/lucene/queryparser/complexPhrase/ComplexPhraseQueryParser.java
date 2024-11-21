@@ -294,9 +294,9 @@ public class ComplexPhraseQueryParser extends QueryParser {
 
         if (qc instanceof BooleanQuery || qc instanceof SynonymQuery) {
           ArrayList<SpanQuery> sc = new ArrayList<>();
-          BooleanQuery booleanCaluse =
+          BooleanQuery booleanClause =
               qc instanceof BooleanQuery ? (BooleanQuery) qc : convert((SynonymQuery) qc);
-          addComplexPhraseClause(sc, booleanCaluse);
+          addComplexPhraseClause(sc, booleanClause);
           if (sc.size() > 0) {
             allSpanClauses[i] = sc.get(0);
           } else {
