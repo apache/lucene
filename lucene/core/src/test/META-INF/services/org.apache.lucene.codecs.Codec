@@ -15,4 +15,4 @@
 
 org.apache.lucene.codecs.TestMinimalCodec$MinimalCodec
 org.apache.lucene.codecs.TestMinimalCodec$MinimalCompoundCodec
-org.apache.lucene.search.TestTwoPhaseKnnVectorQuery$QuantizedCodec
+org.apache.lucene.search.TestRerankKnnFloatVectorQuery$QuantizedCodec

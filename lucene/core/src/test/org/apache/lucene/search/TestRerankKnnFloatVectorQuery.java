@@ -39,7 +39,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TestTwoPhaseKnnVectorQuery extends LuceneTestCase {
+public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
 
   private static final String FIELD = "vector";
   public static final VectorSimilarityFunction VECTOR_SIMILARITY_FUNCTION =
@@ -85,8 +85,9 @@ public class TestTwoPhaseKnnVectorQuery extends LuceneTestCase {
       int k = 10;
       double oversample = 1.0;
 
-      TwoPhaseKnnVectorQuery query =
-          new TwoPhaseKnnVectorQuery(FIELD, targetVector, k, oversample, null);
+      KnnFloatVectorQuery knnQuery =
+          new KnnFloatVectorQuery(FIELD, targetVector, k + (int) (k * oversample));
+      RerankKnnFloatVectorQuery query = new RerankKnnFloatVectorQuery(knnQuery, targetVector, k);
       TopDocs topDocs = searcher.search(query, k);
 
       // Step 3: Verify that TopDocs scores match similarity with unquantized vectors
