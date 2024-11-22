@@ -47,7 +47,11 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with
+  newer Java versions. Set the `org.apache.lucene.vectorization.upperJavaFeatureVersion`
+  system property to increase the set of Java versions that Panama Vectorization will
+  provide optimized implementations for. (Chris Hegarty)
 
 Optimizations
 ---------------------
@@ -84,6 +88,14 @@ Optimizations
 
 * GITHUB#13763: Replace Map<String,Object> with IntObjectHashMap for KnnVectorsReader (Pan Guixin)
 
+* GITHUB#13968: Switch postings from storing doc IDs in a long[] to an int[].
+  Lucene 8.4 had moved to a long[] to help speed up block decoding by using
+  longs that would pack two integers. We are now moving back to integers to be
+  able to take advantage of 2x more lanes with the vector API. (Adrien Grand)
+
+* GITHUB#13994: Speed up top-k retrieval of filtered conjunctions.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
@@ -92,6 +104,10 @@ Bug Fixes
 * GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
 * GITHUB#13927: Fix StoredFieldsConsumer finish. (linfn)
 * GITHUB#13944: Ensure deterministic order of clauses for `DisjunctionMaxQuery#toString`. (Laurent Jakubina)
+* GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
+  in valid polygons. (Ignacio Vera)
+* GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
+  and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
 
 Build
 ---------------------
@@ -100,7 +116,7 @@ Build
 
 Other
 ---------------------
-(No changes)
+* GITHUB#13982: Remove duplicate test code. (Lu Xugang)
 
 ======================== Lucene 10.0.1 =======================
 
@@ -327,6 +343,8 @@ Bug Fixes
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
+
+* GITHUB#13498: Avoid performance regression by constructing lazily the PointTree in NumericComparator, (Ignacio Vera)
 
 Changes in Runtime Behavior
 ---------------------

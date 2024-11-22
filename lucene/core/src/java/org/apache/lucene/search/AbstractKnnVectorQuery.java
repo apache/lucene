@@ -55,7 +55,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   protected final String field;
   protected final int k;
-  private final Query filter;
+  protected final Query filter;
 
   public AbstractKnnVectorQuery(String field, int k, Query filter) {
     this.field = Objects.requireNonNull(field, "field");
