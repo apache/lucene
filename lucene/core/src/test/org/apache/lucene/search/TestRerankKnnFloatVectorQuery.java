@@ -19,9 +19,6 @@ package org.apache.lucene.search;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -35,6 +32,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,7 +56,8 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
 
     // Set up the IndexWriterConfig to use quantized vector storage
     config = new IndexWriterConfig();
-    config.setCodec(new QuantizedCodec());
+    config.setCodec(
+        TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswScalarQuantizedVectorsFormat()));
   }
 
   @Test
@@ -121,17 +120,5 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
       vector[i] = random.nextFloat();
     }
     return vector;
-  }
-
-  public static class QuantizedCodec extends FilterCodec {
-
-    public QuantizedCodec() {
-      super("QuantizedCodec", new Lucene100Codec());
-    }
-
-    @Override
-    public KnnVectorsFormat knnVectorsFormat() {
-      return new Lucene99HnswScalarQuantizedVectorsFormat();
-    }
   }
 }
