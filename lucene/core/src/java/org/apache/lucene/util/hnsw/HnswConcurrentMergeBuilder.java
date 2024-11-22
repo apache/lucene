@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
@@ -56,7 +57,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     this.taskExecutor = taskExecutor;
     AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
-    hnswLock = new HnswLock(hnsw);
+    hnswLock = new HnswLock();
     for (int i = 0; i < numWorker; i++) {
       workers[i] =
           new ConcurrentMergeWorker(
@@ -221,13 +222,16 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
     @Override
     void graphSeek(HnswGraph graph, int level, int targetNode) {
-      try (HnswLock.LockedRow rowLock = hnswLock.read(level, targetNode)) {
-        NeighborArray neighborArray = rowLock.row();
+      Lock lock = hnswLock.read(level, targetNode);
+      try {
+        NeighborArray neighborArray = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
         if (nodeBuffer == null || nodeBuffer.length < neighborArray.size()) {
           nodeBuffer = new int[neighborArray.size()];
         }
         size = neighborArray.size();
-        if (size >= 0) System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
+        System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
+      } finally {
+        lock.unlock();
       }
       upto = -1;
     }
