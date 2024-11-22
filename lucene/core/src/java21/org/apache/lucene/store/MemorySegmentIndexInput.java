@@ -359,6 +359,20 @@ abstract class MemorySegmentIndexInput extends IndexInput
         });
   }
 
+  @Override
+  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
+    if (NATIVE_ACCESS.isEmpty()) {
+      return;
+    }
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+
+    long offset = 0;
+    for (MemorySegment seg : segments) {
+      advise(offset, seg.byteSize(), segment -> nativeAccess.madvise(segment, readAdvice));
+      offset += seg.byteSize();
+    }
+  }
+
   void advise(long offset, long length, IOConsumer<MemorySegment> advice) throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
       return;
