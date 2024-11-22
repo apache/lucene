@@ -18,6 +18,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -106,8 +107,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     final KnnVectorsReader delegate;
     final FieldInfos fis;
     final boolean mergeInstance;
-    int mergeInstanceCount;
-    int finishMergeCount;
+    AtomicInteger mergeInstanceCount = new AtomicInteger();
+    AtomicInteger finishMergeCount = new AtomicInteger();
 
     AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
       this(delegate, fis, false);
@@ -127,7 +128,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-      assert mergeInstance || mergeInstanceCount == 0;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -142,7 +142,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
-      assert mergeInstance || mergeInstanceCount == 0;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -158,7 +157,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert mergeInstance || mergeInstanceCount == 0;
+      assert !mergeInstance;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -169,7 +168,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert mergeInstance || mergeInstanceCount == 0;
+      assert !mergeInstance;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -179,9 +178,10 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public KnnVectorsReader getMergeInstance() {
+      assert !mergeInstance;
       var mergeVectorsReader = delegate.getMergeInstance();
       assert mergeVectorsReader != null;
-      mergeInstanceCount++;
+      mergeInstanceCount.incrementAndGet();
 
       final var parent = this;
       return new AssertingKnnVectorsReader(
@@ -194,8 +194,9 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
         @Override
         public void finishMerge() throws IOException {
+          assert mergeInstance;
           delegate.finishMerge();
-          parent.finishMergeCount++;
+          parent.finishMergeCount.incrementAndGet();
         }
 
         @Override
@@ -209,14 +210,14 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     public void finishMerge() throws IOException {
       assert mergeInstance;
       delegate.finishMerge();
-      finishMergeCount++;
+      finishMergeCount.incrementAndGet();
     }
 
     @Override
     public void close() throws IOException {
       assert !mergeInstance;
       delegate.close();
-      assert finishMergeCount <= 0 || mergeInstanceCount == finishMergeCount;
+      assert finishMergeCount.get() <= 0 || mergeInstanceCount.get() == finishMergeCount.get();
     }
 
     @Override
