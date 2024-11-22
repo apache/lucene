@@ -96,6 +96,9 @@ Optimizations
 * GITHUB#13994: Speed up top-k retrieval of filtered conjunctions.
   (Adrien Grand)
 
+* GITHUB#13985: Introduces IndexInput#updateReadAdvice to change the ReadAdvice
+  while merging vectors. (Tejas Shah)
+
 * GITHUB#14000: Speed up top-k retrieval of filtered disjunctions.
   (Adrien Grand)
 
