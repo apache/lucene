@@ -67,6 +67,9 @@ public class RerankKnnFloatVectorQuery extends Query {
         continue;
       }
       FieldInfo fi = leaf.reader().getFieldInfos().fieldInfo(query.getField());
+      if (fi == null) {
+        continue;
+      }
       VectorSimilarityFunction comparer = fi.getVectorSimilarityFunction();
       DocIdSetIterator iterator = scorer.iterator();
       while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
@@ -95,7 +98,7 @@ public class RerankKnnFloatVectorQuery extends Query {
   public boolean equals(Object o) {
     if (this == o) return true;
     RerankKnnFloatVectorQuery that = (RerankKnnFloatVectorQuery) o;
-    return Objects.equals(query, that.query) && k == that.k;
+    return Objects.equals(query, that.query) && Arrays.equals(target, that.target) && k == that.k;
   }
 
   @Override
