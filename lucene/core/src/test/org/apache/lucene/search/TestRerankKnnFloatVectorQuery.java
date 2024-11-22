@@ -42,11 +42,13 @@ import org.junit.Test;
 public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
 
   private static final String FIELD = "vector";
-  public static final VectorSimilarityFunction VECTOR_SIMILARITY_FUNCTION =
+  private static final VectorSimilarityFunction VECTOR_SIMILARITY_FUNCTION =
       VectorSimilarityFunction.COSINE;
+  private static final int NUM_VECTORS = 1000;
+  private static final int VECTOR_DIMENSION = 128;
+
   private Directory directory;
   private IndexWriterConfig config;
-  private static final int VECTOR_DIMENSION = 128;
 
   @Before
   @Override
@@ -65,20 +67,21 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
 
     Random random = random();
 
-    int numVectors = atLeast(1000);
+    int numVectors = atLeast(NUM_VECTORS);
+    int numSegments = random.nextInt(2, 10);
 
     // Step 1: Index random vectors in quantized format
     try (IndexWriter writer = new IndexWriter(directory, config)) {
-      for (int i = 0; i < numVectors; i++) {
-        float[] vector = randomFloatVector(VECTOR_DIMENSION, random);
-        Document doc = new Document();
-        doc.add(new IntField("id", i, Field.Store.YES));
-        doc.add(new KnnFloatVectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
-        writer.addDocument(doc);
-        vectors.put(i, vector);
+      for (int j = 0; j < numSegments; j++) {
+        for (int i = 0; i < numVectors; i++) {
+          float[] vector = randomFloatVector(VECTOR_DIMENSION, random);
+          Document doc = new Document();
+          int id = j * numVectors + i;
+          doc.add(new IntField("id", id, Field.Store.YES));
+          doc.add(new KnnFloatVectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
+          writer.addDocument(doc);
+          vectors.put(id, vector);
 
-        // flush to create multiple segments
-        if (random.nextInt(10) == 0) {
           writer.flush();
         }
       }
@@ -101,6 +104,7 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
         Document retrievedDoc = searcher.storedFields().document(scoreDoc.doc);
         int id = retrievedDoc.getField("id").numericValue().intValue();
         float[] docVector = vectors.get(id);
+        assert docVector != null : "Vector for id " + id + " not found";
         float expectedScore = VECTOR_SIMILARITY_FUNCTION.compare(targetVector, docVector);
         Assert.assertEquals(
             "Score does not match expected similarity for doc ord: " + scoreDoc.doc + ", id: " + id,
