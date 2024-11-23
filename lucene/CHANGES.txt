@@ -401,14 +401,6 @@ Build
 
 * GITHUB#13698: Upgrade to gradle 8.10 (Dawid Weiss)
 
-======================== Lucene 9.12.1 =======================
-
-Bug Fixes
----------------------
-
-* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
-  their corresponding ordinals. (Paul King)
-
 ======================== Lucene 9.12.0 =======================
 
 Security Fixes
