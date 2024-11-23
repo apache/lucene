@@ -100,6 +100,8 @@ Other
 Bug Fixes
 ---------------------
 
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
 
 ======================= Lucene 10.0.0 =======================
 
@@ -398,6 +400,14 @@ Build
 * GITHUB#13649: Fix eclipse ide settings generation #13649 (Uwe Schindler, Dawid Weiss)
 
 * GITHUB#13698: Upgrade to gradle 8.10 (Dawid Weiss)
+
+======================== Lucene 9.12.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
 
 ======================== Lucene 9.12.0 =======================
 
