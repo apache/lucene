@@ -16,15 +16,16 @@
  */
 package org.apache.lucene.store.s3;
 
+import com.adobe.testing.s3mock.S3MockApplication;
 import java.io.IOException;
 import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.core.SimpleAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -33,11 +34,11 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.queryparser.classic.ParseException;
-import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -45,45 +46,61 @@ import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.store.s3.client.Client;
+import org.apache.lucene.store.s3.client.Credentials;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.BaseDirectoryTestCase;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Test;
+import org.junit.BeforeClass;
 
-public class TestS3Directory extends LuceneTestCase {
-
-  private static final Logger logger = Logger.getLogger(TestS3Directory.class.getName());
+public class TestS3Directory extends BaseDirectoryTestCase {
 
   public static final String TEST_BUCKET = "TEST-lucene-s3-directory-dir";
   public static final String TEST_BUCKET1 = "TEST-lucene-s3-directory-dir1";
-  public static final String TEST_BUCKET2 = "TEST-lucene-s3-directory-dir2";
 
-  private S3Directory s3Directory;
-  private Directory fsDirectory;
-  private Directory ramDirectory;
-  private Analyzer analyzer = new SimpleAnalyzer();
+  private static S3MockApplication s3Mock;
+  private static Client s3;
+  private static S3Directory s3Directory;
+
+  private static S3Directory s3Directory2;
+  private static Directory fsDirectory;
+  private static Directory ramDirectory;
+  private final Analyzer analyzer = new MockAnalyzer(random());
 
   private final Collection<String> docs = loadDocuments(3000, 5);
   private final IndexWriterConfig.OpenMode openMode = IndexWriterConfig.OpenMode.CREATE_OR_APPEND;
   private final boolean useCompoundFile = false;
 
-  @Override
-  public void setUp() {
-    s3Directory = new S3Directory(TEST_BUCKET, "", S3LockFactory.INSTANCE);
+  @BeforeClass
+  public static void setUpClass() throws Exception {
+    Map<String, Object> props = new HashMap<>();
+    props.put(S3MockApplication.PROP_SILENT, "true");
+    s3Mock = S3MockApplication.start(props);
+    s3 =
+        Client.s3()
+            .region("us-east-1")
+            .credentials(Credentials.of("foo", "bar"))
+            .baseUrlFactory((serviceName, region) -> "http://localhost:9090/")
+            .build();
+
+    s3Directory = new S3Directory(s3, TEST_BUCKET, "");
     s3Directory.create();
 
-    try {
-      ramDirectory = new MMapDirectory(FileSystems.getDefault().getPath("target/index"));
-      fsDirectory = FSDirectory.open(FileSystems.getDefault().getPath("target/index"));
-    } catch (IOException ex) {
-      logger.log(Level.SEVERE, null, ex);
-    }
+    ramDirectory = new MMapDirectory(FileSystems.getDefault().getPath("target/index"));
+    fsDirectory = FSDirectory.open(FileSystems.getDefault().getPath("target/index"));
+
+    s3Directory2 = new S3Directory(s3, TEST_BUCKET1, "");
   }
 
-  @Override
-  public void tearDown() {
+  @AfterClass
+  public static void tearDownClass() throws Exception {
+    s3Directory.emptyBucket();
     s3Directory.close();
     s3Directory.delete();
+    s3Mock.stop();
   }
 
   protected Collection<String> loadDocuments(final int numDocs, final int wordsPerDoc) {
@@ -118,10 +135,7 @@ public class TestS3Directory extends LuceneTestCase {
         doc.add(new StringField("text", word, Field.Store.YES));
         writer.addDocument(doc);
       }
-      // FIXME: review
       // writer.optimize();
-    } catch (Exception e) {
-      logger.log(Level.SEVERE, null, e);
     }
   }
 
@@ -138,8 +152,7 @@ public class TestS3Directory extends LuceneTestCase {
     return config;
   }
 
-  @Test
-  public void testSearch() throws IOException, ParseException {
+  public void testSearch() throws IOException {
     try (IndexWriter iwriter = new IndexWriter(s3Directory, getIndexWriterConfig())) {
       final Document doc = new Document();
       final String text = "This is the text to be indexed.";
@@ -148,20 +161,15 @@ public class TestS3Directory extends LuceneTestCase {
       if (iwriter.hasUncommittedChanges()) {
         iwriter.commit();
       }
-      if (iwriter.isOpen()) {
-        iwriter.getDirectory().close();
-      }
-      iwriter.forceMerge(1, true);
-    } catch (Exception e) {
-      logger.log(Level.SEVERE, null, e);
+      // if (iwriter.isOpen()) {
+      //   iwriter.getDirectory().close();
+      // }
+      // iwriter.forceMerge(1, true);
     }
     // Now search the index:
+    final Query query = new TermQuery(new Term("fieldname", "text"));
     try (DirectoryReader ireader = DirectoryReader.open(s3Directory)) {
       final IndexSearcher isearcher = new IndexSearcher(ireader);
-      // Parse a simple query that searches for "text":
-
-      final QueryParser parser = new QueryParser("fieldname", analyzer);
-      final Query query = parser.parse("text");
       final TopDocs topDocs = isearcher.search(query, 1000);
       final StoredFields storedFields = isearcher.storedFields();
       final ScoreDoc[] hits = topDocs.scoreDocs;
@@ -176,10 +184,6 @@ public class TestS3Directory extends LuceneTestCase {
     }
     try (DirectoryReader ireader = DirectoryReader.open(s3Directory)) {
       final IndexSearcher isearcher = new IndexSearcher(ireader);
-      // Parse a simple query that searches for "text":
-
-      final QueryParser parser = new QueryParser("fieldname", analyzer);
-      final Query query = parser.parse("text");
       final TopDocs topDocs = isearcher.search(query, 1000);
       final StoredFields storedFields = isearcher.storedFields();
       final ScoreDoc[] hits = topDocs.scoreDocs;
@@ -189,19 +193,15 @@ public class TestS3Directory extends LuceneTestCase {
         final Document hitDoc = storedFields.document(hit.doc);
         Assert.assertEquals("This is the text to be indexed.", hitDoc.get("fieldname"));
       }
-    } catch (Exception e) {
-      logger.log(Level.SEVERE, null, e);
     }
-    // Parse a simple query that searches for "text":
   }
 
-  @Test
   public void testList() throws IOException {
     assertTrue(s3Directory.bucketExists());
 
     assertFalse(s3Directory.fileExists("test1"));
 
-    try (IndexOutput indexOutput = s3Directory.createOutput("test1")) {
+    try (IndexOutput indexOutput = s3Directory.createOutput("test1", null)) {
       indexOutput.writeString("TEST STRING");
     }
 
@@ -212,13 +212,12 @@ public class TestS3Directory extends LuceneTestCase {
     assertFalse(s3Directory.fileExists("test1"));
   }
 
-  @Test
-  public void testDeleteContent() throws IOException {
+  public void testDeleteContent() throws IOException, InterruptedException {
     s3Directory.create();
 
     assertFalse(s3Directory.fileExists("test1"));
 
-    try (IndexOutput indexOutput = s3Directory.createOutput("test1")) {
+    try (IndexOutput indexOutput = s3Directory.createOutput("test1", null)) {
       indexOutput.writeString("TEST STRING");
     }
 
@@ -229,7 +228,6 @@ public class TestS3Directory extends LuceneTestCase {
     assertFalse(Arrays.asList(s3Directory.listAll()).contains("test1"));
   }
 
-  @Test
   public void testTiming() throws IOException {
     final long ramTiming = timeIndexWriter(ramDirectory);
     final long fsTiming = timeIndexWriter(fsDirectory);
@@ -240,54 +238,56 @@ public class TestS3Directory extends LuceneTestCase {
     System.out.println("S3Directory Time : " + s3Timing + " ms");
   }
 
-  @Test
   public void testSize5() throws IOException {
     innerTestSize(5);
   }
 
-  @Test
   public void testSize5WithinTransaction() throws IOException {
     innertTestSizeWithinTransaction(5);
   }
 
-  @Test
   public void testSize15() throws IOException {
     innerTestSize(15);
   }
 
-  @Test
   public void testSize15WithinTransaction() throws IOException {
     innertTestSizeWithinTransaction(15);
   }
 
-  @Test
   public void testSize2() throws IOException {
     innerTestSize(2);
   }
 
-  @Test
   public void testSize2WithinTransaction() throws IOException {
     innertTestSizeWithinTransaction(2);
   }
 
-  @Test
   public void testSize1() throws IOException {
     innerTestSize(1);
   }
 
-  @Test
   public void testSize1WithinTransaction() throws IOException {
     innertTestSizeWithinTransaction(1);
   }
 
-  @Test
   public void testSize50() throws IOException {
     innerTestSize(50);
   }
 
-  @Test
   public void testSize50WithinTransaction() throws IOException {
     innertTestSizeWithinTransaction(50);
+  }
+
+  public void testLocks() throws Exception {
+    try (Lock lock1 = s3Directory.obtainLock(IndexWriter.WRITE_LOCK_NAME)) {
+      lock1.ensureValid();
+      try {
+        s3Directory2.obtainLock(IndexWriter.WRITE_LOCK_NAME);
+        Assert.fail("lock2 should not have valid lock");
+      } catch (final Exception e) {
+        e.getCause();
+      }
+    }
   }
 
   private void innerTestSize(final int bufferSize) throws IOException {
@@ -301,6 +301,9 @@ public class TestS3Directory extends LuceneTestCase {
   }
 
   private void insertData() throws IOException {
+    if (s3Directory.fileExists("value1")) {
+      s3Directory.deleteFile("value1");
+    }
     final byte[] test = new byte[] {1, 2, 3, 4, 5, 6, 7, 8};
     try (IndexOutput indexOutput =
         s3Directory.createOutput("value1", new IOContext(new FlushInfo(0, 0)))) {
@@ -338,5 +341,16 @@ public class TestS3Directory extends LuceneTestCase {
       indexInput.seek(30);
       Assert.assertEquals((byte) 3, indexInput.readByte());
     }
+  }
+
+  @Override
+  protected Directory getDirectory(Path path) throws IOException {
+    S3Directory dir = new S3Directory(s3, TEST_BUCKET + "-" + path.getFileName(), "");
+    try {
+      dir.create();
+    } catch (InterruptedException ex) {
+      throw new RuntimeException(ex);
+    }
+    return dir;
   }
 }

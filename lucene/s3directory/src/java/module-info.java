@@ -17,14 +17,15 @@
 
 /** Auto-suggest and Spellchecking support */
 module org.apache.lucene.s3directory {
-
   requires org.apache.lucene.core;
   requires java.logging;
-  requires software.amazon.awssdk.core;
-  requires software.amazon.awssdk.services.s3;
+
+  // Waiting on lib maintainer to add module info to manifest:
+  // requires com.github.davidmoten.aws.lw.client;
+  // requires aws.lightweight.client.java;
 
   exports org.apache.lucene.store.s3;
 
-  provides org.apache.lucene.store.Directory with org.apache.lucene.store.s3.S3Directory;
-
+  provides org.apache.lucene.store.Directory with
+      org.apache.lucene.store.s3.S3Directory;
 }
