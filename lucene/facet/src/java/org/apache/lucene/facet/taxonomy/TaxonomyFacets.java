@@ -351,6 +351,7 @@ public abstract class TaxonomyFacets extends Facets {
 
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     int[] ordinals = new int[labelValues.length];
+    int[] counts = new int[labelValues.length];
     Number[] values = new Number[labelValues.length];
 
     for (int i = labelValues.length - 1; i >= 0; i--) {
@@ -358,6 +359,7 @@ public abstract class TaxonomyFacets extends Facets {
       assert ordAndValue != null;
       ordinals[i] = ordAndValue.ord;
       values[i] = ordAndValue.getValue();
+      counts[i] = getCount(ordinals[i]);
     }
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
@@ -366,8 +368,7 @@ public abstract class TaxonomyFacets extends Facets {
     int childComponentIdx = path.length + 1;
     for (int i = 0; i < labelValues.length; i++) {
       labelValues[i] =
-          new LabelAndValue(
-              bulkPath[i].components[childComponentIdx], values[i], getCount(ordinals[i]));
+          new LabelAndValue(bulkPath[i].components[childComponentIdx], values[i], counts[i]);
     }
 
     return new FacetResult(

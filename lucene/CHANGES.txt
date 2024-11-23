@@ -28,6 +28,9 @@ Bug Fixes
   system property to increase the set of Java versions that Panama Vectorization will
   provide optimized implementations for. (Chris Hegarty)
 
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+
 API Changes
 ---------------------
 
