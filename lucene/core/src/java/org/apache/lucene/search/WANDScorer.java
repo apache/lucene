@@ -546,6 +546,7 @@ final class WANDScorer extends Scorer {
 
   @Override
   public float score() throws IOException {
+    // we need to know about all matches
     advanceAllTail();
 
     double leadScore = this.leadScore;
