@@ -105,6 +105,8 @@ Optimizations
 * GITHUB#13999: CombinedFieldQuery now returns non-infinite maximum scores,
   making it eligible to dynamic pruning. (Adrien Grand)
 
+* GITHUB#13989: Faster checksum computation. (Jean-François Boeuf)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
