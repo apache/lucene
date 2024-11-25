@@ -15,7 +15,7 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 
 Optimizations
 ---------------------
