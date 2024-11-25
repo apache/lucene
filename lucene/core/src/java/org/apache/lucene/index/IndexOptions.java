@@ -33,7 +33,7 @@ public enum IndexOptions {
   DOCS,
   /**
    * Only documents and term frequencies are indexed: positions are omitted. This enables normal
-   * scoring, except Phrase and other positional queries will throw an exception.
+   * scoring, except phrase and other positional queries will throw an exception.
    */
   DOCS_AND_FREQS,
   /**

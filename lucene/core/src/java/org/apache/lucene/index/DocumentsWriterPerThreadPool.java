@@ -30,13 +30,13 @@ import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
  * {@link DocumentsWriterPerThreadPool} controls {@link DocumentsWriterPerThread} instances and
- * their thread assignments during indexing. Each {@link DocumentsWriterPerThread} is once a
- * obtained from the pool exclusively used for indexing a single document or list of documents by
- * the obtaining thread. Each indexing thread must obtain such a {@link DocumentsWriterPerThread} to
+ * their thread assignments during indexing. Each {@link DocumentsWriterPerThread} is, once obtained
+ * from the pool, exclusively used for indexing a single document or list of documents by the
+ * obtaining thread. Each indexing thread must obtain such a {@link DocumentsWriterPerThread} to
  * make progress. Depending on the {@link DocumentsWriterPerThreadPool} implementation {@link
  * DocumentsWriterPerThread} assignments might differ from document to document.
  *
- * <p>Once a {@link DocumentsWriterPerThread} is selected for flush the {@link
+ * <p>Once a {@link DocumentsWriterPerThread} is selected for flush, the {@link
  * DocumentsWriterPerThread} will be checked out of the thread pool and won't be reused for
  * indexing. See {@link #checkout(DocumentsWriterPerThread)}.
  */
@@ -184,7 +184,7 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
   /**
    * Removes the given DWPT from the pool unless it's already been removed before.
    *
-   * @return <code>true</code> iff the given DWPT has been removed. Otherwise <code>false</code>
+   * @return <code>true</code>, iff the given DWPT has been removed. Otherwise <code>false</code>
    */
   synchronized boolean checkout(DocumentsWriterPerThread perThread) {
     // The DWPT must be held by the current thread. This guarantees that concurrent calls to
