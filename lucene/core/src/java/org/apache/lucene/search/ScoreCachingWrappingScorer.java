@@ -31,7 +31,7 @@ import java.util.Collections;
  */
 public final class ScoreCachingWrappingScorer extends Scorable {
 
-  private boolean computeScore;
+  private boolean scoreIsCached;
   private float curScore;
   private final Scorable in;
 
@@ -63,7 +63,8 @@ public final class ScoreCachingWrappingScorer extends Scorable {
     @Override
     public void collect(int doc) throws IOException {
       if (scorer != null) {
-        scorer.computeScore = true;
+        // Invalidate cache when collecting a new doc
+        scorer.scoreIsCached = false;
       }
       super.collect(doc);
     }
@@ -81,9 +82,9 @@ public final class ScoreCachingWrappingScorer extends Scorable {
 
   @Override
   public float score() throws IOException {
-    if (computeScore) {
+    if (scoreIsCached == false) {
       curScore = in.score();
-      computeScore = false;
+      scoreIsCached = true;
     }
 
     return curScore;
