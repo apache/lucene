@@ -295,20 +295,18 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     final boolean indexHasPositions =
         options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
 
-    if (state.docFreq >= BLOCK_SIZE) {
-      if (options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0
-          && (indexHasPositions == false
-              || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false)) {
-        return new BlockImpactsDocsEnum(indexHasPositions, (IntBlockTermState) state);
-      }
+    if (options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0
+        && (indexHasPositions == false
+            || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false)) {
+      return new BlockImpactsDocsEnum(indexHasPositions, (IntBlockTermState) state);
+    }
 
-      if (indexHasPositions
-          && (options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) < 0
-              || PostingsEnum.featureRequested(flags, PostingsEnum.OFFSETS) == false)
-          && (fieldInfo.hasPayloads() == false
-              || PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS) == false)) {
-        return new BlockImpactsPostingsEnum(fieldInfo, (IntBlockTermState) state);
-      }
+    if (indexHasPositions
+        && (options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) < 0
+            || PostingsEnum.featureRequested(flags, PostingsEnum.OFFSETS) == false)
+        && (fieldInfo.hasPayloads() == false
+            || PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS) == false)) {
+      return new BlockImpactsPostingsEnum(fieldInfo, (IntBlockTermState) state);
     }
 
     return new SlowImpactsEnum(postings(fieldInfo, state, null, flags));
@@ -1144,6 +1142,9 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     protected final int[] freqBuffer = new int[BLOCK_SIZE];
 
     protected final int docFreq; // number of docs in this posting list
+    // sum of freqBuffer in this posting list (or docFreq when omitted)
+    protected final long totalTermFreq;
+    protected final int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
     protected final IndexInput docIn;
     protected final PostingDecodingUtil docInUtil;
@@ -1173,7 +1174,11 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       this.docFreq = termState.docFreq;
       this.docIn = Lucene101PostingsReader.this.docIn.clone();
       this.docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
-      prefetchPostings(docIn, termState);
+      if (docFreq > 1) {
+        prefetchPostings(docIn, termState);
+      }
+      this.singletonDocID = termState.singletonDocID;
+      this.totalTermFreq = termState.totalTermFreq;
       level0SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel0);
       level1SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel1);
       level0Impacts = new MutableImpactList(maxNumImpactsAtLevel0);
@@ -1296,6 +1301,13 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         freqFP = docIn.getFilePointer();
         PForUtil.skip(docIn);
         docCountUpto += BLOCK_SIZE;
+      } else if (docFreq == 1) {
+        docBuffer[0] = singletonDocID;
+        freqBuffer[0] = (int) totalTermFreq;
+        freqFP = -1;
+        docBuffer[1] = NO_MORE_DOCS;
+        docCountUpto++;
+        docBufferSize = 1;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, true, true);
@@ -1454,8 +1466,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     final boolean indexHasPayloads;
     final boolean indexHasOffsetsOrPayloads;
 
-    private final long
-        totalTermFreq; // sum of freqBuffer in this posting list (or docFreq when omitted)
     private int freq; // freq we last read
     private int position; // current position
 
@@ -1475,8 +1485,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     private long level1PosEndFP;
     private int level1BlockPosUpto;
 
-    private final int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
-
     public BlockImpactsPostingsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
       super(termState);
@@ -1492,8 +1500,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
       // Where this term's postings start in the .pos file:
       final long posTermStartFP = termState.posStartFP;
-      totalTermFreq = termState.totalTermFreq;
-      singletonDocID = termState.singletonDocID;
       posIn.seek(posTermStartFP);
       level1PosEndFP = posTermStartFP;
       level0PosEndFP = posTermStartFP;
@@ -1527,6 +1533,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         freqBuffer[0] = (int) totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
         docCountUpto++;
+        docBufferSize = 1;
       } else {
         // Read vInts:
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, true);
