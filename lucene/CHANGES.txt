@@ -105,6 +105,8 @@ Optimizations
 * GITHUB#13999: CombinedFieldQuery now returns non-infinite maximum scores,
   making it eligible to dynamic pruning. (Adrien Grand)
 
+* GITHUB#13989: Faster checksum computation. (Jean-François Boeuf)
+
 * GITHUB#14021: WANDScorer now computes scores on the fly, which helps prevent
   advancing "tail" clauses in many cases. (Adrien Grand)
 
