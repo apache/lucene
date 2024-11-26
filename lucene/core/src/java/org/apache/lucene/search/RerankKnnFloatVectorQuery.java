@@ -55,6 +55,10 @@ public class RerankKnnFloatVectorQuery extends Query {
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     IndexReader reader = indexSearcher.getIndexReader();
     Query rewritten = indexSearcher.rewrite(query);
+    // short-circuit: don't re-rank if we already got all possible results
+    if (query.getK() <= k) {
+      return rewritten;
+    }
     Weight weight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     HitQueue queue = new HitQueue(k, false);
     for (var leaf : reader.leaves()) {

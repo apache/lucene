@@ -91,7 +91,7 @@ public class TestRerankKnnFloatVectorQuery extends LuceneTestCase {
       IndexSearcher searcher = new IndexSearcher(reader);
       float[] targetVector = randomFloatVector(VECTOR_DIMENSION, random);
       int k = 10;
-      double oversample = 1.0;
+      double oversample = random.nextFloat(1.5f, 3.0f);
 
       KnnFloatVectorQuery knnQuery =
           new KnnFloatVectorQuery(FIELD, targetVector, k + (int) (k * oversample));
