@@ -192,8 +192,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
         } while (top.doc < filter.doc);
       } else {
         int doc = top.doc;
-        boolean match = (acceptDocs == null || acceptDocs.get(doc))
-            && (filter.twoPhaseView == null || filter.twoPhaseView.matches());
+        boolean match =
+            (acceptDocs == null || acceptDocs.get(doc))
+                && (filter.twoPhaseView == null || filter.twoPhaseView.matches());
         double score = 0;
         do {
           if (match) {
