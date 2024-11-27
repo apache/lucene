@@ -462,7 +462,8 @@ public class IndexWriter
         }
       };
 
-  private final IndexWriterRAMManager.PerWriterIndexWriterRAMManager indexWriterRAMManager;
+  /** The id that is associated with this writer for {@link IndexWriterRAMManager} */
+  public final int ramManagerId;
 
   /**
    * Expert: returns a readonly reader, covering all committed as well as un-committed changes to
@@ -1213,9 +1214,7 @@ public class IndexWriter
         writeLock = null;
       }
     }
-    this.indexWriterRAMManager =
-        new IndexWriterRAMManager.PerWriterIndexWriterRAMManager(
-            this, config.getIndexWriterRAMManager());
+    this.ramManagerId = config.indexWriterRAMManager.registerWriter(this);
   }
 
   /** Confirms that the incoming index sort (if any) matches the existing index sort (if any). */
@@ -1370,7 +1369,7 @@ public class IndexWriter
    */
   @Override
   public void close() throws IOException {
-    indexWriterRAMManager.removeWriter();
+    config.indexWriterRAMManager.removeWriter(ramManagerId);
     if (config.getCommitOnClose()) {
       shutdown();
     } else {
@@ -2451,7 +2450,7 @@ public class IndexWriter
     // Ensure that only one thread actually gets to do the
     // closing, and make sure no commit is also in progress:
     if (shouldClose(true)) {
-      indexWriterRAMManager.removeWriter();
+      config.indexWriterRAMManager.removeWriter(ramManagerId);
       rollbackInternal();
     }
   }
@@ -6019,7 +6018,7 @@ public class IndexWriter
       seqNo = -seqNo;
       processEvents(true);
     }
-    indexWriterRAMManager.flushIfNecessary(config.flushPolicy);
+    config.flushPolicy.flushRamManager(this);
     return seqNo;
   }
 

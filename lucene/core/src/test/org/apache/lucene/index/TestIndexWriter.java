@@ -3218,10 +3218,7 @@ public class TestIndexWriter extends LuceneTestCase {
             }
 
             @Override
-            public void flushWriter(
-                IndexWriterRAMManager ramManager,
-                IndexWriterRAMManager.PerWriterIndexWriterRAMManager perWriterRamManager)
-                throws IOException {}
+            public void flushRamManager(IndexWriter writer) throws IOException {}
           });
       try (IndexWriter w = new IndexWriter(dir, indexWriterConfig)) {
         assertEquals(0, w.docWriter.flushControl.getDeleteBytesUsed());

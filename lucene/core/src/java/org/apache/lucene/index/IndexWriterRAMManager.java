@@ -63,7 +63,7 @@ public class IndexWriterRAMManager {
     return idToWriter.flushRoundRobin();
   }
 
-  /** Registers a writer and returns the associated ID, protected for testing */
+  /** Registers a writer can returns the associated ID */
   protected int registerWriter(IndexWriter writer) {
     int id = idGenerator.incrementAndGet();
     idToWriter.addWriter(writer, id);
@@ -75,42 +75,12 @@ public class IndexWriterRAMManager {
     idToWriter.removeWriter(id);
   }
 
-  private void flushIfNecessary(
-      FlushPolicy flushPolicy, PerWriterIndexWriterRAMManager perWriterRAMManager)
-      throws IOException {
-    if (ramBufferSizeMB != IndexWriterConfig.DISABLE_AUTO_FLUSH) {
-      flushPolicy.flushWriter(this, perWriterRAMManager);
-    }
-  }
-
-  private long updateAndGetCurrentBytesUsed(int id) {
-    return idToWriter.getTotalRamTracker(id);
-  }
-
   /**
-   * For use in {@link IndexWriter}, manages communication with the {@link IndexWriterRAMManager}
+   * Will call {@link IndexWriter#ramBytesUsed()} for the writer id passed in, and then updates the
+   * total ram using that value and returns it
    */
-  public static class PerWriterIndexWriterRAMManager {
-
-    private final int id;
-    private final IndexWriterRAMManager manager;
-
-    PerWriterIndexWriterRAMManager(IndexWriter writer, IndexWriterRAMManager manager) {
-      id = manager.registerWriter(writer);
-      this.manager = manager;
-    }
-
-    void removeWriter() {
-      manager.removeWriter(id);
-    }
-
-    void flushIfNecessary(FlushPolicy flushPolicy) throws IOException {
-      manager.flushIfNecessary(flushPolicy, this);
-    }
-
-    long getTotalBufferBytesUsed() {
-      return manager.updateAndGetCurrentBytesUsed(id);
-    }
+  public long updateAndGetCurrentBytesUsed(int id) {
+    return idToWriter.getTotalRamTracker(id);
   }
 
   private static class LinkedIdToWriter {

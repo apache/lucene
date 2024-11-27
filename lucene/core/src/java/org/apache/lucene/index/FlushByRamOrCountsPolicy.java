@@ -55,13 +55,13 @@ class FlushByRamOrCountsPolicy extends FlushPolicy {
   }
 
   @Override
-  public void flushWriter(
-      IndexWriterRAMManager ramManager,
-      IndexWriterRAMManager.PerWriterIndexWriterRAMManager perWriterRamManager)
-      throws IOException {
-    long totalBytes = perWriterRamManager.getTotalBufferBytesUsed();
-    if (totalBytes > ramManager.getRamBufferSizeMB() * 1024 * 1024) {
-      ramManager.flushRoundRobin();
+  public void flushRamManager(IndexWriter writer) throws IOException {
+    IndexWriterRAMManager ramManager = writer.getConfig().indexWriterRAMManager;
+    if (ramManager.getRamBufferSizeMB() != IndexWriterConfig.DISABLE_AUTO_FLUSH) {
+      long totalBytes = ramManager.updateAndGetCurrentBytesUsed(writer.ramManagerId);
+      if (totalBytes > ramManager.getRamBufferSizeMB() * 1024 * 1024) {
+        ramManager.flushRoundRobin();
+      }
     }
   }
 
