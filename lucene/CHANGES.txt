@@ -110,6 +110,9 @@ Optimizations
 * GITHUB#14021: WANDScorer now computes scores on the fly, which helps prevent
   advancing "tail" clauses in many cases. (Adrien Grand)
 
+* GITHUB#14023: Make JVM inlining decisions more predictable in our main
+  queries. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
