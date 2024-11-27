@@ -17,9 +17,12 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import java.util.Comparator;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.MergeState;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
@@ -51,15 +54,28 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
     OnHeapHnswGraph graph;
     BitSet initializedNodes = null;
 
-    if (initReader == null) {
+    if (graphReaders.size() == 0) {
       graph = new OnHeapHnswGraph(M, maxOrd);
     } else {
+      graphReaders.sort(Comparator.comparingInt(GraphReader::graphSize).reversed());
+      GraphReader initGraphReader = graphReaders.get(0);
+      KnnVectorsReader initReader = initGraphReader.reader();
+      MergeState.DocMap initDocMap = initGraphReader.initDocMap();
+      int initGraphSize = initGraphReader.graphSize();
       HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
+
       if (initializerGraph.size() == 0) {
         graph = new OnHeapHnswGraph(M, maxOrd);
       } else {
         initializedNodes = new FixedBitSet(maxOrd);
-        int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorValues, initializedNodes);
+        int[] oldToNewOrdinalMap =
+            getNewOrdMapping(
+                fieldInfo,
+                initReader,
+                initDocMap,
+                initGraphSize,
+                mergedVectorValues,
+                initializedNodes);
         graph = InitializedHnswGraphBuilder.initGraph(initializerGraph, oldToNewOrdinalMap, maxOrd);
       }
     }

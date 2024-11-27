@@ -25,6 +25,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -70,8 +71,8 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected final OnHeapHnswGraph hnsw;
   protected final HnswLock hnswLock;
 
-  private InfoStream infoStream = InfoStream.getDefault();
-  private boolean frozen;
+  protected InfoStream infoStream = InfoStream.getDefault();
+  protected boolean frozen;
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
@@ -205,6 +206,14 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   @Override
   public void addGraphNode(int node) throws IOException {
+    addGraphNodeInternal(node, null);
+  }
+
+  public void addGraphNodeWithCandidates(int node, Set<Integer> candidates) throws IOException {
+    addGraphNodeInternal(node, candidates);
+  }
+
+  void addGraphNodeInternal(int node, Set<Integer> candidates0) throws IOException {
     /*
     Note: this implementation is thread safe when graph size is fixed (e.g. when merging)
     The process of adding a node is roughly:
@@ -263,10 +272,19 @@ public class HnswGraphBuilder implements HnswBuilder {
       for (int i = scratchPerLevel.length - 1; i >= 0; i--) {
         int level = i + lowestUnsetLevel;
         candidates.clear();
-        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-        eps = candidates.popUntilNearestKNodes();
-        scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
-        popToScratch(candidates, scratchPerLevel[i]);
+        if (level == 0 && candidates0 != null && candidates0.size() > 0) {
+          scratchPerLevel[i] = new NeighborArray(candidates0.size(), false);
+          for (int cand0 : candidates0) {
+            float sim = scorer.score(cand0);
+            scratchPerLevel[i].addOutOfOrder(cand0, sim);
+          }
+          scratchPerLevel[i].sort();
+        } else {
+          graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
+          eps = candidates.popUntilNearestKNodes();
+          scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
+          popToScratch(candidates, scratchPerLevel[i]);
+        }
       }
 
       // then do connections from bottom up
@@ -340,7 +358,9 @@ public class HnswGraphBuilder implements HnswBuilder {
         }
       } else {
         NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
+        if (nbrsOfNbr != null) {
+          nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
+        }
       }
     }
   }

@@ -130,6 +130,29 @@ public class NeighborArray {
     return uncheckedIndexes;
   }
 
+  /** Sort nodes and scores according to scores. */
+  void sort() {
+    if (size == sortedNodeSize) {
+      return;
+    }
+    Integer[] indices = new Integer[nodes.length];
+    for (int i = 0; i < nodes.length; i++) {
+      indices[i] = i;
+    }
+    if (scoresDescOrder) {
+      Arrays.sort(indices, (a, b) -> Float.compare(scores[b], scores[a]));
+    } else {
+      Arrays.sort(indices, (a, b) -> Float.compare(scores[a], scores[b]));
+    }
+    int[] tempNodes = nodes.clone();
+    float[] tempScores = scores.clone();
+    for (int i = 0; i < indices.length; i++) {
+      nodes[i] = tempNodes[indices[i]];
+      scores[i] = tempScores[indices[i]];
+    }
+    sortedNodeSize = size;
+  }
+
   /** insert the first unsorted node into its sorted position */
   private int insertSortedInternal(RandomVectorScorer scorer) throws IOException {
     assert sortedNodeSize < size : "Call this method only when there's unsorted node";
