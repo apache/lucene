@@ -792,6 +792,51 @@ public class TestBooleanRewrites extends LuceneTestCase {
     assertEquals(expectedRewritten, searcher.rewrite(query));
   }
 
+  public void testFlattenDisjunctionInMustClause() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    Query inner =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .build();
+    Query query =
+        new BooleanQuery.Builder()
+            .add(inner, Occur.MUST)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
+            .build();
+    Query expectedRewritten =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+    assertEquals(expectedRewritten, searcher.rewrite(query));
+
+    inner =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "foo")), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    query =
+        new BooleanQuery.Builder()
+            .add(inner, Occur.MUST)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
+            .build();
+    expectedRewritten =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "foo")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    assertEquals(expectedRewritten, searcher.rewrite(query));
+  }
+
   public void testDiscardShouldClauses() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
 
