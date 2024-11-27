@@ -369,11 +369,9 @@ public class TestIndexWriterRAMManager extends LuceneTestCase {
     public void onChange(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {}
 
     @Override
-    public void flushWriter(
-        IndexWriterRAMManager ramManager,
-        IndexWriterRAMManager.PerWriterIndexWriterRAMManager perWriterRamManager)
-        throws IOException {
-      long totalBytes = perWriterRamManager.getTotalBufferBytesUsed();
+    public void flushRamManager(IndexWriter writer) throws IOException {
+      IndexWriterRAMManager ramManager = writer.getConfig().indexWriterRAMManager;
+      long totalBytes = ramManager.updateAndGetCurrentBytesUsed(writer.ramManagerId);
       if (totalBytes > ramManager.getRamBufferSizeMB() * 1024 * 1024) {
         int flushedId = ramManager.flushRoundRobin();
         flushedWriters.add(flushedId);
@@ -420,7 +418,7 @@ public class TestIndexWriterRAMManager extends LuceneTestCase {
     }
 
     @Override
-    protected int registerWriter(IndexWriter writer) {
+    public int registerWriter(IndexWriter writer) {
       int id = super.registerWriter(writer);
       events.add(new TestEventAndId(TestEvent.ADD, id));
       return id;

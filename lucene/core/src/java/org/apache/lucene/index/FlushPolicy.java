@@ -59,15 +59,11 @@ abstract class FlushPolicy {
       DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread);
 
   /**
-   * Chooses which writer should be flushed. Default implementation chooses the writer with most RAM
-   * usage
-   *
-   * @param ramManager the {@link IndexWriterRAMManager} being used to actually flush the writers
+   * Flushed a writer according to the FlushPolicy. NOTE: this doesn't necessarily mean the passed
+   * in writer will be flushed, and in most cases, this will actually be the case as the default
+   * policy is a round-robin policy
    */
-  public abstract void flushWriter(
-      IndexWriterRAMManager ramManager,
-      IndexWriterRAMManager.PerWriterIndexWriterRAMManager perWriterRamManager)
-      throws IOException;
+  public abstract void flushRamManager(IndexWriter writer) throws IOException;
 
   /** Called by DocumentsWriter to initialize the FlushPolicy */
   protected synchronized void init(LiveIndexWriterConfig indexWriterConfig) {
