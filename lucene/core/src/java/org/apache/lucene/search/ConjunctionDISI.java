@@ -157,9 +157,9 @@ final class ConjunctionDISI extends DocIdSetIterator {
     // Sort the array the first time to allow the least frequent DocsEnum to
     // lead the matching.
     CollectionUtil.timSort(iterators, (o1, o2) -> Long.compare(o1.cost(), o2.cost()));
-    lead1 = iterators.get(0);
-    lead2 = iterators.get(1);
-    others = iterators.subList(2, iterators.size()).toArray(new DocIdSetIterator[0]);
+    lead1 = ScorerUtil.likelyPostingsEnum(iterators.get(0));
+    lead2 = ScorerUtil.likelyPostingsEnum(iterators.get(1));
+    others = iterators.subList(2, iterators.size()).toArray(DocIdSetIterator[]::new);
   }
 
   private int doNext(int doc) throws IOException {

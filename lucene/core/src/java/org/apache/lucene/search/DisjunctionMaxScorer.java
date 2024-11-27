@@ -60,7 +60,7 @@ final class DisjunctionMaxScorer extends DisjunctionScorer {
     float scoreMax = 0;
     double otherScoreSum = 0;
     for (DisiWrapper w = topList; w != null; w = w.next) {
-      float subScore = w.scorer.score();
+      float subScore = w.scorable.score();
       if (subScore >= scoreMax) {
         otherScoreSum += scoreMax;
         scoreMax = subScore;

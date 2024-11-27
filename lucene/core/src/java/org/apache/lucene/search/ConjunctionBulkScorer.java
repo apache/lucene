@@ -30,7 +30,7 @@ import org.apache.lucene.util.Bits;
  */
 final class ConjunctionBulkScorer extends BulkScorer {
 
-  private final Scorer[] scoringScorers;
+  private final Scorable[] scoringScorers;
   private final DocIdSetIterator lead1, lead2;
   private final List<DocIdSetIterator> others;
   private final Scorable scorable;
@@ -45,21 +45,22 @@ final class ConjunctionBulkScorer extends BulkScorer {
     allScorers.addAll(requiredScoring);
     allScorers.addAll(requiredNoScoring);
 
-    this.scoringScorers = requiredScoring.toArray(Scorer[]::new);
+    this.scoringScorers =
+        requiredScoring.stream().map(ScorerUtil::likelyTermScorer).toArray(Scorable[]::new);
     List<DocIdSetIterator> iterators = new ArrayList<>();
     for (Scorer scorer : allScorers) {
       iterators.add(scorer.iterator());
     }
     Collections.sort(iterators, Comparator.comparingLong(DocIdSetIterator::cost));
-    lead1 = iterators.get(0);
-    lead2 = iterators.get(1);
+    lead1 = ScorerUtil.likelyPostingsEnum(iterators.get(0));
+    lead2 = ScorerUtil.likelyPostingsEnum(iterators.get(1));
     others = List.copyOf(iterators.subList(2, iterators.size()));
     scorable =
         new Scorable() {
           @Override
           public float score() throws IOException {
             double score = 0;
-            for (Scorer scorer : scoringScorers) {
+            for (Scorable scorer : scoringScorers) {
               score += scorer.score();
             }
             return (float) score;

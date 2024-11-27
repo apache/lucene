@@ -35,7 +35,7 @@ public abstract class IndriDisjunctionScorer extends IndriScorer {
     this.subScorersList = subScorersList;
     this.subScorers = new DisiPriorityQueue(subScorersList.size());
     for (Scorer scorer : subScorersList) {
-      final DisiWrapper w = new DisiWrapper(scorer);
+      final DisiWrapper w = new DisiWrapper(scorer, false);
       this.subScorers.add(w);
     }
     this.approximation = new DisjunctionDISIApproximation(this.subScorers);

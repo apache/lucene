@@ -646,7 +646,7 @@ public final class SynonymQuery extends Query {
     final float boost;
 
     DisiWrapperFreq(Scorer scorer, float boost) {
-      super(scorer);
+      super(scorer, false);
       this.pe = (PostingsEnum) scorer.iterator();
       this.boost = boost;
     }

@@ -425,7 +425,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     final float weight;
 
     WeightedDisiWrapper(Scorer scorer, float weight) {
-      super(scorer);
+      super(scorer, false);
       this.weight = weight;
     }
 
