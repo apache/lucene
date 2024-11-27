@@ -196,7 +196,12 @@ final class WANDScorer extends Scorer {
     }
 
     for (Scorer scorer : scorers) {
-      addUnpositionedLead(new DisiWrapper(scorer, scoreMode == ScoreMode.TOP_SCORES));
+      // Ideally we would pass true when scoreMode == TOP_SCORES and false otherwise, but this would
+      // break the optimization as there could then be 3 different impls of DocIdSetIterator
+      // (ImpactsEnum, PostingsEnum and <Else>). So we pass true to favor disjunctions sorted by
+      // descending score as opposed to non-scoring disjunctions whose minShouldMatch is greater
+      // than 1.
+      addUnpositionedLead(new DisiWrapper(scorer, true));
     }
 
     this.cost =
