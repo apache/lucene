@@ -422,15 +422,17 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   }
 
   private static class WeightedDisiWrapper extends DisiWrapper {
+    final PostingsEnum postingsEnum;
     final float weight;
 
     WeightedDisiWrapper(Scorer scorer, float weight) {
       super(scorer, false);
       this.weight = weight;
+      this.postingsEnum = (PostingsEnum) scorer.iterator();
     }
 
     float freq() throws IOException {
-      return weight * ((PostingsEnum) iterator).freq();
+      return weight * postingsEnum.freq();
     }
   }
 
