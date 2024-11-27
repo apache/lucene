@@ -163,6 +163,10 @@ public class HnswUtil {
       throws IOException {
     // Start at entry point and search all nodes on this level
     // System.out.println("markRooted level=" + level + " entryPoint=" + entryPoint);
+    if (connectedNodes.get(entryPoint)) {
+      return new Component(entryPoint, 0);
+    }
+    FixedBitSet nodesInStack = new FixedBitSet(hnswGraph.size());
     Deque<Integer> stack = new ArrayDeque<>();
     stack.push(entryPoint);
     int count = 0;
@@ -178,7 +182,10 @@ public class HnswUtil {
       int friendCount = 0;
       while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
         ++friendCount;
-        stack.push(friendOrd);
+        if (connectedNodes.get(friendOrd) == false && nodesInStack.get(friendOrd) == false) {
+          stack.push(friendOrd);
+          nodesInStack.set(friendOrd);
+        }
       }
       if (friendCount < maxConn && notFullyConnected != null) {
         notFullyConnected.set(node);
