@@ -303,7 +303,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                     new OffHeapByteVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
-                        finalVectorDataInput,
+                        finalVectorDataInput.toRandomAccessInput(),
                         fieldInfo.getVectorDimension() * Byte.BYTES,
                         vectorsScorer,
                         fieldInfo.getVectorSimilarityFunction()));
@@ -313,7 +313,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                     new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
                         docsWithField.cardinality(),
-                        finalVectorDataInput,
+                        finalVectorDataInput.toRandomAccessInput(),
                         fieldInfo.getVectorDimension() * Float.BYTES,
                         vectorsScorer,
                         fieldInfo.getVectorSimilarityFunction()));

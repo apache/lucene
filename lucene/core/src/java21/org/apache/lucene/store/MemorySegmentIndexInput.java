@@ -233,6 +233,12 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   @Override
+  public void readFloats(long pos, float[] dst, int offset, int len) throws IOException {
+    seek(pos);
+    readFloats(dst, offset, len);
+  }
+
+  @Override
   public void readFloats(float[] dst, int offset, int length) throws IOException {
     try {
       MemorySegment.copy(curSegment, LAYOUT_LE_FLOAT, curPosition, dst, offset, length);

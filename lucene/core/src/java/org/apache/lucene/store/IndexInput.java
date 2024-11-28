@@ -152,6 +152,14 @@ public abstract class IndexInput extends DataInput implements Closeable {
     }
   }
 
+  /** Convert this IndexInput a RandomAccessInput. */
+  public RandomAccessInput toRandomAccessInput() throws IOException {
+    if (this instanceof RandomAccessInput) {
+      return (RandomAccessInput) this;
+    }
+    return randomAccessSlice(0, length());
+  }
+
   /**
    * Creates a random-access slice of this index input, with the given offset and length.
    *
@@ -185,6 +193,13 @@ public abstract class IndexInput extends DataInput implements Closeable {
         }
 
         @Override
+        public void readFloats(long pos, float[] floats, int offset, int length)
+            throws IOException {
+          slice.seek(pos);
+          slice.readFloats(floats, offset, length);
+        }
+
+        @Override
         public short readShort(long pos) throws IOException {
           slice.seek(pos);
           return slice.readShort();
@@ -205,6 +220,15 @@ public abstract class IndexInput extends DataInput implements Closeable {
         @Override
         public void prefetch(long offset, long length) throws IOException {
           slice.prefetch(offset, length);
+        }
+
+        @Override
+        public Object clone() {
+          try {
+            return super.clone();
+          } catch (CloneNotSupportedException e) {
+            throw new Error("This cannot happen: Failing to clone RandomAccessInput", e);
+          }
         }
 
         @Override

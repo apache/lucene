@@ -524,7 +524,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                   compress,
                   fieldInfo.getVectorSimilarityFunction(),
                   vectorsScorer,
-                  quantizationDataInput)));
+                  quantizationDataInput.toRandomAccessInput())));
     } finally {
       if (success == false) {
         IOUtils.closeWhileHandlingException(tempQuantizedVectorData, quantizationDataInput);

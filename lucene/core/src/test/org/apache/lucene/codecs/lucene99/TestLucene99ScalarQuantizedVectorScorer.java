@@ -41,6 +41,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
@@ -128,8 +129,12 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
               }
 
               @Override
-              public IndexInput getSlice() {
-                return in;
+              public RandomAccessInput getSlice() {
+                try {
+                  return in.randomAccessSlice(0, in.length());
+                } catch (IOException e) {
+                  throw new RuntimeException(e);
+                }
               }
 
               @Override

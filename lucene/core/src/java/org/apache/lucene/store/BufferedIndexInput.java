@@ -259,6 +259,12 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readFloats(long pos, float[] dst, int offset, int len) throws IOException {
+    seek(pos);
+    readFloats(dst, offset, len);
+  }
+
+  @Override
   public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
     if (len <= bufferSize) {
       // the buffer is big enough to satisfy this request
