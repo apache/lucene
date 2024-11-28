@@ -29,6 +29,7 @@ import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.FixedBitSet;
 
 /** Utilities for use in tests involving HNSW graphs */
@@ -166,7 +167,7 @@ public class HnswUtil {
     if (connectedNodes.get(entryPoint)) {
       return new Component(entryPoint, 0);
     }
-    FixedBitSet nodesInStack = new FixedBitSet(hnswGraph.size());
+    IntHashSet nodesInStack = new IntHashSet();
     Deque<Integer> stack = new ArrayDeque<>();
     stack.push(entryPoint);
     int count = 0;
@@ -182,9 +183,9 @@ public class HnswUtil {
       int friendCount = 0;
       while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
         ++friendCount;
-        if (connectedNodes.get(friendOrd) == false && nodesInStack.get(friendOrd) == false) {
+        if (connectedNodes.get(friendOrd) == false && nodesInStack.contains(friendOrd) == false) {
           stack.push(friendOrd);
-          nodesInStack.set(friendOrd);
+          nodesInStack.add(friendOrd);
         }
       }
       if (friendCount < maxConn && notFullyConnected != null) {
