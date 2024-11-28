@@ -20,6 +20,8 @@ import static org.apache.lucene.geo.GeoEncodingUtils.decodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.decodeLongitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
+import static org.apache.lucene.search.TotalHits.Relation.EQUAL_TO;
+import static org.apache.lucene.search.TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
 
 import java.io.IOException;
 import org.apache.lucene.geo.GeoEncodingUtils;
@@ -40,6 +42,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
@@ -139,7 +142,7 @@ final class LatLonPointDistanceQuery extends Query {
 
         return new ScorerSupplier() {
 
-          long cost = -1;
+          TotalHits estimatedCount;
 
           @Override
           public Scorer get(long leadCost) throws IOException {
@@ -162,11 +165,28 @@ final class LatLonPointDistanceQuery extends Query {
 
           @Override
           public long cost() {
-            if (cost == -1) {
-              cost = values.estimateDocCount(visitor);
+            if (estimatedCount == null || estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO) {
+              estimatedCount =
+                  new TotalHits(values.estimateDocCount(visitor, Long.MAX_VALUE), EQUAL_TO);
+              assert estimatedCount.value() >= 0;
             }
-            assert cost >= 0;
-            return cost;
+            return estimatedCount.value();
+          }
+
+          @Override
+          public TotalHits isEstimatedPointCountGreaterThanOrEqualTo(long upperBound) {
+            if (estimatedCount == null
+                || (estimatedCount.value() < upperBound
+                    && estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO)) {
+              long cost = values.estimateDocCount(visitor, Long.MAX_VALUE);
+              if (cost < upperBound) {
+                estimatedCount = new TotalHits(cost, EQUAL_TO);
+              } else if (estimatedCount == null || cost > estimatedCount.value()) {
+                estimatedCount = new TotalHits(cost, GREATER_THAN_OR_EQUAL_TO);
+              }
+              assert estimatedCount.value() >= 0;
+            }
+            return estimatedCount;
           }
         };
       }

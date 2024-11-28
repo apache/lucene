@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.document;
 
+import static org.apache.lucene.search.TotalHits.Relation.EQUAL_TO;
+import static org.apache.lucene.search.TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -34,6 +37,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
@@ -477,7 +481,7 @@ public abstract class RangeFieldQuery extends Query {
 
             final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
             final IntersectVisitor visitor = getIntersectVisitor(result);
-            long cost = -1;
+            TotalHits estimatedCount = null;
 
             @Override
             public Scorer get(long leadCost) throws IOException {
@@ -488,12 +492,29 @@ public abstract class RangeFieldQuery extends Query {
 
             @Override
             public long cost() {
-              if (cost == -1) {
-                // Computing the cost may be expensive, so only do it if necessary
-                cost = values.estimateDocCount(visitor);
-                assert cost >= 0;
+              if (estimatedCount == null || estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO) {
+                estimatedCount =
+                    new TotalHits(values.estimateDocCount(visitor, Long.MAX_VALUE), EQUAL_TO);
+                assert estimatedCount.value() >= 0;
               }
-              return cost;
+              return estimatedCount.value();
+            }
+
+            @Override
+            public TotalHits isEstimatedPointCountGreaterThanOrEqualTo(long upperBound) {
+              if (estimatedCount == null
+                  || (estimatedCount.value() < upperBound
+                      && estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO)) {
+                // Computing the cost may be expensive, so only do it if necessary
+                long cost = values.estimateDocCount(visitor, upperBound);
+                if (cost < upperBound) {
+                  estimatedCount = new TotalHits(cost, EQUAL_TO);
+                } else if (estimatedCount == null || cost > estimatedCount.value()) {
+                  estimatedCount = new TotalHits(cost, GREATER_THAN_OR_EQUAL_TO);
+                }
+                assert estimatedCount.value() >= 0;
+              }
+              return estimatedCount;
             }
           };
         }

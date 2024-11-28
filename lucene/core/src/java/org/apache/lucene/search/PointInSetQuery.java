@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.TotalHits.Relation.EQUAL_TO;
+import static org.apache.lucene.search.TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.AbstractCollection;
@@ -176,7 +179,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
           // We optimize this common case, effectively doing a merge sort of the indexed values vs
           // the queried set:
           return new ScorerSupplier() {
-            long cost = -1; // calculate lazily, only once
+            TotalHits estimatedCount = null; // calculate lazily, only once
 
             @Override
             public Scorer get(long leadCost) throws IOException {
@@ -189,15 +192,42 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             @Override
             public long cost() {
               try {
-                if (cost == -1) {
+                if (estimatedCount == null
+                    || estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO) {
                   // Computing the cost may be expensive, so only do it if necessary
                   DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
-                  cost =
-                      values.estimateDocCount(
-                          new MergePointVisitor(sortedPackedPoints.iterator(), result));
-                  assert cost >= 0;
+                  estimatedCount =
+                      new TotalHits(
+                          values.estimateDocCount(
+                              new MergePointVisitor(sortedPackedPoints.iterator(), result),
+                              Long.MAX_VALUE),
+                          EQUAL_TO);
+                  assert estimatedCount.value() >= 0;
                 }
-                return cost;
+                return estimatedCount.value();
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            }
+
+            @Override
+            public TotalHits isEstimatedPointCountGreaterThanOrEqualTo(long upperBound) {
+              try {
+                if (estimatedCount == null
+                    || (estimatedCount.value() < upperBound
+                        && estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO)) {
+                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+                  long cost =
+                      values.estimateDocCount(
+                          new MergePointVisitor(sortedPackedPoints.iterator(), result), upperBound);
+                  if (cost < upperBound) {
+                    estimatedCount = new TotalHits(cost, EQUAL_TO);
+                  } else if (estimatedCount == null || cost > estimatedCount.value()) {
+                    estimatedCount = new TotalHits(cost, GREATER_THAN_OR_EQUAL_TO);
+                  }
+                  assert estimatedCount.value() >= 0;
+                }
+                return estimatedCount;
               } catch (IOException e) {
                 throw new UncheckedIOException(e);
               }
@@ -211,7 +241,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
           // index, which is probably tricky!
 
           return new ScorerSupplier() {
-            long cost = -1; // calculate lazily, only once
+            TotalHits estimatedCount = null; // calculate lazily, only once
 
             @Override
             public Scorer get(long leadCost) throws IOException {
@@ -228,18 +258,49 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             @Override
             public long cost() {
               try {
-                if (cost == -1) {
+                if (estimatedCount == null
+                    || estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO) {
                   DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
                   SinglePointVisitor visitor = new SinglePointVisitor(result);
                   TermIterator iterator = sortedPackedPoints.iterator();
-                  cost = 0;
+                  long cost = 0;
                   for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {
                     visitor.setPoint(point);
-                    cost += values.estimateDocCount(visitor);
+                    cost += values.estimateDocCount(visitor, Long.MAX_VALUE);
+                  }
+                  assert cost >= 0;
+                  estimatedCount = new TotalHits(cost, EQUAL_TO);
+                }
+                return estimatedCount.value();
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            }
+
+            @Override
+            public TotalHits isEstimatedPointCountGreaterThanOrEqualTo(long upperBound) {
+              try {
+                if (estimatedCount == null
+                    || (estimatedCount.value() < upperBound
+                        && estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO)) {
+                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+                  SinglePointVisitor visitor = new SinglePointVisitor(result);
+                  TermIterator iterator = sortedPackedPoints.iterator();
+                  long cost = 0;
+                  for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {
+                    visitor.setPoint(point);
+                    cost += values.estimateDocCount(visitor, upperBound);
+                    if (cost >= upperBound) {
+                      estimatedCount = new TotalHits(cost, GREATER_THAN_OR_EQUAL_TO);
+                      break;
+                    }
+                  }
+                  if (cost < upperBound) {
+                    estimatedCount = new TotalHits(cost, EQUAL_TO);
                   }
                   assert cost >= 0;
                 }
-                return cost;
+                return estimatedCount;
               } catch (IOException e) {
                 throw new UncheckedIOException(e);
               }

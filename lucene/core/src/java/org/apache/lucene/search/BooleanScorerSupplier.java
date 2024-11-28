@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.TotalHits.Relation.EQUAL_TO;
+import static org.apache.lucene.search.TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,7 +27,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.OptionalLong;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
@@ -35,7 +38,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
   private final ScoreMode scoreMode;
   private final int minShouldMatch;
   private final int maxDoc;
-  private long cost = -1;
+  private TotalHits estimatedCount = null;
   private boolean topLevelScoringClause;
 
   BooleanScorerSupplier(
@@ -69,21 +72,40 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     this.maxDoc = maxDoc;
   }
 
-  private long computeCost() {
-    OptionalLong minRequiredCost =
+  private TotalHits computeCost(long upperBound) {
+
+    TotalHits minRequiredCost = null;
+    TotalHits totalHits = null;
+    for (ScorerSupplier scorerSupplier :
         Stream.concat(subs.get(Occur.MUST).stream(), subs.get(Occur.FILTER).stream())
-            .mapToLong(ScorerSupplier::cost)
-            .min();
-    if (minRequiredCost.isPresent() && minShouldMatch == 0) {
-      return minRequiredCost.getAsLong();
+            .collect(Collectors.toList())) {
+      totalHits = scorerSupplier.isEstimatedPointCountGreaterThanOrEqualTo(upperBound);
+      if (totalHits.relation() == EQUAL_TO && totalHits.value() < upperBound) {
+        upperBound = totalHits.value();
+        minRequiredCost = totalHits;
+      } else if (minRequiredCost == null) {
+        minRequiredCost = totalHits;
+      }
+    }
+
+    if (minRequiredCost != null && minShouldMatch == 0) {
+      return minRequiredCost;
     } else {
       final Collection<ScorerSupplier> optionalScorers = subs.get(Occur.SHOULD);
-      final long shouldCost =
+      final TotalHits shouldCost =
           ScorerUtil.costWithMinShouldMatch(
-              optionalScorers.stream().mapToLong(ScorerSupplier::cost),
-              optionalScorers.size(),
-              minShouldMatch);
-      return Math.min(minRequiredCost.orElse(Long.MAX_VALUE), shouldCost);
+              optionalScorers, optionalScorers.size(), minShouldMatch, upperBound);
+
+      if (shouldCost.relation() == EQUAL_TO) {
+        return shouldCost;
+      } else if (minRequiredCost != null && minRequiredCost.relation() == EQUAL_TO) {
+        return minRequiredCost;
+      } else if (minRequiredCost != null) {
+        // or we should return small one? it doesn't matter
+        return (shouldCost.value() > minRequiredCost.value() ? shouldCost : minRequiredCost);
+      } else {
+        return shouldCost;
+      }
     }
   }
 
@@ -103,10 +125,22 @@ final class BooleanScorerSupplier extends ScorerSupplier {
 
   @Override
   public long cost() {
-    if (cost == -1) {
-      cost = computeCost();
+    if (estimatedCount == null || estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO) {
+      estimatedCount = computeCost(Long.MAX_VALUE);
+      assert estimatedCount.value() >= 0;
     }
-    return cost;
+    return estimatedCount.value();
+  }
+
+  @Override
+  public TotalHits isEstimatedPointCountGreaterThanOrEqualTo(long upperBound) {
+    if (estimatedCount == null
+        || (estimatedCount.value() < upperBound
+            && estimatedCount.relation() == GREATER_THAN_OR_EQUAL_TO)) {
+      estimatedCount = computeCost(upperBound);
+      assert estimatedCount.value() >= 0;
+    }
+    return estimatedCount;
   }
 
   @Override
@@ -126,7 +160,10 @@ final class BooleanScorerSupplier extends ScorerSupplier {
 
   private Scorer getInternal(long leadCost) throws IOException {
     // three cases: conjunction, disjunction, or mix
-    leadCost = Math.min(leadCost, cost());
+    estimatedCount = isEstimatedPointCountGreaterThanOrEqualTo(leadCost);
+    if (estimatedCount.relation() == EQUAL_TO && estimatedCount.value() < leadCost) {
+      leadCost = estimatedCount.value();
+    }
 
     // pure conjunction
     if (subs.get(Occur.SHOULD).isEmpty()) {
@@ -203,10 +240,11 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         // there will be no matches in the end) so we should only use
         // BooleanScorer if matches are very dense
         costThreshold = maxDoc / 3;
-      }
 
-      if (cost() < costThreshold) {
-        return null;
+        TotalHits estimatedCount = isEstimatedPointCountGreaterThanOrEqualTo(costThreshold);
+        if (estimatedCount.relation() == EQUAL_TO) {
+          return null;
+        }
       }
 
       positiveScorer = optionalBulkScorer();
@@ -344,10 +382,16 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return scorer;
     }
 
-    long leadCost =
-        subs.get(Occur.MUST).stream().mapToLong(ScorerSupplier::cost).min().orElse(Long.MAX_VALUE);
-    leadCost =
-        subs.get(Occur.FILTER).stream().mapToLong(ScorerSupplier::cost).min().orElse(leadCost);
+    long leadCost = Long.MAX_VALUE;
+    TotalHits estimatedCount;
+    for (ScorerSupplier scorerSupplier :
+        Stream.concat(subs.get(Occur.MUST).stream(), subs.get(Occur.FILTER).stream())
+            .collect(Collectors.toList())) {
+      estimatedCount = scorerSupplier.isEstimatedPointCountGreaterThanOrEqualTo(leadCost);
+      if (estimatedCount.relation() == EQUAL_TO && estimatedCount.value() < leadCost) {
+        leadCost = estimatedCount.value();
+      }
+    }
 
     List<Scorer> requiredNoScoring = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
