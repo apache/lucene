@@ -308,7 +308,23 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         || minShouldMatch > 1) {
       return null;
     }
-    long cost = cost();
+
+    long filterCost = Long.MAX_VALUE;
+    for (ScorerSupplier supplier : subs.get(Occur.FILTER)) {
+      filterCost = Math.min(filterCost, supplier.cost());
+    }
+
+    long shouldCost = 0;
+    for (ScorerSupplier supplier : subs.get(Occur.SHOULD)) {
+      shouldCost += supplier.cost();
+    }
+
+    if (filterCost < shouldCost) {
+      // Don't do bulk scoring if the filter leads iteration.
+      return null;
+    }
+
+    long cost = Math.min(shouldCost, filterCost);
     List<Scorer> optionalScorers = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
       optionalScorers.add(ss.get(cost));
