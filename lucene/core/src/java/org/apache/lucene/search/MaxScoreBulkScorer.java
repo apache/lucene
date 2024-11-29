@@ -53,7 +53,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
     this.maxDoc = maxDoc;
-    this.filter = filter == null ? null : new DisiWrapper(filter);
+    this.filter = filter == null ? null : new DisiWrapper(filter, false);
     allScorers = new DisiWrapper[scorers.size()];
     scratch = new DisiWrapper[allScorers.length];
     int i = 0;

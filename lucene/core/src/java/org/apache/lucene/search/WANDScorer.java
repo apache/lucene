@@ -271,7 +271,7 @@ final class WANDScorer extends Scorer {
     List<ChildScorable> matchingChildren = new ArrayList<>();
     advanceAllTail();
     for (DisiWrapper s = lead; s != null; s = s.next) {
-      matchingChildren.add(new ChildScorable(s.scorable, "SHOULD"));
+      matchingChildren.add(new ChildScorable(s.scorer, "SHOULD"));
     }
     return matchingChildren;
   }

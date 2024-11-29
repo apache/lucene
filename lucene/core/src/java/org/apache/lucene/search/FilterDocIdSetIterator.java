@@ -21,6 +21,7 @@ import java.io.IOException;
 /** Wrapper around a {@link DocIdSetIterator}. */
 public class FilterDocIdSetIterator extends DocIdSetIterator {
 
+  /** Wrapped instance. */
   protected final DocIdSetIterator in;
 
   /** Sole constructor. */

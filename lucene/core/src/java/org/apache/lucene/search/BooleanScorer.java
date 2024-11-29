@@ -300,7 +300,7 @@ final class BooleanScorer extends BulkScorer {
     if (doc < windowMin) {
       doc = it.advance(windowMin);
     }
-    collector.setScorer(w.scorable);
+    collector.setScorer(w.scorer);
     for (; doc < end; doc = it.nextDoc()) {
       if (acceptDocs == null || acceptDocs.get(doc)) {
         collector.collect(doc);
