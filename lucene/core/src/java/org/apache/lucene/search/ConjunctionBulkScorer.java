@@ -52,8 +52,8 @@ final class ConjunctionBulkScorer extends BulkScorer {
       iterators.add(scorer.iterator());
     }
     Collections.sort(iterators, Comparator.comparingLong(DocIdSetIterator::cost));
-    lead1 = ScorerUtil.likelyPostingsEnum(iterators.get(0));
-    lead2 = ScorerUtil.likelyPostingsEnum(iterators.get(1));
+    lead1 = iterators.get(0);
+    lead2 = iterators.get(1);
     others = List.copyOf(iterators.subList(2, iterators.size()));
     scorable =
         new Scorable() {

@@ -177,7 +177,7 @@ final class BooleanScorer extends BulkScorer {
     Bucket[] buckets = BooleanScorer.this.buckets;
 
     DocIdSetIterator it = w.iterator;
-    Scorable scorer = w.scorer;
+    Scorable scorer = w.scorable;
     int doc = w.doc;
     if (doc < min) {
       doc = it.advance(min);

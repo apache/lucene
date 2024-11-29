@@ -51,14 +51,14 @@ public class DisiWrapper {
     if (impacts) {
       this.iterator = ScorerUtil.likelyImpactsEnum(scorer.iterator());
     } else {
-      this.iterator = ScorerUtil.likelyPostingsEnum(scorer.iterator());
+      this.iterator = scorer.iterator();
     }
     this.cost = iterator.cost();
     this.doc = -1;
     this.twoPhaseView = scorer.twoPhaseIterator();
 
     if (twoPhaseView != null) {
-      approximation = ScorerUtil.likelyPostingsEnum(twoPhaseView.approximation());
+      approximation = twoPhaseView.approximation();
       matchCost = twoPhaseView.matchCost();
     } else {
       approximation = iterator;

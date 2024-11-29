@@ -36,7 +36,6 @@ import org.apache.lucene.util.PriorityQueue;
 /** Util class for Scorer related methods */
 class ScorerUtil {
 
-  private static final Class<?> DEFAULT_POSTINGS_ENUM_CLASS;
   private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS;
 
   static {
@@ -51,8 +50,6 @@ class ScorerUtil {
         if (te.seekExact(new BytesRef("value")) == false) {
           throw new Error();
         }
-        PostingsEnum pe = te.postings(null, PostingsEnum.NONE);
-        DEFAULT_POSTINGS_ENUM_CLASS = pe.getClass();
         ImpactsEnum ie = te.impacts(PostingsEnum.FREQS);
         DEFAULT_IMPACTS_ENUM_CLASS = ie.getClass();
       }
@@ -94,20 +91,6 @@ class ScorerUtil {
    */
   static DocIdSetIterator likelyImpactsEnum(DocIdSetIterator it) {
     if (it.getClass() != DEFAULT_IMPACTS_ENUM_CLASS
-        && it.getClass() != FilterDocIdSetIterator.class) {
-      it = new FilterDocIdSetIterator(it);
-    }
-    return it;
-  }
-
-  /**
-   * Optimize a {@link DocIdSetIterator} for the case when it is likely implemented via a {@link
-   * PostingsEnum}. This return method only has 2 possible return types, which helps make sure that
-   * calls to {@link DocIdSetIterator#nextDoc()} and {@link DocIdSetIterator#advance(int)} are
-   * bimorphic at most and candidate for inlining.
-   */
-  static DocIdSetIterator likelyPostingsEnum(DocIdSetIterator it) {
-    if (it.getClass() != DEFAULT_POSTINGS_ENUM_CLASS
         && it.getClass() != FilterDocIdSetIterator.class) {
       it = new FilterDocIdSetIterator(it);
     }
