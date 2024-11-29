@@ -624,6 +624,26 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
+    // Inline SHOULD clauses from the only MUST clause
+    {
+      if (clauseSets.get(Occur.SHOULD).isEmpty()
+          && clauseSets.get(Occur.MUST).size() == 1
+          && clauseSets.get(Occur.MUST).iterator().next() instanceof BooleanQuery inner
+          && inner.clauses.size() == inner.clauseSets.get(Occur.SHOULD).size()) {
+        BooleanQuery.Builder rewritten = new BooleanQuery.Builder();
+        for (BooleanClause clause : clauses) {
+          if (clause.occur() != Occur.MUST) {
+            rewritten.add(clause);
+          }
+        }
+        for (BooleanClause innerClause : inner.clauses()) {
+          rewritten.add(innerClause);
+        }
+        rewritten.setMinimumNumberShouldMatch(Math.max(1, inner.getMinimumNumberShouldMatch()));
+        return rewritten.build();
+      }
+    }
+
     return super.rewrite(indexSearcher);
   }
 

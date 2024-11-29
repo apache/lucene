@@ -110,6 +110,9 @@ Optimizations
 * GITHUB#14021: WANDScorer now computes scores on the fly, which helps prevent
   advancing "tail" clauses in many cases. (Adrien Grand)
 
+* GITHUB#14014: Filtered disjunctions now get executed via `MaxScoreBulkScorer`.
+  (Adrien Grand)
+
 * GITHUB#14023: Make JVM inlining decisions more predictable in our main
   queries. (Adrien Grand)
 
