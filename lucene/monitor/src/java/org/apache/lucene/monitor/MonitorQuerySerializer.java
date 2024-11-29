@@ -17,17 +17,14 @@
 
 package org.apache.lucene.monitor;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.store.InputStreamDataInput;
-import org.apache.lucene.store.OutputStreamDataOutput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.RandomAccessInputDataInput;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.RandomAccessInputRef;
 
 /**
@@ -50,42 +47,33 @@ public interface MonitorQuerySerializer {
    */
   static MonitorQuerySerializer fromParser(Function<String, Query> parser) {
     return new MonitorQuerySerializer() {
-      final BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
+
+      final RandomAccessInputDataInput data = new RandomAccessInputDataInput();
 
       @Override
       public MonitorQuery deserialize(RandomAccessInputRef input) throws IOException {
-        bytesRefBuilder.copyBytes(input);
-        BytesRef binaryValue = bytesRefBuilder.get();
-        ByteArrayInputStream is =
-            new ByteArrayInputStream(binaryValue.bytes, binaryValue.offset, binaryValue.length);
-        try (InputStreamDataInput data = new InputStreamDataInput(is)) {
-          String id = data.readString();
-          String query = data.readString();
-          Map<String, String> metadata = new HashMap<>();
-          for (int i = data.readInt(); i > 0; i--) {
-            metadata.put(data.readString(), data.readString());
-          }
-          return new MonitorQuery(id, parser.apply(query), query, metadata);
-        } catch (IOException e) {
-          throw new RuntimeException(e); // shouldn't happen, we're reading from a bytearray!
+        RandomAccessInputDataInput data = new RandomAccessInputDataInput();
+        data.reset(input);
+        String id = data.readString();
+        String query = data.readString();
+        Map<String, String> metadata = new HashMap<>();
+        for (int i = data.readInt(); i > 0; i--) {
+          metadata.put(data.readString(), data.readString());
         }
+        return new MonitorQuery(id, parser.apply(query), query, metadata);
       }
 
       @Override
       public BytesRef serialize(MonitorQuery query) {
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        try (OutputStreamDataOutput data = new OutputStreamDataOutput(os)) {
-          data.writeString(query.getId());
-          data.writeString(query.getQueryString());
-          data.writeInt(query.getMetadata().size());
-          for (Map.Entry<String, String> entry : query.getMetadata().entrySet()) {
-            data.writeString(entry.getKey());
-            data.writeString(entry.getValue());
-          }
-          return new BytesRef(os.toByteArray());
-        } catch (IOException e) {
-          throw new RuntimeException(e); // All in memory, so no IOException should be thrown
+        ByteBuffersDataOutput data = new ByteBuffersDataOutput();
+        data.writeString(query.getId());
+        data.writeString(query.getQueryString());
+        data.writeInt(query.getMetadata().size());
+        for (Map.Entry<String, String> entry : query.getMetadata().entrySet()) {
+          data.writeString(entry.getKey());
+          data.writeString(entry.getValue());
         }
+        return new BytesRef(data.toArrayCopy());
       }
     };
   }
