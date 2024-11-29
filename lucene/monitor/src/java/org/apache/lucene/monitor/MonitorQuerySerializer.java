@@ -48,8 +48,6 @@ public interface MonitorQuerySerializer {
   static MonitorQuerySerializer fromParser(Function<String, Query> parser) {
     return new MonitorQuerySerializer() {
 
-      final RandomAccessInputDataInput data = new RandomAccessInputDataInput();
-
       @Override
       public MonitorQuery deserialize(RandomAccessInputRef input) throws IOException {
         RandomAccessInputDataInput data = new RandomAccessInputDataInput();
