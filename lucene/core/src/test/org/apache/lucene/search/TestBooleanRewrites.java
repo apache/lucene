@@ -401,14 +401,12 @@ public class TestBooleanRewrites extends LuceneTestCase {
 
     bq =
         new BooleanQuery.Builder()
-            .setMinimumNumberShouldMatch(random().nextInt(5))
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
             .add(new MatchAllDocsQuery(), Occur.FILTER)
             .build();
     Query expected =
         new BooleanQuery.Builder()
-            .setMinimumNumberShouldMatch(bq.getMinimumNumberShouldMatch())
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
             .build();
@@ -476,7 +474,22 @@ public class TestBooleanRewrites extends LuceneTestCase {
       Query query = randomBooleanQuery(random());
       final TopDocs td1 = searcher1.search(query, 100);
       final TopDocs td2 = searcher2.search(query, 100);
-      assertEquals(td1, td2);
+      try {
+        assertEquals(td1, td2);
+      } catch (AssertionError e) {
+        System.out.println(query);
+        Query rewritten = query;
+        do {
+          query = rewritten;
+          rewritten = query.rewrite(searcher1);
+          System.out.println(rewritten);
+          TopDocs tdx = searcher2.search(rewritten, 100);
+          if (td2.totalHits.value() != tdx.totalHits.value()) {
+            System.out.println("Bad");
+          }
+        } while (query != rewritten);
+        throw e;
+      }
     }
 
     searcher1.getIndexReader().close();
