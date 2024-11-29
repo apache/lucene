@@ -41,6 +41,9 @@ API Changes
 * GITHUB#13957: Removed LeafSimScorer class, to save its overhead. Scorers now
   compute scores directly from a SimScorer, postings and norms. (Adrien Grand)
 
+* GITHUB#13998: Add IndexInput::isLoaded to determine if the contents of an
+  input is resident in physical memory. (Chris Hegarty)
+
 New Features
 ---------------------
 (No changes)
