@@ -1649,7 +1649,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   private void testIsLoaded(int startOffset) throws IOException {
     try (Directory dir = getDirectory(createTempDir())) {
-      if (dir instanceof MMapDirectory mMapDirectory) {
+      if (FilterDirectory.unwrap(dir) instanceof MMapDirectory mMapDirectory) {
         mMapDirectory.setPreload(MMapDirectory.ALL_FILES);
       }
       final int totalLength = startOffset + TestUtil.nextInt(random(), 16384, 65536);
