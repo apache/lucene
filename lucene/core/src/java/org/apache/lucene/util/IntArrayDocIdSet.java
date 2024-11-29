@@ -21,12 +21,7 @@ import java.util.Arrays;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
-/**
- * A doc id set based on sorted int array.
- *
- * @lucene.internal
- */
-public final class IntArrayDocIdSet extends DocIdSet {
+final class IntArrayDocIdSet extends DocIdSet {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(IntArrayDocIdSet.class);
@@ -34,23 +29,15 @@ public final class IntArrayDocIdSet extends DocIdSet {
   private final int[] docs;
   private final int length;
 
-  /**
-   * Build an IntArrayDocIdSet by an int array and len.
-   *
-   * @param docs A docs array whose length need to be greater than the param len. It needs to be
-   *     sorted from 0(inclusive) to the len(exclusive), and the len-th doc in docs need to be
-   *     {@link DocIdSetIterator#NO_MORE_DOCS}.
-   * @param len The valid docs length in array.
-   */
-  public IntArrayDocIdSet(int[] docs, int len) {
-    if (docs[len] != DocIdSetIterator.NO_MORE_DOCS) {
+  IntArrayDocIdSet(int[] docs, int length) {
+    if (docs[length] != DocIdSetIterator.NO_MORE_DOCS) {
       throw new IllegalArgumentException();
     }
-    assert assertArraySorted(docs, len)
-        : "IntArrayDocIdSet need docs to be sorted"
-            + Arrays.toString(ArrayUtil.copyOfSubArray(docs, 0, len));
     this.docs = docs;
-    this.length = len;
+    assert assertArraySorted(docs, length)
+        : "IntArrayDocIdSet need docs to be sorted"
+            + Arrays.toString(ArrayUtil.copyOfSubArray(docs, 0, length));
+    this.length = length;
   }
 
   private static boolean assertArraySorted(int[] docs, int length) {

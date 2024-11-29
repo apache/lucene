@@ -183,7 +183,8 @@ final class BooleanScorerSupplier extends ScorerSupplier {
 
   BulkScorer booleanScorer() throws IOException {
     final int numOptionalClauses = subs.get(Occur.SHOULD).size();
-    final int numRequiredClauses = subs.get(Occur.MUST).size() + subs.get(Occur.FILTER).size();
+    final int numMustClauses = subs.get(Occur.MUST).size();
+    final int numRequiredClauses = numMustClauses + subs.get(Occur.FILTER).size();
 
     BulkScorer positiveScorer;
     if (numRequiredClauses == 0) {
@@ -209,6 +210,8 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       }
 
       positiveScorer = optionalBulkScorer();
+    } else if (numMustClauses == 0 && numOptionalClauses > 1 && minShouldMatch >= 1) {
+      positiveScorer = filteredOptionalBulkScorer();
     } else if (numRequiredClauses > 0 && numOptionalClauses == 0 && minShouldMatch == 0) {
       positiveScorer = requiredBulkScorer();
     } else {
@@ -286,7 +289,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         optionalScorers.add(ss.get(Long.MAX_VALUE));
       }
 
-      return new MaxScoreBulkScorer(maxDoc, optionalScorers);
+      return new MaxScoreBulkScorer(maxDoc, optionalScorers, null);
     }
 
     List<Scorer> optional = new ArrayList<Scorer>();
@@ -295,6 +298,32 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
 
     return new BooleanScorer(optional, Math.max(1, minShouldMatch), scoreMode.needsScores());
+  }
+
+  BulkScorer filteredOptionalBulkScorer() throws IOException {
+    if (subs.get(Occur.MUST).isEmpty() == false
+        || subs.get(Occur.FILTER).isEmpty()
+        || scoreMode != ScoreMode.TOP_SCORES
+        || subs.get(Occur.SHOULD).size() <= 1
+        || minShouldMatch > 1) {
+      return null;
+    }
+    long cost = cost();
+    List<Scorer> optionalScorers = new ArrayList<>();
+    for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
+      optionalScorers.add(ss.get(cost));
+    }
+    List<Scorer> filters = new ArrayList<>();
+    for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
+      filters.add(ss.get(cost));
+    }
+    Scorer filterScorer;
+    if (filters.size() == 1) {
+      filterScorer = filters.iterator().next();
+    } else {
+      filterScorer = new ConjunctionScorer(filters, Collections.emptySet());
+    }
+    return new MaxScoreBulkScorer(maxDoc, optionalScorers, filterScorer);
   }
 
   // Return a BulkScorer for the required clauses only
@@ -333,10 +362,15 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       requiredScoring.add(ss.get(leadCost));
     }
     if (scoreMode == ScoreMode.TOP_SCORES
-        && requiredNoScoring.isEmpty()
         && requiredScoring.size() > 1
         // Only specialize top-level conjunctions for clauses that don't have a two-phase iterator.
+        && requiredNoScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)
         && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
+      // Turn all filters into scoring clauses with a score of zero, so that
+      // BlockMaxConjunctionBulkScorer is applicable.
+      for (Scorer filter : requiredNoScoring) {
+        requiredScoring.add(new ConstantScoreScorer(0f, ScoreMode.COMPLETE, filter.iterator()));
+      }
       return new BlockMaxConjunctionBulkScorer(maxDoc, requiredScoring);
     }
     if (scoreMode != ScoreMode.TOP_SCORES
@@ -473,7 +507,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       // However, as WANDScorer uses more complex algorithm and data structure, we would like to
       // still use DisjunctionSumScorer to handle exhaustive pure disjunctions, which may be faster
       if ((scoreMode == ScoreMode.TOP_SCORES && topLevelScoringClause) || minShouldMatch > 1) {
-        return new WANDScorer(optionalScorers, minShouldMatch, scoreMode);
+        return new WANDScorer(optionalScorers, minShouldMatch, scoreMode, leadCost);
       } else {
         return new DisjunctionSumScorer(optionalScorers, scoreMode);
       }

@@ -98,26 +98,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   }
 
   // test interleaving different FixedBitSetIterator.next()/skipTo()
-  void doIterate(java.util.BitSet a, FixedBitSet b, int mode) throws IOException {
-    if (mode == 1) doIterate1(a, b);
-    if (mode == 2) doIterate2(a, b);
-  }
-
-  void doIterate1(java.util.BitSet a, FixedBitSet b) throws IOException {
-    assertEquals(a.cardinality(), b.cardinality());
-    int aa = -1, bb = -1;
-    DocIdSetIterator iterator = new BitSetIterator(b, 0);
-    do {
-      aa = a.nextSetBit(aa + 1);
-      bb =
-          (bb < b.length() && random().nextBoolean())
-              ? iterator.nextDoc()
-              : iterator.advance(bb + 1);
-      assertEquals(aa == -1 ? DocIdSetIterator.NO_MORE_DOCS : aa, bb);
-    } while (aa >= 0);
-  }
-
-  void doIterate2(java.util.BitSet a, FixedBitSet b) throws IOException {
+  void doIterate(java.util.BitSet a, FixedBitSet b) throws IOException {
     assertEquals(a.cardinality(), b.cardinality());
     int aa = -1, bb = -1;
     DocIdSetIterator iterator = new BitSetIterator(b, 0);
@@ -128,7 +109,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     } while (aa >= 0);
   }
 
-  void doRandomSets(int maxSize, int iter, int mode) throws IOException {
+  void doRandomSets(int maxSize, int iter) throws IOException {
     java.util.BitSet a0 = null;
     FixedBitSet b0 = null;
 
@@ -181,7 +162,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       FixedBitSet bb = b.clone();
       bb.flip(fromIndex, toIndex);
 
-      doIterate(aa, bb, mode); // a problem here is from flip or doIterate
+      doIterate(aa, bb); // a problem here is from flip or doIterate
 
       fromIndex = random().nextInt(sz / 2);
       toIndex = fromIndex + random().nextInt(sz - fromIndex);
@@ -230,10 +211,10 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         assertEquals(a0.cardinality(), b0.cardinality());
         assertEquals(a_or.cardinality(), b_or.cardinality());
 
-        doIterate(a_and, b_and, mode);
-        doIterate(a_or, b_or, mode);
-        doIterate(a_andn, b_andn, mode);
-        doIterate(a_xor, b_xor, mode);
+        doIterate(a_and, b_and);
+        doIterate(a_or, b_or);
+        doIterate(a_andn, b_andn);
+        doIterate(a_xor, b_xor);
 
         assertEquals(a_and.cardinality(), b_and.cardinality());
         assertEquals(a_or.cardinality(), b_or.cardinality());
@@ -250,8 +231,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   // larger testsuite.
   public void testSmall() throws IOException {
     final int iters = TEST_NIGHTLY ? atLeast(1000) : 100;
-    doRandomSets(atLeast(1200), iters, 1);
-    doRandomSets(atLeast(1200), iters, 2);
+    doRandomSets(atLeast(1200), iters);
   }
 
   // uncomment to run a bigger test (~2 minutes).

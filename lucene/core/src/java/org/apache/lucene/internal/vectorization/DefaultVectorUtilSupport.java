@@ -199,12 +199,12 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int findNextGEQ(long[] buffer, int length, long target, int from) {
-    for (int i = from; i < length; ++i) {
+  public int findNextGEQ(int[] buffer, int target, int from, int to) {
+    for (int i = from; i < to; ++i) {
       if (buffer[i] >= target) {
         return i;
       }
     }
-    return length;
+    return to;
   }
 }

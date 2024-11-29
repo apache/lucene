@@ -295,13 +295,12 @@ public class BlockGroupingCollector extends SimpleCollector {
               "cannot sort by relevance within group: needsScores=false");
         }
         collector =
-            new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+            new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE)
                 .newCollector();
       } else {
         // Sort by fields
         collector =
-            new TopFieldCollectorManager(
-                    withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+            new TopFieldCollectorManager(withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE)
                 .newCollector(); // TODO: disable exact counts?
       }
 

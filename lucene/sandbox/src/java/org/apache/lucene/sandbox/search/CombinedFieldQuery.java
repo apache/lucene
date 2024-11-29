@@ -422,15 +422,17 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   }
 
   private static class WeightedDisiWrapper extends DisiWrapper {
+    final PostingsEnum postingsEnum;
     final float weight;
 
     WeightedDisiWrapper(Scorer scorer, float weight) {
-      super(scorer);
+      super(scorer, false);
       this.weight = weight;
+      this.postingsEnum = (PostingsEnum) scorer.iterator();
     }
 
     float freq() throws IOException {
-      return weight * ((PostingsEnum) iterator).freq();
+      return weight * postingsEnum.freq();
     }
   }
 
@@ -438,12 +440,14 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     private final DisiPriorityQueue queue;
     private final DocIdSetIterator iterator;
     private final MultiNormsLeafSimScorer simScorer;
+    private final float maxScore;
 
     CombinedFieldScorer(
         DisiPriorityQueue queue, DocIdSetIterator iterator, MultiNormsLeafSimScorer simScorer) {
       this.queue = queue;
       this.iterator = iterator;
       this.simScorer = simScorer;
+      this.maxScore = simScorer.getSimScorer().score(Float.POSITIVE_INFINITY, 1L);
     }
 
     @Override
@@ -475,7 +479,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     @Override
     public float getMaxScore(int upTo) throws IOException {
-      return Float.POSITIVE_INFINITY;
+      return maxScore;
     }
   }
 }

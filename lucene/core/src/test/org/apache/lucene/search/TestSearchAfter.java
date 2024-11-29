@@ -234,10 +234,10 @@ public class TestSearchAfter extends LuceneTestCase {
       allManager = new TopScoreDocCollectorManager(maxDoc, null, Integer.MAX_VALUE);
       doScores = false;
     } else if (sort == Sort.RELEVANCE) {
-      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE, true);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE);
       doScores = true;
     } else {
-      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE, true);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE);
       doScores = random().nextBoolean();
     }
     all = searcher.search(query, allManager);
@@ -268,15 +268,13 @@ public class TestSearchAfter extends LuceneTestCase {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
-        pagedManager =
-            new TopScoreDocCollectorManager(pageSize, lastBottom, Integer.MAX_VALUE, true);
+        pagedManager = new TopScoreDocCollectorManager(pageSize, lastBottom, Integer.MAX_VALUE);
       } else {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
         pagedManager =
-            new TopFieldCollectorManager(
-                sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE, true);
+            new TopFieldCollectorManager(sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
       }
       paged = searcher.search(query, pagedManager);
       if (doScores) {

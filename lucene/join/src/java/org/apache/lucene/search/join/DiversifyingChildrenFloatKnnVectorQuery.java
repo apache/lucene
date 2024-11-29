@@ -153,7 +153,14 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
 
   @Override
   public String toString(String field) {
-    return getClass().getSimpleName() + ":" + this.field + "[" + query[0] + ",...][" + k + "]";
+    StringBuilder buffer = new StringBuilder();
+    buffer.append(getClass().getSimpleName() + ":");
+    buffer.append(this.field + "[" + query[0] + ",...]");
+    buffer.append("[" + k + "]");
+    if (this.filter != null) {
+      buffer.append("[" + this.filter + "]");
+    }
+    return buffer.toString();
   }
 
   @Override

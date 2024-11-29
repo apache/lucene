@@ -155,7 +155,7 @@ final class BooleanScorer extends BulkScorer {
     this.needsScores = needsScores;
     LongArrayList costs = new LongArrayList(scorers.size());
     for (Scorer scorer : scorers) {
-      DisiWrapper w = new DisiWrapper(scorer);
+      DisiWrapper w = new DisiWrapper(scorer, false);
       costs.add(w.cost);
       final DisiWrapper evicted = tail.insertWithOverflow(w);
       if (evicted != null) {
@@ -177,7 +177,7 @@ final class BooleanScorer extends BulkScorer {
     Bucket[] buckets = BooleanScorer.this.buckets;
 
     DocIdSetIterator it = w.iterator;
-    Scorer scorer = w.scorer;
+    Scorable scorer = w.scorable;
     int doc = w.doc;
     if (doc < min) {
       doc = it.advance(min);

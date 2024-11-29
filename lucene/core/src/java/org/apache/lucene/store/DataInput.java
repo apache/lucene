@@ -102,8 +102,10 @@ public abstract class DataInput implements Cloneable {
   /**
    * Override if you have an efficient implementation. In general this is when the input supports
    * random access.
+   *
+   * @lucene.experimental
    */
-  public void readGroupVInt(long[] dst, int offset) throws IOException {
+  public void readGroupVInt(int[] dst, int offset) throws IOException {
     GroupVIntUtil.readGroupVInt(this, dst, offset);
   }
 
