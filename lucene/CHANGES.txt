@@ -99,6 +99,20 @@ Optimizations
 * GITHUB#13985: Introduces IndexInput#updateReadAdvice to change the ReadAdvice
   while merging vectors. (Tejas Shah)
 
+* GITHUB#14000: Speed up top-k retrieval of filtered disjunctions.
+  (Adrien Grand)
+
+* GITHUB#13999: CombinedFieldQuery now returns non-infinite maximum scores,
+  making it eligible to dynamic pruning. (Adrien Grand)
+
+* GITHUB#13989: Faster checksum computation. (Jean-François Boeuf)
+
+* GITHUB#14021: WANDScorer now computes scores on the fly, which helps prevent
+  advancing "tail" clauses in many cases. (Adrien Grand)
+
+* GITHUB#14014: Filtered disjunctions now get executed via `MaxScoreBulkScorer`.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
@@ -126,6 +140,8 @@ Other
 Bug Fixes
 ---------------------
 
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
 
 ======================= Lucene 10.0.0 =======================
 
