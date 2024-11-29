@@ -113,10 +113,10 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
         DisiPriorityQueue subs = new DisiPriorityQueue(highFrequencyTerms.size() + 1);
         for (DocIdSetIterator disi : highFrequencyTerms) {
           Scorer s = wrapWithDummyScorer(this, disi);
-          subs.add(new DisiWrapper(s));
+          subs.add(new DisiWrapper(s, false));
         }
         Scorer s = wrapWithDummyScorer(this, otherTerms.build().iterator());
-        subs.add(new DisiWrapper(s));
+        subs.add(new DisiWrapper(s, false));
 
         return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(subs));
       }

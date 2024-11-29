@@ -53,13 +53,13 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
     this.maxDoc = maxDoc;
-    this.filter = filter == null ? null : new DisiWrapper(filter);
+    this.filter = filter == null ? null : new DisiWrapper(filter, false);
     allScorers = new DisiWrapper[scorers.size()];
     scratch = new DisiWrapper[allScorers.length];
     int i = 0;
     long cost = 0;
     for (Scorer scorer : scorers) {
-      DisiWrapper w = new DisiWrapper(scorer);
+      DisiWrapper w = new DisiWrapper(scorer, true);
       cost += w.cost;
       allScorers[i++] = w;
     }
@@ -221,7 +221,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       if (acceptDocs != null && acceptDocs.get(doc) == false) {
         continue;
       }
-      scoreNonEssentialClauses(collector, doc, top.scorer.score(), firstEssentialScorer);
+      scoreNonEssentialClauses(collector, doc, top.scorable.score(), firstEssentialScorer);
     }
     top.doc = top.iterator.docID();
     essentialQueue.updateTop();
@@ -249,7 +249,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         continue;
       }
 
-      double score = lead1.scorer.score();
+      double score = lead1.scorable.score();
 
       // We specialize handling the second best scorer, which seems to help a bit with performance.
       // But this is the exact same logic as in the below for loop.
@@ -268,7 +268,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         continue;
       }
 
-      score += lead2.scorer.score();
+      score += lead2.scorable.score();
 
       for (int i = allScorers.length - 3; i >= firstRequiredScorer; --i) {
         if ((float) MathUtil.sumUpperBound(score + maxScoreSums[i], allScorers.length)
@@ -286,7 +286,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
           lead1.doc = lead1.iterator.advance(Math.min(w.doc, max));
           continue outer;
         }
-        score += w.scorer.score();
+        score += w.scorable.score();
       }
 
       scoreNonEssentialClauses(collector, lead1.doc, score, firstRequiredScorer);
@@ -307,7 +307,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         if (acceptDocs == null || acceptDocs.get(doc)) {
           final int i = doc - innerWindowMin;
           windowMatches[i >>> 6] |= 1L << i;
-          windowScores[i] += top.scorer.score();
+          windowScores[i] += top.scorable.score();
         }
       }
       top.doc = top.iterator.docID();
@@ -399,7 +399,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         scorer.doc = scorer.iterator.advance(doc);
       }
       if (scorer.doc == doc) {
-        score += scorer.scorer.score();
+        score += scorer.scorable.score();
       }
     }
 
