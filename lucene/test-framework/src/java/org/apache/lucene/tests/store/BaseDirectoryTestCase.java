@@ -51,9 +51,11 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
@@ -1632,6 +1634,46 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
                       arr, startOffset + offset, startOffset + offset + readLength),
                   ArrayUtil.copyOfSubArray(temp, 0, readLength));
           }
+        }
+      }
+    }
+  }
+
+  public void testIsLoaded() throws IOException {
+    testIsLoaded(0);
+  }
+
+  public void testIsLoadedOnSlice() throws IOException {
+    testIsLoaded(TestUtil.nextInt(random(), 1, 1024));
+  }
+
+  private void testIsLoaded(int startOffset) throws IOException {
+    try (Directory dir = getDirectory(createTempDir())) {
+      if (FilterDirectory.unwrap(dir) instanceof MMapDirectory mMapDirectory) {
+        mMapDirectory.setPreload(MMapDirectory.ALL_FILES);
+      }
+      final int totalLength = startOffset + TestUtil.nextInt(random(), 16384, 65536);
+      byte[] arr = new byte[totalLength];
+      random().nextBytes(arr);
+      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
+        out.writeBytes(arr, arr.length);
+      }
+
+      try (IndexInput orig = dir.openInput("temp.bin", IOContext.DEFAULT)) {
+        IndexInput in;
+        if (startOffset == 0) {
+          in = orig.clone();
+        } else {
+          in = orig.slice("slice", startOffset, totalLength - startOffset);
+        }
+        var loaded = in.isLoaded();
+        if (FilterDirectory.unwrap(dir) instanceof MMapDirectory
+            // direct IO wraps MMap but does not support isLoaded
+            && !(dir.getClass().getName().contains("DirectIO"))) {
+          assertTrue(loaded.isPresent());
+          assertTrue(loaded.get());
+        } else {
+          assertFalse(loaded.isPresent());
         }
       }
     }
