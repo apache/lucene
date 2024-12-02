@@ -75,6 +75,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
   }
 
+  // cached vector sizes for smaller method bodies
+  private static final int FLOAT_SPECIES_LENGTH = FLOAT_SPECIES.length();
+
   // the way FMA should work! if available use it, otherwise fall back to mul/add
   private static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
     if (Constants.HAS_FAST_VECTOR_FMA) {
@@ -99,7 +102,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     float res = 0;
 
     // if the array size is large (> 2x platform vector size), its worth the overhead to vectorize
-    if (a.length > 2 * FLOAT_SPECIES.length()) {
+    if (a.length > 2 * FLOAT_SPECIES_LENGTH) {
       i += FLOAT_SPECIES.loopBound(a.length);
       res += dotProductBody(a, b, i);
     }
@@ -120,31 +123,33 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     FloatVector acc2 = FloatVector.zero(FLOAT_SPECIES);
     FloatVector acc3 = FloatVector.zero(FLOAT_SPECIES);
     FloatVector acc4 = FloatVector.zero(FLOAT_SPECIES);
-    final int floatSpeciesLength = FLOAT_SPECIES.length();
-    final int unrolledLimit = limit - 3 * floatSpeciesLength;
-    for (; i < unrolledLimit; i += 4 * floatSpeciesLength) {
+    final int unrolledLimit = limit - 3 * FLOAT_SPECIES_LENGTH;
+    for (; i < unrolledLimit; i += 4 * FLOAT_SPECIES_LENGTH) {
       // one
       FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
       FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
       acc1 = fma(va, vb, acc1);
 
       // two
-      FloatVector vc = FloatVector.fromArray(FLOAT_SPECIES, a, i + floatSpeciesLength);
-      FloatVector vd = FloatVector.fromArray(FLOAT_SPECIES, b, i + floatSpeciesLength);
+      final int i2 = i + FLOAT_SPECIES_LENGTH;
+      FloatVector vc = FloatVector.fromArray(FLOAT_SPECIES, a, i2);
+      FloatVector vd = FloatVector.fromArray(FLOAT_SPECIES, b, i2);
       acc2 = fma(vc, vd, acc2);
 
       // three
-      FloatVector ve = FloatVector.fromArray(FLOAT_SPECIES, a, i + 2 * floatSpeciesLength);
-      FloatVector vf = FloatVector.fromArray(FLOAT_SPECIES, b, i + 2 * floatSpeciesLength);
+      final int i3 = i2 + FLOAT_SPECIES_LENGTH;
+      FloatVector ve = FloatVector.fromArray(FLOAT_SPECIES, a, i3);
+      FloatVector vf = FloatVector.fromArray(FLOAT_SPECIES, b, i3);
       acc3 = fma(ve, vf, acc3);
 
       // four
-      FloatVector vg = FloatVector.fromArray(FLOAT_SPECIES, a, i + 3 * floatSpeciesLength);
-      FloatVector vh = FloatVector.fromArray(FLOAT_SPECIES, b, i + 3 * floatSpeciesLength);
+      final int i4 = i3 + FLOAT_SPECIES_LENGTH;
+      FloatVector vg = FloatVector.fromArray(FLOAT_SPECIES, a, i4);
+      FloatVector vh = FloatVector.fromArray(FLOAT_SPECIES, b, i4);
       acc4 = fma(vg, vh, acc4);
     }
     // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
-    for (; i < limit; i += floatSpeciesLength) {
+    for (; i < limit; i += FLOAT_SPECIES_LENGTH) {
       FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
       FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
       acc1 = fma(va, vb, acc1);
