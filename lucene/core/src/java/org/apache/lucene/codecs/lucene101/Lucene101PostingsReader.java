@@ -573,20 +573,25 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       return freqBuffer[docBufferUpto - 1];
     }
 
-    private void refillDocs() throws IOException {
-      final int left = docFreq - docCountUpto;
-      assert left >= 0;
-
-      if (left >= BLOCK_SIZE) {
-        forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
-        if (indexHasFreq) {
-          if (needsFreq) {
-            freqFP = docIn.getFilePointer();
-          }
-          PForUtil.skip(docIn);
+    private void refillFullBlock() throws IOException {
+      forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
+      if (indexHasFreq) {
+        if (needsFreq) {
+          freqFP = docIn.getFilePointer();
         }
-        docCountUpto += BLOCK_SIZE;
-      } else if (docFreq == 1) {
+        PForUtil.skip(docIn);
+      }
+      docCountUpto += BLOCK_SIZE;
+      prevDocID = docBuffer[BLOCK_SIZE - 1];
+      docBufferUpto = 0;
+      posDocBufferUpto = 0;
+      assert docBuffer[docBufferSize] == NO_MORE_DOCS;
+    }
+
+    private void refillRemainder() throws IOException {
+      final int left = docFreq - docCountUpto;
+      assert left >= 0 && left < BLOCK_SIZE;
+      if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = (int) totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
@@ -606,6 +611,17 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       docBufferUpto = 0;
       posDocBufferUpto = 0;
       assert docBuffer[docBufferSize] == NO_MORE_DOCS;
+    }
+
+    private void refillDocs() throws IOException {
+      final int left = docFreq - docCountUpto;
+      assert left >= 0;
+
+      if (left >= BLOCK_SIZE) {
+        refillFullBlock();
+      } else {
+        refillRemainder();
+      }
     }
 
     private void skipLevel1To(int target) throws IOException {
