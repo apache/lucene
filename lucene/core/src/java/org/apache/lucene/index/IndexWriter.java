@@ -101,8 +101,8 @@ import org.apache.lucene.util.Version;
  * whether a new index is created, or whether an existing index is opened. Note that you can open an
  * index with {@link OpenMode#CREATE} even while readers are using the index. The old readers will
  * continue to search the "point in time" snapshot they had opened, and won't see the newly created
- * index until they re-open. If {@link OpenMode#CREATE_OR_APPEND} is used, IndexWriter will create a
- * new index, if an index at the provided path doesn't exist, otherwise will open the existing
+ * index until they re-open. If {@link OpenMode#CREATE_OR_APPEND} is used IndexWriter will create a
+ * new index if there is not already an index at the provided path and otherwise open the existing
  * index.
  *
  * <p>In either case, documents are added with {@link #addDocument(Iterable) addDocument} and
@@ -123,8 +123,8 @@ import org.apache.lucene.util.Version;
  * IndexWriterConfig#setRAMBufferSizeMB}) or the number of added documents (see {@link
  * IndexWriterConfig#setMaxBufferedDocs(int)}). The default is to flush when RAM usage hits {@link
  * IndexWriterConfig#DEFAULT_RAM_BUFFER_SIZE_MB} MB. For best indexing speed you should flush by RAM
- * usage with a large RAM buffer. In contrast to the other flush options, in case of {@link
- * IndexWriterConfig#setRAMBufferSizeMB} and {@link IndexWriterConfig#setMaxBufferedDocs(int)}
+ * usage with a large RAM buffer. In contrast to the other flush options {@link
+ * IndexWriterConfig#setRAMBufferSizeMB} and {@link IndexWriterConfig#setMaxBufferedDocs(int)},
  * deleted terms won't trigger a segment flush. Note that flushing just moves the internal buffered
  * state in IndexWriter into the index, but these changes are not visible to IndexReader until
  * either {@link #commit()} or {@link #close} is called. A flush may also trigger one or more

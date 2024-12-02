@@ -25,9 +25,9 @@ import org.apache.lucene.store.Directory;
  * Expert: represents a single commit into an index as seen by the {@link IndexDeletionPolicy} or
  * {@link IndexReader}.
  *
- * <p>Changes to the content of an index are made visible only after the writer which made that
- * change commits by writing a new segments file (<code>segments_N</code>). This point in time, when
- * the action of writing of a new segments file to the directory is completed, is an index commit.
+ * <p>Changes to the content of an index are made visible only after the writer who made that change
+ * commits by writing a new segments file (<code>segments_N</code>). This point in time, when the
+ * action of writing of a new segments file to the directory is completed, is an index commit.
  *
  * <p>Each index commit point has a unique segments file associated with it. The segments file
  * associated with a later index commit point would have a larger N.

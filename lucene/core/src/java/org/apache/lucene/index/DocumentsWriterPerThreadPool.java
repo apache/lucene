@@ -184,7 +184,7 @@ final class DocumentsWriterPerThreadPool implements Iterable<DocumentsWriterPerT
   /**
    * Removes the given DWPT from the pool unless it's already been removed before.
    *
-   * @return <code>true</code>, iff the given DWPT has been removed. Otherwise <code>false</code>
+   * @return <code>true</code> iff the given DWPT has been removed. Otherwise <code>false</code>
    */
   synchronized boolean checkout(DocumentsWriterPerThread perThread) {
     // The DWPT must be held by the current thread. This guarantees that concurrent calls to
