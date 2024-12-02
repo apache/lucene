@@ -3,12 +3,15 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
-======================= Lucene 10.0.1 =======================
+======================== Lucene 10.0.1 =======================
 
 Bug Fixes
 ---------------------
-(No changes)
 
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 ======================= Lucene 10.0.0 =======================
 
