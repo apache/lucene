@@ -296,40 +296,40 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
   final class BlockPostingsEnum extends ImpactsEnum {
 
-    protected ForDeltaUtil forDeltaUtil;
-    protected PForUtil pforUtil;
+    private ForDeltaUtil forDeltaUtil;
+    private PForUtil pforUtil;
 
-    protected final int[] docBuffer = new int[BLOCK_SIZE + 1];
+    private final int[] docBuffer = new int[BLOCK_SIZE + 1];
 
-    protected int doc; // doc we last read
+    private int doc; // doc we last read
 
     // level 0 skip data
-    protected int level0LastDocID;
+    private int level0LastDocID;
     private long level0DocEndFP;
 
     // level 1 skip data
-    protected int level1LastDocID;
-    protected long level1DocEndFP;
-    protected int level1DocCountUpto;
+    private int level1LastDocID;
+    private long level1DocEndFP;
+    private int level1DocCountUpto;
 
-    protected int docFreq; // number of docs in this posting list
-    protected long
+    private int docFreq; // number of docs in this posting list
+    private long
         totalTermFreq; // sum of freqBuffer in this posting list (or docFreq when omitted)
 
-    protected int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
+    private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
-    protected int docCountUpto; // number of docs in or before the current block
-    protected int prevDocID; // last doc ID of the previous block
+    private int docCountUpto; // number of docs in or before the current block
+    private int prevDocID; // last doc ID of the previous block
 
-    protected int docBufferSize;
-    protected int docBufferUpto;
-    protected int posDocBufferUpto;
+    private int docBufferSize;
+    private int docBufferUpto;
+    private int posDocBufferUpto;
 
-    protected IndexInput docIn;
-    protected PostingDecodingUtil docInUtil;
+    private IndexInput docIn;
+    private PostingDecodingUtil docInUtil;
 
-    private final int[] freqBuffer = new int[BLOCK_SIZE + 1];
-    private final int[] posDeltaBuffer = new int[BLOCK_SIZE];
+    private final int[] freqBuffer = new int[BLOCK_SIZE];
+    private final int[] posDeltaBuffer;
 
     private final int[] payloadLengthBuffer;
     private final int[] offsetStartDeltaBuffer;
@@ -383,19 +383,19 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     private int level0BlockPosUpto;
     private long level0PayEndFP;
     private int level0BlockPayUpto;
-    protected final BytesRef level0SerializedImpacts;
-    protected final MutableImpactList level0Impacts;
+    private final BytesRef level0SerializedImpacts;
+    private final MutableImpactList level0Impacts;
 
     // level 1 skip data
     private long level1PosEndFP;
     private int level1BlockPosUpto;
     private long level1PayEndFP;
     private int level1BlockPayUpto;
-    protected final BytesRef level1SerializedImpacts;
-    protected final MutableImpactList level1Impacts;
+    private final BytesRef level1SerializedImpacts;
+    private final MutableImpactList level1Impacts;
 
     // true if we shallow-advanced to a new block that we have not decoded yet
-    protected boolean needsRefilling;
+    private boolean needsRefilling;
 
     public BlockPostingsEnum(FieldInfo fieldInfo, int flags, boolean needsImpacts) throws IOException {
       options = fieldInfo.getIndexOptions();
@@ -437,9 +437,11 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       if (needsPos) {
         this.posIn = Lucene101PostingsReader.this.posIn.clone();
         posInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(posIn);
+        posDeltaBuffer = new int[BLOCK_SIZE];
       } else {
         this.posIn = null;
         this.posInUtil = null;
+        posDeltaBuffer = null;
       }
 
       if (needsOffsets || needsPayloads) {
@@ -854,80 +856,90 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
     }
 
-    private void refillPositions() throws IOException {
-      if (posIn.getFilePointer() == lastPosBlockFP) {
-        final int count = (int) (totalTermFreq % BLOCK_SIZE);
-        int payloadLength = 0;
-        int offsetLength = 0;
-        payloadByteUpto = 0;
-        for (int i = 0; i < count; i++) {
-          int code = posIn.readVInt();
-          if (indexHasPayloads) {
-            if ((code & 1) != 0) {
-              payloadLength = posIn.readVInt();
-            }
-            if (payloadLengthBuffer != null) { // needs payloads
-              payloadLengthBuffer[i] = payloadLength;
-              posDeltaBuffer[i] = code >>> 1;
-              if (payloadLength != 0) {
-                if (payloadByteUpto + payloadLength > payloadBytes.length) {
-                  payloadBytes = ArrayUtil.grow(payloadBytes, payloadByteUpto + payloadLength);
-                }
-                posIn.readBytes(payloadBytes, payloadByteUpto, payloadLength);
-                payloadByteUpto += payloadLength;
+    private void refillTailPositions() throws IOException {
+      final int count = (int) (totalTermFreq % BLOCK_SIZE);
+      int payloadLength = 0;
+      int offsetLength = 0;
+      payloadByteUpto = 0;
+      for (int i = 0; i < count; i++) {
+        int code = posIn.readVInt();
+        if (indexHasPayloads) {
+          if ((code & 1) != 0) {
+            payloadLength = posIn.readVInt();
+          }
+          if (payloadLengthBuffer != null) { // needs payloads
+            payloadLengthBuffer[i] = payloadLength;
+            posDeltaBuffer[i] = code >>> 1;
+            if (payloadLength != 0) {
+              if (payloadByteUpto + payloadLength > payloadBytes.length) {
+                payloadBytes = ArrayUtil.grow(payloadBytes, payloadByteUpto + payloadLength);
               }
-            } else {
-              posIn.skipBytes(payloadLength);
+              posIn.readBytes(payloadBytes, payloadByteUpto, payloadLength);
+              payloadByteUpto += payloadLength;
             }
           } else {
-            posDeltaBuffer[i] = code;
+            posIn.skipBytes(payloadLength);
           }
-
-          if (indexHasOffsets) {
-            int deltaCode = posIn.readVInt();
-            if ((deltaCode & 1) != 0) {
-              offsetLength = posIn.readVInt();
-            }
-            if (offsetStartDeltaBuffer != null) { // needs offsets
-              offsetStartDeltaBuffer[i] = deltaCode >>> 1;
-              offsetLengthBuffer[i] = offsetLength;
-            }
-          }
-        }
-        payloadByteUpto = 0;
-      } else {
-        pforUtil.decode(posInUtil, posDeltaBuffer);
-
-        if (indexHasPayloads) {
-          if (needsPayloads) {
-            pforUtil.decode(payInUtil, payloadLengthBuffer);
-            int numBytes = payIn.readVInt();
-
-            if (numBytes > payloadBytes.length) {
-              payloadBytes = ArrayUtil.growNoCopy(payloadBytes, numBytes);
-            }
-            payIn.readBytes(payloadBytes, 0, numBytes);
-          } else if (payIn != null) { // needs offsets
-            // this works, because when writing a vint block we always force the first length to be
-            // written
-            PForUtil.skip(payIn); // skip over lengths
-            int numBytes = payIn.readVInt(); // read length of payloadBytes
-            payIn.seek(payIn.getFilePointer() + numBytes); // skip over payloadBytes
-          }
-          payloadByteUpto = 0;
+        } else {
+          posDeltaBuffer[i] = code;
         }
 
         if (indexHasOffsets) {
-          if (needsOffsets) {
-            pforUtil.decode(payInUtil, offsetStartDeltaBuffer);
-            pforUtil.decode(payInUtil, offsetLengthBuffer);
-          } else if (payIn != null) { // needs payloads
-            // this works, because when writing a vint block we always force the first length to be
-            // written
-            PForUtil.skip(payIn); // skip over starts
-            PForUtil.skip(payIn); // skip over lengths
+          int deltaCode = posIn.readVInt();
+          if ((deltaCode & 1) != 0) {
+            offsetLength = posIn.readVInt();
+          }
+          if (offsetStartDeltaBuffer != null) { // needs offsets
+            offsetStartDeltaBuffer[i] = deltaCode >>> 1;
+            offsetLengthBuffer[i] = offsetLength;
           }
         }
+      }
+      payloadByteUpto = 0;
+    }
+
+    private void refillOffsetsOrPayloads() throws IOException {
+      if (indexHasPayloads) {
+        if (needsPayloads) {
+          pforUtil.decode(payInUtil, payloadLengthBuffer);
+          int numBytes = payIn.readVInt();
+
+          if (numBytes > payloadBytes.length) {
+            payloadBytes = ArrayUtil.growNoCopy(payloadBytes, numBytes);
+          }
+          payIn.readBytes(payloadBytes, 0, numBytes);
+        } else if (payIn != null) { // needs offsets
+          // this works, because when writing a vint block we always force the first length to be
+          // written
+          PForUtil.skip(payIn); // skip over lengths
+          int numBytes = payIn.readVInt(); // read length of payloadBytes
+          payIn.seek(payIn.getFilePointer() + numBytes); // skip over payloadBytes
+        }
+        payloadByteUpto = 0;
+      }
+
+      if (indexHasOffsets) {
+        if (needsOffsets) {
+          pforUtil.decode(payInUtil, offsetStartDeltaBuffer);
+          pforUtil.decode(payInUtil, offsetLengthBuffer);
+        } else if (payIn != null) { // needs payloads
+          // this works, because when writing a vint block we always force the first length to be
+          // written
+          PForUtil.skip(payIn); // skip over starts
+          PForUtil.skip(payIn); // skip over lengths
+        }
+      }
+    }
+
+    private void refillPositions() throws IOException {
+      if (posIn.getFilePointer() == lastPosBlockFP) {
+        refillTailPositions();
+        return;
+      }
+      pforUtil.decode(posInUtil, posDeltaBuffer);
+
+      if (indexHasOffsetsOrPayloads) {
+        refillOffsetsOrPayloads();
       }
     }
 

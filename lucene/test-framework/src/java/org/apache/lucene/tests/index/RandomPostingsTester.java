@@ -1292,7 +1292,7 @@ public class RandomPostingsTester {
           target = impactsEnum.docID() + delta;
         }
 
-        if (target > max && random.nextBoolean()) {
+        if (advance && target > max && random.nextBoolean()) {
           int delta = Math.min(random.nextInt(512), DocIdSetIterator.NO_MORE_DOCS - target);
           max = target + delta;
 
