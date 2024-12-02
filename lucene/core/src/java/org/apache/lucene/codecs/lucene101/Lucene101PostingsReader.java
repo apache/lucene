@@ -876,7 +876,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       final int leftInBlock = BLOCK_SIZE - posBufferUpto;
       if (toSkip < leftInBlock) {
         int end = posBufferUpto + toSkip;
-        if (indexHasPayloads) {
+        if (needsPayloads) {
           payloadByteUpto += sumOverRange(payloadLengthBuffer, posBufferUpto, end);
         }
         posBufferUpto = end;
@@ -905,7 +905,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         }
         refillPositions();
         payloadByteUpto = 0;
-        if (payloadLengthBuffer != null) {
+        if (needsPayloads) {
           payloadByteUpto += sumOverRange(payloadLengthBuffer, 0, toSkip);
         }
         posBufferUpto = toSkip;
