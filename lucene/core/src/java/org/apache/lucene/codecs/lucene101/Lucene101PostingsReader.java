@@ -311,13 +311,12 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     return res;
   }
 
-  private abstract class AbstractPostingsEnum extends PostingsEnum {
+  final class EverythingEnum extends PostingsEnum {
 
     protected ForDeltaUtil forDeltaUtil;
     protected PForUtil pforUtil;
 
     protected final int[] docBuffer = new int[BLOCK_SIZE + 1];
-    protected final boolean indexHasFreq;
 
     protected int doc; // doc we last read
 
@@ -344,55 +343,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     protected IndexInput docIn;
     protected PostingDecodingUtil docInUtil;
-
-    protected AbstractPostingsEnum(FieldInfo fieldInfo) {
-      indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-      // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
-      // advance()
-      docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    protected void resetIndexInput(IntBlockTermState termState) throws IOException {
-      docFreq = termState.docFreq;
-      singletonDocID = termState.singletonDocID;
-      if (docFreq > 1) {
-        if (docIn == null) {
-          // lazy init
-          docIn = Lucene101PostingsReader.this.docIn.clone();
-          docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
-        }
-        prefetchPostings(docIn, termState);
-      }
-    }
-
-    protected PostingsEnum resetIdsAndLevelParams(IntBlockTermState termState) throws IOException {
-      doc = -1;
-      prevDocID = -1;
-      docCountUpto = 0;
-      level0LastDocID = -1;
-      if (docFreq < LEVEL1_NUM_DOCS) {
-        level1LastDocID = NO_MORE_DOCS;
-        if (docFreq > 1) {
-          docIn.seek(termState.docStartFP);
-        }
-      } else {
-        level1LastDocID = -1;
-        level1DocEndFP = termState.docStartFP;
-      }
-      level1DocCountUpto = 0;
-      docBufferSize = BLOCK_SIZE;
-      docBufferUpto = BLOCK_SIZE;
-      posDocBufferUpto = BLOCK_SIZE;
-      return this;
-    }
-  }
-
-  final class EverythingEnum extends AbstractPostingsEnum {
 
     private final int[] freqBuffer = new int[BLOCK_SIZE + 1];
     private final int[] posDeltaBuffer = new int[BLOCK_SIZE];
@@ -453,7 +403,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     private int level1BlockPayUpto;
 
     public EverythingEnum(FieldInfo fieldInfo, int flags) throws IOException {
-      super(fieldInfo);
       options = fieldInfo.getIndexOptions();
       indexHasFreq = options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
       indexHasPos = options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
@@ -467,6 +416,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       needsOffsets = indexHasOffsets && PostingsEnum.featureRequested(flags, PostingsEnum.OFFSETS);
       needsPayloads = indexHasPayloads && PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS);
       needsOffsetsOrPayloads = needsOffsets || needsPayloads;
+
+      // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
+      // advance()
+      docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
 
       if (needsFreq == false) {
         Arrays.fill(freqBuffer, 1);
@@ -517,7 +470,17 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
-      resetIndexInput(termState);
+      docFreq = termState.docFreq;
+      singletonDocID = termState.singletonDocID;
+      if (docFreq > 1) {
+        if (docIn == null) {
+          // lazy init
+          docIn = Lucene101PostingsReader.this.docIn.clone();
+          docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
+        }
+        prefetchPostings(docIn, termState);
+      }
+
       if (forDeltaUtil == null && docFreq >= BLOCK_SIZE) {
         forDeltaUtil = new ForDeltaUtil();
       }
@@ -525,6 +488,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       if (needsFreq && pforUtil == null && totalTermFreq >= BLOCK_SIZE) {
         pforUtil = new PForUtil();
       }
+
       // Where this term's postings start in the .pos file:
       final long posTermStartFP = termState.posStartFP;
       // Where this term's payloads/offsets start in the .pay
@@ -556,7 +520,30 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       level0BlockPayUpto = 0;
       posBufferUpto = BLOCK_SIZE;
 
-      return resetIdsAndLevelParams(termState);
+      doc = -1;
+      prevDocID = -1;
+      docCountUpto = 0;
+      level0LastDocID = -1;
+      if (docFreq < LEVEL1_NUM_DOCS) {
+        level1LastDocID = NO_MORE_DOCS;
+        if (docFreq > 1) {
+          docIn.seek(termState.docStartFP);
+        }
+      } else {
+        level1LastDocID = -1;
+        level1DocEndFP = termState.docStartFP;
+      }
+      level1DocCountUpto = 0;
+      docBufferSize = BLOCK_SIZE;
+      docBufferUpto = BLOCK_SIZE;
+      posDocBufferUpto = BLOCK_SIZE;
+
+      return this;
+    }
+
+    @Override
+    public int docID() {
+      return doc;
     }
 
     @Override
