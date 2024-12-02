@@ -690,39 +690,33 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
 
       if (docFreq - docCountUpto >= BLOCK_SIZE) {
-        long level0NumBytes = docIn.readVLong();
-        if (needsDocsOnly) {
-          docIn.skipBytes(level0NumBytes);
-          refillDocs();
-          level0LastDocID = docBuffer[BLOCK_SIZE - 1];
-        } else {
-          int docDelta = readVInt15(docIn);
-          level0LastDocID += docDelta;
-          long blockLength = readVLong15(docIn);
-          level0DocEndFP = docIn.getFilePointer() + blockLength;
-          if (indexHasFreq) {
-            int numImpactBytes = docIn.readVInt();
-            if (needsImpacts) {
-              docIn.readBytes(level0SerializedImpacts.bytes, 0, numImpactBytes);
-              level0SerializedImpacts.length = numImpactBytes;
-            } else {
-              docIn.skipBytes(numImpactBytes);
-            }
+        docIn.readVLong(); // level0NumBytes
+        int docDelta = readVInt15(docIn);
+        level0LastDocID += docDelta;
+        long blockLength = readVLong15(docIn);
+        level0DocEndFP = docIn.getFilePointer() + blockLength;
+        if (indexHasFreq) {
+          int numImpactBytes = docIn.readVInt();
+          if (needsImpacts) {
+            docIn.readBytes(level0SerializedImpacts.bytes, 0, numImpactBytes);
+            level0SerializedImpacts.length = numImpactBytes;
+          } else {
+            docIn.skipBytes(numImpactBytes);
+          }
 
-            if (indexHasPos) {
-              level0PosEndFP += docIn.readVLong();
-              level0BlockPosUpto = docIn.readByte();
-              if (indexHasOffsetsOrPayloads) {
-                level0PayEndFP += docIn.readVLong();
-                level0BlockPayUpto = docIn.readVInt();
-              }
+          if (indexHasPos) {
+            level0PosEndFP += docIn.readVLong();
+            level0BlockPosUpto = docIn.readByte();
+            if (indexHasOffsetsOrPayloads) {
+              level0PayEndFP += docIn.readVLong();
+              level0BlockPayUpto = docIn.readVInt();
             }
           }
-          refillDocs();
         }
+        refillFullBlock();
       } else {
         level0LastDocID = NO_MORE_DOCS;
-        refillDocs();
+        refillRemainder();
       }
     }
 
