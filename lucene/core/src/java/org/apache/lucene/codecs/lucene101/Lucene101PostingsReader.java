@@ -364,6 +364,9 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     final boolean needsImpacts;
     final boolean needsDocsOnly;
 
+    // file pointer for the freq block
+    private long freqFP;
+
     private int position; // current position
 
     // how many positions "behind" we are; nextPosition must
@@ -536,6 +539,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       doc = -1;
       prevDocID = -1;
       docCountUpto = 0;
+      freqFP = -1L;
       level0LastDocID = -1;
       if (docFreq < LEVEL1_NUM_DOCS) {
         level1LastDocID = NO_MORE_DOCS;
@@ -560,7 +564,12 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public int freq() {
+    public int freq() throws IOException {
+      if (freqFP != -1) {
+        docIn.seek(freqFP);
+        pforUtil.decode(docInUtil, freqBuffer);
+        freqFP = -1;
+      }
       return freqBuffer[docBufferUpto - 1];
     }
 
@@ -570,9 +579,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
       if (left >= BLOCK_SIZE) {
         forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
-        if (needsFreq) {
-          pforUtil.decode(docInUtil, freqBuffer);
-        } else if (indexHasFreq) {
+        if (indexHasFreq) {
+          if (needsFreq) {
+            freqFP = docIn.getFilePointer();
+          }
           PForUtil.skip(docIn);
         }
         docCountUpto += BLOCK_SIZE;
@@ -580,6 +590,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = (int) totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
+        assert freqFP == -1;
         docCountUpto++;
         docBufferSize = 1;
       } else {
@@ -587,6 +598,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
         prefixSum(docBuffer, left, prevDocID);
         docBuffer[left] = NO_MORE_DOCS;
+        freqFP = -1L;
         docCountUpto += left;
         docBufferSize = left;
       }
@@ -656,6 +668,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           }
           posBufferUpto = BLOCK_SIZE;
         } else {
+          assert freqFP == -1L;
           posPendingCount += sumOverRange(freqBuffer, posDocBufferUpto, BLOCK_SIZE);
         }
       }
@@ -739,6 +752,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
             }
             posBufferUpto = BLOCK_SIZE;
           } else {
+            freq(); // trigger lazy decoding of freqs
             posPendingCount += sumOverRange(freqBuffer, posDocBufferUpto, BLOCK_SIZE);
           }
         }
@@ -961,12 +975,12 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     private void accumulatePendingPositions() throws IOException {
+      int freq = freq(); // trigger lazy decoding of freqs
       posPendingCount += sumOverRange(freqBuffer, posDocBufferUpto, docBufferUpto);
       posDocBufferUpto = docBufferUpto;
 
       assert posPendingCount > 0;
 
-      int freq = freq();
       if (posPendingCount > freq) {
         skipPositions(freq);
         posPendingCount = freq;
