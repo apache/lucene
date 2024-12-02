@@ -365,6 +365,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     final boolean needsPayloads;
     final boolean needsOffsetsOrPayloads;
     final boolean needsImpacts;
+    final boolean needsDocsOnly;
 
     private int position; // current position
 
@@ -411,6 +412,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       needsPayloads = indexHasPayloads && PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS);
       needsOffsetsOrPayloads = needsOffsets || needsPayloads;
       this.needsImpacts = needsImpacts;
+      needsDocsOnly = needsFreq == false && needsImpacts == false;
 
       // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
       // advance()
@@ -663,34 +665,40 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
 
       if (docFreq - docCountUpto >= BLOCK_SIZE) {
-        docIn.readVLong(); // skip0 num bytes
-        int docDelta = readVInt15(docIn);
-        level0LastDocID += docDelta;
-        long blockLength = readVLong15(docIn);
-        level0DocEndFP = docIn.getFilePointer() + blockLength;
-        if (indexHasFreq) {
-          int numImpactBytes = docIn.readVInt();
-          if (needsImpacts) {
-            docIn.readBytes(level0SerializedImpacts.bytes, 0, numImpactBytes);
-            level0SerializedImpacts.length = numImpactBytes;
-          } else {
-            docIn.skipBytes(numImpactBytes);
-          }
+        long level0NumBytes = docIn.readVLong(); // skip0 num bytes
+        if (needsDocsOnly) {
+          docIn.skipBytes(level0NumBytes);
+          refillDocs();
+          level0LastDocID = docBuffer[BLOCK_SIZE - 1];
+        } else {
+          int docDelta = readVInt15(docIn);
+          level0LastDocID += docDelta;
+          long blockLength = readVLong15(docIn);
+          level0DocEndFP = docIn.getFilePointer() + blockLength;
+          if (indexHasFreq) {
+            int numImpactBytes = docIn.readVInt();
+            if (needsImpacts) {
+              docIn.readBytes(level0SerializedImpacts.bytes, 0, numImpactBytes);
+              level0SerializedImpacts.length = numImpactBytes;
+            } else {
+              docIn.skipBytes(numImpactBytes);
+            }
 
-          if (indexHasPos) {
-            level0PosEndFP += docIn.readVLong();
-            level0BlockPosUpto = docIn.readByte();
-            if (indexHasOffsetsOrPayloads) {
-              level0PayEndFP += docIn.readVLong();
-              level0BlockPayUpto = docIn.readVInt();
+            if (indexHasPos) {
+              level0PosEndFP += docIn.readVLong();
+              level0BlockPosUpto = docIn.readByte();
+              if (indexHasOffsetsOrPayloads) {
+                level0PayEndFP += docIn.readVLong();
+                level0BlockPayUpto = docIn.readVInt();
+              }
             }
           }
+          refillDocs();
         }
       } else {
         level0LastDocID = NO_MORE_DOCS;
+        refillDocs();
       }
-
-      refillDocs();
     }
 
     private void skipLevel0To(int target) throws IOException {
