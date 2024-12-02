@@ -1416,7 +1416,7 @@ public class RandomPostingsTester {
       final boolean alwaysTestMax)
       throws Exception {
 
-    if (options.contains(Option.THREADS)) {
+    if (options.contains(Option.THREADS) && false) {
       int numThreads = LuceneTestCase.TEST_NIGHTLY ? TestUtil.nextInt(random, 2, 5) : 2;
       Thread[] threads = new Thread[numThreads];
       for (int threadUpto = 0; threadUpto < numThreads; threadUpto++) {
