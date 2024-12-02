@@ -132,6 +132,8 @@ Bug Fixes
 * GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
   and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
 
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public
+
 Build
 ---------------------
 
