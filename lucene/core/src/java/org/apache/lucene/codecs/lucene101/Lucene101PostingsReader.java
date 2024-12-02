@@ -781,22 +781,26 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           int docDelta = readVInt15(docIn);
           level0LastDocID += docDelta;
           boolean found = target <= level0LastDocID;
-
           long blockLength = readVLong15(docIn);
           level0DocEndFP = docIn.getFilePointer() + blockLength;
-          if (indexHasFreq) {
-            int numImpactBytes = docIn.readVInt();
-            if (needsImpacts && found) {
-              docIn.readBytes(level0SerializedImpacts.bytes, 0, numImpactBytes);
-              level0SerializedImpacts.length = numImpactBytes;
-            } else {
-              docIn.skipBytes(numImpactBytes);
-            }
 
-            if (needsPos) {
-              readLevel0PosData();
-            } else {
+          if (indexHasFreq) {
+            if (found == false && needsPos == false) {
               docIn.seek(skip0End);
+            } else {
+              int numImpactBytes = docIn.readVInt();
+              if (needsImpacts && found) {
+                docIn.readBytes(level0SerializedImpacts.bytes, 0, numImpactBytes);
+                level0SerializedImpacts.length = numImpactBytes;
+              } else {
+                docIn.skipBytes(numImpactBytes);
+              }
+
+              if (needsPos) {
+                readLevel0PosData();
+              } else {
+                docIn.seek(skip0End);
+              }
             }
           }
 
