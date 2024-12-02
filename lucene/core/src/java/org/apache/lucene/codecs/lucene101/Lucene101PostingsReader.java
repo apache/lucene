@@ -733,57 +733,74 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
     }
 
+    private void readLevel0PosData() throws IOException {
+      level0PosEndFP += docIn.readVLong();
+      level0BlockPosUpto = docIn.readByte();
+      if (indexHasOffsetsOrPayloads) {
+        level0PayEndFP += docIn.readVLong();
+        level0BlockPayUpto = docIn.readVInt();
+      }
+    }
+
+    private void seekPosData(long posFP, int posUpto, long payFP, int payUpto) throws IOException {
+      // If nextBlockPosFP is less than the current FP, it means that the block of positions for
+      // the first docs of the next block are already decoded. In this case we just accumulate
+      // frequencies into posPendingCount instead of seeking backwards and decoding the same pos
+      // block again.
+      if (posFP >= posIn.getFilePointer()) {
+        posIn.seek(posFP);
+        posPendingCount = posUpto;
+        if (payIn != null) { // needs payloads or offsets
+          assert level0PayEndFP >= payIn.getFilePointer();
+          payIn.seek(payFP);
+          payloadByteUpto = payUpto;;
+        }
+        posBufferUpto = BLOCK_SIZE;
+      } else {
+        posPendingCount += sumOverRange(freqBuffer, posDocBufferUpto, BLOCK_SIZE);
+      }
+    }
+
     private void skipLevel0To(int target) throws IOException {
+      long posFP;
+      int posUpto;
+      long payFP;
+      int payUpto;
+      
       while (true) {
         prevDocID = level0LastDocID;
 
-        if (posIn != null) { // needs positions
-          // If nextBlockPosFP is less than the current FP, it means that the block of positions for
-          // the first docs of the next block are already decoded. In this case we just accumulate
-          // frequencies into posPendingCount instead of seeking backwards and decoding the same pos
-          // block again.
-          if (level0PosEndFP >= posIn.getFilePointer()) {
-            posIn.seek(level0PosEndFP);
-            posPendingCount = level0BlockPosUpto;
-            if (payIn != null) { // needs payloads or offsets
-              assert level0PayEndFP >= payIn.getFilePointer();
-              payIn.seek(level0PayEndFP);
-              payloadByteUpto = level0BlockPayUpto;
-            }
-            posBufferUpto = BLOCK_SIZE;
-          } else {
-            freq(); // trigger lazy decoding of freqs
-            posPendingCount += sumOverRange(freqBuffer, posDocBufferUpto, BLOCK_SIZE);
-          }
-        }
+        posFP = level0PosEndFP;
+        posUpto = level0BlockPosUpto;
+        payFP = level0PayEndFP;
+        payUpto = level0BlockPayUpto;
 
         if (docFreq - docCountUpto >= BLOCK_SIZE) {
-          docIn.readVLong(); // skip0 num bytes
+          long numSkipBytes = docIn.readVLong();
+          long skip0End = docIn.getFilePointer() + numSkipBytes;
           int docDelta = readVInt15(docIn);
           level0LastDocID += docDelta;
+          boolean found = target <= level0LastDocID;
 
           long blockLength = readVLong15(docIn);
           level0DocEndFP = docIn.getFilePointer() + blockLength;
           if (indexHasFreq) {
             int numImpactBytes = docIn.readVInt();
-            if (needsImpacts && target <= level0LastDocID) {
+            if (needsImpacts && found) {
               docIn.readBytes(level0SerializedImpacts.bytes, 0, numImpactBytes);
               level0SerializedImpacts.length = numImpactBytes;
             } else {
               docIn.skipBytes(numImpactBytes);
             }
 
-            if (indexHasPos) {
-              level0PosEndFP += docIn.readVLong();
-              level0BlockPosUpto = docIn.readByte();
-              if (indexHasOffsetsOrPayloads) {
-                level0PayEndFP += docIn.readVLong();
-                level0BlockPayUpto = docIn.readVInt();
-              }
+            if (needsPos) {
+              readLevel0PosData();
+            } else {
+              docIn.seek(skip0End);
             }
           }
 
-          if (target <= level0LastDocID) {
+          if (found) {
             break;
           }
 
@@ -793,6 +810,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           level0LastDocID = NO_MORE_DOCS;
           break;
         }
+      }
+
+      if (posIn != null) { // needs positions
+        seekPosData(posFP, posUpto, payFP, payUpto);
       }
     }
 
