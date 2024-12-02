@@ -58,7 +58,7 @@ import java.util.Set;
  * (1 GB), and you call {@code forceMerge(10)}, the two settings are clearly in conflict. {@code
  * TieredMergePolicy} will choose to break the {@link #setMaxMergedSegmentMB} constraint and try to
  * merge down to at most ten segments, each up to 5 * 1.25 GB in size (since an extra 25% buffer
- * increase in the expected segment size is targetted).
+ * increase in the expected segment size is targeted).
  *
  * <p>findForcedDeletesMerges should never produce segments greater than maxSegmentSize.
  *

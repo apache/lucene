@@ -730,7 +730,7 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  /** Index each field. Returns {@code true}, if we are indexing a unique field with postings */
+  /** Index each field Returns {@code true}, if we are indexing a unique field with postings */
   private boolean processField(int docID, IndexableField field, PerField pf) throws IOException {
     IndexableFieldType fieldType = field.fieldType();
     boolean indexedField = false;
