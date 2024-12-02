@@ -738,11 +738,11 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         if (docFreq - docCountUpto >= BLOCK_SIZE) {
           long level0NumBytes = docIn.readVLong();
           docIn.skipBytes(level0NumBytes);
-          refillDocs();
+          refillFullBlock();
           level0LastDocID = docBuffer[BLOCK_SIZE - 1];
         } else {
           level0LastDocID = NO_MORE_DOCS;
-          refillDocs();
+          refillRemainder();
         }
       } else {
         moveToNextLevel0BlockWithFreqs();
