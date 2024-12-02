@@ -204,11 +204,6 @@ public class DocIdEncodingBenchmark {
             .toList();
       }
 
-      public static DocIdEncoder fromClazz(Class<? extends DocIdEncoder> clazz) {
-        String parsedEncoderName = parsedClazzName(clazz);
-        return getInternal(parsedEncoderName);
-      }
-
       private static DocIdEncoder getInternal(String parsedEncoderName) {
         if (ENCODER_NAME_TO_INSTANCE_MAPPING.containsKey(parsedEncoderName)) {
           return ENCODER_NAME_TO_INSTANCE_MAPPING.get(parsedEncoderName);
@@ -493,6 +488,10 @@ public class DocIdEncodingBenchmark {
       }
     }
 
+    /**
+     * Last fallback in org.apache.lucene.util.bkd.DocIdsWriter#writeDocIds() when no optimisation
+     * works
+     */
     class Bit32Encoder implements DocIdEncoder {
 
       @Override
@@ -510,6 +509,7 @@ public class DocIdEncodingBenchmark {
       }
     }
 
+    /** Variation of @{@link Bit32Encoder} using readLong and writeLong methods. */
     class Bit32OnlyRWLongEncoder implements DocIdEncoder {
 
       @Override

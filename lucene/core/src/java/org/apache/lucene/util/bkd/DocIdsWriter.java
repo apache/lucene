@@ -121,7 +121,7 @@ final class DocIdsWriter {
         out.writeByte(BPV_21);
         int i = 0;
         // See
-        // @org.apache.lucene.benchmark.jmh.DocIdEncodingBenchmark.DocIdEncoder.Bit21With3StepsEncoder
+        // @org.apache.lucene.benchmark.jmh.DocIdEncodingBenchmark$DocIdEncoder$Bit21With3StepsEncoder
         if (!IS_ARCH_64) {
           for (; i < count - 8; i += 9) {
             long l1 =
@@ -148,8 +148,14 @@ final class DocIdsWriter {
                   | (docIds[i + 2] & BPV_21_MASK);
           out.writeLong(packedLong);
         }
-        for (; i < count; i++) {
-          out.writeInt(docIds[i]);
+        if (IS_ARCH_64) {
+          for (; i < count; i++) {
+            out.writeInt(docIds[i]);
+          }
+        } else {
+          for (; i < count; i++) {
+            out.writeLong(docIds[i]);
+          }
         }
       } else if (max <= 0xFFFFFF) {
         out.writeByte(BPV_24);
@@ -332,8 +338,14 @@ final class DocIdsWriter {
       docIDs[i + 1] = (int) ((packedLong >>> 21) & BPV_21_MASK);
       docIDs[i + 2] = (int) (packedLong & BPV_21_MASK);
     }
-    for (; i < count; i++) {
-      docIDs[i] = in.readInt();
+    if (IS_ARCH_64) {
+      for (; i < count; i++) {
+        docIDs[i] = in.readInt();
+      }
+    } else {
+      for (; i < count; i++) {
+        docIDs[i] = (int) in.readLong();
+      }
     }
   }
 
