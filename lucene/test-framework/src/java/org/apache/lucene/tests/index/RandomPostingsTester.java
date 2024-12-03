@@ -1292,7 +1292,7 @@ public class RandomPostingsTester {
           target = impactsEnum.docID() + delta;
         }
 
-        if (advance && target > max && random.nextBoolean()) {
+        if (target > max && random.nextBoolean()) {
           int delta = Math.min(random.nextInt(512), DocIdSetIterator.NO_MORE_DOCS - target);
           max = target + delta;
 
@@ -1416,7 +1416,7 @@ public class RandomPostingsTester {
       final boolean alwaysTestMax)
       throws Exception {
 
-    if (options.contains(Option.THREADS) && false) {
+    if (options.contains(Option.THREADS)) {
       int numThreads = LuceneTestCase.TEST_NIGHTLY ? TestUtil.nextInt(random, 2, 5) : 2;
       Thread[] threads = new Thread[numThreads];
       for (int threadUpto = 0; threadUpto < numThreads; threadUpto++) {
