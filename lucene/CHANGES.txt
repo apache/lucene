@@ -119,6 +119,9 @@ Optimizations
 * GITHUB#14023: Make JVM inlining decisions more predictable in our main
   queries. (Adrien Grand)
 
+* GITHUB#14032: Speed up PostingsEnum when positions are requested.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
@@ -131,8 +134,6 @@ Bug Fixes
   in valid polygons. (Ignacio Vera)
 * GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
   and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
-
-* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public
 
 Build
 ---------------------
@@ -150,6 +151,8 @@ Bug Fixes
 
 * GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
   their corresponding ordinals. (Paul King)
+
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 ======================= Lucene 10.0.0 =======================
 

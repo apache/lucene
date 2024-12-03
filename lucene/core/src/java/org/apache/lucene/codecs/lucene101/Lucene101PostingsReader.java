@@ -320,7 +320,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     private int docBufferSize;
     private int docBufferUpto;
-    private int posDocBufferUpto;
 
     private IndexInput docIn;
     private PostingDecodingUtil docInUtil;
@@ -364,10 +363,12 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     final boolean needsImpacts;
     final boolean needsDocsOnly;
 
-    // file pointer for the freq block
-    private long freqFP;
+    private long freqFP; // offset of the freq block
 
     private int position; // current position
+
+    // value of docBufferUpto on the last doc ID when positions have been read
+    private int posDocBufferUpto;
 
     // how many positions "behind" we are; nextPosition must
     // skip these to "catch up":
@@ -776,7 +777,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       int posUpto;
       long payFP;
       int payUpto;
-      
+
       while (true) {
         prevDocID = level0LastDocID;
 
@@ -922,7 +923,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
     }
 
-    private void refillTailPositions() throws IOException {
+    private void refillLastPositionBlock() throws IOException {
       final int count = (int) (totalTermFreq % BLOCK_SIZE);
       int payloadLength = 0;
       int offsetLength = 0;
@@ -999,7 +1000,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     private void refillPositions() throws IOException {
       if (posIn.getFilePointer() == lastPosBlockFP) {
-        refillTailPositions();
+        refillLastPositionBlock();
         return;
       }
       pforUtil.decode(posInUtil, posDeltaBuffer);
@@ -1022,7 +1023,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
     }
 
-    private void accumulateOffsetsAndPayloads() {
+    private void accumulatePayloadAndOffsets() {
       if (needsPayloads) {
         payloadLength = payloadLengthBuffer[posBufferUpto];
         payload.bytes = payloadBytes;
@@ -1031,7 +1032,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         payloadByteUpto += payloadLength;
       }
 
-      if (needsOffsets) { // needs offsets
+      if (needsOffsets) {
         startOffset = lastStartOffset + offsetStartDeltaBuffer[posBufferUpto];
         endOffset = startOffset + offsetLengthBuffer[posBufferUpto];
         lastStartOffset = startOffset;
@@ -1059,7 +1060,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       position += posDeltaBuffer[posBufferUpto];
 
       if (needsOffsetsOrPayloads) {
-        accumulateOffsetsAndPayloads();
+        accumulatePayloadAndOffsets();
       }
 
       posBufferUpto++;
@@ -1069,17 +1070,23 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     @Override
     public int startOffset() {
+      if (needsOffsets == false) {
+        return -1;
+      }
       return startOffset;
     }
 
     @Override
     public int endOffset() {
+      if (needsOffsets == false) {
+        return -1;
+      }
       return endOffset;
     }
 
     @Override
     public BytesRef getPayload() {
-      if (payloadLength == 0) {
+      if (needsPayloads == false || payloadLength == 0) {
         return null;
       } else {
         return payload;
