@@ -38,7 +38,11 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
 
 public class TestFeatureField extends LuceneTestCase {
 
@@ -444,5 +448,78 @@ public class TestFeatureField extends LuceneTestCase {
       }
       reader.close();
     }
+  }
+
+  public void testStoreTermVectors() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer =
+            new RandomIndexWriter(
+                    random(),
+                    dir,
+                    newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+    Document doc = new Document();
+    FeatureField pagerank = new FeatureField("features", "pagerank", 1, true);
+    FeatureField urlLength = new FeatureField("features", "urlLen", 1, true);
+    doc.add(pagerank);
+    doc.add(urlLength);
+
+    pagerank.setFeatureValue(10);
+    urlLength.setFeatureValue(0.5f);
+    writer.addDocument(doc);
+
+    writer.addDocument(new Document()); // gap
+
+    pagerank.setFeatureValue(42);
+    urlLength.setFeatureValue(1.5f);
+    writer.addDocument(doc);
+
+    doc.clear();
+    FeatureField invalid = new FeatureField("features", "pagerank", 1, false);
+    doc.add(invalid);
+    var exc = expectThrows(Exception.class, () -> writer.addDocument(doc));
+    assertThat(exc.getMessage(), containsString("store term vector"));
+
+    writer.forceMerge(1);
+    DirectoryReader reader = writer.getReader();
+    writer.close();
+
+    IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+    var fieldInfo = context.reader().getFieldInfos().fieldInfo("features");
+    assertTrue(fieldInfo.hasTermVectors());
+
+    var terms = context.reader().termVectors().get(0, "features");
+    var termsEnum = terms.iterator();
+    assertThat(termsEnum.next(), equalTo(new BytesRef("pagerank")));
+    var postings = termsEnum.postings(null);
+    assertThat(postings.nextDoc(), equalTo(0));
+    assertThat(FeatureField.decodeFeatureValue(postings.freq()), equalTo(10f));
+    assertThat(postings.nextDoc(), equalTo(DocIdSetIterator.NO_MORE_DOCS));
+
+    assertThat(termsEnum.next(), equalTo(new BytesRef("urlLen")));
+    postings = termsEnum.postings(postings);
+    assertThat(postings.nextDoc(), equalTo(0));
+    assertThat(FeatureField.decodeFeatureValue(postings.freq()), equalTo(0.5f));
+    assertThat(postings.nextDoc(), equalTo(DocIdSetIterator.NO_MORE_DOCS));
+
+    terms = context.reader().termVectors().get(1, "features");
+    assertNull(terms);
+
+    terms = context.reader().termVectors().get(2, "features");
+    termsEnum = terms.iterator();
+    assertThat(termsEnum.next(), equalTo(new BytesRef("pagerank")));
+    postings = termsEnum.postings(postings);
+    assertThat(postings.nextDoc(), equalTo(0));
+    assertThat(FeatureField.decodeFeatureValue(postings.freq()), equalTo(42f));
+    assertThat(postings.nextDoc(), equalTo(DocIdSetIterator.NO_MORE_DOCS));
+
+    assertThat(termsEnum.next(), equalTo(new BytesRef("urlLen")));
+    postings = termsEnum.postings(null);
+    assertThat(postings.nextDoc(), equalTo(0));
+    assertThat(FeatureField.decodeFeatureValue(postings.freq()), equalTo(1.5f));
+    assertThat(postings.nextDoc(), equalTo(DocIdSetIterator.NO_MORE_DOCS));
+
+    IOUtils.close(reader, dir);
   }
 }

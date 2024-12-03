@@ -123,8 +123,30 @@ public final class FeatureField extends Field {
    * @param featureValue The value of the feature, must be a positive, finite, normal float.
    */
   public FeatureField(String fieldName, String featureName, float featureValue) {
-    super(fieldName, featureName, FIELD_TYPE);
+    this(fieldName, featureName, featureValue, false);
+  }
+
+  /**
+   * Create a feature.
+   *
+   * @param fieldName The name of the field to store the information into. All features may be
+   *     stored in the same field.
+   * @param featureName The name of the feature, eg. 'pagerank`. It will be indexed as a term.
+   * @param featureValue The value of the feature, must be a positive, finite, normal float.
+   * @param storeTermVectors Whether term vectors should be stored.
+   */
+  public FeatureField(String fieldName, String featureName, float featureValue, boolean storeTermVectors) {
+    super(fieldName, featureName, toFieldType(storeTermVectors));
     setFeatureValue(featureValue);
+  }
+
+  private static FieldType toFieldType(boolean storeTermVectors) {
+    if (storeTermVectors) {
+      var ft = new FieldType(FIELD_TYPE);
+      ft.setStoreTermVectors(true);
+      return ft;
+    }
+    return FIELD_TYPE;
   }
 
   /** Update the feature value of this field. */
