@@ -91,6 +91,9 @@ public class TestFeatureField extends LuceneTestCase {
     IndexSearcher searcher = LuceneTestCase.newSearcher(reader);
     LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
 
+    var fieldInfo = context.reader().getFieldInfos().fieldInfo("features");
+    assertFalse(fieldInfo.hasTermVectors());
+
     Query q = FeatureField.newLogQuery("features", "pagerank", 3f, 4.5f);
     Weight w = q.createWeight(searcher, ScoreMode.TOP_SCORES, 2);
     Scorer s = w.scorer(context);
