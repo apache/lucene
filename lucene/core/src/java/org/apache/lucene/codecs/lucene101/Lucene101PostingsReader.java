@@ -760,7 +760,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         if (payIn != null) { // needs payloads or offsets
           assert level0PayEndFP >= payIn.getFilePointer();
           payIn.seek(payFP);
-          payloadByteUpto = payUpto;;
+          payloadByteUpto = payUpto;
         }
         posBufferUpto = BLOCK_SIZE;
       } else {
