@@ -16,9 +16,8 @@
  */
 package org.apache.lucene.facet.facetset;
 
-import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.util.BytesRef;
+import java.io.IOException;
+import org.apache.lucene.store.RandomAccessInput;
 
 /**
  * A functional interface for decoding facet set values into comparable `long` ones. You can use it
@@ -30,30 +29,48 @@ import org.apache.lucene.util.BytesRef;
 public interface FacetSetDecoder {
 
   /**
-   * An implementation of {@link FacetSetDecoder#decode(BytesRef, int, long[])} for long/double
-   * dimension values which were encoded with {@link LongFacetSet} and {@link DoubleFacetSet}
-   * respectively.
+   * An implementation of {@link FacetSetDecoder#decode(RandomAccessInput, long, long[])} for
+   * long/double dimension values which were encoded with {@link LongFacetSet} and {@link
+   * DoubleFacetSet} respectively.
    */
-  static int decodeLongs(BytesRef bytesRef, int start, long[] dest) {
-    LongPoint.unpack(bytesRef, start, dest);
+  static int decodeLongs(RandomAccessInput input, long start, long[] dest) throws IOException {
+    assert input != null;
+    for (int i = 0; i < dest.length; i++) {
+      dest[i] = sortableBytesToLong(input, start);
+      start += Long.BYTES;
+    }
     return dest.length * Long.BYTES;
   }
 
   /**
-   * An implementation of {@link FacetSetDecoder#decode(BytesRef, int, long[])} for int/float
-   * dimension values which were encoded with {@link IntFacetSet} and {@link FloatFacetSet}
-   * respectively.
+   * An implementation of {@link FacetSetDecoder#decode(RandomAccessInput, long, long[])} for
+   * int/float dimension values which were encoded with {@link IntFacetSet} and {@link
+   * FloatFacetSet} respectively.
    */
-  static int decodeInts(BytesRef bytesRef, int start, long[] dest) {
-    for (int i = 0, offset = start; i < dest.length; i++, offset += Integer.BYTES) {
-      dest[i] = IntPoint.decodeDimension(bytesRef.bytes, offset);
+  static int decodeInts(RandomAccessInput input, long start, long[] dest) throws IOException {
+    assert input != null;
+    for (int i = 0; i < dest.length; i++) {
+      dest[i] = sortableBytesToInt(input, start);
+      start += Integer.BYTES;
     }
     return dest.length * Integer.BYTES;
+  }
+
+  static int sortableBytesToInt(RandomAccessInput encoded, long offset) throws IOException {
+    int i = Integer.reverseBytes(encoded.readInt(offset));
+    // Re-flip the sign bit to restore the original value:
+    return i ^ 0x80000000;
+  }
+
+  static long sortableBytesToLong(RandomAccessInput encoded, long offset) throws IOException {
+    long l = Long.reverseBytes(encoded.readLong(offset));
+    // Flip the sign bit back
+    return l ^ 0x8000000000000000L;
   }
 
   /**
    * Decodes the facet set dimension values into the given destination buffer and returns the number
    * of bytes read.
    */
-  int decode(BytesRef bytesRef, int start, long[] dest);
+  int decode(RandomAccessInput input, long start, long[] dest) throws IOException;
 }
