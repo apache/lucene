@@ -122,6 +122,9 @@ Optimizations
 * GITHUB#14032: Speed up PostingsEnum when positions are requested.
   (Adrien Grand)
 
+* GITHUB#14031: Ensure Panama float vector distance impls inlinable.
+  (Robert Muir, Chris Hegarty)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
