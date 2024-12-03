@@ -284,8 +284,8 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     return new BlockPostingsEnum(fieldInfo, flags, true).reset((IntBlockTermState) state, flags);
   }
 
-  private static long sumOverRange(int[] arr, int start, int end) {
-    long res = 0L;
+  private static int sumOverRange(int[] arr, int start, int end) {
+    int res = 0;
     for (int i = start; i < end; i++) {
       res += arr[i];
     }
@@ -361,7 +361,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     final boolean needsPayloads;
     final boolean needsOffsetsOrPayloads;
     final boolean needsImpacts;
-    final boolean needsDocsOnly;
+    final boolean needsDocsAndFreqsOnly;
 
     private long freqFP; // offset of the freq block
 
@@ -416,7 +416,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           indexHasPayloads && PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS);
       needsOffsetsOrPayloads = needsOffsets || needsPayloads;
       this.needsImpacts = needsImpacts;
-      needsDocsOnly = needsFreq == false && needsImpacts == false;
+      needsDocsAndFreqsOnly = needsPos == false && needsImpacts == false;
 
       // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
       // advance()
@@ -672,7 +672,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
     }
 
-    private void moveToNextLevel0BlockWithFreqs() throws IOException {
+    private void doMoveToNextLevel0Block() throws IOException {
       assert docBufferUpto == BLOCK_SIZE;
       if (posIn != null) {
         if (level0PosEndFP >= posIn.getFilePointer()) {
@@ -729,18 +729,14 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       // Now advance level 0 skip data
       prevDocID = level0LastDocID;
 
-      if (needsDocsOnly) {
-        if (docFreq - docCountUpto >= BLOCK_SIZE) {
-          long level0NumBytes = docIn.readVLong();
-          docIn.skipBytes(level0NumBytes);
-          refillFullBlock();
-          level0LastDocID = docBuffer[BLOCK_SIZE - 1];
-        } else {
-          level0LastDocID = NO_MORE_DOCS;
-          refillRemainder();
-        }
+      if (needsDocsAndFreqsOnly && docFreq - docCountUpto >= BLOCK_SIZE) {
+        // Optimize the common path for exhaustive evaluation
+        long level0NumBytes = docIn.readVLong();
+        docIn.skipBytes(level0NumBytes);
+        refillFullBlock();
+        level0LastDocID = docBuffer[BLOCK_SIZE - 1];
       } else {
-        moveToNextLevel0BlockWithFreqs();
+        doMoveToNextLevel0Block();
       }
     }
 
@@ -835,29 +831,35 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     @Override
     public void advanceShallow(int target) throws IOException {
       if (target > level0LastDocID) { // advance level 0 skip data
+        doAdvanceShallow(target);
 
-        if (target > level1LastDocID) { // advance skip data on level 1
-          skipLevel1To(target);
-        } else if (needsRefilling) {
-          docIn.seek(level0DocEndFP);
-          docCountUpto += BLOCK_SIZE;
+        // If we are on the last doc ID of a block and we are advancing on the doc ID just beyond
+        // this block, then we decode the block. This may not be necessary, but this helps avoid
+        // having to check whether we are in a block that is not decoded yet in #nextDoc().
+        if (docBufferUpto == BLOCK_SIZE && target == doc + 1) {
+          refillDocs();
+          needsRefilling = false;
+        } else {
+          needsRefilling = true;
         }
-
-        skipLevel0To(target);
-
-        needsRefilling = true;
       }
+    }
+
+    private void doAdvanceShallow(int target) throws IOException {
+      if (target > level1LastDocID) { // advance skip data on level 1
+        skipLevel1To(target);
+      } else if (needsRefilling) {
+        docIn.seek(level0DocEndFP);
+        docCountUpto += BLOCK_SIZE;
+      }
+
+      skipLevel0To(target);
     }
 
     @Override
     public int nextDoc() throws IOException {
       if (docBufferUpto == BLOCK_SIZE) {
-        if (needsRefilling) {
-          refillDocs();
-          needsRefilling = false;
-        } else {
-          moveToNextLevel0Block();
-        }
+        moveToNextLevel0Block();
       }
 
       return this.doc = docBuffer[docBufferUpto++];
@@ -866,7 +868,9 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     @Override
     public int advance(int target) throws IOException {
       if (target > level0LastDocID || needsRefilling) {
-        advanceShallow(target);
+        if (target > level0LastDocID) {
+          doAdvanceShallow(target);
+        }
         refillDocs();
         needsRefilling = false;
       }
@@ -915,9 +919,8 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           toSkip -= BLOCK_SIZE;
         }
         refillPositions();
-        payloadByteUpto = 0;
         if (needsPayloads) {
-          payloadByteUpto += sumOverRange(payloadLengthBuffer, 0, toSkip);
+          payloadByteUpto = sumOverRange(payloadLengthBuffer, 0, toSkip);
         }
         posBufferUpto = toSkip;
       }
