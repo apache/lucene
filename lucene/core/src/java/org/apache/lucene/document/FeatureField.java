@@ -105,11 +105,17 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
 public final class FeatureField extends Field {
 
   private static final FieldType FIELD_TYPE = new FieldType();
+  private static final FieldType FIELD_TYPE_STORE_TERM_VECTORS = new FieldType();
 
   static {
     FIELD_TYPE.setTokenized(false);
     FIELD_TYPE.setOmitNorms(true);
     FIELD_TYPE.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+
+    FIELD_TYPE_STORE_TERM_VECTORS.setTokenized(false);
+    FIELD_TYPE_STORE_TERM_VECTORS.setOmitNorms(true);
+    FIELD_TYPE_STORE_TERM_VECTORS.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    FIELD_TYPE_STORE_TERM_VECTORS.setStoreTermVectors(true);
   }
 
   private float featureValue;
@@ -137,17 +143,8 @@ public final class FeatureField extends Field {
    */
   public FeatureField(
       String fieldName, String featureName, float featureValue, boolean storeTermVectors) {
-    super(fieldName, featureName, toFieldType(storeTermVectors));
+    super(fieldName, featureName, storeTermVectors ? FIELD_TYPE_STORE_TERM_VECTORS : FIELD_TYPE);
     setFeatureValue(featureValue);
-  }
-
-  private static FieldType toFieldType(boolean storeTermVectors) {
-    if (storeTermVectors) {
-      var ft = new FieldType(FIELD_TYPE);
-      ft.setStoreTermVectors(true);
-      return ft;
-    }
-    return FIELD_TYPE;
   }
 
   /** Update the feature value of this field. */
