@@ -305,7 +305,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         || subs.get(Occur.FILTER).isEmpty()
         || scoreMode != ScoreMode.TOP_SCORES
         || subs.get(Occur.SHOULD).size() <= 1
-        || minShouldMatch > 1) {
+        || minShouldMatch != 1) {
       return null;
     }
 
@@ -333,13 +333,20 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
       filters.add(ss.get(cost));
     }
-    Scorer filterScorer;
-    if (filters.size() == 1) {
-      filterScorer = filters.iterator().next();
+
+    if (filters.stream().map(Scorer::twoPhaseIterator).anyMatch(Objects::nonNull)) {
+      Scorer scoring = new WANDScorer(optionalScorers, minShouldMatch, scoreMode, cost);
+      filters.add(scoring);
+      return new DefaultBulkScorer(new ConjunctionScorer(filters, Collections.singleton(scoring)));
     } else {
-      filterScorer = new ConjunctionScorer(filters, Collections.emptySet());
+      Scorer filterScorer;
+      if (filters.size() == 1) {
+        filterScorer = filters.iterator().next();
+      } else {
+        filterScorer = new ConjunctionScorer(filters, Collections.emptySet());
+      }
+      return new MaxScoreBulkScorer(maxDoc, optionalScorers, filterScorer);
     }
-    return new MaxScoreBulkScorer(maxDoc, optionalScorers, filterScorer);
   }
 
   // Return a BulkScorer for the required clauses only
