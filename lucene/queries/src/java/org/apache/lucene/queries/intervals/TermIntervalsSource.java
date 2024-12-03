@@ -261,7 +261,7 @@ class TermIntervalsSource extends IntervalsSource {
   /**
    * A guess of the average number of simple operations for the initial seek and buffer refill per
    * document for the positions of a term. See also {@link
-   * Lucene101PostingsReader.EverythingEnum#nextPosition()}.
+   * Lucene101PostingsReader.BlockPostingsEnum#nextPosition()}.
    *
    * <p>Aside: Instead of being constant this could depend among others on {@link
    * Lucene101PostingsFormat#BLOCK_SIZE}, {@link TermsEnum#docFreq()}, {@link
@@ -272,7 +272,7 @@ class TermIntervalsSource extends IntervalsSource {
   private static final int TERM_POSNS_SEEK_OPS_PER_DOC = 128;
 
   /**
-   * Number of simple operations in {@link Lucene101PostingsReader.EverythingEnum#nextPosition()}
+   * Number of simple operations in {@link Lucene101PostingsReader.BlockPostingsEnum#nextPosition()}
    * when no seek or buffer refill is done.
    */
   private static final int TERM_OPS_PER_POS = 7;
