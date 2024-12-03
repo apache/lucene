@@ -247,6 +247,12 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return res;
   }
 
+  /** helper: returns fma(a.sub(b), a.sub(b), c) */
+  private static FloatVector square(FloatVector a, FloatVector b, FloatVector c) {
+    FloatVector diff = a.sub(b);
+    return fma(diff, diff, c);
+  }
+
   /** vectorized square distance body */
   private float squareDistanceBody(float[] a, float[] b, int limit) {
     int i = 0;
@@ -261,36 +267,31 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       // one
       FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
       FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
-      FloatVector diff1 = va.sub(vb);
-      acc1 = fma(diff1, diff1, acc1);
+      acc1 = square(va, vb, acc1);
 
       // two
       final int i2 = i + FLOAT_SPECIES_LENGTH;
       FloatVector vc = FloatVector.fromArray(FLOAT_SPECIES, a, i2);
       FloatVector vd = FloatVector.fromArray(FLOAT_SPECIES, b, i2);
-      FloatVector diff2 = vc.sub(vd);
-      acc2 = fma(diff2, diff2, acc2);
+      acc2 = square(vc, vd, acc2);
 
       // three
       final int i3 = i2 + FLOAT_SPECIES_LENGTH;
       FloatVector ve = FloatVector.fromArray(FLOAT_SPECIES, a, i3);
       FloatVector vf = FloatVector.fromArray(FLOAT_SPECIES, b, i3);
-      FloatVector diff3 = ve.sub(vf);
-      acc3 = fma(diff3, diff3, acc3);
+      acc3 = square(ve, vf, acc3);
 
       // four
       final int i4 = i3 + FLOAT_SPECIES_LENGTH;
       FloatVector vg = FloatVector.fromArray(FLOAT_SPECIES, a, i4);
       FloatVector vh = FloatVector.fromArray(FLOAT_SPECIES, b, i4);
-      FloatVector diff4 = vg.sub(vh);
-      acc4 = fma(diff4, diff4, acc4);
+      acc4 = square(vg, vh, acc4);
     }
     // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
     for (; i < limit; i += FLOAT_SPECIES_LENGTH) {
       FloatVector va = FloatVector.fromArray(FLOAT_SPECIES, a, i);
       FloatVector vb = FloatVector.fromArray(FLOAT_SPECIES, b, i);
-      FloatVector diff = va.sub(vb);
-      acc1 = fma(diff, diff, acc1);
+      acc1 = square(va, vb, acc1);
     }
     // reduce
     FloatVector res1 = acc1.add(acc2);
