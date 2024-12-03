@@ -141,7 +141,7 @@ import org.apache.lucene.util.Version;
  * soon as a new commit is done. Creating your own policy can allow you to explicitly keep previous
  * "point in time" commits alive in the index for some time, either because this is useful for your
  * application, or to give readers enough time to refresh to the new commit without having the old
- * commit deleted under their hands. The latter is necessary when multiple computers take turns
+ * commit deleted out from under them. The latter is necessary when multiple computers take turns
  * opening their own {@code IndexWriter} and {@code IndexReader}s against a single shared index
  * mounted via remote filesystems like NFS which do not support "delete on last close" semantics. A
  * single computer accessing an index via NFS is fine with the default deletion policy since NFS

@@ -524,9 +524,9 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * example, to keep all document modifications for a certain time interval or the last N
    * operations if some kind of sequence ID is available in the index.
    *
-   * <p>Currently there is no API support to un-delete a soft-deleted document. In oder to un-delete
-   * a document, it must be re-indexed using {@link IndexWriter#softUpdateDocument(Term, Iterable,
-   * Field...)}.
+   * <p>Currently there is no API support to un-delete a soft-deleted document. In order to
+   * un-delete a document, it must be re-indexed using {@link IndexWriter#softUpdateDocument(Term,
+   * Iterable, Field...)}.
    *
    * <p>The default value for this is <code>null</code>, which disables soft-deletes. If
    * soft-deletes are enabled, documents can still be hard-deleted. Hard-deleted documents won't be
