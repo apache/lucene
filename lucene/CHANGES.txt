@@ -30,6 +30,10 @@ Improvements
   system property to increase the set of Java versions that Panama Vectorization will
   provide optimized implementations for. (Chris Hegarty)
 
+* GITHUB#266: TieredMergePolicy now allows merging up to maxMergeAtOnce
+  segments for merges below the floor segment size, even if maxMergeAtOnce is
+  bigger than segsPerTier. (Adrien Grand)
+
 Optimizations
 ---------------------
 
