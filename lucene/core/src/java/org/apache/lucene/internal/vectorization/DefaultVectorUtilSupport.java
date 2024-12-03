@@ -17,6 +17,9 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.util.VectorUtil.B_QUERY;
+
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -196,6 +199,31 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       squareSum += diff * diff;
     }
     return squareSum;
+  }
+
+  @Override
+  public long ipByteBinByte(byte[] q, byte[] d) {
+    return ipByteBinByteImpl(q, d);
+  }
+
+  public static long ipByteBinByteImpl(byte[] q, byte[] d) {
+    long ret = 0;
+    int size = d.length;
+    for (int i = 0; i < B_QUERY; i++) {
+      int r = 0;
+      long subRet = 0;
+      for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
+        subRet +=
+            Integer.bitCount(
+                (int) BitUtil.VH_NATIVE_INT.get(q, i * size + r)
+                    & (int) BitUtil.VH_NATIVE_INT.get(d, r));
+      }
+      for (; r < d.length; r++) {
+        subRet += Integer.bitCount((q[i * size + r] & d[r]) & 0xFF);
+      }
+      ret += subRet << i;
+    }
+    return ret;
   }
 
   @Override

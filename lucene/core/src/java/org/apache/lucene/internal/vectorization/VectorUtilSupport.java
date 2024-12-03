@@ -45,6 +45,9 @@ public interface VectorUtilSupport {
   /** Returns the sum of squared differences of the two byte vectors. */
   int squareDistance(byte[] a, byte[] b);
 
+  /** This does a bit-wise dot-product between two particularly formatted byte arrays. */
+  long ipByteBinByte(byte[] q, byte[] d);
+
   /**
    * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}
    * exclusive, find the first array index whose value is greater than or equal to {@code target}.
