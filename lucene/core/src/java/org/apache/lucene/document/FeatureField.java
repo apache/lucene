@@ -135,7 +135,8 @@ public final class FeatureField extends Field {
    * @param featureValue The value of the feature, must be a positive, finite, normal float.
    * @param storeTermVectors Whether term vectors should be stored.
    */
-  public FeatureField(String fieldName, String featureName, float featureValue, boolean storeTermVectors) {
+  public FeatureField(
+      String fieldName, String featureName, float featureValue, boolean storeTermVectors) {
     super(fieldName, featureName, toFieldType(storeTermVectors));
     setFeatureValue(featureValue);
   }

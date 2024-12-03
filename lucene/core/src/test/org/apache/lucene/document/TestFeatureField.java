@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.document;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
+
 import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.document.Field.Store;
@@ -40,9 +43,6 @@ import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.equalTo;
 
 public class TestFeatureField extends LuceneTestCase {
 
@@ -456,10 +456,10 @@ public class TestFeatureField extends LuceneTestCase {
   public void testStoreTermVectors() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter writer =
-            new RandomIndexWriter(
-                    random(),
-                    dir,
-                    newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
     Document doc = new Document();
     FeatureField pagerank = new FeatureField("features", "pagerank", 1, true);
     FeatureField urlLength = new FeatureField("features", "urlLen", 1, true);
