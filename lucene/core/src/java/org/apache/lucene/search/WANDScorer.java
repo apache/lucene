@@ -196,7 +196,12 @@ final class WANDScorer extends Scorer {
     }
 
     for (Scorer scorer : scorers) {
-      addUnpositionedLead(new DisiWrapper(scorer));
+      // Ideally we would pass true when scoreMode == TOP_SCORES and false otherwise, but this would
+      // break the optimization as there could then be 3 different impls of DocIdSetIterator
+      // (ImpactsEnum, PostingsEnum and <Else>). So we pass true to favor disjunctions sorted by
+      // descending score as opposed to non-scoring disjunctions whose minShouldMatch is greater
+      // than 1.
+      addUnpositionedLead(new DisiWrapper(scorer, true));
     }
 
     this.cost =
@@ -221,7 +226,7 @@ final class WANDScorer extends Scorer {
       List<Float> leadScores = new ArrayList<>();
       for (DisiWrapper w = lead; w != null; w = w.next) {
         assert w.doc == doc;
-        leadScores.add(w.scorer.score());
+        leadScores.add(w.scorable.score());
       }
       // Make sure to recompute the sum in the same order to get the same floating point rounding
       // errors.
@@ -370,7 +375,7 @@ final class WANDScorer extends Scorer {
     this.lead = lead;
     freq += 1;
     if (scoreMode == ScoreMode.TOP_SCORES) {
-      leadScore += lead.scorer.score();
+      leadScore += lead.scorable.score();
     }
   }
 
@@ -522,7 +527,7 @@ final class WANDScorer extends Scorer {
     lead.next = null;
     freq = 1;
     if (scoreMode == ScoreMode.TOP_SCORES) {
-      leadScore = lead.scorer.score();
+      leadScore = lead.scorable.score();
     }
     while (head.size() > 0 && head.top().doc == doc) {
       addLead(head.pop());
@@ -553,7 +558,7 @@ final class WANDScorer extends Scorer {
     if (scoreMode != ScoreMode.TOP_SCORES) {
       // With TOP_SCORES, the score was already computed on the fly.
       for (DisiWrapper s = lead; s != null; s = s.next) {
-        leadScore += s.scorer.score();
+        leadScore += s.scorable.score();
       }
     }
     return (float) leadScore;

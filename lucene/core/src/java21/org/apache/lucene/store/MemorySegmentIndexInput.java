@@ -421,6 +421,16 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   @Override
+  public Optional<Boolean> isLoaded() {
+    for (MemorySegment seg : segments) {
+      if (seg.isLoaded() == false) {
+        return Optional.of(Boolean.FALSE);
+      }
+    }
+    return Optional.of(Boolean.TRUE);
+  }
+
+  @Override
   public byte readByte(long pos) throws IOException {
     try {
       final int si = (int) (pos >> chunkSizePower);

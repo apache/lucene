@@ -40,7 +40,7 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
     double score = 0;
 
     for (DisiWrapper w = topList; w != null; w = w.next) {
-      score += w.scorer.score();
+      score += w.scorable.score();
     }
     return (float) score;
   }

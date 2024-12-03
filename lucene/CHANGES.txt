@@ -19,7 +19,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 
 Bug Fixes
 ---------------------
@@ -40,6 +40,9 @@ API Changes
 
 * GITHUB#13957: Removed LeafSimScorer class, to save its overhead. Scorers now
   compute scores directly from a SimScorer, postings and norms. (Adrien Grand)
+
+* GITHUB#13998: Add IndexInput::isLoaded to determine if the contents of an
+  input is resident in physical memory. (Chris Hegarty)
 
 New Features
 ---------------------
@@ -113,6 +116,15 @@ Optimizations
 * GITHUB#14014: Filtered disjunctions now get executed via `MaxScoreBulkScorer`.
   (Adrien Grand)
 
+* GITHUB#14023: Make JVM inlining decisions more predictable in our main
+  queries. (Adrien Grand)
+
+* GITHUB#14032: Speed up PostingsEnum when positions are requested.
+  (Adrien Grand)
+
+* GITHUB#14031: Ensure Panama float vector distance impls inlinable.
+  (Robert Muir, Chris Hegarty)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
@@ -142,6 +154,8 @@ Bug Fixes
 
 * GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
   their corresponding ordinals. (Paul King)
+
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 ======================= Lucene 10.0.0 =======================
 

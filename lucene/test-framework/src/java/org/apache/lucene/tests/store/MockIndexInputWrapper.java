@@ -19,6 +19,7 @@ package org.apache.lucene.tests.store;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.FilterIndexInput;
@@ -182,6 +183,13 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     ensureOpen();
     ensureAccessible();
     in.prefetch(offset, length);
+  }
+
+  @Override
+  public Optional<Boolean> isLoaded() {
+    ensureOpen();
+    ensureAccessible();
+    return in.isLoaded();
   }
 
   @Override
