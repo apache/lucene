@@ -56,12 +56,26 @@ public interface FacetSetDecoder {
     return dest.length * Integer.BYTES;
   }
 
+  /**
+   * Decodes a int value previously written with {@link
+   * org.apache.lucene.util.NumericUtils#intToSortableBytes}
+   *
+   * @see org.apache.lucene.util.NumericUtils#intToSortableBytes(int, byte[], int)
+   * @see org.apache.lucene.util.NumericUtils#sortableBytesToInt(byte[], int)
+   */
   static int sortableBytesToInt(RandomAccessInput encoded, long offset) throws IOException {
     int i = Integer.reverseBytes(encoded.readInt(offset));
     // Re-flip the sign bit to restore the original value:
     return i ^ 0x80000000;
   }
 
+  /**
+   * Decodes a long value previously written with {@link
+   * org.apache.lucene.util.NumericUtils#longToSortableBytes}
+   *
+   * @see org.apache.lucene.util.NumericUtils#longToSortableBytes(long, byte[], int)
+   * @see org.apache.lucene.util.NumericUtils#sortableBytesToLong(byte[], int)
+   */
   static long sortableBytesToLong(RandomAccessInput encoded, long offset) throws IOException {
     long l = Long.reverseBytes(encoded.readLong(offset));
     // Flip the sign bit back
