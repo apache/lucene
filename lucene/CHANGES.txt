@@ -47,7 +47,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14034: Add support for storing term vectors in FeatureField. (Jim Ferenczi)
 
 Improvements
 ---------------------
