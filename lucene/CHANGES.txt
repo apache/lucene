@@ -56,6 +56,9 @@ Improvements
   system property to increase the set of Java versions that Panama Vectorization will
   provide optimized implementations for. (Chris Hegarty)
 
+* GITHUB#14033: Combine all postings enum impls of the default codec into a
+  single class. (Adrien Grand)
+
 Optimizations
 ---------------------
 
