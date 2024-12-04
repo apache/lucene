@@ -103,9 +103,6 @@ Optimizations
 * GITHUB#14032: Speed up PostingsEnum when positions are requested.
   (Adrien Grand)
 
-* GITHUB#14031: Ensure Panama float vector distance impls inlinable.
-  (Robert Muir, Chris Hegarty)
-
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 
 Bug Fixes
