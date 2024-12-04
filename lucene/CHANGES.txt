@@ -61,6 +61,9 @@ Improvements
   segments for merges below the floor segment size, even if maxMergeAtOnce is
   bigger than segsPerTier. (Adrien Grand)
 
+* GITHUB#14033: Combine all postings enum impls of the default codec into a
+  single class. (Adrien Grand)
+
 Optimizations
 ---------------------
 
