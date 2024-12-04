@@ -106,6 +106,8 @@ Optimizations
 * GITHUB#14031: Ensure Panama float vector distance impls inlinable.
   (Robert Muir, Chris Hegarty)
 
+* GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
