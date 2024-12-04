@@ -15,7 +15,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#266: TieredMergePolicy's maxMergeAtOnce default value was changed from 10 to 30. (Adrien Grand)
 
 Optimizations
 ---------------------
@@ -46,7 +47,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14034: Add support for storing term vectors in FeatureField. (Jim Ferenczi)
 
 Improvements
 ---------------------
@@ -55,6 +56,10 @@ Improvements
   newer Java versions. Set the `org.apache.lucene.vectorization.upperJavaFeatureVersion`
   system property to increase the set of Java versions that Panama Vectorization will
   provide optimized implementations for. (Chris Hegarty)
+
+* GITHUB#266: TieredMergePolicy now allows merging up to maxMergeAtOnce
+  segments for merges below the floor segment size, even if maxMergeAtOnce is
+  bigger than segsPerTier. (Adrien Grand)
 
 * GITHUB#14033: Combine all postings enum impls of the default codec into a
   single class. (Adrien Grand)
@@ -124,6 +129,9 @@ Optimizations
 
 * GITHUB#14032: Speed up PostingsEnum when positions are requested.
   (Adrien Grand)
+
+* GITHUB#14031: Ensure Panama float vector distance impls inlinable.
+  (Robert Muir, Chris Hegarty)
 
 Bug Fixes
 ---------------------
