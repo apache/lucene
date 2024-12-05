@@ -67,12 +67,10 @@ donde          |  where
   | han        from HABER
 quien          |  whom, that
   | están      from ESTAR
-  | estado     from ESTAR
 desde          |  from
 todo           |  all
 nos            |  us
 durante        |  during
-  | estados    from ESTAR
 todos          |  all
 uno            |  a
 les            |  to them
@@ -199,10 +197,6 @@ estuviésemos
 estuvieseis
 estuviesen
 estando
-estado
-estada
-estados
-estadas
 estad
 
                | forms of haber, to have (not including the infinitive):
