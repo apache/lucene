@@ -315,7 +315,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     private int singletonDocID; // docid when there is a single pulsed posting, otherwise -1
 
-    private int docCountUpto; // number of docs in or before the current block
+    private int docCountLeft; // number of remaining docs in this postings list
     private int prevDocID; // last doc ID of the previous block
 
     private int docBufferSize;
@@ -539,7 +539,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
       doc = -1;
       prevDocID = -1;
-      docCountUpto = 0;
+      docCountLeft = docFreq;
       freqFP = -1L;
       level0LastDocID = -1;
       if (docFreq < LEVEL1_NUM_DOCS) {
@@ -582,7 +582,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         }
         PForUtil.skip(docIn);
       }
-      docCountUpto += BLOCK_SIZE;
+      docCountLeft -= BLOCK_SIZE;
       prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       posDocBufferUpto = 0;
@@ -590,23 +590,23 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     private void refillRemainder() throws IOException {
-      final int left = docFreq - docCountUpto;
-      assert left >= 0 && left < BLOCK_SIZE;
+      assert docCountLeft >= 0 && docCountLeft < BLOCK_SIZE;
       if (docFreq == 1) {
         docBuffer[0] = singletonDocID;
         freqBuffer[0] = (int) totalTermFreq;
         docBuffer[1] = NO_MORE_DOCS;
         assert freqFP == -1;
-        docCountUpto++;
+        docCountLeft = 0;
         docBufferSize = 1;
       } else {
         // Read vInts:
-        PostingsUtil.readVIntBlock(docIn, docBuffer, freqBuffer, left, indexHasFreq, needsFreq);
-        prefixSum(docBuffer, left, prevDocID);
-        docBuffer[left] = NO_MORE_DOCS;
+        PostingsUtil.readVIntBlock(
+            docIn, docBuffer, freqBuffer, docCountLeft, indexHasFreq, needsFreq);
+        prefixSum(docBuffer, docCountLeft, prevDocID);
+        docBuffer[docCountLeft] = NO_MORE_DOCS;
         freqFP = -1L;
-        docCountUpto += left;
-        docBufferSize = left;
+        docBufferSize = docCountLeft;
+        docCountLeft = 0;
       }
       prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
@@ -615,10 +615,9 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     private void refillDocs() throws IOException {
-      final int left = docFreq - docCountUpto;
-      assert left >= 0;
+      assert docCountLeft >= 0;
 
-      if (left >= BLOCK_SIZE) {
+      if (docCountLeft >= BLOCK_SIZE) {
         refillFullBlock();
       } else {
         refillRemainder();
@@ -634,10 +633,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         level0BlockPosUpto = level1BlockPosUpto;
         level0PayEndFP = level1PayEndFP;
         level0BlockPayUpto = level1BlockPayUpto;
-        docCountUpto = level1DocCountUpto;
+        docCountLeft = docFreq - level1DocCountUpto;
         level1DocCountUpto += LEVEL1_NUM_DOCS;
 
-        if (docFreq - docCountUpto < LEVEL1_NUM_DOCS) {
+        if (docCountLeft < LEVEL1_NUM_DOCS) {
           level1LastDocID = NO_MORE_DOCS;
           break;
         }
@@ -690,7 +689,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         }
       }
 
-      if (docFreq - docCountUpto >= BLOCK_SIZE) {
+      if (docCountLeft >= BLOCK_SIZE) {
         docIn.readVLong(); // level0NumBytes
         int docDelta = readVInt15(docIn);
         level0LastDocID += docDelta;
@@ -729,7 +728,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       // Now advance level 0 skip data
       prevDocID = level0LastDocID;
 
-      if (needsDocsAndFreqsOnly && docFreq - docCountUpto >= BLOCK_SIZE) {
+      if (needsDocsAndFreqsOnly && docCountLeft >= BLOCK_SIZE) {
         // Optimize the common path for exhaustive evaluation
         long level0NumBytes = docIn.readVLong();
         docIn.skipBytes(level0NumBytes);
@@ -782,7 +781,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         payFP = level0PayEndFP;
         payUpto = level0BlockPayUpto;
 
-        if (docFreq - docCountUpto >= BLOCK_SIZE) {
+        if (docCountLeft >= BLOCK_SIZE) {
           long numSkipBytes = docIn.readVLong();
           long skip0End = docIn.getFilePointer() + numSkipBytes;
           int docDelta = readVInt15(docIn);
@@ -816,7 +815,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           }
 
           docIn.seek(level0DocEndFP);
-          docCountUpto += BLOCK_SIZE;
+          docCountLeft -= BLOCK_SIZE;
         } else {
           level0LastDocID = NO_MORE_DOCS;
           break;
@@ -850,7 +849,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         skipLevel1To(target);
       } else if (needsRefilling) {
         docIn.seek(level0DocEndFP);
-        docCountUpto += BLOCK_SIZE;
+        docCountLeft -= BLOCK_SIZE;
       }
 
       skipLevel0To(target);
