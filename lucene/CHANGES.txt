@@ -142,6 +142,7 @@ Bug Fixes
   in valid polygons. (Ignacio Vera)
 * GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
   and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
+* GITHUB#13819: Prevent flattening of ordered and unordered interval sources (Jim Ferenczi)
 
 Build
 ---------------------
