@@ -37,10 +37,9 @@ public class UpdateGraphsUtils {
    * problem. Here rather than choosing edges we pick nodes and increment a count at their
    * neighbours.
    *
-   * @param k – required coverage
    * @return a set of nodes that best cover the graph
    */
-  public static Set<Integer> computeJoinSet(HnswGraph graph, int k) throws IOException {
+  public static Set<Integer> computeJoinSet(HnswGraph graph) throws IOException {
     HnswGraph.NodesIterator it = graph.getNodesOnLevel(0);
     List<List<Integer>> nodesNs = new ArrayList<>(it.size());
     // load graph into heap
@@ -56,7 +55,7 @@ public class UpdateGraphsUtils {
       nodesNs.add(ns);
       i++;
     }
-    return UpdateGraphsUtils.computeJoinSet(nodesNs, k);
+    return UpdateGraphsUtils.computeJoinSet(nodesNs);
   }
 
   /**
@@ -64,29 +63,34 @@ public class UpdateGraphsUtils {
    * problem. Here rather than choosing edges we pick nodes and increment a count at their
    * neighbours.
    *
-   * @param k – required coverage of vertices
    * @return a set of nodes that best cover the graph
    */
-  public static Set<Integer> computeJoinSet(List<List<Integer>> nodesNs, int k) {
+  public static Set<Integer> computeJoinSet(List<List<Integer>> nodesNs) {
+    int k; // coverage for the current node
     int size = nodesNs.size();
     LongHeap heap = new LongHeap(size);
     Set<Integer> j = new HashSet<>();
     boolean[] stale = new boolean[size];
     short[] counts = new short[size];
+    long maxGTot = 0L;
     for (int v = 0; v < size; v++) {
       int degree = nodesNs.get(v).size();
+      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+      maxGTot += k;
+
       int gain = k + degree;
       heap.push(encode(gain, v));
     }
 
-    long maxGTot = k * size;
     long gTot = 0L;
     while (gTot < maxGTot) {
       long el = heap.pop();
       int gain = decodeValue1(el);
       int v = decodeValue2(el);
       List<Integer> ns = nodesNs.get(v);
-      if (stale[v]) { // if stale recalculate gain
+      int degree = ns.size();
+      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+      if (stale[v]) { // if stale, recalculate gain
         int newGain = Math.max(0, k - counts[v]);
         for (int u : ns) {
           if (counts[u] < k && j.contains(u) == false) {

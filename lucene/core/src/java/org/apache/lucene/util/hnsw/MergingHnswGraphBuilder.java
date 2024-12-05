@@ -137,7 +137,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     }
 
     long start = System.nanoTime();
-    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(nodesNs, 4);
+    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(nodesNs);
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       long now = System.nanoTime();
       infoStream.message(

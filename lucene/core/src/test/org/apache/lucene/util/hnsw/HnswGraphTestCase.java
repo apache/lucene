@@ -536,7 +536,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
     HnswGraph graph = builder.build(vectors.size());
 
-    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(graph, 4);
+    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(graph);
     assertTrue(
         "Join set size [" + j.size() + "] is not less than graph size [" + graph.size() + "]",
         j.size() < graph.size());
