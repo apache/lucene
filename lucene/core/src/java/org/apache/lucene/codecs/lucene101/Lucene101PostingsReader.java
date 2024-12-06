@@ -297,7 +297,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     private ForDeltaUtil forDeltaUtil;
     private PForUtil pforUtil;
 
-    private final int[] docBuffer = new int[BLOCK_SIZE + 1];
+    private final int[] docBuffer = new int[BLOCK_SIZE];
 
     private int doc; // doc we last read
 
@@ -417,10 +417,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       needsOffsetsOrPayloads = needsOffsets || needsPayloads;
       this.needsImpacts = needsImpacts;
       needsDocsAndFreqsOnly = needsPos == false && needsImpacts == false;
-
-      // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
-      // advance()
-      docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
 
       if (needsFreq == false) {
         Arrays.fill(freqBuffer, 1);
@@ -586,7 +582,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       posDocBufferUpto = 0;
-      assert docBuffer[docBufferSize] == NO_MORE_DOCS;
     }
 
     private void refillRemainder() throws IOException {
