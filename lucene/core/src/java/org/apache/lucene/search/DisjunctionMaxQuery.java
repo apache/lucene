@@ -160,7 +160,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
 
           @Override
           public BulkScorer bulkScorer() throws IOException {
-            if (tieBreakerMultiplier == 0f) {
+            if (tieBreakerMultiplier == 0f && scoreMode == ScoreMode.TOP_SCORES) {
               List<BulkScorer> scorers = new ArrayList<>();
               for (ScorerSupplier ss : scorerSuppliers) {
                 scorers.add(ss.bulkScorer());
