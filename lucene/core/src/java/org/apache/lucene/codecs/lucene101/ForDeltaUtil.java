@@ -306,38 +306,6 @@ public final class ForDeltaUtil {
         decode16To32(pdu, ints);
         prefixSum32(ints, base);
         break;
-      case 17:
-        decode17(pdu, tmp, ints);
-        prefixSum32(ints, base);
-        break;
-      case 18:
-        decode18(pdu, tmp, ints);
-        prefixSum32(ints, base);
-        break;
-      case 19:
-        decode19(pdu, tmp, ints);
-        prefixSum32(ints, base);
-        break;
-      case 20:
-        decode20(pdu, tmp, ints);
-        prefixSum32(ints, base);
-        break;
-      case 21:
-        decode21(pdu, tmp, ints);
-        prefixSum32(ints, base);
-        break;
-      case 22:
-        decode22(pdu, tmp, ints);
-        prefixSum32(ints, base);
-        break;
-      case 23:
-        decode23(pdu, tmp, ints);
-        prefixSum32(ints, base);
-        break;
-      case 24:
-        decode24(pdu, tmp, ints);
-        prefixSum32(ints, base);
-        break;
       default:
         decodeSlow(bitsPerValue, pdu, tmp, ints);
         prefixSum32(ints, base);
