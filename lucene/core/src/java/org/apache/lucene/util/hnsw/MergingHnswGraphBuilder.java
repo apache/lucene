@@ -155,9 +155,10 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       addGraphNode(ordMapS[node]);
     }
 
-    // for other nodes, find their candidate neigbours
-    // by adding their neighbours in the small graph with
-    // their neighbours' neighbours in the large graph
+    // for each other node not from j set:
+    // form the candidate set for a node
+    // by joining the node's neighbours in gS with
+    // the node's neighbours' neighbours in gL
     for (int node = 0; node < it.size; node++) {
       if (j.contains(node)) {
         continue;
@@ -166,7 +167,11 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       List<Integer> ns = nodesNs.get(node);
       for (int u : ns) {
         int newu = ordMapS[u];
-        w.add(newu);
+        // if new ordinal of u > new ordinal of node, then it doesn't exist in gL yet
+        // so we can't add it as a neighbour of node
+        if (newu < ordMapS[node]) {
+          w.add(newu);
+        }
         if (j.contains(u)) {
           // add u's neigbhours from the large graph
           NeighborArray nsuArray = hnsw.getNeighbors(0, newu);

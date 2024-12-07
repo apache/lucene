@@ -213,7 +213,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     addGraphNodeInternal(node, candidates);
   }
 
-  void addGraphNodeInternal(int node, Set<Integer> candidates0) throws IOException {
+  private void addGraphNodeInternal(int node, Set<Integer> candidates0) throws IOException {
     /*
     Note: this implementation is thread safe when graph size is fixed (e.g. when merging)
     The process of adding a node is roughly:
@@ -358,9 +358,7 @@ public class HnswGraphBuilder implements HnswBuilder {
         }
       } else {
         NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        if (nbrsOfNbr != null) {
-          nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
-        }
+        nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
       }
     }
   }
