@@ -18,6 +18,7 @@ package org.apache.lucene.misc.index;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterCodecReader;
@@ -57,7 +58,7 @@ public class PKIndexSplitter {
   }
 
   private static IndexWriterConfig newDefaultConfig() {
-    return new IndexWriterConfig(null).setOpenMode(OpenMode.CREATE);
+    return new IndexWriterConfig((Analyzer) null).setOpenMode(OpenMode.CREATE);
   }
 
   public PKIndexSplitter(
