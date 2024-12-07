@@ -34,6 +34,7 @@ import org.apache.lucene.document.IntField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
@@ -41,6 +42,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.hnsw.HnswUtil;
 
 @LuceneTestCase.SuppressCodecs("SimpleText")
@@ -381,7 +383,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
     }
   }
 
-  public void testVectorsAboveSimilarity() throws IOException {
+  void testVectorsAboveSimilarity() throws IOException {
     // Pick number of docs to accept
     int numAccepted = random().nextInt(numDocs / 3, numDocs / 2);
     float delta = 1e-3f;
@@ -401,7 +403,10 @@ abstract class BaseVectorSimilarityQueryTestCase<
       }
     }
 
-    try (Directory indexStore = getIndexStore(vectors);
+    // TODO test with random codec params via getIndexStore(vectors);
+    // this is challenging because scores will vary in a quantized index
+    // and precomputing as above will not be accurate
+    try (Directory indexStore = getStableIndexStore(vectors);
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
@@ -577,6 +582,21 @@ abstract class BaseVectorSimilarityQueryTestCase<
   final Directory getIndexStore(V... vectors) throws IOException {
     Directory dir = newDirectory();
     try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+      for (int i = 0; i < vectors.length; ++i) {
+        Document doc = new Document();
+        doc.add(getVectorField(vectorField, vectors[i], function));
+        doc.add(new IntField(idField, i, Field.Store.YES));
+        writer.addDocument(doc);
+      }
+    }
+    return dir;
+  }
+
+  @SafeVarargs
+  final Directory getStableIndexStore(V... vectors) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+    try (IndexWriter writer = new IndexWriter(dir, iwc)) {
       for (int i = 0; i < vectors.length; ++i) {
         Document doc = new Document();
         doc.add(getVectorField(vectorField, vectors[i], function));

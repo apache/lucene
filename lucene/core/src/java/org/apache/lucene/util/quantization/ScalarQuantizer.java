@@ -97,12 +97,18 @@ public class ScalarQuantizer {
     }
     assert maxQuantile >= minQuantile;
     assert bits > 0 && bits <= 8;
-    this.minQuantile = minQuantile;
-    this.maxQuantile = maxQuantile;
     this.bits = bits;
     final float divisor = (float) ((1 << bits) - 1);
-    this.scale = divisor / (maxQuantile - minQuantile);
-    this.alpha = (maxQuantile - minQuantile) / divisor;
+    if (minQuantile == maxQuantile) {
+      // avoid divide-by-zero with an arbitrary but plausible choice (leads to alpha = scale = 1)
+      this.minQuantile = minQuantile - divisor;
+      this.maxQuantile = maxQuantile + divisor;
+    } else {
+      this.minQuantile = minQuantile;
+      this.maxQuantile = maxQuantile;
+    }
+    this.scale = divisor / (this.maxQuantile - this.minQuantile);
+    this.alpha = (this.maxQuantile - this.minQuantile) / divisor;
   }
 
   /**

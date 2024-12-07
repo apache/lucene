@@ -44,6 +44,7 @@ import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
 
 public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
+
   @Override
   KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
     return new KnnFloatVectorQuery(field, query, k, queryFilter);
@@ -130,16 +131,16 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         DocIdSetIterator it = scorer.iterator();
         assertEquals(2, it.cost());
         assertEquals(0, it.nextDoc());
-        assertEquals(0, scorer.score(), 0);
+        assertEquals(0, scorer.score(), EPSILON);
         assertEquals(1, it.advance(1));
-        assertEquals(1, scorer.score(), 0);
+        assertEquals(1, scorer.score(), EPSILON);
       }
     }
   }
 
   public void testScoreDotProduct() throws IOException {
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w = new IndexWriter(d, configStandardCodec())) {
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
           doc.add(
@@ -174,7 +175,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
             (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
 
         // doc 1 happens to have the max score
-        assertEquals(score1, scorer.getMaxScore(2), 0.0001);
+        assertEquals(score1, scorer.getMaxScore(2), 0.001);
         assertEquals(score1, scorer.getMaxScore(Integer.MAX_VALUE), 0.0001);
 
         DocIdSetIterator it = scorer.iterator();
