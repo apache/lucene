@@ -19,7 +19,7 @@ from math import gcd
 
 """Code generation for ForDeltaUtil.java"""
 
-MAX_SPECIALIZED_BITS_PER_VALUE = 24
+MAX_SPECIALIZED_BITS_PER_VALUE = 16
 OUTPUT_FILE = "ForDeltaUtil.java"
 PRIMITIVE_SIZE = [8, 16, 32]
 HEADER = """// This file has been automatically generated, DO NOT EDIT
