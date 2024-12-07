@@ -99,7 +99,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (topK.scoreDocs.length == 0) {
       return new MatchNoDocsQuery();
     }
-    return createRewrittenQuery(reader, topK);
+    return createRewrittenQuery(reader, topK.scoreDocs);
   }
 
   private TopDocs searchLeaf(
@@ -255,18 +255,18 @@ abstract class AbstractKnnVectorQuery extends Query {
     return TopDocs.merge(k, perLeafResults);
   }
 
-  private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
-    int len = topK.scoreDocs.length;
+  static Query createRewrittenQuery(IndexReader reader, ScoreDoc[] scoreDocs) {
+    int len = scoreDocs.length;
 
     assert len > 0;
-    float maxScore = topK.scoreDocs[0].score;
+    float maxScore = scoreDocs[0].score;
 
-    Arrays.sort(topK.scoreDocs, Comparator.comparingInt(a -> a.doc));
+    Arrays.sort(scoreDocs, Comparator.comparingInt(a -> a.doc));
     int[] docs = new int[len];
     float[] scores = new float[len];
     for (int i = 0; i < len; i++) {
-      docs[i] = topK.scoreDocs[i].doc;
-      scores[i] = topK.scoreDocs[i].score;
+      docs[i] = scoreDocs[i].doc;
+      scores[i] = scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader.leaves(), docs);
     return new DocAndScoreQuery(docs, scores, maxScore, segmentStarts, reader.getContext().id());
