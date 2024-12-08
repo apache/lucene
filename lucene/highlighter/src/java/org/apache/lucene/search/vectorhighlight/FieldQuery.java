@@ -57,7 +57,9 @@ public class FieldQuery {
   // fieldMatch==false, Map<null,setOfTermsInQueries>
   Map<String, Set<String>> termSetMap = new HashMap<>();
 
-  int termOrPhraseNumber; // used for colored tag support
+  // index of the original query term or phrase in the list of expanded terms or phrases
+  final Map<String, Integer> queryIndexHighlights = new HashMap<>();
+  int previousIndex = 0;
 
   // The maximum number of different matching terms accumulated from any one MultiTermQuery
   private static final int MAX_MTQ_TERMS = 1024;
@@ -65,18 +67,23 @@ public class FieldQuery {
   public FieldQuery(Query query, IndexReader reader, boolean phraseHighlight, boolean fieldMatch)
       throws IOException {
     this.fieldMatch = fieldMatch;
-    Set<Query> flatQueries = new LinkedHashSet<>();
-    IndexSearcher searcher;
-    if (reader == null) {
-      searcher = null;
-    } else {
-      searcher = new IndexSearcher(reader);
-    }
+    final Set<Query> flatQueries = new LinkedHashSet<>();
+    final IndexSearcher searcher = reader == null ? null : new IndexSearcher(reader);
+
+    buildQueryIndexHighlights(query);
     flatten(query, searcher, flatQueries, 1f);
     saveTerms(flatQueries, searcher);
     Collection<Query> expandQueries = expand(flatQueries);
 
     for (Query flatQuery : expandQueries) {
+      int queryIndex;
+      if (this.queryIndexHighlights.containsKey(flatQuery.toString())) {
+        queryIndex = this.queryIndexHighlights.get(flatQuery.toString());
+        previousIndex = queryIndex;
+      } else {
+        queryIndex = previousIndex;
+      }
+
       QueryPhraseMap rootMap = getRootMap(flatQuery);
       rootMap.add(flatQuery, reader);
       float boost = 1f;
@@ -88,8 +95,17 @@ public class FieldQuery {
       if (!phraseHighlight && flatQuery instanceof PhraseQuery) {
         PhraseQuery pq = (PhraseQuery) flatQuery;
         if (pq.getTerms().length > 1) {
-          for (Term term : pq.getTerms()) rootMap.addTerm(term, boost);
+          for (Term term : pq.getTerms()) rootMap.addTerm(term, boost, queryIndex);
         }
+      }
+    }
+  }
+
+  private void buildQueryIndexHighlights(Query query) {
+    if (query instanceof BooleanQuery booleanQuery) {
+      final List<BooleanClause> clauses = booleanQuery.clauses();
+      for (int i = 0; i < clauses.size(); i++) {
+        queryIndexHighlights.put(clauses.get(i).query().toString(), i);
       }
     }
   }
@@ -372,10 +388,6 @@ public class FieldQuery {
     return rootMaps.get(fieldMatch ? fieldName : null);
   }
 
-  int nextTermOrPhraseNumber() {
-    return termOrPhraseNumber++;
-  }
-
   /** Internal structure of a query for highlighting: represents a nested query structure */
   public static class QueryPhraseMap {
 
@@ -390,9 +402,9 @@ public class FieldQuery {
       this.fieldQuery = fieldQuery;
     }
 
-    void addTerm(Term term, float boost) {
+    void addTerm(Term term, float boost, int queryIndex) {
       QueryPhraseMap map = getOrNewMap(subMap, term.text());
-      map.markTerminal(boost);
+      map.markTerminal(boost, queryIndex);
     }
 
     private QueryPhraseMap getOrNewMap(Map<String, QueryPhraseMap> subMap, String term) {
@@ -405,6 +417,12 @@ public class FieldQuery {
     }
 
     void add(Query query, IndexReader reader) {
+      int highlightsLength = fieldQuery.queryIndexHighlights.size();
+      int queryIndex = Math.min(fieldQuery.previousIndex + 1, highlightsLength - 1);
+      if (fieldQuery.queryIndexHighlights.containsKey(query.toString())) {
+        queryIndex = fieldQuery.queryIndexHighlights.get(query.toString());
+      }
+
       float boost = 1f;
       while (query instanceof BoostQuery) {
         BoostQuery bq = (BoostQuery) query;
@@ -412,7 +430,7 @@ public class FieldQuery {
         boost = bq.getBoost();
       }
       if (query instanceof TermQuery) {
-        addTerm(((TermQuery) query).getTerm(), boost);
+        addTerm(((TermQuery) query).getTerm(), boost, queryIndex);
       } else if (query instanceof PhraseQuery) {
         PhraseQuery pq = (PhraseQuery) query;
         Term[] terms = pq.getTerms();
@@ -422,7 +440,7 @@ public class FieldQuery {
           qpm = getOrNewMap(map, term.text());
           map = qpm.subMap;
         }
-        qpm.markTerminal(pq.getSlop(), boost);
+        qpm.markTerminal(pq.getSlop(), boost, queryIndex);
       } else
         throw new RuntimeException("query \"" + query.toString() + "\" must be flatten first.");
     }
@@ -431,15 +449,15 @@ public class FieldQuery {
       return subMap.get(term);
     }
 
-    private void markTerminal(float boost) {
-      markTerminal(0, boost);
+    private void markTerminal(float boost, int queryIndex) {
+      markTerminal(0, boost, queryIndex);
     }
 
-    private void markTerminal(int slop, float boost) {
+    private void markTerminal(int slop, float boost, int queryIndex) {
       this.terminal = true;
       this.slop = slop;
       this.boost = boost;
-      this.termOrPhraseNumber = fieldQuery.nextTermOrPhraseNumber();
+      this.termOrPhraseNumber = queryIndex;
     }
 
     public boolean isTerminal() {
