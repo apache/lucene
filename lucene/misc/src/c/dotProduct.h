@@ -15,19 +15,6 @@
  * limitations under the License.
  */
 
-apply plugin: 'java-library'
-
-description = 'Lucene core library'
-
-dependencies {
-  moduleTestImplementation project(':lucene:codecs')
-  moduleTestImplementation project(':lucene:test-framework')
-}
-
-test {
-  dependsOn ':lucene:misc:dotProductSharedLibrary'
-  systemProperty(
-          "java.library.path",
-          project(":lucene:misc").layout.buildDirectory.get().asFile.absolutePath + "/libs/dotProduct/shared"
-  )
-}
+int32_t vdot8s_sve(int8_t vec1[], int8_t vec2[], int32_t limit);
+int32_t vdot8s_neon(int8_t vec1[], int8_t vec2[], int32_t limit);
+int32_t dot8s(int8_t vec1[], int8_t vec2[], int32_t limit);

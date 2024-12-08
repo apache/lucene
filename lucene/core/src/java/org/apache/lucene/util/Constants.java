@@ -100,6 +100,15 @@ public final class Constants {
   /** true iff we know VFMA has faster throughput than separate vmul/vadd. */
   public static final boolean HAS_FAST_VECTOR_FMA = hasFastVectorFMA();
 
+  public static final boolean NATIVE_DOT_PRODUCT_ENABLED = enableNativeDotProduct();
+
+  private static boolean enableNativeDotProduct() {
+    var armArchitecture = OS_ARCH.equalsIgnoreCase("aarch64");
+    var enabledExplicitly = Boolean.parseBoolean(getSysProp("lucene.useNativeDotProduct", "false"));
+    var enabledForTests = Boolean.parseBoolean(getSysProp("test.native.dotProduct", "false"));
+    return (armArchitecture && enabledExplicitly) || enabledForTests;
+  }
+
   /** true iff we know FMA has faster throughput than separate mul/add. */
   public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
 

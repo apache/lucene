@@ -52,6 +52,9 @@ grant {
   // Needed for DirectIODirectory to retrieve block size
   permission java.lang.RuntimePermission "getFileStoreAttributes";
 
+  // Needed to load native library containing optimized dot product implementation
+  permission java.lang.RuntimePermission "loadLibrary.dotProduct";
+
   // TestLockFactoriesMultiJVM opens a random port on 127.0.0.1 (port 0 = ephemeral port range):
   permission java.net.SocketPermission "127.0.0.1:0", "accept,listen,resolve";
   // Replicator tests connect to ephemeral ports

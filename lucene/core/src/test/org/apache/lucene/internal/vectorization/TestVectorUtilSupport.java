@@ -54,11 +54,22 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertFloatReturningProviders(p -> p.cosine(a, b));
   }
 
+  private void assertNativeDotProductCorrectness(byte[] a, byte[] b) {
+    try {
+      assertEquals(
+          (int) NATIVE_DOT_PRODUCT.invokeExact(offHeap(a), offHeap(b)),
+          LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b));
+    } catch (Throwable t) {
+      throw new RuntimeException(t);
+    }
+  }
+
   public void testBinaryVectors() {
     var a = new byte[size];
     var b = new byte[size];
     random().nextBytes(a);
     random().nextBytes(b);
+    assertNativeDotProductCorrectness(a, b);
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
@@ -70,24 +81,28 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
     Arrays.fill(a, Byte.MIN_VALUE);
     Arrays.fill(b, Byte.MIN_VALUE);
+    assertNativeDotProductCorrectness(a, b);
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
 
     Arrays.fill(a, Byte.MAX_VALUE);
     Arrays.fill(b, Byte.MAX_VALUE);
+    assertNativeDotProductCorrectness(a, b);
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
 
     Arrays.fill(a, Byte.MIN_VALUE);
     Arrays.fill(b, Byte.MAX_VALUE);
+    assertNativeDotProductCorrectness(a, b);
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
 
     Arrays.fill(a, Byte.MAX_VALUE);
     Arrays.fill(b, Byte.MIN_VALUE);
+    assertNativeDotProductCorrectness(a, b);
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
