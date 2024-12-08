@@ -91,6 +91,7 @@ import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
@@ -297,7 +298,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, sortedNumericDocValues.nextDoc());
     BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("binary");
     assertEquals(0, binaryDocValues.nextDoc());
-    assertEquals("a", binaryDocValues.binaryValue().utf8ToString());
+    assertEquals("a", binaryDocValues.randomAccessInputValue().utf8ToString());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, binaryDocValues.nextDoc());
     SortedDocValues sortedDocValues = leafReader.getSortedDocValues("sorted");
     assertEquals(0, sortedDocValues.nextDoc());
@@ -438,7 +439,7 @@ public class TestMemoryIndex extends LuceneTestCase {
 
     BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("text");
     assertEquals(0, binaryDocValues.nextDoc());
-    assertEquals("quick brown fox", binaryDocValues.binaryValue().utf8ToString());
+    assertEquals("quick brown fox", binaryDocValues.randomAccessInputValue().utf8ToString());
   }
 
   public void testBigBinaryDocValues() throws Exception {
@@ -450,7 +451,8 @@ public class TestMemoryIndex extends LuceneTestCase {
     LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
     BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("binary");
     assertEquals(0, binaryDocValues.nextDoc());
-    assertArrayEquals(bytes, binaryDocValues.binaryValue().bytes);
+    assertArrayEquals(
+        bytes, RandomAccessInputRef.toBytesRef(binaryDocValues.randomAccessInputValue()).bytes);
   }
 
   public void testBigSortedDocValues() throws Exception {
@@ -670,7 +672,7 @@ public class TestMemoryIndex extends LuceneTestCase {
 
     BinaryDocValues dvs = leafReader.getBinaryDocValues("field");
     assertEquals(0, dvs.nextDoc());
-    assertEquals("term", dvs.binaryValue().utf8ToString());
+    assertEquals("term", dvs.randomAccessInputValue().utf8ToString());
   }
 
   public void testToStringDebug() {

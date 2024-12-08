@@ -54,10 +54,12 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
+import org.apache.lucene.store.ByteArrayRandomAccessInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.StringHelper;
 
 class SimpleTextDocValuesReader extends DocValuesProducer {
@@ -324,7 +326,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     DocValuesIterator docsWithField = getBinaryDocsWithField(fieldInfo);
 
     IntFunction<BytesRef> values =
-        new IntFunction<BytesRef>() {
+        new IntFunction<>() {
           final BytesRefBuilder term = new BytesRefBuilder();
           final BytesRefBuilder termByteArray = new BytesRefBuilder();
 
@@ -366,9 +368,16 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         };
     return new BinaryDocValues() {
 
+      private final ByteArrayRandomAccessInput bytes = new ByteArrayRandomAccessInput();
+      private final RandomAccessInputRef inputRef = new RandomAccessInputRef(bytes);
+
       @Override
       public int nextDoc() throws IOException {
-        return docsWithField.nextDoc();
+        int doc = docsWithField.nextDoc();
+        if (doc != NO_MORE_DOCS) {
+          consume(values.apply(doc));
+        }
+        return doc;
       }
 
       @Override
@@ -383,17 +392,31 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       @Override
       public int advance(int target) throws IOException {
-        return docsWithField.advance(target);
+        int doc = docsWithField.advance(target);
+        if (doc != NO_MORE_DOCS) {
+          consume(values.apply(doc));
+        }
+        return doc;
+      }
+
+      private void consume(BytesRef bytesRef) {
+        bytes.reset(bytesRef.bytes);
+        inputRef.offset = bytesRef.offset;
+        inputRef.length = bytesRef.length;
       }
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        return docsWithField.advanceExact(target);
+        if (docsWithField.advanceExact(target)) {
+          consume(values.apply(target));
+          return true;
+        }
+        return false;
       }
 
       @Override
-      public BytesRef binaryValue() throws IOException {
-        return values.apply(docsWithField.docID());
+      public RandomAccessInputRef randomAccessInputValue() {
+        return inputRef;
       }
     };
   }
@@ -653,8 +676,8 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         if (docID() == NO_MORE_DOCS) {
           return;
         }
-        String csv = binary.binaryValue().utf8ToString();
-        if (csv.length() == 0) {
+        String csv = binary.randomAccessInputValue().utf8ToString();
+        if (csv.isEmpty()) {
           values = new long[0];
         } else {
           String[] s = csv.split(",");

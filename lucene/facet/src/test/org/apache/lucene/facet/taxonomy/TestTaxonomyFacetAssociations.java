@@ -52,6 +52,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -174,7 +175,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     for (LeafReaderContext ctx : reader.leaves()) {
       BinaryDocValues dv = DocValues.getBinary(ctx.reader(), "$facets.float");
       for (int doc = dv.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = dv.nextDoc()) {
-        final BytesRef bytesRef = dv.binaryValue();
+        final BytesRef bytesRef = RandomAccessInputRef.toBytesRef(dv.randomAccessInputValue());
         byte[] bytes = bytesRef.bytes;
         int end = bytesRef.offset + bytesRef.length;
         int offset = bytesRef.offset;

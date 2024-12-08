@@ -55,6 +55,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 @SuppressWarnings("resource")
 public class TestNumericDocValuesUpdates extends LuceneTestCase {
@@ -449,7 +450,7 @@ public class TestNumericDocValuesUpdates extends LuceneTestCase {
       assertEquals(i, ndv.nextDoc());
       assertEquals(17, ndv.longValue());
       assertEquals(i, bdv.nextDoc());
-      BytesRef term = bdv.binaryValue();
+      BytesRef term = RandomAccessInputRef.toBytesRef(bdv.randomAccessInputValue());
       assertEquals(newBytesRef(Integer.toString(i)), term);
       assertEquals(i, sdv.nextDoc());
       term = sdv.lookupOrd(sdv.ordValue());
