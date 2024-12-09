@@ -168,7 +168,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       for (int u : ns) {
         int newu = ordMapS[u];
         // if new ordinal of u > new ordinal of node, then it doesn't exist in gL yet
-        // so we can't add it as a neighbour of node
+        // so we don't add it to the candidate list
         if (newu < ordMapS[node]) {
           w.add(newu);
         }

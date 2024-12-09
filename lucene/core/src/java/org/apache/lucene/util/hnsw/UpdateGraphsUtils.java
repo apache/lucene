@@ -72,24 +72,24 @@ public class UpdateGraphsUtils {
     Set<Integer> j = new HashSet<>();
     boolean[] stale = new boolean[size];
     short[] counts = new short[size];
-    long maxGTot = 0L;
+    long gExit = 0L;
     for (int v = 0; v < size; v++) {
       int degree = nodesNs.get(v).size();
-      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
-      maxGTot += k;
+      k = degree > 8 ? Math.ceilDiv(degree, 4) : Math.min(2, degree);
+      gExit += k;
 
       int gain = k + degree;
       heap.push(encode(gain, v));
     }
 
     long gTot = 0L;
-    while (gTot < maxGTot) {
+    while (gTot < gExit) {
       long el = heap.pop();
       int gain = decodeValue1(el);
       int v = decodeValue2(el);
       List<Integer> ns = nodesNs.get(v);
       int degree = ns.size();
-      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+      k = degree > 8 ? Math.ceilDiv(degree, 4) : Math.min(2, degree);
       if (stale[v]) { // if stale, recalculate gain
         int newGain = Math.max(0, k - counts[v]);
         for (int u : ns) {
