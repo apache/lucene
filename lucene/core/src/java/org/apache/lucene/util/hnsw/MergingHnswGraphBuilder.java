@@ -159,30 +159,31 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     // form the candidate set for a node
     // by joining the node's neighbours in gS with
     // the node's neighbours' neighbours in gL
-    for (int node = 0; node < it.size; node++) {
-      if (j.contains(node)) {
+    for (int u = 0; u < it.size; u++) {
+      if (j.contains(u)) {
         continue;
       }
       Set<Integer> w = new HashSet<>();
-      List<Integer> ns = nodesNs.get(node);
-      for (int u : ns) {
-        int newu = ordMapS[u];
-        // if new ordinal of u > new ordinal of node, then it doesn't exist in gL yet
+      List<Integer> nsU = nodesNs.get(u);
+      for (int v : nsU) {
+        int newv = ordMapS[v];
+        // if new ordinal of v > new ordinal of node, then it doesn't exist in gL yet,
         // so we don't add it to the candidate list
-        if (newu < ordMapS[node]) {
-          w.add(newu);
+        if (newv < ordMapS[u]) {
+          w.add(newv);
         }
-        if (j.contains(u)) {
-          // add u's neigbhours from the large graph
-          NeighborArray nsuArray = hnsw.getNeighbors(0, newu);
-          int[] nsu = nsuArray.nodes();
-          int nsuSize = nsuArray.size();
-          for (int k = 0; k < nsuSize; k++) {
-            w.add(nsu[k]);
+        // if u's neighbour v is in the join set, or already added to gL (v < u),
+        // then we add v's neighbours from gL to the candidate list
+        if (j.contains(v) || v < u) {
+          NeighborArray nsVArray = hnsw.getNeighbors(0, newv);
+          int[] nsV = nsVArray.nodes();
+          int nsVSize = nsVArray.size();
+          for (int k = 0; k < nsVSize; k++) {
+            w.add(nsV[k]);
           }
         }
       }
-      addGraphNodeWithCandidates(ordMapS[node], w);
+      addGraphNodeWithCandidates(ordMapS[u], w);
     }
   }
 }
