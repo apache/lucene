@@ -237,7 +237,8 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       Scorer prohibitedScorer =
           prohibited.size() == 1
               ? prohibited.get(0)
-              : new DisjunctionSumScorer(prohibited, ScoreMode.COMPLETE_NO_SCORES);
+              : new DisjunctionSumScorer(
+                  prohibited, ScoreMode.COMPLETE_NO_SCORES, positiveScorerCost);
       return new ReqExclBulkScorer(positiveScorer, prohibitedScorer);
     }
   }
@@ -509,7 +510,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       if ((scoreMode == ScoreMode.TOP_SCORES && topLevelScoringClause) || minShouldMatch > 1) {
         return new WANDScorer(optionalScorers, minShouldMatch, scoreMode, leadCost);
       } else {
-        return new DisjunctionSumScorer(optionalScorers, scoreMode);
+        return new DisjunctionSumScorer(optionalScorers, scoreMode, leadCost);
       }
     }
   }

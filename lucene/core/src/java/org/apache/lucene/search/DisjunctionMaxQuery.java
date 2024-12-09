@@ -155,7 +155,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
             for (ScorerSupplier ss : scorerSuppliers) {
               scorers.add(ss.get(leadCost));
             }
-            return new DisjunctionMaxScorer(tieBreakerMultiplier, scorers, scoreMode);
+            return new DisjunctionMaxScorer(tieBreakerMultiplier, scorers, scoreMode, leadCost);
           }
 
           @Override
