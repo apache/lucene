@@ -235,7 +235,6 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (frozen) {
       throw new IllegalStateException("Graph builder is already frozen");
     }
-    boolean candidatesProvided = candidates0 != null && candidates0.size() > 0;
     RandomVectorScorer scorer = scorerSupplier.scorer(node);
     final int nodeLevel = getRandomGraphLevel(ml, random);
     // first add nodes to all levels
@@ -273,7 +272,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       for (int i = scratchPerLevel.length - 1; i >= 0; i--) {
         int level = i + lowestUnsetLevel;
         candidates.clear();
-        if (i == 0 && candidatesProvided) {
+        if (level == 0 && candidates0 != null && candidates0.size() > 0) {
           scratchPerLevel[i] = new NeighborArray(candidates0.size(), false);
           for (int cand0 : candidates0) {
             float sim = scorer.score(cand0);
@@ -290,8 +289,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
       // then do connections from bottom up
       for (int i = 0; i < scratchPerLevel.length; i++) {
-        boolean keepPrunedConnections = (i == 0 && candidatesProvided);
-        addDiverseNeighbors(i + lowestUnsetLevel, node, scratchPerLevel[i], keepPrunedConnections);
+        addDiverseNeighbors(i + lowestUnsetLevel, node, scratchPerLevel[i]);
       }
       lowestUnsetLevel += scratchPerLevel.length;
       assert lowestUnsetLevel == Math.min(nodeLevel, curMaxLevel) + 1;
@@ -329,8 +327,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     return now;
   }
 
-  private void addDiverseNeighbors(
-      int level, int node, NeighborArray candidates, boolean keepPrunedConnections)
+  private void addDiverseNeighbors(int level, int node, NeighborArray candidates)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
@@ -339,8 +336,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
     assert neighbors.size() == 0; // new node
     int maxConnOnLevel = level == 0 ? M * 2 : M;
-    boolean[] mask =
-        selectAndLinkDiverse(neighbors, candidates, maxConnOnLevel, keepPrunedConnections);
+    boolean[] mask = selectAndLinkDiverse(neighbors, candidates, maxConnOnLevel);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
@@ -372,11 +368,7 @@ public class HnswGraphBuilder implements HnswBuilder {
    * are selected
    */
   private boolean[] selectAndLinkDiverse(
-      NeighborArray neighbors,
-      NeighborArray candidates,
-      int maxConnOnLevel,
-      boolean keepPrunedConnections)
-      throws IOException {
+      NeighborArray neighbors, NeighborArray candidates, int maxConnOnLevel) throws IOException {
     boolean[] mask = new boolean[candidates.size()];
     // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
     for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
@@ -385,8 +377,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       int cNode = candidates.nodes()[i];
       float cScore = candidates.scores()[i];
       assert cNode <= hnsw.maxNodeId();
-      if ((keepPrunedConnections && neighbors.isNotFull())
-          || diversityCheck(cNode, cScore, neighbors)) {
+      if (diversityCheck(cNode, cScore, neighbors)) {
         mask[i] = true;
         // here we don't need to lock, because there's no incoming link so no others is able to
         // discover this node such that no others will modify this neighbor array as well
