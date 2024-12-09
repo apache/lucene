@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
@@ -184,7 +185,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     // compiles. But ensure that it can be used as well, e.g., no other hidden
     // dependencies or something. Therefore, don't use any random API !
     Directory dir = new ByteBuffersDirectory();
-    IndexWriterConfig conf = new IndexWriterConfig(null);
+    IndexWriterConfig conf = new IndexWriterConfig((Analyzer) null);
     conf.setMergeScheduler(new ReportingMergeScheduler());
     IndexWriter writer = new IndexWriter(dir, conf);
     writer.addDocument(new Document());
