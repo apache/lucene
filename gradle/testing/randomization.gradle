@@ -112,6 +112,9 @@ allprojects {
           [propName: 'tests.forceintegervectors',
             value: { -> testsDefaultVectorizationRequested() ? false : (randomVectorSize != 'default') },
             description: "Forces use of integer vectors even when slow."],
+          // test native dot-product when running with Java 21 or greater and 'default' vector size (chosen by randomized testing)
+          [propName: 'test.native.dotProduct',
+           value: { -> testsDefaultVectorizationRequested() ? false : (randomVectorSize == 'default' && rootProject.vectorIncubatorJavaVersions.contains(rootProject.runtimeJavaVersion))}],
           [propName: 'tests.defaultvectorization', value: false,
             description: "Uses defaults for running tests with correct JVM settings to test Panama vectorization (tests.jvmargs, tests.vectorsize, tests.forceintegervectors)."],
       ]

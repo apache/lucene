@@ -29,5 +29,8 @@ public interface MemorySegmentAccessInput extends RandomAccessInput, Cloneable {
   /** Returns the memory segment for a given position and length, or null. */
   MemorySegment segmentSliceOrNull(long pos, long len) throws IOException;
 
+  /** Copy bytes from underlying MemorySegment to another memory segment */
+  void readBytes(long pos, MemorySegment dst, int offset, int len) throws IOException;
+
   MemorySegmentAccessInput clone();
 }

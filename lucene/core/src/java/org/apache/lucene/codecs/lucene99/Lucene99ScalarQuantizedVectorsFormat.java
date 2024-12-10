@@ -22,9 +22,11 @@ import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.util.Constants;
 
 /**
  * Format supporting vector quantization, storage, and retrieval
@@ -70,7 +72,8 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   final byte bits;
   final boolean compress;
-  final Lucene99ScalarQuantizedVectorScorer flatVectorScorer;
+  // final Lucene99ScalarQuantizedVectorScorer flatVectorScorer;
+  final FlatVectorsScorer flatVectorScorer;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
@@ -117,8 +120,16 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     this.bits = (byte) bits;
     this.confidenceInterval = confidenceInterval;
     this.compress = compress;
-    this.flatVectorScorer =
-        new Lucene99ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
+    if (Constants.NATIVE_DOT_PRODUCT_ENABLED == false) {
+      this.flatVectorScorer =
+          new Lucene99ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
+    } else {
+      FlatVectorsScorer scorer = FlatVectorScorerUtil.getLucene99FlatVectorsScorer();
+      if (scorer == DefaultFlatVectorScorer.INSTANCE) {
+        scorer = new Lucene99ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
+      }
+      this.flatVectorScorer = scorer;
+    }
   }
 
   public static float calculateDefaultConfidenceInterval(int vectorDimension) {

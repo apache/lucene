@@ -25,6 +25,7 @@ import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
@@ -50,7 +51,7 @@ import org.apache.lucene.util.SuppressForbidden;
  *
  * Setting these properties will make this code run EXTREMELY slow!
  */
-final class PanamaVectorUtilSupport implements VectorUtilSupport {
+public final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
@@ -288,25 +289,93 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return res1.add(res2).reduceLanes(ADD);
   }
 
-  // Binary functions, these all follow a general pattern like this:
-  //
-  //   short intermediate = a * b;
-  //   int accumulator = (int)accumulator + (int)intermediate;
-  //
-  // 256 or 512 bit vectors can process 64 or 128 bits at a time, respectively
-  // intermediate results use 128 or 256 bit vectors, respectively
-  // final accumulator uses 256 or 512 bit vectors, respectively
-  //
-  // We also support 128 bit vectors, going 32 bits at a time.
-  // This is slower but still faster than not vectorizing at all.
-
+  /**
+   * This method wraps supplied byte[] vectors into on-heap MemorySegments, consequently it does NOT
+   * use dot-product implemented in native C code even if it is enabled. The native C code is
+   * exercised only when input byte[] vectors are supplied as off-heap MemorySegments. This is
+   * because native code is given a pointer to a memory address and if the content at that address
+   * can be moved at anytime (by Java GC in case of heap allocated memory) then safety of the native
+   * computation cannot be guaranteed. If we try to pass MemorySegment backing on-heap memory to
+   * native code we get "java.lang.UnsupportedOperationException: Not a native address"
+   *
+   * <p>Q1. Which method should HNSW scoring components use for computing dot-product in native code
+   * on byte-vectors? A1. They should use {@link #dotProduct(MemorySegment, MemorySegment)} directly
+   * and control the creation and reuse of off-heap MemorySegments as dotProduct is in the hot code
+   * path for both indexing and searching. It is easy to see that stored-vectors residing in
+   * Memory-mapped files can simply be accessed using {@link MemorySegment#asSlice(long, long,
+   * long)} which does not allocate new memory and does not require copying vector data onto JVM
+   * heap. For target-vector, copying to off-heap memory will still be needed but allocation can
+   * happen once per scorer.
+   *
+   * <p>Q2. So JMH benchmarks that exercise this code path will not be measuring the performance of
+   * native dot-product? A2. Correct.
+   *
+   * @param a first byte vector
+   * @param b second byte vector
+   * @return int dot-product score
+   */
   @Override
   public int dotProduct(byte[] a, byte[] b) {
     return dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
   }
 
+  /**
+   * For use in JMH benchmarking.
+   *
+   * @param byteVector to be copied to off-heap memory
+   * @return offHeap memory segment
+   */
+  public static MemorySegment offHeapByteVector(byte[] byteVector) {
+    MemorySegment offHeapByteVector =
+        Arena.ofAuto().allocate(byteVector.length, JAVA_BYTE.byteAlignment());
+    MemorySegment.copy(byteVector, 0, offHeapByteVector, JAVA_BYTE, 0, byteVector.length);
+    return offHeapByteVector;
+  }
+
+  /**
+   * Only used in JMH benchmarks. Helpful for benchmarking the performance of compiler
+   * auto-vectorized method (NativeMethodHandles.SIMPLE_DOT_PRODUCT_IMPL) vs manually unrolled and
+   * vectorized implementation (NativeMethodHandles.DOT_PRODUCT_IMPL)
+   *
+   * @param a MemorySegment of vector a
+   * @param b MemorySegment of vector b
+   * @return int dot-product score
+   */
+  public static int simpleNativeDotProduct(MemorySegment a, MemorySegment b) {
+    assert a.byteSize() == b.byteSize();
+    try {
+      int limit = (int) a.byteSize();
+      return (int) NativeMethodHandles.SIMPLE_DOT_PRODUCT_IMPL.invokeExact(a, b, limit);
+    } catch (Throwable ex$) {
+      throw new AssertionError("should not reach here", ex$);
+    }
+  }
+
+  /**
+   * Binary functions, these all follow a general pattern like this: short intermediate = a * b; int
+   * accumulator = (int)accumulator + (int)intermediate; 256 or 512 bit vectors can process 64 or
+   * 128 bits at a time, respectively intermediate results use 128 or 256 bit vectors, respectively
+   * final accumulator uses 256 or 512 bit vectors, respectively We also support 128 bit vectors,
+   * going 32 bits at a time. This is slower but still faster than not vectorizing at all. Compute
+   * the dot-product between two byte vectors, each provided as MemorySegment. The MemorySegment
+   * could be on-heap or off-heap. In case both MemorySegments are off-heap the computation is
+   * delegated to native code.
+   *
+   * @param a MemorySegment of byte vector a
+   * @param b MemorySegment of byte vector b
+   * @return dot-product score
+   */
   public static int dotProduct(MemorySegment a, MemorySegment b) {
     assert a.byteSize() == b.byteSize();
+    // Use native dot-product implementation if both vectors are off-heap
+    if (a.isNative() && b.isNative()) {
+      try {
+        int limit = (int) a.byteSize();
+        return (int) NativeMethodHandles.DOT_PRODUCT_IMPL.invokeExact(a, b, limit);
+      } catch (Throwable ex$) {
+        throw new AssertionError("should not reach here", ex$);
+      }
+    }
     int i = 0;
     int res = 0;
 
