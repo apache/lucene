@@ -22,6 +22,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 /**
  * Expert: a FieldComparator compares hits so as to determine their sort order when collecting the
@@ -233,10 +234,9 @@ public abstract class FieldComparator<T> {
       missingSortCmp = sortMissingLast ? 1 : -1;
     }
 
-    private BytesRef getValueForDoc(int doc) throws IOException {
+    private RandomAccessInputRef getValueForDoc(int doc) throws IOException {
       if (docTerms.advanceExact(doc)) {
-        bytesRefBuilder.copyBytes(docTerms.randomAccessInputValue());
-        return bytesRefBuilder.get();
+        return docTerms.randomAccessInputValue();
       } else {
         return null;
       }
@@ -251,13 +251,12 @@ public abstract class FieldComparator<T> {
 
     @Override
     public int compareBottom(int doc) throws IOException {
-      final BytesRef comparableBytes = getValueForDoc(doc);
-      return compareValues(bottom, comparableBytes);
+      return compareValues(bottom, getValueForDoc(doc));
     }
 
     @Override
     public void copy(int slot, int doc) throws IOException {
-      final BytesRef comparableBytes = getValueForDoc(doc);
+      final RandomAccessInputRef comparableBytes = getValueForDoc(doc);
       if (comparableBytes == null) {
         values[slot] = null;
       } else {
@@ -315,6 +314,20 @@ public abstract class FieldComparator<T> {
     @Override
     public int compareTop(int doc) throws IOException {
       return compareValues(topValue, getValueForDoc(doc));
+    }
+
+    private int compareValues(BytesRef val1, RandomAccessInputRef val2) throws IOException {
+      // missing always sorts first:
+      if (val1 == null) {
+        if (val2 == null) {
+          return 0;
+        }
+        return missingSortCmp;
+      } else if (val2 == null) {
+        return -missingSortCmp;
+      }
+      bytesRefBuilder.copyBytes(val2);
+      return val1.compareTo(bytesRefBuilder.get());
     }
 
     @Override
