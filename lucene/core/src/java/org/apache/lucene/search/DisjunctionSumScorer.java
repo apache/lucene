@@ -30,8 +30,9 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
    *
    * @param subScorers Array of at least two subscorers.
    */
-  DisjunctionSumScorer(List<Scorer> subScorers, ScoreMode scoreMode) throws IOException {
-    super(subScorers, scoreMode);
+  DisjunctionSumScorer(List<Scorer> subScorers, ScoreMode scoreMode, long leadCost)
+      throws IOException {
+    super(subScorers, scoreMode, leadCost);
     this.scorers = subScorers;
   }
 

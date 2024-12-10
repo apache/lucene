@@ -39,7 +39,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.CollectionStatistics;
-import org.apache.lucene.search.DisiPriorityQueue;
 import org.apache.lucene.search.DisiWrapper;
 import org.apache.lucene.search.DisjunctionDISIApproximation;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -383,6 +382,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
       List<PostingsEnum> iterators = new ArrayList<>();
       List<FieldAndWeight> fields = new ArrayList<>();
+      long cost = 0;
       for (int i = 0; i < fieldTerms.length; i++) {
         IOSupplier<TermState> supplier = termStates[i].get(context);
         TermState state = supplier == null ? null : supplier.get();
@@ -392,6 +392,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           PostingsEnum postingsEnum = termsEnum.postings(null, PostingsEnum.FREQS);
           iterators.add(postingsEnum);
           fields.add(fieldAndWeights.get(fieldTerms[i].field()));
+          cost += postingsEnum.cost();
         }
       }
 
@@ -401,18 +402,31 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
       MultiNormsLeafSimScorer scoringSimScorer =
           new MultiNormsLeafSimScorer(simWeight, context.reader(), fieldAndWeights.values(), true);
-      // we use termscorers + disjunction as an impl detail
-      DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
-      for (int i = 0; i < iterators.size(); i++) {
-        float weight = fields.get(i).weight;
-        queue.add(
-            new WeightedDisiWrapper(new TermScorer(iterators.get(i), simWeight, null), weight));
-      }
-      // Even though it is called approximation, it is accurate since none of
-      // the sub iterators are two-phase iterators.
-      DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
-      final var scorer = new CombinedFieldScorer(queue, iterator, scoringSimScorer);
-      return new DefaultScorerSupplier(scorer);
+
+      final long finalCost = cost;
+      return new ScorerSupplier() {
+
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          // we use termscorers + disjunction as an impl detail
+          List<DisiWrapper> wrappers = new ArrayList<>(iterators.size());
+          for (int i = 0; i < iterators.size(); i++) {
+            float weight = fields.get(i).weight;
+            wrappers.add(
+                new WeightedDisiWrapper(new TermScorer(iterators.get(i), simWeight, null), weight));
+          }
+          // Even though it is called approximation, it is accurate since none of
+          // the sub iterators are two-phase iterators.
+          DisjunctionDISIApproximation iterator =
+              new DisjunctionDISIApproximation(wrappers, leadCost);
+          return new CombinedFieldScorer(iterator, scoringSimScorer);
+        }
+
+        @Override
+        public long cost() {
+          return finalCost;
+        }
+      };
     }
 
     @Override
@@ -437,14 +451,11 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   }
 
   private static class CombinedFieldScorer extends Scorer {
-    private final DisiPriorityQueue queue;
-    private final DocIdSetIterator iterator;
+    private final DisjunctionDISIApproximation iterator;
     private final MultiNormsLeafSimScorer simScorer;
     private final float maxScore;
 
-    CombinedFieldScorer(
-        DisiPriorityQueue queue, DocIdSetIterator iterator, MultiNormsLeafSimScorer simScorer) {
-      this.queue = queue;
+    CombinedFieldScorer(DisjunctionDISIApproximation iterator, MultiNormsLeafSimScorer simScorer) {
       this.iterator = iterator;
       this.simScorer = simScorer;
       this.maxScore = simScorer.getSimScorer().score(Float.POSITIVE_INFINITY, 1L);
@@ -456,7 +467,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     }
 
     float freq() throws IOException {
-      DisiWrapper w = queue.topList();
+      DisiWrapper w = iterator.topList();
       float freq = ((WeightedDisiWrapper) w).freq();
       for (w = w.next; w != null; w = w.next) {
         freq += ((WeightedDisiWrapper) w).freq();

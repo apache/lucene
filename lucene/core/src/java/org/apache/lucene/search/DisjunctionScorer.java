@@ -25,37 +25,34 @@ import org.apache.lucene.util.PriorityQueue;
 /** Base class for Scorers that score disjunctions. */
 abstract class DisjunctionScorer extends Scorer {
 
+  private final int numClauses;
   private final boolean needsScores;
 
-  private final DisiPriorityQueue subScorers;
-  private final DocIdSetIterator approximation;
+  private final DisjunctionDISIApproximation approximation;
   private final TwoPhase twoPhase;
 
-  protected DisjunctionScorer(List<Scorer> subScorers, ScoreMode scoreMode) throws IOException {
+  protected DisjunctionScorer(List<Scorer> subScorers, ScoreMode scoreMode, long leadCost)
+      throws IOException {
     if (subScorers.size() <= 1) {
       throw new IllegalArgumentException("There must be at least 2 subScorers");
     }
-    this.subScorers = new DisiPriorityQueue(subScorers.size());
-    for (Scorer scorer : subScorers) {
-      final DisiWrapper w = new DisiWrapper(scorer, false);
-      this.subScorers.add(w);
-    }
+    this.numClauses = subScorers.size();
     this.needsScores = scoreMode != ScoreMode.COMPLETE_NO_SCORES;
-    this.approximation = new DisjunctionDISIApproximation(this.subScorers);
-
     boolean hasApproximation = false;
     float sumMatchCost = 0;
     long sumApproxCost = 0;
-    // Compute matchCost as the average over the matchCost of the subScorers.
-    // This is weighted by the cost, which is an expected number of matching documents.
-    for (DisiWrapper w : this.subScorers) {
+    List<DisiWrapper> wrappers = new ArrayList<>();
+    for (Scorer scorer : subScorers) {
+      DisiWrapper w = new DisiWrapper(scorer, false);
       long costWeight = (w.cost <= 1) ? 1 : w.cost;
       sumApproxCost += costWeight;
       if (w.twoPhaseView != null) {
         hasApproximation = true;
         sumMatchCost += w.matchCost * costWeight;
       }
+      wrappers.add(w);
     }
+    this.approximation = new DisjunctionDISIApproximation(wrappers, leadCost);
 
     if (hasApproximation == false) { // no sub scorer supports approximations
       twoPhase = null;
@@ -91,7 +88,7 @@ abstract class DisjunctionScorer extends Scorer {
       super(approximation);
       this.matchCost = matchCost;
       unverifiedMatches =
-          new PriorityQueue<DisiWrapper>(DisjunctionScorer.this.subScorers.size()) {
+          new PriorityQueue<DisiWrapper>(numClauses) {
             @Override
             protected boolean lessThan(DisiWrapper a, DisiWrapper b) {
               return a.matchCost < b.matchCost;
@@ -116,7 +113,7 @@ abstract class DisjunctionScorer extends Scorer {
       verifiedMatches = null;
       unverifiedMatches.clear();
 
-      for (DisiWrapper w = subScorers.topList(); w != null; ) {
+      for (DisiWrapper w = DisjunctionScorer.this.approximation.topList(); w != null; ) {
         DisiWrapper next = w.next;
 
         if (w.twoPhaseView == null) {
@@ -160,12 +157,12 @@ abstract class DisjunctionScorer extends Scorer {
 
   @Override
   public final int docID() {
-    return subScorers.top().doc;
+    return approximation.docID();
   }
 
   DisiWrapper getSubMatches() throws IOException {
     if (twoPhase == null) {
-      return subScorers.topList();
+      return approximation.topList();
     } else {
       return twoPhase.getSubMatches();
     }
