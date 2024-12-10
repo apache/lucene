@@ -54,7 +54,7 @@ public final class RandomAccessInputRef {
    */
   public String utf8ToString() throws IOException {
     final char[] ref = new char[length];
-    final int len = UnicodeUtil.UTF8toUTF16(bytes, offset, length, ref);
+    final int len = UnicodeUtil.UTF8toUTF16(toBytesRef(this), ref);
     return new String(ref, 0, len);
   }
 
