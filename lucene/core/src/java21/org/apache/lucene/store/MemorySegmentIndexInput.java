@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOConsumer;
 
@@ -422,12 +423,20 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
   @Override
   public Optional<Boolean> isLoaded() {
+    boolean isLoaded = true;
     for (MemorySegment seg : segments) {
       if (seg.isLoaded() == false) {
-        return Optional.of(Boolean.FALSE);
+        isLoaded = false;
+        break;
       }
     }
-    return Optional.of(Boolean.TRUE);
+
+    if (Constants.WINDOWS && isLoaded == false) {
+      // see https://github.com/apache/lucene/issues/14050
+      return Optional.empty();
+    }
+
+    return Optional.of(isLoaded);
   }
 
   @Override
