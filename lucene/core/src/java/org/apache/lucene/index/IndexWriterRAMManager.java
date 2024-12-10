@@ -37,7 +37,7 @@ public class IndexWriterRAMManager {
    * @param ramBufferSizeMB the RAM buffer size to use between all registered {@link IndexWriter}
    *     instances
    */
-  IndexWriterRAMManager(double ramBufferSizeMB) {
+  public IndexWriterRAMManager(double ramBufferSizeMB) {
     if (ramBufferSizeMB != IndexWriterConfig.DISABLE_AUTO_FLUSH && ramBufferSizeMB <= 0.0) {
       throw new IllegalArgumentException("ramBufferSize should be > 0.0 MB when enabled");
     }
@@ -61,6 +61,11 @@ public class IndexWriterRAMManager {
    */
   public int flushRoundRobin() throws IOException {
     return idToWriter.flushRoundRobin();
+  }
+
+  /** Gets the number of writers registered with this ram manager */
+  public int getWriterCount() {
+    return idToWriter.size();
   }
 
   /** Registers a writer can returns the associated ID */
@@ -167,6 +172,12 @@ public class IndexWriterRAMManager {
         idToWriterNode.get(id).ram = newRAMBytesUsed;
         totalRamTracker += newRAMBytesUsed - oldRAMBytesUsed;
         return totalRamTracker;
+      }
+    }
+
+    int size() {
+      synchronized (lock) {
+        return idToWriterNode.size();
       }
     }
 
