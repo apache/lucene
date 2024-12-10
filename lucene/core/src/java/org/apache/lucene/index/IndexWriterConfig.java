@@ -142,7 +142,21 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
    * problem you should switch to {@link LogByteSizeMergePolicy} or {@link LogDocMergePolicy}.
    */
   public IndexWriterConfig(Analyzer analyzer) {
-    super(analyzer);
+    this(analyzer, new IndexWriterRAMManager(IndexWriterConfig.DEFAULT_RAM_BUFFER_SIZE_MB));
+  }
+
+  /**
+   * Creates a new config with the provided {@link IndexWriterRAMManager}. If you want to share a
+   * buffer between multiple {@link IndexWriter}, you will need to use this constructor as {@link
+   * IndexWriterConfig} maintains a 1:1 relationship with {@link IndexWriter}
+   */
+  public IndexWriterConfig(IndexWriterRAMManager indexWriterRAMManager) {
+    this(new StandardAnalyzer(), indexWriterRAMManager);
+  }
+
+  /** Creates a new config with the provided {@link Analyzer} and {@link IndexWriterRAMManager} */
+  public IndexWriterConfig(Analyzer analyzer, IndexWriterRAMManager indexWriterRAMManager) {
+    super(analyzer, indexWriterRAMManager);
   }
 
   /**
@@ -391,6 +405,11 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
   @Override
   public double getRAMBufferSizeMB() {
     return super.getRAMBufferSizeMB();
+  }
+
+  @Override
+  public IndexWriterRAMManager getIndexWriterRAMManager() {
+    return super.getIndexWriterRAMManager();
   }
 
   /**
