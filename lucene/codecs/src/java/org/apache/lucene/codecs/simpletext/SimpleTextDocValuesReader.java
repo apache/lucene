@@ -373,11 +373,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       @Override
       public int nextDoc() throws IOException {
-        int doc = docsWithField.nextDoc();
-        if (doc != NO_MORE_DOCS) {
-          consume(values.apply(doc));
-        }
-        return doc;
+        return docsWithField.nextDoc();
       }
 
       @Override
@@ -392,30 +388,20 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       @Override
       public int advance(int target) throws IOException {
-        int doc = docsWithField.advance(target);
-        if (doc != NO_MORE_DOCS) {
-          consume(values.apply(doc));
-        }
-        return doc;
-      }
-
-      private void consume(BytesRef bytesRef) {
-        bytes.reset(bytesRef.bytes);
-        inputRef.offset = bytesRef.offset;
-        inputRef.length = bytesRef.length;
+        return docsWithField.advance(target);
       }
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        if (docsWithField.advanceExact(target)) {
-          consume(values.apply(target));
-          return true;
-        }
-        return false;
+        return docsWithField.advanceExact(target);
       }
 
       @Override
       public RandomAccessInputRef randomAccessInputValue() {
+        BytesRef bytesRef = values.apply(docsWithField.docID());
+        bytes.reset(bytesRef.bytes);
+        inputRef.offset = bytesRef.offset;
+        inputRef.length = bytesRef.length;
         return inputRef;
       }
     };

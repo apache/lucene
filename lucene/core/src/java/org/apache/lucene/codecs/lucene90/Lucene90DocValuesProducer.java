@@ -792,14 +792,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return DocValues.emptyBinary();
     }
 
-    final RandomAccessInputRef bytesSlice =
-        new RandomAccessInputRef(data.randomAccessSlice(entry.dataOffset, entry.dataLength));
+    final RandomAccessInput randomAccessSlice =
+        data.randomAccessSlice(entry.dataOffset, entry.dataLength);
     // Prefetch the first page of data. Following pages are expected to get prefetched through
     // read-ahead.
-    if (bytesSlice.bytes.length() > 0) {
-      bytesSlice.bytes.prefetch(0, 1);
+    if (randomAccessSlice.length() > 0) {
+      randomAccessSlice.prefetch(0, 1);
     }
 
+    final RandomAccessInputRef bytesSlice = new RandomAccessInputRef(randomAccessSlice);
     if (entry.docsWithFieldOffset == -1) {
       // dense
       if (entry.minLength == entry.maxLength) {

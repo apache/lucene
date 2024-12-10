@@ -28,21 +28,19 @@ import org.apache.lucene.util.RandomAccessInputRef;
 public final class RandomAccessInputDataInput extends DataInput {
 
   private RandomAccessInput input;
-  private long offset;
   private long length;
-
-  private long pos;
+  private long offset;
 
   public RandomAccessInputDataInput() {}
 
   /** Sets the current position for this {@link DataInput}. */
   public long getPosition() {
-    return pos;
+    return offset;
   }
 
   /** Sets the current position for this {@link DataInput}. */
   public void setPosition(long pos) {
-    this.pos = pos;
+    this.offset = pos;
   }
 
   /** Resets the input to a new {@link RandomAccessInput} at position 0. */
@@ -50,7 +48,6 @@ public final class RandomAccessInputDataInput extends DataInput {
     this.input = input.bytes;
     this.offset = input.offset;
     this.length = input.length;
-    pos = 0;
   }
 
   /** The total number of bytes on this {@link DataInput}. */
@@ -60,44 +57,44 @@ public final class RandomAccessInputDataInput extends DataInput {
 
   @Override
   public void skipBytes(long count) {
-    pos += count;
+    offset += count;
   }
 
   @Override
   public short readShort() throws IOException {
     try {
-      return input.readShort(offset + pos);
+      return input.readShort(offset);
     } finally {
-      pos += Short.BYTES;
+      offset += Short.BYTES;
     }
   }
 
   @Override
   public int readInt() throws IOException {
     try {
-      return input.readInt(offset + pos);
+      return input.readInt(offset);
     } finally {
-      pos += Integer.BYTES;
+      offset += Integer.BYTES;
     }
   }
 
   @Override
   public long readLong() throws IOException {
     try {
-      return input.readLong(offset + pos);
+      return input.readLong(offset);
     } finally {
-      pos += Long.BYTES;
+      offset += Long.BYTES;
     }
   }
 
   @Override
   public byte readByte() throws IOException {
-    return input.readByte(offset + pos++);
+    return input.readByte(offset++);
   }
 
   @Override
   public void readBytes(byte[] b, int offset, int len) throws IOException {
-    input.readBytes(this.offset + pos, b, offset, len);
-    pos += len;
+    input.readBytes(this.offset, b, offset, len);
+    this.offset += len;
   }
 }
