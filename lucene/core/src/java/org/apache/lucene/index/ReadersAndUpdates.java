@@ -38,10 +38,10 @@ import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 // Used by IndexWriter to hold open SegmentReaders (for
 // searching or merging), plus pending deletes and updates,
@@ -361,8 +361,8 @@ final class ReadersAndUpdates {
                   // Merge sort of the original doc values with updated doc values:
                   return new BinaryDocValues() {
                     @Override
-                    public BytesRef binaryValue() throws IOException {
-                      return mergedDocValues.currentValuesSupplier.binaryValue();
+                    public RandomAccessInputRef randomAccessInputValue() throws IOException {
+                      return mergedDocValues.currentValuesSupplier.randomAccessInputValue();
                     }
 
                     @Override

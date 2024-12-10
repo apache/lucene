@@ -223,6 +223,7 @@ public abstract class FieldComparator<T> {
     private BytesRef bottom;
     private BytesRef topValue;
     private final int missingSortCmp;
+    private final BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
 
     /** Sole constructor. */
     public TermValComparator(int numHits, String field, boolean sortMissingLast) {
@@ -234,7 +235,8 @@ public abstract class FieldComparator<T> {
 
     private BytesRef getValueForDoc(int doc) throws IOException {
       if (docTerms.advanceExact(doc)) {
-        return docTerms.binaryValue();
+        bytesRefBuilder.copyBytes(docTerms.randomAccessInputValue());
+        return bytesRefBuilder.get();
       } else {
         return null;
       }
