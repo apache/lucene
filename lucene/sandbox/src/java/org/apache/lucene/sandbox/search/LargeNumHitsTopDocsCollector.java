@@ -32,7 +32,6 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.TotalHits;
 
 /**
@@ -63,11 +62,13 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
   @Override
   public LeafCollector getLeafCollector(LeafReaderContext context) {
     final int docBase = context.docBase;
-    return new TopScoreDocCollector.ScorerLeafCollector() {
+    return new LeafCollector() {
+
+      private Scorable scorer;
 
       @Override
       public void setScorer(Scorable scorer) throws IOException {
-        super.setScorer(scorer);
+        this.scorer = scorer;
       }
 
       @Override

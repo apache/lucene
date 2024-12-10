@@ -35,6 +35,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVectorQueryTestCase {
 
@@ -76,7 +77,10 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
     try (Directory d = newDirectory()) {
       try (IndexWriter w =
           new IndexWriter(
-              d, new IndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
+              d,
+              new IndexWriterConfig()
+                  .setCodec(TestUtil.getDefaultCodec())
+                  .setMergePolicy(newMergePolicy(random(), false)))) {
         for (int j = 1; j <= 5; j++) {
           List<Document> toAdd = new ArrayList<>();
           Document doc = new Document();

@@ -24,7 +24,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
+  when all values are identical. (Mike Sokolov)
 
 Other
 ---------------------
@@ -47,7 +48,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14034: Add support for storing term vectors in FeatureField. (Jim Ferenczi)
 
 Improvements
 ---------------------
@@ -60,6 +61,9 @@ Improvements
 * GITHUB#266: TieredMergePolicy now allows merging up to maxMergeAtOnce
   segments for merges below the floor segment size, even if maxMergeAtOnce is
   bigger than segsPerTier. (Adrien Grand)
+
+* GITHUB#14033: Combine all postings enum impls of the default codec into a
+  single class. (Adrien Grand)
 
 Optimizations
 ---------------------
@@ -127,8 +131,8 @@ Optimizations
 * GITHUB#14032: Speed up PostingsEnum when positions are requested.
   (Adrien Grand)
 
-* GITHUB#14031: Ensure Panama float vector distance impls inlinable.
-  (Robert Muir, Chris Hegarty)
+* GITHUB#14040: Specialized top-level DisjunctionMaxQuery evaluation when the
+  tie break multiplier is 0. (Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -142,6 +146,7 @@ Bug Fixes
   in valid polygons. (Ignacio Vera)
 * GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
   and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
+* GITHUB#13819: Prevent flattening of ordered and unordered interval sources (Jim Ferenczi)
 
 Build
 ---------------------
