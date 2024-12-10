@@ -55,7 +55,7 @@ public class SortRescorer extends Rescorer {
     int docBase = 0;
 
     LeafCollector leafCollector = null;
-    SimpleScorable score = new SimpleScorable();
+    Score score = new Score();
 
     while (hitUpto < hits.length) {
       ScoreDoc hit = hits[hitUpto];

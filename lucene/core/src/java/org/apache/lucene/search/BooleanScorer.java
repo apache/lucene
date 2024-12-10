@@ -80,7 +80,7 @@ final class BooleanScorer extends BulkScorer {
   final DisiWrapper[] leads;
   final HeadPriorityQueue head;
   final TailPriorityQueue tail;
-  final SimpleScorable score = new SimpleScorable();
+  final Score score = new Score();
   final int minShouldMatch;
   final long cost;
   final boolean needsScores;

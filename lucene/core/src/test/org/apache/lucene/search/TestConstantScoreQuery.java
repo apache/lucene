@@ -157,7 +157,7 @@ public class TestConstantScoreQuery extends LuceneTestCase {
 
       // for the combined BQ, the scorer should always be BooleanScorer's BucketScorer, because our
       // scorer supports out-of order collection!
-      final Class<SimpleScorable> bucketScorerClass = SimpleScorable.class;
+      final Class<Score> bucketScorerClass = Score.class;
       checkHits(searcher, csqbq, csqbq.getBoost(), bucketScorerClass);
     } finally {
       IOUtils.close(reader, directory);

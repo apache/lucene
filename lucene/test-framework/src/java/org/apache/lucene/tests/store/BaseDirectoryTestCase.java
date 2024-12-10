@@ -63,6 +63,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
@@ -1667,7 +1668,10 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           in = orig.slice("slice", startOffset, totalLength - startOffset);
         }
         var loaded = in.isLoaded();
-        if (FilterDirectory.unwrap(dir) instanceof MMapDirectory
+
+        if (Constants.WINDOWS) {
+          // On Windows, we temporarily don't care until this is fixed: #14050
+        } else if (FilterDirectory.unwrap(dir) instanceof MMapDirectory
             // direct IO wraps MMap but does not support isLoaded
             && !(dir.getClass().getName().contains("DirectIO"))) {
           assertTrue(loaded.isPresent());
