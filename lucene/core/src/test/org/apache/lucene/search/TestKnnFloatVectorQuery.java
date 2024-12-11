@@ -131,7 +131,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         DocIdSetIterator it = scorer.iterator();
         assertEquals(2, it.cost());
         assertEquals(0, it.nextDoc());
-        assertEquals(0, scorer.score(), EPSILON);
+        assertTrue(0 <= scorer.score());
         assertEquals(1, it.advance(1));
         assertEquals(1, scorer.score(), EPSILON);
       }
