@@ -75,7 +75,7 @@ public class UpdateGraphsUtils {
     long gExit = 0L;
     for (int v = 0; v < size; v++) {
       int degree = nodesNs.get(v).size();
-      k = degree > 8 ? Math.ceilDiv(degree, 4) : Math.min(2, degree);
+      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
       gExit += k;
 
       int gain = k + degree;
@@ -89,7 +89,7 @@ public class UpdateGraphsUtils {
       int v = decodeValue2(el);
       List<Integer> ns = nodesNs.get(v);
       int degree = ns.size();
-      k = degree > 8 ? Math.ceilDiv(degree, 4) : Math.min(2, degree);
+      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
       if (stale[v]) { // if stale, recalculate gain
         int newGain = Math.max(0, k - counts[v]);
         for (int u : ns) {
