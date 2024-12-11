@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswUtil.Component;
@@ -110,14 +111,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       long seed,
       OnHeapHnswGraph hnsw)
       throws IOException {
-    this(
-        scorerSupplier,
-        M,
-        beamWidth,
-        seed,
-        hnsw,
-        null,
-        new HnswGraphSearcher(new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.size())));
+    this(scorerSupplier, M, beamWidth, seed, hnsw, null);
   }
 
   /**
@@ -138,8 +132,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       int beamWidth,
       long seed,
       OnHeapHnswGraph hnsw,
-      HnswLock hnswLock,
-      HnswGraphSearcher graphSearcher)
+      HnswLock hnswLock)
       throws IOException {
     if (M <= 0) {
       throw new IllegalArgumentException("M (max connections) must be positive");
@@ -155,7 +148,12 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.random = new SplittableRandom(seed);
     this.hnsw = hnsw;
     this.hnswLock = hnswLock;
-    this.graphSearcher = graphSearcher;
+    NeighborQueue neighborQueue = new NeighborQueue(beamWidth, true);
+    this.graphSearcher =
+        hnswLock != null
+            ? new ConcurrentSearcher(neighborQueue, hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1))
+            : new HnswGraphSearcher(neighborQueue, new FixedBitSet(hnsw.size()));
+    ;
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
   }
@@ -606,6 +604,46 @@ public class HnswGraphBuilder implements HnswBuilder {
     @Override
     public TopDocs topDocs() {
       throw new IllegalArgumentException();
+    }
+  }
+
+  /**
+   * This searcher will obtain the lock and make a copy of neighborArray when searching the graph so
+   * that concurrent modification of the graph will not impact the search
+   */
+  private static class ConcurrentSearcher extends HnswGraphSearcher {
+    private final HnswLock hnswLock;
+    private int[] nodeBuffer;
+    private int upto;
+    private int size;
+
+    private ConcurrentSearcher(NeighborQueue candidates, HnswLock hnswLock, BitSet visited) {
+      super(candidates, visited);
+      this.hnswLock = hnswLock;
+    }
+
+    @Override
+    void graphSeek(HnswGraph graph, int level, int targetNode) {
+      Lock lock = hnswLock.read(level, targetNode);
+      try {
+        NeighborArray neighborArray = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
+        if (nodeBuffer == null || nodeBuffer.length < neighborArray.size()) {
+          nodeBuffer = new int[neighborArray.size()];
+        }
+        size = neighborArray.size();
+        System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
+      } finally {
+        lock.unlock();
+      }
+      upto = -1;
+    }
+
+    @Override
+    int graphNextNeighbor(HnswGraph graph) {
+      if (++upto < size) {
+        return nodeBuffer[upto];
+      }
+      return NO_MORE_DOCS;
     }
   }
 }

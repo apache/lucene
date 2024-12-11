@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 
 import java.io.IOException;
@@ -24,10 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -157,15 +154,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         BitSet initializedNodes,
         AtomicInteger workProgress)
         throws IOException {
-      super(
-          scorerSupplier,
-          M,
-          beamWidth,
-          seed,
-          hnsw,
-          hnswLock,
-          new MergeSearcher(
-              new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
+      super(scorerSupplier, M, beamWidth, seed, hnsw, hnswLock);
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
     }
@@ -202,46 +191,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         return;
       }
       super.addGraphNode(node);
-    }
-  }
-
-  /**
-   * This searcher will obtain the lock and make a copy of neighborArray when seeking the graph such
-   * that concurrent modification of the graph will not impact the search
-   */
-  private static class MergeSearcher extends HnswGraphSearcher {
-    private final HnswLock hnswLock;
-    private int[] nodeBuffer;
-    private int upto;
-    private int size;
-
-    private MergeSearcher(NeighborQueue candidates, HnswLock hnswLock, BitSet visited) {
-      super(candidates, visited);
-      this.hnswLock = hnswLock;
-    }
-
-    @Override
-    void graphSeek(HnswGraph graph, int level, int targetNode) {
-      Lock lock = hnswLock.read(level, targetNode);
-      try {
-        NeighborArray neighborArray = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
-        if (nodeBuffer == null || nodeBuffer.length < neighborArray.size()) {
-          nodeBuffer = new int[neighborArray.size()];
-        }
-        size = neighborArray.size();
-        System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
-      } finally {
-        lock.unlock();
-      }
-      upto = -1;
-    }
-
-    @Override
-    int graphNextNeighbor(HnswGraph graph) {
-      if (++upto < size) {
-        return nodeBuffer[upto];
-      }
-      return NO_MORE_DOCS;
     }
   }
 }
