@@ -41,6 +41,7 @@ import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.suggest.Lookup;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 // TODO:
 // - allow to use the search score
@@ -236,7 +237,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
 
       textDV.advance(fd.doc);
 
-      final String text = textDV.binaryValue().utf8ToString();
+      final String text = textDV.randomAccessInputValue().utf8ToString();
       long weight = (Long) fd.fields[0];
 
       // This will just be null if app didn't pass payloads to build():
@@ -247,7 +248,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
       BytesRef payload;
       if (payloadsDV != null) {
         if (payloadsDV.advance(fd.doc) == fd.doc) {
-          payload = BytesRef.deepCopyOf(payloadsDV.binaryValue());
+          payload = RandomAccessInputRef.toBytesRef(payloadsDV.randomAccessInputValue());
         } else {
           payload = new BytesRef(BytesRef.EMPTY_BYTES);
         }

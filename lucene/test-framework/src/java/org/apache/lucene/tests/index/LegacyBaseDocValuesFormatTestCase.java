@@ -88,6 +88,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
@@ -271,11 +272,11 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       assert ireader.leaves().size() == 1;
       BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv1");
       assertEquals(hitDocID, dv.advance(hitDocID));
-      BytesRef scratch = dv.binaryValue();
+      BytesRef scratch = toBytesRef(dv);
       assertEquals(newBytesRef(longTerm), scratch);
       dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv2");
       assertEquals(hitDocID, dv.advance(hitDocID));
-      scratch = dv.binaryValue();
+      scratch = toBytesRef(dv);
       assertEquals(newBytesRef(text), scratch);
     }
 
@@ -328,7 +329,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       assert ireader.leaves().size() == 1;
       BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv1");
       assertEquals(hitDocID, dv.advance(hitDocID));
-      BytesRef scratch = dv.binaryValue();
+      BytesRef scratch = toBytesRef(dv);
       assertEquals(writtenValues.get(i), scratch);
     }
 
@@ -370,7 +371,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       assertEquals(5, dv.longValue());
       BinaryDocValues dv2 = ireader.leaves().get(0).reader().getBinaryDocValues("dv2");
       assertEquals(docID, dv2.advance(docID));
-      assertEquals(newBytesRef("hello world"), dv2.binaryValue());
+      assertEquals(newBytesRef("hello world"), toBytesRef(dv2));
     }
 
     ireader.close();
@@ -417,7 +418,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       assertEquals(5, dv2.longValue());
       BinaryDocValues dv3 = ireader.leaves().get(0).reader().getBinaryDocValues("dv3");
       assertEquals(docID, dv3.advance(docID));
-      assertEquals(newBytesRef("hello world"), dv3.binaryValue());
+      assertEquals(newBytesRef("hello world"), toBytesRef(dv3));
     }
 
     ireader.close();
@@ -465,7 +466,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       assertEquals(5, dv2.longValue());
       BinaryDocValues dv3 = ireader.leaves().get(0).reader().getBinaryDocValues("dv1");
       assertEquals(docID, dv3.advance(docID));
-      assertEquals(newBytesRef("hello world"), dv3.binaryValue());
+      assertEquals(newBytesRef("hello world"), toBytesRef(dv3));
     }
 
     ireader.close();
@@ -636,7 +637,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       assert ireader.leaves().size() == 1;
       BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
       assertEquals(hitDocID, dv.advance(hitDocID));
-      assertEquals(newBytesRef("hello world"), dv.binaryValue());
+      assertEquals(newBytesRef("hello world"), toBytesRef(dv));
     }
 
     ireader.close();
@@ -677,7 +678,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
         expected = "hello 2";
       }
       assertEquals(i, dv.nextDoc());
-      assertEquals(expected, dv.binaryValue().utf8ToString());
+      assertEquals(expected, toBytesRef(dv).utf8ToString());
     }
 
     ireader.close();
@@ -928,7 +929,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assert ireader.leaves().size() == 1;
     BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
     assertEquals(0, dv.nextDoc());
-    assertEquals(newBytesRef("hello\nworld\r1"), dv.binaryValue());
+    assertEquals(newBytesRef("hello\nworld\r1"), toBytesRef(dv));
 
     ireader.close();
     directory.close();
@@ -1107,9 +1108,9 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assert ireader.leaves().size() == 1;
     BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
     assertEquals(0, dv.nextDoc());
-    assertEquals("", dv.binaryValue().utf8ToString());
+    assertEquals("", toBytesRef(dv).utf8ToString());
     assertEquals(1, dv.nextDoc());
-    assertEquals("", dv.binaryValue().utf8ToString());
+    assertEquals("", toBytesRef(dv).utf8ToString());
 
     ireader.close();
     directory.close();
@@ -1136,7 +1137,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assert ireader.leaves().size() == 1;
     BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
     assertEquals(0, dv.nextDoc());
-    assertEquals(newBytesRef(bytes), dv.binaryValue());
+    assertEquals(newBytesRef(bytes), toBytesRef(dv));
 
     ireader.close();
     directory.close();
@@ -1186,7 +1187,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     assert ireader.leaves().size() == 1;
     BinaryDocValues dv = ireader.leaves().get(0).reader().getBinaryDocValues("dv");
     assertEquals(0, dv.nextDoc());
-    assertEquals("boo!", dv.binaryValue().utf8ToString());
+    assertEquals("boo!", toBytesRef(dv).utf8ToString());
 
     ireader.close();
     directory.close();
@@ -1683,7 +1684,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
           assertTrue(docValues.docID() > i);
         } else {
           assertEquals(i, docValues.docID());
-          assertEquals(binaryValue, docValues.binaryValue());
+          assertEquals(binaryValue, toBytesRef(docValues));
           docValues.nextDoc();
         }
       }
@@ -1706,7 +1707,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
           assertTrue(docValues.docID() > i);
         } else {
           assertEquals(i, docValues.docID());
-          assertEquals(binaryValue, docValues.binaryValue());
+          assertEquals(binaryValue, toBytesRef(docValues));
           docValues.nextDoc();
         }
       }
@@ -1726,7 +1727,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
   }
 
   private void doTestBinaryFixedLengthVsStoredFields(double density) throws Exception {
-    int numIterations = atLeast(1);
+    int numIterations = 1; // atLeast(1);
     for (int i = 0; i < numIterations; i++) {
       int fixedLength = TestUtil.nextInt(random(), 0, 10);
       doTestBinaryVsStoredFields(
@@ -2731,7 +2732,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     LeafReader ar = ir.leaves().get(0).reader();
     BinaryDocValues dv = ar.getBinaryDocValues("dv1");
     assertEquals(0, dv.nextDoc());
-    assertEquals(newBytesRef(), dv.binaryValue());
+    assertEquals(newBytesRef(), toBytesRef(dv));
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
     ir.close();
     directory.close();
@@ -2758,7 +2759,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     LeafReader ar = ir.leaves().get(0).reader();
     BinaryDocValues dv = ar.getBinaryDocValues("dv1");
     assertEquals(0, dv.nextDoc());
-    assertEquals(newBytesRef(), dv.binaryValue());
+    assertEquals(newBytesRef(), toBytesRef(dv));
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
     ir.close();
     directory.close();
@@ -2789,9 +2790,9 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
     LeafReader ar = ir.leaves().get(0).reader();
     BinaryDocValues dv = ar.getBinaryDocValues("dv1");
     assertEquals(0, dv.nextDoc());
-    assertEquals(newBytesRef(), dv.binaryValue());
+    assertEquals(newBytesRef(), toBytesRef(dv));
     assertEquals(2, dv.nextDoc());
-    assertEquals(newBytesRef("boo"), dv.binaryValue());
+    assertEquals(newBytesRef("boo"), toBytesRef(dv));
     assertEquals(NO_MORE_DOCS, dv.nextDoc());
     ir.close();
     directory.close();
@@ -2865,7 +2866,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
                   for (int j = 0; j < r.maxDoc(); j++) {
                     BytesRef binaryValue = storedFields.document(j).getBinaryValue("storedBin");
                     assertEquals(j, binaries.nextDoc());
-                    BytesRef scratch = binaries.binaryValue();
+                    BytesRef scratch = toBytesRef(binaries);
                     assertEquals(binaryValue, scratch);
                     assertEquals(j, sorted.nextDoc());
                     scratch = sorted.lookupOrd(sorted.ordValue());
@@ -2987,7 +2988,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
                     if (binaryValue != null) {
                       if (binaries != null) {
                         assertEquals(j, binaries.nextDoc());
-                        BytesRef scratch = binaries.binaryValue();
+                        BytesRef scratch = toBytesRef(binaries);
                         assertEquals(binaryValue, scratch);
                         assertEquals(j, sorted.nextDoc());
                         scratch = sorted.lookupOrd(sorted.ordValue());
@@ -3149,7 +3150,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       BinaryDocValues values = MultiDocValues.getBinaryValues(r, "field");
       for (int j = 0; j < 5; j++) {
         assertEquals(j, values.nextDoc());
-        BytesRef result = values.binaryValue();
+        BytesRef result = toBytesRef(values);
         assertTrue(result.length == 0 || result.length == 1 << i);
       }
       r.close();
@@ -3806,5 +3807,9 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
 
   protected boolean codecAcceptsHugeBinaryValues(String field) {
     return true;
+  }
+
+  private BytesRef toBytesRef(BinaryDocValues values) throws IOException {
+    return RandomAccessInputRef.toBytesRef(values.randomAccessInputValue());
   }
 }

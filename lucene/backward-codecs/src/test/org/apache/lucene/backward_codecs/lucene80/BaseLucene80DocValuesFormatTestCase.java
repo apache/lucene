@@ -69,6 +69,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.packed.PackedInts;
 
 /** Tests Lucene80DocValuesFormat */
@@ -338,7 +339,9 @@ public abstract class BaseLucene80DocValuesFormatTestCase
           assertEquals(value.longValue(), numeric.longValue());
           assertTrue(sorted.ordValue() >= 0);
           assertEquals(new BytesRef(Long.toString(value)), sorted.lookupOrd(sorted.ordValue()));
-          assertEquals(new BytesRef(Long.toString(value)), binary.binaryValue());
+          assertEquals(
+              new BytesRef(Long.toString(value)),
+              RandomAccessInputRef.toBytesRef(binary.randomAccessInputValue()));
         }
 
         final IndexableField[] valuesFields = doc.getFields("values");

@@ -200,6 +200,7 @@ import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -2592,7 +2593,9 @@ public abstract class LuceneTestCase extends Assert {
             if (docID == NO_MORE_DOCS) {
               break;
             }
-            assertEquals(leftValues.binaryValue(), rightValues.binaryValue());
+            assertEquals(
+                RandomAccessInputRef.toBytesRef(leftValues.randomAccessInputValue()),
+                RandomAccessInputRef.toBytesRef(rightValues.randomAccessInputValue()));
           }
         } else {
           assertTrue(info, leftValues == null || leftValues.nextDoc() == NO_MORE_DOCS);

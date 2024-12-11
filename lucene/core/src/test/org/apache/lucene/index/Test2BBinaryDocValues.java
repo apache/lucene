@@ -19,8 +19,8 @@ package org.apache.lucene.index;
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.RandomAccessInputDataInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
@@ -31,6 +31,7 @@ import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.TimeUnits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.RandomAccessInputRef;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 @TimeoutSuite(millis = 80 * TimeUnits.HOUR) // effectively no limit
@@ -88,12 +89,13 @@ public class Test2BBinaryDocValues extends LuceneTestCase {
       LeafReader reader = context.reader();
       BinaryDocValues dv = reader.getBinaryDocValues("dv");
       for (int i = 0; i < reader.maxDoc(); i++) {
+        ;
         bytes[0] = (byte) (expectedValue >> 24);
         bytes[1] = (byte) (expectedValue >> 16);
         bytes[2] = (byte) (expectedValue >> 8);
         bytes[3] = (byte) expectedValue;
         assertEquals(i, dv.nextDoc());
-        final BytesRef term = dv.binaryValue();
+        final BytesRef term = RandomAccessInputRef.toBytesRef(dv.randomAccessInputValue());
         assertEquals(data, term);
         expectedValue++;
       }
@@ -147,16 +149,15 @@ public class Test2BBinaryDocValues extends LuceneTestCase {
 
     DirectoryReader r = DirectoryReader.open(dir);
     int expectedValue = 0;
-    ByteArrayDataInput input = new ByteArrayDataInput();
+    RandomAccessInputDataInput input = new RandomAccessInputDataInput();
     for (LeafReaderContext context : r.leaves()) {
       LeafReader reader = context.reader();
       BinaryDocValues dv = reader.getBinaryDocValues("dv");
       for (int i = 0; i < reader.maxDoc(); i++) {
         assertEquals(i, dv.nextDoc());
-        final BytesRef term = dv.binaryValue();
-        input.reset(term.bytes, term.offset, term.length);
+        input.reset(dv.randomAccessInputValue());
         assertEquals(expectedValue % 65535, input.readVInt());
-        assertTrue(input.eof());
+        assertEquals(input.length(), input.getPosition());
         expectedValue++;
       }
     }
