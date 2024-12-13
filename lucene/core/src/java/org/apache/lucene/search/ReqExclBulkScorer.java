@@ -67,7 +67,7 @@ final class ReqExclBulkScorer extends BulkScorer {
       }
     }
 
-    if (upTo == max) {
+    if (upTo != DocIdSetIterator.NO_MORE_DOCS && upTo == max) {
       upTo = req.score(collector, acceptDocs, upTo, upTo);
     }
 
