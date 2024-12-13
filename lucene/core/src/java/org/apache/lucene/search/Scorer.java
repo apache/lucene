@@ -76,4 +76,31 @@ public abstract class Scorer extends Scorable {
    * {@link #advanceShallow(int) shallow-advanced} to included and {@code upTo} included.
    */
   public abstract float getMaxScore(int upTo) throws IOException;
+
+  private DocAndScoreBatch docAndScoreBatch;
+
+  /**
+   * Return a next batch of docs and scores including the current document. A length of 0 length
+   * indicates that there are no documents below {@code upTo} left. It is illegal to call this
+   * method if the iterator is not positioned yet.
+   */
+  public DocAndScoreBatch nextDocAndScoreBatch(int upTo) throws IOException {
+    if (docAndScoreBatch == null) {
+      docAndScoreBatch = new DocAndScoreBatch();
+      docAndScoreBatch.docs = new int[16];
+      docAndScoreBatch.scores = new float[16];
+      docAndScoreBatch.offset = 0;
+    }
+    int length = 0;
+    DocIdSetIterator it = iterator();
+    for (int doc = it.docID();
+        doc < upTo && length < docAndScoreBatch.docs.length;
+        doc = it.nextDoc()) {
+      docAndScoreBatch.docs[length] = doc;
+      docAndScoreBatch.scores[length] = score();
+      ++length;
+    }
+    docAndScoreBatch.length = length;
+    return docAndScoreBatch;
+  }
 }

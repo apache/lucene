@@ -211,4 +211,26 @@ public abstract class DocIdSetIterator {
    * may be a rough heuristic, hardcoded value, or otherwise completely inaccurate.
    */
   public abstract long cost();
+
+  private DocBatch docBatch;
+
+  /**
+   * Return a next batch of docs and frequencies including the current document. A length of 0
+   * length indicates that there are no documents below {@code upTo} left. It is illegal to call
+   * this method if the iterator is not positioned yet.
+   */
+  public DocBatch nextDocBatch(int upTo) throws IOException {
+    if (docBatch == null) {
+      docBatch = new DocAndFreqBatch();
+      docBatch.docs = new int[16];
+      docBatch.offset = 0;
+    }
+    int length = 0;
+    for (int doc = docID(); doc < upTo && length < docBatch.docs.length; doc = nextDoc()) {
+      docBatch.docs[length] = doc;
+      ++length;
+    }
+    docBatch.length = length;
+    return docBatch;
+  }
 }

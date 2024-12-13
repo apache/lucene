@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocAndFreqBatch;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
@@ -97,4 +98,24 @@ public abstract class PostingsEnum extends DocIdSetIterator {
    * anything (neither members of the returned BytesRef nor bytes in the byte[]).
    */
   public abstract BytesRef getPayload() throws IOException;
+
+  private DocAndFreqBatch docAndFreqBatch;
+
+  @Override
+  public DocAndFreqBatch nextDocBatch(int upTo) throws IOException {
+    if (docAndFreqBatch == null) {
+      docAndFreqBatch = new DocAndFreqBatch();
+      docAndFreqBatch.docs = new int[16];
+      docAndFreqBatch.freqs = new int[16];
+      docAndFreqBatch.offset = 0;
+    }
+    int length = 0;
+    for (int doc = docID(); doc < upTo && length < docAndFreqBatch.docs.length; doc = nextDoc()) {
+      docAndFreqBatch.docs[length] = doc;
+      docAndFreqBatch.freqs[length] = freq();
+      ++length;
+    }
+    docAndFreqBatch.length = length;
+    return docAndFreqBatch;
+  }
 }

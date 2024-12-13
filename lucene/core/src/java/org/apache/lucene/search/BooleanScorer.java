@@ -177,27 +177,50 @@ final class BooleanScorer extends BulkScorer {
     Bucket[] buckets = BooleanScorer.this.buckets;
 
     DocIdSetIterator it = w.iterator;
-    Scorable scorer = w.scorable;
     int doc = w.doc;
     if (doc < min) {
       doc = it.advance(min);
     }
-    for (; doc < max; doc = it.nextDoc()) {
-      if (acceptDocs == null || acceptDocs.get(doc)) {
-        final int i = doc & MASK;
-        final int idx = i >> 6;
-        matching[idx] |= 1L << i;
-        if (buckets != null) {
-          final Bucket bucket = buckets[i];
-          bucket.freq++;
-          if (needsScores) {
-            bucket.score += scorer.score();
+    if (needsScores) {
+      for (; ; ) {
+        DocAndScoreBatch batch = w.scorer.nextDocAndScoreBatch(max);
+        if (batch.length == 0) {
+          break;
+        }
+        for (int i = batch.offset, end = batch.offset + batch.length; i < end; ++i) {
+          int d = batch.docs[i];
+          if (acceptDocs == null || acceptDocs.get(d)) {
+            final int m = d & MASK;
+            final int idx = m >> 6;
+            matching[idx] |= 1L << m;
+            final Bucket bucket = buckets[m];
+            bucket.freq++;
+            bucket.score += batch.scores[i];
+          }
+        }
+      }
+    } else {
+      for (; ; ) {
+        DocBatch batch = w.iterator.nextDocBatch(max);
+        if (batch.length == 0) {
+          break;
+        }
+        for (int i = batch.offset, end = batch.offset + batch.length; i < end; ++i) {
+          int d = batch.docs[i];
+          if (acceptDocs == null || acceptDocs.get(d)) {
+            final int m = d & MASK;
+            final int idx = m >> 6;
+            matching[idx] |= 1L << m;
+            if (buckets != null) {
+              final Bucket bucket = buckets[m];
+              bucket.freq++;
+            }
           }
         }
       }
     }
 
-    w.doc = doc;
+    w.doc = it.docID();
   }
 
   private void scoreWindowIntoBitSetAndReplay(

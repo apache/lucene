@@ -46,6 +46,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
+import org.apache.lucene.search.DocAndFreqBatch;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -873,6 +874,42 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       this.doc = docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
+    }
+
+    private DocAndFreqBatch docAndFreqBatch;
+
+    @Override
+    public DocAndFreqBatch nextDocBatch(int upTo) throws IOException {
+      if (docBufferUpto == 0
+          || docBufferUpto >= docBufferSize
+          || needsRefilling
+          || docBuffer[docBufferSize - 1] >= upTo) {
+        // Corner cases, let the default impl handle it
+        return super.nextDocBatch(Math.min(upTo - 1, level0LastDocID) + 1);
+      }
+
+      if (docAndFreqBatch == null) {
+        docAndFreqBatch = new DocAndFreqBatch();
+        docAndFreqBatch.docs = docBuffer;
+        docAndFreqBatch.freqs = freqBuffer;
+      }
+
+      // Decode frequencies if necessary
+      if (freqFP != -1) {
+        docIn.seek(freqFP);
+        pforUtil.decode(docInUtil, freqBuffer);
+        freqFP = -1;
+      }
+
+      int startOffset = docBufferUpto - 1;
+      int endOffset = docBufferSize - 1;
+
+      docBufferUpto = endOffset + 1;
+      doc = docBuffer[endOffset];
+
+      docAndFreqBatch.offset = startOffset;
+      docAndFreqBatch.length = endOffset - startOffset;
+      return docAndFreqBatch;
     }
 
     private void skipPositions(int freq) throws IOException {

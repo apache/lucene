@@ -217,11 +217,17 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     // single essential clause in this window, we can iterate it directly and skip the bitset.
     // this is a common case for 2-clauses queries
-    for (int doc = top.doc; doc < upTo; doc = top.iterator.nextDoc()) {
-      if (acceptDocs != null && acceptDocs.get(doc) == false) {
-        continue;
+    for (; ; ) {
+      DocAndScoreBatch batch = top.scorer.nextDocAndScoreBatch(upTo);
+      if (batch.length == 0) {
+        break;
       }
-      scoreNonEssentialClauses(collector, doc, top.scorable.score(), firstEssentialScorer);
+      for (int i = batch.offset, end = batch.offset + batch.length; i < end; ++i) {
+        int d = batch.docs[i];
+        if (acceptDocs == null || acceptDocs.get(d)) {
+          scoreNonEssentialClauses(collector, d, batch.scores[i], firstEssentialScorer);
+        }
+      }
     }
     top.doc = top.iterator.docID();
     essentialQueue.updateTop();
@@ -303,11 +309,18 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     // Collect matches of essential clauses into a bitset
     do {
-      for (int doc = top.doc; doc < innerWindowMax; doc = top.iterator.nextDoc()) {
-        if (acceptDocs == null || acceptDocs.get(doc)) {
-          final int i = doc - innerWindowMin;
-          windowMatches[i >>> 6] |= 1L << i;
-          windowScores[i] += top.scorable.score();
+      for (; ; ) {
+        DocAndScoreBatch batch = top.scorer.nextDocAndScoreBatch(innerWindowMax);
+        if (batch.length == 0) {
+          break;
+        }
+        for (int i = batch.offset, end = batch.offset + batch.length; i < end; ++i) {
+          int d = batch.docs[i];
+          if (acceptDocs == null || acceptDocs.get(d)) {
+            final int m = d - innerWindowMin;
+            windowMatches[m >>> 6] |= 1L << m;
+            windowScores[m] += batch.scores[i];
+          }
         }
       }
       top.doc = top.iterator.docID();

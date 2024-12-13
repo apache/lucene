@@ -120,4 +120,34 @@ public final class TermScorer extends Scorer {
       impactsDisi.setMinCompetitiveScore(minScore);
     }
   }
+
+  private DocAndScoreBatch docAndScoreBatch;
+
+  @Override
+  public DocAndScoreBatch nextDocAndScoreBatch(int upTo) throws IOException {
+    if (iterator != postingsEnum) {
+      return super.nextDocAndScoreBatch(upTo);
+    }
+
+    DocAndFreqBatch docAndFreqBatch = postingsEnum.nextDocBatch(upTo);
+    if (docAndScoreBatch == null) {
+      docAndScoreBatch = new DocAndScoreBatch();
+    }
+    int[] docs = docAndScoreBatch.docs = docAndFreqBatch.docs;
+    int[] freqs = docAndFreqBatch.freqs;
+    int offset = docAndScoreBatch.offset = docAndFreqBatch.offset;
+    int length = docAndScoreBatch.length = docAndFreqBatch.length;
+    float[] scores = docAndScoreBatch.scores;
+    if (scores == null || scores.length < docs.length) {
+      scores = docAndScoreBatch.scores = new float[docAndFreqBatch.docs.length];
+    }
+    for (int i = offset, end = offset + length; i < end; ++i) {
+      long norm = 1L;
+      if (norms != null && norms.advanceExact(docs[i])) {
+        norm = norms.longValue();
+      }
+      scores[i] = scorer.score(freqs[i], norm);
+    }
+    return docAndScoreBatch;
+  }
 }
