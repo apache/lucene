@@ -76,6 +76,13 @@
     </release>
     <release>
        <Version>
+         <name>lucene-9.12.1</name>
+         <created>2024-12-13</created>
+         <revision>9.12.1</revision>
+       </Version>
+    </release>
+    <release>
+       <Version>
          <name>lucene-9.12.0</name>
          <created>2024-09-28</created>
          <revision>9.12.0</revision>
