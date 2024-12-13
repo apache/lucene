@@ -378,9 +378,6 @@ public class HnswGraphBuilder implements HnswBuilder {
       boolean keepPrunedConnections)
       throws IOException {
     boolean[] mask = new boolean[candidates.size()];
-    // discarded candidates
-    boolean[] discarded = keepPrunedConnections ? new boolean[candidates.size()] : null;
-    int discardedCount = 0;
 
     // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
     for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
@@ -394,53 +391,36 @@ public class HnswGraphBuilder implements HnswBuilder {
         // here we don't need to lock, because there's no incoming link so no others is able to
         // discover this node such that no others will modify this neighbor array as well
         neighbors.addInOrder(cNode, cScore);
-      } else if (keepPrunedConnections) {
-        discarded[i] = true;
-        discardedCount++;
       }
     }
     if (keepPrunedConnections == false) return mask;
 
-    // restore discarded candidates if they satisfy the rank based relaxation criterion
-    final int epsilon = 3;
-    while (discardedCount > 0 && neighbors.isNotFull()) {
-      int minRank = Integer.MAX_VALUE;
-      int mini = -1;
-      for (int i = 0; i < candidates.size(); i++) {
-        if (discarded[i] == false) continue;
-        int rank = calculateRank(candidates.nodes()[i], candidates.scores()[i], neighbors);
-        if (rank >= epsilon) {
-          discarded[i] = false;
-          discardedCount--;
-        } else {
-          if (rank < minRank) {
-            minRank = rank;
-            mini = i;
-            if (minRank == 1) break;
-          }
-        }
-      }
-      if (mini > -1) {
-        discarded[mini] = false;
-        discardedCount--;
-        mask[mini] = true;
-        neighbors.addOutOfOrder(candidates.nodes()[mini], candidates.scores()[mini]);
+    // restore those discarded candidates that have only one closer connections among neighbors
+    for (int i = candidates.size() - 1; i >= 0 && neighbors.isNotFull(); i--) {
+      if (mask[i] == true) continue;
+      if (rankEqualsOne(candidates.nodes()[i], candidates.scores()[i], neighbors)) {
+        mask[i] = true;
+        neighbors.addOutOfOrder(candidates.nodes()[i], candidates.scores()[i]);
       }
     }
     return mask;
   }
 
-  private int calculateRank(int candidate, float score, NeighborArray neighbors)
+  private boolean rankEqualsOne(int candidate, float score, NeighborArray neighbors)
       throws IOException {
-    int rank = 0;
+    boolean rankSet = false;
     RandomVectorScorer scorer = scorerSupplier.scorer(candidate);
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
       if (neighborSimilarity >= score) {
-        rank++;
+        if (rankSet) {
+          return false;
+        } else {
+          rankSet = true;
+        }
       }
     }
-    return rank;
+    return true;
   }
 
   private static void popToScratch(GraphBuilderKnnCollector candidates, NeighborArray scratch) {
