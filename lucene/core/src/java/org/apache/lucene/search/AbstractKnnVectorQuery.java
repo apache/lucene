@@ -60,6 +60,7 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   /** the number of documents to find */
   protected final int k;
+
   /** the filter to be executed. when the filter is applied is up to the underlying knn index */
   protected final Query filter;
 
