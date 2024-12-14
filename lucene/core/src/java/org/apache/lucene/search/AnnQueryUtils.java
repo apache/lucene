@@ -22,7 +22,7 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 
 /** Common utilities for ANN queries. */
-class AnnQueryUtils {
+final class AnnQueryUtils {
 
   /** private constructor */
   private AnnQueryUtils() {}

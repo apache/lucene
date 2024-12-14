@@ -61,7 +61,7 @@ abstract class AbstractKnnVectorQuery extends Query {
   /** the number of documents to find */
   protected final int k;
 
-  /** the filter to executed before KNN search */
+  /** the filter to be executed. when the filter is applied is up to the underlying knn index */
   private final Query filter;
 
   public AbstractKnnVectorQuery(String field, int k, Query filter) {
@@ -115,7 +115,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     return results;
   }
 
-  // Execute the filter if any and perform KNN search at each segment.
+  // Perform kNN search for the provided LeafReaderContext applying filterWeight as necessary
   private TopDocs getLeafResults(
       LeafReaderContext ctx,
       Weight filterWeight,
