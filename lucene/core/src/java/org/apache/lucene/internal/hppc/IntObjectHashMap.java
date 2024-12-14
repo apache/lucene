@@ -562,15 +562,6 @@ public class IntObjectHashMap<VType>
     public int size() {
       return IntObjectHashMap.this.size();
     }
-
-    public VType[] toArray() {
-      VType[] array = (VType[]) new Object[size()];
-      int i = 0;
-      for (ObjectCursor<VType> cursor : this) {
-        array[i++] = cursor.value;
-      }
-      return array;
-    }
   }
 
   /** An iterator over the set of assigned values. */

@@ -28,7 +28,6 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene912.Lucene912Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -37,11 +36,13 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
@@ -62,18 +63,14 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
       confidenceInterval = 0f;
     }
     format =
-        new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits, random().nextBoolean());
+        new Lucene99ScalarQuantizedVectorsFormat(
+            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false);
     super.setUp();
   }
 
   @Override
   protected Codec getCodec() {
-    return new Lucene912Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return format;
-      }
-    };
+    return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
   public void testSearch() throws Exception {
@@ -98,6 +95,11 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         }
       }
     }
+  }
+
+  @Override
+  public void testRecall() {
+    // ignore this test since this class always returns no results from search
   }
 
   public void testQuantizedVectorsWriteAndRead() throws Exception {
@@ -172,9 +174,10 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
             QuantizedByteVectorValues quantizedByteVectorValues =
                 quantizedReader.getQuantizedVectorValues("f");
             int docId = -1;
-            while ((docId = quantizedByteVectorValues.nextDoc()) != NO_MORE_DOCS) {
-              byte[] vector = quantizedByteVectorValues.vectorValue();
-              float offset = quantizedByteVectorValues.getScoreCorrectionConstant();
+            KnnVectorValues.DocIndexIterator iter = quantizedByteVectorValues.iterator();
+            for (docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+              byte[] vector = quantizedByteVectorValues.vectorValue(iter.index());
+              float offset = quantizedByteVectorValues.getScoreCorrectionConstant(iter.index());
               for (int i = 0; i < dim; i++) {
                 assertEquals(vector[i], expectedVectors[docId][i]);
               }

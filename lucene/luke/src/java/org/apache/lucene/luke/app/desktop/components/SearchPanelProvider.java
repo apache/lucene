@@ -613,14 +613,14 @@ public final class SearchPanelProvider implements SearchTabOperator {
 
   private void populateResults(SearchResults res) {
     totalHitsLbl.setText(String.valueOf(res.getTotalHits()));
-    if (res.getTotalHits().value > 0) {
+    if (res.getTotalHits().value() > 0) {
       startLbl.setText(String.valueOf(res.getOffset() + 1));
       endLbl.setText(String.valueOf(res.getOffset() + res.size()));
 
       prevBtn.setEnabled(res.getOffset() > 0);
       nextBtn.setEnabled(
-          res.getTotalHits().relation == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-              || res.getTotalHits().value > res.getOffset() + res.size());
+          res.getTotalHits().relation() == TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+              || res.getTotalHits().value() > res.getOffset() + res.size());
 
       if (!indexHandler.getState().readOnly() && indexHandler.getState().hasDirectoryReader()) {
         delBtn.setEnabled(true);

@@ -17,14 +17,17 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -238,6 +241,7 @@ public class TestSortRandom extends LuceneTestCase {
     private final List<BytesRef> docValues;
     public final List<BytesRef> matchValues =
         Collections.synchronizedList(new ArrayList<BytesRef>());
+    private final Map<LeafReaderContext, FixedBitSet> bitsets = new ConcurrentHashMap<>();
 
     // density should be 0.0 ... 1.0
     public RandomQuery(long seed, float density, List<BytesRef> docValues) {
@@ -252,20 +256,34 @@ public class TestSortRandom extends LuceneTestCase {
       return new ConstantScoreWeight(this, boost) {
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          Random random = new Random(context.docBase ^ seed);
-          final int maxDoc = context.reader().maxDoc();
-          final NumericDocValues idSource = DocValues.getNumeric(context.reader(), "id");
-          assertNotNull(idSource);
-          final FixedBitSet bits = new FixedBitSet(maxDoc);
-          for (int docID = 0; docID < maxDoc; docID++) {
-            assertEquals(docID, idSource.nextDoc());
-            if (random.nextFloat() <= density) {
-              bits.set(docID);
-              // System.out.println("  acc id=" + idSource.getInt(docID) + " docID=" + docID);
-              matchValues.add(docValues.get((int) idSource.longValue()));
-            }
-          }
-
+          FixedBitSet bits =
+              bitsets.computeIfAbsent(
+                  context,
+                  ctx -> {
+                    Random random = new Random(context.docBase ^ seed);
+                    final int maxDoc = context.reader().maxDoc();
+                    try {
+                      final NumericDocValues idSource =
+                          DocValues.getNumeric(context.reader(), "id");
+                      assertNotNull(idSource);
+                      final FixedBitSet bitset = new FixedBitSet(maxDoc);
+                      for (int docID = 0; docID < maxDoc; docID++) {
+                        assertEquals(docID, idSource.nextDoc());
+                        if (random.nextFloat() <= density) {
+                          bitset.set(docID);
+                          // System.out.println("  acc id=" + idSource.getInt(docID) + " docID=" +
+                          // docID);
+                          matchValues.add(docValues.get((int) idSource.longValue()));
+                        }
+                      }
+                      return bitset;
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  });
+          // The bitset is built for the whole segment, the first time each leaf is seen. Every
+          // partition iterates through its own set of doc ids, using a separate iterator backed by
+          // the shared bitset.
           final var scorer =
               new ConstantScoreScorer(
                   score(), scoreMode, new BitSetIterator(bits, bits.approximateCardinality()));

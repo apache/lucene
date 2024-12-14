@@ -48,5 +48,5 @@ public interface HnswBuilder {
    * components, re-ordering node ids for better delta compression) may be triggered, so callers
    * should expect this call to take some time.
    */
-  OnHeapHnswGraph getCompletedGraph();
+  OnHeapHnswGraph getCompletedGraph() throws IOException;
 }

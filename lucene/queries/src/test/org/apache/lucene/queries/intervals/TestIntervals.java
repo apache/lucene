@@ -1138,6 +1138,46 @@ public class TestIntervals extends LuceneTestCase {
     checkVisits(source, 1);
   }
 
+  public void testOpenEndedRange() throws IOException {
+    {
+      IntervalsSource source = Intervals.range(new BytesRef("porridge"), null, false, false);
+      checkIntervals(
+          source,
+          "field1",
+          5,
+          new int[][] {
+            {3, 3},
+            {9, 9, 10, 10, 14, 14, 18, 18, 22, 22, 26, 26, 27, 27},
+            {9, 9, 10, 10, 11, 11, 14, 14, 18, 18, 22, 22, 26, 26},
+            {8, 8},
+            {9, 9, 10, 10, 12, 12, 14, 14, 18, 18, 21, 21},
+            {}
+          });
+      MatchesIterator mi = getMatches(source, 3, "field1");
+      assertNotNull(mi);
+      assertMatch(mi, 8, 8, 37, 41);
+    }
+
+    {
+      IntervalsSource source = Intervals.range(null, new BytesRef("anyone"), false, true);
+      checkIntervals(
+          source,
+          "field1",
+          1,
+          new int[][] {
+            {4, 4},
+            {},
+            {},
+            {},
+            {},
+            {}
+          });
+      MatchesIterator mi = getMatches(source, 0, "field1");
+      assertNotNull(mi);
+      assertMatch(mi, 4, 4, 23, 29);
+    }
+  }
+
   public void testWrappedFilters() throws IOException {
     IntervalsSource source =
         Intervals.or(
@@ -1186,5 +1226,28 @@ public class TestIntervals extends LuceneTestCase {
     assertEquals("Automaton [\\p(.)*\\e] expanded to too many terms (limit 1)", e.getMessage());
 
     checkVisits(source, 1);
+  }
+
+  // basic test for equality and inequality of instances created by the factories
+  public void testEquality() {
+    assertEquals(Intervals.term("wibble"), Intervals.term("wibble"));
+    assertEquals(Intervals.prefix(new BytesRef("p"), 1), Intervals.prefix(new BytesRef("p"), 1));
+    assertEquals(Intervals.fuzzyTerm("kot", 1), Intervals.fuzzyTerm("kot", 1));
+    assertEquals(Intervals.regexp(new BytesRef(".*ot")), Intervals.regexp(new BytesRef(".*ot")));
+    assertEquals(
+        Intervals.wildcard(new BytesRef("*.txt")), Intervals.wildcard(new BytesRef("*.txt")));
+    assertEquals(
+        Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true),
+        Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true));
+
+    assertNotEquals(Intervals.term("wibble"), Intervals.term("wobble"));
+    assertNotEquals(Intervals.prefix(new BytesRef("p"), 1), Intervals.prefix(new BytesRef("b"), 1));
+    assertNotEquals(Intervals.fuzzyTerm("kot", 1), Intervals.fuzzyTerm("kof", 1));
+    assertNotEquals(Intervals.regexp(new BytesRef(".*ot")), Intervals.regexp(new BytesRef(".*at")));
+    assertNotEquals(
+        Intervals.wildcard(new BytesRef("*.txt")), Intervals.wildcard(new BytesRef("*.tat")));
+    assertNotEquals(
+        Intervals.range(new BytesRef("warm"), new BytesRef("hot"), true, true),
+        Intervals.range(new BytesRef("cold"), new BytesRef("hot"), true, true));
   }
 }

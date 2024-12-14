@@ -67,7 +67,7 @@ public class TestNeedsScores extends LuceneTestCase {
     bq.add(
         new AssertNeedsScores(prohibited, ScoreMode.COMPLETE_NO_SCORES),
         BooleanClause.Occur.MUST_NOT);
-    assertEquals(4, searcher.search(bq.build(), 5).totalHits.value); // we exclude 3
+    assertEquals(4, searcher.search(bq.build(), 5).totalHits.value()); // we exclude 3
   }
 
   /** nested inside constant score query */
@@ -81,35 +81,35 @@ public class TestNeedsScores extends LuceneTestCase {
     assertEquals(5, searcher.count(constantScore));
 
     TopDocs hits =
-        searcher.search(
-            constantScore, new TopScoreDocCollectorManager(5, null, Integer.MAX_VALUE, true));
-    assertEquals(5, hits.totalHits.value);
+        searcher.search(constantScore, new TopScoreDocCollectorManager(5, null, Integer.MAX_VALUE));
+    assertEquals(5, hits.totalHits.value());
 
     // Queries that support dynamic pruning like top-score or top-doc queries that do not compute
     // the hit count should use TOP_DOCS
     constantScore = new ConstantScoreQuery(new AssertNeedsScores(term, ScoreMode.TOP_DOCS));
-    assertEquals(5, searcher.search(constantScore, 5).totalHits.value);
+    assertEquals(5, searcher.search(constantScore, 5).totalHits.value());
 
     assertEquals(
-        5, searcher.search(constantScore, 5, new Sort(SortField.FIELD_DOC)).totalHits.value);
+        5, searcher.search(constantScore, 5, new Sort(SortField.FIELD_DOC)).totalHits.value());
 
     assertEquals(
         5,
-        searcher.search(constantScore, 5, new Sort(SortField.FIELD_DOC, SortField.FIELD_SCORE))
+        searcher
+            .search(constantScore, 5, new Sort(SortField.FIELD_DOC, SortField.FIELD_SCORE))
             .totalHits
-            .value);
+            .value());
   }
 
   /** when not sorting by score */
   public void testSortByField() throws Exception {
     Query query = new AssertNeedsScores(new MatchAllDocsQuery(), ScoreMode.TOP_DOCS);
-    assertEquals(5, searcher.search(query, 5, Sort.INDEXORDER).totalHits.value);
+    assertEquals(5, searcher.search(query, 5, Sort.INDEXORDER).totalHits.value());
   }
 
   /** when sorting by score */
   public void testSortByScore() throws Exception {
     Query query = new AssertNeedsScores(new MatchAllDocsQuery(), ScoreMode.TOP_SCORES);
-    assertEquals(5, searcher.search(query, 5, Sort.RELEVANCE).totalHits.value);
+    assertEquals(5, searcher.search(query, 5, Sort.RELEVANCE).totalHits.value());
   }
 
   /**

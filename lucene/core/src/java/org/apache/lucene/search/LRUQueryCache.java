@@ -526,7 +526,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
             bitSet.set(doc);
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     return new CacheAndCount(new BitDocIdSet(bitSet, count[0]), count[0]);
   }
 
@@ -544,7 +546,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
             builder.add(doc);
           }
         },
-        null);
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
     RoaringDocIdSet cache = builder.build();
     return new CacheAndCount(cache, cache.cardinality());
   }
@@ -816,15 +820,9 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
     @Override
     public int count(LeafReaderContext context) throws IOException {
-      // If the wrapped weight can count quickly then use that
-      int innerCount = in.count(context);
-      if (innerCount != -1) {
-        return innerCount;
-      }
-
       // Our cache won't have an accurate count if there are deletions
       if (context.reader().hasDeletions()) {
-        return -1;
+        return in.count(context);
       }
 
       // Otherwise check if the count is in the cache
@@ -834,24 +832,24 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
       if (in.isCacheable(context) == false) {
         // this segment is not suitable for caching
-        return -1;
+        return in.count(context);
       }
 
       // Short-circuit: Check whether this segment is eligible for caching
       // before we take a lock because of #get
       if (shouldCache(context) == false) {
-        return -1;
+        return in.count(context);
       }
 
       final IndexReader.CacheHelper cacheHelper = context.reader().getCoreCacheHelper();
       if (cacheHelper == null) {
         // this reader has no cacheHelper
-        return -1;
+        return in.count(context);
       }
 
       // If the lock is already busy, prefer using the uncached version than waiting
       if (readLock.tryLock() == false) {
-        return -1;
+        return in.count(context);
       }
 
       CacheAndCount cached;
@@ -860,11 +858,12 @@ public class LRUQueryCache implements QueryCache, Accountable {
       } finally {
         readLock.unlock();
       }
-      if (cached == null) {
-        // Not cached
-        return -1;
+      if (cached != null) {
+        // cached
+        return cached.count();
       }
-      return cached.count();
+      // Not cached, check if the wrapped weight can count quickly then use that
+      return in.count(context);
     }
 
     @Override

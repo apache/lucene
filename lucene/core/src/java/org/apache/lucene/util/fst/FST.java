@@ -481,19 +481,13 @@ public final class FST<T> implements Accountable {
     }
     INPUT_TYPE inputType;
     final byte t = metaIn.readByte();
-    switch (t) {
-      case 0:
-        inputType = INPUT_TYPE.BYTE1;
-        break;
-      case 1:
-        inputType = INPUT_TYPE.BYTE2;
-        break;
-      case 2:
-        inputType = INPUT_TYPE.BYTE4;
-        break;
-      default:
-        throw new CorruptIndexException("invalid input type " + t, metaIn);
-    }
+    inputType =
+        switch (t) {
+          case 0 -> INPUT_TYPE.BYTE1;
+          case 1 -> INPUT_TYPE.BYTE2;
+          case 2 -> INPUT_TYPE.BYTE4;
+          default -> throw new CorruptIndexException("invalid input type " + t, metaIn);
+        };
     long startNode = metaIn.readVLong();
     long numBytes = metaIn.readVLong();
     return new FSTMetadata<>(inputType, outputs, emptyOutput, startNode, version, numBytes);
@@ -630,7 +624,6 @@ public final class FST<T> implements Accountable {
       arc.output = follow.nextFinalOutput();
       arc.flags = BIT_LAST_ARC;
       arc.nodeFlags = arc.flags;
-      return arc;
     } else {
       in.setPosition(follow.target());
       byte flags = arc.nodeFlags = in.readByte();
@@ -683,8 +676,8 @@ public final class FST<T> implements Accountable {
         readNextRealArc(arc, in);
       }
       assert arc.isLast();
-      return arc;
     }
+    return arc;
   }
 
   private long readUnpackedNodeTarget(BytesReader in) throws IOException {

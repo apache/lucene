@@ -229,7 +229,11 @@ final class WANDScorer extends Scorer {
     }
 
     for (DisiWrapper w : head) {
-      assert w.doc > doc;
+      if (lead == null) { // After calling advance() but before matches()
+        assert w.doc >= doc;
+      } else {
+        assert w.doc > doc;
+      }
     }
 
     return true;
@@ -284,20 +288,21 @@ final class WANDScorer extends Scorer {
             // Move 'lead' iterators back to the tail
             pushBackLeads(target);
 
-            // Advance 'head' as well
-            advanceHead(target);
+            // Make sure `head` is also on or beyond `target`
+            DisiWrapper headTop = advanceHead(target);
 
-            // Pop the new 'lead' from 'head'
-            moveToNextCandidate(target);
-
-            if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-              return DocIdSetIterator.NO_MORE_DOCS;
+            if (scoreMode == ScoreMode.TOP_SCORES && (headTop == null || headTop.doc > upTo)) {
+              // Update score bounds if necessary
+              moveToNextBlock(target);
+              assert upTo >= target;
+              headTop = head.top();
             }
 
-            assert ensureConsistent();
-
-            // Advance to the next possible match
-            return doNextCompetitiveCandidate();
+            if (headTop == null) {
+              return doc = DocIdSetIterator.NO_MORE_DOCS;
+            } else {
+              return doc = headTop.doc;
+            }
           }
 
           @Override
@@ -309,6 +314,9 @@ final class WANDScorer extends Scorer {
 
       @Override
       public boolean matches() throws IOException {
+        assert lead == null;
+        moveToNextCandidate();
+
         while (leadMaxScore < minCompetitiveScore || freq < minShouldMatch) {
           if (leadMaxScore + tailMaxScore < minCompetitiveScore
               || freq + tailSize < minShouldMatch) {
@@ -353,7 +361,7 @@ final class WANDScorer extends Scorer {
   }
 
   /** Make sure all disis in 'head' are on or after 'target'. */
-  private void advanceHead(int target) throws IOException {
+  private DisiWrapper advanceHead(int target) throws IOException {
     DisiWrapper headTop = head.top();
     while (headTop != null && headTop.doc < target) {
       final DisiWrapper evicted = insertTailWithOverFlow(headTop);
@@ -365,6 +373,7 @@ final class WANDScorer extends Scorer {
         headTop = head.top();
       }
     }
+    return headTop;
   }
 
   private void advanceTail(DisiWrapper disi) throws IOException {
@@ -429,7 +438,7 @@ final class WANDScorer extends Scorer {
    * Update {@code upTo} and maximum scores of sub scorers so that {@code upTo} is greater than or
    * equal to the next candidate after {@code target}, i.e. the top of `head`.
    */
-  private void updateMaxScoresIfNecessary(int target) throws IOException {
+  private void moveToNextBlock(int target) throws IOException {
     assert lead == null;
 
     while (upTo < DocIdSetIterator.NO_MORE_DOCS) {
@@ -460,46 +469,17 @@ final class WANDScorer extends Scorer {
    * Set 'doc' to the next potential match, and move all disis of 'head' that are on this doc into
    * 'lead'.
    */
-  private void moveToNextCandidate(int target) throws IOException {
-    if (scoreMode == ScoreMode.TOP_SCORES) {
-      // Update score bounds if necessary so
-      updateMaxScoresIfNecessary(target);
-      assert upTo >= target;
-
-      // updateMaxScores tries to move forward until a block with matches is found
-      // so if the head is empty it means there are no matches at all anymore
-      if (head.size() == 0) {
-        assert upTo == DocIdSetIterator.NO_MORE_DOCS;
-        doc = DocIdSetIterator.NO_MORE_DOCS;
-        return;
-      }
-    }
-
+  private void moveToNextCandidate() throws IOException {
     // The top of `head` defines the next potential match
     // pop all documents which are on this doc
     lead = head.pop();
+    assert doc == lead.doc;
     lead.next = null;
     leadMaxScore = lead.scaledMaxScore;
     freq = 1;
-    doc = lead.doc;
     while (head.size() > 0 && head.top().doc == doc) {
       addLead(head.pop());
     }
-  }
-
-  /** Move iterators to the tail until there is a potential match. */
-  private int doNextCompetitiveCandidate() throws IOException {
-    while (leadMaxScore + tailMaxScore < minCompetitiveScore || freq + tailSize < minShouldMatch) {
-      // no match on doc is possible, move to the next potential match
-      pushBackLeads(doc + 1);
-      moveToNextCandidate(doc + 1);
-      assert ensureConsistent();
-      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-        break;
-      }
-    }
-
-    return doc;
   }
 
   /** Advance all entries from the tail to know about all matches on the current doc. */

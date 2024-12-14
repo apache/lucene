@@ -39,6 +39,7 @@ import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
@@ -230,12 +231,15 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     // No need to use temporary file as we don't have to re-open for reading
     DocsWithFieldSet docsWithField =
         switch (fieldInfo.getVectorEncoding()) {
-          case BYTE -> writeByteVectorData(
-              vectorData,
-              KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-          case FLOAT32 -> writeVectorData(
-              vectorData,
-              KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+          case BYTE ->
+              writeByteVectorData(
+                  vectorData,
+                  KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+          case FLOAT32 ->
+              writeVectorData(
+                  vectorData,
+                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
+                      fieldInfo, mergeState));
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
     writeMeta(
@@ -259,12 +263,16 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       // write the vector data to a temporary file
       DocsWithFieldSet docsWithField =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> writeByteVectorData(
-                tempVectorData,
-                KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-            case FLOAT32 -> writeVectorData(
-                tempVectorData,
-                KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+            case BYTE ->
+                writeByteVectorData(
+                    tempVectorData,
+                    KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(
+                        fieldInfo, mergeState));
+            case FLOAT32 ->
+                writeVectorData(
+                    tempVectorData,
+                    KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
+                        fieldInfo, mergeState));
           };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -289,24 +297,26 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       final IndexInput finalVectorDataInput = vectorDataInput;
       final RandomVectorScorerSupplier randomVectorScorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> vectorsScorer.getRandomVectorScorerSupplier(
-                fieldInfo.getVectorSimilarityFunction(),
-                new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-                    fieldInfo.getVectorDimension(),
-                    docsWithField.cardinality(),
-                    finalVectorDataInput,
-                    fieldInfo.getVectorDimension() * Byte.BYTES,
-                    vectorsScorer,
-                    fieldInfo.getVectorSimilarityFunction()));
-            case FLOAT32 -> vectorsScorer.getRandomVectorScorerSupplier(
-                fieldInfo.getVectorSimilarityFunction(),
-                new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-                    fieldInfo.getVectorDimension(),
-                    docsWithField.cardinality(),
-                    finalVectorDataInput,
-                    fieldInfo.getVectorDimension() * Float.BYTES,
-                    vectorsScorer,
-                    fieldInfo.getVectorSimilarityFunction()));
+            case BYTE ->
+                vectorsScorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
+                    new OffHeapByteVectorValues.DenseOffHeapVectorValues(
+                        fieldInfo.getVectorDimension(),
+                        docsWithField.cardinality(),
+                        finalVectorDataInput,
+                        fieldInfo.getVectorDimension() * Byte.BYTES,
+                        vectorsScorer,
+                        fieldInfo.getVectorSimilarityFunction()));
+            case FLOAT32 ->
+                vectorsScorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
+                    new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+                        fieldInfo.getVectorDimension(),
+                        docsWithField.cardinality(),
+                        finalVectorDataInput,
+                        fieldInfo.getVectorDimension() * Float.BYTES,
+                        vectorsScorer,
+                        fieldInfo.getVectorSimilarityFunction()));
           };
       return new FlatCloseableRandomVectorScorerSupplier(
           () -> {
@@ -352,11 +362,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   private static DocsWithFieldSet writeByteVectorData(
       IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    for (int docV = byteVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = byteVectorValues.nextDoc()) {
+    KnnVectorValues.DocIndexIterator iter = byteVectorValues.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue();
+      byte[] binaryValue = byteVectorValues.vectorValue(iter.index());
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docV);
@@ -373,11 +382,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     ByteBuffer buffer =
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
-    for (int docV = floatVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = floatVectorValues.nextDoc()) {
+    KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] value = floatVectorValues.vectorValue();
+      float[] value = floatVectorValues.vectorValue(iter.index());
       buffer.asFloatBuffer().put(value);
       output.writeBytes(buffer.array(), buffer.limit());
       docsWithField.add(docV);
@@ -404,18 +412,20 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     static FieldWriter<?> create(FieldInfo fieldInfo) {
       int dim = fieldInfo.getVectorDimension();
       return switch (fieldInfo.getVectorEncoding()) {
-        case BYTE -> new Lucene99FlatVectorsWriter.FieldWriter<byte[]>(fieldInfo) {
-          @Override
-          public byte[] copyValue(byte[] value) {
-            return ArrayUtil.copyOfSubArray(value, 0, dim);
-          }
-        };
-        case FLOAT32 -> new Lucene99FlatVectorsWriter.FieldWriter<float[]>(fieldInfo) {
-          @Override
-          public float[] copyValue(float[] value) {
-            return ArrayUtil.copyOfSubArray(value, 0, dim);
-          }
-        };
+        case BYTE ->
+            new Lucene99FlatVectorsWriter.FieldWriter<byte[]>(fieldInfo) {
+              @Override
+              public byte[] copyValue(byte[] value) {
+                return ArrayUtil.copyOfSubArray(value, 0, dim);
+              }
+            };
+        case FLOAT32 ->
+            new Lucene99FlatVectorsWriter.FieldWriter<float[]>(fieldInfo) {
+              @Override
+              public float[] copyValue(float[] value) {
+                return ArrayUtil.copyOfSubArray(value, 0, dim);
+              }
+            };
       };
     }
 

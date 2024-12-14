@@ -21,8 +21,10 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.RandomAccess;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
@@ -151,6 +153,12 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     public AssertingTermVectors(TermVectors in) {
       this.in = in;
+    }
+
+    @Override
+    public void prefetch(int docID) throws IOException {
+      assertThread("TermVectors", creationThread);
+      in.prefetch(docID);
     }
 
     @Override
@@ -693,7 +701,10 @@ public class AssertingLeafReader extends FilterLeafReader {
     public List<Impact> getImpacts(int level) {
       assert validFor == Math.max(impactsEnum.docID(), impactsEnum.lastShallowTarget)
           : "Cannot reuse impacts after advancing the iterator";
-      return in.getImpacts(level);
+      List<Impact> impacts = in.getImpacts(level);
+      assert impacts.size() <= 1 || impacts instanceof RandomAccess
+          : "impact lists longer than 1 should implement RandomAccess but saw impacts = " + impacts;
+      return impacts;
     }
   }
 
@@ -1619,10 +1630,10 @@ public class AssertingLeafReader extends FilterLeafReader {
     DocValuesSkipper skipper = super.getDocValuesSkipper(field);
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (skipper != null) {
-      assert fi.hasDocValuesSkipIndex();
+      assert fi.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE;
       return new AssertingDocValuesSkipper(skipper);
     } else {
-      assert fi == null || fi.hasDocValuesSkipIndex() == false;
+      assert fi == null || fi.docValuesSkipIndexType() == DocValuesSkipIndexType.NONE;
       return null;
     }
   }

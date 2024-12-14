@@ -91,6 +91,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
+    finish();
     frozen = true;
     return workers[0].getCompletedGraph();
   }
@@ -109,9 +110,17 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   }
 
   @Override
-  public OnHeapHnswGraph getCompletedGraph() {
-    frozen = true;
+  public OnHeapHnswGraph getCompletedGraph() throws IOException {
+    if (frozen == false) {
+      // should already have been called in build(), but just in case
+      finish();
+      frozen = true;
+    }
     return getGraph();
+  }
+
+  private void finish() throws IOException {
+    workers[0].finish();
   }
 
   @Override
@@ -213,7 +222,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     @Override
     void graphSeek(HnswGraph graph, int level, int targetNode) {
       try (HnswLock.LockedRow rowLock = hnswLock.read(level, targetNode)) {
-        NeighborArray neighborArray = rowLock.row;
+        NeighborArray neighborArray = rowLock.row();
         if (nodeBuffer == null || nodeBuffer.length < neighborArray.size()) {
           nodeBuffer = new int[neighborArray.size()];
         }

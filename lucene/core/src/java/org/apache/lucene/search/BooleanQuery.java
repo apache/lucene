@@ -88,6 +88,22 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     }
 
     /**
+     * Add a collection of BooleanClauses to this {@link Builder}. Note that the order in which
+     * clauses are added does not have any impact on matching documents or query performance.
+     *
+     * @throws IndexSearcher.TooManyClauses if the new number of clauses exceeds the maximum clause
+     *     number
+     */
+    public Builder add(Collection<BooleanClause> collection) {
+      // see #addClause(BooleanClause)
+      if ((clauses.size() + collection.size()) > IndexSearcher.maxClauseCount) {
+        throw new IndexSearcher.TooManyClauses();
+      }
+      clauses.addAll(collection);
+      return this;
+    }
+
+    /**
      * Add a new clause to this {@link Builder}. Note that the order in which clauses are added does
      * not have any impact on matching documents or query performance.
      *
@@ -136,7 +152,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   }
 
   /** Return the collection of queries for the given {@link Occur}. */
-  Collection<Query> getClauses(Occur occur) {
+  public Collection<Query> getClauses(Occur occur) {
     return clauseSets.get(occur);
   }
 
@@ -252,6 +268,11 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       return new MatchNoDocsQuery("empty BooleanQuery");
     }
 
+    // Queries with no positive clauses have no matches
+    if (clauses.size() == clauseSets.get(Occur.MUST_NOT).size()) {
+      return new MatchNoDocsQuery("pure negative BooleanQuery");
+    }
+
     // optimize 1-clause queries
     if (clauses.size() == 1) {
       BooleanClause c = clauses.get(0);
@@ -267,8 +288,6 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
             // no scoring clauses, so return a score of 0
             return new BoostQuery(new ConstantScoreQuery(query), 0);
           case MUST_NOT:
-            // no positive clauses
-            return new MatchNoDocsQuery("pure negative BooleanQuery");
           default:
             throw new AssertionError();
         }
@@ -523,8 +542,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
       boolean actuallyRewritten = false;
       for (BooleanClause clause : clauses) {
-        if (clause.occur() == Occur.SHOULD && clause.query() instanceof BooleanQuery) {
-          BooleanQuery innerQuery = (BooleanQuery) clause.query();
+        if (clause.occur() == Occur.SHOULD && clause.query() instanceof BooleanQuery innerQuery) {
           if (innerQuery.isPureDisjunction()) {
             actuallyRewritten = true;
             for (BooleanClause innerClause : innerQuery.clauses()) {
@@ -535,6 +553,46 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
           }
         } else {
           builder.add(clause);
+        }
+      }
+      if (actuallyRewritten) {
+        return builder.build();
+      }
+    }
+
+    // Inline required / prohibited clauses. This helps run filtered conjunctive queries more
+    // efficiently by providing all clauses to the block-max AND scorer.
+    {
+      BooleanQuery.Builder builder = new BooleanQuery.Builder();
+      builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
+      boolean actuallyRewritten = false;
+      for (BooleanClause outerClause : clauses) {
+        if (outerClause.isRequired() && outerClause.query() instanceof BooleanQuery innerQuery) {
+          // Inlining prohibited clauses is not legal if the query is a pure negation, since pure
+          // negations have no matches. It works because the inner BooleanQuery would have first
+          // rewritten to a MatchNoDocsQuery if it only had prohibited clauses.
+          assert innerQuery.getClauses(Occur.MUST_NOT).size() != innerQuery.clauses().size();
+          if (innerQuery.getMinimumNumberShouldMatch() == 0
+              && innerQuery.getClauses(Occur.SHOULD).isEmpty()) {
+
+            actuallyRewritten = true;
+            for (BooleanClause innerClause : innerQuery) {
+              Occur innerOccur = innerClause.occur();
+              if (innerOccur == Occur.FILTER
+                  || innerOccur == Occur.MUST_NOT
+                  || outerClause.occur() == Occur.MUST) {
+                builder.add(innerClause);
+              } else {
+                assert outerClause.occur() == Occur.FILTER && innerOccur == Occur.MUST;
+                // In this case we need to change the occur of the inner query from MUST to FILTER.
+                builder.add(innerClause.query(), Occur.FILTER);
+              }
+            }
+          } else {
+            builder.add(outerClause);
+          }
+        } else {
+          builder.add(outerClause);
         }
       }
       if (actuallyRewritten) {

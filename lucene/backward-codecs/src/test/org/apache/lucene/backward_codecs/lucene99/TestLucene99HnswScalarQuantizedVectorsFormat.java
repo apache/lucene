@@ -18,17 +18,12 @@
 package org.apache.lucene.backward_codecs.lucene99;
 
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new Lucene99Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene99RWHnswScalarQuantizationVectorsFormat();
-      }
-    };
+    return TestUtil.alwaysKnnVectorsFormat(new Lucene99RWHnswScalarQuantizationVectorsFormat());
   }
 }

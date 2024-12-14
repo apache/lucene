@@ -26,8 +26,15 @@ import org.apache.lucene.search.TermStatistics;
  */
 public class ClassicSimilarity extends TFIDFSimilarity {
 
-  /** Sole constructor: parameter-free */
-  public ClassicSimilarity() {}
+  /** Default constructor: parameter-free */
+  public ClassicSimilarity() {
+    super();
+  }
+
+  /** Primary constructor. */
+  public ClassicSimilarity(boolean discountOverlaps) {
+    super(discountOverlaps);
+  }
 
   /**
    * Implemented as <code>1/sqrt(length)</code>.

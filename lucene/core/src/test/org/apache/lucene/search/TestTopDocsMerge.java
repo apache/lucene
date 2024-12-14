@@ -51,13 +51,13 @@ public class TestTopDocsMerge extends LuceneTestCase {
     }
 
     public void search(Weight weight, Collector collector) throws IOException {
-      searchLeaf(ctx, weight, collector);
+      searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
     }
 
     public TopDocs search(Weight weight, int topN) throws IOException {
       TopScoreDocCollector collector =
-          new TopScoreDocCollectorManager(topN, null, Integer.MAX_VALUE, false).newCollector();
-      searchLeaf(ctx, weight, collector);
+          new TopScoreDocCollectorManager(topN, null, Integer.MAX_VALUE).newCollector();
+      searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
       return collector.topDocs();
     }
 
@@ -321,7 +321,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
         }
         System.out.println(
             "  top search: "
-                + topHits.totalHits.value
+                + topHits.totalHits.value()
                 + " totalHits; hits="
                 + (topHits.scoreDocs == null ? "null" : topHits.scoreDocs.length));
         if (topHits.scoreDocs != null) {
@@ -348,8 +348,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
           subHits = subSearcher.search(w, numHits);
         } else {
           final TopFieldCollector c =
-              new TopFieldCollectorManager(sort, numHits, null, Integer.MAX_VALUE, false)
-                  .newCollector();
+              new TopFieldCollectorManager(sort, numHits, null, Integer.MAX_VALUE).newCollector();
           subSearcher.search(w, c);
           subHits = c.topDocs(0, numHits);
         }
@@ -364,7 +363,7 @@ public class TestTopDocsMerge extends LuceneTestCase {
               "  shard="
                   + shardIDX
                   + " "
-                  + subHits.totalHits.value
+                  + subHits.totalHits.value()
                   + " totalHits hits="
                   + (subHits.scoreDocs == null ? "null" : subHits.scoreDocs.length));
           if (subHits.scoreDocs != null) {

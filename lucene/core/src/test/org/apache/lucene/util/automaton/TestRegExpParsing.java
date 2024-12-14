@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
 /**
  * Simple unit tests for RegExp parsing.
@@ -698,7 +699,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   private void assertSameLanguage(Automaton expected, Automaton actual) {
     expected = Operations.determinize(expected, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     actual = Operations.determinize(actual, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-    boolean result = Operations.sameLanguage(expected, actual);
+    boolean result = AutomatonTestUtil.sameLanguage(expected, actual);
     if (result == false) {
       System.out.println(expected.toDot());
       System.out.println(actual.toDot());

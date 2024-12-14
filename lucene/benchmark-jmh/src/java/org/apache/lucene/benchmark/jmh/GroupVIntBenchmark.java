@@ -186,7 +186,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void benchMMapDirectoryInputs_readGroupVInt(Blackhole bh) throws IOException {
     byteBufferGVIntIn.seek(0);
-    byteBufferGVIntIn.readGroupVInts(values, size);
+    GroupVIntUtil.readGroupVInts(byteBufferGVIntIn, values, size);
     bh.consume(values);
   }
 
@@ -209,14 +209,14 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void benchByteArrayDataInput_readGroupVInt(Blackhole bh) throws IOException {
     byteArrayGVIntIn.rewind();
-    byteArrayGVIntIn.readGroupVInts(values, size);
+    GroupVIntUtil.readGroupVInts(byteArrayGVIntIn, values, size);
     bh.consume(values);
   }
 
   @Benchmark
   public void benchNIOFSDirectoryInputs_readGroupVInt(Blackhole bh) throws IOException {
     nioGVIntIn.seek(0);
-    nioGVIntIn.readGroupVInts(values, size);
+    GroupVIntUtil.readGroupVInts(nioGVIntIn, values, size);
     bh.consume(values);
   }
 
@@ -230,7 +230,7 @@ public class GroupVIntBenchmark {
   @Benchmark
   public void benchByteBuffersIndexInput_readGroupVInt(Blackhole bh) throws IOException {
     byteBuffersGVIntIn.seek(0);
-    byteBuffersGVIntIn.readGroupVInts(values, size);
+    GroupVIntUtil.readGroupVInts(byteBuffersGVIntIn, values, size);
     bh.consume(values);
   }
 

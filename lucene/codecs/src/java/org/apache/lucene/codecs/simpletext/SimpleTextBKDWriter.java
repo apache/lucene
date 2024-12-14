@@ -144,28 +144,28 @@ final class SimpleTextBKDWriter implements Closeable {
     this.maxDoc = maxDoc;
     docsSeen = new FixedBitSet(maxDoc);
 
-    scratchDiff = new byte[config.bytesPerDim];
-    scratch1 = new byte[config.packedBytesLength];
-    scratch2 = new byte[config.packedBytesLength];
-    commonPrefixLengths = new int[config.numDims];
+    scratchDiff = new byte[config.bytesPerDim()];
+    scratch1 = new byte[config.packedBytesLength()];
+    scratch2 = new byte[config.packedBytesLength()];
+    commonPrefixLengths = new int[config.numDims()];
 
-    minPackedValue = new byte[config.packedIndexBytesLength];
-    maxPackedValue = new byte[config.packedIndexBytesLength];
+    minPackedValue = new byte[config.packedIndexBytesLength()];
+    maxPackedValue = new byte[config.packedIndexBytesLength()];
 
     // Maximum number of points we hold in memory at any time
     maxPointsSortInHeap =
-        (int) ((maxMBSortInHeap * 1024 * 1024) / (config.bytesPerDoc * config.numDims));
+        (int) ((maxMBSortInHeap * 1024 * 1024) / (config.bytesPerDoc() * config.numDims()));
 
     // Finally, we must be able to hold at least the leaf node in heap during build:
-    if (maxPointsSortInHeap < config.maxPointsInLeafNode) {
+    if (maxPointsSortInHeap < config.maxPointsInLeafNode()) {
       throw new IllegalArgumentException(
           "maxMBSortInHeap="
               + maxMBSortInHeap
               + " only allows for maxPointsSortInHeap="
               + maxPointsSortInHeap
-              + ", but this is less than config.maxPointsInLeafNode="
-              + config.maxPointsInLeafNode
-              + "; either increase maxMBSortInHeap or decrease config.maxPointsInLeafNode");
+              + ", but this is less than config.maxPointsInLeafNode()="
+              + config.maxPointsInLeafNode()
+              + "; either increase maxMBSortInHeap or decrease config.maxPointsInLeafNode()");
     }
 
     this.maxMBSortInHeap = maxMBSortInHeap;
@@ -183,10 +183,10 @@ final class SimpleTextBKDWriter implements Closeable {
   }
 
   public void add(byte[] packedValue, int docID) throws IOException {
-    if (packedValue.length != config.packedBytesLength) {
+    if (packedValue.length != config.packedBytesLength()) {
       throw new IllegalArgumentException(
           "packedValue should be length="
-              + config.packedBytesLength
+              + config.packedBytesLength()
               + " (got: "
               + packedValue.length
               + ")");
@@ -209,30 +209,30 @@ final class SimpleTextBKDWriter implements Closeable {
       } else {
         pointWriter = new HeapPointWriter(config, Math.toIntExact(totalPointCount));
       }
-      System.arraycopy(packedValue, 0, minPackedValue, 0, config.packedIndexBytesLength);
-      System.arraycopy(packedValue, 0, maxPackedValue, 0, config.packedIndexBytesLength);
+      System.arraycopy(packedValue, 0, minPackedValue, 0, config.packedIndexBytesLength());
+      System.arraycopy(packedValue, 0, maxPackedValue, 0, config.packedIndexBytesLength());
     } else {
-      for (int dim = 0; dim < config.numIndexDims; dim++) {
-        int offset = dim * config.bytesPerDim;
+      for (int dim = 0; dim < config.numIndexDims(); dim++) {
+        int offset = dim * config.bytesPerDim();
         if (Arrays.compareUnsigned(
                 packedValue,
                 offset,
-                offset + config.bytesPerDim,
+                offset + config.bytesPerDim(),
                 minPackedValue,
                 offset,
-                offset + config.bytesPerDim)
+                offset + config.bytesPerDim())
             < 0) {
-          System.arraycopy(packedValue, offset, minPackedValue, offset, config.bytesPerDim);
+          System.arraycopy(packedValue, offset, minPackedValue, offset, config.bytesPerDim());
         }
         if (Arrays.compareUnsigned(
                 packedValue,
                 offset,
-                offset + config.bytesPerDim,
+                offset + config.bytesPerDim(),
                 maxPackedValue,
                 offset,
-                offset + config.bytesPerDim)
+                offset + config.bytesPerDim())
             > 0) {
-          System.arraycopy(packedValue, offset, maxPackedValue, offset, config.bytesPerDim);
+          System.arraycopy(packedValue, offset, maxPackedValue, offset, config.bytesPerDim());
         }
       }
     }
@@ -254,7 +254,7 @@ final class SimpleTextBKDWriter implements Closeable {
    */
   public long writeField(IndexOutput out, String fieldName, MutablePointTree reader)
       throws IOException {
-    if (config.numIndexDims == 1) {
+    if (config.numIndexDims() == 1) {
       return writeField1Dim(out, fieldName, reader);
     } else {
       return writeFieldNDims(out, fieldName, reader);
@@ -280,7 +280,7 @@ final class SimpleTextBKDWriter implements Closeable {
     long countPerLeaf = pointCount = values.size();
     long innerNodeCount = 1;
 
-    while (countPerLeaf > config.maxPointsInLeafNode) {
+    while (countPerLeaf > config.maxPointsInLeafNode()) {
       countPerLeaf = (countPerLeaf + 1) / 2;
       innerNodeCount *= 2;
     }
@@ -289,7 +289,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
     checkMaxLeafNodeCount(numLeaves);
 
-    final byte[] splitPackedValues = new byte[numLeaves * (config.bytesPerDim + 1)];
+    final byte[] splitPackedValues = new byte[numLeaves * (config.bytesPerDim() + 1)];
     final long[] leafBlockFPs = new long[numLeaves];
 
     // compute the min/max for this slice
@@ -297,37 +297,37 @@ final class SimpleTextBKDWriter implements Closeable {
     Arrays.fill(maxPackedValue, (byte) 0);
     for (int i = 0; i < Math.toIntExact(pointCount); ++i) {
       values.getValue(i, scratchBytesRef1);
-      for (int dim = 0; dim < config.numIndexDims; dim++) {
-        int offset = dim * config.bytesPerDim;
+      for (int dim = 0; dim < config.numIndexDims(); dim++) {
+        int offset = dim * config.bytesPerDim();
         if (Arrays.compareUnsigned(
                 scratchBytesRef1.bytes,
                 scratchBytesRef1.offset + offset,
-                scratchBytesRef1.offset + offset + config.bytesPerDim,
+                scratchBytesRef1.offset + offset + config.bytesPerDim(),
                 minPackedValue,
                 offset,
-                offset + config.bytesPerDim)
+                offset + config.bytesPerDim())
             < 0) {
           System.arraycopy(
               scratchBytesRef1.bytes,
               scratchBytesRef1.offset + offset,
               minPackedValue,
               offset,
-              config.bytesPerDim);
+              config.bytesPerDim());
         }
         if (Arrays.compareUnsigned(
                 scratchBytesRef1.bytes,
                 scratchBytesRef1.offset + offset,
-                scratchBytesRef1.offset + offset + config.bytesPerDim,
+                scratchBytesRef1.offset + offset + config.bytesPerDim(),
                 maxPackedValue,
                 offset,
-                offset + config.bytesPerDim)
+                offset + config.bytesPerDim())
             > 0) {
           System.arraycopy(
               scratchBytesRef1.bytes,
               scratchBytesRef1.offset + offset,
               maxPackedValue,
               offset,
-              config.bytesPerDim);
+              config.bytesPerDim());
         }
       }
 
@@ -345,7 +345,7 @@ final class SimpleTextBKDWriter implements Closeable {
         maxPackedValue,
         splitPackedValues,
         leafBlockFPs,
-        new int[config.maxPointsInLeafNode]);
+        new int[config.maxPointsInLeafNode()]);
 
     long indexFP = out.getFilePointer();
     writeIndex(out, leafBlockFPs, splitPackedValues, Math.toIntExact(countPerLeaf));
@@ -387,15 +387,15 @@ final class SimpleTextBKDWriter implements Closeable {
     final IndexOutput out;
     final List<Long> leafBlockFPs = new ArrayList<>();
     final List<byte[]> leafBlockStartValues = new ArrayList<>();
-    final byte[] leafValues = new byte[config.maxPointsInLeafNode * config.packedBytesLength];
-    final int[] leafDocs = new int[config.maxPointsInLeafNode];
+    final byte[] leafValues = new byte[config.maxPointsInLeafNode() * config.packedBytesLength()];
+    final int[] leafDocs = new int[config.maxPointsInLeafNode()];
     long valueCount;
     int leafCount;
 
     OneDimensionBKDWriter(IndexOutput out) {
-      if (config.numIndexDims != 1) {
+      if (config.numIndexDims() != 1) {
         throw new UnsupportedOperationException(
-            "config.numIndexDims must be 1 but got " + config.numIndexDims);
+            "config.numIndexDims() must be 1 but got " + config.numIndexDims());
       }
       if (pointCount != 0) {
         throw new IllegalStateException("cannot mix add and merge");
@@ -411,7 +411,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
       this.out = out;
 
-      lastPackedValue = new byte[config.packedBytesLength];
+      lastPackedValue = new byte[config.packedBytesLength()];
     }
 
     // for asserts
@@ -426,8 +426,8 @@ final class SimpleTextBKDWriter implements Closeable {
           packedValue,
           0,
           leafValues,
-          leafCount * config.packedBytesLength,
-          config.packedBytesLength);
+          leafCount * config.packedBytesLength(),
+          config.packedBytesLength());
       leafDocs[leafCount] = docID;
       docsSeen.set(docID);
       leafCount++;
@@ -441,7 +441,7 @@ final class SimpleTextBKDWriter implements Closeable {
                 + " values");
       }
 
-      if (leafCount == config.maxPointsInLeafNode) {
+      if (leafCount == config.maxPointsInLeafNode()) {
         // We write a block once we hit exactly the max count ... this is different from
         // when we flush a new segment, where we write between max/2 and max per leaf block,
         // so merged segments will behave differently from newly flushed segments:
@@ -471,43 +471,44 @@ final class SimpleTextBKDWriter implements Closeable {
       // System.out.println("BKDW: now rotate numInnerNodes=" + numInnerNodes + " leafBlockStarts="
       // + leafBlockStartValues.size());
 
-      byte[] index = new byte[(1 + numInnerNodes) * (1 + config.bytesPerDim)];
+      byte[] index = new byte[(1 + numInnerNodes) * (1 + config.bytesPerDim())];
       rotateToTree(1, 0, numInnerNodes, index, leafBlockStartValues);
       long[] arr = new long[leafBlockFPs.size()];
       for (int i = 0; i < leafBlockFPs.size(); i++) {
         arr[i] = leafBlockFPs.get(i);
       }
-      writeIndex(out, arr, index, config.maxPointsInLeafNode);
+      writeIndex(out, arr, index, config.maxPointsInLeafNode());
       return indexFP;
     }
 
     private void writeLeafBlock() throws IOException {
       assert leafCount != 0;
       if (valueCount == 0) {
-        System.arraycopy(leafValues, 0, minPackedValue, 0, config.packedIndexBytesLength);
+        System.arraycopy(leafValues, 0, minPackedValue, 0, config.packedIndexBytesLength());
       }
       System.arraycopy(
           leafValues,
-          (leafCount - 1) * config.packedBytesLength,
+          (leafCount - 1) * config.packedBytesLength(),
           maxPackedValue,
           0,
-          config.packedIndexBytesLength);
+          config.packedIndexBytesLength());
 
       valueCount += leafCount;
 
       if (leafBlockFPs.size() > 0) {
         // Save the first (minimum) value in each leaf block except the first, to build the split
         // value index in the end:
-        leafBlockStartValues.add(ArrayUtil.copyOfSubArray(leafValues, 0, config.packedBytesLength));
+        leafBlockStartValues.add(
+            ArrayUtil.copyOfSubArray(leafValues, 0, config.packedBytesLength()));
       }
       leafBlockFPs.add(out.getFilePointer());
       checkMaxLeafNodeCount(leafBlockFPs.size());
 
-      Arrays.fill(commonPrefixLengths, config.bytesPerDim);
+      Arrays.fill(commonPrefixLengths, config.bytesPerDim());
       // Find per-dim common prefix:
-      for (int dim = 0; dim < config.numDims; dim++) {
-        int offset1 = dim * config.bytesPerDim;
-        int offset2 = (leafCount - 1) * config.packedBytesLength + offset1;
+      for (int dim = 0; dim < config.numDims(); dim++) {
+        int offset1 = dim * config.bytesPerDim();
+        int offset2 = (leafCount - 1) * config.packedBytesLength() + offset1;
         for (int j = 0; j < commonPrefixLengths[dim]; j++) {
           if (leafValues[offset1 + j] != leafValues[offset2 + j]) {
             commonPrefixLengths[dim] = j;
@@ -523,24 +524,24 @@ final class SimpleTextBKDWriter implements Closeable {
             final BytesRef scratch = new BytesRef();
 
             {
-              scratch.length = config.packedBytesLength;
+              scratch.length = config.packedBytesLength();
               scratch.bytes = leafValues;
             }
 
             @Override
             public BytesRef apply(int i) {
-              scratch.offset = config.packedBytesLength * i;
+              scratch.offset = config.packedBytesLength() * i;
               return scratch;
             }
           };
       assert valuesInOrderAndBounds(
           leafCount,
           0,
-          ArrayUtil.copyOfSubArray(leafValues, 0, config.packedBytesLength),
+          ArrayUtil.copyOfSubArray(leafValues, 0, config.packedBytesLength()),
           ArrayUtil.copyOfSubArray(
               leafValues,
-              (leafCount - 1) * config.packedBytesLength,
-              leafCount * config.packedBytesLength),
+              (leafCount - 1) * config.packedBytesLength(),
+              leafCount * config.packedBytesLength()),
           packedValues,
           leafDocs,
           0);
@@ -552,7 +553,7 @@ final class SimpleTextBKDWriter implements Closeable {
   private void rotateToTree(
       int nodeID, int offset, int count, byte[] index, List<byte[]> leafBlockStartValues) {
     // System.out.println("ROTATE: nodeID=" + nodeID + " offset=" + offset + " count=" + count + "
-    // bpd=" + config.bytesPerDim + " index.length=" + index.length);
+    // bpd=" + config.bytesPerDim() + " index.length=" + index.length);
     if (count == 1) {
       // Leaf index node
       // System.out.println("  leaf index node");
@@ -561,8 +562,8 @@ final class SimpleTextBKDWriter implements Closeable {
           leafBlockStartValues.get(offset),
           0,
           index,
-          nodeID * (1 + config.bytesPerDim) + 1,
-          config.bytesPerDim);
+          nodeID * (1 + config.bytesPerDim()) + 1,
+          config.bytesPerDim());
     } else if (count > 1) {
       // Internal index node: binary partition of count
       int countAtLevel = 1;
@@ -587,8 +588,8 @@ final class SimpleTextBKDWriter implements Closeable {
               leafBlockStartValues.get(rootOffset),
               0,
               index,
-              nodeID * (1 + config.bytesPerDim) + 1,
-              config.bytesPerDim);
+              nodeID * (1 + config.bytesPerDim()) + 1,
+              config.bytesPerDim());
           // System.out.println("  index[" + nodeID + "] = blockStartValues[" + rootOffset + "]");
 
           // TODO: we could optimize/specialize, when we know it's simply fully balanced binary tree
@@ -611,10 +612,10 @@ final class SimpleTextBKDWriter implements Closeable {
   }
 
   private void checkMaxLeafNodeCount(int numLeaves) {
-    if ((1 + config.bytesPerDim) * (long) numLeaves > ArrayUtil.MAX_ARRAY_LENGTH) {
+    if ((1 + config.bytesPerDim()) * (long) numLeaves > ArrayUtil.MAX_ARRAY_LENGTH) {
       throw new IllegalStateException(
-          "too many nodes; increase config.maxPointsInLeafNode (currently "
-              + config.maxPointsInLeafNode
+          "too many nodes; increase config.maxPointsInLeafNode() (currently "
+              + config.maxPointsInLeafNode()
               + ") and reindex");
     }
   }
@@ -652,7 +653,7 @@ final class SimpleTextBKDWriter implements Closeable {
     long countPerLeaf = pointCount;
     long innerNodeCount = 1;
 
-    while (countPerLeaf > config.maxPointsInLeafNode) {
+    while (countPerLeaf > config.maxPointsInLeafNode()) {
       countPerLeaf = (countPerLeaf + 1) / 2;
       innerNodeCount *= 2;
     }
@@ -667,20 +668,20 @@ final class SimpleTextBKDWriter implements Closeable {
 
     // Indexed by nodeID, but first (root) nodeID is 1.  We do 1+ because the lead byte at each
     // recursion says which dim we split on.
-    byte[] splitPackedValues = new byte[Math.multiplyExact(numLeaves, 1 + config.bytesPerDim)];
+    byte[] splitPackedValues = new byte[Math.multiplyExact(numLeaves, 1 + config.bytesPerDim())];
 
     // +1 because leaf count is power of 2 (e.g. 8), and innerNodeCount is power of 2 minus 1 (e.g.
     // 7)
     long[] leafBlockFPs = new long[numLeaves];
 
     // Make sure the math above "worked":
-    assert pointCount / numLeaves <= config.maxPointsInLeafNode
+    assert pointCount / numLeaves <= config.maxPointsInLeafNode()
         : "pointCount="
             + pointCount
             + " numLeaves="
             + numLeaves
-            + " config.maxPointsInLeafNode="
-            + config.maxPointsInLeafNode;
+            + " config.maxPointsInLeafNode()="
+            + config.maxPointsInLeafNode();
 
     // We re-use the selector so we do not need to create an object every time.
     BKDRadixSelector radixSelector =
@@ -699,7 +700,7 @@ final class SimpleTextBKDWriter implements Closeable {
           maxPackedValue,
           splitPackedValues,
           leafBlockFPs,
-          new int[config.maxPointsInLeafNode]);
+          new int[config.maxPointsInLeafNode()]);
 
       // If no exception, we should have cleaned everything up:
       assert tempDir.getCreatedFiles().isEmpty();
@@ -724,15 +725,15 @@ final class SimpleTextBKDWriter implements Closeable {
       IndexOutput out, long[] leafBlockFPs, byte[] splitPackedValues, int maxPointsInLeafNode)
       throws IOException {
     write(out, NUM_DATA_DIMS);
-    writeInt(out, config.numDims);
+    writeInt(out, config.numDims());
     newline(out);
 
     write(out, NUM_INDEX_DIMS);
-    writeInt(out, config.numIndexDims);
+    writeInt(out, config.numIndexDims());
     newline(out);
 
     write(out, BYTES_PER_DIM);
-    writeInt(out, config.bytesPerDim);
+    writeInt(out, config.bytesPerDim());
     newline(out);
 
     write(out, MAX_LEAF_POINTS);
@@ -767,8 +768,8 @@ final class SimpleTextBKDWriter implements Closeable {
       newline(out);
     }
 
-    assert (splitPackedValues.length % (1 + config.bytesPerDim)) == 0;
-    int count = splitPackedValues.length / (1 + config.bytesPerDim);
+    assert (splitPackedValues.length % (1 + config.bytesPerDim())) == 0;
+    int count = splitPackedValues.length / (1 + config.bytesPerDim());
     assert count == leafBlockFPs.length;
 
     write(out, SPLIT_COUNT);
@@ -777,10 +778,12 @@ final class SimpleTextBKDWriter implements Closeable {
 
     for (int i = 0; i < count; i++) {
       write(out, SPLIT_DIM);
-      writeInt(out, splitPackedValues[i * (1 + config.bytesPerDim)] & 0xff);
+      writeInt(out, splitPackedValues[i * (1 + config.bytesPerDim())] & 0xff);
       newline(out);
       write(out, SPLIT_VALUE);
-      br = new BytesRef(splitPackedValues, 1 + (i * (1 + config.bytesPerDim)), config.bytesPerDim);
+      br =
+          new BytesRef(
+              splitPackedValues, 1 + (i * (1 + config.bytesPerDim())), config.bytesPerDim());
       write(out, br.toString());
       newline(out);
     }
@@ -852,25 +855,25 @@ final class SimpleTextBKDWriter implements Closeable {
   /** Called only in assert */
   private boolean valueInBounds(
       BytesRef packedValue, byte[] minPackedValue, byte[] maxPackedValue) {
-    for (int dim = 0; dim < config.numIndexDims; dim++) {
-      int offset = config.bytesPerDim * dim;
+    for (int dim = 0; dim < config.numIndexDims(); dim++) {
+      int offset = config.bytesPerDim() * dim;
       if (Arrays.compareUnsigned(
               packedValue.bytes,
               packedValue.offset + offset,
-              packedValue.offset + offset + config.bytesPerDim,
+              packedValue.offset + offset + config.bytesPerDim(),
               minPackedValue,
               offset,
-              offset + config.bytesPerDim)
+              offset + config.bytesPerDim())
           < 0) {
         return false;
       }
       if (Arrays.compareUnsigned(
               packedValue.bytes,
               packedValue.offset + offset,
-              packedValue.offset + offset + config.bytesPerDim,
+              packedValue.offset + offset + config.bytesPerDim(),
               maxPackedValue,
               offset,
-              offset + config.bytesPerDim)
+              offset + config.bytesPerDim())
           > 0) {
         return false;
       }
@@ -882,13 +885,13 @@ final class SimpleTextBKDWriter implements Closeable {
   protected int split(byte[] minPackedValue, byte[] maxPackedValue) {
     // Find which dim has the largest span so we can split on it:
     int splitDim = -1;
-    for (int dim = 0; dim < config.numIndexDims; dim++) {
-      NumericUtils.subtract(config.bytesPerDim, dim, maxPackedValue, minPackedValue, scratchDiff);
+    for (int dim = 0; dim < config.numIndexDims(); dim++) {
+      NumericUtils.subtract(config.bytesPerDim(), dim, maxPackedValue, minPackedValue, scratchDiff);
       if (splitDim == -1
           || Arrays.compareUnsigned(
-                  scratchDiff, 0, config.bytesPerDim, scratch1, 0, config.bytesPerDim)
+                  scratchDiff, 0, config.bytesPerDim(), scratch1, 0, config.bytesPerDim())
               > 0) {
-        System.arraycopy(scratchDiff, 0, scratch1, 0, config.bytesPerDim);
+        System.arraycopy(scratchDiff, 0, scratch1, 0, config.bytesPerDim());
         splitDim = dim;
       }
     }
@@ -931,15 +934,15 @@ final class SimpleTextBKDWriter implements Closeable {
     if (nodeID >= leafNodeOffset) {
       // leaf node
       final int count = to - from;
-      assert count <= config.maxPointsInLeafNode;
+      assert count <= config.maxPointsInLeafNode();
 
       // Compute common prefixes
-      Arrays.fill(commonPrefixLengths, config.bytesPerDim);
+      Arrays.fill(commonPrefixLengths, config.bytesPerDim());
       reader.getValue(from, scratchBytesRef1);
       for (int i = from + 1; i < to; ++i) {
         reader.getValue(i, scratchBytesRef2);
-        for (int dim = 0; dim < config.numDims; dim++) {
-          final int offset = dim * config.bytesPerDim;
+        for (int dim = 0; dim < config.numDims(); dim++) {
+          final int offset = dim * config.bytesPerDim();
           for (int j = 0; j < commonPrefixLengths[dim]; j++) {
             if (scratchBytesRef1.bytes[scratchBytesRef1.offset + offset + j]
                 != scratchBytesRef2.bytes[scratchBytesRef2.offset + offset + j]) {
@@ -951,23 +954,23 @@ final class SimpleTextBKDWriter implements Closeable {
       }
 
       // Find the dimension that has the least number of unique bytes at commonPrefixLengths[dim]
-      FixedBitSet[] usedBytes = new FixedBitSet[config.numDims];
-      for (int dim = 0; dim < config.numDims; ++dim) {
-        if (commonPrefixLengths[dim] < config.bytesPerDim) {
+      FixedBitSet[] usedBytes = new FixedBitSet[config.numDims()];
+      for (int dim = 0; dim < config.numDims(); ++dim) {
+        if (commonPrefixLengths[dim] < config.bytesPerDim()) {
           usedBytes[dim] = new FixedBitSet(256);
         }
       }
       for (int i = from + 1; i < to; ++i) {
-        for (int dim = 0; dim < config.numDims; dim++) {
+        for (int dim = 0; dim < config.numDims(); dim++) {
           if (usedBytes[dim] != null) {
-            byte b = reader.getByteAt(i, dim * config.bytesPerDim + commonPrefixLengths[dim]);
+            byte b = reader.getByteAt(i, dim * config.bytesPerDim() + commonPrefixLengths[dim]);
             usedBytes[dim].set(Byte.toUnsignedInt(b));
           }
         }
       }
       int sortedDim = 0;
       int sortedDimCardinality = Integer.MAX_VALUE;
-      for (int dim = 0; dim < config.numDims; ++dim) {
+      for (int dim = 0; dim < config.numDims(); ++dim) {
         if (usedBytes[dim] != null) {
           final int cardinality = usedBytes[dim].cardinality();
           if (cardinality < sortedDimCardinality) {
@@ -1001,7 +1004,7 @@ final class SimpleTextBKDWriter implements Closeable {
       // Write the common prefixes:
       reader.getValue(from, scratchBytesRef1);
       System.arraycopy(
-          scratchBytesRef1.bytes, scratchBytesRef1.offset, scratch1, 0, config.packedBytesLength);
+          scratchBytesRef1.bytes, scratchBytesRef1.offset, scratch1, 0, config.packedBytesLength());
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
@@ -1023,10 +1026,10 @@ final class SimpleTextBKDWriter implements Closeable {
       final int splitDim = split(minPackedValue, maxPackedValue);
       final int mid = (from + to + 1) >>> 1;
 
-      int commonPrefixLen = config.bytesPerDim;
-      for (int i = 0; i < config.bytesPerDim; ++i) {
-        if (minPackedValue[splitDim * config.bytesPerDim + i]
-            != maxPackedValue[splitDim * config.bytesPerDim + i]) {
+      int commonPrefixLen = config.bytesPerDim();
+      for (int i = 0; i < config.bytesPerDim(); ++i) {
+        if (minPackedValue[splitDim * config.bytesPerDim() + i]
+            != maxPackedValue[splitDim * config.bytesPerDim() + i]) {
           commonPrefixLen = i;
           break;
         }
@@ -1044,32 +1047,32 @@ final class SimpleTextBKDWriter implements Closeable {
           scratchBytesRef2);
 
       // set the split value
-      final int address = nodeID * (1 + config.bytesPerDim);
+      final int address = nodeID * (1 + config.bytesPerDim());
       splitPackedValues[address] = (byte) splitDim;
       reader.getValue(mid, scratchBytesRef1);
       System.arraycopy(
           scratchBytesRef1.bytes,
-          scratchBytesRef1.offset + splitDim * config.bytesPerDim,
+          scratchBytesRef1.offset + splitDim * config.bytesPerDim(),
           splitPackedValues,
           address + 1,
-          config.bytesPerDim);
+          config.bytesPerDim());
 
       byte[] minSplitPackedValue =
-          ArrayUtil.copyOfSubArray(minPackedValue, 0, config.packedIndexBytesLength);
+          ArrayUtil.copyOfSubArray(minPackedValue, 0, config.packedIndexBytesLength());
       byte[] maxSplitPackedValue =
-          ArrayUtil.copyOfSubArray(maxPackedValue, 0, config.packedIndexBytesLength);
+          ArrayUtil.copyOfSubArray(maxPackedValue, 0, config.packedIndexBytesLength());
       System.arraycopy(
           scratchBytesRef1.bytes,
-          scratchBytesRef1.offset + splitDim * config.bytesPerDim,
+          scratchBytesRef1.offset + splitDim * config.bytesPerDim(),
           minSplitPackedValue,
-          splitDim * config.bytesPerDim,
-          config.bytesPerDim);
+          splitDim * config.bytesPerDim(),
+          config.bytesPerDim());
       System.arraycopy(
           scratchBytesRef1.bytes,
-          scratchBytesRef1.offset + splitDim * config.bytesPerDim,
+          scratchBytesRef1.offset + splitDim * config.bytesPerDim(),
           maxSplitPackedValue,
-          splitDim * config.bytesPerDim,
-          config.bytesPerDim);
+          splitDim * config.bytesPerDim(),
+          config.bytesPerDim());
 
       // recurse
       build(
@@ -1121,33 +1124,33 @@ final class SimpleTextBKDWriter implements Closeable {
       // least number of unique bytes at commonPrefixLengths[dim], which makes compression more
       // efficient
       HeapPointWriter heapSource;
-      if (points.writer instanceof HeapPointWriter == false) {
+      if (points.writer() instanceof HeapPointWriter == false) {
         // Adversarial cases can cause this, e.g. merging big segments with most of the points
         // deleted
-        heapSource = switchToHeap(points.writer);
+        heapSource = switchToHeap(points.writer());
       } else {
-        heapSource = (HeapPointWriter) points.writer;
+        heapSource = (HeapPointWriter) points.writer();
       }
 
-      int from = Math.toIntExact(points.start);
-      int to = Math.toIntExact(points.start + points.count);
+      int from = Math.toIntExact(points.start());
+      int to = Math.toIntExact(points.start() + points.count());
 
       // we store common prefix on scratch1
       computeCommonPrefixLength(heapSource, scratch1);
 
       int sortedDim = 0;
       int sortedDimCardinality = Integer.MAX_VALUE;
-      FixedBitSet[] usedBytes = new FixedBitSet[config.numDims];
-      for (int dim = 0; dim < config.numDims; ++dim) {
-        if (commonPrefixLengths[dim] < config.bytesPerDim) {
+      FixedBitSet[] usedBytes = new FixedBitSet[config.numDims()];
+      for (int dim = 0; dim < config.numDims(); ++dim) {
+        if (commonPrefixLengths[dim] < config.bytesPerDim()) {
           usedBytes[dim] = new FixedBitSet(256);
         }
       }
       // Find the dimension to compress
-      for (int dim = 0; dim < config.numDims; dim++) {
+      for (int dim = 0; dim < config.numDims(); dim++) {
         int prefix = commonPrefixLengths[dim];
-        if (prefix < config.bytesPerDim) {
-          int offset = dim * config.bytesPerDim;
+        if (prefix < config.bytesPerDim()) {
+          int offset = dim * config.bytesPerDim();
           for (int i = 0; i < heapSource.count(); ++i) {
             PointValue value = heapSource.getPackedValueSlice(i);
             BytesRef packedValue = value.packedValue();
@@ -1190,7 +1193,7 @@ final class SimpleTextBKDWriter implements Closeable {
             final BytesRef scratch = new BytesRef();
 
             {
-              scratch.length = config.packedBytesLength;
+              scratch.length = config.packedBytesLength();
             }
 
             @Override
@@ -1207,7 +1210,7 @@ final class SimpleTextBKDWriter implements Closeable {
       // Inner node: partition/recurse
 
       int splitDim;
-      if (config.numIndexDims > 1) {
+      if (config.numIndexDims() > 1) {
         splitDim = split(minPackedValue, maxPackedValue);
       } else {
         splitDim = 0;
@@ -1217,19 +1220,19 @@ final class SimpleTextBKDWriter implements Closeable {
           : "nodeID=" + nodeID + " splitValues.length=" + splitPackedValues.length;
 
       // How many points will be in the left tree:
-      long rightCount = points.count / 2;
-      long leftCount = points.count - rightCount;
+      long rightCount = points.count() / 2;
+      long leftCount = points.count() - rightCount;
 
       int commonPrefixLen =
           Arrays.mismatch(
               minPackedValue,
-              splitDim * config.bytesPerDim,
-              splitDim * config.bytesPerDim + config.bytesPerDim,
+              splitDim * config.bytesPerDim(),
+              splitDim * config.bytesPerDim() + config.bytesPerDim(),
               maxPackedValue,
-              splitDim * config.bytesPerDim,
-              splitDim * config.bytesPerDim + config.bytesPerDim);
+              splitDim * config.bytesPerDim(),
+              splitDim * config.bytesPerDim() + config.bytesPerDim());
       if (commonPrefixLen == -1) {
-        commonPrefixLen = config.bytesPerDim;
+        commonPrefixLen = config.bytesPerDim();
       }
 
       BKDRadixSelector.PathSlice[] pathSlices = new BKDRadixSelector.PathSlice[2];
@@ -1238,26 +1241,34 @@ final class SimpleTextBKDWriter implements Closeable {
           radixSelector.select(
               points,
               pathSlices,
-              points.start,
-              points.start + points.count,
-              points.start + leftCount,
+              points.start(),
+              points.start() + points.count(),
+              points.start() + leftCount,
               splitDim,
               commonPrefixLen);
 
-      int address = nodeID * (1 + config.bytesPerDim);
+      int address = nodeID * (1 + config.bytesPerDim());
       splitPackedValues[address] = (byte) splitDim;
-      System.arraycopy(splitValue, 0, splitPackedValues, address + 1, config.bytesPerDim);
+      System.arraycopy(splitValue, 0, splitPackedValues, address + 1, config.bytesPerDim());
 
-      byte[] minSplitPackedValue = new byte[config.packedIndexBytesLength];
-      System.arraycopy(minPackedValue, 0, minSplitPackedValue, 0, config.packedIndexBytesLength);
+      byte[] minSplitPackedValue = new byte[config.packedIndexBytesLength()];
+      System.arraycopy(minPackedValue, 0, minSplitPackedValue, 0, config.packedIndexBytesLength());
 
-      byte[] maxSplitPackedValue = new byte[config.packedIndexBytesLength];
-      System.arraycopy(maxPackedValue, 0, maxSplitPackedValue, 0, config.packedIndexBytesLength);
+      byte[] maxSplitPackedValue = new byte[config.packedIndexBytesLength()];
+      System.arraycopy(maxPackedValue, 0, maxSplitPackedValue, 0, config.packedIndexBytesLength());
 
       System.arraycopy(
-          splitValue, 0, minSplitPackedValue, splitDim * config.bytesPerDim, config.bytesPerDim);
+          splitValue,
+          0,
+          minSplitPackedValue,
+          splitDim * config.bytesPerDim(),
+          config.bytesPerDim());
       System.arraycopy(
-          splitValue, 0, maxSplitPackedValue, splitDim * config.bytesPerDim, config.bytesPerDim);
+          splitValue,
+          0,
+          maxSplitPackedValue,
+          splitDim * config.bytesPerDim(),
+          config.bytesPerDim());
 
       // Recurse on left tree:
       build(
@@ -1289,30 +1300,30 @@ final class SimpleTextBKDWriter implements Closeable {
   }
 
   private void computeCommonPrefixLength(HeapPointWriter heapPointWriter, byte[] commonPrefix) {
-    Arrays.fill(commonPrefixLengths, config.bytesPerDim);
+    Arrays.fill(commonPrefixLengths, config.bytesPerDim());
     PointValue value = heapPointWriter.getPackedValueSlice(0);
     BytesRef packedValue = value.packedValue();
-    for (int dim = 0; dim < config.numDims; dim++) {
+    for (int dim = 0; dim < config.numDims(); dim++) {
       System.arraycopy(
           packedValue.bytes,
-          packedValue.offset + dim * config.bytesPerDim,
+          packedValue.offset + dim * config.bytesPerDim(),
           commonPrefix,
-          dim * config.bytesPerDim,
-          config.bytesPerDim);
+          dim * config.bytesPerDim(),
+          config.bytesPerDim());
     }
     for (int i = 1; i < heapPointWriter.count(); i++) {
       value = heapPointWriter.getPackedValueSlice(i);
       packedValue = value.packedValue();
-      for (int dim = 0; dim < config.numDims; dim++) {
+      for (int dim = 0; dim < config.numDims(); dim++) {
         if (commonPrefixLengths[dim] != 0) {
           int j =
               Arrays.mismatch(
                   commonPrefix,
-                  dim * config.bytesPerDim,
-                  dim * config.bytesPerDim + commonPrefixLengths[dim],
+                  dim * config.bytesPerDim(),
+                  dim * config.bytesPerDim() + commonPrefixLengths[dim],
                   packedValue.bytes,
-                  packedValue.offset + dim * config.bytesPerDim,
-                  packedValue.offset + dim * config.bytesPerDim + commonPrefixLengths[dim]);
+                  packedValue.offset + dim * config.bytesPerDim(),
+                  packedValue.offset + dim * config.bytesPerDim() + commonPrefixLengths[dim]);
           if (j != -1) {
             commonPrefixLengths[dim] = j;
           }
@@ -1331,11 +1342,11 @@ final class SimpleTextBKDWriter implements Closeable {
       int[] docs,
       int docsOffset)
       throws IOException {
-    byte[] lastPackedValue = new byte[config.packedBytesLength];
+    byte[] lastPackedValue = new byte[config.packedBytesLength()];
     int lastDoc = -1;
     for (int i = 0; i < count; i++) {
       BytesRef packedValue = values.apply(i);
-      assert packedValue.length == config.packedBytesLength;
+      assert packedValue.length == config.packedBytesLength();
       assert valueInOrder(
           i,
           sortedDim,
@@ -1361,43 +1372,43 @@ final class SimpleTextBKDWriter implements Closeable {
       int packedValueOffset,
       int doc,
       int lastDoc) {
-    int dimOffset = sortedDim * config.bytesPerDim;
+    int dimOffset = sortedDim * config.bytesPerDim();
     if (ord > 0) {
       int cmp =
           Arrays.compareUnsigned(
               lastPackedValue,
               dimOffset,
-              dimOffset + config.bytesPerDim,
+              dimOffset + config.bytesPerDim(),
               packedValue,
               packedValueOffset + dimOffset,
-              packedValueOffset + dimOffset + config.bytesPerDim);
+              packedValueOffset + dimOffset + config.bytesPerDim());
       if (cmp > 0) {
         throw new AssertionError(
             "values out of order: last value="
                 + new BytesRef(lastPackedValue)
                 + " current value="
-                + new BytesRef(packedValue, packedValueOffset, config.packedBytesLength)
+                + new BytesRef(packedValue, packedValueOffset, config.packedBytesLength())
                 + " ord="
                 + ord
                 + " sortedDim="
                 + sortedDim);
       }
-      if (cmp == 0 && config.numDims > config.numIndexDims) {
-        int dataOffset = config.numIndexDims * config.bytesPerDim;
+      if (cmp == 0 && config.numDims() > config.numIndexDims()) {
+        int dataOffset = config.numIndexDims() * config.bytesPerDim();
         cmp =
             Arrays.compareUnsigned(
                 lastPackedValue,
                 dataOffset,
-                config.packedBytesLength,
+                config.packedBytesLength(),
                 packedValue,
                 packedValueOffset + dataOffset,
-                packedValueOffset + config.packedBytesLength);
+                packedValueOffset + config.packedBytesLength());
         if (cmp > 0) {
           throw new AssertionError(
               "data values out of order: last value="
                   + new BytesRef(lastPackedValue)
                   + " current value="
-                  + new BytesRef(packedValue, packedValueOffset, config.packedBytesLength)
+                  + new BytesRef(packedValue, packedValueOffset, config.packedBytesLength())
                   + " ord="
                   + ord);
         }
@@ -1414,7 +1425,8 @@ final class SimpleTextBKDWriter implements Closeable {
                 + sortedDim);
       }
     }
-    System.arraycopy(packedValue, packedValueOffset, lastPackedValue, 0, config.packedBytesLength);
+    System.arraycopy(
+        packedValue, packedValueOffset, lastPackedValue, 0, config.packedBytesLength());
     return true;
   }
 

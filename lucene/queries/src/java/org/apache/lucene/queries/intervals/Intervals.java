@@ -238,6 +238,7 @@ public final class Intervals {
    */
   public static IntervalsSource regexp(BytesRef regexp, int maxExpansions) {
     Automaton automaton = new RegExp(new Term("", regexp).text()).toAutomaton();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     CompiledAutomaton ca = new CompiledAutomaton(automaton, false, true, false);
     return new MultiTermIntervalsSource(ca, maxExpansions, regexp.utf8ToString());
   }
@@ -246,8 +247,10 @@ public final class Intervals {
    * Return an {@link IntervalsSource} over the disjunction of all terms that fall within the given
    * range
    *
-   * @param lowerTerm The term text at the lower end of the range
-   * @param upperTerm The term text at the upper end of the range
+   * @param lowerTerm The term text at the lower end of the range; can be {@code null} to indicate
+   *     an open-ended range at this end
+   * @param upperTerm The term text at the upper end of the range; can be {@code null} to indicate
+   *     an open-ended range at this end
    * @param includeLower If true, the <code>lowerTerm</code> is included in the range
    * @param includeUpper If true, the <code>upperTerm</code> is included in the range
    * @throws IllegalStateException if the range expands to more than {@link #DEFAULT_MAX_EXPANSIONS}
@@ -265,8 +268,10 @@ public final class Intervals {
    * <p>WARNING: Setting {@code maxExpansions} to higher than the default value of {@link
    * #DEFAULT_MAX_EXPANSIONS} can be both slow and memory-intensive
    *
-   * @param lowerTerm The term text at the lower end of the range
-   * @param upperTerm The term text at the upper end of the range
+   * @param lowerTerm The term text at the lower end of the range; can be {@code null} to indicate
+   *     an open-ended range at this end
+   * @param upperTerm The term text at the upper end of the range; can be {@code null} to indicate
+   *     an open-ended range at this end
    * @param includeLower If true, the <code>lowerTerm</code> is included in the range
    * @param includeUpper If true, the <code>upperTerm</code> is included in the range
    * @param maxExpansions the maximum number of terms to expand to
@@ -285,9 +290,9 @@ public final class Intervals {
 
     StringBuilder buffer = new StringBuilder();
     buffer.append("{");
-    buffer.append(lowerTerm.utf8ToString());
+    buffer.append(lowerTerm == null ? "* " : lowerTerm.utf8ToString());
     buffer.append(",");
-    buffer.append(upperTerm.utf8ToString());
+    buffer.append(upperTerm == null ? "*" : upperTerm.utf8ToString());
     buffer.append("}");
     return new MultiTermIntervalsSource(ca, maxExpansions, buffer.toString());
   }

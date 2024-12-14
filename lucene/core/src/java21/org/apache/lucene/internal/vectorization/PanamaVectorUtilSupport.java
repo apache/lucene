@@ -31,6 +31,8 @@ import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.Vector;
+import jdk.incubator.vector.VectorMask;
+import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
@@ -52,20 +54,15 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
-  private static final VectorSpecies<Integer> INT_SPECIES;
+  private static final VectorSpecies<Integer> INT_SPECIES =
+      PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
 
   static final int VECTOR_BITSIZE;
-  static final boolean HAS_FAST_INTEGER_VECTORS;
 
   static {
-    // default to platform supported bitsize
-    int vectorBitSize = VectorShape.preferredShape().vectorBitSize();
-    // but allow easy overriding for testing
-    vectorBitSize = VectorizationProvider.TESTS_VECTOR_SIZE.orElse(vectorBitSize);
-    INT_SPECIES = VectorSpecies.of(int.class, VectorShape.forBitSize(vectorBitSize));
-    VECTOR_BITSIZE = INT_SPECIES.vectorBitSize();
+    VECTOR_BITSIZE = PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE;
     FLOAT_SPECIES = INT_SPECIES.withLanes(float.class);
     // compute BYTE/SHORT sizes relative to preferred integer vector size
     if (VECTOR_BITSIZE >= 256) {
@@ -76,11 +73,6 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       BYTE_SPECIES = null;
       SHORT_SPECIES = null;
     }
-    // hotspot misses some SSE intrinsics, workaround it
-    // to be fair, they do document this thing only works well with AVX2/AVX3 and Neon
-    boolean isAMD64withoutAVX2 = Constants.OS_ARCH.equals("amd64") && VECTOR_BITSIZE < 256;
-    HAS_FAST_INTEGER_VECTORS =
-        VectorizationProvider.TESTS_FORCE_INTEGER_VECTORS || (isAMD64withoutAVX2 == false);
   }
 
   // the way FMA should work! if available use it, otherwise fall back to mul/add
@@ -320,7 +312,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
       // compute vectorized dot product consistent with VPDPBUSD instruction
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound(a.byteSize());
@@ -414,7 +406,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         } else if (VECTOR_BITSIZE == 256) {
           i += ByteVector.SPECIES_128.loopBound(packed.length);
           res += dotProductBody256Int4Packed(unpacked, packed, i);
-        } else if (HAS_FAST_INTEGER_VECTORS) {
+        } else if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
           i += ByteVector.SPECIES_64.loopBound(packed.length);
           res += dotProductBody128Int4Packed(unpacked, packed, i);
         }
@@ -430,7 +422,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     } else {
       if (VECTOR_BITSIZE >= 512 || VECTOR_BITSIZE == 256) {
         return dotProduct(a, b);
-      } else if (a.length >= 32 && HAS_FAST_INTEGER_VECTORS) {
+      } else if (a.length >= 32 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
         i += ByteVector.SPECIES_128.loopBound(a.length);
         res += int4DotProductBody128(a, b, i);
       }
@@ -588,7 +580,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
       final float[] ret;
       if (VECTOR_BITSIZE >= 512) {
         i += BYTE_SPECIES.loopBound((int) a.byteSize());
@@ -711,7 +703,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // only vectorize if we'll at least enter the loop a single time, and we have at least 128-bit
     // vectors (256-bit on intel to dodge performance landmines)
-    if (a.byteSize() >= 16 && HAS_FAST_INTEGER_VECTORS) {
+    if (a.byteSize() >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
       if (VECTOR_BITSIZE >= 256) {
         i += BYTE_SPECIES.loopBound((int) a.byteSize());
         res += squareDistanceBody256(a, b, i);
@@ -770,5 +762,28 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     // reduce
     return acc1.add(acc2).reduceLanes(ADD);
+  }
+
+  // Experiments suggest that we need at least 8 lanes so that the overhead of going with the vector
+  // approach and counting trues on vector masks pays off.
+  private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = INT_SPECIES.length() >= 8;
+
+  @Override
+  public int findNextGEQ(int[] buffer, int target, int from, int to) {
+    if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
+      for (; from + INT_SPECIES.length() < to; from += INT_SPECIES.length() + 1) {
+        if (buffer[from + INT_SPECIES.length()] >= target) {
+          IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, from);
+          VectorMask<Integer> mask = vector.compare(VectorOperators.LT, target);
+          return from + mask.trueCount();
+        }
+      }
+    }
+    for (int i = from; i < to; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return to;
   }
 }

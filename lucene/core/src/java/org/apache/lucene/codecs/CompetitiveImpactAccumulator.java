@@ -18,7 +18,6 @@ package org.apache.lucene.codecs;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
@@ -39,20 +38,17 @@ public final class CompetitiveImpactAccumulator {
   /** Sole constructor. */
   public CompetitiveImpactAccumulator() {
     maxFreqs = new int[256];
-    Comparator<Impact> comparator =
-        new Comparator<Impact>() {
-          @Override
-          public int compare(Impact o1, Impact o2) {
-            // greater freqs compare greater
-            int cmp = Integer.compare(o1.freq, o2.freq);
-            if (cmp == 0) {
-              // greater norms compare lower
-              cmp = Long.compareUnsigned(o2.norm, o1.norm);
-            }
-            return cmp;
-          }
-        };
-    otherFreqNormPairs = new TreeSet<>(comparator);
+    otherFreqNormPairs =
+        new TreeSet<>(
+            (o1, o2) -> {
+              // greater freqs compare greater
+              int cmp = Integer.compare(o1.freq, o2.freq);
+              if (cmp == 0) {
+                // greater norms compare lower
+                cmp = Long.compareUnsigned(o2.norm, o1.norm);
+              }
+              return cmp;
+            });
   }
 
   /** Reset to the same state it was in after creation. */

@@ -1188,10 +1188,10 @@ public final class CheckIndex implements Closeable {
         FieldInfos fieldInfos = reader.getFieldInfos();
         if (metaData.hasBlocks()
             && fieldInfos.getParentField() == null
-            && metaData.getCreatedVersionMajor() >= Version.LUCENE_10_0_0.major) {
+            && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
           throw new IllegalStateException(
               "parent field is not set but the index has document blocks and was created with version: "
-                  + metaData.getCreatedVersionMajor());
+                  + metaData.createdVersionMajor());
         }
         final DocIdSetIterator iter;
         if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
@@ -2760,16 +2760,16 @@ public final class CheckIndex implements Closeable {
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)
       throws IOException {
-    int docCount = 0;
+    int count = 0;
     int everyNdoc = Math.max(values.size() / 64, 1);
-    while (values.nextDoc() != NO_MORE_DOCS) {
+    while (count < values.size()) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (values.docID() % everyNdoc == 0) {
+      if (values.ordToDoc(count) % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
         if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
           codecReader
               .getVectorReader()
-              .search(fieldInfo.name, values.vectorValue(), collector, null);
+              .search(fieldInfo.name, values.vectorValue(count), collector, null);
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
             throw new CheckIndexException(
@@ -2777,7 +2777,7 @@ public final class CheckIndex implements Closeable {
           }
         }
       }
-      int valueLength = values.vectorValue().length;
+      int valueLength = values.vectorValue(count).length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""
@@ -2787,19 +2787,19 @@ public final class CheckIndex implements Closeable {
                 + " not matching the field's dimension="
                 + fieldInfo.getVectorDimension());
       }
-      ++docCount;
+      ++count;
     }
-    if (docCount != values.size()) {
+    if (count != values.size()) {
       throw new CheckIndexException(
           "Field \""
               + fieldInfo.name
               + "\" has size="
               + values.size()
               + " but when iterated, returns "
-              + docCount
+              + count
               + " docs with values");
     }
-    status.totalVectorValues += docCount;
+    status.totalVectorValues += count;
   }
 
   private static void checkByteVectorValues(
@@ -2808,21 +2808,23 @@ public final class CheckIndex implements Closeable {
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)
       throws IOException {
-    int docCount = 0;
+    int count = 0;
     int everyNdoc = Math.max(values.size() / 64, 1);
     boolean supportsSearch = vectorsReaderSupportsSearch(codecReader, fieldInfo.name);
-    while (values.nextDoc() != NO_MORE_DOCS) {
+    while (count < values.size()) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (supportsSearch && values.docID() % everyNdoc == 0) {
+      if (supportsSearch && values.ordToDoc(count) % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
+        codecReader
+            .getVectorReader()
+            .search(fieldInfo.name, values.vectorValue(count), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
         }
       }
-      int valueLength = values.vectorValue().length;
+      int valueLength = values.vectorValue(count).length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""
@@ -2832,19 +2834,19 @@ public final class CheckIndex implements Closeable {
                 + " not matching the field's dimension="
                 + fieldInfo.getVectorDimension());
       }
-      ++docCount;
+      ++count;
     }
-    if (docCount != values.size()) {
+    if (count != values.size()) {
       throw new CheckIndexException(
           "Field \""
               + fieldInfo.name
               + "\" has size="
               + values.size()
               + " but when iterated, returns "
-              + docCount
+              + count
               + " docs with values");
     }
-    status.totalVectorValues += docCount;
+    status.totalVectorValues += count;
   }
 
   /**
@@ -3143,12 +3145,7 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  private static class ConstantRelationIntersectVisitor implements IntersectVisitor {
-    private final Relation relation;
-
-    ConstantRelationIntersectVisitor(Relation relation) {
-      this.relation = relation;
-    }
+  private record ConstantRelationIntersectVisitor(Relation relation) implements IntersectVisitor {
 
     @Override
     public void visit(int docID) throws IOException {
@@ -3736,7 +3733,7 @@ public final class CheckIndex implements Closeable {
 
   private static void checkDocValues(
       FieldInfo fi, DocValuesProducer dvReader, DocValuesStatus status) throws Exception {
-    if (fi.hasDocValuesSkipIndex()) {
+    if (fi.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
       status.totalSkippingIndex++;
       checkDocValueSkipper(fi, dvReader.getSkipper(fi));
     }
@@ -3815,6 +3812,9 @@ public final class CheckIndex implements Closeable {
       if (vectorsReader != null) {
         vectorsReader = vectorsReader.getMergeInstance();
         for (int j = 0; j < reader.maxDoc(); ++j) {
+          if ((j & 0x03) == 0) {
+            vectorsReader.prefetch(j);
+          }
           // Intentionally pull/visit (but don't count in
           // stats) deleted documents to make sure they too
           // are not corrupt:
@@ -3841,7 +3841,7 @@ public final class CheckIndex implements Closeable {
 
               // Make sure FieldInfo thinks this field is vector'd:
               final FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
-              if (fieldInfo.hasVectors() == false) {
+              if (fieldInfo.hasTermVectors() == false) {
                 throw new CheckIndexException(
                     "docID="
                         + j
@@ -4284,21 +4284,8 @@ public final class CheckIndex implements Closeable {
         int level = Integer.parseInt(args[i]);
         Level.checkIfLevelInBounds(level);
         opts.level = level;
-      } else if ("-fast".equals(arg)) {
-        // Deprecated. Remove in Lucene 11.
-        System.err.println(
-            "-fast is deprecated, use '-level 1' for explicitly verifying file checksums only. This is also now the default "
-                + "behaviour!");
-      } else if ("-slow".equals(arg)) {
-        // Deprecated. Remove in Lucene 11.
-        System.err.println("-slow is deprecated, use '-level 3' instead for slow checks");
-        opts.level = Level.MIN_LEVEL_FOR_SLOW_CHECKS;
       } else if ("-exorcise".equals(arg)) {
         opts.doExorcise = true;
-      } else if ("-crossCheckTermVectors".equals(arg)) {
-        // Deprecated. Remove in Lucene 11.
-        System.err.println("-crossCheckTermVectors is deprecated, use '-level 3' instead");
-        opts.level = Level.MAX_VALUE;
       } else if (arg.equals("-verbose")) {
         opts.verbose = true;
       } else if (arg.equals("-segment")) {

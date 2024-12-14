@@ -801,7 +801,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
                     new IndexSearcher(reader)
                         .search(new TermQuery(new Term("id", "1")), 10)
                         .totalHits
-                        .value);
+                        .value());
               }
             } else {
               if (random().nextBoolean()) {
@@ -815,7 +815,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
                     new IndexSearcher(open)
                         .search(new TermQuery(new Term("id", "1")), 10)
                         .totalHits
-                        .value);
+                        .value());
               }
             }
             numFullFlushes.decrementAndGet();

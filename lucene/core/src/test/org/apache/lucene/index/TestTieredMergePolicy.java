@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -39,6 +40,8 @@ import org.apache.lucene.util.Version;
 
 public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
+  private record DocCountAndSizeInBytes(int docCount, long sizeInBytes) {}
+
   @Override
   public TieredMergePolicy mergePolicy() {
     return newTieredMergePolicy();
@@ -54,7 +57,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     int totalDelCount = 0;
     int totalMaxDoc = 0;
     long totalBytes = 0;
-    List<Long> segmentSizes = new ArrayList<>();
+    List<DocCountAndSizeInBytes> segmentSizes = new ArrayList<>();
     for (SegmentCommitInfo sci : infos) {
       totalDelCount += sci.getDelCount();
       totalMaxDoc += sci.info.maxDoc();
@@ -62,10 +65,11 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       double liveRatio = 1 - (double) sci.getDelCount() / sci.info.maxDoc();
       long weightedByteSize = (long) (liveRatio * byteSize);
       totalBytes += weightedByteSize;
-      segmentSizes.add(weightedByteSize);
+      segmentSizes.add(
+          new DocCountAndSizeInBytes(sci.info.maxDoc() - sci.getDelCount(), weightedByteSize));
       minSegmentBytes = Math.min(minSegmentBytes, weightedByteSize);
     }
-    Collections.sort(segmentSizes);
+    Collections.sort(segmentSizes, Comparator.comparingLong(DocCountAndSizeInBytes::sizeInBytes));
 
     final double delPercentage = 100.0 * totalDelCount / totalMaxDoc;
     assertTrue(
@@ -78,7 +82,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     long levelSizeBytes = Math.max(minSegmentBytes, (long) (tmp.getFloorSegmentMB() * 1024 * 1024));
     long bytesLeft = totalBytes;
     double allowedSegCount = 0;
-    List<Long> biggestSegments = segmentSizes;
+    List<DocCountAndSizeInBytes> biggestSegments = segmentSizes;
     if (biggestSegments.size() > tmp.getTargetSearchConcurrency() - 1) {
       biggestSegments =
           biggestSegments.subList(
@@ -86,9 +90,16 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
               biggestSegments.size());
     }
     // Allow whole segments for the targetSearchConcurrency-1 biggest segments
-    for (long size : biggestSegments) {
-      bytesLeft -= size;
+    for (DocCountAndSizeInBytes size : biggestSegments) {
+      bytesLeft -= size.sizeInBytes();
       allowedSegCount++;
+    }
+
+    int tooBigCount = 0;
+    for (DocCountAndSizeInBytes size : segmentSizes) {
+      if (size.sizeInBytes() >= maxMergedSegmentBytes / 2) {
+        tooBigCount++;
+      }
     }
 
     // below we make the assumption that segments that reached the max segment
@@ -105,38 +116,30 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       bytesLeft -= tmp.getSegmentsPerTier() * levelSizeBytes;
       levelSizeBytes = Math.min(levelSizeBytes * mergeFactor, maxMergedSegmentBytes / 2);
     }
-    allowedSegCount = Math.max(allowedSegCount, tmp.getSegmentsPerTier());
+    // Allow at least a full tier in addition of the too big segments.
+    allowedSegCount = Math.max(allowedSegCount, tooBigCount + tmp.getSegmentsPerTier());
+    // Allow at least `targetSearchConcurrency` segments.
+    allowedSegCount = Math.max(allowedSegCount, tmp.getTargetSearchConcurrency());
 
-    // It's ok to be over the allowed segment count if none of the most balanced merges are balanced
-    // enough
-    boolean hasBalancedMerges = false;
-    for (int i = 0; i < segmentSizes.size() - mergeFactor; ++i) {
-      long maxMergeSegmentSize = segmentSizes.get(i + mergeFactor - 1);
-      if (maxMergeSegmentSize >= maxMergedSegmentBytes / 2) {
-        break;
-      }
-      long totalMergeSize = 0;
-      for (int j = 0; j < i + mergeFactor; ++j) {
-        totalMergeSize += segmentSizes.get(j);
-      }
-      if (maxMergedSegmentBytes * 1.5 <= totalMergeSize) {
-        hasBalancedMerges = true;
+    // It's ok to be over the allowed segment count if none of the merges are legal, because they
+    // are either not balanced or because they exceed the max merged segment doc count.
+    // We only check pairwise merges instead of every possible merge to keep things simple. If none
+    // of the pairwise merges are legal, chances are high that no merge is legal.
+    int maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc(), totalDelCount);
+    boolean hasLegalMerges = false;
+    for (int i = 0; i < segmentSizes.size() - 1; ++i) {
+      DocCountAndSizeInBytes size1 = segmentSizes.get(i);
+      DocCountAndSizeInBytes size2 = segmentSizes.get(i + 1);
+      long mergedSegmentSizeInBytes = size1.sizeInBytes() + size2.sizeInBytes();
+      int mergedSegmentDocCount = size1.docCount() + size2.docCount();
+
+      if (mergedSegmentSizeInBytes <= maxMergedSegmentBytes
+          && size2.sizeInBytes() * 1.5 <= mergedSegmentSizeInBytes
+          && mergedSegmentDocCount <= maxDocsPerSegment) {
+        hasLegalMerges = true;
         break;
       }
     }
-
-    // There can be more segments if we can't merge docs because they are balanced between segments.
-    // At least the
-    //  2 smallest segments should be mergeable.
-    // should be 2 segments to merge
-    int maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc(), totalDelCount);
-    List<Integer> segmentDocs =
-        infos.asList().stream()
-            .map(info -> info.info.maxDoc() - info.getDelCount())
-            .sorted()
-            .toList();
-    boolean eligibleDocsMerge =
-        segmentDocs.size() >= 2 && segmentDocs.get(0) + segmentDocs.get(1) < maxDocsPerSegment;
 
     int numSegments = infos.asList().size();
     assertTrue(
@@ -154,7 +157,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
             delPercentage,
             tmp.getDeletesPctAllowed(),
             tmp.getTargetSearchConcurrency()),
-        numSegments <= allowedSegCount || hasBalancedMerges == false || eligibleDocsMerge == false);
+        numSegments <= allowedSegCount || hasLegalMerges == false);
   }
 
   @Override

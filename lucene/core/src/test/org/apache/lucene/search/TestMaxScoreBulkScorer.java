@@ -38,23 +38,6 @@ import org.apache.lucene.util.Bits;
 // These basic tests are similar to some of the tests in TestWANDScorer, and may not need to be kept
 public class TestMaxScoreBulkScorer extends LuceneTestCase {
 
-  private static class CapMaxScoreWindowAt2048Scorer extends FilterScorer {
-
-    public CapMaxScoreWindowAt2048Scorer(Scorer in) {
-      super(in);
-    }
-
-    @Override
-    public int advanceShallow(int target) throws IOException {
-      return Math.min(target | 0x7FF, in.advanceShallow(target));
-    }
-
-    @Override
-    public float getMaxScore(int upTo) throws IOException {
-      return in.getMaxScore(upTo);
-    }
-  }
-
   private void writeDocuments(Directory dir) throws IOException {
     try (IndexWriter w =
         new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
@@ -96,12 +79,10 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             searcher
                 .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer1 = new CapMaxScoreWindowAt2048Scorer(scorer1);
         Scorer scorer2 =
             searcher
                 .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer2 = new CapMaxScoreWindowAt2048Scorer(scorer2);
 
         BulkScorer scorer =
             new MaxScoreBulkScorer(context.reader().maxDoc(), Arrays.asList(scorer1, scorer2));
@@ -146,7 +127,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -166,12 +149,10 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             searcher
                 .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer1 = new CapMaxScoreWindowAt2048Scorer(scorer1);
         Scorer scorer2 =
             searcher
                 .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer2 = new CapMaxScoreWindowAt2048Scorer(scorer2);
 
         BulkScorer scorer =
             new MaxScoreBulkScorer(context.reader().maxDoc(), Arrays.asList(scorer1, scorer2));
@@ -211,7 +192,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -233,17 +216,14 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             searcher
                 .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer1 = new CapMaxScoreWindowAt2048Scorer(scorer1);
         Scorer scorer2 =
             searcher
                 .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer2 = new CapMaxScoreWindowAt2048Scorer(scorer2);
         Scorer scorer3 =
             searcher
                 .createWeight(searcher.rewrite(clause3), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer3 = new CapMaxScoreWindowAt2048Scorer(scorer3);
 
         BulkScorer scorer =
             new MaxScoreBulkScorer(
@@ -289,7 +269,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -311,17 +293,14 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             searcher
                 .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer1 = new CapMaxScoreWindowAt2048Scorer(scorer1);
         Scorer scorer2 =
             searcher
                 .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer2 = new CapMaxScoreWindowAt2048Scorer(scorer2);
         Scorer scorer3 =
             searcher
                 .createWeight(searcher.rewrite(clause3), ScoreMode.TOP_SCORES, 1f)
                 .scorer(context);
-        scorer3 = new CapMaxScoreWindowAt2048Scorer(scorer3);
 
         BulkScorer scorer =
             new MaxScoreBulkScorer(
@@ -367,7 +346,9 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
                 }
               }
             },
-            null);
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
       }
     }
   }
@@ -503,7 +484,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
               assertEquals(1, i);
             }
           };
-      scorer.score(collector, liveDocs);
+      scorer.score(collector, liveDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
       collector.finish();
     }
 

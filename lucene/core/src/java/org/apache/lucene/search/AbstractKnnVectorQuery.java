@@ -60,9 +60,8 @@ abstract class AbstractKnnVectorQuery extends Query {
 
   /** the number of documents to find */
   protected final int k;
-
   /** the filter to be executed. when the filter is applied is up to the underlying knn index */
-  private final Query filter;
+  protected final Query filter;
 
   public AbstractKnnVectorQuery(String field, int k, Query filter) {
     this.field = Objects.requireNonNull(field, "field");
@@ -146,7 +145,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     // Perform the approximate kNN search
     // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, timeLimitingKnnCollectorManager);
-    if (results.totalHits.relation == TotalHits.Relation.EQUAL_TO
+    if (results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
         // Return partial results only when timeout is met
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;

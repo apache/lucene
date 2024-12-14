@@ -234,10 +234,10 @@ public class TestSearchAfter extends LuceneTestCase {
       allManager = new TopScoreDocCollectorManager(maxDoc, null, Integer.MAX_VALUE);
       doScores = false;
     } else if (sort == Sort.RELEVANCE) {
-      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE, true);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE);
       doScores = true;
     } else {
-      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE, true);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE);
       doScores = random().nextBoolean();
     }
     all = searcher.search(query, allManager);
@@ -246,7 +246,7 @@ public class TestSearchAfter extends LuceneTestCase {
     }
 
     if (VERBOSE) {
-      System.out.println("  all.totalHits.value=" + all.totalHits.value);
+      System.out.println("  all.totalHits.value()=" + all.totalHits.value());
       int upto = 0;
       StoredFields storedFields = searcher.storedFields();
       for (ScoreDoc scoreDoc : all.scoreDocs) {
@@ -261,22 +261,20 @@ public class TestSearchAfter extends LuceneTestCase {
     }
     int pageStart = 0;
     ScoreDoc lastBottom = null;
-    while (pageStart < all.totalHits.value) {
+    while (pageStart < all.totalHits.value()) {
       TopDocs paged;
       final CollectorManager<?, ? extends TopDocs> pagedManager;
       if (sort == null) {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
-        pagedManager =
-            new TopScoreDocCollectorManager(pageSize, lastBottom, Integer.MAX_VALUE, true);
+        pagedManager = new TopScoreDocCollectorManager(pageSize, lastBottom, Integer.MAX_VALUE);
       } else {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
         pagedManager =
-            new TopFieldCollectorManager(
-                sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE, true);
+            new TopFieldCollectorManager(sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
       }
       paged = searcher.search(query, pagedManager);
       if (doScores) {
@@ -298,7 +296,7 @@ public class TestSearchAfter extends LuceneTestCase {
   }
 
   void assertPage(int pageStart, TopDocs all, TopDocs paged) throws IOException {
-    assertEquals(all.totalHits.value, paged.totalHits.value);
+    assertEquals(all.totalHits.value(), paged.totalHits.value());
     StoredFields storedFields = searcher.storedFields();
     for (int i = 0; i < paged.scoreDocs.length; i++) {
       ScoreDoc sd1 = all.scoreDocs[pageStart + i];
