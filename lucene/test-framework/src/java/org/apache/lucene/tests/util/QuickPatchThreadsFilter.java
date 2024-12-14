@@ -17,9 +17,8 @@
 package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.ThreadFilter;
-import org.apache.lucene.util.Constants;
-
 import java.util.concurrent.ForkJoinWorkerThread;
+import org.apache.lucene.util.Constants;
 
 /** Last minute patches. */
 public class QuickPatchThreadsFilter implements ThreadFilter {
