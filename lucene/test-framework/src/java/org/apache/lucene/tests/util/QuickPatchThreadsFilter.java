@@ -19,6 +19,8 @@ package org.apache.lucene.tests.util;
 import com.carrotsearch.randomizedtesting.ThreadFilter;
 import org.apache.lucene.util.Constants;
 
+import java.util.concurrent.ForkJoinWorkerThread;
+
 /** Last minute patches. */
 public class QuickPatchThreadsFilter implements ThreadFilter {
   static final boolean isJ9;
@@ -42,6 +44,15 @@ public class QuickPatchThreadsFilter implements ThreadFilter {
         return true;
       }
     }
+
+    if (t instanceof ForkJoinWorkerThread
+        && t.getName().startsWith("ForkJoinPool.commonPool-worker")
+        && t.isDaemon()) {
+      // GH-14066: filter out common pool's worker threads. Assume they have completed
+      // all background tasks and are idle.
+      return true;
+    }
+
     return false;
   }
 }
