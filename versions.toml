@@ -8,18 +8,18 @@ ecj = "3.36.0"
 errorprone = "2.18.0"
 flexmark = "0.61.24"
 # @keep This is GJF version for spotless/ tidy.
-googleJavaFormat = "1.18.1"
-groovy = "3.0.21"
+googleJavaFormat = "1.23.0"
+groovy = "4.0.22"
 hamcrest = "2.2"
 icu4j = "74.2"
 javacc = "7.0.12"
 jflex = "1.8.2"
-jgit = "5.13.1.202206130422-r"
+jgit = "6.10.0.202406032230-r"
 jmh = "1.37"
 jts = "1.17.0"
 junit = "4.13.1"
 # @keep Minimum gradle version to run the build
-minGradle = "8.8"
+minGradle = "8.10"
 # @keep This is the minimum required Java version.
 minJava = "21"
 morfologik = "2.1.9"
@@ -49,7 +49,7 @@ flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbrev
 flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attributes", version.ref = "flexmark" }
 flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
-groovy = { module = "org.codehaus.groovy:groovy-all", version.ref = "groovy" }
+groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
@@ -76,10 +76,10 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 benmanes-versions = "com.github.ben-manes.versions:0.51.0"
 dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.0.9"
 errorprone = "net.ltgt.errorprone:3.1.0"
-forbiddenapis = "de.thetaphi.forbiddenapis:3.7"
+forbiddenapis = "de.thetaphi.forbiddenapis:3.8"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
 owasp-dependencycheck = "org.owasp.dependencycheck:7.2.0"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:6.5.2"
+spotless = "com.diffplug.spotless:6.9.1"
 undercouch-download = "de.undercouch.download:5.2.0"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:0.8.4"

@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
@@ -43,27 +42,24 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
-import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
 
   private static Codec getCodec(int bits, boolean compress) {
-    return new Lucene99Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene99HnswScalarQuantizedVectorsFormat(
+    return TestUtil.alwaysKnnVectorsFormat(
+        new Lucene99HnswScalarQuantizedVectorsFormat(
             Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
             Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
             1,
             bits,
             compress,
             0f,
-            null);
-      }
-    };
+            null));
   }
 
   public void testNonZeroScores() throws IOException {
@@ -99,8 +95,8 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
         Lucene99ScalarQuantizedVectorScorer scorer =
             new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer());
-        RandomAccessQuantizedByteVectorValues values =
-            new RandomAccessQuantizedByteVectorValues() {
+        QuantizedByteVectorValues values =
+            new QuantizedByteVectorValues() {
               @Override
               public int dimension() {
                 return 32;
@@ -127,7 +123,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
               }
 
               @Override
-              public RandomAccessQuantizedByteVectorValues copy() throws IOException {
+              public QuantizedByteVectorValues copy() throws IOException {
                 return this;
               }
 
@@ -164,7 +160,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
   }
 
   public void testScoringInt7() throws Exception {
-    vectorScoringTest(7, random().nextBoolean());
+    vectorScoringTest(7, false);
   }
 
   private void vectorScoringTest(int bits, boolean compress) throws IOException {

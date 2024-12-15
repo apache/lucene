@@ -19,6 +19,19 @@
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
+### DataInput#readVLong() may now read negative vlongs
+
+LUCENE-10376 started allowing `DataInput#readVLong()` to read negative vlongs.
+In particular, this feature is used by the `DataInput#readZLong()` method. A
+practical implication is that `DataInput#readVLong()` may now read up to 10
+bytes, while it would never read more than 9 bytes in Lucene 9.x.
+
+### Changes to DataInput.readGroupVInt and readGroupVInts methods 
+
+As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInput.readGroupVInts 
+to be public and not-final, allowing subclasses to override it. This change also removes the protected
+DataInput.readGroupVInt method: subclasses should delegate or reimplement it entirely.
+
 ### OpenNLP dependency upgrade
 
 [Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using.
@@ -80,8 +93,21 @@ behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by us
 ### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
 
 These classes no longer take a `determinizeWorkLimit` and no longer determinize
-behind the scenes. It is the responsibility of the caller to to call
+behind the scenes. It is the responsibility of the caller to call
 `Operations.determinize()` for DFA execution.
+
+### RegExp optional complement syntax has been deprecated
+
+Support for the optional complement syntax (`~`) has been deprecated.
+The `COMPLEMENT` syntax flag has been removed and replaced by the
+`DEPRECATED_COMPLEMENT` flag. Users wanting to enable the deprecated
+complement support can do so by explicitly passing a syntax flags that
+has `DEPRECATED_COMPLEMENT` when creating a `RegExp`. For example:
+`new RegExp("~(foo)", RegExp.DEPRECATED_COMPLEMENT)`.
+
+Alternatively, and quite commonly, a more simple _complement bracket expression_,
+`[^...]`, may be a suitable replacement, For example, `[^fo]` matches any
+character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
@@ -180,6 +206,9 @@ access the members using method calls instead of field accesses. Affected classe
 
 - `IOContext`, `MergeInfo`, and `FlushInfo` (GITHUB#13205)
 - `BooleanClause` (GITHUB#13261)
+- `TotalHits` (GITHUB#13762)
+- `TermAndVector` (GITHUB#13772)
+- Many basic Lucene classes, including `CollectionStatistics`, `TermStatistics` and `LeafMetadata` (GITHUB#13328)
 
 ### Boolean flags on IOContext replaced with a new ReadAdvice enum.
 
@@ -247,6 +276,11 @@ List<Object> results = searcher.search(query, new CustomCollectorManager());
 ConcurrentMergeScheduler now disables auto I/O throttling by default. There is still some throttling
 happening at the CPU level, since ConcurrentMergeScheduler has a maximum number of threads it can
 use, which is only a fraction of the total number of threads of the host by default.
+
+### FieldInfos#hasVectors and FieldInfo#hasVectors renamed to hasTermVectors
+
+To reduce confusion between term vectors and numeric vectors, `hasVectors` has been renamed to
+`hasTermVectors`.
 
 ## Migration from Lucene 9.0 to Lucene 9.1
 
@@ -793,3 +827,81 @@ Specifically, the method `FunctionValues#getScorer(Weight weight, LeafReaderCont
 Callers must now keep track of the Weight instance that created the Scorer if they need it, instead of relying on 
 Scorer.
 
+### `FacetsCollector#search` utility methods moved and updated
+
+The static `search` methods exposed by `FacetsCollector` have been moved to `FacetsCollectorManager`. 
+Furthermore, they take a `FacetsCollectorManager` last argument in place of a `Collector` so that they support 
+intra query concurrency. The return type has also be updated to `FacetsCollectorManager.FacetsResult` which includes 
+both `TopDocs` as well as facets results included in a reduced `FacetsCollector` instance.
+
+### `SearchWithCollectorTask` no longer supports the `collector.class` config parameter 
+
+`collector.class` used to allow users to load a custom collector implementation. `collector.manager.class`
+replaces it by allowing users to load a custom collector manager instead.
+
+### BulkScorer#score(LeafCollector collector, Bits acceptDocs) removed
+
+Use `BulkScorer#score(LeafCollector collector, Bits acceptDocs, int min, int max)` instead. In order to score the 
+entire leaf, provide `0` as min and `DocIdSetIterator.NO_MORE_DOCS` as max. `BulkScorer` subclasses that override 
+such method need to instead override the method variant that takes the range of doc ids as well as arguments.
+
+### CollectorManager#newCollector and Collector#getLeafCollector contract
+
+With the introduction of intra-segment query concurrency support, multiple `LeafCollector`s may be requested for the 
+same `LeafReaderContext` via `Collector#getLeafCollector(LeafReaderContext)` across the different `Collector` instances 
+returned by multiple `CollectorManager#newCollector` calls. Any logic or computation that needs to happen
+once per segment requires specific handling in the collector manager implementation. See `TotalHitCountCollectorManager` 
+as an example. Individual collectors don't need to be adapted as a specific `Collector` instance will still see a given 
+`LeafReaderContext` once, given that it is not possible to add more than one partition of the same segment to the same 
+leaf slice.
+
+### Weight#scorer, Weight#bulkScorer and Weight#scorerSupplier contract
+
+With the introduction of intra-segment query concurrency support, multiple `Scorer`s, `ScorerSupplier`s or `BulkScorer`s 
+may be requested for the same `LeafReaderContext` instance as part of a single search call. That may happen concurrently 
+from separate threads each searching a specific doc id range of the segment. `Weight` implementations that rely on the 
+assumption that a scorer, bulk scorer or scorer supplier for a given `LeafReaderContext` is requested once per search 
+need updating.
+
+### Signature of IndexSearcher#searchLeaf changed
+
+With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)` 
+method now accepts two additional int arguments to identify the min/max range of doc ids that will be searched in this 
+leaf partition`: IndexSearcher#searchLeaf(LeafReaderContext ctx, int minDocId, int maxDocId, Weight weight, Collector collector)`.
+Subclasses of `IndexSearcher` that call or override the `searchLeaf` method need to be updated accordingly.
+
+### Signature of static IndexSearch#slices method changed
+
+The static `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)` 
+method now supports an additional 4th and last argument to optionally enable creating segment partitions:
+`IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice, boolean allowSegmentPartitions)`
+
+### TotalHitCountCollectorManager constructor
+
+`TotalHitCountCollectorManager` now requires that an array of `LeafSlice`s, retrieved via `IndexSearcher#getSlices`, 
+is provided to its constructor. Depending on whether segment partitions are present among slices, the manager can 
+optimize the type of collectors it creates and exposes via `newCollector`.
+
+### `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` removed
+
+The protected `IndexSearcher#search(List<LeafReaderContext> leaves, Weight weight, Collector collector)` method has been 
+removed in favour of the newly introduced `search(LeafReaderContextPartition[] partitions, Weight weight, Collector collector)`.
+`IndexSearcher` subclasses that override this method need to instead override the new method.
+
+### Indexing vectors with 8 bit scalar quantization is no longer supported but 7 and 4 bit quantization still work (GITHUB#13519)
+
+8 bit scalar vector quantization is no longer supported: it was buggy
+starting in 9.11 (GITHUB#13197).  4 and 7 bit quantization are still
+supported.  Existing (9.11) Lucene indices that previously used 8 bit
+quantization can still be read/searched but the results from
+`KNN*VectorQuery` are silently buggy.  Further 8 bit quantized vector
+indexing into such (9.11) indices is not permitted, so your path
+forward if you wish to continue using the same 9.11 index is to index
+additional vectors into the same field with either 4 or 7 bit
+quantization (or no quantization), and ensure all older (9.x written)
+segments are rewritten either via `IndexWriter.forceMerge` or
+`IndexWriter.addIndexes(CodecReader...)`, or reindexing entirely.
+
+### Vector values APIs switched to primarily random-access
+
+`{Byte/Float}VectorValues` no longer inherit from `DocIdSetIterator`. Rather they extend a common class, `KnnVectorValues`, that provides a random access API (previously provided by `RandomAccessVectorValues`, now removed), and an `iterator()` method for retrieving `DocIndexIterator`: an iterator which is a DISI that also provides an `index()` method. Therefore, any iteration over vector values must now be performed using the values' `iterator()`. Random access works as before, but does not require casting to `RandomAccessVectorValues`.

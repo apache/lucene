@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1254,8 +1255,7 @@ public class IndexWriter
       return reader.read(si.info.dir, si.info, segmentSuffix, IOContext.READONCE);
     } else if (si.info.getUseCompoundFile()) {
       // cfs
-      try (Directory cfs =
-          codec.compoundFormat().getCompoundReader(si.info.dir, si.info, IOContext.DEFAULT)) {
+      try (Directory cfs = codec.compoundFormat().getCompoundReader(si.info.dir, si.info)) {
         return reader.read(cfs, si.info, "", IOContext.READONCE);
       }
     } else {
@@ -3118,22 +3118,22 @@ public class IndexWriter
 
   private void validateMergeReader(CodecReader leaf) {
     LeafMetaData segmentMeta = leaf.getMetaData();
-    if (segmentInfos.getIndexCreatedVersionMajor() != segmentMeta.getCreatedVersionMajor()) {
+    if (segmentInfos.getIndexCreatedVersionMajor() != segmentMeta.createdVersionMajor()) {
       throw new IllegalArgumentException(
           "Cannot merge a segment that has been created with major version "
-              + segmentMeta.getCreatedVersionMajor()
+              + segmentMeta.createdVersionMajor()
               + " into this index which has been created by major version "
               + segmentInfos.getIndexCreatedVersionMajor());
     }
 
-    if (segmentInfos.getIndexCreatedVersionMajor() >= 7 && segmentMeta.getMinVersion() == null) {
+    if (segmentInfos.getIndexCreatedVersionMajor() >= 7 && segmentMeta.minVersion() == null) {
       throw new IllegalStateException(
           "Indexes created on or after Lucene 7 must record the created version major, but "
               + leaf
               + " hides it");
     }
 
-    Sort leafIndexSort = segmentMeta.getSort();
+    Sort leafIndexSort = segmentMeta.sort();
     if (config.getIndexSort() != null
         && (leafIndexSort == null
             || isCongruentSort(config.getIndexSort(), leafIndexSort) == false)) {
@@ -3434,9 +3434,11 @@ public class IndexWriter
                 .map(FieldInfos::getParentField)
                 .anyMatch(Objects::isNull);
 
+    final Executor intraMergeExecutor = mergeScheduler.getIntraMergeExecutor(merge);
+
     if (hasIndexSort == false && hasBlocksButNoParentField == false && readers.isEmpty() == false) {
       CodecReader mergedReader = SlowCompositeCodecReaderWrapper.wrap(readers);
-      DocMap docMap = merge.reorder(mergedReader, directory);
+      DocMap docMap = merge.reorder(mergedReader, directory, intraMergeExecutor);
       if (docMap != null) {
         readers = Collections.singletonList(SortingCodecReader.wrap(mergedReader, docMap, null));
       }
@@ -3450,7 +3452,7 @@ public class IndexWriter
             trackingDir,
             globalFieldNumberMap,
             context,
-            mergeScheduler.getIntraMergeExecutor(merge));
+            intraMergeExecutor);
 
     if (!merger.shouldMerge()) {
       return;
@@ -3928,9 +3930,9 @@ public class IndexWriter
                       }
 
                       @Override
-                      public Sorter.DocMap reorder(CodecReader reader, Directory dir)
-                          throws IOException {
-                        return toWrap.reorder(reader, dir); // must delegate
+                      public Sorter.DocMap reorder(
+                          CodecReader reader, Directory dir, Executor executor) throws IOException {
+                        return toWrap.reorder(reader, dir, executor); // must delegate
                       }
 
                       @Override
@@ -5205,6 +5207,8 @@ public class IndexWriter
         mergeReaders.add(wrappedReader);
       }
 
+      final Executor intraMergeExecutor = mergeScheduler.getIntraMergeExecutor(merge);
+
       MergeState.DocMap[] reorderDocMaps = null;
       // Don't reorder if an explicit sort is configured.
       final boolean hasIndexSort = config.getIndexSort() != null;
@@ -5219,7 +5223,7 @@ public class IndexWriter
       if (hasIndexSort == false && hasBlocksButNoParentField == false) {
         // Create a merged view of the input segments. This effectively does the merge.
         CodecReader mergedView = SlowCompositeCodecReaderWrapper.wrap(mergeReaders);
-        Sorter.DocMap docMap = merge.reorder(mergedView, directory);
+        Sorter.DocMap docMap = merge.reorder(mergedView, directory, intraMergeExecutor);
         if (docMap != null) {
           reorderDocMaps = new MergeState.DocMap[mergeReaders.size()];
           int docBase = 0;
@@ -5249,7 +5253,7 @@ public class IndexWriter
               dirWrapper,
               globalFieldNumberMap,
               context,
-              mergeScheduler.getIntraMergeExecutor(merge));
+              intraMergeExecutor);
       merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
       merge.checkAborted();
 
@@ -5306,7 +5310,7 @@ public class IndexWriter
               ("merge codec=" + codec)
                   + (" maxDoc=" + merge.info.info.maxDoc())
                   + ("; merged segment has "
-                      + (mergeState.mergeFieldInfos.hasVectors() ? "vectors" : "no vectors"))
+                      + (mergeState.mergeFieldInfos.hasTermVectors() ? "vectors" : "no vectors"))
                   + ("; " + (mergeState.mergeFieldInfos.hasNorms() ? "norms" : "no norms"))
                   + ("; "
                       + (mergeState.mergeFieldInfos.hasDocValues() ? "docValues" : "no docValues"))
@@ -6396,16 +6400,16 @@ public class IndexWriter
         deleter.decRef(delFiles);
       }
 
-      if (result.anyDeletes) {
+      if (result.anyDeletes()) {
         maybeMerge.set(true);
         checkpoint();
       }
 
-      if (result.allDeleted != null) {
+      if (result.allDeleted() != null) {
         if (infoStream.isEnabled("IW")) {
-          infoStream.message("IW", "drop 100% deleted segments: " + segString(result.allDeleted));
+          infoStream.message("IW", "drop 100% deleted segments: " + segString(result.allDeleted()));
         }
-        for (SegmentCommitInfo info : result.allDeleted) {
+        for (SegmentCommitInfo info : result.allDeleted()) {
           dropDeletedSegment(info);
         }
         checkpoint();
@@ -6532,12 +6536,7 @@ public class IndexWriter
     }
   }
 
-  private static class IndexWriterMergeSource implements MergeScheduler.MergeSource {
-    private final IndexWriter writer;
-
-    private IndexWriterMergeSource(IndexWriter writer) {
-      this.writer = writer;
-    }
+  private record IndexWriterMergeSource(IndexWriter writer) implements MergeScheduler.MergeSource {
 
     @Override
     public MergePolicy.OneMerge getNextMerge() {

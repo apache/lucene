@@ -98,8 +98,8 @@ public class FSTCompiler<T> {
   // it will throw exceptions if attempt to call getReverseBytesReader() or writeTo(DataOutput)
   private static final FSTReader NULL_FST_READER = new NullFSTReader();
 
-  private final NodeHash<T> dedupHash;
-  // a temporary FST used during building for NodeHash cache
+  private final FSTSuffixNodeCache<T> suffixDedupCache;
+  // a temporary FST used during building for FSTSuffixNodeCache cache
   final FST<T> fst;
   private final T NO_OUTPUT;
 
@@ -178,9 +178,9 @@ public class FSTCompiler<T> {
     if (suffixRAMLimitMB < 0) {
       throw new IllegalArgumentException("ramLimitMB must be >= 0; got: " + suffixRAMLimitMB);
     } else if (suffixRAMLimitMB > 0) {
-      dedupHash = new NodeHash<>(this, suffixRAMLimitMB);
+      suffixDedupCache = new FSTSuffixNodeCache<>(this, suffixRAMLimitMB);
     } else {
-      dedupHash = null;
+      suffixDedupCache = null;
     }
     NO_OUTPUT = outputs.getNoOutput();
 
@@ -379,12 +379,12 @@ public class FSTCompiler<T> {
   private CompiledNode compileNode(UnCompiledNode<T> nodeIn) throws IOException {
     final long node;
     long bytesPosStart = numBytesWritten;
-    if (dedupHash != null) {
+    if (suffixDedupCache != null) {
       if (nodeIn.numArcs == 0) {
         node = addNode(nodeIn);
         lastFrozenNode = node;
       } else {
-        node = dedupHash.add(nodeIn);
+        node = suffixDedupCache.add(nodeIn);
       }
     } else {
       node = addNode(nodeIn);
@@ -817,7 +817,8 @@ public class FSTCompiler<T> {
     for (int idx = lastInput.length(); idx >= downTo; idx--) {
 
       final UnCompiledNode<T> node = frontier[idx];
-      final UnCompiledNode<T> parent = frontier[idx - 1];
+      final int prevIdx = idx - 1;
+      final UnCompiledNode<T> parent = frontier[prevIdx];
 
       final T nextFinalOutput = node.output;
 
@@ -833,7 +834,7 @@ public class FSTCompiler<T> {
       // this node makes it and we now compile it.  first,
       // compile any targets that were previously
       // undecided:
-      parent.replaceLast(lastInput.intAt(idx - 1), compileNode(node), nextFinalOutput, isFinal);
+      parent.replaceLast(lastInput.intAt(prevIdx), compileNode(node), nextFinalOutput, isFinal);
     }
   }
 
@@ -871,10 +872,7 @@ public class FSTCompiler<T> {
     int pos1 = 0;
     int pos2 = input.offset;
     final int pos1Stop = Math.min(lastInput.length(), input.length);
-    while (true) {
-      if (pos1 >= pos1Stop || lastInput.intAt(pos1) != input.ints[pos2]) {
-        break;
-      }
+    while (pos1 < pos1Stop && lastInput.intAt(pos1) == input.ints[pos2]) {
       pos1++;
       pos2++;
     }

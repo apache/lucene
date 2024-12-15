@@ -154,7 +154,9 @@ public class TestIndexSorting extends LuceneTestCase {
     Sort indexSort = new Sort(sortField, new SortField("id", SortField.Type.INT));
     iwc.setIndexSort(indexSort);
     LogMergePolicy policy = newLogMergePolicy();
-    // make sure that merge factor is always > 2
+    // make sure that merge factor is always > 2 and target search concurrency is no more than 1 to
+    // avoid creating merges that are accidentally sorted
+    policy.setTargetSearchConcurrency(1);
     if (policy.getMergeFactor() <= 2) {
       policy.setMergeFactor(3);
     }
@@ -1778,9 +1780,9 @@ public class TestIndexSorting extends LuceneTestCase {
       TermQuery termQuery = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(termQuery, 1);
       if (deleted.get(i)) {
-        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.totalHits.value());
       } else {
-        assertEquals(1, topDocs.totalHits.value);
+        assertEquals(1, topDocs.totalHits.value());
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
@@ -1830,9 +1832,9 @@ public class TestIndexSorting extends LuceneTestCase {
       TermQuery termQuery = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(termQuery, 1);
       if (deleted.get(i)) {
-        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.totalHits.value());
       } else {
-        assertEquals(1, topDocs.totalHits.value);
+        assertEquals(1, topDocs.totalHits.value());
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
@@ -1935,9 +1937,9 @@ public class TestIndexSorting extends LuceneTestCase {
       final TopDocs topDocs =
           searcher.search(new TermQuery(new Term("id", Integer.toString(i))), 1);
       if (values.containsKey(i) == false) {
-        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.totalHits.value());
       } else {
-        assertEquals(1, topDocs.totalHits.value);
+        assertEquals(1, topDocs.totalHits.value());
         NumericDocValues dvs = MultiDocValues.getNumericValues(reader, "foo");
         int docID = topDocs.scoreDocs[0].doc;
         assertEquals(docID, dvs.advance(docID));
@@ -2072,7 +2074,7 @@ public class TestIndexSorting extends LuceneTestCase {
     for (int i = 0; i < numDocs; ++i) {
       final TopDocs topDocs =
           searcher.search(new TermQuery(new Term("id", Integer.toString(i))), 1);
-      assertEquals(1, topDocs.totalHits.value);
+      assertEquals(1, topDocs.totalHits.value());
       NumericDocValues dvs = MultiDocValues.getNumericValues(reader, "bar");
       int hitDoc = topDocs.scoreDocs[0].doc;
       assertEquals(hitDoc, dvs.advance(hitDoc));
@@ -2179,8 +2181,8 @@ public class TestIndexSorting extends LuceneTestCase {
       Query query = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(query, 1);
       final TopDocs topDocs2 = searcher2.search(query, 1);
-      assertEquals(topDocs.totalHits.value, topDocs2.totalHits.value);
-      if (topDocs.totalHits.value == 1) {
+      assertEquals(topDocs.totalHits.value(), topDocs2.totalHits.value());
+      if (topDocs.totalHits.value() == 1) {
         NumericDocValues dvs1 = MultiDocValues.getNumericValues(reader, "foo");
         int hitDoc1 = topDocs.scoreDocs[0].doc;
         assertEquals(hitDoc1, dvs1.advance(hitDoc1));
@@ -2410,7 +2412,7 @@ public class TestIndexSorting extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println("TEST: now compare r1=" + r1 + " r2=" + r2);
     }
-    assertEquals(sort, getOnlyLeafReader(r2).getMetaData().getSort());
+    assertEquals(sort, getOnlyLeafReader(r2).getMetaData().sort());
     assertReaderEquals("left: sorted by hand; right: sorted by Lucene", r1, r2);
     IOUtils.close(w1, w2, r1, r2, dir1, dir2);
   }
@@ -2657,11 +2659,11 @@ public class TestIndexSorting extends LuceneTestCase {
           s2.search(new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, numHits, 1));
 
       if (VERBOSE) {
-        System.out.println("  topDocs query-time sort: totalHits=" + hits1.totalHits.value);
+        System.out.println("  topDocs query-time sort: totalHits=" + hits1.totalHits.value());
         for (ScoreDoc scoreDoc : hits1.scoreDocs) {
           System.out.println("    " + scoreDoc.doc);
         }
-        System.out.println("  topDocs index-time sort: totalHits=" + hits2.totalHits.value);
+        System.out.println("  topDocs index-time sort: totalHits=" + hits2.totalHits.value());
         for (ScoreDoc scoreDoc : hits2.scoreDocs) {
           System.out.println("    " + scoreDoc.doc);
         }

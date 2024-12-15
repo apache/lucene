@@ -289,9 +289,9 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return new MaxScoreBulkScorer(maxDoc, optionalScorers);
     }
 
-    List<BulkScorer> optional = new ArrayList<BulkScorer>();
+    List<Scorer> optional = new ArrayList<Scorer>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
-      optional.add(ss.bulkScorer());
+      optional.add(ss.get(Long.MAX_VALUE));
     }
 
     return new BooleanScorer(optional, Math.max(1, minShouldMatch), scoreMode.needsScores());
@@ -333,10 +333,15 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       requiredScoring.add(ss.get(leadCost));
     }
     if (scoreMode == ScoreMode.TOP_SCORES
-        && requiredNoScoring.isEmpty()
         && requiredScoring.size() > 1
         // Only specialize top-level conjunctions for clauses that don't have a two-phase iterator.
+        && requiredNoScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)
         && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
+      // Turn all filters into scoring clauses with a score of zero, so that
+      // BlockMaxConjunctionBulkScorer is applicable.
+      for (Scorer filter : requiredNoScoring) {
+        requiredScoring.add(new ConstantScoreScorer(0f, ScoreMode.COMPLETE, filter.iterator()));
+      }
       return new BlockMaxConjunctionBulkScorer(maxDoc, requiredScoring);
     }
     if (scoreMode != ScoreMode.TOP_SCORES

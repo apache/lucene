@@ -26,6 +26,7 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.InPlaceMergeSorter;
 
 /**
@@ -316,7 +317,11 @@ public final class BlendedTermQuery extends Query {
     List<LeafReaderContext> leaves = readerContext.leaves();
     TermStates newCtx = new TermStates(readerContext);
     for (int i = 0; i < leaves.size(); ++i) {
-      TermState termState = ctx.get(leaves.get(i));
+      IOSupplier<TermState> supplier = ctx.get(leaves.get(i));
+      if (supplier == null) {
+        continue;
+      }
+      TermState termState = supplier.get();
       if (termState == null) {
         continue;
       }

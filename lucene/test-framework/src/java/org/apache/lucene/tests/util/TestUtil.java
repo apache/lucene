@@ -55,10 +55,10 @@ import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
+import org.apache.lucene.codecs.lucene101.Lucene101Codec;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99Codec;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
 import org.apache.lucene.document.BinaryDocValuesField;
@@ -462,6 +462,90 @@ public final class TestUtil {
           throw new AssertionError();
       }
     }
+  }
+
+  /**
+   * Returns true if the arguments are equal or within the range of allowed error (inclusive).
+   * Returns {@code false} if either of the arguments is NaN.
+   *
+   * <p>Two float numbers are considered equal if there are {@code (maxUlps - 1)} (or fewer)
+   * floating point numbers between them, i.e. two adjacent floating point numbers are considered
+   * equal.
+   *
+   * <p>Adapted from org.apache.commons.numbers.core.Precision
+   *
+   * <p>github: https://github.com/apache/commons-numbers release 1.2
+   *
+   * @param x first value
+   * @param y second value
+   * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
+   *     and {@code y}.
+   * @return {@code true} if there are fewer than {@code maxUlps} floating point values between
+   *     {@code x} and {@code y}.
+   */
+  public static boolean floatUlpEquals(final float x, final float y, final short maxUlps) {
+    final int xInt = Float.floatToRawIntBits(x);
+    final int yInt = Float.floatToRawIntBits(y);
+
+    if ((xInt ^ yInt) < 0) {
+      // Numbers have opposite signs, take care of overflow.
+      // Remove the sign bit to obtain the absolute ULP above zero.
+      final int deltaPlus = xInt & Integer.MAX_VALUE;
+      final int deltaMinus = yInt & Integer.MAX_VALUE;
+
+      // Note:
+      // If either value is NaN, the exponent bits are set to (255 << 23) and the
+      // distance above 0.0 is always above a short ULP error. So omit the test
+      // for NaN and return directly.
+
+      // Avoid possible overflow from adding the deltas by splitting the comparison
+      return deltaPlus <= maxUlps && deltaMinus <= (maxUlps - deltaPlus);
+    }
+
+    // Numbers have same sign, there is no risk of overflow.
+    return Math.abs(xInt - yInt) <= maxUlps && !Float.isNaN(x) && !Float.isNaN(y);
+  }
+
+  /**
+   * Returns true if the arguments are equal or within the range of allowed error (inclusive).
+   * Returns {@code false} if either of the arguments is NaN.
+   *
+   * <p>Two double numbers are considered equal if there are {@code (maxUlps - 1)} (or fewer)
+   * floating point numbers between them, i.e. two adjacent floating point numbers are considered
+   * equal.
+   *
+   * <p>Adapted from org.apache.commons.numbers.core.Precision
+   *
+   * <p>github: https://github.com/apache/commons-numbers release 1.2
+   *
+   * @param x first value
+   * @param y second value
+   * @param maxUlps {@code (maxUlps - 1)} is the number of floating point values between {@code x}
+   *     and {@code y}.
+   * @return {@code true} if there are fewer than {@code maxUlps} floating point values between
+   *     {@code x} and {@code y}.
+   */
+  public static boolean doubleUlpEquals(final double x, final double y, final int maxUlps) {
+    final long xInt = Double.doubleToRawLongBits(x);
+    final long yInt = Double.doubleToRawLongBits(y);
+
+    if ((xInt ^ yInt) < 0) {
+      // Numbers have opposite signs, take care of overflow.
+      // Remove the sign bit to obtain the absolute ULP above zero.
+      final long deltaPlus = xInt & Long.MAX_VALUE;
+      final long deltaMinus = yInt & Long.MAX_VALUE;
+
+      // Note:
+      // If either value is NaN, the exponent bits are set to (2047L << 52) and the
+      // distance above 0.0 is always above an integer ULP error. So omit the test
+      // for NaN and return directly.
+
+      // Avoid possible overflow from adding the deltas by splitting the comparison
+      return deltaPlus <= maxUlps && deltaMinus <= (maxUlps - deltaPlus);
+    }
+
+    // Numbers have same sign, there is no risk of overflow.
+    return Math.abs(xInt - yInt) <= maxUlps && !Double.isNaN(x) && !Double.isNaN(y);
   }
 
   /** start and end are BOTH inclusive */
@@ -1227,11 +1311,30 @@ public final class TestUtil {
   }
 
   /**
+   * Return a Codec that can read any of the default codecs and formats, but always writes in the
+   * specified format.
+   */
+  public static Codec alwaysKnnVectorsFormat(final KnnVectorsFormat format) {
+    // TODO: we really need for knn vectors impls etc to announce themselves
+    // (and maybe their params, too) to infostream on flush and merge.
+    // otherwise in a real debugging situation we won't know whats going on!
+    if (LuceneTestCase.VERBOSE) {
+      System.out.println("TestUtil: forcing knn vectors format to:" + format);
+    }
+    return new AssertingCodec() {
+      @Override
+      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+        return format;
+      }
+    };
+  }
+
+  /**
    * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
    * different from {@link Codec#getDefault()} because that is randomized.
    */
   public static Codec getDefaultCodec() {
-    return new Lucene99Codec();
+    return new Lucene101Codec();
   }
 
   /**
@@ -1239,7 +1342,7 @@ public final class TestUtil {
    * Lucene.
    */
   public static PostingsFormat getDefaultPostingsFormat() {
-    return new Lucene99PostingsFormat();
+    return new Lucene101PostingsFormat();
   }
 
   /**
@@ -1250,7 +1353,7 @@ public final class TestUtil {
    */
   public static PostingsFormat getDefaultPostingsFormat(
       int minItemsPerBlock, int maxItemsPerBlock) {
-    return new Lucene99PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
+    return new Lucene101PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
   }
 
   /** Returns a random postings format that supports term ordinals */
@@ -1260,8 +1363,8 @@ public final class TestUtil {
         return new LuceneFixedGap();
       case 1:
         return new BlockTreeOrdsPostingsFormat();
-        // TODO: these don't actually support ords!
-        // case 2: return new FSTOrdPostingsFormat();
+      // TODO: these don't actually support ords!
+      // case 2: return new FSTOrdPostingsFormat();
       default:
         throw new AssertionError();
     }
@@ -1375,15 +1478,17 @@ public final class TestUtil {
   /** Assert that the given {@link TopDocs} have the same top docs and consistent hit counts. */
   public static void assertConsistent(TopDocs expected, TopDocs actual) {
     Assert.assertEquals(
-        "wrong total hits", expected.totalHits.value == 0, actual.totalHits.value == 0);
-    if (expected.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-      if (actual.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-        Assert.assertEquals("wrong total hits", expected.totalHits.value, actual.totalHits.value);
+        "wrong total hits", expected.totalHits.value() == 0, actual.totalHits.value() == 0);
+    if (expected.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+      if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+        Assert.assertEquals(
+            "wrong total hits", expected.totalHits.value(), actual.totalHits.value());
       } else {
-        Assert.assertTrue("wrong total hits", expected.totalHits.value >= actual.totalHits.value);
+        Assert.assertTrue(
+            "wrong total hits", expected.totalHits.value() >= actual.totalHits.value());
       }
-    } else if (actual.totalHits.relation == TotalHits.Relation.EQUAL_TO) {
-      Assert.assertTrue("wrong total hits", expected.totalHits.value <= actual.totalHits.value);
+    } else if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
+      Assert.assertTrue("wrong total hits", expected.totalHits.value() <= actual.totalHits.value());
     }
     Assert.assertEquals("wrong hit count", expected.scoreDocs.length, actual.scoreDocs.length);
     for (int hitIDX = 0; hitIDX < expected.scoreDocs.length; hitIDX++) {

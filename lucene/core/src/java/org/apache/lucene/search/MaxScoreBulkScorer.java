@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -26,7 +25,7 @@ import org.apache.lucene.util.MathUtil;
 
 final class MaxScoreBulkScorer extends BulkScorer {
 
-  static final int INNER_WINDOW_SIZE = 1 << 11;
+  static final int INNER_WINDOW_SIZE = 1 << 12;
 
   private final int maxDoc;
   // All scorers, sorted by increasing max score.
@@ -41,9 +40,11 @@ final class MaxScoreBulkScorer extends BulkScorer {
   // Index of the first scorer that is required, this scorer and all following scorers are required
   // for a document to match.
   int firstRequiredScorer;
+  // The minimum value of minCompetitiveScore that would produce a more favorable partitioning.
+  float nextMinCompetitiveScore;
   private final long cost;
   float minCompetitiveScore;
-  private Score scorable = new Score();
+  private final Score scorable = new Score();
   final double[] maxScoreSums;
 
   private final long[] windowMatches = new long[FixedBitSet.bits2words(INNER_WINDOW_SIZE)];
@@ -64,6 +65,15 @@ final class MaxScoreBulkScorer extends BulkScorer {
     essentialQueue = new DisiPriorityQueue(allScorers.length);
     maxScoreSums = new double[allScorers.length];
   }
+
+  // Number of outer windows that have been evaluated
+  private int numOuterWindows;
+  // Number of candidate matches so far
+  private int numCandidates;
+  // Minimum window size. See #computeOuterWindowMax where we have heuristics that adjust the
+  // minimum window size based on the average number of candidate matches per outer window, to keep
+  // the per-window overhead under control.
+  private int minWindowSize = 1;
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
@@ -115,9 +125,15 @@ final class MaxScoreBulkScorer extends BulkScorer {
       while (top.doc < outerWindowMax) {
         scoreInnerWindow(collector, acceptDocs, outerWindowMax);
         top = essentialQueue.top();
+        if (minCompetitiveScore >= nextMinCompetitiveScore) {
+          // The minimum competitive score increased substantially, so we can now partition scorers
+          // in a more favorable way.
+          break;
+        }
       }
 
-      outerWindowMin = outerWindowMax;
+      outerWindowMin = Math.min(top.doc, outerWindowMax);
+      ++numOuterWindows;
     }
 
     return nextCandidate(max);
@@ -272,10 +288,22 @@ final class MaxScoreBulkScorer extends BulkScorer {
       windowMax = (int) Math.min(windowMax, upTo + 1L); // upTo is inclusive
     }
 
-    // Score at least an entire inner window of docs
-    windowMax =
-        Math.max(
-            windowMax, (int) Math.min(Integer.MAX_VALUE, (long) windowMin + INNER_WINDOW_SIZE));
+    if (allScorers.length - firstWindowLead > 1) {
+      // The more clauses we consider to compute outer windows, the higher chances that one of these
+      // clauses has a block boundary in the next few doc IDs. This situation can result in more
+      // time spent computing maximum scores per outer window than evaluating hits. To avoid such
+      // situations, we target at least 32 candidate matches per clause per outer window on average,
+      // to make sure we amortize the cost of computing maximum scores.
+      long threshold = numOuterWindows * 32L * allScorers.length;
+      if (numCandidates < threshold) {
+        minWindowSize = Math.min(minWindowSize << 1, INNER_WINDOW_SIZE);
+      } else {
+        minWindowSize = 1;
+      }
+
+      int minWindowMax = (int) Math.min(Integer.MAX_VALUE, (long) windowMin + minWindowSize);
+      windowMax = Math.max(windowMax, minWindowMax);
+    }
 
     return windowMax;
   }
@@ -299,6 +327,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private void scoreNonEssentialClauses(
       LeafCollector collector, int doc, double essentialScore, int numNonEssentialClauses)
       throws IOException {
+
+    ++numCandidates;
+
     double score = essentialScore;
     for (int i = numNonEssentialClauses - 1; i >= 0; --i) {
       float maxPossibleScore =
@@ -333,12 +364,17 @@ final class MaxScoreBulkScorer extends BulkScorer {
     // make a difference when using custom scores (like FuzzyQuery), high query-time boosts, or
     // scoring based on wacky weights.
     System.arraycopy(allScorers, 0, scratch, 0, allScorers.length);
+    // Do not use Comparator#comparingDouble below, it might cause unnecessary allocations
     Arrays.sort(
         scratch,
-        Comparator.comparingDouble(
-            scorer -> (double) scorer.maxWindowScore / Math.max(1L, scorer.cost)));
+        (scorer1, scorer2) -> {
+          return Double.compare(
+              (double) scorer1.maxWindowScore / Math.max(1L, scorer1.cost),
+              (double) scorer2.maxWindowScore / Math.max(1L, scorer2.cost));
+        });
     double maxScoreSum = 0;
     firstEssentialScorer = 0;
+    nextMinCompetitiveScore = Float.POSITIVE_INFINITY;
     for (int i = 0; i < allScorers.length; ++i) {
       final DisiWrapper w = scratch[i];
       double newMaxScoreSum = maxScoreSum + w.maxWindowScore;
@@ -351,6 +387,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         firstEssentialScorer++;
       } else {
         allScorers[allScorers.length - 1 - (i - firstEssentialScorer)] = w;
+        nextMinCompetitiveScore = Math.min(maxScoreSumFloat, nextMinCompetitiveScore);
       }
     }
 

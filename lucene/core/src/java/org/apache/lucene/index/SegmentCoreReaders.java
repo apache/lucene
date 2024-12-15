@@ -80,7 +80,7 @@ final class SegmentCoreReaders {
 
     try {
       if (si.info.getUseCompoundFile()) {
-        cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info, context);
+        cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info);
       } else {
         cfsReader = null;
         cfsDir = dir;
@@ -117,7 +117,7 @@ final class SegmentCoreReaders {
               .storedFieldsFormat()
               .fieldsReader(cfsDir, si.info, coreFieldInfos, context);
 
-      if (coreFieldInfos.hasVectors()) { // open term vector files only as needed
+      if (coreFieldInfos.hasTermVectors()) { // open term vector files only as needed
         termVectorsReaderOrig =
             si.info
                 .getCodec()
