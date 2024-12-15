@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
@@ -237,7 +238,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             public int advance(int target) {
               assert index >= -1 : "index must >= -1 but got " + index;
               index =
-                  Arrays.binarySearch(
+                  ArrayUtil.exponentialSearch(
                       scoreDocs,
                       Math.min(index + 1, scoreDocs.length),
                       scoreDocs.length,

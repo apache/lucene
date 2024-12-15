@@ -514,4 +514,58 @@ public class TestArrayUtil extends LuceneTestCase {
 
     assertEquals(0, ArrayUtil.compareUnsigned8(a, aOffset, b, bOffset));
   }
+
+  public void testExponentialSearchForIntArray() {
+    final Random rnd = random();
+    final int[] arr = new int[rnd.nextInt(2000) + 1];
+    int last = 0;
+    for (int i = 0; i < arr.length; i++) {
+      arr[i] = last;
+      last += rnd.nextInt(1, 10);
+    }
+
+    // case 1: random number, may not be in the array
+    int target = random().nextInt(arr[arr.length - 1]);
+    int idx = ArrayUtil.exponentialSearch(arr, 0, arr.length, target);
+    assertEquals(Arrays.binarySearch(arr, 0, arr.length, target), idx);
+
+    // case 2: search for a number in the array
+    assertExponentialSearch(arr, random().nextInt(arr.length));
+    assertExponentialSearch(arr, 0);
+    assertExponentialSearch(arr, arr.length - 1);
+  }
+
+  private static void assertExponentialSearch(int[] arr, int expectedIndex) {
+    int idx = ArrayUtil.exponentialSearch(arr, 0, arr.length, arr[expectedIndex]);
+    assertEquals(expectedIndex, idx);
+  }
+
+  public void testExponentialSearchForObjectArray() {
+    final Random rnd = random();
+    final Integer[] arr = new Integer[rnd.nextInt(2000) + 1];
+    int last = 0;
+    for (int i = 0; i < arr.length; i++) {
+      arr[i] = last;
+      last += rnd.nextInt(1, 10);
+    }
+
+    // case 1: random number, may not be in the array
+    int target = random().nextInt(arr[arr.length - 1]);
+    int idx =
+        ArrayUtil.exponentialSearch(
+            arr, 0, arr.length, target, Comparator.comparingInt(Integer::intValue));
+    assertEquals(Arrays.binarySearch(arr, 0, arr.length, target), idx);
+
+    // case 2: search for a number in the array
+    assertExponentialSearch(arr, random().nextInt(arr.length));
+    assertExponentialSearch(arr, 0);
+    assertExponentialSearch(arr, arr.length - 1);
+  }
+
+  private static void assertExponentialSearch(Integer[] arr, int expectedIndex) {
+    int idx =
+        ArrayUtil.exponentialSearch(
+            arr, 0, arr.length, arr[expectedIndex], Comparator.comparingInt(Integer::intValue));
+    assertEquals(expectedIndex, idx);
+  }
 }
