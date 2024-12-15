@@ -532,8 +532,9 @@ public class ToParentBlockJoinQuery extends Query {
         return scoringCompleteCheck(max, max);
       }
 
-      BatchAwareLeafCollector wrappedCollector = wrapCollector(collector);
-      childBulkScorer.score(wrappedCollector, acceptDocs, prevParent + 1, lastParent + 1);
+      BatchAwareLeafCollector wrappedCollector = wrapCollector(collector, acceptDocs);
+      // We don't propagate the acceptDocs since only parents are checked for deletion in the wrapped collector
+      childBulkScorer.score(wrappedCollector, null, prevParent + 1, lastParent + 1);
       wrappedCollector.endBatch();
 
       return scoringCompleteCheck(lastParent + 1, max);
@@ -550,7 +551,7 @@ public class ToParentBlockJoinQuery extends Query {
       return childBulkScorer.cost();
     }
 
-    private BatchAwareLeafCollector wrapCollector(LeafCollector collector) {
+    private BatchAwareLeafCollector wrapCollector(LeafCollector collector, Bits acceptDocs) {
       return new BatchAwareLeafCollector(collector) {
         private final Score currentParentScore = new Score(scoreMode);
         private int currentParent = -1;
@@ -581,7 +582,7 @@ public class ToParentBlockJoinQuery extends Query {
         public void collect(int doc) throws IOException {
           if (doc > currentParent) {
             // Emit the current parent and setup scoring for the next parent
-            if (currentParent >= 0) {
+            if (currentParent >= 0 && (acceptDocs == null || acceptDocs.get(currentParent))) {
               in.collect(currentParent);
             }
 
@@ -602,7 +603,7 @@ public class ToParentBlockJoinQuery extends Query {
 
         @Override
         public void endBatch() throws IOException {
-          if (currentParent >= 0) {
+          if (currentParent >= 0 && (acceptDocs == null || acceptDocs.get(currentParent))) {
             in.collect(currentParent);
           }
         }

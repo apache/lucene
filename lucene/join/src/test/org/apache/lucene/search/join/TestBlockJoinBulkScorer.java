@@ -49,6 +49,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestBlockJoinBulkScorer extends LuceneTestCase {
   private static final String TYPE_FIELD_NAME = "type";
@@ -256,21 +257,36 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
   }
 
   private static void assertScores(
+      int maxDoc,
       BulkScorer bulkScorer,
       org.apache.lucene.search.ScoreMode scoreMode,
       Float minScore,
       Map<Integer, Float> expectedScores)
       throws IOException {
-    assertScores(bulkScorer, scoreMode, minScore, List.of(expectedScores));
+    assertScores(maxDoc, bulkScorer, scoreMode, minScore, List.of(expectedScores));
   }
 
   private static void assertScores(
+      int maxDoc,
       BulkScorer bulkScorer,
       org.apache.lucene.search.ScoreMode scoreMode,
       Float minScore,
       List<Map<Integer, Float>> expectedScoresList)
       throws IOException {
     Map<Integer, Float> actualScores = new HashMap<>();
+    FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
+    List<Map<Integer, Float>> expectedScoresListPruned = new ArrayList<>();
+    for (var map : expectedScoresList) {
+      Map<Integer, Float> newMap = new HashMap<>();
+      for (var entry : map.entrySet()) {
+        if (usually(random())) {
+          acceptDocs.set(entry.getKey());
+          newMap.put(entry.getKey(), entry.getValue());
+        }
+      }
+      expectedScoresListPruned.add(newMap);
+    }
+
     bulkScorer.score(
         new LeafCollector() {
           private Scorable scorer;
@@ -286,18 +302,19 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           @Override
           public void collect(int doc) throws IOException {
+            assertTrue(acceptDocs.get(doc));
             assertNotNull(scorer);
             actualScores.put(doc, scoreMode.needsScores() ? scorer.score() : 0);
           }
         },
-        null,
+        acceptDocs,
         0,
         NO_MORE_DOCS);
 
-    if (expectedScoresList.size() == 1) {
-      assertEquals(expectedScoresList.getFirst(), actualScores);
+    if (expectedScoresListPruned.size() == 1) {
+      assertEquals(expectedScoresListPruned.getFirst(), actualScores);
     } else {
-      assertEqualsToOneOf(expectedScoresList, actualScores);
+      assertEqualsToOneOf(expectedScoresListPruned, actualScores);
     }
   }
 
@@ -356,7 +373,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
             continue;
           }
 
-          assertScores(ss.bulkScorer(), searchScoreMode, null, expectedScores);
+          assertScores(reader.maxDoc(), ss.bulkScorer(), searchScoreMode, null, expectedScores);
         }
       }
     }
@@ -395,7 +412,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, null, expectedScores);
+          assertScores(reader.maxDoc(), ss.bulkScorer(), scoreMode, null, expectedScores);
         }
 
         {
@@ -418,7 +435,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, 6.0f, List.of(expectedScores1, expectedScores2));
+          assertScores(reader.maxDoc(), ss.bulkScorer(), scoreMode, 6.0f, List.of(expectedScores1, expectedScores2));
         }
 
         {
@@ -426,7 +443,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, 11.0f, expectedScores);
+          assertScores(reader.maxDoc(), ss.bulkScorer(), scoreMode, 11.0f, expectedScores);
         }
       }
     }
@@ -465,7 +482,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, null, expectedScores);
+          assertScores(reader.maxDoc(), ss.bulkScorer(), scoreMode, null, expectedScores);
         }
 
         {
@@ -479,7 +496,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, 0.0f, expectedScores);
+          assertScores(reader.maxDoc(), ss.bulkScorer(), scoreMode, 0.0f, expectedScores);
         }
 
         {
@@ -487,7 +504,7 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
-          assertScores(ss.bulkScorer(), scoreMode, Math.nextUp(0f), expectedScores);
+          assertScores(reader.maxDoc(), ss.bulkScorer(), scoreMode, Math.nextUp(0f), expectedScores);
         }
       }
     }
