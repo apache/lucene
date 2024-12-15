@@ -435,7 +435,12 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
-          assertScores(reader.maxDoc(), ss.bulkScorer(), scoreMode, 6.0f, List.of(expectedScores1, expectedScores2));
+          assertScores(
+              reader.maxDoc(),
+              ss.bulkScorer(),
+              scoreMode,
+              6.0f,
+              List.of(expectedScores1, expectedScores2));
         }
 
         {
@@ -504,7 +509,8 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
 
           ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
           ss.setTopLevelScoringClause();
-          assertScores(reader.maxDoc(), ss.bulkScorer(), scoreMode, Math.nextUp(0f), expectedScores);
+          assertScores(
+              reader.maxDoc(), ss.bulkScorer(), scoreMode, Math.nextUp(0f), expectedScores);
         }
       }
     }

@@ -533,7 +533,8 @@ public class ToParentBlockJoinQuery extends Query {
       }
 
       BatchAwareLeafCollector wrappedCollector = wrapCollector(collector, acceptDocs);
-      // We don't propagate the acceptDocs since only parents are checked for deletion in the wrapped collector
+      // We don't propagate the acceptDocs since only parents are checked for deletion in the
+      // wrapped collector
       childBulkScorer.score(wrappedCollector, null, prevParent + 1, lastParent + 1);
       wrappedCollector.endBatch();
 
