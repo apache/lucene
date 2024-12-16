@@ -357,17 +357,19 @@ public final class SynonymQuery extends Query {
           } else {
 
             // we use termscorers + disjunction as an impl detail
-            DisiPriorityQueue queue = new DisiPriorityQueue(iterators.size());
+            List<DisiWrapper> wrappers = new ArrayList<>();
             for (int i = 0; i < iterators.size(); i++) {
               PostingsEnum postings = iterators.get(i);
               final TermScorer termScorer = new TermScorer(postings, simWeight, norms);
               float boost = termBoosts.get(i);
               final DisiWrapperFreq wrapper = new DisiWrapperFreq(termScorer, boost);
-              queue.add(wrapper);
+              wrappers.add(wrapper);
             }
             // Even though it is called approximation, it is accurate since none of
             // the sub iterators are two-phase iterators.
-            DocIdSetIterator iterator = new DisjunctionDISIApproximation(queue);
+            DisjunctionDISIApproximation disjunctionIterator =
+                new DisjunctionDISIApproximation(wrappers, leadCost);
+            DocIdSetIterator iterator = disjunctionIterator;
 
             float[] boosts = new float[impacts.size()];
             for (int i = 0; i < boosts.length; i++) {
@@ -384,7 +386,7 @@ public final class SynonymQuery extends Query {
               iterator = impactsDisi;
             }
 
-            return new SynonymScorer(queue, iterator, impactsDisi, simWeight, norms);
+            return new SynonymScorer(iterator, disjunctionIterator, impactsDisi, simWeight, norms);
           }
         }
 
@@ -576,21 +578,21 @@ public final class SynonymQuery extends Query {
 
   private static class SynonymScorer extends Scorer {
 
-    private final DisiPriorityQueue queue;
     private final DocIdSetIterator iterator;
+    private final DisjunctionDISIApproximation disjunctionDisi;
     private final MaxScoreCache maxScoreCache;
     private final ImpactsDISI impactsDisi;
     private final SimScorer scorer;
     private final NumericDocValues norms;
 
     SynonymScorer(
-        DisiPriorityQueue queue,
         DocIdSetIterator iterator,
+        DisjunctionDISIApproximation disjunctionDisi,
         ImpactsDISI impactsDisi,
         SimScorer scorer,
         NumericDocValues norms) {
-      this.queue = queue;
       this.iterator = iterator;
+      this.disjunctionDisi = disjunctionDisi;
       this.maxScoreCache = impactsDisi.getMaxScoreCache();
       this.impactsDisi = impactsDisi;
       this.scorer = scorer;
@@ -603,7 +605,7 @@ public final class SynonymQuery extends Query {
     }
 
     float freq() throws IOException {
-      DisiWrapperFreq w = (DisiWrapperFreq) queue.topList();
+      DisiWrapperFreq w = (DisiWrapperFreq) disjunctionDisi.topList();
       float freq = w.freq();
       for (w = (DisiWrapperFreq) w.next; w != null; w = (DisiWrapperFreq) w.next) {
         freq += w.freq();

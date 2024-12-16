@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -27,18 +28,17 @@ import java.util.List;
 public abstract class IndriDisjunctionScorer extends IndriScorer {
 
   private final List<Scorer> subScorersList;
-  private final DisiPriorityQueue subScorers;
   private final DocIdSetIterator approximation;
 
   protected IndriDisjunctionScorer(List<Scorer> subScorersList, ScoreMode scoreMode, float boost) {
     super(boost);
     this.subScorersList = subScorersList;
-    this.subScorers = new DisiPriorityQueue(subScorersList.size());
+    List<DisiWrapper> wrappers = new ArrayList<>();
     for (Scorer scorer : subScorersList) {
       final DisiWrapper w = new DisiWrapper(scorer, false);
-      this.subScorers.add(w);
+      wrappers.add(w);
     }
-    this.approximation = new DisjunctionDISIApproximation(this.subScorers);
+    this.approximation = new DisjunctionDISIApproximation(wrappers, Long.MAX_VALUE);
   }
 
   @Override
@@ -71,6 +71,6 @@ public abstract class IndriDisjunctionScorer extends IndriScorer {
 
   @Override
   public int docID() {
-    return subScorers.top().doc;
+    return approximation.docID();
   }
 }
