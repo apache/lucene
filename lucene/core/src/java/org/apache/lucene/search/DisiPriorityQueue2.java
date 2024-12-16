@@ -73,7 +73,8 @@ final class DisiPriorityQueue2 extends DisiPriorityQueue {
       top2 = entry;
       return updateTop();
     } else {
-      throw new IllegalStateException("Trying to add a 3rd element to a DisiPriorityQueue configured with a max size of 2");
+      throw new IllegalStateException(
+          "Trying to add a 3rd element to a DisiPriorityQueue configured with a max size of 2");
     }
   }
 
