@@ -47,7 +47,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#14052: Speed up DisjunctionDISIApproximation#advance. (Adrien Grand)
 
 Bug Fixes
 ---------------------
