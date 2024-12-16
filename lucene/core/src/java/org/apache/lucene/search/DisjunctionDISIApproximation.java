@@ -59,7 +59,7 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
     // Sort by descending cost.
     wrappers.sort(Comparator.<DisiWrapper>comparingLong(w -> w.cost).reversed());
 
-    leadIterators = new DisiPriorityQueue(subIterators.size());
+    List<DisiWrapper> leadIterators = new ArrayList<>();
 
     long reorderThreshold = leadCost + (leadCost >> 1);
     if (reorderThreshold < 0) { // overflow
@@ -82,6 +82,10 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
       leadIterators.add(wrappers.removeLast());
     }
 
+    this.leadIterators = DisiPriorityQueue.ofMaxSize(leadIterators.size());
+    for (DisiWrapper w : leadIterators) {
+      this.leadIterators.add(w);
+    }
     otherIterators = wrappers.toArray(DisiWrapper[]::new);
 
     long cost = 0;
@@ -96,7 +100,7 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
     for (DisiWrapper w : otherIterators) {
       minOtherDoc = Math.min(minOtherDoc, w.doc);
     }
-    leadTop = leadIterators.top();
+    leadTop = this.leadIterators.top();
   }
 
   @Override
