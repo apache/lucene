@@ -34,11 +34,14 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Correct git autocrlf
+        run: git config --global core.autocrlf false
+
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-for-build
 
       - name: Run gradle check (without tests)
-        run: ./gradlew check -x test -Ptask.times=true --max-workers 2
+        run: ./gradlew check -x test "-Ptask.times=true" --max-workers 2
 
 
   # This runs all tests without any other validation checks.
@@ -49,14 +52,16 @@ jobs:
     strategy:
       matrix:
         # Operating systems to run on.
-        # windows-latest: fairly slow to build and results in odd errors (see LUCENE-10167)
-        # macos-latest: a tad slower than ubuntu and pretty much the same (?) so leaving out.
-        os: [ ubuntu-latest ]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
         java: [ '21' ]
 
     runs-on: ${{ matrix.os }}
 
     steps:
+      - name: Correct git autocrlf on Windows
+        if: startsWith(matrix.os, 'windows')
+        run: git config --global core.autocrlf false
+
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-for-build
 

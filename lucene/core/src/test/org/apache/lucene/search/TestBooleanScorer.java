@@ -102,7 +102,7 @@ public class TestBooleanScorer extends LuceneTestCase {
                 public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
                     throws IOException {
                   assert min == 0;
-                  collector.setScorer(new SimpleScorable());
+                  collector.setScorer(new Score());
                   collector.collect(0);
                   return DocIdSetIterator.NO_MORE_DOCS;
                 }

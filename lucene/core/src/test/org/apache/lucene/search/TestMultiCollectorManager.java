@@ -89,30 +89,19 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     LeafReaderContext ctx = reader.leaves().get(0);
 
     // no collector needs scores => no caching
-    CollectorManager<?, ?> cm1 =
-        collectorManager(ScoreMode.COMPLETE_NO_SCORES, SimpleScorable.class);
-    CollectorManager<?, ?> cm2 =
-        collectorManager(ScoreMode.COMPLETE_NO_SCORES, SimpleScorable.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new SimpleScorable());
+    CollectorManager<?, ?> cm1 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, Score.class);
+    CollectorManager<?, ?> cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, Score.class);
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     // only one collector needs scores => no caching
-    cm1 = collectorManager(ScoreMode.COMPLETE, SimpleScorable.class);
-    cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, SimpleScorable.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new SimpleScorable());
+    cm1 = collectorManager(ScoreMode.COMPLETE, Score.class);
+    cm2 = collectorManager(ScoreMode.COMPLETE_NO_SCORES, Score.class);
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     // several collectors need scores => caching
     cm1 = collectorManager(ScoreMode.COMPLETE, ScoreCachingWrappingScorer.class);
     cm2 = collectorManager(ScoreMode.COMPLETE, ScoreCachingWrappingScorer.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new SimpleScorable());
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     reader.close();
     dir.close();
@@ -131,19 +120,13 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     CollectorManager<?, ?> cm2 =
         collectorManager(
             ScoreMode.TOP_SCORES, MultiCollector.MinCompetitiveScoreAwareScorable.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new SimpleScorable());
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     // both wrapped collector managers need scores, but one is exhaustive, so they should
     // see a ScoreCachingWrappingScorer pass in as their scorer:
     cm1 = collectorManager(ScoreMode.COMPLETE, ScoreCachingWrappingScorer.class);
     cm2 = collectorManager(ScoreMode.TOP_SCORES, ScoreCachingWrappingScorer.class);
-    new MultiCollectorManager(cm1, cm2)
-        .newCollector()
-        .getLeafCollector(ctx)
-        .setScorer(new SimpleScorable());
+    new MultiCollectorManager(cm1, cm2).newCollector().getLeafCollector(ctx).setScorer(new Score());
 
     reader.close();
     dir.close();
