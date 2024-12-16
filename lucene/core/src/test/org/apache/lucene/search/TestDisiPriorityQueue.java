@@ -30,6 +30,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
     Random r = random();
     DisiWrapper w1 = wrapper(randomDisi(r));
     DisiWrapper w2 = wrapper(randomDisi(r));
+    DisiWrapper w3 = wrapper(randomDisi(r));
 
     DisiPriorityQueue pq = DisiPriorityQueue.ofMaxSize(2);
     w1.doc = 1;
@@ -42,6 +43,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
     assertSame(w2, pq.add(w2));
     assertSame(w2, pq.top());
     assertEquals(2, pq.size());
+    expectThrows(IllegalStateException.class, () -> pq.add(w3));
 
     w2.doc = 1;
     assertSame(w2, pq.updateTop());

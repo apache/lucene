@@ -69,9 +69,11 @@ final class DisiPriorityQueue2 extends DisiPriorityQueue {
   public DisiWrapper add(DisiWrapper entry) {
     if (top == null) {
       return top = entry;
-    } else {
+    } else if (top2 == null) {
       top2 = entry;
       return updateTop();
+    } else {
+      throw new IllegalStateException("Trying to add a 3rd element to a DisiPriorityQueue configured with a max size of 2");
     }
   }
 
