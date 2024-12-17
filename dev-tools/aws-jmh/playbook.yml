@@ -112,13 +112,24 @@
         - main
         - patch
 
-    - name: Run benchmark
-      command:
-        cmd: "{{ jmh_command }} -rff ~/{{ item }}.txt {{ jmh_args }}"
-        chdir: "{{ item }}"
+    - name: Locate benchmark jar
+      find:
+        paths: "{{ item }}/{{ jmh_jar_path }}"
+        pattern: "{{ jmh_jar_glob }}"
+      register: found_jmh_jars
       loop:
         - main
         - patch
+
+    - name: Run benchmark
+      command:
+        cmd: "java -jar {{ jmh_jar }} -rf text -rff ~/{{ item }}.txt {{ jmh_args }}"
+      loop:
+        - main
+        - patch
+      vars:
+        jmh_jars: "{{ found_jmh_jars.results | selectattr('item', 'eq', item) | map(attribute='files') }}"
+        jmh_jar: "{{ jmh_jars | first | map(attribute='path') | first }}"
 
     - name: Read main results
       command:

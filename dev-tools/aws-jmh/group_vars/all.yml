@@ -53,7 +53,9 @@ main_branch: "apache:main"
 patch_branch: "{{ lookup('env', 'PATCH_BRANCH') }}"
 
 assemble_command: ./gradlew -p lucene/benchmark-jmh assemble
-jmh_command: java -jar lucene/benchmark-jmh/build/benchmarks/lucene-benchmark-jmh-10.0.0-SNAPSHOT.jar -rf text
+# must match benchmark jar to run
+jmh_jar_path: "lucene/benchmark-jmh/build/benchmarks/"
+jmh_jar_glob: "lucene-benchmark-jmh-*.jar"
 jmh_args: "{{ lookup('env', 'JMH_ARGS', default='-p size=1024') }}"
 
 # services that cause noise and don't help us
