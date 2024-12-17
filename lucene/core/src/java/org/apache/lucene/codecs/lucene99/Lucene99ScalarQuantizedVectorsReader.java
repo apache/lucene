@@ -62,7 +62,6 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final FieldInfos fieldInfos;
-  private final ReadAdvice readAdvice;
 
   public Lucene99ScalarQuantizedVectorsReader(
       SegmentReadState state,
@@ -74,7 +73,6 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     this.rawVectorsReader = rawVectorsReader;
     this.fieldInfos = state.fieldInfos;
     int versionMeta = -1;
-    this.readAdvice = readAdvice;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
