@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
@@ -134,8 +135,14 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
     } else {
       this.mergeExec = null;
     }
+
+    /**
+     * Defines the format used for storing, reading, and merging vectors on disk.
+     * Flat formats enable random access to vectors based on their node ID, as recorded in the HNSW graph.
+     * To ensure consistent access, the {@link ReadAdvice#RANDOM} read advice is used.
+     */
     this.flatVectorsFormat =
-        new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits, compress);
+        new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits, compress, ReadAdvice.RANDOM);
   }
 
   @Override

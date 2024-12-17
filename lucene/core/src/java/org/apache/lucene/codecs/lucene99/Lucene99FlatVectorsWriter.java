@@ -66,15 +66,18 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsWriter.class);
 
   private final SegmentWriteState segmentWriteState;
+  private final ReadAdvice readAdvice;
   private final IndexOutput meta, vectorData;
 
   private final List<FieldWriter<?>> fields = new ArrayList<>();
+
   private boolean finished;
 
-  public Lucene99FlatVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer)
+  public Lucene99FlatVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer, ReadAdvice readAdvice)
       throws IOException {
     super(scorer);
     segmentWriteState = state;
+    this.readAdvice = readAdvice;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99FlatVectorsFormat.META_EXTENSION);
@@ -282,7 +285,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       // to perform random reads.
       vectorDataInput =
           segmentWriteState.directory.openInput(
-              tempVectorData.getName(), IOContext.DEFAULT.withReadAdvice(ReadAdvice.RANDOM));
+              tempVectorData.getName(), IOContext.DEFAULT.withReadAdvice(readAdvice));
       // copy the temporary file vectors to the actual data file
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);

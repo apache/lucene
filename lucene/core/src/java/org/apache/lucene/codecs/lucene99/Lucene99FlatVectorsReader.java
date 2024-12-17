@@ -59,7 +59,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final IndexInput vectorData;
   private final FieldInfos fieldInfos;
 
-  public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
+  public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer, ReadAdvice readAdvice)
       throws IOException {
     super(scorer);
     int versionMeta = readMetadata(state);
@@ -72,9 +72,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               versionMeta,
               Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION,
               Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Flat formats are used to randomly access vectors from their node ID that is stored
-              // in the HNSW graph.
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
+              state.context.withReadAdvice(readAdvice));
       success = true;
     } finally {
       if (success == false) {

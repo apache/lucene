@@ -54,6 +54,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.VectorUtil;
@@ -101,13 +102,15 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private final byte bits;
   private final boolean compress;
   private final int version;
+  private final ReadAdvice readAdvice;
   private boolean finished;
 
   public Lucene99ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       Float confidenceInterval,
       FlatVectorsWriter rawVectorDelegate,
-      FlatVectorsScorer scorer)
+      FlatVectorsScorer scorer,
+      ReadAdvice readAdvice)
       throws IOException {
     this(
         state,
@@ -116,7 +119,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         (byte) 7,
         false,
         rawVectorDelegate,
-        scorer);
+        scorer,
+        readAdvice);
     if (confidenceInterval != null && confidenceInterval == 0) {
       throw new IllegalArgumentException("confidenceInterval cannot be set to zero");
     }
@@ -128,7 +132,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       byte bits,
       boolean compress,
       FlatVectorsWriter rawVectorDelegate,
-      FlatVectorsScorer scorer)
+      FlatVectorsScorer scorer,
+      ReadAdvice readAdvice)
       throws IOException {
     this(
         state,
@@ -137,7 +142,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         bits,
         compress,
         rawVectorDelegate,
-        scorer);
+        scorer,
+        readAdvice);
   }
 
   private Lucene99ScalarQuantizedVectorsWriter(
@@ -147,7 +153,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       byte bits,
       boolean compress,
       FlatVectorsWriter rawVectorDelegate,
-      FlatVectorsScorer scorer)
+      FlatVectorsScorer scorer,
+      ReadAdvice readAdvice)
       throws IOException {
     super(scorer);
     this.confidenceInterval = confidenceInterval;
@@ -167,6 +174,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
             state.segmentSuffix,
             Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
     this.rawVectorDelegate = rawVectorDelegate;
+    this.readAdvice = readAdvice;
     boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
@@ -491,7 +499,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       IOUtils.close(tempQuantizedVectorData);
       quantizationDataInput =
           segmentWriteState.directory.openInput(
-              tempQuantizedVectorData.getName(), segmentWriteState.context);
+              tempQuantizedVectorData.getName(), segmentWriteState.context.withReadAdvice(readAdvice));
       quantizedVectorData.copyBytes(
           quantizationDataInput, quantizationDataInput.length() - CodecUtil.footerLength());
       long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;

@@ -25,6 +25,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.store.ReadAdvice;
 
 /**
  * Format supporting vector quantization, storage, and retrieval
@@ -50,8 +51,13 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
 
+  /**
+   * Defines the format used for storing, reading, and merging raw vectors on disk.
+   * For this format, the {@link ReadAdvice#SEQUENTIAL} read advice is employed,
+   * as nearest neighbors are retrieved exclusively using a brute-force approach.
+   */
   private static final FlatVectorsFormat rawVectorFormat =
-      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer(), ReadAdvice.SEQUENTIAL);
 
   /** The minimum confidence interval */
   private static final float MINIMUM_CONFIDENCE_INTERVAL = 0.9f;
@@ -71,10 +77,15 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   final byte bits;
   final boolean compress;
   final Lucene99ScalarQuantizedVectorScorer flatVectorScorer;
+  final ReadAdvice readAdvice;
 
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
-    this(null, 7, false);
+    /**
+     * For this format, the {@link ReadAdvice#SEQUENTIAL} read advice is employed,
+     * as nearest neighbors are retrieved exclusively using a brute-force approach.
+     */
+    this(null, 7, false, ReadAdvice.SEQUENTIAL);
   }
 
   /**
@@ -91,7 +102,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
    *     during searching, at some decode speed penalty.
    */
   public Lucene99ScalarQuantizedVectorsFormat(
-      Float confidenceInterval, int bits, boolean compress) {
+      Float confidenceInterval, int bits, boolean compress, ReadAdvice readAdvice) {
     super(NAME);
     if (confidenceInterval != null
         && confidenceInterval != DYNAMIC_CONFIDENCE_INTERVAL
@@ -119,6 +130,7 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
     this.compress = compress;
     this.flatVectorScorer =
         new Lucene99ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
+    this.readAdvice = readAdvice;
   }
 
   public static float calculateDefaultConfidenceInterval(int vectorDimension) {
@@ -151,12 +163,13 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
         bits,
         compress,
         rawVectorFormat.fieldsWriter(state),
-        flatVectorScorer);
+        flatVectorScorer,
+        readAdvice);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene99ScalarQuantizedVectorsReader(
-        state, rawVectorFormat.fieldsReader(state), flatVectorScorer);
+        state, rawVectorFormat.fieldsReader(state), flatVectorScorer, readAdvice);
   }
 }

@@ -41,6 +41,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
@@ -64,7 +65,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     }
     format =
         new Lucene99ScalarQuantizedVectorsFormat(
-            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false);
+            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false, random().nextBoolean() ? ReadAdvice.RANDOM : ReadAdvice.SEQUENTIAL);
     super.setUp();
   }
 
@@ -198,7 +199,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene99ScalarQuantizedVectorsFormat(0.9f, (byte) 4, false);
+            return new Lucene99ScalarQuantizedVectorsFormat(0.9f, (byte) 4, false, ReadAdvice.RANDOM);
           }
         };
     String expectedPattern =
@@ -212,16 +213,16 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
   public void testLimits() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene99ScalarQuantizedVectorsFormat(1.1f, 7, false));
+        () -> new Lucene99ScalarQuantizedVectorsFormat(1.1f, 7, false, ReadAdvice.RANDOM));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene99ScalarQuantizedVectorsFormat(null, -1, false));
+        () -> new Lucene99ScalarQuantizedVectorsFormat(null, -1, false, ReadAdvice.RANDOM));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 5, false));
+        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 5, false, ReadAdvice.RANDOM));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 9, false));
+        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 9, false, ReadAdvice.RANDOM));
   }
 
   @Override

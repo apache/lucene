@@ -62,14 +62,16 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final FieldInfos fieldInfos;
+  private final ReadAdvice readAdvice;
 
   public Lucene99ScalarQuantizedVectorsReader(
-      SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer)
+      SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer, ReadAdvice readAdvice)
       throws IOException {
     super(scorer);
     this.rawVectorsReader = rawVectorsReader;
     this.fieldInfos = state.fieldInfos;
     int versionMeta = -1;
+    this.readAdvice = readAdvice;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
@@ -99,9 +101,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               versionMeta,
               Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
               Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-              // graph.
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
+              state.context.withReadAdvice(readAdvice));
       success = true;
     } finally {
       if (success == false) {

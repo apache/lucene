@@ -41,6 +41,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
@@ -128,7 +129,7 @@ public final class HnswBitVectorsFormat extends KnnVectorsFormat {
     } else {
       this.mergeExec = null;
     }
-    this.flatVectorsFormat = new Lucene99FlatVectorsFormat(new FlatBitVectorsScorer());
+    this.flatVectorsFormat = new Lucene99FlatVectorsFormat(new FlatBitVectorsScorer(), ReadAdvice.RANDOM);
   }
 
   @Override

@@ -132,7 +132,6 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (scorer == null) {
       return NO_RESULTS;
     }
-
     BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, reader.maxDoc());
     final int cost = acceptDocs.cardinality();
     QueryTimeout queryTimeout = timeLimitingKnnCollectorManager.getQueryTimeout();
