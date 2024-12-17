@@ -121,8 +121,10 @@ class ScorerUtil {
   static Bits likelyFixedBitSet(Bits acceptDocs) {
     if (acceptDocs instanceof FixedBitSet) {
       return acceptDocs;
-    } else {
+    } else if (acceptDocs != null) {
       return new FilterBits(acceptDocs);
+    } else {
+      return null;
     }
   }
 
