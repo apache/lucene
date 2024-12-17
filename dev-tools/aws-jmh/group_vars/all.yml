@@ -43,6 +43,9 @@ instances:
   - name: graviton3
     type: c7g.large
     ami: "{{ arm_ami }}"
+  - name: graviton4
+    type: c8g.large
+    ami: "{{ arm_ami }}"
 
 jdk_version: 21.0.1
 x86_jdk_url: "https://download.java.net/java/GA/jdk{{ jdk_version }}/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-{{ jdk_version }}_linux-x64_bin.tar.gz"
