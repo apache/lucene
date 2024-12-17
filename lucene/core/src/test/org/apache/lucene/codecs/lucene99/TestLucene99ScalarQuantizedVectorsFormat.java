@@ -65,7 +65,10 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     }
     format =
         new Lucene99ScalarQuantizedVectorsFormat(
-            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false, random().nextBoolean() ? ReadAdvice.RANDOM : ReadAdvice.SEQUENTIAL);
+            confidenceInterval,
+            bits,
+            bits == 4 ? random().nextBoolean() : false,
+            random().nextBoolean() ? ReadAdvice.RANDOM : ReadAdvice.SEQUENTIAL);
     super.setUp();
   }
 
@@ -199,7 +202,8 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene99ScalarQuantizedVectorsFormat(0.9f, (byte) 4, false, ReadAdvice.RANDOM);
+            return new Lucene99ScalarQuantizedVectorsFormat(
+                0.9f, (byte) 4, false, ReadAdvice.RANDOM);
           }
         };
     String expectedPattern =

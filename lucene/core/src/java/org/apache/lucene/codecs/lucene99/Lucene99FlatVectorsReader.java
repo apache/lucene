@@ -59,8 +59,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final IndexInput vectorData;
   private final FieldInfos fieldInfos;
 
-  public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer, ReadAdvice readAdvice)
-      throws IOException {
+  public Lucene99FlatVectorsReader(
+      SegmentReadState state, FlatVectorsScorer scorer, ReadAdvice readAdvice) throws IOException {
     super(scorer);
     int versionMeta = readMetadata(state);
     this.fieldInfos = state.fieldInfos;

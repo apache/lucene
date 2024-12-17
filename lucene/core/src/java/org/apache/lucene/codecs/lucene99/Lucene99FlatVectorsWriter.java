@@ -73,8 +73,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   private boolean finished;
 
-  public Lucene99FlatVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer, ReadAdvice readAdvice)
-      throws IOException {
+  public Lucene99FlatVectorsWriter(
+      SegmentWriteState state, FlatVectorsScorer scorer, ReadAdvice readAdvice) throws IOException {
     super(scorer);
     segmentWriteState = state;
     this.readAdvice = readAdvice;

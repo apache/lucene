@@ -52,12 +52,13 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "veq";
 
   /**
-   * Defines the format used for storing, reading, and merging raw vectors on disk.
-   * For this format, the {@link ReadAdvice#SEQUENTIAL} read advice is employed,
-   * as nearest neighbors are retrieved exclusively using a brute-force approach.
+   * Defines the format used for storing, reading, and merging raw vectors on disk. For this format,
+   * the {@link ReadAdvice#SEQUENTIAL} read advice is employed, as nearest neighbors are retrieved
+   * exclusively using a brute-force approach.
    */
   private static final FlatVectorsFormat rawVectorFormat =
-      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer(), ReadAdvice.SEQUENTIAL);
+      new Lucene99FlatVectorsFormat(
+          FlatVectorScorerUtil.getLucene99FlatVectorsScorer(), ReadAdvice.SEQUENTIAL);
 
   /** The minimum confidence interval */
   private static final float MINIMUM_CONFIDENCE_INTERVAL = 0.9f;
@@ -82,8 +83,8 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   /** Constructs a format using default graph construction parameters */
   public Lucene99ScalarQuantizedVectorsFormat() {
     /**
-     * For this format, the {@link ReadAdvice#SEQUENTIAL} read advice is employed,
-     * as nearest neighbors are retrieved exclusively using a brute-force approach.
+     * For this format, the {@link ReadAdvice#SEQUENTIAL} read advice is employed, as nearest
+     * neighbors are retrieved exclusively using a brute-force approach.
      */
     this(null, 7, false, ReadAdvice.SEQUENTIAL);
   }

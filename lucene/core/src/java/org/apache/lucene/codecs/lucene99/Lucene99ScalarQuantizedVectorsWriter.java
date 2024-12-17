@@ -499,7 +499,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       IOUtils.close(tempQuantizedVectorData);
       quantizationDataInput =
           segmentWriteState.directory.openInput(
-              tempQuantizedVectorData.getName(), segmentWriteState.context.withReadAdvice(readAdvice));
+              tempQuantizedVectorData.getName(),
+              segmentWriteState.context.withReadAdvice(readAdvice));
       quantizedVectorData.copyBytes(
           quantizationDataInput, quantizationDataInput.length() - CodecUtil.footerLength());
       long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;

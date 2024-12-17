@@ -129,7 +129,8 @@ public final class HnswBitVectorsFormat extends KnnVectorsFormat {
     } else {
       this.mergeExec = null;
     }
-    this.flatVectorsFormat = new Lucene99FlatVectorsFormat(new FlatBitVectorsScorer(), ReadAdvice.RANDOM);
+    this.flatVectorsFormat =
+        new Lucene99FlatVectorsFormat(new FlatBitVectorsScorer(), ReadAdvice.RANDOM);
   }
 
   @Override

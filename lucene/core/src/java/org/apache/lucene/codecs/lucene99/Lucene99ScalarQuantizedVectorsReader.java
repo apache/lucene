@@ -65,7 +65,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final ReadAdvice readAdvice;
 
   public Lucene99ScalarQuantizedVectorsReader(
-      SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer, ReadAdvice readAdvice)
+      SegmentReadState state,
+      FlatVectorsReader rawVectorsReader,
+      FlatVectorsScorer scorer,
+      ReadAdvice readAdvice)
       throws IOException {
     super(scorer);
     this.rawVectorsReader = rawVectorsReader;
