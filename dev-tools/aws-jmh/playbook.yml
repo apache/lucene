@@ -90,18 +90,16 @@
 
     - name: Checkout main
       git:
-        repo: "git@github.com:{{ (main_branch | split(':'))[0] }}/lucene.git"
+        repo: "https://github.com/{{ (main_branch | split(':'))[0] }}/lucene.git"
         version: "{{ (main_branch | split(':'))[1] }}"
         dest: main
-        accept_newhostkey: true
         depth: 1
 
     - name: Checkout patch
       git:
-        repo: "git@github.com:{{ (patch_branch | split(':'))[0] }}/lucene.git"
+        repo: "https://github.com/{{ (patch_branch | split(':'))[0] }}/lucene.git"
         version: "{{ (patch_branch | split(':'))[1] }}"
         dest: patch
-        accept_newhostkey: true
         depth: 1
 
     - name: Assemble Sources
