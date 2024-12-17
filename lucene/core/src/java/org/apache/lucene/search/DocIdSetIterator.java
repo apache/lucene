@@ -230,6 +230,7 @@ public abstract class DocIdSetIterator {
    * ID}.
    *
    * <p><b>Note</b>: It is important not to clear bits from {@code bitSet} that may be already set.
+   * @lucene.internal
    */
   public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
       throws IOException {
