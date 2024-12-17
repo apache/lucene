@@ -53,7 +53,9 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
 
@@ -873,6 +875,63 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       this.doc = docBuffer[next];
       docBufferUpto = next + 1;
       return doc;
+    }
+
+    @Override
+    public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
+        throws IOException {
+      if (doc >= upTo) {
+        return;
+      }
+
+      // Handle the current doc separately, it may be on the previous docBuffer.
+      if (acceptDocs == null || acceptDocs.get(doc)) {
+        bitSet.set(doc - offset);
+      }
+
+      for (; ; ) {
+        if (docBufferUpto == BLOCK_SIZE) {
+          // refill
+          moveToNextLevel0Block();
+        }
+
+        int start = docBufferUpto;
+        int end = computeBufferEndBoundary(upTo);
+        if (end != 0) {
+          bufferIntoBitSet(start, end, acceptDocs, bitSet, offset);
+          doc = docBuffer[end - 1];
+        }
+        docBufferUpto = end;
+
+        if (end != BLOCK_SIZE) {
+          // Either the block is a tail block, or the block did not fully match, we're done.
+          nextDoc();
+          assert doc >= upTo;
+          break;
+        }
+      }
+    }
+
+    private int computeBufferEndBoundary(int upTo) {
+      if (docBufferSize != 0 && docBuffer[docBufferSize - 1] < upTo) {
+        // All docs in the buffer are under upTo
+        return docBufferSize;
+      } else {
+        // Find the index of the first doc that is greater than or equal to upTo
+        return VectorUtil.findNextGEQ(docBuffer, upTo, docBufferUpto, docBufferSize);
+      }
+    }
+
+    private void bufferIntoBitSet(
+        int start, int end, Bits acceptDocs, FixedBitSet bitSet, int offset) throws IOException {
+      // acceptDocs#get (if backed by FixedBitSet), bitSet#set and `doc - offset` get
+      // auto-vectorized
+      for (int i = start; i < end; ++i) {
+        int doc = docBuffer[i];
+        if (acceptDocs == null || acceptDocs.get(doc)) {
+          bitSet.set(doc - offset);
+        }
+      }
     }
 
     private void skipPositions(int freq) throws IOException {

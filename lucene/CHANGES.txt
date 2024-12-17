@@ -7,7 +7,8 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
+  optimize loading doc IDs into a bit set. (Adrien Grand)
 
 New Features
 ---------------------
