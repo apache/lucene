@@ -41,9 +41,9 @@ public class MockIndexInputWrapper extends FilterIndexInput {
 
   // Which MockIndexInputWrapper we were cloned from, or null if we are not a clone:
   private final MockIndexInputWrapper parent;
+  private final ReadAdvice readAdvice;
   private final boolean confined;
   private final Thread thread;
-  private ReadAdvice readAdvice;
 
   /** Sole constructor */
   public MockIndexInputWrapper(
@@ -190,14 +190,6 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     ensureOpen();
     ensureAccessible();
     return in.isLoaded();
-  }
-
-  @Override
-  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
-    ensureOpen();
-    ensureAccessible();
-    this.readAdvice = readAdvice;
-    in.updateReadAdvice(readAdvice);
   }
 
   @Override
