@@ -106,7 +106,9 @@ public class HnswUtil {
     } else {
       entryPoint = connectedNodes.nextSetBit(0);
     }
-    components.add(new Component(entryPoint, total));
+    if (total > 0) {
+      components.add(new Component(entryPoint, total));
+    }
     if (level == 0) {
       int nextClear = nextClearBit(connectedNodes, 0);
       while (nextClear != NO_MORE_DOCS) {
