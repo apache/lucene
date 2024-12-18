@@ -24,8 +24,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * BulkScorer implementation of {@link ConjunctionScorer}. For simplicity, it focuses on scorers
- * that produce regular {@link DocIdSetIterator}s and not {@link TwoPhaseIterator}s.
+ * BulkScorer implementation of {@link ConjunctionScorer} that is specialized for dense clauses.
+ * Whenever sensible, it intersects clauses by tran
  */
 final class DenseConjunctionBulkScorer extends BulkScorer {
 
