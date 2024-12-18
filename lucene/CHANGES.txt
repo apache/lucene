@@ -15,7 +15,9 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
+  (Robert Muir)
 
 Optimizations
 ---------------------
