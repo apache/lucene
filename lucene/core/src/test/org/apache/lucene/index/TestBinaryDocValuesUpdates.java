@@ -776,8 +776,7 @@ public class TestBinaryDocValuesUpdates extends LuceneTestCase {
             }
             assertFalse(sortDoc.deleted);
 
-            assertEquals(
-                sortDoc.value, RandomAccessInputRef.toBytesRef(values.randomAccessInputValue()));
+            assertEquals(sortDoc.value, values.randomAccessInputValue().toBytesRef());
 
             long sortValue = sortValues.longValue();
             assertEquals(sortDoc.sortValue, sortValue);

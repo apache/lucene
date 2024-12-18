@@ -88,7 +88,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.RandomAccessInputRef;
 import org.hamcrest.MatcherAssert;
 
 public class TestIndexSorting extends LuceneTestCase {
@@ -2763,7 +2762,7 @@ public class TestIndexSorting extends LuceneTestCase {
         assertEquals(127 - docID, (int) sparseValues.longValue());
         assertEquals(
             newBytesRef(Integer.toString(127 - docID)),
-            RandomAccessInputRef.toBytesRef(sparseBinaryValues.randomAccessInputValue()));
+            sparseBinaryValues.randomAccessInputValue().toBytesRef());
       } else {
         assertFalse(sparseBinaryValues.advanceExact(docID));
         assertFalse(sparseValues.advanceExact(docID));

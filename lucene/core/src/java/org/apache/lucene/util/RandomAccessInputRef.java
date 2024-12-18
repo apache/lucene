@@ -54,20 +54,19 @@ public final class RandomAccessInputRef {
    */
   public String utf8ToString() throws IOException {
     final char[] ref = new char[length];
-    final int len = UnicodeUtil.UTF8toUTF16(toBytesRef(this), ref);
+    final int len = UnicodeUtil.UTF8toUTF16(toBytesRef(), ref);
     return new String(ref, 0, len);
   }
 
   /**
-   * Creates a new BytesRef that points to a copy of the bytes from <code>input</code> starting at
-   * offset for length.
+   * Creates a new BytesRef and copies the bytes from this RandomAccessInputRef into the BytesRef.
    *
-   * <p>The returned BytesRef will have a offset of zero.
+   * <p>The returned BytesRef will have a offset of zero and length {@link #length}.
    */
-  public static BytesRef toBytesRef(RandomAccessInputRef input) throws IOException {
-    final byte[] bytes = new byte[input.length];
-    input.bytes.readBytes(input.offset, bytes, 0, input.length);
-    return new BytesRef(bytes, 0, input.length);
+  public BytesRef toBytesRef() throws IOException {
+    final byte[] bytes = new byte[length];
+    this.bytes.readBytes(offset, bytes, 0, length);
+    return new BytesRef(bytes, 0, length);
   }
 
   /** Checks the validity of the RandomAccessInputRef. */

@@ -84,7 +84,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.Version;
 
 public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestBase {
@@ -341,10 +340,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       BytesRef expectedRef = new BytesRef(bytes);
 
       assertEquals(i, dvBytesDerefFixed.nextDoc());
-      BytesRef term = RandomAccessInputRef.toBytesRef(dvBytesDerefFixed.randomAccessInputValue());
+      BytesRef term = dvBytesDerefFixed.randomAccessInputValue().toBytesRef();
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesDerefVar.nextDoc());
-      term = RandomAccessInputRef.toBytesRef(dvBytesDerefVar.randomAccessInputValue());
+      term = dvBytesDerefVar.randomAccessInputValue().toBytesRef();
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesSortedFixed.nextDoc());
       term = dvBytesSortedFixed.lookupOrd(dvBytesSortedFixed.ordValue());
@@ -353,10 +352,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       term = dvBytesSortedVar.lookupOrd(dvBytesSortedVar.ordValue());
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesStraightFixed.nextDoc());
-      term = RandomAccessInputRef.toBytesRef(dvBytesStraightFixed.randomAccessInputValue());
+      term = dvBytesStraightFixed.randomAccessInputValue().toBytesRef();
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesStraightVar.nextDoc());
-      term = RandomAccessInputRef.toBytesRef(dvBytesStraightVar.randomAccessInputValue());
+      term = dvBytesStraightVar.randomAccessInputValue().toBytesRef();
       assertEquals(expectedRef, term);
 
       assertEquals(i, dvDouble.nextDoc());

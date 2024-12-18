@@ -172,9 +172,7 @@ public class TestDVUpdateBackwardsCompatibility extends BackwardsCompatibilityTe
                   assertTrue(binaryDocValues.advanceExact(doc));
                   assertTrue(numericDocValues.advanceExact(doc));
                   assertEquals(1, numericDocValues.longValue());
-                  assertEquals(
-                      toBytes(1),
-                      RandomAccessInputRef.toBytesRef(binaryDocValues.randomAccessInputValue()));
+                  assertEquals(toBytes(1), binaryDocValues.randomAccessInputValue().toBytesRef());
                 }
               }
             }

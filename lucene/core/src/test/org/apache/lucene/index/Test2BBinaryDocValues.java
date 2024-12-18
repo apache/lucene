@@ -31,7 +31,6 @@ import org.apache.lucene.tests.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.TimeUnits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.RandomAccessInputRef;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 @TimeoutSuite(millis = 80 * TimeUnits.HOUR) // effectively no limit
@@ -89,13 +88,12 @@ public class Test2BBinaryDocValues extends LuceneTestCase {
       LeafReader reader = context.reader();
       BinaryDocValues dv = reader.getBinaryDocValues("dv");
       for (int i = 0; i < reader.maxDoc(); i++) {
-        ;
         bytes[0] = (byte) (expectedValue >> 24);
         bytes[1] = (byte) (expectedValue >> 16);
         bytes[2] = (byte) (expectedValue >> 8);
         bytes[3] = (byte) expectedValue;
         assertEquals(i, dv.nextDoc());
-        final BytesRef term = RandomAccessInputRef.toBytesRef(dv.randomAccessInputValue());
+        final BytesRef term = dv.randomAccessInputValue().toBytesRef();
         assertEquals(data, term);
         expectedValue++;
       }

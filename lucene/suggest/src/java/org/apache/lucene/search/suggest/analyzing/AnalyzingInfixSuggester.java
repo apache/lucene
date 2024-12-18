@@ -73,7 +73,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.RandomAccessInputRef;
 
 // TODO:
 //   - a PostingsFormat that stores super-high-freq terms as
@@ -793,7 +792,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       BytesRef payload;
       if (payloadsDV != null) {
         if (payloadsDV.advance(fd.doc) == fd.doc) {
-          payload = RandomAccessInputRef.toBytesRef(payloadsDV.randomAccessInputValue());
+          payload = payloadsDV.randomAccessInputValue().toBytesRef();
         } else {
           payload = new BytesRef(BytesRef.EMPTY_BYTES);
         }

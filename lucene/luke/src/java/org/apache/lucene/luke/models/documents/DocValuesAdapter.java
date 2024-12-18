@@ -32,7 +32,6 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.luke.models.util.IndexUtils;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.RandomAccessInputRef;
 
 /** An utility class to access to the doc values. */
 final class DocValuesAdapter {
@@ -80,8 +79,7 @@ final class DocValuesAdapter {
       DocValues dv =
           DocValues.of(
               dvType,
-              Collections.singletonList(
-                  RandomAccessInputRef.toBytesRef(bvalues.randomAccessInputValue())),
+              Collections.singletonList(bvalues.randomAccessInputValue().toBytesRef()),
               Collections.emptyList());
       return Optional.of(dv);
     }

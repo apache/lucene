@@ -53,7 +53,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RandomAccessInputRef;
 
 public class TestSortingCodecReader extends LuceneTestCase {
 
@@ -268,7 +267,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertEquals(idNext, valuesIterator.advance(idNext));
               assertEquals(
                   new BytesRef(ids.longValue() + ""),
-                  RandomAccessInputRef.toBytesRef(binary_dv.randomAccessInputValue()));
+                  binary_dv.randomAccessInputValue().toBytesRef());
               assertEquals(
                   new BytesRef(ids.longValue() + ""),
                   binary_sorted_dv.lookupOrd(binary_sorted_dv.ordValue()));

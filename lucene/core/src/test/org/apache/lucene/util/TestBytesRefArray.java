@@ -54,7 +54,6 @@ public class TestBytesRefArray extends LuceneTestCase {
           assertEquals(i + initSize, list.append(spare.get()));
         }
         stringList.add(randomRealisticUnicodeString);
-        ;
       }
       for (int i = 0; i < entries; i++) {
         assertNotNull(list.get(spare, i));

@@ -34,7 +34,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.RandomAccessInputRef;
 
 /**
  * Use this selector to rearrange an index where documents can be uniquely identified based on
@@ -92,7 +91,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
           }
 
           if (binaryDocValues.advanceExact(docid)) {
-            keySet.add(RandomAccessInputRef.toBytesRef(binaryDocValues.randomAccessInputValue()));
+            keySet.add(binaryDocValues.randomAccessInputValue().toBytesRef());
           } else {
             throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }
@@ -122,7 +121,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
 
         for (int docid = 0; docid < context.reader().maxDoc(); docid++) {
           if (binaryDocValues.advanceExact(docid)) {
-            keySet.add(RandomAccessInputRef.toBytesRef(binaryDocValues.randomAccessInputValue()));
+            keySet.add(binaryDocValues.randomAccessInputValue().toBytesRef());
           } else {
             throw new AssertionError("Document " + docid + " doesn't have key " + field);
           }

@@ -88,7 +88,6 @@ import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
@@ -3810,6 +3809,6 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
   }
 
   private BytesRef toBytesRef(BinaryDocValues values) throws IOException {
-    return RandomAccessInputRef.toBytesRef(values.randomAccessInputValue());
+    return values.randomAccessInputValue().toBytesRef();
   }
 }

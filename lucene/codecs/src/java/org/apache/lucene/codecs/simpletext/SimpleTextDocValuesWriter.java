@@ -194,9 +194,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       ++docCount;
       maxLength =
-          Math.max(
-              maxLength,
-              RandomAccessInputRef.toBytesRef(values.randomAccessInputValue()).toString().length());
+          Math.max(maxLength, values.randomAccessInputValue().toBytesRef().toString().length());
     }
 
     SimpleTextUtil.write(data, DOCCOUNT);
@@ -228,9 +226,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
         assert values.docID() >= i;
       }
       String stringVal =
-          values.docID() == i
-              ? RandomAccessInputRef.toBytesRef(values.randomAccessInputValue()).toString()
-              : null;
+          values.docID() == i ? values.randomAccessInputValue().toBytesRef().toString() : null;
       // write length
       final int length = stringVal == null ? 0 : stringVal.length();
       SimpleTextUtil.write(data, LENGTH);

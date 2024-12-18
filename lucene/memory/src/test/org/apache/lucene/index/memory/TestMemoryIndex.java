@@ -91,7 +91,6 @@ import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.RandomAccessInputRef;
 import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
@@ -451,8 +450,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
     BinaryDocValues binaryDocValues = leafReader.getBinaryDocValues("binary");
     assertEquals(0, binaryDocValues.nextDoc());
-    assertArrayEquals(
-        bytes, RandomAccessInputRef.toBytesRef(binaryDocValues.randomAccessInputValue()).bytes);
+    assertArrayEquals(bytes, binaryDocValues.randomAccessInputValue().toBytesRef().bytes);
   }
 
   public void testBigSortedDocValues() throws Exception {

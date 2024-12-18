@@ -39,10 +39,6 @@ public class TestRandomAccesInputRef extends LuceneTestCase {
     RandomAccessInput bytes = new ByteArrayRandomAccessInput(new byte[] {1, 2});
     RandomAccessInputRef from = new RandomAccessInputRef(bytes, 0, 2);
     from.offset += 1; // now invalid
-    expectThrows(
-        IndexOutOfBoundsException.class,
-        () -> {
-          RandomAccessInputRef.toBytesRef(from);
-        });
+    expectThrows(IndexOutOfBoundsException.class, from::toBytesRef);
   }
 }

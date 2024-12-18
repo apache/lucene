@@ -32,7 +32,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.RandomAccessInputRef;
 
 /** Tests MultiDocValues versus ordinary segment merging */
 public class TestMultiDocValues extends LuceneTestCase {
@@ -111,8 +110,8 @@ public class TestMultiDocValues extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       assertEquals(i, multi.nextDoc());
       assertEquals(i, single.nextDoc());
-      final BytesRef expected = RandomAccessInputRef.toBytesRef(single.randomAccessInputValue());
-      final BytesRef actual = RandomAccessInputRef.toBytesRef(multi.randomAccessInputValue());
+      final BytesRef expected = single.randomAccessInputValue().toBytesRef();
+      final BytesRef actual = multi.randomAccessInputValue().toBytesRef();
       assertEquals(expected, actual);
     }
     testRandomAdvance(
