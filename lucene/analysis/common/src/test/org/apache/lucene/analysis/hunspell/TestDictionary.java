@@ -208,6 +208,11 @@ public class TestDictionary extends LuceneTestCase {
         }
 
         @Override
+        protected boolean tolerateRepRuleCountMismatches() {
+          return true;
+        }
+
+        @Override
         protected boolean tolerateDuplicateConversionMappings() {
           return true;
         }
