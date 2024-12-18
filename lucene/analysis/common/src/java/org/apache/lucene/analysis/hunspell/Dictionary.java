@@ -405,10 +405,18 @@ public class Dictionary {
       } else if ("TRY".equals(firstWord)) {
         tryChars = firstArgument(reader, line);
       } else if ("REP".equals(firstWord)) {
-        int count = parseNum(reader, line);
-        for (int i = 0; i < count; i++) {
-          String[] parts = splitBySpace(reader, reader.readLine(), 3, Integer.MAX_VALUE);
-          repTable.add(new RepEntry(parts[1], parts[2]));
+        if (tolerateRepRuleCountMismatches()) {
+          String[] parts = splitBySpace(reader, line, 2, Integer.MAX_VALUE);
+          // ignore REP N, as actual N may be incorrect
+          if (parts.length >= 3) {
+            repTable.add(new RepEntry(parts[1], parts[2]));
+          }
+        } else {
+          int count = parseNum(reader, line);
+          for (int i = 0; i < count; i++) {
+            String[] parts = splitBySpace(reader, reader.readLine(), 3, Integer.MAX_VALUE);
+            repTable.add(new RepEntry(parts[1], parts[2]));
+          }
         }
       } else if ("MAP".equals(firstWord)) {
         int count = parseNum(reader, line);
@@ -1165,6 +1173,14 @@ public class Dictionary {
    * ParseException} will happen.
    */
   protected boolean tolerateAffixRuleCountMismatches() {
+    return false;
+  }
+
+  /**
+   * Whether incorrect REP rule counts will be silently ignored. False by default: a {@link
+   * ParseException} will happen.
+   */
+  protected boolean tolerateRepRuleCountMismatches() {
     return false;
   }
 
