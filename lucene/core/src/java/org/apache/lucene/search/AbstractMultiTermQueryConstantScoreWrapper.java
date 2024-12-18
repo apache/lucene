@@ -28,7 +28,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -151,7 +150,8 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         int fieldDocCount,
         Terms terms,
         TermsEnum termsEnum,
-        List<TermAndState> collectedTerms)
+        List<TermAndState> collectedTerms,
+        long leadCost)
         throws IOException;
 
     private WeightOrDocIdSetIterator rewriteAsBooleanQuery(
@@ -247,21 +247,22 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         cost = estimateCost(terms, q.getTermsCount());
       }
 
-      IOSupplier<WeightOrDocIdSetIterator> weightOrIteratorSupplier =
-          () -> {
+      IOLongFunction<WeightOrDocIdSetIterator> weightOrIteratorSupplier =
+          leadCost -> {
             if (collectResult) {
               return rewriteAsBooleanQuery(context, collectedTerms);
             } else {
               // Too many terms to rewrite as a simple bq.
               // Invoke rewriteInner logic to handle rewriting:
-              return rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
+              return rewriteInner(
+                  context, fieldDocCount, terms, termsEnum, collectedTerms, leadCost);
             }
           };
 
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) throws IOException {
-          WeightOrDocIdSetIterator weightOrIterator = weightOrIteratorSupplier.get();
+          WeightOrDocIdSetIterator weightOrIterator = weightOrIteratorSupplier.apply(leadCost);
           final Scorer scorer;
           if (weightOrIterator == null) {
             scorer = null;
@@ -281,7 +282,8 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
 
         @Override
         public BulkScorer bulkScorer() throws IOException {
-          WeightOrDocIdSetIterator weightOrIterator = weightOrIteratorSupplier.get();
+          WeightOrDocIdSetIterator weightOrIterator =
+              weightOrIteratorSupplier.apply(Long.MAX_VALUE);
           final BulkScorer bulkScorer;
           if (weightOrIterator == null) {
             bulkScorer = null;
@@ -309,6 +311,10 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
           return cost;
         }
       };
+    }
+
+    private static interface IOLongFunction<T> {
+      T apply(long arg) throws IOException;
     }
 
     private static long estimateCost(Terms terms, long queryTermsCount) throws IOException {

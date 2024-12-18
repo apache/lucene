@@ -31,6 +31,34 @@ Other
 ---------------------
 (No changes)
 
+======================= Lucene 10.2.0 =======================
+
+API Changes
+---------------------
+* GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
+  optimize loading doc IDs into a bit set. (Adrien Grand)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+
+* GITHUB#14052: Speed up DisjunctionDISIApproximation#advance. (Adrien Grand)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.1.0 =======================
 
 API Changes

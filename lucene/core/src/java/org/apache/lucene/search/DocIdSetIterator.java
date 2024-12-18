@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * This abstract class defines methods to iterate over a set of non-decreasing doc ids. Note that
@@ -211,4 +213,33 @@ public abstract class DocIdSetIterator {
    * may be a rough heuristic, hardcoded value, or otherwise completely inaccurate.
    */
   public abstract long cost();
+
+  /**
+   * Load doc IDs into a {@link FixedBitSet}. This should behave exactly as if implemented as below,
+   * which is the default implementation:
+   *
+   * <pre class="prettyprint">
+   * for (int doc = docID(); doc &lt; upTo; doc = nextDoc()) {
+   *   if (acceptDocs == null || acceptDocs.get(doc)) {
+   *     bitSet.set(doc - offset);
+   *   }
+   * }
+   * </pre>
+   *
+   * <p><b>Note</b>: {@code offset} must be less than or equal to the {@link #docID() current doc
+   * ID}.
+   *
+   * <p><b>Note</b>: It is important not to clear bits from {@code bitSet} that may be already set.
+   *
+   * @lucene.internal
+   */
+  public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
+      throws IOException {
+    assert offset <= docID();
+    for (int doc = docID(); doc < upTo; doc = nextDoc()) {
+      if (acceptDocs == null || acceptDocs.get(doc)) {
+        bitSet.set(doc - offset);
+      }
+    }
+  }
 }
