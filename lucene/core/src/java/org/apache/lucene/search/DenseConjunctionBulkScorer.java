@@ -32,10 +32,10 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   // Use a small-ish window size to make sure that we can take advantage of gaps in the postings of
   // clauses that are not leading iteration.
   static final int WINDOW_SIZE = 4096;
-  // Only use bit sets to compute the intersection if more than 1/128th of the docs are expected to
+  // Only use bit sets to compute the intersection if more than 1/32th of the docs are expected to
   // match. Experiments suggested that values that are a bit higher than this would work better, but
   // we're erring on the conservative side.
-  static final int DENSITY_THRESHOLD_INVERSE = 2 * Long.SIZE;
+  static final int DENSITY_THRESHOLD_INVERSE = Long.SIZE / 2;
 
   private final DocIdSetIterator lead;
   private final List<DocIdSetIterator> others;
