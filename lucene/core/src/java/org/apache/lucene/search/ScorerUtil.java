@@ -30,7 +30,9 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Util class for Scorer related methods */
@@ -107,5 +109,41 @@ class ScorerUtil {
       scorable = new FilterScorable(scorable);
     }
     return scorable;
+  }
+
+  /**
+   * Optimize {@link Bits} representing the set of accepted documents for the case when it is likely
+   * implemented via a {@link FixedBitSet}. This helps make calls to {@link Bits#get(int)}
+   * inlinable, which in-turn helps speed up query evaluation. This is especially helpful as
+   * inlining will sometimes enable auto-vectorizing shifts and masks that are done in {@link
+   * FixedBitSet#get(int)}.
+   */
+  static Bits likelyFixedBitSet(Bits acceptDocs) {
+    if (acceptDocs instanceof FixedBitSet) {
+      return acceptDocs;
+    } else if (acceptDocs != null) {
+      return new FilterBits(acceptDocs);
+    } else {
+      return null;
+    }
+  }
+
+  private static class FilterBits implements Bits {
+
+    private final Bits in;
+
+    FilterBits(Bits in) {
+      this.in = in;
+    }
+
+    @Override
+    public boolean get(int index) {
+      return in.get(index);
+    }
+
+    @Override
+    public int length() {
+      return in.length();
+    }
   }
 }
