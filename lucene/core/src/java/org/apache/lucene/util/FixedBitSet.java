@@ -338,14 +338,11 @@ public final class FixedBitSet extends BitSet {
 
   @Override
   public void or(DocIdSetIterator iter) throws IOException {
-    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
-      checkUnpositioned(iter);
-      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
-      or(bits);
-    } else if (iter instanceof DocBaseBitSetIterator) {
+    if (iter instanceof DocBaseBitSetIterator) {
+      // TODO: implement DocBaseBitSetIterator#intoBitSet instead
       checkUnpositioned(iter);
       DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
-      or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
+      orRange(baseIter.getBitSet(), baseIter.getDocBase());
     } else {
       checkUnpositioned(iter);
       iter.nextDoc();
@@ -353,23 +350,40 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
+  /**
+   * Or {@code min(length(), other.length() - from} bits starting at {@code from} from {@code other}
+   * into this bit set.
+   */
+  void orRange(FixedBitSet other, int from) {
+    int numBits = Math.min(length(), other.length() - from);
+    if (numBits <= 0) {
+      return;
+    }
+    int numFullWords = numBits >> 6;
+    long[] otherBits = other.getBits();
+    int wordOffset = from >> 6;
+    if ((from & 0x3F) == 0) {
+      // from is aligned with a long[]
+      for (int i = 0; i < numFullWords; ++i) {
+        bits[i] |= otherBits[wordOffset + i];
+      }
+    } else {
+      for (int i = 0; i < numFullWords; ++i) {
+        bits[i] |= (otherBits[wordOffset + i] >>> from) | (otherBits[wordOffset + i + 1] << -from);
+      }
+    }
+
+    // Handle the remainder
+    for (int i = numFullWords << 6; i < numBits; ++i) {
+      if (other.get(from + i)) {
+        set(i);
+      }
+    }
+  }
+
   /** this = this OR other */
   public void or(FixedBitSet other) {
-    or(0, other.bits, other.numWords);
-  }
-
-  private void or(final int otherOffsetWords, FixedBitSet other) {
-    or(otherOffsetWords, other.bits, other.numWords);
-  }
-
-  private void or(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
-    assert otherNumWords + otherOffsetWords <= numWords
-        : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
-    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
-    final long[] thisArr = this.bits;
-    while (--pos >= 0) {
-      thisArr[pos + otherOffsetWords] |= otherArr[pos];
-    }
+    orRange(other, 0);
   }
 
   /** this = this XOR other */
