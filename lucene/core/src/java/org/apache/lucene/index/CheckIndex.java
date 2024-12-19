@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -52,6 +53,7 @@ import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
@@ -91,6 +93,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -249,6 +252,9 @@ public final class CheckIndex implements Closeable {
       /** Status of vectors */
       public VectorValuesStatus vectorValuesStatus;
 
+      /** Status of HNSW graph */
+      public HnswGraphsStatus hnswGraphsStatus;
+
       /** Status of soft deletes */
       public SoftDeletesStatus softDeletesStatus;
 
@@ -403,6 +409,32 @@ public final class CheckIndex implements Closeable {
       public int totalKnnVectorFields;
 
       /** Exception thrown during vector values test (null on success) */
+      public Throwable error;
+    }
+
+    /** Status from testing a single HNSW graph */
+    public static final class HnswGraphStatus {
+
+      HnswGraphStatus() {}
+
+      /** Number of nodes in the HNSW graph, summed over all levels */
+      public int totalNumNodes;
+
+      /** Number of levels in the HNSW graph */
+      public int numLevels;
+    }
+
+    /** Status from testing all HNSW graphs */
+    public static final class HnswGraphsStatus {
+
+      HnswGraphsStatus() {
+        this.hnswGraphsStatusByField = new HashMap<>();
+      }
+
+      /** Status of the HNSW graph keyed with field name */
+      public Map<String, HnswGraphStatus> hnswGraphsStatusByField;
+
+      /** Exception thrown during term index test (null on success) */
       public Throwable error;
     }
 
@@ -1084,6 +1116,9 @@ public final class CheckIndex implements Closeable {
 
         // Test FloatVectorValues and ByteVectorValues
         segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
+
+        // Test HNSW graph
+        segInfoStat.hnswGraphsStatus = testHnswGraphs(reader, infoStream, failFast);
 
         // Test Index Sort
         if (indexSort != null) {
@@ -2744,6 +2779,107 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
+  }
+
+  /** Test the HNSW graph. */
+  public static Status.HnswGraphsStatus testHnswGraphs(
+      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
+    if (infoStream != null) {
+      infoStream.print("    test: hnsw graphs.........");
+    }
+    long startNS = System.nanoTime();
+    Status.HnswGraphsStatus status = new Status.HnswGraphsStatus();
+    KnnVectorsReader vectorsReader = reader.getVectorReader();
+    FieldInfos fieldInfos = reader.getFieldInfos();
+
+    try {
+      if (fieldInfos.hasVectorValues()) {
+        for (FieldInfo fieldInfo : fieldInfos) {
+          if (fieldInfo.hasVectorValues()) {
+            if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader) {
+              KnnVectorsReader fieldReader =
+                  ((PerFieldKnnVectorsFormat.FieldsReader) vectorsReader)
+                      .getFieldReader(fieldInfo.name);
+              if (fieldReader instanceof HnswGraphProvider) {
+                HnswGraph hnswGraph = ((HnswGraphProvider) fieldReader).getGraph(fieldInfo.name);
+                testHnswGraph(hnswGraph, fieldInfo.name, status);
+              }
+            }
+          }
+        }
+      }
+      StringJoiner hnswGraphResultJoiner = new StringJoiner(", ");
+      for (Map.Entry<String, Status.HnswGraphStatus> hnswGraphStatus :
+          status.hnswGraphsStatusByField.entrySet()) {
+        hnswGraphResultJoiner.add(
+            String.format(
+                Locale.ROOT,
+                "(field name: %s, levels: %d, total nodes: %d)",
+                hnswGraphStatus.getKey(),
+                hnswGraphStatus.getValue().numLevels,
+                hnswGraphStatus.getValue().totalNumNodes));
+      }
+      msg(
+          infoStream,
+          String.format(
+              Locale.ROOT,
+              "OK [%d fields%s] [took %.3f sec]",
+              status.hnswGraphsStatusByField.size(),
+              hnswGraphResultJoiner.toString().isEmpty() ? "" : ": " + hnswGraphResultJoiner,
+              nsToSec(System.nanoTime() - startNS)));
+    } catch (Throwable e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
+      msg(infoStream, "ERROR: " + e);
+      status.error = e;
+      if (infoStream != null) {
+        e.printStackTrace(infoStream);
+      }
+    }
+
+    return status;
+  }
+
+  private static void testHnswGraph(
+      HnswGraph hnswGraph, String fieldName, Status.HnswGraphsStatus status)
+      throws IOException, CheckIndexException {
+    if (hnswGraph != null) {
+      status.hnswGraphsStatusByField.put(fieldName, new Status.HnswGraphStatus());
+      final int numLevels = hnswGraph.numLevels();
+      // Perform tests on each level of the HNSW graph
+      for (int level = numLevels - 1; level >= 0; level--) {
+        HnswGraph.NodesIterator nodesIterator = hnswGraph.getNodesOnLevel(level);
+        while (nodesIterator.hasNext()) {
+          int node = nodesIterator.nextInt();
+          hnswGraph.seek(level, node);
+          int nbr, lastNeighbor = -1, firstNeighbor = -1;
+          while ((nbr = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+            if (firstNeighbor == -1) {
+              firstNeighbor = nbr;
+            }
+            if (nbr < lastNeighbor) {
+              throw new CheckIndexException(
+                  "Neighbors out of order for node "
+                      + node
+                      + ": "
+                      + nbr
+                      + "<"
+                      + lastNeighbor
+                      + " 1st="
+                      + firstNeighbor);
+            } else if (nbr == lastNeighbor) {
+              throw new CheckIndexException(
+                  "There are repeated neighbors of node " + node + " with value " + nbr);
+            }
+            // TODO: add checks: nodes are within range and neighbors are on the same level
+            lastNeighbor = nbr;
+          }
+          status.hnswGraphsStatusByField.get(fieldName).totalNumNodes++;
+        }
+        status.hnswGraphsStatusByField.get(fieldName).numLevels++;
+      }
+    }
   }
 
   private static boolean vectorsReaderSupportsSearch(CodecReader codecReader, String fieldName) {
