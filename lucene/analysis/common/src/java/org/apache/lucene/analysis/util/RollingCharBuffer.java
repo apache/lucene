@@ -79,7 +79,7 @@ public final class RollingCharBuffer {
 
       final int toRead = buffer.length - Math.max(count, nextWrite);
       final int readCount = reader.read(buffer, nextWrite, toRead);
-      if (readCount == -1) {
+      if (readCount <= 0) {
         end = true;
         return -1;
       }
