@@ -616,4 +616,30 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     set.set(5);
     assertTrue(bits.get(5));
   }
+
+  public void testScanIsEmpty() {
+    FixedBitSet set = new FixedBitSet(0);
+    assertTrue(set.scanIsEmpty());
+
+    set = new FixedBitSet(13);
+    assertTrue(set.scanIsEmpty());
+    set.set(10);
+    assertFalse(set.scanIsEmpty());
+
+    set = new FixedBitSet(1024);
+    assertTrue(set.scanIsEmpty());
+    set.set(3);
+    assertFalse(set.scanIsEmpty());
+    set.clear(3);
+    set.set(1020);
+    assertFalse(set.scanIsEmpty());
+
+    set = new FixedBitSet(1030);
+    assertTrue(set.scanIsEmpty());
+    set.set(3);
+    assertFalse(set.scanIsEmpty());
+    set.clear(3);
+    set.set(1028);
+    assertFalse(set.scanIsEmpty());
+  }
 }
