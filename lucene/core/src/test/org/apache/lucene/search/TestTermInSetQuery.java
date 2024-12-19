@@ -279,6 +279,41 @@ public class TestTermInSetQuery extends LuceneTestCase {
     dir.close();
   }
 
+  public void testContiguousRangeOptimization() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+
+    // Index 100 docs with 10 unique terms from the set {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}:
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      BytesRef term = new BytesRef(String.valueOf(i % 10));
+      // Create inverted and doc value fields (with and without skip index):
+      doc.add(new StringField("field", term, Store.NO));
+      doc.add(new SortedSetDocValuesField("field", term));
+      doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+      iw.addDocument(doc);
+    }
+
+    iw.commit();
+    IndexReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // Create TermInSet queries that can be optimized into a range since they contain contiguous
+    // values and make sure
+    // they all produce equivalent results (using all three fields we indexed):
+    List<BytesRef> queryTerms = List.of(new BytesRef("0"), new BytesRef("1"), new BytesRef("2"));
+    Query q1 =
+        new TermInSetQuery(MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, "field", queryTerms);
+    Query q2 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "field", queryTerms);
+    Query q3 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "idx_field", queryTerms);
+    assertSameMatches(searcher, q1, q2, false);
+    assertSameMatches(searcher, q2, q3, false);
+
+    reader.close();
+    dir.close();
+  }
+
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
