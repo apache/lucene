@@ -60,7 +60,7 @@ import org.apache.lucene.util.IOUtils;
  *       post</a>.
  *   <li>{@link NIOFSDirectory} uses java.nio's FileChannel's positional io when reading to avoid
  *       synchronization when reading from the same file. Unfortunately, due to a Windows-only <a
- *       href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6265734">Sun JRE bug</a> this is a
+ *       href="https://bugs.java.com/bugdatabase/view_bug?bug_id=6265734">Sun JRE bug</a> this is a
  *       poor choice for Windows, but on all other platforms this is the preferred choice.
  *       Applications using {@link Thread#interrupt()} or {@link Future#cancel(boolean)} should use
  *       {@code RAFDirectory} instead, which is provided in the {@code misc} module. See {@link
