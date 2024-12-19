@@ -30,7 +30,8 @@ public final class GroupVIntUtil {
   public static final int MAX_LENGTH_PER_GROUP = 17;
 
   // we use long array instead of int array to make negative integer to be read as positive long.
-  private static final long[] MASKS = new long[] {0xFFL, 0xFFFFL, 0xFFFFFFL, 0xFFFFFFFFL};
+  private static final long[] LONG_MASKS = new long[] {0xFFL, 0xFFFFL, 0xFFFFFFL, 0xFFFFFFFFL};
+  private static final int[] INT_MASKS = new int[] {0xFF, 0xFFFF, 0xFFFFFF, ~0};
 
   /**
    * Read all the group varints, including the tail vints. we need a long[] because this is what
@@ -43,10 +44,27 @@ public final class GroupVIntUtil {
   public static void readGroupVInts(DataInput in, long[] dst, int limit) throws IOException {
     int i;
     for (i = 0; i <= limit - 4; i += 4) {
-      in.readGroupVInt(dst, i);
+      readGroupVInt(in, dst, i);
     }
     for (; i < limit; ++i) {
       dst[i] = in.readVInt() & 0xFFFFFFFFL;
+    }
+  }
+
+  /**
+   * Read all the group varints, including the tail vints.
+   *
+   * @param dst the array to read ints into.
+   * @param limit the number of int values to read.
+   * @lucene.experimental
+   */
+  public static void readGroupVInts(DataInput in, int[] dst, int limit) throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      in.readGroupVInt(dst, i);
+    }
+    for (; i < limit; ++i) {
+      dst[i] = in.readVInt();
     }
   }
 
@@ -66,22 +84,44 @@ public final class GroupVIntUtil {
     final int n3Minus1 = (flag >> 2) & 0x03;
     final int n4Minus1 = flag & 0x03;
 
-    dst[offset] = readLongInGroup(in, n1Minus1);
-    dst[offset + 1] = readLongInGroup(in, n2Minus1);
-    dst[offset + 2] = readLongInGroup(in, n3Minus1);
-    dst[offset + 3] = readLongInGroup(in, n4Minus1);
+    dst[offset] = readIntInGroup(in, n1Minus1) & 0xFFFFFFFFL;
+    dst[offset + 1] = readIntInGroup(in, n2Minus1) & 0xFFFFFFFFL;
+    dst[offset + 2] = readIntInGroup(in, n3Minus1) & 0xFFFFFFFFL;
+    dst[offset + 3] = readIntInGroup(in, n4Minus1) & 0xFFFFFFFFL;
   }
 
-  private static long readLongInGroup(DataInput in, int numBytesMinus1) throws IOException {
+  /**
+   * Default implementation of read single group, for optimal performance, you should use {@link
+   * GroupVIntUtil#readGroupVInts(DataInput, int[], int)} instead.
+   *
+   * @param in the input to use to read data.
+   * @param dst the array to read ints into.
+   * @param offset the offset in the array to start storing ints.
+   */
+  public static void readGroupVInt(DataInput in, int[] dst, int offset) throws IOException {
+    final int flag = in.readByte() & 0xFF;
+
+    final int n1Minus1 = flag >> 6;
+    final int n2Minus1 = (flag >> 4) & 0x03;
+    final int n3Minus1 = (flag >> 2) & 0x03;
+    final int n4Minus1 = flag & 0x03;
+
+    dst[offset] = readIntInGroup(in, n1Minus1);
+    dst[offset + 1] = readIntInGroup(in, n2Minus1);
+    dst[offset + 2] = readIntInGroup(in, n3Minus1);
+    dst[offset + 3] = readIntInGroup(in, n4Minus1);
+  }
+
+  private static int readIntInGroup(DataInput in, int numBytesMinus1) throws IOException {
     switch (numBytesMinus1) {
       case 0:
-        return in.readByte() & 0xFFL;
+        return in.readByte() & 0xFF;
       case 1:
-        return in.readShort() & 0xFFFFL;
+        return in.readShort() & 0xFFFF;
       case 2:
-        return (in.readShort() & 0xFFFFL) | ((in.readByte() & 0xFFL) << 16);
+        return (in.readShort() & 0xFFFF) | ((in.readByte() & 0xFF) << 16);
       default:
-        return in.readInt() & 0xFFFFFFFFL;
+        return in.readInt();
     }
   }
 
@@ -123,13 +163,53 @@ public final class GroupVIntUtil {
     final int n4Minus1 = flag & 0x03;
 
     // This code path has fewer conditionals and tends to be significantly faster in benchmarks
-    dst[offset] = reader.read(pos) & MASKS[n1Minus1];
+    dst[offset] = reader.read(pos) & LONG_MASKS[n1Minus1];
     pos += 1 + n1Minus1;
-    dst[offset + 1] = reader.read(pos) & MASKS[n2Minus1];
+    dst[offset + 1] = reader.read(pos) & LONG_MASKS[n2Minus1];
     pos += 1 + n2Minus1;
-    dst[offset + 2] = reader.read(pos) & MASKS[n3Minus1];
+    dst[offset + 2] = reader.read(pos) & LONG_MASKS[n3Minus1];
     pos += 1 + n3Minus1;
-    dst[offset + 3] = reader.read(pos) & MASKS[n4Minus1];
+    dst[offset + 3] = reader.read(pos) & LONG_MASKS[n4Minus1];
+    pos += 1 + n4Minus1;
+    return (int) (pos - posStart);
+  }
+
+  /**
+   * Faster implementation of read single group, It read values from the buffer that would not cross
+   * boundaries.
+   *
+   * @param in the input to use to read data.
+   * @param remaining the number of remaining bytes allowed to read for current block/segment.
+   * @param reader the supplier of read int.
+   * @param pos the start pos to read from the reader.
+   * @param dst the array to read ints into.
+   * @param offset the offset in the array to start storing ints.
+   * @return the number of bytes read excluding the flag. this indicates the number of positions
+   *     should to be increased for caller, it is 0 or positive number and less than {@link
+   *     #MAX_LENGTH_PER_GROUP}
+   */
+  public static int readGroupVInt(
+      DataInput in, long remaining, IntReader reader, long pos, int[] dst, int offset)
+      throws IOException {
+    if (remaining < MAX_LENGTH_PER_GROUP) {
+      readGroupVInt(in, dst, offset);
+      return 0;
+    }
+    final int flag = in.readByte() & 0xFF;
+    final long posStart = ++pos; // exclude the flag bytes, the position has updated via readByte().
+    final int n1Minus1 = flag >> 6;
+    final int n2Minus1 = (flag >> 4) & 0x03;
+    final int n3Minus1 = (flag >> 2) & 0x03;
+    final int n4Minus1 = flag & 0x03;
+
+    // This code path has fewer conditionals and tends to be significantly faster in benchmarks
+    dst[offset] = reader.read(pos) & INT_MASKS[n1Minus1];
+    pos += 1 + n1Minus1;
+    dst[offset + 1] = reader.read(pos) & INT_MASKS[n2Minus1];
+    pos += 1 + n2Minus1;
+    dst[offset + 2] = reader.read(pos) & INT_MASKS[n3Minus1];
+    pos += 1 + n3Minus1;
+    dst[offset + 3] = reader.read(pos) & INT_MASKS[n4Minus1];
     pos += 1 + n4Minus1;
     return (int) (pos - posStart);
   }
@@ -178,6 +258,41 @@ public final class GroupVIntUtil {
     // tail vints
     for (; readPos < limit; readPos++) {
       out.writeVInt(toInt(values[readPos]));
+    }
+  }
+
+  /**
+   * The implementation for group-varint encoding, It uses a maximum of {@link
+   * #MAX_LENGTH_PER_GROUP} bytes scratch buffer.
+   */
+  public static void writeGroupVInts(DataOutput out, byte[] scratch, int[] values, int limit)
+      throws IOException {
+    int readPos = 0;
+
+    // encode each group
+    while ((limit - readPos) >= 4) {
+      int writePos = 0;
+      final int n1Minus1 = numBytes(values[readPos]) - 1;
+      final int n2Minus1 = numBytes(values[readPos + 1]) - 1;
+      final int n3Minus1 = numBytes(values[readPos + 2]) - 1;
+      final int n4Minus1 = numBytes(values[readPos + 3]) - 1;
+      int flag = (n1Minus1 << 6) | (n2Minus1 << 4) | (n3Minus1 << 2) | (n4Minus1);
+      scratch[writePos++] = (byte) flag;
+      BitUtil.VH_LE_INT.set(scratch, writePos, values[readPos++]);
+      writePos += n1Minus1 + 1;
+      BitUtil.VH_LE_INT.set(scratch, writePos, values[readPos++]);
+      writePos += n2Minus1 + 1;
+      BitUtil.VH_LE_INT.set(scratch, writePos, values[readPos++]);
+      writePos += n3Minus1 + 1;
+      BitUtil.VH_LE_INT.set(scratch, writePos, values[readPos++]);
+      writePos += n4Minus1 + 1;
+
+      out.writeBytes(scratch, writePos);
+    }
+
+    // tail vints
+    for (; readPos < limit; readPos++) {
+      out.writeVInt(values[readPos]);
     }
   }
 }

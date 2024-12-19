@@ -33,7 +33,8 @@ public class AssertingScorable extends FilterScorable {
   @Override
   public float score() throws IOException {
     final float score = in.score();
-    assert !Float.isNaN(score) : "NaN score for in=" + in;
+    // Note: score >= 0 returns false for NaN
+    assert score >= 0 : "score=" + score + " for in=" + in;
     return score;
   }
 

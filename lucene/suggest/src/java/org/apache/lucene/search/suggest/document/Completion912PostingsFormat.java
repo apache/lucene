@@ -19,8 +19,10 @@ package org.apache.lucene.search.suggest.document;
 import org.apache.lucene.codecs.PostingsFormat;
 
 /**
- * {@link CompletionPostingsFormat} for {@link
- * org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat}
+ * {@link org.apache.lucene.search.suggest.document.CompletionPostingsFormat} for {@code
+ * org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsFormat}. This format is only used
+ * for backward-compatibility of the index format and cannot be used to write data, use {@link
+ * Completion101PostingsFormat} on new indices.
  *
  * @lucene.experimental
  */

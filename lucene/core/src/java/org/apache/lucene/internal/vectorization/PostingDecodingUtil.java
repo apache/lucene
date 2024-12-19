@@ -34,19 +34,19 @@ public class PostingDecodingUtil {
    * Core methods for decoding blocks of docs / freqs / positions / offsets.
    *
    * <ul>
-   *   <li>Read {@code count} longs.
+   *   <li>Read {@code count} ints.
    *   <li>For all {@code i} &gt;= 0 so that {@code bShift - i * dec} &gt; 0, apply shift {@code
    *       bShift - i * dec} and store the result in {@code b} at offset {@code count * i}.
    *   <li>Apply mask {@code cMask} and store the result in {@code c} starting at offset {@code
    *       cIndex}.
    * </ul>
    */
-  public void splitLongs(
-      int count, long[] b, int bShift, int dec, long bMask, long[] c, int cIndex, long cMask)
+  public void splitInts(
+      int count, int[] b, int bShift, int dec, int bMask, int[] c, int cIndex, int cMask)
       throws IOException {
     // Default implementation, which takes advantage of the C2 compiler's loop unrolling and
     // auto-vectorization.
-    in.readLongs(c, cIndex, count);
+    in.readInts(c, cIndex, count);
     int maxIter = (bShift - 1) / dec;
     for (int i = 0; i < count; ++i) {
       for (int j = 0; j <= maxIter; ++j) {

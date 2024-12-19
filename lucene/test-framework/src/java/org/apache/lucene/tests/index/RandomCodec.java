@@ -25,7 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ForkJoinPool;
 import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
@@ -34,6 +36,8 @@ import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.memory.DirectPostingsFormat;
 import org.apache.lucene.codecs.memory.FSTPostingsFormat;
 import org.apache.lucene.index.FieldInfo;
@@ -44,6 +48,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.codecs.asserting.AssertingDocValuesFormat;
+import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
 import org.apache.lucene.tests.codecs.asserting.AssertingPointsFormat;
 import org.apache.lucene.tests.codecs.asserting.AssertingPostingsFormat;
 import org.apache.lucene.tests.codecs.blockterms.LuceneFixedGap;
@@ -71,11 +76,17 @@ public class RandomCodec extends AssertingCodec {
   /** Shuffled list of docvalues formats to use for new mappings */
   private List<DocValuesFormat> dvFormats = new ArrayList<>();
 
+  /** Shuffled list of knn formats to use for new mappings */
+  private List<KnnVectorsFormat> knnFormats = new ArrayList<>();
+
   /** unique set of format names this codec knows about */
   public Set<String> formatNames = new HashSet<>();
 
   /** unique set of docvalues format names this codec knows about */
   public Set<String> dvFormatNames = new HashSet<>();
+
+  /** unique set of knn format names this codec knows about */
+  public Set<String> knnFormatNames = new HashSet<>();
 
   public final Set<String> avoidCodecs;
 
@@ -88,6 +99,10 @@ public class RandomCodec extends AssertingCodec {
 
   private Map<String, DocValuesFormat> previousDVMappings =
       Collections.synchronizedMap(new HashMap<String, DocValuesFormat>());
+
+  private Map<String, KnnVectorsFormat> previousKnnMappings =
+      Collections.synchronizedMap(new HashMap<String, KnnVectorsFormat>());
+
   private final int perFieldSeed;
 
   // a little messy: randomize the default codec's parameters here.
@@ -191,6 +206,18 @@ public class RandomCodec extends AssertingCodec {
     return codec;
   }
 
+  @Override
+  public KnnVectorsFormat getKnnVectorsFormatForField(String name) {
+    KnnVectorsFormat format = previousKnnMappings.get(name);
+    if (format == null) {
+      format = knnFormats.get(Math.abs(perFieldSeed ^ name.hashCode()) % knnFormats.size());
+      previousKnnMappings.put(name, format);
+      // Safety:
+      assert previousKnnMappings.size() < 10000 : "test went insane";
+    }
+    return format;
+  }
+
   public RandomCodec(Random random, Set<String> avoidCodecs) {
     this.perFieldSeed = random.nextInt();
     this.avoidCodecs = avoidCodecs;
@@ -236,8 +263,46 @@ public class RandomCodec extends AssertingCodec {
         new Lucene90DocValuesFormat(),
         new AssertingDocValuesFormat());
 
+    boolean concurrentKnnMerging = random.nextBoolean();
+    addKnn(
+        avoidCodecs,
+        TestUtil.getDefaultKnnVectorsFormat(),
+        new Lucene99HnswVectorsFormat(
+            TestUtil.nextInt(random, 5, 50),
+            TestUtil.nextInt(random, 10, 50),
+            concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null),
+        new Lucene99HnswScalarQuantizedVectorsFormat(
+            TestUtil.nextInt(random, 5, 50),
+            TestUtil.nextInt(random, 10, 50),
+            concurrentKnnMerging ? TestUtil.nextInt(random, 2, 8) : 1,
+            7,
+            false,
+            randomConfidenceInterval(random),
+            concurrentKnnMerging ? ForkJoinPool.commonPool() : null),
+        // TODO: also test 4-bit quantization, but this must somehow be restricted to even-length
+        // fields
+        /*
+        new Lucene99HnswScalarQuantizedVectorsFormat(TestUtil.nextInt(random, 5, 50),
+                                                     TestUtil.nextInt(random, 10, 50),
+                                                     1,
+                                                     4,
+                                                     random.nextBoolean(),
+                                                     randomConfidenceInterval(random),
+                                                     null),
+        new Lucene99HnswScalarQuantizedVectorsFormat(TestUtil.nextInt(random, 5, 50),
+                                                     TestUtil.nextInt(random, 10, 50),
+                                                     TestUtil.nextInt(random, 2, 8),
+                                                     4,
+                                                     random.nextBoolean(),
+                                                     randomConfidenceInterval(random),
+                                                     ForkJoinPool.commonPool()),
+        */
+        new AssertingKnnVectorsFormat());
+
     Collections.shuffle(formats, random);
     Collections.shuffle(dvFormats, random);
+    Collections.shuffle(knnFormats, random);
 
     // Avoid too many open files:
     if (formats.size() > 4) {
@@ -245,6 +310,21 @@ public class RandomCodec extends AssertingCodec {
     }
     if (dvFormats.size() > 4) {
       dvFormats = dvFormats.subList(0, 4);
+    }
+    if (knnFormats.size() > 4) {
+      knnFormats = knnFormats.subList(0, 4);
+    }
+  }
+
+  private final Float randomConfidenceInterval(Random random) {
+    switch (random.nextInt(3)) {
+      default:
+      case 0:
+        return null;
+      case 1:
+        return 0f;
+      case 2:
+        return random.nextFloat(0.9f, 1f);
     }
   }
 
@@ -266,6 +346,15 @@ public class RandomCodec extends AssertingCodec {
       if (!avoidCodecs.contains(d.getName())) {
         dvFormats.add(d);
         dvFormatNames.add(d.getName());
+      }
+    }
+  }
+
+  private final void addKnn(Set<String> avoidCodecs, KnnVectorsFormat... knnFormat) {
+    for (KnnVectorsFormat kf : knnFormat) {
+      if (!avoidCodecs.contains(kf.getName())) {
+        knnFormats.add(kf);
+        knnFormatNames.add(kf.getName());
       }
     }
   }

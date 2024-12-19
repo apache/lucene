@@ -25,8 +25,8 @@ import java.io.IOException;
 public abstract class FSLockFactory extends LockFactory {
 
   /**
-   * Returns the default locking implementation for this platform. This method currently returns
-   * always {@link NativeFSLockFactory}.
+   * Returns the default locking implementation for this platform. This method currently always
+   * returns {@link NativeFSLockFactory}.
    */
   public static final FSLockFactory getDefault() {
     return NativeFSLockFactory.INSTANCE;

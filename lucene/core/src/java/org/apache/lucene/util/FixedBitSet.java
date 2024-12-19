@@ -33,6 +33,10 @@ public final class FixedBitSet extends BitSet {
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(FixedBitSet.class);
 
+  // An array that is small enough to use reasonable amounts of RAM and large enough to allow
+  // Arrays#mismatch to use SIMD instructions and multiple registers under the hood.
+  private static long[] ZEROES = new long[32];
+
   private final long[] bits; // Array of longs holding the bits
   private final int numBits; // The number of bits in use
   private final int numWords; // The exact number of longs needed to hold numBits (<= bits.length)
@@ -343,7 +347,9 @@ public final class FixedBitSet extends BitSet {
       DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
       or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
-      super.or(iter);
+      checkUnpositioned(iter);
+      iter.nextDoc();
+      iter.intoBitSet(null, DocIdSetIterator.NO_MORE_DOCS, this, 0);
     }
   }
 
@@ -468,8 +474,11 @@ public final class FixedBitSet extends BitSet {
     // Depends on the ghost bits being clear!
     final int count = numWords;
 
-    for (int i = 0; i < count; i++) {
-      if (bits[i] != 0) return false;
+    for (int i = 0; i < count; i += ZEROES.length) {
+      int cmpLen = Math.min(ZEROES.length, bits.length - i);
+      if (Arrays.equals(bits, i, i + cmpLen, ZEROES, 0, cmpLen) == false) {
+        return false;
+      }
     }
 
     return true;

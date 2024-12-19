@@ -28,7 +28,6 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -48,6 +47,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
@@ -74,12 +74,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
 
   @Override
   protected Codec getCodec() {
-    return new Lucene100Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return format;
-      }
-    };
+    return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
   private final KnnVectorsFormat getKnnFormat(int bits) {
@@ -104,14 +99,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
       try (IndexWriter w =
           new IndexWriter(
               dir,
-              newIndexWriterConfig()
-                  .setCodec(
-                      new Lucene100Codec() {
-                        @Override
-                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return getKnnFormat(4);
-                        }
-                      }))) {
+              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(4))))) {
 
         Document doc = new Document();
         doc.add(
@@ -124,14 +112,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
       try (IndexWriter w =
           new IndexWriter(
               dir,
-              newIndexWriterConfig()
-                  .setCodec(
-                      new Lucene100Codec() {
-                        @Override
-                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return getKnnFormat(7);
-                        }
-                      }))) {
+              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(7))))) {
 
         Document doc = new Document();
         doc.add(
@@ -162,13 +143,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
           new IndexWriter(
               dir,
               newIndexWriterConfig()
-                  .setCodec(
-                      new Lucene100Codec() {
-                        @Override
-                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene99HnswVectorsFormat();
-                        }
-                      }))) {
+                  .setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat())))) {
 
         Document doc = new Document();
         doc.add(
@@ -181,14 +156,7 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
       try (IndexWriter w =
           new IndexWriter(
               dir,
-              newIndexWriterConfig()
-                  .setCodec(
-                      new Lucene100Codec() {
-                        @Override
-                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return getKnnFormat(7);
-                        }
-                      }))) {
+              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(7))))) {
 
         Document doc = new Document();
         doc.add(
@@ -216,13 +184,9 @@ public class TestLucene99HnswQuantizedVectorsFormat extends BaseKnnVectorsFormat
                 dir,
                 newIndexWriterConfig()
                     .setCodec(
-                        new Lucene100Codec() {
-                          @Override
-                          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                            return new Lucene99HnswScalarQuantizedVectorsFormat(
-                                16, 100, 1, (byte) 7, false, 0.9f, null);
-                          }
-                        }))) {
+                        TestUtil.alwaysKnnVectorsFormat(
+                            new Lucene99HnswScalarQuantizedVectorsFormat(
+                                16, 100, 1, (byte) 7, false, 0.9f, null))))) {
       for (float[] vector : vectors) {
         Document doc = new Document();
         doc.add(new KnnFloatVectorField("f", vector, VectorSimilarityFunction.DOT_PRODUCT));

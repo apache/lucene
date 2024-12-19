@@ -343,7 +343,9 @@ groups:
         cmd: git pull --ff-only
         stdout: true
       - !Command
-        cmd: "{{ gradle_cmd }} clean check -x test"
+        cmd: "{{ gradle_cmd }} clean"
+      - !Command
+        cmd: "{{ gradle_cmd }} check -x test"
   - !Todo
     id: create_stable_branch
     title: Create a new stable branch, off from main

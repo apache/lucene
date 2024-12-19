@@ -315,8 +315,7 @@ public final class SearchImpl extends LukeModel implements Search {
     } else {
       int hitsThreshold = exactHitsCount ? Integer.MAX_VALUE : DEFAULT_TOTAL_HITS_THRESHOLD;
       TopScoreDocCollectorManager collectorManager =
-          new TopScoreDocCollectorManager(
-              pageSize, after, hitsThreshold, searcher.getSlices().length > 1);
+          new TopScoreDocCollectorManager(pageSize, after, hitsThreshold);
       topDocs = searcher.search(query, collectorManager);
     }
 

@@ -340,4 +340,19 @@ public abstract class DataOutput {
     }
     GroupVIntUtil.writeGroupVInts(this, groupVIntBytes, values, limit);
   }
+
+  /**
+   * Encode integers using group-varint. It uses {@link DataOutput#writeVInt VInt} to encode tail
+   * values that are not enough for a group.
+   *
+   * @param values the values to write
+   * @param limit the number of values to write.
+   * @lucene.experimental
+   */
+  public void writeGroupVInts(int[] values, int limit) throws IOException {
+    if (groupVIntBytes == null) {
+      groupVIntBytes = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];
+    }
+    GroupVIntUtil.writeGroupVInts(this, groupVIntBytes, values, limit);
+  }
 }

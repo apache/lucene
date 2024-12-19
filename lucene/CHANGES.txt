@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
 New Features
 ---------------------
@@ -15,11 +15,48 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#266: TieredMergePolicy's maxMergeAtOnce default value was changed from 10 to 30. (Adrien Grand)
 
 Optimizations
 ---------------------
+* GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
+
+Bug Fixes
+---------------------
+* GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
+  when all values are identical. (Mike Sokolov)
+
+* GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
+
+Other
+---------------------
 (No changes)
+
+======================= Lucene 10.2.0 =======================
+
+API Changes
+---------------------
+* GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
+  optimize loading doc IDs into a bit set. (Adrien Grand)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+
+* GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
+  (Robert Muir)
+
+Optimizations
+---------------------
+
+* GITHUB#14052: Speed up DisjunctionDISIApproximation#advance. (Adrien Grand)
+
+* GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
+  conjunctions. (Adrien Grand)
 
 Bug Fixes
 ---------------------
@@ -33,27 +70,137 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#13859: Allow open-ended ranges in Intervals range queries. (Mayya Sharipova)
+
+* GITHUB#13950: Make BooleanQuery#getClauses public and add #add(Collection<BooleanClause>) to BQ builder. (Shubham Chaudhary)
+
+* GITHUB#13957: Removed LeafSimScorer class, to save its overhead. Scorers now
+  compute scores directly from a SimScorer, postings and norms. (Adrien Grand)
+
+* GITHUB#13998: Add IndexInput::isLoaded to determine if the contents of an
+  input is resident in physical memory. (Chris Hegarty)
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14034: Add support for storing term vectors in FeatureField. (Jim Ferenczi)
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with
+  newer Java versions. Set the `org.apache.lucene.vectorization.upperJavaFeatureVersion`
+  system property to increase the set of Java versions that Panama Vectorization will
+  provide optimized implementations for. (Chris Hegarty)
+
+* GITHUB#266: TieredMergePolicy now allows merging up to maxMergeAtOnce
+  segments for merges below the floor segment size, even if maxMergeAtOnce is
+  bigger than segsPerTier. (Adrien Grand)
+
+* GITHUB#14033: Combine all postings enum impls of the default codec into a
+  single class. (Adrien Grand)
 
 Optimizations
 ---------------------
-(No changes)
+
+* GITHUB#13828: Reduce long[] array allocation for bitset in readBitSetIterator. (Zhang Chao)
+
+* GITHUB#13800: MaxScoreBulkScorer now recomputes scorer partitions when the
+  minimum competitive allows for a more favorable partitioning. (Adrien Grand)
+
+* GITHUB#13930: Use growNoCopy when copying bytes in BytesRefBuilder. (Ignacio Vera)
+
+* GITHUB#13931: Refactored `BooleanScorer` to evaluate matches of sub clauses
+  using the `Scorer` abstraction rather than the `BulkScorer` abstraction. This
+  speeds up exhaustive evaluation of disjunctions of term queries.
+  (Adrien Grand)
+
+* GITHUB#13941: Optimized computation of top-hits on disjunctive queries with
+  many clauses. (Adrien Grand)
+
+* GITHUB#13954: Disabled exchanging scores across slices for exhaustive
+  top-hits evaluation. (Adrien Grand)
+
+* GITHUB#13899: Check ahead if we can get the count. (Lu Xugang)
+
+* GITHUB#13943: Removed shared `HitsThresholdChecker`, which reduces overhead
+  but may delay a bit when dynamic pruning kicks in. (Adrien Grand)
+
+* GITHUB#13961: Replace Map<String,Object> with IntObjectHashMap for DV producer. (Pan Guixin)
+
+* GITHUB#13963: Speed up nextDoc() implementations in Lucene912PostingsReader.
+  (Adrien Grand)
+
+* GITHUB#13958: Speed up advancing within a block. (Adrien Grand)
+
+* GITHUB#13763: Replace Map<String,Object> with IntObjectHashMap for KnnVectorsReader (Pan Guixin)
+
+* GITHUB#13968: Switch postings from storing doc IDs in a long[] to an int[].
+  Lucene 8.4 had moved to a long[] to help speed up block decoding by using
+  longs that would pack two integers. We are now moving back to integers to be
+  able to take advantage of 2x more lanes with the vector API. (Adrien Grand)
+
+* GITHUB#13994: Speed up top-k retrieval of filtered conjunctions.
+  (Adrien Grand)
+
+* GITHUB#13985: Introduces IndexInput#updateReadAdvice to change the ReadAdvice
+  while merging vectors. (Tejas Shah)
+
+* GITHUB#14000: Speed up top-k retrieval of filtered disjunctions.
+  (Adrien Grand)
+
+* GITHUB#13999: CombinedFieldQuery now returns non-infinite maximum scores,
+  making it eligible to dynamic pruning. (Adrien Grand)
+
+* GITHUB#13989: Faster checksum computation. (Jean-François Boeuf)
+
+* GITHUB#14021: WANDScorer now computes scores on the fly, which helps prevent
+  advancing "tail" clauses in many cases. (Adrien Grand)
+
+* GITHUB#14014: Filtered disjunctions now get executed via `MaxScoreBulkScorer`.
+  (Adrien Grand)
+
+* GITHUB#14023: Make JVM inlining decisions more predictable in our main
+  queries. (Adrien Grand)
+
+* GITHUB#14032: Speed up PostingsEnum when positions are requested.
+  (Adrien Grand)
+
+* GITHUB#14040: Specialized top-level DisjunctionMaxQuery evaluation when the
+  tie break multiplier is 0. (Adrien Grand)
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
+  when they were not sorted by startOffset. (Seunghan Jung)
+* GITHUB#13884: Remove broken .toArray from Long/CharObjectHashMap entirely. (Pan Guixin)
+* GITHUB#12686: Added support for highlighting IndexOrDocValuesQuery. (Prudhvi Godithi)
+* GITHUB#13927: Fix StoredFieldsConsumer finish. (linfn)
+* GITHUB#13944: Ensure deterministic order of clauses for `DisjunctionMaxQuery#toString`. (Laurent Jakubina)
+* GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
+  in valid polygons. (Ignacio Vera)
+* GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
+  and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
+* GITHUB#13819: Prevent flattening of ordered and unordered interval sources (Jim Ferenczi)
+
+Build
+---------------------
+
+* Upgrade forbiddenapis to version 3.8.  (Uwe Schindler)
 
 Other
 ---------------------
-(No changes)
+* GITHUB#13982: Remove duplicate test code. (Lu Xugang)
+
+======================== Lucene 10.0.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 ======================= Lucene 10.0.0 =======================
 
@@ -100,9 +247,9 @@ API Changes
 
 * GITHUB#12296: Make IndexReader and IndexReaderContext classes explicitly sealed.
   They have already been runtime-checked to only be implemented by the specific classes
-  so this is effectively a non-breaking change.
+  so this is effectively a non-breaking change. (Petr Portnov)
 
-* GITHUB#12276: Rename DaciukMihovAutomatonBuilder to StringsToAutomaton
+* GITHUB#12276: Rename DaciukMihovAutomatonBuilder to StringsToAutomaton. (Michael McCandless)
 
 * GITHUB#12321: Reduced visibility of StringsToAutomaton. Please use Automata#makeStringUnion instead. (Greg Miller)
 
@@ -172,12 +319,17 @@ API Changes
 
 * GITHUB#13328: Convert many basic Lucene classes to record classes, including CollectionStatistics, TermStatistics and LeafMetadata. (Shubham Chaudhary)
 
-* GITHUB#13780: Remove `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` in favour of the newly
-  introduced `IndexSearcher#search(LeafReaderContextPartition[], Weight, Collector)`
+* GITHUB#13780: Remove IndexSearcher#search(List<LeafReaderContext>, Weight, Collector) in favour of the newly
+  introduced IndexSearcher#search(LeafReaderContextPartition[], Weight, Collector). (Luca Cavanna)
 
 * GITHUB#13779:  First-class random access API for KnnVectorValues
   unifies Byte/FloatVectorValues incorporating RandomAccess* API and introduces
-  DocIndexIterator for iterative access in place of direct inheritance from DISI.
+  DocIndexIterator for iterative access in place of direct inheritance from DISI. (Michael Sokolov)
+
+* GITHUB#13845: Add missing with-discountOverlaps Similarity constructor variants. (Pierre Salagnac, Christine Poerschke, Robert Muir)
+
+* GITHUB#13820, GITHUB#13825, GITHUB#13830: Corrects DataInput.readGroupVInts to be public and not-final, removes the protected
+  DataInput.readGroupVInt method. (Zhang Chao, Robert Muir, Uwe Schindler, Dawid Weiss)
 
 New Features
 ---------------------
@@ -265,10 +417,12 @@ Bug Fixes
 * LUCENE-10599: LogMergePolicy is more likely to keep merging segments until
   they reach the maximum merge size. (Adrien Grand)
 
-* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end
+* GITHUB#12220: Hunspell: disallow hidden title-case entries from compound middle/end. (Peter Gromov)
 
 * GITHUB#12878: Fix the declared Exceptions of Expression#evaluate() to match those
   of DoubleValues#doubleValue(). (Uwe Schindler)
+
+* GITHUB#13498: Avoid performance regression by constructing lazily the PointTree in NumericComparator, (Ignacio Vera)
 
 Changes in Runtime Behavior
 ---------------------
@@ -374,6 +528,9 @@ API Changes
 
 * GITHUB#13568, GITHUB#13750: Add DrillSideways#search method that supports any CollectorManagers for drill-sideways dimensions
   or drill-down. (Egor Potemkin)
+
+* GITHUB#13757: For similarities, provide default computeNorm implementation and remove remaining discountOverlaps setters.
+  (Christine Poerschke, Adrien Grand, Robert Muir)
 
 New Features
 ---------------------

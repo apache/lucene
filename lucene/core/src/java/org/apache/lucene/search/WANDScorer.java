@@ -24,6 +24,7 @@ import static org.apache.lucene.search.ScorerUtil.costWithMinShouldMatch;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.util.MathUtil;
 
@@ -129,7 +130,7 @@ final class WANDScorer extends Scorer {
   // some descriptions of WAND (Weak AND).
   DisiWrapper lead;
   int doc; // current doc ID of the leads
-  long leadMaxScore; // sum of the max scores of scorers in 'lead'
+  double leadScore; // score of the leads
 
   // priority queue of scorers that are too advanced compared to the current
   // doc. Ordered by doc ID.
@@ -149,8 +150,9 @@ final class WANDScorer extends Scorer {
   int freq;
 
   final ScoreMode scoreMode;
+  final long leadCost;
 
-  WANDScorer(Collection<Scorer> scorers, int minShouldMatch, ScoreMode scoreMode)
+  WANDScorer(Collection<Scorer> scorers, int minShouldMatch, ScoreMode scoreMode, long leadCost)
       throws IOException {
 
     if (minShouldMatch >= scorers.size()) {
@@ -194,7 +196,12 @@ final class WANDScorer extends Scorer {
     }
 
     for (Scorer scorer : scorers) {
-      addLead(new DisiWrapper(scorer));
+      // Ideally we would pass true when scoreMode == TOP_SCORES and false otherwise, but this would
+      // break the optimization as there could then be 3 different impls of DocIdSetIterator
+      // (ImpactsEnum, PostingsEnum and <Else>). So we pass true to favor disjunctions sorted by
+      // descending score as opposed to non-scoring disjunctions whose minShouldMatch is greater
+      // than 1.
+      addUnpositionedLead(new DisiWrapper(scorer, true));
     }
 
     this.cost =
@@ -202,11 +209,12 @@ final class WANDScorer extends Scorer {
             scorers.stream().map(Scorer::iterator).mapToLong(DocIdSetIterator::cost),
             scorers.size(),
             minShouldMatch);
+    this.leadCost = leadCost;
   }
 
   // returns a boolean so that it can be called from assert
   // the return value is useless: it always returns true
-  private boolean ensureConsistent() {
+  private boolean ensureConsistent() throws IOException {
     if (scoreMode == ScoreMode.TOP_SCORES) {
       long maxScoreSum = 0;
       for (int i = 0; i < tailSize; ++i) {
@@ -215,12 +223,19 @@ final class WANDScorer extends Scorer {
       }
       assert maxScoreSum == tailMaxScore : maxScoreSum + " " + tailMaxScore;
 
-      maxScoreSum = 0;
+      List<Float> leadScores = new ArrayList<>();
       for (DisiWrapper w = lead; w != null; w = w.next) {
         assert w.doc == doc;
-        maxScoreSum = Math.addExact(maxScoreSum, w.scaledMaxScore);
+        leadScores.add(w.scorable.score());
       }
-      assert maxScoreSum == leadMaxScore : maxScoreSum + " " + leadMaxScore;
+      // Make sure to recompute the sum in the same order to get the same floating point rounding
+      // errors.
+      Collections.reverse(leadScores);
+      double recomputedLeadScore = 0;
+      for (float score : leadScores) {
+        recomputedLeadScore += score;
+      }
+      assert recomputedLeadScore == leadScore;
 
       assert minCompetitiveScore == 0
           || tailMaxScore < minCompetitiveScore
@@ -229,7 +244,11 @@ final class WANDScorer extends Scorer {
     }
 
     for (DisiWrapper w : head) {
-      assert w.doc > doc;
+      if (lead == null) { // After calling advance() but before matches()
+        assert w.doc >= doc;
+      } else {
+        assert w.doc > doc;
+      }
     }
 
     return true;
@@ -279,25 +298,24 @@ final class WANDScorer extends Scorer {
 
           @Override
           public int advance(int target) throws IOException {
-            assert ensureConsistent();
-
             // Move 'lead' iterators back to the tail
             pushBackLeads(target);
 
-            // Advance 'head' as well
-            advanceHead(target);
+            // Make sure `head` is also on or beyond `target`
+            DisiWrapper headTop = advanceHead(target);
 
-            // Pop the new 'lead' from 'head'
-            moveToNextCandidate(target);
-
-            if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-              return DocIdSetIterator.NO_MORE_DOCS;
+            if (scoreMode == ScoreMode.TOP_SCORES && (headTop == null || headTop.doc > upTo)) {
+              // Update score bounds if necessary
+              moveToNextBlock(target);
+              assert upTo >= target;
+              headTop = head.top();
             }
 
-            assert ensureConsistent();
-
-            // Advance to the next possible match
-            return doNextCompetitiveCandidate();
+            if (headTop == null) {
+              return doc = DocIdSetIterator.NO_MORE_DOCS;
+            } else {
+              return doc = headTop.doc;
+            }
           }
 
           @Override
@@ -309,17 +327,37 @@ final class WANDScorer extends Scorer {
 
       @Override
       public boolean matches() throws IOException {
-        while (leadMaxScore < minCompetitiveScore || freq < minShouldMatch) {
-          if (leadMaxScore + tailMaxScore < minCompetitiveScore
+        assert lead == null;
+        moveToNextCandidate();
+
+        long scaledLeadScore = 0;
+        if (scoreMode == ScoreMode.TOP_SCORES) {
+          scaledLeadScore =
+              scaleMaxScore(
+                  (float) MathUtil.sumUpperBound(leadScore, FLOAT_MANTISSA_BITS), scalingFactor);
+        }
+
+        while (scaledLeadScore < minCompetitiveScore || freq < minShouldMatch) {
+          assert ensureConsistent();
+          if (scaledLeadScore + tailMaxScore < minCompetitiveScore
               || freq + tailSize < minShouldMatch) {
             return false;
           } else {
             // a match on doc is still possible, try to
             // advance scorers from the tail
+            DisiWrapper prevLead = lead;
             advanceTail();
+            if (scoreMode == ScoreMode.TOP_SCORES && lead != prevLead) {
+              assert prevLead == lead.next;
+              scaledLeadScore =
+                  scaleMaxScore(
+                      (float) MathUtil.sumUpperBound(leadScore, FLOAT_MANTISSA_BITS),
+                      scalingFactor);
+            }
           }
         }
 
+        assert ensureConsistent();
         return true;
       }
 
@@ -332,10 +370,20 @@ final class WANDScorer extends Scorer {
   }
 
   /** Add a disi to the linked list of leads. */
-  private void addLead(DisiWrapper lead) {
+  private void addLead(DisiWrapper lead) throws IOException {
     lead.next = this.lead;
     this.lead = lead;
-    leadMaxScore += lead.scaledMaxScore;
+    freq += 1;
+    if (scoreMode == ScoreMode.TOP_SCORES) {
+      leadScore += lead.scorable.score();
+    }
+  }
+
+  /** Add a disi to the linked list of leads. */
+  private void addUnpositionedLead(DisiWrapper lead) {
+    assert lead.doc == -1;
+    lead.next = this.lead;
+    this.lead = lead;
     freq += 1;
   }
 
@@ -349,11 +397,10 @@ final class WANDScorer extends Scorer {
       }
     }
     lead = null;
-    leadMaxScore = 0;
   }
 
   /** Make sure all disis in 'head' are on or after 'target'. */
-  private void advanceHead(int target) throws IOException {
+  private DisiWrapper advanceHead(int target) throws IOException {
     DisiWrapper headTop = head.top();
     while (headTop != null && headTop.doc < target) {
       final DisiWrapper evicted = insertTailWithOverFlow(headTop);
@@ -365,6 +412,7 @@ final class WANDScorer extends Scorer {
         headTop = head.top();
       }
     }
+    return headTop;
   }
 
   private void advanceTail(DisiWrapper disi) throws IOException {
@@ -386,25 +434,37 @@ final class WANDScorer extends Scorer {
   }
 
   private void updateMaxScores(int target) throws IOException {
-    if (head.size() == 0) {
-      // If the head is empty we use the greatest score contributor as a lead
-      // like for conjunctions.
-      upTo = tail[0].scorer.advanceShallow(target);
-    } else {
-      // If we still have entries in 'head', we treat them all as leads and
-      // take the minimum of their next block boundaries as a next boundary.
-      // We don't take entries in 'tail' into account on purpose: 'tail' is
-      // supposed to contain the least score contributors, and taking them
-      // into account might not move the boundary fast enough, so we'll waste
-      // CPU re-computing the next boundary all the time.
-      int newUpTo = DocIdSetIterator.NO_MORE_DOCS;
-      for (DisiWrapper w : head) {
-        if (w.doc <= newUpTo) {
-          newUpTo = Math.min(w.scorer.advanceShallow(w.doc), newUpTo);
-          w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
-        }
+    int newUpTo = DocIdSetIterator.NO_MORE_DOCS;
+    // If we have entries in 'head', we treat them all as leads and take the minimum of their next
+    // block boundaries as a next boundary.
+    // We don't take entries in 'tail' into account on purpose: 'tail' is supposed to contain the
+    // least score contributors, and taking them into account might not move the boundary fast
+    // enough, so we'll waste CPU re-computing the next boundary all the time.
+    // Likewise, we ignore clauses whose cost is greater than the lead cost to avoid recomputing
+    // per-window max scores over and over again. In the event when this makes us compute upTo as
+    // NO_MORE_DOCS, this scorer will effectively implement WAND rather than block-max WAND.
+    for (DisiWrapper w : head) {
+      if (w.doc <= newUpTo && w.cost <= leadCost) {
+        newUpTo = Math.min(w.scorer.advanceShallow(w.doc), newUpTo);
       }
-      upTo = newUpTo;
+    }
+    // Only look at the tail if none of the `head` clauses had a block we could reuse and if its
+    // cost is less than or equal to the lead cost.
+    if (newUpTo == DocIdSetIterator.NO_MORE_DOCS && tailSize > 0 && tail[0].cost <= leadCost) {
+      newUpTo = tail[0].scorer.advanceShallow(target);
+      // upTo must be on or after the least `head` doc
+      DisiWrapper headTop = head.top();
+      if (headTop != null) {
+        newUpTo = Math.max(newUpTo, headTop.doc);
+      }
+    }
+    upTo = newUpTo;
+
+    // Now update the max scores of clauses that are before upTo.
+    for (DisiWrapper w : head) {
+      if (w.doc <= upTo) {
+        w.scaledMaxScore = scaleMaxScore(w.scorer.getMaxScore(newUpTo), scalingFactor);
+      }
     }
 
     tailMaxScore = 0;
@@ -429,7 +489,7 @@ final class WANDScorer extends Scorer {
    * Update {@code upTo} and maximum scores of sub scorers so that {@code upTo} is greater than or
    * equal to the next candidate after {@code target}, i.e. the top of `head`.
    */
-  private void updateMaxScoresIfNecessary(int target) throws IOException {
+  private void moveToNextBlock(int target) throws IOException {
     assert lead == null;
 
     while (upTo < DocIdSetIterator.NO_MORE_DOCS) {
@@ -451,8 +511,7 @@ final class WANDScorer extends Scorer {
       }
     }
 
-    assert (head.size() == 0 && upTo == DocIdSetIterator.NO_MORE_DOCS)
-        || (head.size() > 0 && head.top().doc <= upTo);
+    assert head.size() == 0 || head.top().doc <= upTo;
     assert upTo >= target;
   }
 
@@ -460,46 +519,19 @@ final class WANDScorer extends Scorer {
    * Set 'doc' to the next potential match, and move all disis of 'head' that are on this doc into
    * 'lead'.
    */
-  private void moveToNextCandidate(int target) throws IOException {
-    if (scoreMode == ScoreMode.TOP_SCORES) {
-      // Update score bounds if necessary so
-      updateMaxScoresIfNecessary(target);
-      assert upTo >= target;
-
-      // updateMaxScores tries to move forward until a block with matches is found
-      // so if the head is empty it means there are no matches at all anymore
-      if (head.size() == 0) {
-        assert upTo == DocIdSetIterator.NO_MORE_DOCS;
-        doc = DocIdSetIterator.NO_MORE_DOCS;
-        return;
-      }
-    }
-
+  private void moveToNextCandidate() throws IOException {
     // The top of `head` defines the next potential match
     // pop all documents which are on this doc
     lead = head.pop();
+    assert doc == lead.doc;
     lead.next = null;
-    leadMaxScore = lead.scaledMaxScore;
     freq = 1;
-    doc = lead.doc;
+    if (scoreMode == ScoreMode.TOP_SCORES) {
+      leadScore = lead.scorable.score();
+    }
     while (head.size() > 0 && head.top().doc == doc) {
       addLead(head.pop());
     }
-  }
-
-  /** Move iterators to the tail until there is a potential match. */
-  private int doNextCompetitiveCandidate() throws IOException {
-    while (leadMaxScore + tailMaxScore < minCompetitiveScore || freq + tailSize < minShouldMatch) {
-      // no match on doc is possible, move to the next potential match
-      pushBackLeads(doc + 1);
-      moveToNextCandidate(doc + 1);
-      assert ensureConsistent();
-      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-        break;
-      }
-    }
-
-    return doc;
   }
 
   /** Advance all entries from the tail to know about all matches on the current doc. */
@@ -521,11 +553,15 @@ final class WANDScorer extends Scorer {
   public float score() throws IOException {
     // we need to know about all matches
     advanceAllTail();
-    double score = 0;
-    for (DisiWrapper s = lead; s != null; s = s.next) {
-      score += s.scorer.score();
+
+    double leadScore = this.leadScore;
+    if (scoreMode != ScoreMode.TOP_SCORES) {
+      // With TOP_SCORES, the score was already computed on the fly.
+      for (DisiWrapper s = lead; s != null; s = s.next) {
+        leadScore += s.scorable.score();
+      }
     }
-    return (float) score;
+    return (float) leadScore;
   }
 
   @Override
