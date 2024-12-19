@@ -25,6 +25,9 @@ Optimizations
 
 * GITHUB#14052: Speed up DisjunctionDISIApproximation#advance. (Adrien Grand)
 
+* GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
+  conjunctions. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 (No changes)
