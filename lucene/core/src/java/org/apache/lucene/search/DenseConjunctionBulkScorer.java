@@ -25,7 +25,8 @@ import org.apache.lucene.util.FixedBitSet;
 
 /**
  * BulkScorer implementation of {@link ConjunctionScorer} that is specialized for dense clauses.
- * Whenever sensible, it intersects clauses by tran
+ * Whenever sensible, it intersects clauses by loading their matches into a bit set and computing
+ * the intersection of clauses by and-ing these bit sets.
  */
 final class DenseConjunctionBulkScorer extends BulkScorer {
 

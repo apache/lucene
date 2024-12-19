@@ -327,6 +327,8 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       }
       return new MaxScoreBulkScorer(maxDoc, optionalScorers, filterScorer);
     } else {
+      // In the beginning of this method, we exited early if the score mode is not either TOP_SCORES
+      // or a score mode that doesn't need scores.
       assert scoreMode.needsScores() == false;
       filters.add(new DisjunctionSumScorer(optionalScorers, scoreMode, cost));
 
