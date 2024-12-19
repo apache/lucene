@@ -43,7 +43,6 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
 
   private final String field;
   private final Set<BytesRef> keySet;
-  private final BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
 
   public BinaryDocValueSelector(String field, Set<BytesRef> keySet) {
     this.field = field;
@@ -54,6 +53,7 @@ public class BinaryDocValueSelector implements IndexRearranger.DocumentSelector,
   public BitSet getFilteredDocs(CodecReader reader) throws IOException {
     BinaryDocValues binaryDV = reader.getBinaryDocValues(field);
     FixedBitSet bits = new FixedBitSet(reader.maxDoc());
+    final BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
     for (int docid = 0; docid < reader.maxDoc(); docid++) {
       if (binaryDV.advanceExact(docid)) {
         bytesRefBuilder.copyBytes(binaryDV.randomAccessInputValue());
