@@ -45,6 +45,7 @@ import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.util.DistanceToShapeValueSource;
 import org.apache.lucene.spatial.util.ShapeValuesPredicate;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.io.BinaryCodec;
 import org.locationtech.spatial4j.shape.Point;
@@ -188,7 +189,7 @@ public class SerializedDVStrategy extends SpatialStrategy {
     @Override
     public ShapeValues getValues(LeafReaderContext readerContext) throws IOException {
       final BinaryDocValues docValues = DocValues.getBinary(readerContext.reader(), fieldName);
-
+      final BytesRefBuilder builder = new BytesRefBuilder();
       return new ShapeValues() {
         @Override
         public boolean advanceExact(int doc) throws IOException {
@@ -197,7 +198,8 @@ public class SerializedDVStrategy extends SpatialStrategy {
 
         @Override
         public Shape value() throws IOException {
-          BytesRef bytesRef = docValues.binaryValue();
+          builder.copyBytes(docValues.randomAccessInputValue());
+          BytesRef bytesRef = builder.toBytesRef();
           DataInputStream dataInput =
               new DataInputStream(
                   new ByteArrayInputStream(bytesRef.bytes, bytesRef.offset, bytesRef.length));
