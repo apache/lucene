@@ -66,14 +66,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
 
-  abstract AbstractKnnVectorQuery getKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter, Query seedQuery);
-
   abstract AbstractKnnVectorQuery getThrowingKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
-
-  abstract AbstractKnnVectorQuery getThrowingKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter, Query seedQuery);
 
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k) {
     return getKnnVectorQuery(field, query, k, null);
@@ -608,91 +602,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
                   searcher.search(
                       getThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4),
                       numDocs));
-        }
-      }
-    }
-  }
-
-  /** Tests with random vectors and a random seed. Uses RandomIndexWriter. */
-  public void testRandomWithSeed() throws IOException {
-    int numDocs = 1000;
-    int dimension = atLeast(5);
-    int numIters = atLeast(10);
-    int numDocsWithVector = 0;
-    try (Directory d = newDirectoryForTest()) {
-      // Always use the default kNN format to have predictable behavior around when it hits
-      // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
-      // format
-      // implementation.
-      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
-      RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
-      for (int i = 0; i < numDocs; i++) {
-        Document doc = new Document();
-        if (random().nextBoolean()) {
-          // Randomly skip some vectors to test the mapping from docid to ordinals
-          doc.add(getKnnVectorField("field", randomVector(dimension)));
-          numDocsWithVector += 1;
-        }
-        doc.add(new NumericDocValuesField("tag", i));
-        doc.add(new IntPoint("tag", i));
-        w.addDocument(doc);
-      }
-      w.forceMerge(1);
-      w.close();
-
-      try (IndexReader reader = DirectoryReader.open(d)) {
-        IndexSearcher searcher = newSearcher(reader);
-        for (int i = 0; i < numIters; i++) {
-          int k = random().nextInt(80) + 1;
-          int n = random().nextInt(100) + 1;
-          // we may get fewer results than requested if there are deletions, but this test doesn't
-          // check that
-          assert reader.hasDeletions() == false;
-
-          // All documents as seeds
-          Query seed1 = new MatchAllDocsQuery();
-          Query filter = random().nextBoolean() ? null : new MatchAllDocsQuery();
-          AbstractKnnVectorQuery query =
-              getKnnVectorQuery("field", randomVector(dimension), k, filter, seed1);
-          TopDocs results = searcher.search(query, n);
-          int expected = Math.min(Math.min(n, k), numDocsWithVector);
-
-          assertEquals(expected, results.scoreDocs.length);
-          assertTrue(results.totalHits.value() >= results.scoreDocs.length);
-          // verify the results are in descending score order
-          float last = Float.MAX_VALUE;
-          for (ScoreDoc scoreDoc : results.scoreDocs) {
-            assertTrue(scoreDoc.score <= last);
-            last = scoreDoc.score;
-          }
-
-          // Restrictive seed query -- 6 documents
-          Query seed2 = IntPoint.newRangeQuery("tag", 1, 6);
-          query = getKnnVectorQuery("field", randomVector(dimension), k, null, seed2);
-          results = searcher.search(query, n);
-          expected = Math.min(Math.min(n, k), reader.numDocs());
-          assertEquals(expected, results.scoreDocs.length);
-          assertTrue(results.totalHits.value() >= results.scoreDocs.length);
-          // verify the results are in descending score order
-          last = Float.MAX_VALUE;
-          for (ScoreDoc scoreDoc : results.scoreDocs) {
-            assertTrue(scoreDoc.score <= last);
-            last = scoreDoc.score;
-          }
-
-          // No seed documents -- falls back on full approx search
-          Query seed3 = new MatchNoDocsQuery();
-          query = getKnnVectorQuery("field", randomVector(dimension), k, null, seed3);
-          results = searcher.search(query, n);
-          expected = Math.min(Math.min(n, k), reader.numDocs());
-          assertEquals(expected, results.scoreDocs.length);
-          assertTrue(results.totalHits.value() >= results.scoreDocs.length);
-          // verify the results are in descending score order
-          last = Float.MAX_VALUE;
-          for (ScoreDoc scoreDoc : results.scoreDocs) {
-            assertTrue(scoreDoc.score <= last);
-            last = scoreDoc.score;
-          }
         }
       }
     }

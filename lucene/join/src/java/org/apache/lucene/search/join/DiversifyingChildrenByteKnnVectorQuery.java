@@ -140,7 +140,6 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   protected TopDocs approximateSearch(
       LeafReaderContext context,
       Bits acceptDocs,
-      DocIdSetIterator seedDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {

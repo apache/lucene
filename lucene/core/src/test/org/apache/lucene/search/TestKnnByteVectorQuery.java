@@ -35,20 +35,8 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   }
 
   @Override
-  AbstractKnnVectorQuery getKnnVectorQuery(
-      String field, float[] query, int k, Query queryFilter, Query seedQuery) {
-    return new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter, seedQuery);
-  }
-
-  @Override
   AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query, null);
-  }
-
-  @Override
-  AbstractKnnVectorQuery getThrowingKnnVectorQuery(
-      String field, float[] vec, int k, Query query, Query seedQuery) {
-    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query, seedQuery);
+    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query);
   }
 
   @Override
@@ -73,7 +61,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     return new KnnByteVectorField(name, floatToBytes(vector), VectorSimilarityFunction.EUCLIDEAN);
   }
 
-  private static byte[] floatToBytes(float[] query) {
+  static byte[] floatToBytes(float[] query) {
     byte[] bytes = new byte[query.length];
     for (int i = 0; i < query.length; i++) {
       assert query[i] <= Byte.MAX_VALUE && query[i] >= Byte.MIN_VALUE && (query[i] % 1) == 0
@@ -121,10 +109,10 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-  private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
+  static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
-    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter, Query seed) {
-      super(field, target, k, filter, seed);
+    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
+      super(field, target, k, filter);
     }
 
     @Override

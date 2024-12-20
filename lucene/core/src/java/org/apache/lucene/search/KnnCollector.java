@@ -87,25 +87,12 @@ public interface KnnCollector {
   TopDocs topDocs();
 
   /**
-   * This method returns a {@link DocIdSetIterator} over entry points that seed the KNN search, or
-   * {@code null} (default) to perform a full KNN search (without seeds).
-   *
-   * <p>Note that the entry points should represent ordinals, rather than true document IDs.
-   *
-   * @return the seed entry points or {@code null}.
-   * @lucene.experimental
-   */
-  default DocIdSetIterator getSeedEntryPoints() {
-    return null;
-  }
-
-  /**
    * KnnCollector.Decorator is the base class for decorators of KnnCollector objects, which extend
    * the object with new behaviors.
    *
    * @lucene.experimental
    */
-  public abstract static class Decorator implements KnnCollector {
+  abstract class Decorator implements KnnCollector {
     private KnnCollector collector;
 
     public Decorator(KnnCollector collector) {
@@ -150,30 +137,6 @@ public interface KnnCollector {
     @Override
     public TopDocs topDocs() {
       return collector.topDocs();
-    }
-
-    @Override
-    public DocIdSetIterator getSeedEntryPoints() {
-      return collector.getSeedEntryPoints();
-    }
-  }
-
-  /**
-   * KnnCollector.Seeded is a KnnCollector decorator that replaces the seedEntryPoints.
-   *
-   * @lucene.experimental
-   */
-  public static class Seeded extends Decorator {
-    private DocIdSetIterator seedEntryPoints;
-
-    public Seeded(KnnCollector collector, DocIdSetIterator seedEntryPoints) {
-      super(collector);
-      this.seedEntryPoints = seedEntryPoints;
-    }
-
-    @Override
-    public DocIdSetIterator getSeedEntryPoints() {
-      return seedEntryPoints;
     }
   }
 }

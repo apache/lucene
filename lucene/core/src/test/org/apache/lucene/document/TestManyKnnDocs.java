@@ -28,6 +28,7 @@ import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.SeededKnnFloatVectorQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -108,7 +109,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
         vector[1] = 1;
         TopDocs docs =
             searcher.search(
-                new KnnFloatVectorQuery("field", vector, 10, filterQuery, seedQuery), 5);
+                new SeededKnnFloatVectorQuery("field", vector, 10, filterQuery, seedQuery), 5);
         assertEquals(5, docs.scoreDocs.length);
         String s = "";
         for (int j = 0; j < docs.scoreDocs.length - 1; j++) {
@@ -131,7 +132,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
         vector[1] = 1;
         TopDocs docs =
             searcher.search(
-                new KnnFloatVectorQuery("field", vector, 10, filterQuery, seedQuery), 5);
+                new SeededKnnFloatVectorQuery("field", vector, 10, filterQuery, seedQuery), 5);
         assertEquals(5, docs.scoreDocs.length);
         String s = "";
         for (int j = 0; j < docs.scoreDocs.length - 1; j++) {
@@ -154,7 +155,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
         vector[1] = 1;
         TopDocs docs =
             searcher.search(
-                new KnnFloatVectorQuery("field", vector, 10, filterQuery, seedQuery), 5);
+                new SeededKnnFloatVectorQuery("field", vector, 10, filterQuery, seedQuery), 5);
         assertEquals(5, docs.scoreDocs.length);
         Document d = searcher.storedFields().document(docs.scoreDocs[0].doc);
         String s = "";
@@ -177,7 +178,7 @@ public class TestManyKnnDocs extends LuceneTestCase {
         vector[1] = 1;
         TopDocs docs =
             searcher.search(
-                new KnnFloatVectorQuery("field", vector, 10, filterQuery, seedQuery), 5);
+                new SeededKnnFloatVectorQuery("field", vector, 10, filterQuery, seedQuery), 5);
         assertEquals(5, docs.scoreDocs.length);
         Document d = searcher.storedFields().document(docs.scoreDocs[0].doc);
         String s = "";

@@ -47,7 +47,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  private final float[] target;
+  protected final float[] target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -73,22 +73,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnFloatVectorQuery(String field, float[] target, int k, Query filter) {
-    this(field, target, k, filter, null);
-  }
-
-  /**
-   * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
-   * given field. <code>target</code> vector.
-   *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
-   * @param target the target of the search
-   * @param k the number of documents to find
-   * @param filter a filter applied before the vector search
-   * @param seed a query that is executed to seed the vector search
-   * @throws IllegalArgumentException if <code>k</code> is less than 1
-   */
-  public KnnFloatVectorQuery(String field, float[] target, int k, Query filter, Query seed) {
-    super(field, k, filter, seed);
+    super(field, k, filter);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
   }
 
@@ -96,14 +81,10 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   protected TopDocs approximateSearch(
       LeafReaderContext context,
       Bits acceptDocs,
-      DocIdSetIterator seedDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
     KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
-    if (seedDocs != null) {
-      knnCollector = new KnnCollector.Seeded(knnCollector, seedDocs);
-    }
     LeafReader reader = context.reader();
     FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
     if (floatVectorValues == null) {
@@ -161,19 +142,5 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    */
   public float[] getTargetCopy() {
     return ArrayUtil.copyArray(target);
-  }
-
-  /**
-   * Returns a new iterator that maps the provided docIds to the vector ordinals.
-   *
-   * <p>This method assumes that all docIds have corresponding ordinals.
-   *
-   * @lucene.internal
-   * @lucene.experimental
-   */
-  @Override
-  protected DocIdSetIterator convertDocIdsToVectorOrdinals(
-      LeafReader reader, DocIdSetIterator docIds) throws IOException {
-    return reader.getFloatVectorValues(field).convertDocIdsToVectorOrdinals(docIds);
   }
 }

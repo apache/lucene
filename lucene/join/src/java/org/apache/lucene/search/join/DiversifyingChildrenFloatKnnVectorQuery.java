@@ -139,7 +139,6 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   protected TopDocs approximateSearch(
       LeafReaderContext context,
       Bits acceptDocs,
-      DocIdSetIterator seedDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
