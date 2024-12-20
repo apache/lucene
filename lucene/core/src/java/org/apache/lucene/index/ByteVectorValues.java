@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.document.KnnByteVectorField;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 
 /**
@@ -63,18 +62,6 @@ public abstract class ByteVectorValues extends KnnVectorValues {
               + VectorEncoding.BYTE
               + ")");
     }
-  }
-
-  /**
-   * Returns a new iterator that maps the provided docIds to the vector ordinals.
-   *
-   * <p>This method assumes that all docIds have corresponding ordinals.
-   *
-   * @lucene.internal
-   * @lucene.experimental
-   */
-  public DocIdSetIterator convertDocIdsToVectorOrdinals(DocIdSetIterator docIds) {
-    return docIds;
   }
 
   /**

@@ -272,11 +272,6 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
         }
       };
     }
-
-    @Override
-    public DocIdSetIterator convertDocIdsToVectorOrdinals(DocIdSetIterator docIds) {
-      return new IndexedDISI.MappedDISI(disi, docIds);
-    }
   }
 
   private static class EmptyOffHeapVectorValues extends OffHeapByteVectorValues {
@@ -326,11 +321,6 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
     @Override
     public VectorScorer scorer(byte[] query) {
       return null;
-    }
-
-    @Override
-    public DocIdSetIterator convertDocIdsToVectorOrdinals(DocIdSetIterator docIds) {
-      return DocIdSetIterator.empty();
     }
   }
 }

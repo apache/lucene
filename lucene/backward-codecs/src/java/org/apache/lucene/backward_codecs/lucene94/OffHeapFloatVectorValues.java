@@ -229,11 +229,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
         }
       };
     }
-
-    @Override
-    public DocIdSetIterator convertDocIdsToVectorOrdinals(DocIdSetIterator docIds) {
-      return new IndexedDISI.MappedDISI(disi, docIds);
-    }
   }
 
   private static class EmptyOffHeapVectorValues extends OffHeapFloatVectorValues {
@@ -280,11 +275,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     @Override
     public VectorScorer scorer(float[] query) {
       return null;
-    }
-
-    @Override
-    public DocIdSetIterator convertDocIdsToVectorOrdinals(DocIdSetIterator docIds) {
-      return DocIdSetIterator.empty();
     }
   }
 }
