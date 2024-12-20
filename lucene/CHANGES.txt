@@ -127,6 +127,9 @@ Bug Fixes
 * GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
   and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
 * GITHUB#13819: Prevent flattening of ordered and unordered interval sources (Jim Ferenczi)
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 Build
 ---------------------
@@ -136,16 +139,6 @@ Build
 Other
 ---------------------
 * GITHUB#13982: Remove duplicate test code. (Lu Xugang)
-
-======================== Lucene 10.0.1 =======================
-
-Bug Fixes
----------------------
-
-* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
-  their corresponding ordinals. (Paul King)
-
-* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 ======================= Lucene 10.0.0 =======================
 
