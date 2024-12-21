@@ -59,6 +59,12 @@ final class FreqProxTermsWriter extends TermsHash {
       FrozenBufferedUpdates.TermDocsIterator iterator =
           new FrozenBufferedUpdates.TermDocsIterator(fields, true);
 
+      // Since we have already applied delete-by-docID, liveDocs maybe not null.
+      if (state.liveDocs == null) {
+        state.liveDocs = new FixedBitSet(state.segmentInfo.maxDoc());
+        state.liveDocs.set(0, state.segmentInfo.maxDoc());
+      }
+
       segDeletes.forEachOrdered(
           (term, docId) -> {
             DocIdSetIterator postings = iterator.nextTerm(term.field(), term.bytes());
@@ -66,16 +72,16 @@ final class FreqProxTermsWriter extends TermsHash {
               assert docId < PostingsEnum.NO_MORE_DOCS;
               int doc;
               while ((doc = postings.nextDoc()) < docId) {
-                if (state.liveDocs == null) {
-                  state.liveDocs = new FixedBitSet(state.segmentInfo.maxDoc());
-                  state.liveDocs.set(0, state.segmentInfo.maxDoc());
-                }
                 if (state.liveDocs.getAndClear(doc)) {
                   state.delCountOnFlush++;
                 }
               }
             }
           });
+      // Set to null, if there is no delete.
+      if (state.delCountOnFlush == 0) {
+        state.liveDocs = null;
+      }
     }
   }
 
