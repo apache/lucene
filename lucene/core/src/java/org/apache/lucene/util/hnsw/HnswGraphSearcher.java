@@ -222,25 +222,67 @@ public class HnswGraphSearcher {
         break;
       }
 
+      int maxConn = 32; // Hardcode for testing TODO: fetch this value properly
+
       int topCandidateNode = candidates.pop();
+      // Pre-fetch neighbors into an array
+      // This is necessary because we need to call `seek` on each neighbor to consider 2-hop neighbors
+      int[] neighbors = new int[maxConn];
       graphSeek(graph, level, topCandidateNode);
-      int friendOrd;
-      while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+      int neighborCount = 0;
+      int neighborOrd;
+      while ((neighborOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS && neighborCount < maxConn) {
+        neighbors[neighborCount++] = neighborOrd;
+      }
+
+      // We only consider maxConn 1/2-hop neighbors
+      int neighborsProcessed = 0;
+      // Walk 1-hop neighbors
+      for (int i = 0; i < neighborCount; i++) {
+        if (neighborsProcessed > maxConn) break;
+        int friendOrd = neighbors[i];
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
         }
-
         if (results.earlyTerminated()) {
           break;
         }
-        float friendSimilarity = scorer.score(friendOrd);
-        results.incVisitedCount(1);
-        if (friendSimilarity > minAcceptedSimilarity) {
-          candidates.add(friendOrd, friendSimilarity);
-          if (acceptOrds == null || acceptOrds.get(friendOrd)) {
+
+        // Only calculate score and consider candidate if filter matches
+        if (acceptOrds == null || acceptOrds.get(friendOrd)) {
+          neighborsProcessed++;
+          float friendSimilarity = scorer.score(friendOrd);
+          results.incVisitedCount(1);
+          if (friendSimilarity > minAcceptedSimilarity) {
+            candidates.add(friendOrd, friendSimilarity);
             if (results.collect(friendOrd, friendSimilarity)) {
               minAcceptedSimilarity = results.minCompetitiveSimilarity();
+            }
+          }
+        } else { // Only walk 2-hop neighbors if filter doesn't match
+          graphSeek(graph, level, friendOrd);
+          int twoHopFriendOrd;
+          while ((twoHopFriendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS && neighborsProcessed <= maxConn) {
+            assert twoHopFriendOrd < size : "twoHopFriendOrd=" + twoHopFriendOrd + "; size=" + size;
+            if (visited.getAndSet(twoHopFriendOrd)) {
+              continue;
+            }
+            if (results.earlyTerminated()) {
+              break;
+            }
+
+            // Only calculate score and consider candidate if filter matches
+            if (acceptOrds.get(twoHopFriendOrd)) {
+              neighborsProcessed++;
+              float twoHopSimilarity = scorer.score(twoHopFriendOrd);
+              results.incVisitedCount(1);
+              if (twoHopSimilarity > minAcceptedSimilarity) {
+                candidates.add(twoHopFriendOrd, twoHopSimilarity);
+                if (results.collect(twoHopFriendOrd, twoHopSimilarity)) {
+                  minAcceptedSimilarity = results.minCompetitiveSimilarity();
+                }
+              }
             }
           }
         }
