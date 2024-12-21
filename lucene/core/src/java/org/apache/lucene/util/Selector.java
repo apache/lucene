@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Arrays;
+
 /**
  * An implementation of a selection algorithm, ie. computing the k-th greatest value from a
  * collection.
@@ -30,12 +32,61 @@ public abstract class Selector {
    */
   public abstract void select(int from, int to, int k);
 
+  /**
+   * Reorder elements so that the elements at all positions in {@code k} are the same as if all
+   * elements were sorted and all other elements are partitioned around it: {@code [from, k[n])}
+   * only contains elements that are less than or equal to {@code k[n]} and {@code (k[n], to)} only
+   * contains elements that are greater than or equal to {@code k[n]}.
+   */
+  public void multiSelect(int from, int to, int[] k) {
+    // k needs to be sorted, so copy the array
+    k = ArrayUtil.copyArray(k);
+    Arrays.sort(k);
+    checkMultiArgs(from, to, k);
+    multiSelect(from, to, k, 0, k.length);
+  }
+
+  /**
+   * Reorder elements so that the elements at all positions in {@code k} are the same as if all
+   * elements were sorted and all other elements are partitioned around it: {@code [from, k[n])}
+   * only contains elements that are less than or equal to {@code k[n]} and {@code (k[n], to)} only
+   * contains elements that are greater than or equal to {@code k[n]}.
+   *
+   * <p>The array {@code k} must be sorted, and {@code kFrom} and {@code kTo} must be referring to
+   * the sorted order.
+   */
+  protected void multiSelect(int from, int to, int[] k, int kFrom, int kTo) {
+    // Default implementation only uses select(), so it is not optimal
+    int nextFrom = from;
+    for (int i = kFrom; i < kTo; i++) {
+      int currentK = k[i];
+      if (currentK < nextFrom) {
+        // This is a duplicate k
+        continue;
+      }
+      select(nextFrom, to, currentK);
+      nextFrom = currentK + 1;
+    }
+  }
+
   void checkArgs(int from, int to, int k) {
     if (k < from) {
       throw new IllegalArgumentException("k must be >= from");
     }
     if (k >= to) {
       throw new IllegalArgumentException("k must be < to");
+    }
+  }
+
+  void checkMultiArgs(int from, int to, int[] k) {
+    if (k.length == 0) {
+      throw new IllegalArgumentException("k must not be empty");
+    }
+    if (k[0] < from) {
+      throw new IllegalArgumentException("All k must be >= from");
+    }
+    if (k[k.length - 1] >= to) {
+      throw new IllegalArgumentException("All k must be < to");
     }
   }
 
