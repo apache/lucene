@@ -182,31 +182,32 @@ final class DocIdsWriter {
     assert currentWordIndex + 1 == totalWordCount;
   }
 
-  /** Read {@code count} integers into {@code docIDs}. */
-  void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
+  /** Read {@code count} integers. */
+  int[] readInts(IndexInput in, int count) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
       case CONTINUOUS_IDS:
-        readContinuousIds(in, count, docIDs);
+        readContinuousIds(in, count, scratch);
         break;
       case BITSET_IDS:
-        readBitSet(in, count, docIDs);
+        readBitSet(in, count, scratch);
         break;
       case DELTA_BPV_16:
-        readDelta16(in, count, docIDs);
+        readDelta16(in, count, scratch);
         break;
       case BPV_24:
-        readInts24(in, count, docIDs);
+        readInts24(in, count, scratch);
         break;
       case BPV_32:
-        readInts32(in, count, docIDs);
+        readInts32(in, count, scratch);
         break;
       case LEGACY_DELTA_VINT:
-        readLegacyDeltaVInts(in, count, docIDs);
+        readLegacyDeltaVInts(in, count, scratch);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
+    return scratch;
   }
 
   private DocIdSetIterator readBitSetIterator(IndexInput in, int count) throws IOException {
