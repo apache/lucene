@@ -801,4 +801,44 @@ public final class ArrayUtil {
     return Integer.compareUnsigned(
         (int) BitUtil.VH_BE_INT.get(a, aOffset), (int) BitUtil.VH_BE_INT.get(b, bOffset));
   }
+
+  /**
+   * Run an exponential search for the target in an array
+   *
+   * @param arr the array
+   * @param fromIndex the start index of the search (inclusive)
+   * @param toIndex the end index of the search (exclusive)
+   * @param target the target to search for
+   * @return index of the search key, if it is contained in the array; otherwise, (-(insertion
+   *     point) - 1)
+   */
+  public static int exponentialSearch(int[] arr, int fromIndex, int toIndex, int target) {
+    int bound = 1;
+    while (fromIndex + bound < toIndex && arr[fromIndex + bound] < target) {
+      bound *= 2;
+    }
+    return Arrays.binarySearch(
+        arr, fromIndex + bound / 2, Math.min(fromIndex + bound + 1, toIndex), target);
+  }
+
+  /**
+   * Run an exponential search for the target in an array
+   *
+   * @param arr the array
+   * @param fromIndex the start index of the search (inclusive)
+   * @param toIndex the end index of the search (exclusive)
+   * @param target the target to search for
+   * @param comp the comparator
+   * @return index of the search key, if it is contained in the array; otherwise, (-(insertion
+   *     point) - 1)
+   */
+  public static <T> int exponentialSearch(
+      T[] arr, int fromIndex, int toIndex, T target, Comparator<? super T> comp) {
+    int bound = 1;
+    while (fromIndex + bound < toIndex && comp.compare(arr[fromIndex + bound], target) < 0) {
+      bound *= 2;
+    }
+    return Arrays.binarySearch(
+        arr, fromIndex + bound / 2, Math.min(fromIndex + bound + 1, toIndex), target, comp);
+  }
 }
