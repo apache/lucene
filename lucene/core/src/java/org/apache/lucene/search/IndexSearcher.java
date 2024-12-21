@@ -845,7 +845,9 @@ public class IndexSearcher {
         scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
       }
       try {
-        scorer.score(leafCollector, ctx.reader().getLiveDocs(), minDocId, maxDocId);
+        // Optimize for the case when live docs are stored in a FixedBitSet.
+        Bits acceptDocs = ScorerUtil.likelyFixedBitSet(ctx.reader().getLiveDocs());
+        scorer.score(leafCollector, acceptDocs, minDocId, maxDocId);
       } catch (
           @SuppressWarnings("unused")
           CollectionTerminatedException e) {
