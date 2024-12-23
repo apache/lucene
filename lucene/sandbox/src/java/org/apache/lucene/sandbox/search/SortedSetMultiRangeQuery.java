@@ -26,12 +26,12 @@ import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -48,35 +48,44 @@ public class SortedSetMultiRangeQuery extends Query {
   private final String field;
   private final int bytesPerDim;
   private final ArrayUtil.ByteArrayComparator comparator;
-  List<MultiRangeQuery.RangeClause> rangeClauses;
+  private final List<MultiRangeQuery.RangeClause> rangeClauses;
 
   SortedSetMultiRangeQuery(
       String name,
       List<MultiRangeQuery.RangeClause> clauses,
-      int bytes,
+      int bytesPerDim,
       ArrayUtil.ByteArrayComparator comparator) {
     this.field = name;
-    this.rangeClauses = clauses;
-    this.bytesPerDim = bytes;
+    this.bytesPerDim = bytesPerDim;
     this.comparator = comparator;
+    ArrayList<MultiRangeQuery.RangeClause> sortedClauses = new ArrayList<>(clauses);
+    sortedClauses.sort(
+            (o1, o2) -> {
+              // if (result == 0) {
+              //    return comparator.compare(o1.upperValue, 0, o2.upperValue, 0);
+              // } else {
+              return comparator.compare(o1.lowerValue, 0, o2.lowerValue, 0);
+              // }
+            });
+    this.rangeClauses = sortedClauses;
   }
 
   /** Builder for creating a SortedSetMultiRangeQuery. */
   public static class Builder {
-    private final String name;
-    protected final List<MultiRangeQuery.RangeClause> clauses = new ArrayList<>();
-    private final int bytes;
+    private final String fieldName;
+    private final List<MultiRangeQuery.RangeClause> clauses = new ArrayList<>();
+    private final int bytesPerDim;
     private final ArrayUtil.ByteArrayComparator comparator;
 
-    public Builder(String name, int bytes) {
-      this.name = Objects.requireNonNull(name);
-      this.bytes = bytes; // TODO assrt positive
-      this.comparator = ArrayUtil.getUnsignedComparator(bytes);
+    public Builder(String fieldName, int bytesPerDim) {
+      this.fieldName = Objects.requireNonNull(fieldName);
+      this.bytesPerDim = bytesPerDim; // TODO assrt positive
+      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     }
 
     public Builder add(BytesRef lowerValue, BytesRef upperValue) {
-      byte[] low = lowerValue.clone().bytes;
-      byte[] up = upperValue.clone().bytes;
+      byte[] low = BytesRef.deepCopyOf(lowerValue).bytes;
+      byte[] up = BytesRef.deepCopyOf(upperValue).bytes;
       if (this.comparator.compare(low, 0, up, 0) > 0) {
         throw new IllegalArgumentException("lowerValue must be <= upperValue");
       } else {
@@ -87,36 +96,17 @@ public class SortedSetMultiRangeQuery extends Query {
 
     public Query build() {
       if (clauses.isEmpty()) {
-        return new BooleanQuery.Builder().build();
+        return new MatchNoDocsQuery();
       }
       if (clauses.size() == 1) {
         return SortedSetDocValuesField.newSlowRangeQuery(
-            name,
+                fieldName,
             new BytesRef(clauses.getFirst().lowerValue),
             new BytesRef(clauses.getFirst().upperValue),
             true,
             true);
       }
-      return new SortedSetMultiRangeQuery(name, clauses, this.bytes, comparator);
-    }
-  }
-
-  @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    ArrayList<MultiRangeQuery.RangeClause> sortedClauses = new ArrayList<>(this.rangeClauses);
-    sortedClauses.sort(
-        (o1, o2) -> {
-          // if (result == 0) {
-          //    return comparator.compare(o1.upperValue, 0, o2.upperValue, 0);
-          // } else {
-          return comparator.compare(o1.lowerValue, 0, o2.lowerValue, 0);
-          // }
-        });
-    if (!this.rangeClauses.equals(sortedClauses)) {
-      return new SortedSetMultiRangeQuery(
-          this.field, sortedClauses, this.bytesPerDim, this.comparator);
-    } else {
-      return this;
+      return new SortedSetMultiRangeQuery(fieldName, clauses, this.bytesPerDim, comparator);
     }
   }
 
@@ -142,15 +132,12 @@ public class SortedSetMultiRangeQuery extends Query {
         if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
-        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-        SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
-        // implement ScorerSupplier, since we do some expensive stuff to make a scorer
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
-            if (rangeClauses.isEmpty()) {
-              return empty();
-            }
+            assert !rangeClauses.isEmpty(): "Builder should prevent it";
+            DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+            SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
             TermsEnum termsEnum = values.termsEnum();
             LongBitSet matchingOrdsShifted = null;
             long minOrd = 0, maxOrd = values.getValueCount() - 1;
@@ -171,9 +158,7 @@ public class SortedSetMultiRangeQuery extends Query {
                   minOrd = Math.max(minOrd, skipper.minValue());
                   maxOrd = Math.min(maxOrd, skipper.maxValue());
                 }
-                if (maxOrd < minOrd) {
-                  return empty();
-                }
+                assert maxOrd >= minOrd;
                 startingOrd = minOrd;
               } else {
                 if (seekStatus == TermsEnum.SeekStatus.END) {
@@ -198,7 +183,7 @@ public class SortedSetMultiRangeQuery extends Query {
                 } else {
                   break; // no r++
                 }
-              }
+              }//TODO copy Range here
               seekStatus = termsEnum.seekCeil(new BytesRef(upper));
 
               if (seekStatus == TermsEnum.SeekStatus.END) {
