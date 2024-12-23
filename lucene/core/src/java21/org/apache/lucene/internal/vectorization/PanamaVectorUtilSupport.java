@@ -771,6 +771,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   @Override
   public int findNextGEQ(int[] buffer, int target, int from, int to) {
     if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
+      // This effectively implements the V1 intersection algorithm from
+      // D. Lemire, L. Boytsov, N. Kurz SIMD Compression and the Intersection of Sorted Integers
+      // with T = INT_SPECIES.length(), ie. T=8 with AVX2 and T=16 with AVX-512
+      // https://arxiv.org/pdf/1401.6399
       for (; from + INT_SPECIES.length() < to; from += INT_SPECIES.length() + 1) {
         if (buffer[from + INT_SPECIES.length()] >= target) {
           IntVector vector = IntVector.fromArray(INT_SPECIES, buffer, from);
