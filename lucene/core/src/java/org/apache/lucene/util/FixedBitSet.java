@@ -342,7 +342,7 @@ public final class FixedBitSet extends BitSet {
       // TODO: implement DocBaseBitSetIterator#intoBitSet instead
       checkUnpositioned(iter);
       DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
-      orRange(baseIter.getBitSet(), baseIter.getDocBase());
+      or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
       checkUnpositioned(iter);
       iter.nextDoc();
@@ -350,9 +350,23 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
+  private void or(final int otherOffsetWords, FixedBitSet other) {
+    or(otherOffsetWords, other.bits, other.numWords);
+  }
+
+  private void or(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
+    assert otherNumWords + otherOffsetWords <= numWords
+        : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
+    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
+    final long[] thisArr = this.bits;
+    while (--pos >= 0) {
+      thisArr[pos + otherOffsetWords] |= otherArr[pos];
+    }
+  }
+
   /**
    * Or {@code min(length(), other.length() - from} bits starting at {@code from} from {@code other}
-   * into this bit set.
+   * into this bit set starting at 0.
    */
   void orRange(FixedBitSet other, int from) {
     int numBits = Math.min(length(), other.length() - from);
