@@ -22,9 +22,10 @@
  * operations. In the new query parser structure, the parsing was divided in 3 steps: parsing
  * (syntax), processing (semantic) and building.
  *
- * Flexible query parser is a modular, extensible framework for implementing Lucene query parsers.
- * In the flexible query parser model, query parsing takes three steps: syntax parsing, processing
- * (query semantics) and building (conversion to a Lucene {@link org.apache.lucene.search.Query}).
+ * <p>Flexible query parser is a modular, extensible framework for implementing Lucene query
+ * parsers. In the flexible query parser model, query parsing takes three steps: syntax parsing,
+ * processing (query semantics) and building (conversion to a Lucene {@link
+ * org.apache.lucene.search.Query}).
  *
  * <p>The flexible query parser module provides not just the framework but also the {@linkplain
  * org.apache.lucene.queryparser.flexible.standard.StandardQueryParser} - the default implementation
@@ -99,6 +100,5 @@
  *       org.apache.lucene.queryparser.flexible.core.nodes.QueryNode query nodes} to their adapters
  *       that convert each node into a {@link org.apache.lucene.search.Query}.
  * </dl>
- *
  */
 package org.apache.lucene.queryparser.flexible.standard;
