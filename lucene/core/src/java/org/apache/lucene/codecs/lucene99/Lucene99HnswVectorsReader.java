@@ -37,6 +37,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.HnswQueueSaturationCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
@@ -314,8 +315,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
-    final KnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    final KnnCollector collector = new HnswQueueSaturationCollector(
+            new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc));
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     if (knnCollector.k() < scorer.maxOrd()) {
       HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
