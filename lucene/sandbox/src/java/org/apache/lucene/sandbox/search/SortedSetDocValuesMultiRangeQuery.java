@@ -44,13 +44,13 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
 
 /** A union multiple ranges over SortedSetDocValuesField */
-public class SortedSetMultiRangeQuery extends Query {
+public class SortedSetDocValuesMultiRangeQuery extends Query {
   private final String field;
   private final int bytesPerDim;
   private final ArrayUtil.ByteArrayComparator comparator;
   private final List<MultiRangeQuery.RangeClause> rangeClauses;
 
-  SortedSetMultiRangeQuery(
+  SortedSetDocValuesMultiRangeQuery(
       String name,
       List<MultiRangeQuery.RangeClause> clauses,
       int bytesPerDim,
@@ -70,7 +70,8 @@ public class SortedSetMultiRangeQuery extends Query {
     this.rangeClauses = sortedClauses;
   }
 
-  /** Builder for creating a SortedSetMultiRangeQuery. */
+  /** Builder for creating a query matching multiple ranges against
+   * field values, where SortedSetDocValuesField carries a multiple values per document. */
   public static class Builder {
     private final String fieldName;
     private final List<MultiRangeQuery.RangeClause> clauses = new ArrayList<>();
@@ -79,7 +80,10 @@ public class SortedSetMultiRangeQuery extends Query {
 
     public Builder(String fieldName, int bytesPerDim) {
       this.fieldName = Objects.requireNonNull(fieldName);
-      this.bytesPerDim = bytesPerDim; // TODO assrt positive
+      if (bytesPerDim <= 0) {
+        throw new IllegalArgumentException("bytesPerDim should be a valid value");
+      }
+      this.bytesPerDim = bytesPerDim; // TODO assert positive
       this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     }
 
@@ -87,7 +91,8 @@ public class SortedSetMultiRangeQuery extends Query {
       byte[] low = BytesRef.deepCopyOf(lowerValue).bytes;
       byte[] up = BytesRef.deepCopyOf(upperValue).bytes;
       if (this.comparator.compare(low, 0, up, 0) > 0) {
-        throw new IllegalArgumentException("lowerValue must be <= upperValue");
+        // TODO let's just ignore so far.
+        //  throw new IllegalArgumentException("lowerValue must be <= upperValue");
       } else {
         clauses.add(new MultiRangeQuery.RangeClause(low, up));
       }
@@ -106,7 +111,7 @@ public class SortedSetMultiRangeQuery extends Query {
             true,
             true);
       }
-      return new SortedSetMultiRangeQuery(fieldName, clauses, this.bytesPerDim, comparator);
+      return new SortedSetDocValuesMultiRangeQuery(fieldName, clauses, this.bytesPerDim, comparator);
     }
   }
 
@@ -132,12 +137,13 @@ public class SortedSetMultiRangeQuery extends Query {
         if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
+        SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
+
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
             assert !rangeClauses.isEmpty(): "Builder should prevent it";
             DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-            SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
             TermsEnum termsEnum = values.termsEnum();
             LongBitSet matchingOrdsShifted = null;
             long minOrd = 0, maxOrd = values.getValueCount() - 1;
@@ -272,7 +278,7 @@ public class SortedSetMultiRangeQuery extends Query {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    SortedSetMultiRangeQuery that = (SortedSetMultiRangeQuery) o;
+    SortedSetDocValuesMultiRangeQuery that = (SortedSetDocValuesMultiRangeQuery) o;
     return Objects.equals(field, that.field)
         && bytesPerDim == that.bytesPerDim
         && Objects.equals(rangeClauses, that.rangeClauses);

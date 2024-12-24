@@ -142,8 +142,8 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase {
     for (int pass = 0; pass < atLeast(10); pass++) {
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(4);
-      SortedSetMultiRangeQuery.Builder qbuilder =
-          new SortedSetMultiRangeQuery.Builder("field", InetAddressPoint.BYTES);
+      SortedSetDocValuesMultiRangeQuery.Builder qbuilder =
+          new SortedSetDocValuesMultiRangeQuery.Builder("field", InetAddressPoint.BYTES);
       for (int q = 0; q < atLeast(10); q++) {
         byte[] alfa = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
         byte[] beta = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
@@ -219,8 +219,8 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase {
   }
 
   private static Query rangeQuery(String field, InetAddress... addr) throws UnknownHostException {
-    SortedSetMultiRangeQuery.Builder qbuilder =
-        new SortedSetMultiRangeQuery.Builder(field, InetAddressPoint.BYTES);
+    SortedSetDocValuesMultiRangeQuery.Builder qbuilder =
+        new SortedSetDocValuesMultiRangeQuery.Builder(field, InetAddressPoint.BYTES);
     for (int i = 0; i < addr.length; i += 2) {
       qbuilder.add(
           new BytesRef(InetAddressPoint.encode(addr[i])),
