@@ -45,56 +45,92 @@ import org.apache.lucene.util.LongBitSet;
 
 /** A union multiple ranges over SortedSetDocValuesField */
 public class SortedSetDocValuesMultiRangeQuery extends Query {
+
+  /** Representation of a single clause in a MultiRangeQuery */
+  private static final class Range {
+    BytesRef lower;
+    BytesRef upper;
+
+    /** NB: One absolutely must copy ByteRefs before. */
+    private Range(BytesRef lowerValue, BytesRef upperValue) {
+      this.lower = lowerValue;
+      this.upper = upperValue;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      Range that = (Range) o;
+      return lower.equals(that.lower) && upper.equals(that.lower);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = lower.hashCode();
+      result = 31 * result + upper.hashCode();
+      return result;
+    }
+  }
+
   private final String field;
   private final int bytesPerDim;
   private final ArrayUtil.ByteArrayComparator comparator;
-  private final List<MultiRangeQuery.RangeClause> rangeClauses;
+  private final List<Range> rangeClauses;
 
   SortedSetDocValuesMultiRangeQuery(
-      String name,
-      List<MultiRangeQuery.RangeClause> clauses,
-      int bytesPerDim,
-      ArrayUtil.ByteArrayComparator comparator) {
+      String name, List<Range> clauses, int bytesPerDim, ArrayUtil.ByteArrayComparator comparator) {
     this.field = name;
     this.bytesPerDim = bytesPerDim;
     this.comparator = comparator;
-    ArrayList<MultiRangeQuery.RangeClause> sortedClauses = new ArrayList<>(clauses);
+    ArrayList<Range> sortedClauses = new ArrayList<>(clauses);
     sortedClauses.sort(
-            (o1, o2) -> {
-              // if (result == 0) {
-              //    return comparator.compare(o1.upperValue, 0, o2.upperValue, 0);
-              // } else {
-              return comparator.compare(o1.lowerValue, 0, o2.lowerValue, 0);
-              // }
-            });
+        (o1, o2) -> {
+          // if (result == 0) {
+          //    return comparator.compare(o1.upperValue, 0, o2.upperValue, 0);
+          // } else {
+          assert o1.lower.offset == 0 && o2.lower.offset == 0 : "Relying on copying bytes.";
+          return comparator.compare(o1.lower.bytes, 0, o2.lower.bytes, 0);
+          // }
+        });
     this.rangeClauses = sortedClauses;
   }
 
-  /** Builder for creating a query matching multiple ranges against
-   * field values, where SortedSetDocValuesField carries a multiple values per document. */
-  public static class Builder {
+  /**
+   * Builder for creating a query for matching multi-range field values. Highlights two key points:
+   *
+   * <ul>
+   *   <li>treats multiple or single field value as scalar for range matching
+   *   <li>field values have fixed width
+   * </ul>
+   */
+  public static class FieldValueFixedBuilder {
     private final String fieldName;
-    private final List<MultiRangeQuery.RangeClause> clauses = new ArrayList<>();
+    private final List<Range> clauses = new ArrayList<>();
     private final int bytesPerDim;
     private final ArrayUtil.ByteArrayComparator comparator;
 
-    public Builder(String fieldName, int bytesPerDim) {
+    public FieldValueFixedBuilder(String fieldName, int bytesPerDim) {
       this.fieldName = Objects.requireNonNull(fieldName);
       if (bytesPerDim <= 0) {
         throw new IllegalArgumentException("bytesPerDim should be a valid value");
       }
-      this.bytesPerDim = bytesPerDim; // TODO assert positive
+      this.bytesPerDim = bytesPerDim;
       this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     }
 
-    public Builder add(BytesRef lowerValue, BytesRef upperValue) {
-      byte[] low = BytesRef.deepCopyOf(lowerValue).bytes;
-      byte[] up = BytesRef.deepCopyOf(upperValue).bytes;
-      if (this.comparator.compare(low, 0, up, 0) > 0) {
+    public FieldValueFixedBuilder add(BytesRef lowerValue, BytesRef upperValue) {
+      BytesRef lowRef = BytesRef.deepCopyOf(lowerValue);
+      BytesRef upRef = BytesRef.deepCopyOf(upperValue);
+      if (this.comparator.compare(lowRef.bytes, 0, upRef.bytes, 0) > 0) {
         // TODO let's just ignore so far.
-        //  throw new IllegalArgumentException("lowerValue must be <= upperValue");
+        //  throw new IllegalArgumentException("lower must be <= upperValue");
       } else {
-        clauses.add(new MultiRangeQuery.RangeClause(low, up));
+        clauses.add(new Range(lowRef, upRef));
       }
       return this;
     }
@@ -104,20 +140,19 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
         return new MatchNoDocsQuery();
       }
       if (clauses.size() == 1) {
+        Range theOnlyOne = clauses.getFirst();
         return SortedSetDocValuesField.newSlowRangeQuery(
-                fieldName,
-            new BytesRef(clauses.getFirst().lowerValue),
-            new BytesRef(clauses.getFirst().upperValue),
-            true,
-            true);
+            fieldName, theOnlyOne.lower, theOnlyOne.upper, true, true);
       }
-      return new SortedSetDocValuesMultiRangeQuery(fieldName, clauses, this.bytesPerDim, comparator);
+      return new SortedSetDocValuesMultiRangeQuery(
+          fieldName, clauses, this.bytesPerDim, comparator);
     }
   }
 
   @Override
   public String toString(String fld) {
-    return "SortedSetMultiRangeQuery{"
+    return SortedSetDocValuesMultiRangeQuery.class.getSimpleName()
+        + "{"
         + "field='"
         + fld
         + '\''
@@ -127,7 +162,7 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
         '}';
   }
 
-  // what TODO with reverse ranges ???
+  // TODO how to handle reverse ranges ???
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
@@ -142,7 +177,7 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
-            assert !rangeClauses.isEmpty(): "Builder should prevent it";
+            assert !rangeClauses.isEmpty() : "Builder should prevent it";
             DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
             TermsEnum termsEnum = values.termsEnum();
             LongBitSet matchingOrdsShifted = null;
@@ -152,9 +187,9 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
             long maxSeenOrd = values.getValueCount();
             TermsEnum.SeekStatus seekStatus = TermsEnum.SeekStatus.NOT_FOUND;
             for (int r = 0; r < rangeClauses.size(); r++) {
-              MultiRangeQuery.RangeClause range = rangeClauses.get(r);
+              Range range = rangeClauses.get(r);
               long startingOrd;
-              seekStatus = termsEnum.seekCeil(new BytesRef(range.lowerValue));
+              seekStatus = termsEnum.seekCeil(range.lower);
               if (matchingOrdsShifted == null) { // first iter
                 if (seekStatus == TermsEnum.SeekStatus.END) {
                   return empty(); // no bitset yet, give up
@@ -173,24 +208,24 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
                   startingOrd = termsEnum.ord();
                 }
               }
-              byte[] upper = range.upperValue; // TODO ignore reverse ranges
+              BytesRef upper = range.upper; // TODO ignore reverse ranges
               // looking for overlap
               for (int overlap = r + 1; overlap < rangeClauses.size(); overlap++, r++) {
-                MultiRangeQuery.RangeClause mayOverlap = rangeClauses.get(overlap);
-                assert comparator.compare(range.lowerValue, 0, mayOverlap.lowerValue, 0) <= 0
+                Range mayOverlap = rangeClauses.get(overlap);
+                assert comparator.compare(range.lower.bytes, 0, mayOverlap.lower.bytes, 0) <= 0
                     : "since they are sorted";
                 // TODO it might be contiguous ranges, it's worth to check but I have no idea how
-                if (comparator.compare(mayOverlap.lowerValue, 0, upper, 0) <= 0) {
+                if (comparator.compare(mayOverlap.lower.bytes, 0, upper.bytes, 0) <= 0) {
                   // overlap, expand if needed
-                  if (comparator.compare(upper, 0, mayOverlap.upperValue, 0) < 0) {
-                    upper = mayOverlap.upperValue;
+                  if (comparator.compare(upper.bytes, 0, mayOverlap.upper.bytes, 0) < 0) {
+                    upper = mayOverlap.upper;
                   }
                   // continue; // skip overlapping rng
                 } else {
                   break; // no r++
                 }
-              }//TODO copy Range here
-              seekStatus = termsEnum.seekCeil(new BytesRef(upper));
+              } // TODO copy Range here.. WDYMean?
+              seekStatus = termsEnum.seekCeil(upper);
 
               if (seekStatus == TermsEnum.SeekStatus.END) {
                 maxSeenOrd = maxOrd; // perhaps it's worth to set for skipper
@@ -259,6 +294,8 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
           }
         };
       }
+
+      // TODO perhaps count() specification?
 
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
