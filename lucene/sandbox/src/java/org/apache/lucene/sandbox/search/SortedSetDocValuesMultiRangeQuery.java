@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
@@ -31,7 +30,6 @@ import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -44,50 +42,21 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
 
 /** A union multiple ranges over SortedSetDocValuesField */
-public class SortedSetDocValuesMultiRangeQuery extends Query {
-
-  /** Representation of a single clause in a MultiRangeQuery */
-  private static final class Range {
-    BytesRef lower;
-    BytesRef upper;
-
-    /** NB: One absolutely must copy ByteRefs before. */
-    private Range(BytesRef lowerValue, BytesRef upperValue) {
-      this.lower = lowerValue;
-      this.upper = upperValue;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      Range that = (Range) o;
-      return lower.equals(that.lower) && upper.equals(that.lower);
-    }
-
-    @Override
-    public int hashCode() {
-      int result = lower.hashCode();
-      result = 31 * result + upper.hashCode();
-      return result;
-    }
-  }
-
+class SortedSetDocValuesMultiRangeQuery extends Query {
   private final String field;
   private final int bytesPerDim;
   private final ArrayUtil.ByteArrayComparator comparator;
-  private final List<Range> rangeClauses;
+  private final List<DocValuesMultiRangeQuery.Range> rangeClauses;
 
   SortedSetDocValuesMultiRangeQuery(
-      String name, List<Range> clauses, int bytesPerDim, ArrayUtil.ByteArrayComparator comparator) {
+      String name,
+      List<DocValuesMultiRangeQuery.Range> clauses,
+      int bytesPerDim,
+      ArrayUtil.ByteArrayComparator comparator) {
     this.field = name;
     this.bytesPerDim = bytesPerDim;
     this.comparator = comparator;
-    ArrayList<Range> sortedClauses = new ArrayList<>(clauses);
+    ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>(clauses);
     sortedClauses.sort(
         (o1, o2) -> {
           // if (result == 0) {
@@ -98,55 +67,6 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
           // }
         });
     this.rangeClauses = sortedClauses;
-  }
-
-  /**
-   * Builder for creating a query for matching multi-range field values. Highlights two key points:
-   *
-   * <ul>
-   *   <li>treats multiple or single field value as scalar for range matching
-   *   <li>field values have fixed width
-   * </ul>
-   */
-  public static class FieldValueFixedBuilder {
-    private final String fieldName;
-    private final List<Range> clauses = new ArrayList<>();
-    private final int bytesPerDim;
-    private final ArrayUtil.ByteArrayComparator comparator;
-
-    public FieldValueFixedBuilder(String fieldName, int bytesPerDim) {
-      this.fieldName = Objects.requireNonNull(fieldName);
-      if (bytesPerDim <= 0) {
-        throw new IllegalArgumentException("bytesPerDim should be a valid value");
-      }
-      this.bytesPerDim = bytesPerDim;
-      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
-    }
-
-    public FieldValueFixedBuilder add(BytesRef lowerValue, BytesRef upperValue) {
-      BytesRef lowRef = BytesRef.deepCopyOf(lowerValue);
-      BytesRef upRef = BytesRef.deepCopyOf(upperValue);
-      if (this.comparator.compare(lowRef.bytes, 0, upRef.bytes, 0) > 0) {
-        // TODO let's just ignore so far.
-        //  throw new IllegalArgumentException("lower must be <= upperValue");
-      } else {
-        clauses.add(new Range(lowRef, upRef));
-      }
-      return this;
-    }
-
-    public Query build() {
-      if (clauses.isEmpty()) {
-        return new MatchNoDocsQuery();
-      }
-      if (clauses.size() == 1) {
-        Range theOnlyOne = clauses.getFirst();
-        return SortedSetDocValuesField.newSlowRangeQuery(
-            fieldName, theOnlyOne.lower, theOnlyOne.upper, true, true);
-      }
-      return new SortedSetDocValuesMultiRangeQuery(
-          fieldName, clauses, this.bytesPerDim, comparator);
-    }
   }
 
   @Override
@@ -186,8 +106,8 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
                 values.getValueCount(); // it's last range goes to maxOrd, by default - no match
             long maxSeenOrd = values.getValueCount();
             TermsEnum.SeekStatus seekStatus = TermsEnum.SeekStatus.NOT_FOUND;
-            for (int r = 0; r < rangeClauses.size(); r++) {
-              Range range = rangeClauses.get(r);
+            for (int rangeNum = 0; rangeNum < rangeClauses.size(); rangeNum++) {
+              DocValuesMultiRangeQuery.Range range = rangeClauses.get(rangeNum);
               long startingOrd;
               seekStatus = termsEnum.seekCeil(range.lower);
               if (matchingOrdsShifted == null) { // first iter
@@ -210,8 +130,10 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
               }
               BytesRef upper = range.upper; // TODO ignore reverse ranges
               // looking for overlap
-              for (int overlap = r + 1; overlap < rangeClauses.size(); overlap++, r++) {
-                Range mayOverlap = rangeClauses.get(overlap);
+              for (int overlap = rangeNum + 1;
+                  overlap < rangeClauses.size();
+                  overlap++, rangeNum++) {
+                DocValuesMultiRangeQuery.Range mayOverlap = rangeClauses.get(overlap);
                 assert comparator.compare(range.lower.bytes, 0, mayOverlap.lower.bytes, 0) <= 0
                     : "since they are sorted";
                 // TODO it might be contiguous ranges, it's worth to check but I have no idea how
@@ -222,7 +144,9 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
                   }
                   // continue; // skip overlapping rng
                 } else {
-                  break; // no r++
+                  // here we can seekCeil upper and mayOverlap.lower,
+                  // if their ords are contiguous, we can merge ranges
+                  break; // no rangeNum++
                 }
               } // TODO copy Range here.. WDYMean?
               seekStatus = termsEnum.seekCeil(upper);

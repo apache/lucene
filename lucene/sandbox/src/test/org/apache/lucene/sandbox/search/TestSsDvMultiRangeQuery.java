@@ -63,8 +63,8 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
       LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
       BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
-      SortedSetDocValuesMultiRangeQuery.FieldValueFixedBuilder builder3 =
-          new SortedSetDocValuesMultiRangeQuery.FieldValueFixedBuilder("docVal", Long.BYTES);
+      DocValuesMultiRangeQuery.SordedSetFieldValueFixedBuilder builder3 =
+          new DocValuesMultiRangeQuery.SordedSetFieldValueFixedBuilder("docVal", Long.BYTES);
 
       for (int i = 0; i < numRanges; i++) {
         long[] lower = new long[dims];
