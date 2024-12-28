@@ -163,9 +163,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
   @Override
   protected void assertMerge(MergePolicy policy, MergeSpecification merges) {
     TieredMergePolicy tmp = (TieredMergePolicy) policy;
-    final int mergeFactor = (int) Math.min(tmp.getMaxMergeAtOnce(), tmp.getSegmentsPerTier());
     for (OneMerge merge : merges.merges) {
-      assertTrue(merge.segments.size() <= mergeFactor);
+      assertTrue(merge.segments.size() <= tmp.getMaxMergeAtOnce());
     }
   }
 
@@ -943,6 +942,48 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     doTestSimulateUpdates(mergePolicy, numDocs, 2500);
   }
 
+  public void testMergeSizeIsLessThanFloorSize() throws IOException {
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+
+    SegmentInfos infos = new SegmentInfos(Version.LATEST.major);
+    // 50 1MB segments
+    for (int i = 0; i < 50; ++i) {
+      infos.add(makeSegmentCommitInfo("_0", 1_000_000, 0, 1, IndexWriter.SOURCE_FLUSH));
+    }
+
+    TieredMergePolicy mergePolicy = new TieredMergePolicy();
+    mergePolicy.setFloorSegmentMB(0.1);
+
+    // Segments are above the floor segment size, we get 4 merges of mergeFactor=10 segments each
+    MergeSpecification mergeSpec =
+        mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
+    assertNotNull(mergeSpec);
+    assertEquals(4, mergeSpec.merges.size());
+    for (OneMerge oneMerge : mergeSpec.merges) {
+      assertEquals(mergePolicy.getSegmentsPerTier(), oneMerge.segments.size(), 0d);
+    }
+
+    // Segments are below the floor segment size and it takes 15 segments to go above the floor
+    // segment size. We get 3 merges of 15 segments each
+    mergePolicy.setFloorSegmentMB(15);
+    mergeSpec = mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
+    assertNotNull(mergeSpec);
+    assertEquals(3, mergeSpec.merges.size());
+    for (OneMerge oneMerge : mergeSpec.merges) {
+      assertEquals(15, oneMerge.segments.size());
+    }
+
+    // Segments are below the floor segment size and we'd need to merge more than maxMergeAtOnce
+    // segments to go above the minimum segment size. We get 1 merge of maxMergeAtOnce=30 segments
+    // and 1 merge of 50-30=20 segments.
+    mergePolicy.setFloorSegmentMB(60);
+    mergeSpec = mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
+    assertNotNull(mergeSpec);
+    assertEquals(2, mergeSpec.merges.size());
+    assertEquals(30, mergeSpec.merges.get(0).segments.size());
+    assertEquals(20, mergeSpec.merges.get(1).segments.size());
+  }
+
   public void testFullFlushMerges() throws IOException {
     AtomicLong segNameGenerator = new AtomicLong();
     IOStats stats = new IOStats();
@@ -951,7 +992,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     TieredMergePolicy mp = new TieredMergePolicy();
 
-    for (int i = 0; i < 11; ++i) {
+    for (int i = 0; i < 31; ++i) {
       segmentInfos.add(
           makeSegmentCommitInfo(
               "_" + segNameGenerator.getAndIncrement(),

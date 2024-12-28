@@ -22,7 +22,6 @@ import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene100.Lucene100Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -38,16 +37,12 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseIndexFileFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
   @Override
   protected Codec getCodec() {
-    return new Lucene100Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new HnswBitVectorsFormat();
-      }
-    };
+    return TestUtil.alwaysKnnVectorsFormat(new HnswBitVectorsFormat());
   }
 
   @Override

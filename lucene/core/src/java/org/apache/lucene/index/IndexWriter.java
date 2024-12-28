@@ -128,8 +128,8 @@ import org.apache.lucene.util.Version;
  * deleted terms won't trigger a segment flush. Note that flushing just moves the internal buffered
  * state in IndexWriter into the index, but these changes are not visible to IndexReader until
  * either {@link #commit()} or {@link #close} is called. A flush may also trigger one or more
- * segment merges which by default run with a background thread so as not to block the addDocument
- * calls (see <a href="#mergePolicy">below</a> for changing the {@link MergeScheduler}).
+ * segment merges, which by default run within a background thread so as not to block the
+ * addDocument calls (see <a href="#mergePolicy">below</a> for changing the {@link MergeScheduler}).
  *
  * <p>Opening an <code>IndexWriter</code> creates a lock file for the directory in use. Trying to
  * open another <code>IndexWriter</code> on the same directory will lead to a {@link
@@ -176,7 +176,7 @@ import org.apache.lucene.util.Version;
  * Clarification: Check Points (and commits)
  * IndexWriter writes new index files to the directory without writing a new segments_N
  * file which references these new files. It also means that the state of
- * the in memory SegmentInfos object is different than the most recent
+ * the in-memory SegmentInfos object is different than the most recent
  * segments_N file written to the directory.
  *
  * Each time the SegmentInfos is changed, and matches the (possibly
@@ -190,7 +190,7 @@ import org.apache.lucene.util.Version;
  * to delete files that are referenced only by stale checkpoints.
  * (files that were created since the last commit, but are no longer
  * referenced by the "front" of the index). For this, IndexFileDeleter
- * keeps track of the last non commit checkpoint.
+ * keeps track of the last non-commit checkpoint.
  */
 public class IndexWriter
     implements Closeable, TwoPhaseCommit, Accountable, MergePolicy.MergeContext {
@@ -1088,7 +1088,7 @@ public class IndexWriter
         segmentInfos = SegmentInfos.readCommit(directoryOrig, lastSegmentsFile);
 
         if (commit != null) {
-          // Swap out all segments, but, keep metadata in
+          // Swap out all segments, but keep metadata in
           // SegmentInfos, like version & generation, to
           // preserve write-once.  This is important if
           // readers are open against the future commit
@@ -1265,8 +1265,8 @@ public class IndexWriter
   }
 
   /**
-   * Loads or returns the already loaded the global field number map for this {@link SegmentInfos}.
-   * If this {@link SegmentInfos} has no global field number map the returned instance is empty
+   * Loads or returns the already loaded global field number map for this {@link SegmentInfos}. If
+   * this {@link SegmentInfos} has no global field number map, the returned instance is empty.
    */
   private FieldNumbers getFieldNumberMap() throws IOException {
     final FieldNumbers map =
@@ -1840,12 +1840,13 @@ public class IndexWriter
 
   /**
    * Expert: Updates a document by first updating the document(s) containing <code>term</code> with
-   * the given doc-values fields and then adding the new document. The doc-values update and then
-   * add are atomic as seen by a reader on the same index (flush may happen only after the add).
+   * the given doc-values fields and then adding the new document. The doc-values update and the
+   * subsequent addition are atomic, as seen by a reader on the same index (a flush may happen only
+   * after the addition).
    *
    * <p>One use of this API is to retain older versions of documents instead of replacing them. The
-   * existing documents can be updated to reflect they are no longer current while atomically adding
-   * new documents at the same time.
+   * existing documents can be updated to reflect they are no longer current, while atomically
+   * adding new documents at the same time.
    *
    * <p>In contrast to {@link #updateDocument(Term, Iterable)} this method will not delete documents
    * in the index matching the given term but instead update them with the given doc-values fields

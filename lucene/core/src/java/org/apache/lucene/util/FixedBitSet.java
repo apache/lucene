@@ -33,6 +33,10 @@ public final class FixedBitSet extends BitSet {
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(FixedBitSet.class);
 
+  // An array that is small enough to use reasonable amounts of RAM and large enough to allow
+  // Arrays#mismatch to use SIMD instructions and multiple registers under the hood.
+  private static long[] ZEROES = new long[32];
+
   private final long[] bits; // Array of longs holding the bits
   private final int numBits; // The number of bits in use
   private final int numWords; // The exact number of longs needed to hold numBits (<= bits.length)
@@ -334,22 +338,16 @@ public final class FixedBitSet extends BitSet {
 
   @Override
   public void or(DocIdSetIterator iter) throws IOException {
-    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
-      checkUnpositioned(iter);
-      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
-      or(bits);
-    } else if (iter instanceof DocBaseBitSetIterator) {
+    if (iter instanceof DocBaseBitSetIterator) {
+      // TODO: implement DocBaseBitSetIterator#intoBitSet instead
       checkUnpositioned(iter);
       DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
       or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
-      super.or(iter);
+      checkUnpositioned(iter);
+      iter.nextDoc();
+      iter.intoBitSet(null, DocIdSetIterator.NO_MORE_DOCS, this, 0);
     }
-  }
-
-  /** this = this OR other */
-  public void or(FixedBitSet other) {
-    or(0, other.bits, other.numWords);
   }
 
   private void or(final int otherOffsetWords, FixedBitSet other) {
@@ -364,6 +362,42 @@ public final class FixedBitSet extends BitSet {
     while (--pos >= 0) {
       thisArr[pos + otherOffsetWords] |= otherArr[pos];
     }
+  }
+
+  /**
+   * Or {@code min(length(), other.length() - from} bits starting at {@code from} from {@code other}
+   * into this bit set starting at 0.
+   */
+  void orRange(FixedBitSet other, int from) {
+    int numBits = Math.min(length(), other.length() - from);
+    if (numBits <= 0) {
+      return;
+    }
+    int numFullWords = numBits >> 6;
+    long[] otherBits = other.getBits();
+    int wordOffset = from >> 6;
+    if ((from & 0x3F) == 0) {
+      // from is aligned with a long[]
+      for (int i = 0; i < numFullWords; ++i) {
+        bits[i] |= otherBits[wordOffset + i];
+      }
+    } else {
+      for (int i = 0; i < numFullWords; ++i) {
+        bits[i] |= (otherBits[wordOffset + i] >>> from) | (otherBits[wordOffset + i + 1] << -from);
+      }
+    }
+
+    // Handle the remainder
+    for (int i = numFullWords << 6; i < numBits; ++i) {
+      if (other.get(from + i)) {
+        set(i);
+      }
+    }
+  }
+
+  /** this = this OR other */
+  public void or(FixedBitSet other) {
+    orRange(other, 0);
   }
 
   /** this = this XOR other */
@@ -468,8 +502,11 @@ public final class FixedBitSet extends BitSet {
     // Depends on the ghost bits being clear!
     final int count = numWords;
 
-    for (int i = 0; i < count; i++) {
-      if (bits[i] != 0) return false;
+    for (int i = 0; i < count; i += ZEROES.length) {
+      int cmpLen = Math.min(ZEROES.length, bits.length - i);
+      if (Arrays.equals(bits, i, i + cmpLen, ZEROES, 0, cmpLen) == false) {
+        return false;
+      }
     }
 
     return true;

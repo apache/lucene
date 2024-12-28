@@ -38,7 +38,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final Scorer[] scorers;
   private final DocIdSetIterator[] iterators;
   private final DocIdSetIterator lead1, lead2;
-  private final Scorer scorer1, scorer2;
+  private final Scorable scorer1, scorer2;
   private final DocAndScore scorable = new DocAndScore();
   private final double[] sumOfOtherClauses;
   private final int maxDoc;
@@ -51,10 +51,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     Arrays.sort(this.scorers, Comparator.comparingLong(scorer -> scorer.iterator().cost()));
     this.iterators =
         Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
-    lead1 = iterators[0];
-    lead2 = iterators[1];
-    scorer1 = this.scorers[0];
-    scorer2 = this.scorers[1];
+    lead1 = ScorerUtil.likelyImpactsEnum(iterators[0]);
+    lead2 = ScorerUtil.likelyImpactsEnum(iterators[1]);
+    scorer1 = ScorerUtil.likelyTermScorer(this.scorers[0]);
+    scorer2 = ScorerUtil.likelyTermScorer(this.scorers[1]);
     this.sumOfOtherClauses = new double[this.scorers.length];
     for (int i = 0; i < sumOfOtherClauses.length; i++) {
       sumOfOtherClauses[i] = Double.POSITIVE_INFINITY;

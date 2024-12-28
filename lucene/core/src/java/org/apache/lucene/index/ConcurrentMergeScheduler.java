@@ -159,7 +159,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   /**
    * Sets max merges and threads to proper defaults for rotational or non-rotational storage.
    *
-   * @param spins true to set defaults best for traditional rotatational storage (spinning disks),
+   * @param spins true to set defaults best for traditional rotational storage (spinning disks),
    *     else false (e.g. for solid-state disks)
    */
   public synchronized void setDefaultMaxMergesAndThreads(boolean spins) {
