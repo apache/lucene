@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,7 +32,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 
 public class TestBooleanOr extends LuceneTestCase {
@@ -205,34 +204,30 @@ public class TestBooleanOr extends LuceneTestCase {
     dir.close();
   }
 
-  private static BulkScorer scorer(int... matches) {
-    return new BulkScorer() {
-      final Score scorer = new Score();
-      int i = 0;
+  private static Scorer scorer(int... matches) throws IOException {
+    matches = ArrayUtil.growExact(matches, matches.length + 1);
+    matches[matches.length - 1] = DocIdSetIterator.NO_MORE_DOCS;
+    DocIdSetIterator it = new IntArrayDocIdSet(matches, matches.length - 1).iterator();
+    return new Scorer() {
 
       @Override
-      public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
-          throws IOException {
-        collector.setScorer(scorer);
-        while (i < matches.length && matches[i] < min) {
-          i += 1;
-        }
-        while (i < matches.length && matches[i] < max) {
-          int doc = matches[i];
-          if (acceptDocs == null || acceptDocs.get(doc)) {
-            collector.collect(doc);
-          }
-          i += 1;
-        }
-        if (i == matches.length) {
-          return DocIdSetIterator.NO_MORE_DOCS;
-        }
-        return RandomNumbers.randomIntBetween(random(), max, matches[i]);
+      public DocIdSetIterator iterator() {
+        return it;
       }
 
       @Override
-      public long cost() {
-        return matches.length;
+      public int docID() {
+        return it.docID();
+      }
+
+      @Override
+      public float getMaxScore(int upTo) throws IOException {
+        return Float.MAX_VALUE;
+      }
+
+      @Override
+      public float score() throws IOException {
+        return 0;
       }
     };
   }
@@ -240,7 +235,7 @@ public class TestBooleanOr extends LuceneTestCase {
   // Make sure that BooleanScorer keeps working even if the sub clauses return
   // next matching docs which are less than the actual next match
   public void testSubScorerNextIsNotMatch() throws IOException {
-    final List<BulkScorer> optionalScorers =
+    final List<Scorer> optionalScorers =
         Arrays.asList(
             scorer(100000, 1000001, 9999999),
             scorer(4000, 1000051),

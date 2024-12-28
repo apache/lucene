@@ -430,11 +430,7 @@ public class TestTessellator extends LuceneTestCase {
             + "(6.9735097 51.6245538,6.9736199 51.624605,6.9736853 51.6246203,6.9737516 51.6246231,6.9738024 51.6246107,6.9738324 51.6245878,6.9738425 51.6245509,6.9738332 51.6245122,6.9738039 51.6244869,6.9737616 51.6244687,6.9737061 51.6244625,6.9736445 51.6244749,6.9735736 51.6245046,6.9735097 51.6245538)),"
             + "((6.9731576 51.6249947,6.9731361 51.6250664,6.9731161 51.6251037,6.9731022 51.6250803,6.9731277 51.62502,6.9731576 51.6249947)))";
     Polygon[] polygons = (Polygon[]) SimpleWKTShapeParser.parse(wkt);
-    for (Polygon polygon : polygons) {
-      List<Tessellator.Triangle> tessellation =
-          Tessellator.tessellate(polygon, random().nextBoolean());
-      assertTrue(tessellation.size() > 0);
-    }
+    checkMultiPolygon(polygons, 0.0);
   }
 
   public void testComplexPolygon27() throws Exception {
@@ -684,13 +680,7 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon40() throws Exception {
     String wkt = GeoTestUtil.readShape("lucene-9251.wkt.gz");
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    List<Tessellator.Triangle> tessellation =
-        Tessellator.tessellate(polygon, random().nextBoolean());
-    // calculate the area of big polygons have numerical error
-    assertEquals(area(polygon), area(tessellation), 1e-12);
-    for (Tessellator.Triangle t : tessellation) {
-      checkTriangleEdgesFromPolygon(polygon, t);
-    }
+    checkPolygon(polygon, 1e-12);
   }
 
   public void testComplexPolygon41() throws Exception {
@@ -706,15 +696,7 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon42() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-9417.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    for (Polygon polygon : polygons) {
-      List<Tessellator.Triangle> tessellation =
-          Tessellator.tessellate(polygon, random().nextBoolean());
-      // calculate the area of big polygons have numerical error
-      assertEquals(area(polygon), area(tessellation), 1e-11);
-      for (Tessellator.Triangle t : tessellation) {
-        checkTriangleEdgesFromPolygon(polygon, t);
-      }
-    }
+    checkMultiPolygon(polygons, 1e-11);
   }
 
   public void testComplexPolygon43() throws Exception {
@@ -727,12 +709,7 @@ public class TestTessellator extends LuceneTestCase {
             + "(-88.3245325358123 41.9306419084828,-88.3245478066552 41.9305086556331,-88.3245658060855 41.930351580587,-88.3242368660096 41.9303327977821,-88.3242200926128 41.9304905242189,-88.324206161464 41.9306215207536,-88.3245325358123 41.9306419084828),"
             + "(-88.3236767661893 41.9307089429871,-88.3237008716322 41.930748885445,-88.323876104365 41.9306891087739,-88.324063438129 41.9306252050871,-88.3239244290607 41.930399373909,-88.3237349076233 41.9304653056436,-88.3235653339759 41.9305242981369,-88.3236767661893 41.9307089429871))";
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    List<Tessellator.Triangle> tessellation =
-        Tessellator.tessellate(polygon, random().nextBoolean());
-    assertEquals(area(polygon), area(tessellation), 1e-11);
-    for (Tessellator.Triangle t : tessellation) {
-      checkTriangleEdgesFromPolygon(polygon, t);
-    }
+    checkPolygon(polygon, 1e-11);
   }
 
   public void testComplexPolygon44() throws Exception {
@@ -748,12 +725,7 @@ public class TestTessellator extends LuceneTestCase {
             "Polygon self-intersection at lat=34.21165542666664 lon=-83.88787058666672",
             ex.getMessage());
       } else {
-        List<Tessellator.Triangle> tessellation =
-            Tessellator.tessellate(polygons[i], random().nextBoolean());
-        assertEquals(area(polygons[i]), area(tessellation), 0.0);
-        for (Tessellator.Triangle t : tessellation) {
-          checkTriangleEdgesFromPolygon(polygons[i], t);
-        }
+        checkPolygon(polygons[i], 0.0);
       }
     }
   }
@@ -761,55 +733,26 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon45() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-10470.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    for (Polygon polygon : polygons) {
-      List<Tessellator.Triangle> tessellation =
-          Tessellator.tessellate(polygon, random().nextBoolean());
-      // calculate the area of big polygons have numerical error
-      assertEquals(area(polygon), area(tessellation), 1e-11);
-      for (Tessellator.Triangle t : tessellation) {
-        checkTriangleEdgesFromPolygon(polygon, t);
-      }
-    }
+    checkMultiPolygon(polygons, 1e-11);
   }
 
   public void testComplexPolygon46() throws Exception {
     String wkt = GeoTestUtil.readShape("lucene-10470.wkt.gz");
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    List<Tessellator.Triangle> tessellation =
-        Tessellator.tessellate(polygon, random().nextBoolean());
-    // calculate the area of big polygons have numerical error
-    assertEquals(area(polygon), area(tessellation), 1e-11);
-    for (Tessellator.Triangle t : tessellation) {
-      checkTriangleEdgesFromPolygon(polygon, t);
-    }
+    checkPolygon(polygon, 1e-11);
   }
 
   public void testComplexPolygon47() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-10470-2.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    for (Polygon polygon : polygons) {
-      List<Tessellator.Triangle> tessellation =
-          Tessellator.tessellate(polygon, random().nextBoolean());
-      // calculate the area of big polygons have numerical error
-      assertEquals(area(polygon), area(tessellation), 1e-11);
-      for (Tessellator.Triangle t : tessellation) {
-        checkTriangleEdgesFromPolygon(polygon, t);
-      }
-    }
+    checkMultiPolygon(polygons, 1e-11);
   }
 
   @Nightly
   public void testComplexPolygon48() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-10470-3.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    for (Polygon polygon : polygons) {
-      List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon, true);
-      // calculate the area of big polygons have numerical error
-      assertEquals(area(polygon), area(tessellation), 1e-11);
-      for (Tessellator.Triangle t : tessellation) {
-        checkTriangleEdgesFromPolygon(polygon, t);
-      }
-    }
+    checkMultiPolygon(polygons, 1e-11);
   }
 
   public void testComplexPolygon49() throws Exception {
@@ -817,25 +760,14 @@ public class TestTessellator extends LuceneTestCase {
         "POLYGON((77.500 13.500, 77.550 13.500, 77.530 13.470, 77.570 13.470,"
             + "77.550 13.500, 77.600 13.500, 77.600 13.400, 77.500 13.400, 77.500 13.500))";
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
-    List<Tessellator.Triangle> tessellation =
-        Tessellator.tessellate(polygon, random().nextBoolean());
-    assertEquals(area(polygon), area(tessellation), 1e-11);
-    for (Tessellator.Triangle t : tessellation) {
-      checkTriangleEdgesFromPolygon(polygon, t);
-    }
+    checkPolygon(polygon, 1e-11);
   }
 
   public void testComplexPolygon50() throws Exception {
     String geoJson = GeoTestUtil.readShape("lucene-10563-1.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
     assertEquals("Only one polygon", 1, polygons.length);
-    Polygon polygon = polygons[0];
-    List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon, true);
-    // calculate the area of big polygons have numerical error
-    assertEquals(area(polygon), area(tessellation), 1e-11);
-    for (Tessellator.Triangle t : tessellation) {
-      checkTriangleEdgesFromPolygon(polygon, t);
-    }
+    checkPolygon(polygons[0], 1e-11);
   }
 
   public void testComplexPolygon50_WithMonitor() throws Exception {
@@ -893,25 +825,13 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon53() throws Exception {
     String geoJson = GeoTestUtil.readShape("github-11986-1.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    for (Polygon polygon : polygons) {
-      List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon, true);
-      assertEquals(area(polygon), area(tessellation), 0.0);
-      for (Tessellator.Triangle t : tessellation) {
-        checkTriangleEdgesFromPolygon(polygon, t);
-      }
-    }
+    checkMultiPolygon(polygons, 0.0);
   }
 
   public void testComplexPolygon54() throws Exception {
     String geoJson = GeoTestUtil.readShape("github-11986-2.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    for (Polygon polygon : polygons) {
-      List<Tessellator.Triangle> tessellation = Tessellator.tessellate(polygon, true);
-      assertEquals(area(polygon), area(tessellation), 0.0);
-      for (Tessellator.Triangle t : tessellation) {
-        checkTriangleEdgesFromPolygon(polygon, t);
-      }
-    }
+    checkMultiPolygon(polygons, 0.0);
   }
 
   public void testComplexPolygon55() throws Exception {
@@ -936,6 +856,41 @@ public class TestTessellator extends LuceneTestCase {
     }
   }
 
+  public void testComplexPolygon57() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-13841-1.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    checkMultiPolygon(polygons, 3e-11);
+  }
+
+  @Nightly
+  public void testComplexPolygon58() throws Exception {
+    String wkt = GeoTestUtil.readShape("github-13841-2.wkt.gz");
+    checkMultiPolygon(wkt);
+  }
+
+  @Nightly
+  public void testComplexPolygon59() throws Exception {
+    String wkt = GeoTestUtil.readShape("github-13841-3.wkt.gz");
+    Polygon[] polygons = (Polygon[]) SimpleWKTShapeParser.parse(wkt);
+    checkMultiPolygon(polygons, 1e-11);
+  }
+
+  public void testComplexPolygon60() throws Exception {
+    String wkt =
+        "POLYGON((0 0, 5 1, 10 0, 11 5, 10 10,5 11, 0 10, 1 5, 0 0),"
+            + "(1 5, 1 7, 2 7, 1 5), (1 5, 4 8, 5 8, 1 5),"
+            + "(1 5, 3 6, 7 7, 1 5), (1 5, 2 3, 1 3, 1 5),"
+            + "(1 5, 3 4, 4 4, 1 5), (1 5, 5 6, 6 6, 1 5),"
+            + "(11 5, 10 3, 10 4, 11 5), (11 5,8 3, 8 4, 11 5),"
+            + "(11 5,5 4, 5 5, 11 5), (11 5, 4.5 3, 4 3, 11 5),"
+            + "(11 5, 8 6, 9 7, 11 5), (11 5, 10 8, 10 7, 11 5),"
+            + "(5 11, 2 10, 3 10, 5 11), (5 11, 3 9, 4 9, 5 11),"
+            + "(5 11, 5.5  8, 6 7, 5 11), (5 11, 8 8, 9 8, 5 11),"
+            + "(5 1, 2 0.5, 3 1, 5 1), (5 1, 8 0.5, 7 2, 5 1),"
+            + "(5 1, 3 2, 3 3, 5 1), (5 1, 5 2, 6 2, 5 1))";
+    checkPolygon(wkt);
+  }
+
   private static class TestCountingMonitor implements Tessellator.Monitor {
     private int count = 0;
     private int splitsStarted = 0;
@@ -958,11 +913,26 @@ public class TestTessellator extends LuceneTestCase {
     }
   }
 
+  private void checkMultiPolygon(String wkt) throws Exception {
+    Polygon[] polygons = (Polygon[]) SimpleWKTShapeParser.parse(wkt);
+    checkMultiPolygon(polygons, 0.0);
+  }
+
+  private void checkMultiPolygon(Polygon[] polygons, double delta) {
+    for (Polygon polygon : polygons) {
+      checkPolygon(polygon, delta);
+    }
+  }
+
   private void checkPolygon(String wkt) throws Exception {
     Polygon polygon = (Polygon) SimpleWKTShapeParser.parse(wkt);
+    checkPolygon(polygon, 0.0);
+  }
+
+  private void checkPolygon(Polygon polygon, double delta) {
     List<Tessellator.Triangle> tessellation =
         Tessellator.tessellate(polygon, random().nextBoolean());
-    assertEquals(area(polygon), area(tessellation), 0.0);
+    assertEquals(area(polygon), area(tessellation), delta);
     for (Tessellator.Triangle t : tessellation) {
       checkTriangleEdgesFromPolygon(polygon, t);
     }

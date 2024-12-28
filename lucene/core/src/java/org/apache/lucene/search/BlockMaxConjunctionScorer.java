@@ -29,6 +29,7 @@ import java.util.List;
  */
 final class BlockMaxConjunctionScorer extends Scorer {
   final Scorer[] scorers;
+  final Scorable[] scorables;
   final DocIdSetIterator[] approximations;
   final TwoPhaseIterator[] twoPhases;
   float minScore;
@@ -38,6 +39,8 @@ final class BlockMaxConjunctionScorer extends Scorer {
     this.scorers = scorersList.toArray(new Scorer[scorersList.size()]);
     // Sort scorer by cost
     Arrays.sort(this.scorers, Comparator.comparingLong(s -> s.iterator().cost()));
+    this.scorables =
+        Arrays.stream(scorers).map(ScorerUtil::likelyTermScorer).toArray(Scorable[]::new);
 
     this.approximations = new DocIdSetIterator[scorers.length];
     List<TwoPhaseIterator> twoPhaseList = new ArrayList<>();
@@ -50,6 +53,7 @@ final class BlockMaxConjunctionScorer extends Scorer {
       } else {
         approximations[i] = scorer.iterator();
       }
+      approximations[i] = ScorerUtil.likelyImpactsEnum(approximations[i]);
       scorer.advanceShallow(0);
     }
     this.twoPhases = twoPhaseList.toArray(new TwoPhaseIterator[twoPhaseList.size()]);
@@ -207,7 +211,7 @@ final class BlockMaxConjunctionScorer extends Scorer {
   @Override
   public float score() throws IOException {
     double score = 0;
-    for (Scorer scorer : scorers) {
+    for (Scorable scorer : scorables) {
       score += scorer.score();
     }
     return (float) score;

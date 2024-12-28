@@ -124,38 +124,58 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
       start = end = slop = IntervalIterator.NO_MORE_INTERVALS;
       int lastStart = Integer.MAX_VALUE;
       boolean minimizing = false;
+      final var subIterators = this.subIterators;
+      int currentIndex = i;
       while (true) {
+        int prevEnd = subIterators.get(currentIndex - 1).end();
         while (true) {
-          if (subIterators.get(i - 1).end() >= lastStart) {
+          if (prevEnd >= lastStart) {
+            i = currentIndex;
             return start;
           }
-          if (i == subIterators.size()
-              || (minimizing && subIterators.get(i).start() > subIterators.get(i - 1).end())) {
+          if (currentIndex == subIterators.size()) {
             break;
           }
+          final IntervalIterator current = subIterators.get(currentIndex);
+          if (minimizing && (current.start() > prevEnd)) {
+            break;
+          }
+          int currentStart;
           do {
-            if (subIterators.get(i).end() >= lastStart
-                || subIterators.get(i).nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
+            if (current.end() >= lastStart
+                || (currentStart = current.nextInterval()) == IntervalIterator.NO_MORE_INTERVALS) {
+              i = currentIndex;
               return start;
             }
-          } while (subIterators.get(i).start() <= subIterators.get(i - 1).end());
-          i++;
+          } while (currentStart <= prevEnd);
+          currentIndex++;
+          prevEnd = current.end();
         }
-        start = subIterators.get(0).start();
+        var first = subIterators.get(0);
+        final int start = first.start();
+        this.start = start;
         if (start == NO_MORE_INTERVALS) {
+          i = currentIndex;
           return end = NO_MORE_INTERVALS;
         }
-        end = subIterators.get(subIterators.size() - 1).end();
-        slop = end - start + 1;
-        for (IntervalIterator subIterator : subIterators) {
-          slop -= subIterator.width();
+        var last = subIterators.getLast();
+
+        final int end = last.end();
+        this.end = end;
+        int slop = end - start + 1;
+        // use indexed loop since this is always a random access capable list to avoid allocations
+        // in a hot nested loop
+        for (int j = 0, n = subIterators.size(); j < n; j++) {
+          slop -= subIterators.get(j).width();
         }
+        this.slop = slop;
         onMatch.onMatch();
-        lastStart = subIterators.get(subIterators.size() - 1).start();
-        i = 1;
-        if (subIterators.get(0).nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
+        currentIndex = 1;
+        if (first.nextInterval() == IntervalIterator.NO_MORE_INTERVALS) {
+          i = currentIndex;
           return start;
         }
+        lastStart = last.start();
         minimizing = true;
       }
     }

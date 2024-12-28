@@ -55,9 +55,9 @@ import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
-import org.apache.lucene.codecs.lucene100.Lucene100Codec;
+import org.apache.lucene.codecs.lucene101.Lucene101Codec;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
 import org.apache.lucene.codecs.perfield.PerFieldPostingsFormat;
@@ -1311,11 +1311,30 @@ public final class TestUtil {
   }
 
   /**
+   * Return a Codec that can read any of the default codecs and formats, but always writes in the
+   * specified format.
+   */
+  public static Codec alwaysKnnVectorsFormat(final KnnVectorsFormat format) {
+    // TODO: we really need for knn vectors impls etc to announce themselves
+    // (and maybe their params, too) to infostream on flush and merge.
+    // otherwise in a real debugging situation we won't know whats going on!
+    if (LuceneTestCase.VERBOSE) {
+      System.out.println("TestUtil: forcing knn vectors format to:" + format);
+    }
+    return new AssertingCodec() {
+      @Override
+      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+        return format;
+      }
+    };
+  }
+
+  /**
    * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
    * different from {@link Codec#getDefault()} because that is randomized.
    */
   public static Codec getDefaultCodec() {
-    return new Lucene100Codec();
+    return new Lucene101Codec();
   }
 
   /**
@@ -1323,7 +1342,7 @@ public final class TestUtil {
    * Lucene.
    */
   public static PostingsFormat getDefaultPostingsFormat() {
-    return new Lucene912PostingsFormat();
+    return new Lucene101PostingsFormat();
   }
 
   /**
@@ -1334,7 +1353,7 @@ public final class TestUtil {
    */
   public static PostingsFormat getDefaultPostingsFormat(
       int minItemsPerBlock, int maxItemsPerBlock) {
-    return new Lucene912PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
+    return new Lucene101PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
   }
 
   /** Returns a random postings format that supports term ordinals */

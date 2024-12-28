@@ -583,10 +583,8 @@ public class IndexSearcher {
     }
 
     final int cappedNumHits = Math.min(numHits, limit);
-    final boolean supportsConcurrency = getSlices().length > 1;
     CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        new TopScoreDocCollectorManager(
-            cappedNumHits, after, TOTAL_HITS_THRESHOLD, supportsConcurrency);
+        new TopScoreDocCollectorManager(cappedNumHits, after, TOTAL_HITS_THRESHOLD);
 
     return search(query, manager);
   }
@@ -718,12 +716,9 @@ public class IndexSearcher {
     }
     final int cappedNumHits = Math.min(numHits, limit);
     final Sort rewrittenSort = sort.rewrite(this);
-    final LeafSlice[] leafSlices = getSlices();
 
-    final boolean supportsConcurrency = leafSlices.length > 1;
     final CollectorManager<TopFieldCollector, TopFieldDocs> manager =
-        new TopFieldCollectorManager(
-            rewrittenSort, cappedNumHits, after, TOTAL_HITS_THRESHOLD, supportsConcurrency);
+        new TopFieldCollectorManager(rewrittenSort, cappedNumHits, after, TOTAL_HITS_THRESHOLD);
 
     TopFieldDocs topDocs = search(query, manager);
     if (doDocScores) {
@@ -848,7 +843,9 @@ public class IndexSearcher {
         scorer = new TimeLimitingBulkScorer(scorer, queryTimeout);
       }
       try {
-        scorer.score(leafCollector, ctx.reader().getLiveDocs(), minDocId, maxDocId);
+        // Optimize for the case when live docs are stored in a FixedBitSet.
+        Bits acceptDocs = ScorerUtil.likelyFixedBitSet(ctx.reader().getLiveDocs());
+        scorer.score(leafCollector, acceptDocs, minDocId, maxDocId);
       } catch (
           @SuppressWarnings("unused")
           CollectionTerminatedException e) {

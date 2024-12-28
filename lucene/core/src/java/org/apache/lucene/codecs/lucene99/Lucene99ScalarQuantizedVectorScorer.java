@@ -93,6 +93,7 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       VectorSimilarityFunction sim,
       float constMultiplier,
       QuantizedByteVectorValues values) {
+    checkDimensions(targetBytes.length, values.dimension());
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(values, constMultiplier, targetBytes);
       case COSINE, DOT_PRODUCT ->
@@ -110,6 +111,13 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
               values,
               VectorUtil::scaleMaxInnerProductScore);
     };
+  }
+
+  static void checkDimensions(int queryLen, int fieldLen) {
+    if (queryLen != fieldLen) {
+      throw new IllegalArgumentException(
+          "vector query dimension: " + queryLen + " differs from field dimension: " + fieldLen);
+    }
   }
 
   private static RandomVectorScorer.AbstractRandomVectorScorer dotProductFactory(

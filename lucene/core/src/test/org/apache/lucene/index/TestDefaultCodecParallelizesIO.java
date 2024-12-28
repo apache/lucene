@@ -40,7 +40,14 @@ public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
     Directory bbDir = new ByteBuffersDirectory();
     try (LineFileDocs docs = new LineFileDocs(random());
         IndexWriter w =
-            new IndexWriter(bbDir, new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec()))) {
+            new IndexWriter(
+                bbDir,
+                new IndexWriterConfig()
+                    // Disable CFS, this test needs to know about files that are open with the
+                    // RANDOM_PRELOAD advice, which CFS doesn't allow us to detect.
+                    .setUseCompoundFile(false)
+                    .setMergePolicy(newLogMergePolicy(false))
+                    .setCodec(TestUtil.getDefaultCodec()))) {
       final int numDocs = atLeast(10_000);
       for (int d = 0; d < numDocs; ++d) {
         Document doc = docs.nextDoc();

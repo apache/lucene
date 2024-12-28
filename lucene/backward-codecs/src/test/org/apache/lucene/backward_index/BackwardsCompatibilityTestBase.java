@@ -106,8 +106,8 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
    * This is a base constructor for parameterized BWC tests. The constructor arguments are provided
    * by {@link com.carrotsearch.randomizedtesting.RandomizedRunner} during test execution. A {@link
    * com.carrotsearch.randomizedtesting.annotations.ParametersFactory} specified in a subclass
-   * provides a list lists of arguments for the tests and RandomizedRunner will execute the test for
-   * each of the argument list.
+   * provides a list of arguments for the tests and RandomizedRunner will execute the test for each
+   * of the argument list.
    *
    * @param version the version this test should run for
    * @param indexPattern an index pattern in order to open an index of see {@link
@@ -115,9 +115,6 @@ public abstract class BackwardsCompatibilityTestBase extends LuceneTestCase {
    */
   protected BackwardsCompatibilityTestBase(
       @Name("version") Version version, @Name("pattern") String indexPattern) {
-    // TODO: add 10.0.0 bw indices after 10.0.0 has been released, see
-    // https://github.com/apache/lucene/issues/13847
-    assumeTrue("Can only test with 10.0.0 has been released", version.major < 10);
     this.version = version;
     this.indexPattern = indexPattern;
   }

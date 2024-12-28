@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.codecs.lucene100.Lucene100Codec;
-
 /** Lucene Core. */
 @SuppressWarnings("module") // the test framework is compiled after the core...
 module org.apache.lucene.core {
@@ -33,8 +31,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.codecs.lucene94;
   exports org.apache.lucene.codecs.lucene95;
   exports org.apache.lucene.codecs.lucene99;
-  exports org.apache.lucene.codecs.lucene912;
-  exports org.apache.lucene.codecs.lucene100;
+  exports org.apache.lucene.codecs.lucene101;
   exports org.apache.lucene.codecs.perfield;
   exports org.apache.lucene.codecs;
   exports org.apache.lucene.document;
@@ -73,7 +70,7 @@ module org.apache.lucene.core {
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
   provides org.apache.lucene.codecs.Codec with
-      Lucene100Codec;
+      org.apache.lucene.codecs.lucene101.Lucene101Codec;
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
@@ -81,7 +78,7 @@ module org.apache.lucene.core {
       org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat,
       org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
-      org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat;
+      org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with
       org.apache.lucene.search.SortField.Provider,
       org.apache.lucene.search.SortedNumericSortField.Provider,

@@ -23,44 +23,28 @@ public class TestMaxScoreAccumulator extends LuceneTestCase {
   public void testSimple() {
     MaxScoreAccumulator acc = new MaxScoreAccumulator();
     acc.accumulate(0, 0f);
-    assertEquals(0f, acc.get().score(), 0);
-    assertEquals(0, acc.get().docId(), 0);
+    assertEquals(0f, MaxScoreAccumulator.toScore(acc.getRaw()), 0);
+    assertEquals(0, MaxScoreAccumulator.docId(acc.getRaw()), 0);
     acc.accumulate(10, 0f);
-    assertEquals(0f, acc.get().score(), 0);
-    assertEquals(0, acc.get().docId(), 0);
+    assertEquals(0f, MaxScoreAccumulator.toScore(acc.getRaw()), 0);
+    assertEquals(0, MaxScoreAccumulator.docId(acc.getRaw()), 0);
     acc.accumulate(100, 1000f);
-    assertEquals(1000f, acc.get().score(), 0);
-    assertEquals(100, acc.get().docId(), 0);
+    assertEquals(1000f, MaxScoreAccumulator.toScore(acc.getRaw()), 0);
+    assertEquals(100, MaxScoreAccumulator.docId(acc.getRaw()), 0);
     acc.accumulate(1000, 5f);
-    assertEquals(1000f, acc.get().score(), 0);
-    assertEquals(100, acc.get().docId(), 0);
+    assertEquals(1000f, MaxScoreAccumulator.toScore(acc.getRaw()), 0);
+    assertEquals(100, MaxScoreAccumulator.docId(acc.getRaw()), 0);
     acc.accumulate(99, 1000f);
-    assertEquals(1000f, acc.get().score(), 0);
-    assertEquals(99, acc.get().docId(), 0);
+    assertEquals(1000f, MaxScoreAccumulator.toScore(acc.getRaw()), 0);
+    assertEquals(99, MaxScoreAccumulator.docId(acc.getRaw()), 0);
     acc.accumulate(1000, 1001f);
-    assertEquals(1001f, acc.get().score(), 0);
-    assertEquals(1000, acc.get().docId(), 0);
+    assertEquals(1001f, MaxScoreAccumulator.toScore(acc.getRaw()), 0);
+    assertEquals(1000, MaxScoreAccumulator.docId(acc.getRaw()), 0);
     acc.accumulate(10, 1001f);
-    assertEquals(1001f, acc.get().score(), 0);
-    assertEquals(10, acc.get().docId(), 0);
+    assertEquals(1001f, MaxScoreAccumulator.toScore(acc.getRaw()), 0);
+    assertEquals(10, MaxScoreAccumulator.docId(acc.getRaw()), 0);
     acc.accumulate(100, 1001f);
-    assertEquals(1001f, acc.get().score(), 0);
-    assertEquals(10, acc.get().docId(), 0);
-  }
-
-  public void testRandom() {
-    MaxScoreAccumulator acc = new MaxScoreAccumulator();
-    int numDocs = atLeast(100);
-    int maxDocs = atLeast(10000);
-    MaxScoreAccumulator.DocAndScore max = new MaxScoreAccumulator.DocAndScore(-1, -1);
-    for (int i = 0; i < numDocs; i++) {
-      MaxScoreAccumulator.DocAndScore res =
-          new MaxScoreAccumulator.DocAndScore(random().nextInt(maxDocs), random().nextFloat());
-      acc.accumulate(res.docId(), res.score());
-      if (res.compareTo(max) > 0) {
-        max = res;
-      }
-    }
-    assertEquals(max, acc.get());
+    assertEquals(1001f, MaxScoreAccumulator.toScore(acc.getRaw()), 0);
+    assertEquals(10, MaxScoreAccumulator.docId(acc.getRaw()), 0);
   }
 }
