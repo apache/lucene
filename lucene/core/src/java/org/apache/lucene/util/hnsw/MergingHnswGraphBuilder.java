@@ -155,26 +155,28 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       addGraphNode(ordMapS[node]);
     }
 
-    // for each other node not from j set:
-    // form the candidate set for a node
+    // for each node outside of j set:
+    // form the candidate set for the node
     // by joining the node's neighbours in gS with
     // the node's neighbours' neighbours in gL
     for (int u = 0; u < it.size; u++) {
       if (j.contains(u)) {
         continue;
       }
+      int newu = ordMapS[u];
       Set<Integer> w = new HashSet<>();
       List<Integer> nsU = nodesNs.get(u);
       for (int v : nsU) {
-        int newv = ordMapS[v];
-        // if new ordinal of v > new ordinal of node, then it doesn't exist in gL yet,
-        // so we don't add it to the candidate list
-        if (newv < ordMapS[u]) {
-          w.add(newv);
-        }
         // if u's neighbour v is in the join set, or already added to gL (v < u),
         // then we add v's neighbours from gL to the candidate list
         if (j.contains(v) || v < u) {
+          int newv = ordMapS[v];
+          // if new ordinal of v > new ordinal of node, then it doesn't exist in gL yet,
+          // so we don't add it to the candidate list
+          if (newv < newu) {
+            w.add(newv);
+          }
+
           NeighborArray nsVArray = hnsw.getNeighbors(0, newv);
           int[] nsV = nsVArray.nodes();
           int nsVSize = nsVArray.size();
@@ -183,7 +185,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
           }
         }
       }
-      addGraphNodeWithCandidates(ordMapS[u], w);
+      addGraphNodeWithCandidates(newu, w);
     }
   }
 }

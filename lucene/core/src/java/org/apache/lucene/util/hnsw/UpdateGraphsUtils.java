@@ -77,7 +77,6 @@ public class UpdateGraphsUtils {
       int degree = nodesNs.get(v).size();
       k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
       gExit += k;
-
       int gain = k + degree;
       heap.push(encode(gain, v));
     }
