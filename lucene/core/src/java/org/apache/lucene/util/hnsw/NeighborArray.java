@@ -98,11 +98,6 @@ public class NeighborArray {
     assert size == nodes.length - 1;
   }
 
-  /** Check if the neighbour array is not full and can accept more nodes */
-  public boolean isNotFull() {
-    return size < nodes.length - 1;
-  }
-
   /**
    * Sort the array according to scores, and return the sorted indexes of previous unsorted nodes
    * (unchecked nodes)
