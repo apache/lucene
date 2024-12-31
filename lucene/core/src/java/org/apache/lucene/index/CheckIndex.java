@@ -26,15 +26,17 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.NumberFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.StringJoiner;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -60,6 +62,7 @@ import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.KnnCollector;
@@ -76,6 +79,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -417,11 +421,11 @@ public final class CheckIndex implements Closeable {
 
       HnswGraphStatus() {}
 
-      /** Number of nodes in the HNSW graph, summed over all levels */
-      public int totalNumNodes;
+      /** Number of nodes at each level */
+      public List<Integer> numNodesAtLevel;
 
-      /** Number of levels in the HNSW graph */
-      public int numLevels;
+      /** Connectedness at each level represented as a fraction */
+      public List<String> connectednessAtLevel;
     }
 
     /** Status from testing all HNSW graphs */
@@ -2808,25 +2812,14 @@ public final class CheckIndex implements Closeable {
           }
         }
       }
-      StringJoiner hnswGraphResultJoiner = new StringJoiner(", ");
-      for (Map.Entry<String, Status.HnswGraphStatus> hnswGraphStatus :
-          status.hnswGraphsStatusByField.entrySet()) {
-        hnswGraphResultJoiner.add(
-            String.format(
-                Locale.ROOT,
-                "(field name: %s, levels: %d, total nodes: %d)",
-                hnswGraphStatus.getKey(),
-                hnswGraphStatus.getValue().numLevels,
-                hnswGraphStatus.getValue().totalNumNodes));
-      }
       msg(
           infoStream,
           String.format(
               Locale.ROOT,
-              "OK [%d fields%s] [took %.3f sec]",
+              "OK [%d fields] [took %.3f sec]",
               status.hnswGraphsStatusByField.size(),
-              hnswGraphResultJoiner.toString().isEmpty() ? "" : ": " + hnswGraphResultJoiner,
               nsToSec(System.nanoTime() - startNS)));
+      printHnswInfo(status.hnswGraphsStatusByField);
     } catch (Throwable e) {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
@@ -2841,26 +2834,80 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  private static void printHnswInfo(Map<String, CheckIndex.Status.HnswGraphStatus> fieldsStatus) {
+    for (Map.Entry<String, CheckIndex.Status.HnswGraphStatus> entry : fieldsStatus.entrySet()) {
+      String fieldName = entry.getKey();
+      CheckIndex.Status.HnswGraphStatus status = entry.getValue();
+      System.out.println("      hnsw field name: " + fieldName);
+
+      int numLevels = Math.min(status.numNodesAtLevel.size(), status.connectednessAtLevel.size());
+      for (int level = numLevels - 1; level >= 0; level--) {
+        int numNodes = status.numNodesAtLevel.get(level);
+        String connectedness = status.connectednessAtLevel.get(level);
+        System.out.printf(
+            "        level %d: %d nodes, %s connected%n", level, numNodes, connectedness);
+      }
+    }
+  }
+
   private static void testHnswGraph(
       HnswGraph hnswGraph, String fieldName, Status.HnswGraphsStatus status)
       throws IOException, CheckIndexException {
     if (hnswGraph != null) {
       status.hnswGraphsStatusByField.put(fieldName, new Status.HnswGraphStatus());
       final int numLevels = hnswGraph.numLevels();
-      // Perform tests on each level of the HNSW graph
+      status.hnswGraphsStatusByField.get(fieldName).numNodesAtLevel =
+          new ArrayList<>(Collections.nCopies(numLevels, null));
+      status.hnswGraphsStatusByField.get(fieldName).connectednessAtLevel =
+          new ArrayList<>(Collections.nCopies(numLevels, null));
+      // Perform checks on each level of the HNSW graph
       for (int level = numLevels - 1; level >= 0; level--) {
+        // Collect BitSet of all nodes on this level
+        BitSet nodesOnThisLevel = new FixedBitSet(hnswGraph.size());
         HnswGraph.NodesIterator nodesIterator = hnswGraph.getNodesOnLevel(level);
         while (nodesIterator.hasNext()) {
+          nodesOnThisLevel.set(nodesIterator.nextInt());
+        }
+
+        nodesIterator = hnswGraph.getNodesOnLevel(level);
+        // Perform checks on each node on the level
+        while (nodesIterator.hasNext()) {
           int node = nodesIterator.nextInt();
+          if (node < 0 || node > hnswGraph.size() - 1) {
+            throw new CheckIndexException(
+                "Field \""
+                    + fieldName
+                    + "\" has node: "
+                    + node
+                    + " not in the expected range [0, "
+                    + (hnswGraph.size() - 1)
+                    + "]");
+          }
+
+          // Perform checks on the node's neighbors
           hnswGraph.seek(level, node);
           int nbr, lastNeighbor = -1, firstNeighbor = -1;
           while ((nbr = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+            if (!nodesOnThisLevel.get(nbr)) {
+              throw new CheckIndexException(
+                  "Field \""
+                      + fieldName
+                      + "\" has node: "
+                      + node
+                      + " with a neighbor "
+                      + nbr
+                      + " which is not on its level ("
+                      + level
+                      + ")");
+            }
             if (firstNeighbor == -1) {
               firstNeighbor = nbr;
             }
             if (nbr < lastNeighbor) {
               throw new CheckIndexException(
-                  "Neighbors out of order for node "
+                  "Field \""
+                      + fieldName
+                      + "\" has neighbors out of order for node "
                       + node
                       + ": "
                       + nbr
@@ -2870,16 +2917,50 @@ public final class CheckIndex implements Closeable {
                       + firstNeighbor);
             } else if (nbr == lastNeighbor) {
               throw new CheckIndexException(
-                  "There are repeated neighbors of node " + node + " with value " + nbr);
+                  "Field \""
+                      + fieldName
+                      + "\" has repeated neighbors of node "
+                      + node
+                      + " with value "
+                      + nbr);
             }
-            // TODO: add checks: nodes are within range and neighbors are on the same level
             lastNeighbor = nbr;
           }
-          status.hnswGraphsStatusByField.get(fieldName).totalNumNodes++;
         }
-        status.hnswGraphsStatusByField.get(fieldName).numLevels++;
+        int numNodesOnLayer = nodesIterator.size();
+        status.hnswGraphsStatusByField.get(fieldName).numNodesAtLevel.set(level, numNodesOnLayer);
+
+        // Evaluate connectedness at this level by measuring the number of nodes reachable from the
+        // entry point
+        IntIntHashMap connectedNodes = getConnectedNodesOnLevel(hnswGraph, numNodesOnLayer, level);
+        status
+            .hnswGraphsStatusByField
+            .get(fieldName)
+            .connectednessAtLevel
+            .set(level, connectedNodes.size() + "/" + numNodesOnLayer);
       }
     }
+  }
+
+  private static IntIntHashMap getConnectedNodesOnLevel(
+      HnswGraph hnswGraph, int numNodesOnLayer, int level) throws IOException {
+    IntIntHashMap connectedNodes = new IntIntHashMap(numNodesOnLayer);
+    int entryPoint = hnswGraph.entryNode();
+    Deque<Integer> stack = new ArrayDeque<>();
+    stack.push(entryPoint);
+    while (!stack.isEmpty()) {
+      int node = stack.pop();
+      if (connectedNodes.containsKey(node)) {
+        continue;
+      }
+      connectedNodes.put(node, 1);
+      hnswGraph.seek(level, node);
+      int friendOrd;
+      while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+        stack.push(friendOrd);
+      }
+    }
+    return connectedNodes;
   }
 
   private static boolean vectorsReaderSupportsSearch(CodecReader codecReader, String fieldName) {
