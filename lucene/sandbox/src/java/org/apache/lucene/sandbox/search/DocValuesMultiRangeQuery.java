@@ -175,7 +175,6 @@ public final class DocValuesMultiRangeQuery {
                   if (ordRanges.isEmpty()) {
                     return empty();
                   }
-                  LongBitSet matchingOrdsShifted = null;
                   long minOrd = ordRanges.getFirst().lower, maxOrd = ordRanges.getLast().upper;
 
                   DocValuesSkipper skipper = this.context.reader().getDocValuesSkipper(field);
@@ -215,7 +214,7 @@ public final class DocValuesMultiRangeQuery {
                   if (skipper != null) {
                     iterator =
                         new DocValuesRangeIterator(
-                            iterator, skipper, minOrd, maxOrd, matchingOrdsShifted != null);
+                            iterator, skipper, minOrd, maxOrd, true);
                   }
                   return new ConstantScoreScorer(score(), scoreMode, iterator);
                 }
