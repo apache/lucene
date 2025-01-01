@@ -60,16 +60,11 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
       this.point = false;
     }
 
-    /** expecting only lower==upper i.e. point */
+    /** expecting Arrays.equals(lower.bytes,upper.bytes) i.e. point */
     public Edge(DocValuesMultiRangeQuery.Range range) {
       this.range = range;
       this.upper = false;
       this.point = true;
-    }
-
-    /** lower == upper */
-    boolean isPoint() {
-      return point;
     }
   }
 
