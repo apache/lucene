@@ -31,7 +31,6 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LongBitSet;
 
 /** A few query builder for doc values multi range queries */
 public final class DocValuesMultiRangeQuery {
