@@ -37,7 +37,7 @@ public final class DocValuesMultiRangeQuery {
     BytesRef upper;
 
     /** NB: One absolutely must copy ByteRefs before. */
-    private Range(BytesRef lowerValue, BytesRef upperValue) {
+    Range(BytesRef lowerValue, BytesRef upperValue) {
       this.lower = lowerValue;
       this.upper = upperValue;
     }
@@ -64,21 +64,22 @@ public final class DocValuesMultiRangeQuery {
   }
 
   /**
-   * Builder for creating a query for matching multi-range field values. Highlights two key points:
+   * Builder for creating a multi-range query for stabbing by SortedSet or Sorted fixed width field
+   * values. Name highlights two key points:
    *
    * <ul>
-   *   <li>treats multiple or single field value as scalar for range matching
+   *   <li>treats multiple or single field value as a scalar for range matching (stabbing)
    *   <li>field values have fixed width
    * </ul>
    */
-  public static class SordedSetFieldValueFixedBuilder
+  public static class SordedSetStabbingFixedBuilder
       implements BiConsumer<BytesRef, BytesRef>, Supplier<Query> {
     private final String fieldName;
     private final List<Range> clauses = new ArrayList<>();
     private final int bytesPerDim;
     private final ArrayUtil.ByteArrayComparator comparator;
 
-    public SordedSetFieldValueFixedBuilder(String fieldName, int bytesPerDim) {
+    public SordedSetStabbingFixedBuilder(String fieldName, int bytesPerDim) {
       this.fieldName = Objects.requireNonNull(fieldName);
       if (bytesPerDim <= 0) {
         throw new IllegalArgumentException("bytesPerDim should be a valid value");
@@ -87,7 +88,7 @@ public final class DocValuesMultiRangeQuery {
       this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     }
 
-    public SordedSetFieldValueFixedBuilder add(BytesRef lowerValue, BytesRef upperValue) {
+    public SordedSetStabbingFixedBuilder add(BytesRef lowerValue, BytesRef upperValue) {
       BytesRef lowRef = BytesRef.deepCopyOf(lowerValue);
       BytesRef upRef = BytesRef.deepCopyOf(upperValue);
       if (this.comparator.compare(lowRef.bytes, 0, upRef.bytes, 0) > 0) {

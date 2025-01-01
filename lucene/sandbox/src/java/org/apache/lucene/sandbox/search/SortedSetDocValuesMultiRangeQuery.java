@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
@@ -40,12 +41,51 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
+import org.apache.lucene.util.PriorityQueue;
 
 /** A union multiple ranges over SortedSetDocValuesField */
 class SortedSetDocValuesMultiRangeQuery extends Query {
+
+  private static final class Edge {
+    private final DocValuesMultiRangeQuery.Range range;
+    private final boolean point;
+    private final boolean upper;
+
+    BytesRef getValue() {
+      return upper ? range.upper : range.lower;
+    }
+
+    public Edge(DocValuesMultiRangeQuery.Range range, boolean upper) {
+      this.range = range;
+      this.upper = upper;
+      this.point = false;
+    }
+
+    /** expecting only lower==upper i.e. point */
+    public Edge(DocValuesMultiRangeQuery.Range range) {
+      this.range = range;
+      this.upper = false;
+      this.point = true;
+    }
+
+    /** lower == upper */
+    boolean isPoint() {
+      return point;
+    }
+  }
+
+  private static final class OrdRange {
+    final long lower;
+    long upper;
+
+    public OrdRange(long lower, long upper) {
+      this.lower = lower;
+      this.upper = upper;
+    }
+  }
+
   private final String field;
   private final int bytesPerDim;
-  private final ArrayUtil.ByteArrayComparator comparator;
   private final List<DocValuesMultiRangeQuery.Range> rangeClauses;
 
   SortedSetDocValuesMultiRangeQuery(
@@ -55,18 +95,62 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
       ArrayUtil.ByteArrayComparator comparator) {
     this.field = name;
     this.bytesPerDim = bytesPerDim;
-    this.comparator = comparator;
-    ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>(clauses);
-    sortedClauses.sort(
-        (o1, o2) -> {
-          // if (result == 0) {
-          //    return comparator.compare(o1.upperValue, 0, o2.upperValue, 0);
-          // } else {
-          assert o1.lower.offset == 0 && o2.lower.offset == 0 : "Relying on copying bytes.";
-          return comparator.compare(o1.lower.bytes, 0, o2.lower.bytes, 0);
-          // }
-        });
+    ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>();
+    PriorityQueue<Edge> heap =
+        new PriorityQueue<>(clauses.size() * 2) {
+          @Override
+          protected boolean lessThan(Edge a, Edge b) {
+            return cmp(comparator, a.getValue(), b.getValue()) < 0;
+          }
+        };
+    for (DocValuesMultiRangeQuery.Range r : clauses) {
+      int cmp = cmp(comparator, r.lower, r.upper);
+      if (cmp == 0) {
+        heap.add(new Edge(r));
+      } else {
+        if (cmp < 0) {
+          heap.add(new Edge(r, false));
+          heap.add(new Edge(r, true));
+        } // else drop reverse ranges
+      }
+    }
+    int totalEdges = heap.size();
+    int depth = 0;
+    Consumer<DocValuesMultiRangeQuery.Range> outBoundSink = sortedClauses::add;
+    Edge started = null;
+    for (int i = 0; i < totalEdges; i++) {
+      Edge smallest = heap.pop();
+      if (depth == 0 && smallest.point) {
+        if (i < totalEdges - 1 && heap.top().point) { // repeating same points
+          if (cmp(comparator, smallest.getValue(), heap.top().getValue()) == 0) {
+            continue;
+          }
+        }
+        outBoundSink.accept(smallest.range);
+      }
+      if (!smallest.point) {
+        if (!smallest.upper) {
+          depth++;
+          if (depth == 1) { // just started
+            started = smallest;
+          }
+        } else {
+          depth--;
+          if (depth == 0) {
+            outBoundSink.accept(
+                started.range == smallest.range
+                    ? smallest.range
+                    : new DocValuesMultiRangeQuery.Range(started.getValue(), smallest.getValue()));
+            started = null;
+          }
+        }
+      }
+    }
     this.rangeClauses = sortedClauses;
+  }
+
+  private static int cmp(ArrayUtil.ByteArrayComparator comparator, BytesRef a, BytesRef b) {
+    return comparator.compare(a.bytes, a.offset, b.bytes, b.offset);
   }
 
   @Override
@@ -98,80 +182,66 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
           @Override
           public Scorer get(long leadCost) throws IOException {
             assert !rangeClauses.isEmpty() : "Builder should prevent it";
-            DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+            // convert bytes ranges to ord ranges.
+            List<OrdRange> ordRanges = new ArrayList<>();
+            Consumer<OrdRange> yield = ordRanges::add;
             TermsEnum termsEnum = values.termsEnum();
-            LongBitSet matchingOrdsShifted = null;
-            long minOrd = 0, maxOrd = values.getValueCount() - 1;
-            long matchesAbove =
-                values.getValueCount(); // it's last range goes to maxOrd, by default - no match
-            long maxSeenOrd = values.getValueCount();
-            TermsEnum.SeekStatus seekStatus = TermsEnum.SeekStatus.NOT_FOUND;
-            for (int rangeNum = 0; rangeNum < rangeClauses.size(); rangeNum++) {
-              DocValuesMultiRangeQuery.Range range = rangeClauses.get(rangeNum);
-              long startingOrd;
-              seekStatus = termsEnum.seekCeil(range.lower);
-              if (matchingOrdsShifted == null) { // first iter
-                if (seekStatus == TermsEnum.SeekStatus.END) {
-                  return empty(); // no bitset yet, give up
-                }
-                minOrd = termsEnum.ord();
-                if (skipper != null) {
-                  minOrd = Math.max(minOrd, skipper.minValue());
-                  maxOrd = Math.min(maxOrd, skipper.maxValue());
-                }
-                assert maxOrd >= minOrd;
-                startingOrd = minOrd;
-              } else {
-                if (seekStatus == TermsEnum.SeekStatus.END) {
-                  break; // ranges - we are done, terms are exhausted
-                } else {
-                  startingOrd = termsEnum.ord();
-                }
+            OrdRange previous = null;
+            clauses:
+            for (DocValuesMultiRangeQuery.Range range : rangeClauses) {
+              TermsEnum.SeekStatus seekStatus = termsEnum.seekCeil(range.lower);
+              long lowerOrd = -1;
+              switch (seekStatus) {
+                case TermsEnum.SeekStatus.END:
+                  break clauses;
+                case FOUND, NOT_FOUND:
+                  lowerOrd = termsEnum.ord();
               }
-              BytesRef upper = range.upper; // TODO ignore reverse ranges
-              // looking for overlap
-              for (int overlap = rangeNum + 1;
-                  overlap < rangeClauses.size();
-                  overlap++, rangeNum++) {
-                DocValuesMultiRangeQuery.Range mayOverlap = rangeClauses.get(overlap);
-                assert comparator.compare(range.lower.bytes, 0, mayOverlap.lower.bytes, 0) <= 0
-                    : "since they are sorted";
-                // TODO it might be contiguous ranges, it's worth to check but I have no idea how
-                if (comparator.compare(mayOverlap.lower.bytes, 0, upper.bytes, 0) <= 0) {
-                  // overlap, expand if needed
-                  if (comparator.compare(upper.bytes, 0, mayOverlap.upper.bytes, 0) < 0) {
-                    upper = mayOverlap.upper;
+              seekStatus = termsEnum.seekCeil(range.upper);
+              long upperOrd = -1;
+              switch (seekStatus) {
+                case TermsEnum.SeekStatus.END:
+                  upperOrd = values.getValueCount() - 1;
+                  break;
+                case FOUND:
+                  upperOrd = termsEnum.ord();
+                  break;
+                case NOT_FOUND:
+                  if (termsEnum.ord() == 0) {
+                    continue; // this range is before values.
                   }
-                  // continue; // skip overlapping rng
-                } else {
-                  // here we can seekCeil upper and mayOverlap.lower,
-                  // if their ords are contiguous, we can merge ranges
-                  break; // no rangeNum++
+                  upperOrd = termsEnum.ord() - 1;
+              }
+              if (lowerOrd <= upperOrd) { // otherwise ignore
+                if (previous != null) {
+                  if (previous.upper >= lowerOrd - 1) { // adjacent
+                    previous.upper = upperOrd; // update one. which was yield. danger
+                    continue;
+                  }
                 }
-              } // TODO copy Range here.. WDYMean?
-              seekStatus = termsEnum.seekCeil(upper);
-
-              if (seekStatus == TermsEnum.SeekStatus.END) {
-                maxSeenOrd = maxOrd; // perhaps it's worth to set for skipper
-                matchesAbove = startingOrd;
-                break; // no need to create bitset
+                yield.accept(previous = new OrdRange(lowerOrd, upperOrd));
               }
-              maxSeenOrd =
-                  seekStatus == TermsEnum.SeekStatus.FOUND
-                      ? termsEnum.ord()
-                      : termsEnum.ord() - 1; // floor
-
-              if (matchingOrdsShifted == null) {
-                matchingOrdsShifted = new LongBitSet(maxOrd + 1 - minOrd);
-              }
-              matchingOrdsShifted.set(
-                  startingOrd - minOrd, maxSeenOrd - minOrd + 1); // up is exclusive
             }
+            if (ordRanges.isEmpty()) {
+              return empty();
+            }
+            LongBitSet matchingOrdsShifted = null;
+            long minOrd = ordRanges.get(0).lower,
+                maxOrd = ordRanges.get(ordRanges.size() - 1).upper;
+            if (ordRanges.size() > 1) {
+              matchingOrdsShifted = new LongBitSet(maxOrd + 1 - minOrd);
+              for (OrdRange range : ordRanges) {
+                matchingOrdsShifted.set(
+                    range.lower - minOrd, range.upper - minOrd + 1); // up is exclusive
+              }
+            }
+            DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
             /// ranges are over, there might be no set!!
             TwoPhaseIterator iterator;
-            long finalMatchesAbove = matchesAbove;
+            // long finalMatchesAbove = matchesAbove;
             LongBitSet finalMatchingOrdsShifted = matchingOrdsShifted;
             long finalMinOrd = minOrd;
+            long finalMaxOrd = maxOrd;
             iterator =
                 new TwoPhaseIterator(values) {
                   // TODO unwrap singleton?
@@ -179,11 +249,11 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
                   public boolean matches() throws IOException {
                     for (int i = 0; i < values.docValueCount(); i++) {
                       long ord = values.nextOrd();
-                      if (ord >= finalMinOrd
-                          && ((finalMatchesAbove < values.getValueCount()
-                                  && ord >= finalMatchesAbove)
-                              || finalMatchingOrdsShifted.get(ord - finalMinOrd))) {
-                        return true;
+                      if (ord >= finalMinOrd && ord <= finalMaxOrd) {
+                        if (finalMatchingOrdsShifted == null // singleton
+                            || finalMatchingOrdsShifted.get(ord - finalMinOrd)) {
+                          return true;
+                        }
                       }
                     }
                     return false; // all ords were < minOrd
@@ -201,7 +271,7 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
                       iterator,
                       skipper,
                       minOrd,
-                      maxSeenOrd // values.getValueCount()
+                      maxOrd // values.getValueCount()
                       ,
                       matchingOrdsShifted != null);
             }
