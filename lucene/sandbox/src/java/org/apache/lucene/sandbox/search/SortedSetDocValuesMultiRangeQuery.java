@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
@@ -95,6 +94,11 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
       ArrayUtil.ByteArrayComparator comparator) {
     this.field = name;
     this.bytesPerDim = bytesPerDim;
+    this.rangeClauses = resolveOverlaps(clauses, comparator);
+  }
+
+  private static ArrayList<DocValuesMultiRangeQuery.Range> resolveOverlaps(
+      List<DocValuesMultiRangeQuery.Range> clauses, ArrayUtil.ByteArrayComparator comparator) {
     ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>();
     PriorityQueue<Edge> heap =
         new PriorityQueue<>(clauses.size() * 2) {
@@ -116,7 +120,6 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
     }
     int totalEdges = heap.size();
     int depth = 0;
-    Consumer<DocValuesMultiRangeQuery.Range> outBoundSink = sortedClauses::add;
     Edge started = null;
     for (int i = 0; i < totalEdges; i++) {
       Edge smallest = heap.pop();
@@ -126,7 +129,7 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
             continue;
           }
         }
-        outBoundSink.accept(smallest.range);
+        sortedClauses.add(smallest.range);
       }
       if (!smallest.point) {
         if (!smallest.upper) {
@@ -137,8 +140,8 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
         } else {
           depth--;
           if (depth == 0) {
-            outBoundSink.accept(
-                started.range == smallest.range
+            sortedClauses.add(
+                started.range == smallest.range // no overlap case, the most often
                     ? smallest.range
                     : new DocValuesMultiRangeQuery.Range(started.getValue(), smallest.getValue()));
             started = null;
@@ -146,11 +149,15 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
         }
       }
     }
-    this.rangeClauses = sortedClauses;
+    return sortedClauses;
   }
 
   private static int cmp(ArrayUtil.ByteArrayComparator comparator, BytesRef a, BytesRef b) {
-    return comparator.compare(a.bytes, a.offset, b.bytes, b.offset);
+    if (a == b) {
+      return 0;
+    } else {
+      return comparator.compare(a.bytes, a.offset, b.bytes, b.offset);
+    }
   }
 
   @Override
@@ -182,52 +189,20 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
           @Override
           public Scorer get(long leadCost) throws IOException {
             assert !rangeClauses.isEmpty() : "Builder should prevent it";
-            // convert bytes ranges to ord ranges.
-            List<OrdRange> ordRanges = new ArrayList<>();
-            Consumer<OrdRange> yield = ordRanges::add;
-            TermsEnum termsEnum = values.termsEnum();
-            OrdRange previous = null;
-            clauses:
-            for (DocValuesMultiRangeQuery.Range range : rangeClauses) {
-              TermsEnum.SeekStatus seekStatus = termsEnum.seekCeil(range.lower);
-              long lowerOrd = -1;
-              switch (seekStatus) {
-                case TermsEnum.SeekStatus.END:
-                  break clauses;
-                case FOUND, NOT_FOUND:
-                  lowerOrd = termsEnum.ord();
-              }
-              seekStatus = termsEnum.seekCeil(range.upper);
-              long upperOrd = -1;
-              switch (seekStatus) {
-                case TermsEnum.SeekStatus.END:
-                  upperOrd = values.getValueCount() - 1;
-                  break;
-                case FOUND:
-                  upperOrd = termsEnum.ord();
-                  break;
-                case NOT_FOUND:
-                  if (termsEnum.ord() == 0) {
-                    continue; // this range is before values.
-                  }
-                  upperOrd = termsEnum.ord() - 1;
-              }
-              if (lowerOrd <= upperOrd) { // otherwise ignore
-                if (previous != null) {
-                  if (previous.upper >= lowerOrd - 1) { // adjacent
-                    previous.upper = upperOrd; // update one. which was yield. danger
-                    continue;
-                  }
-                }
-                yield.accept(previous = new OrdRange(lowerOrd, upperOrd));
-              }
-            }
+            List<OrdRange> ordRanges = bytesRangesToOrdRanges(values);
             if (ordRanges.isEmpty()) {
               return empty();
             }
             LongBitSet matchingOrdsShifted = null;
             long minOrd = ordRanges.get(0).lower,
                 maxOrd = ordRanges.get(ordRanges.size() - 1).upper;
+
+            DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+
+            if (skipper != null && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue())) {
+              return empty();
+            }
+
             if (ordRanges.size() > 1) {
               matchingOrdsShifted = new LongBitSet(maxOrd + 1 - minOrd);
               for (OrdRange range : ordRanges) {
@@ -235,8 +210,6 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
                     range.lower - minOrd, range.upper - minOrd + 1); // up is exclusive
               }
             }
-            DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-            /// ranges are over, there might be no set!!
             TwoPhaseIterator iterator;
             // long finalMatchesAbove = matchesAbove;
             LongBitSet finalMatchingOrdsShifted = matchingOrdsShifted;
@@ -296,6 +269,49 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
         return DocValues.isCacheable(ctx, field);
       }
     };
+  }
+
+  private List<OrdRange> bytesRangesToOrdRanges(SortedSetDocValues values) throws IOException {
+    TermsEnum termsEnum = values.termsEnum();
+    // convert bytes ranges to ord ranges.
+    List<OrdRange> ordRanges = new ArrayList<>();
+    OrdRange previous = null;
+    clauses:
+    for (DocValuesMultiRangeQuery.Range range : rangeClauses) {
+      TermsEnum.SeekStatus seekStatus = termsEnum.seekCeil(range.lower);
+      long lowerOrd = -1;
+      switch (seekStatus) {
+        case TermsEnum.SeekStatus.END:
+          break clauses;
+        case FOUND, NOT_FOUND:
+          lowerOrd = termsEnum.ord();
+      }
+      seekStatus = termsEnum.seekCeil(range.upper);
+      long upperOrd = -1;
+      switch (seekStatus) {
+        case TermsEnum.SeekStatus.END:
+          upperOrd = values.getValueCount() - 1;
+          break;
+        case FOUND:
+          upperOrd = termsEnum.ord();
+          break;
+        case NOT_FOUND:
+          if (termsEnum.ord() == 0) {
+            continue; // this range is before values.
+          }
+          upperOrd = termsEnum.ord() - 1;
+      }
+      if (lowerOrd <= upperOrd) { // otherwise ignore
+        if (previous != null) {
+          if (previous.upper >= lowerOrd - 1) { // adjacent
+            previous.upper = upperOrd; // update one. which was yield. danger
+            continue;
+          }
+        }
+        ordRanges.add(previous = new OrdRange(lowerOrd, upperOrd));
+      }
+    }
+    return ordRanges;
   }
 
   @Override

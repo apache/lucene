@@ -18,27 +18,48 @@ package org.apache.lucene.sandbox.search;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.sandbox.document.LongPointMultiRangeBuilder;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 
 public class TestSsDvMultiRangeQuery extends LuceneTestCase {
+  private Codec getCodec() {
+    // small interval size to test with many intervals
+    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(4, 16)));
+  }
+
   public void testDuelWithStandardDisjunction() throws IOException {
     int iterations = LuceneTestCase.TEST_NIGHTLY ? atLeast(100) : 10;
     for (int iter = 0; iter < iterations; iter++) {
       Directory dir = newDirectory();
-      RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+      final RandomIndexWriter w;
 
       int dims = 1;
-      boolean singleton = rarely();
+      boolean singleton = random().nextBoolean();
+      boolean sortedIndex =
+          // singleton &&
+          random().nextBoolean(); // sorting by multivalue field??
+      if (!sortedIndex) {
+        w = new RandomIndexWriter(random(), dir);
+      } else {
+        IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
+        config.setIndexSort(
+            new Sort(new SortField("docVal", SortField.Type.STRING, random().nextBoolean())));
+        w = new RandomIndexWriter(random(), dir);
+      }
+
       long[] scratch = new long[dims];
       for (int i = 0; i < 100; i++) {
         int numPoints = singleton ? 1 : RandomNumbers.randomIntBetween(random(), 1, 10);
@@ -49,12 +70,23 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
           }
           doc.add(new LongPoint("point", scratch));
           if (singleton) {
-            doc.add(new SortedDocValuesField("docVal", LongPoint.pack(scratch)));
+            if (sortedIndex) {
+              doc.add(SortedDocValuesField.indexedField("docVal", LongPoint.pack(scratch)));
+            } else {
+              doc.add(new SortedDocValuesField("docVal", LongPoint.pack(scratch)));
+            }
           } else {
-            doc.add(new SortedSetDocValuesField("docVal", LongPoint.pack(scratch)));
+            if (sortedIndex) {
+              doc.add(SortedSetDocValuesField.indexedField("docVal", LongPoint.pack(scratch)));
+            } else {
+              doc.add(new SortedSetDocValuesField("docVal", LongPoint.pack(scratch)));
+            }
           }
         }
         w.addDocument(doc);
+        if (rarely()) {
+          w.commit(); // segmenting to check index sorter.
+        }
       }
 
       IndexReader reader = w.getReader();

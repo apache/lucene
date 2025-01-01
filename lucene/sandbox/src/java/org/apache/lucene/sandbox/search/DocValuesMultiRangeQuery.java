@@ -71,6 +71,10 @@ public final class DocValuesMultiRangeQuery {
    *   <li>treats multiple or single field value as a scalar for range matching (stabbing)
    *   <li>field values have fixed width
    * </ul>
+   *
+   * For example, it matches IPs in docvalues field by multiple IP ranges. For the single range it
+   * behaves like {@link SortedSetDocValuesField#newSlowRangeQuery(String, BytesRef, BytesRef,
+   * boolean, boolean)} with both true arguments
    */
   public static class SordedSetStabbingFixedBuilder
       implements BiConsumer<BytesRef, BytesRef>, Supplier<Query> {
@@ -88,6 +92,7 @@ public final class DocValuesMultiRangeQuery {
       this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     }
 
+    // TODO support nulls as min,max boundaries ???
     public SordedSetStabbingFixedBuilder add(BytesRef lowerValue, BytesRef upperValue) {
       BytesRef lowRef = BytesRef.deepCopyOf(lowerValue);
       BytesRef upRef = BytesRef.deepCopyOf(upperValue);
