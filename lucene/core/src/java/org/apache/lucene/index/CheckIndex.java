@@ -2819,7 +2819,7 @@ public final class CheckIndex implements Closeable {
               "OK [%d fields] [took %.3f sec]",
               status.hnswGraphsStatusByField.size(),
               nsToSec(System.nanoTime() - startNS)));
-      printHnswInfo(status.hnswGraphsStatusByField);
+      printHnswInfo(infoStream, status.hnswGraphsStatusByField);
     } catch (Throwable e) {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
@@ -2834,18 +2834,25 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
-  private static void printHnswInfo(Map<String, CheckIndex.Status.HnswGraphStatus> fieldsStatus) {
+  private static void printHnswInfo(
+      PrintStream infoStream, Map<String, CheckIndex.Status.HnswGraphStatus> fieldsStatus) {
     for (Map.Entry<String, CheckIndex.Status.HnswGraphStatus> entry : fieldsStatus.entrySet()) {
       String fieldName = entry.getKey();
       CheckIndex.Status.HnswGraphStatus status = entry.getValue();
-      System.out.println("      hnsw field name: " + fieldName);
+      msg(infoStream, "      hnsw field name: " + fieldName);
 
       int numLevels = Math.min(status.numNodesAtLevel.size(), status.connectednessAtLevel.size());
       for (int level = numLevels - 1; level >= 0; level--) {
         int numNodes = status.numNodesAtLevel.get(level);
         String connectedness = status.connectednessAtLevel.get(level);
-        System.out.printf(
-            "        level %d: %d nodes, %s connected%n", level, numNodes, connectedness);
+        msg(
+            infoStream,
+            String.format(
+                Locale.ROOT,
+                "        level %d: %d nodes, %s connected",
+                level,
+                numNodes,
+                connectedness));
       }
     }
   }
