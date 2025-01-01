@@ -16,15 +16,22 @@
  */
 package org.apache.lucene.sandbox.search;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.LongBitSet;
 
 /** A few query builder for doc values multi range queries */
 public final class DocValuesMultiRangeQuery {
@@ -78,10 +85,10 @@ public final class DocValuesMultiRangeQuery {
    */
   public static class SordedSetStabbingFixedBuilder
       implements BiConsumer<BytesRef, BytesRef>, Supplier<Query> {
-    private final String fieldName;
-    private final List<Range> clauses = new ArrayList<>();
-    private final int bytesPerDim;
-    private final ArrayUtil.ByteArrayComparator comparator;
+    protected final String fieldName;
+    protected final List<Range> clauses = new ArrayList<>();
+    protected final int bytesPerDim;
+    protected final ArrayUtil.ByteArrayComparator comparator;
 
     public SordedSetStabbingFixedBuilder(String fieldName, int bytesPerDim) {
       this.fieldName = Objects.requireNonNull(fieldName);
@@ -114,6 +121,10 @@ public final class DocValuesMultiRangeQuery {
         return SortedSetDocValuesField.newSlowRangeQuery(
             fieldName, theOnlyOne.lower, theOnlyOne.upper, true, true);
       }
+      return createSortedSetDocValuesMultiRangeQuery();
+    }
+
+    SortedSetDocValuesMultiRangeQuery createSortedSetDocValuesMultiRangeQuery() {
       return new SortedSetDocValuesMultiRangeQuery(
           fieldName, clauses, this.bytesPerDim, comparator);
     }
@@ -126,6 +137,93 @@ public final class DocValuesMultiRangeQuery {
     @Override
     public Query get() {
       return build();
+    }
+  }
+
+  /**
+   * Builder like {@link SordedSetStabbingFixedBuilder} but using log(ranges) lookup per doc value
+   * instead of bitset check
+   */
+  public static class SordedSetStabbingFixedTreeBuilder extends SordedSetStabbingFixedBuilder {
+
+    public SordedSetStabbingFixedTreeBuilder(String fieldName, int bytesPerDim) {
+      super(fieldName, bytesPerDim);
+    }
+
+    @Override
+    SortedSetDocValuesMultiRangeQuery createSortedSetDocValuesMultiRangeQuery() {
+      return new SortedSetDocValuesMultiRangeQuery(
+          fieldName, clauses, this.bytesPerDim, comparator) {
+        @Override
+        public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+            throws IOException {
+          return new MultiRangeWeight(boost, scoreMode) {
+            @Override
+            public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+              if (context.reader().getFieldInfos().fieldInfo(field) == null) {
+                return null;
+              }
+              SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
+
+              return new MultiRangeScorerSupplier(values, context) {
+                @Override
+                public Scorer get(long leadCost) throws IOException {
+                  assert !rangeClauses.isEmpty() : "Builder should prevent it";
+                  TreeSet<OrdRange> ordRanges =
+                      new TreeSet<>((or1, or2) -> (int) (or1.lower - or2.lower));
+                  bytesRangesToOrdRanges(this.values, ordRanges);
+                  if (ordRanges.isEmpty()) {
+                    return empty();
+                  }
+                  LongBitSet matchingOrdsShifted = null;
+                  long minOrd = ordRanges.getFirst().lower, maxOrd = ordRanges.getLast().upper;
+
+                  DocValuesSkipper skipper = this.context.reader().getDocValuesSkipper(field);
+
+                  if (skipper != null
+                      && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue())) {
+                    return empty();
+                  }
+
+                  TwoPhaseIterator iterator;
+                  SortedSetDocValues docValues = this.values;
+                  iterator =
+                      new TwoPhaseIterator(docValues) {
+                        // TODO unwrap singleton?
+                        @Override
+                        public boolean matches() throws IOException {
+                          for (int i = 0; i < docValues.docValueCount(); i++) {
+                            long ord = docValues.nextOrd();
+                            if (ord >= minOrd && ord <= maxOrd) {
+                              // TODO reuse instance, lookup increasing
+                              OrdRange lessOrEq = ordRanges.floor(new OrdRange(ord, ord));
+                              if (lessOrEq != null && lessOrEq.upper >= ord) {
+                                assert lessOrEq.lower <= ord;
+                                return true;
+                              }
+                            }
+                          }
+                          return false;
+                        }
+
+                        @Override
+                        public float matchCost() {
+                          return 2; // 2 comparisons
+                        }
+                      };
+                  //                        }
+                  if (skipper != null) {
+                    iterator =
+                        new DocValuesRangeIterator(
+                            iterator, skipper, minOrd, maxOrd, matchingOrdsShifted != null);
+                  }
+                  return new ConstantScoreScorer(score(), scoreMode, iterator);
+                }
+              };
+            }
+          };
+        }
+      };
     }
   }
 }
