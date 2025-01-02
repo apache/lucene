@@ -99,36 +99,6 @@ public class BpVectorReorderer extends AbstractBPReorderer {
     this.partitionField = partitionField;
   }
 
-  /** Set the minimum partition size, when the algorithm stops recursing, 32 by default. */
-  public void setMinPartitionSize(int minPartitionSize) {
-    if (minPartitionSize < 1) {
-      throw new IllegalArgumentException(
-          "minPartitionSize must be at least 1, got " + minPartitionSize);
-    }
-    this.minPartitionSize = minPartitionSize;
-  }
-
-  /**
-   * Set the maximum number of iterations on each recursion level, 20 by default. Experiments
-   * suggests that values above 20 do not help much. However, values below 20 can be used to trade
-   * effectiveness for faster reordering.
-   */
-  public void setMaxIters(int maxIters) {
-    if (maxIters < 1) {
-      throw new IllegalArgumentException("maxIters must be at least 1, got " + maxIters);
-    }
-    this.maxIters = maxIters;
-  }
-
-  /**
-   * Set the amount of RAM that graph partitioning is allowed to use. More RAM allows running
-   * faster. If not enough RAM is provided, an exception (TODO: NotEnoughRAMException) will be
-   * thrown. This is 10% of the total heap size by default.
-   */
-  public void setRAMBudgetMB(double ramBudgetMB) {
-    this.ramBudgetMB = ramBudgetMB;
-  }
-
   private static class PerThreadState {
 
     final FloatVectorValues vectors;
@@ -710,7 +680,6 @@ public class BpVectorReorderer extends AbstractBPReorderer {
   }
 
   void reorderIndexDirectory(Directory directory, Executor executor) throws IOException {
-    VectorSimilarityFunction similarity = null;
     try (IndexReader reader = DirectoryReader.open(directory)) {
       IndexWriterConfig iwc = new IndexWriterConfig();
       iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);

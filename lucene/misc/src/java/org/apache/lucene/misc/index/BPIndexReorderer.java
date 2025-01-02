@@ -109,10 +109,6 @@ public final class BPIndexReorderer extends AbstractBPReorderer {
   public BPIndexReorderer() {
     setMinDocFreq(DEFAULT_MIN_DOC_FREQ);
     setMaxDocFreq(1f);
-    setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
-    setMaxIters(DEFAULT_MAX_ITERS);
-    // 10% of the available heap size by default
-    setRAMBudgetMB(Runtime.getRuntime().totalMemory() / 1024d / 1024d / 10d);
     setFields(null);
   }
 

@@ -29,7 +29,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReader;
-import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.SlowCodecReaderWrapper;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -43,10 +42,11 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
 
   AbstractBPReorderer reorderer;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    if (random().nextBoolean() && false) {
+    if (random().nextBoolean()) {
       BPIndexReorderer bpIndexReorderer = new BPIndexReorderer();
       bpIndexReorderer.setMinDocFreq(2);
       reorderer = bpIndexReorderer;
@@ -61,7 +61,7 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     Directory dir1 = newDirectory();
     Directory dir2 = newDirectory();
     IndexWriter w1 =
-        new IndexWriter(dir1, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()).setMergeScheduler(new SerialMergeScheduler()));
+        new IndexWriter(dir1, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
     BPReorderingMergePolicy mp = new BPReorderingMergePolicy(newLogMergePolicy(), reorderer);
     mp.setMinNaturalMergeNumDocs(2);
     IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig().setMergePolicy(mp));
@@ -70,14 +70,14 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     doc.add(idField);
     StringField bodyField = new StringField("body", "", Store.YES);
     doc.add(bodyField);
-    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[]{0});
+    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[] {0});
     doc.add(vectorField);
 
     for (int i = 0; i < 10000; ++i) {
       idField.setStringValue(Integer.toString(i));
       int intValue = i % 2 == 0 ? 0 : i % 10;
       bodyField.setStringValue(Integer.toString(intValue));
-      vectorField.setVectorValue(new float[]{intValue});
+      vectorField.setVectorValue(new float[] {intValue});
       w1.addDocument(doc);
       w2.addDocument(doc);
 
@@ -151,14 +151,14 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     doc.add(idField);
     StringField bodyField = new StringField("body", "", Store.YES);
     doc.add(bodyField);
-    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[]{0});
+    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[] {0});
     doc.add(vectorField);
 
     for (int i = 0; i < 10000; ++i) {
       idField.setStringValue(Integer.toString(i));
       int intValue = i % 2 == 0 ? 0 : i % 10;
       bodyField.setStringValue(Integer.toString(intValue));
-      vectorField.setVectorValue(new float[]{intValue});
+      vectorField.setVectorValue(new float[] {intValue});
 
       w1.addDocument(doc);
 
@@ -253,14 +253,14 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     doc.add(idField);
     StringField bodyField = new StringField("body", "", Store.YES);
     doc.add(bodyField);
-    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[]{0});
+    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[] {0});
     doc.add(vectorField);
 
     for (int i = 0; i < 10; ++i) {
       idField.setStringValue(Integer.toString(i));
       int intValue = i % 2 == 0 ? 0 : i % 10;
       bodyField.setStringValue(Integer.toString(intValue));
-      vectorField.setVectorValue(new float[]{intValue});
+      vectorField.setVectorValue(new float[] {intValue});
       w.addDocument(doc);
       DirectoryReader.open(w).close();
     }

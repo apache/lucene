@@ -6,22 +6,27 @@ public abstract class AbstractBPReorderer implements IndexReorderer {
    * this number of documents: 32.
    */
   public static final int DEFAULT_MIN_PARTITION_SIZE = 32;
+
   /**
    * Default maximum number of iterations per recursion level: 20. Higher numbers of iterations
    * typically don't help significantly.
    */
   public static final int DEFAULT_MAX_ITERS = 20;
-  protected int minPartitionSize;
-  protected int maxIters;
+
+  protected int minPartitionSize = DEFAULT_MIN_PARTITION_SIZE;
+  protected int maxIters = DEFAULT_MAX_ITERS;
   protected double ramBudgetMB;
 
-  /**
-   * Set the minimum partition size, when the algorithm stops recursing, 32 by default.
-   */
+  public AbstractBPReorderer() {
+    // 10% of the available heap size by default
+    setRAMBudgetMB(Runtime.getRuntime().totalMemory() / 1024d / 1024d / 10d);
+  }
+
+  /** Set the minimum partition size, when the algorithm stops recursing, 32 by default. */
   public void setMinPartitionSize(int minPartitionSize) {
     if (minPartitionSize < 1) {
       throw new IllegalArgumentException(
-              "minPartitionSize must be at least 1, got " + minPartitionSize);
+          "minPartitionSize must be at least 1, got " + minPartitionSize);
     }
     this.minPartitionSize = minPartitionSize;
   }
@@ -47,9 +52,7 @@ public abstract class AbstractBPReorderer implements IndexReorderer {
     this.ramBudgetMB = ramBudgetMB;
   }
 
-  /**
-   * Exception that is thrown when not enough RAM is available.
-   */
+  /** Exception that is thrown when not enough RAM is available. */
   public static class NotEnoughRAMException extends RuntimeException {
     NotEnoughRAMException(String message) {
       super(message);
