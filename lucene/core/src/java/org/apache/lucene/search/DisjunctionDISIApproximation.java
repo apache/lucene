@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * A {@link DocIdSetIterator} which is a disjunction of the approximations of the provided
@@ -139,6 +141,23 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
     }
 
     return Math.min(leadTop.doc, minOtherDoc);
+  }
+
+  @Override
+  public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
+      throws IOException {
+    while (leadTop.doc < upTo) {
+      leadTop.approximation.intoBitSet(acceptDocs, upTo, bitSet, offset);
+      leadTop.doc = leadTop.approximation.docID();
+      leadTop = leadIterators.updateTop();
+    }
+
+    minOtherDoc = Integer.MAX_VALUE;
+    for (DisiWrapper w : otherIterators) {
+      w.approximation.intoBitSet(acceptDocs, upTo, bitSet, offset);
+      w.doc = w.approximation.docID();
+      minOtherDoc = Math.min(minOtherDoc, w.doc);
+    }
   }
 
   /** Return the linked list of iterators positioned on the current doc. */
