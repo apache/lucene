@@ -21,8 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.TreeSet;
-import java.util.function.BiConsumer;
-import java.util.function.Supplier;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
@@ -82,14 +80,13 @@ public final class DocValuesMultiRangeQuery {
    * behaves like {@link SortedSetDocValuesField#newSlowRangeQuery(String, BytesRef, BytesRef,
    * boolean, boolean)} with both true arguments
    */
-  public static class SordedSetStabbingFixedBuilder
-      implements BiConsumer<BytesRef, BytesRef>, Supplier<Query> {
+  public static class SortedSetStabbingFixedBuilder {
     protected final String fieldName;
-    protected final List<Range> clauses = new ArrayList<>();
+    final List<Range> clauses = new ArrayList<>();
     protected final int bytesPerDim;
     protected final ArrayUtil.ByteArrayComparator comparator;
 
-    public SordedSetStabbingFixedBuilder(String fieldName, int bytesPerDim) {
+    public SortedSetStabbingFixedBuilder(String fieldName, int bytesPerDim) {
       this.fieldName = Objects.requireNonNull(fieldName);
       if (bytesPerDim <= 0) {
         throw new IllegalArgumentException("bytesPerDim should be a valid value");
@@ -99,15 +96,11 @@ public final class DocValuesMultiRangeQuery {
     }
 
     // TODO support nulls as min,max boundaries ???
-    public SordedSetStabbingFixedBuilder add(BytesRef lowerValue, BytesRef upperValue) {
+    /** NB:Deeply copies the given bytes */
+    public SortedSetStabbingFixedBuilder add(BytesRef lowerValue, BytesRef upperValue) {
       BytesRef lowRef = BytesRef.deepCopyOf(lowerValue);
       BytesRef upRef = BytesRef.deepCopyOf(upperValue);
-      if (this.comparator.compare(lowRef.bytes, 0, upRef.bytes, 0) > 0) {
-        // TODO let's just ignore so far.
-        //  throw new IllegalArgumentException("lower must be <= upperValue");
-      } else {
-        clauses.add(new Range(lowRef, upRef));
-      }
+      clauses.add(new Range(lowRef, upRef));
       return this;
     }
 
@@ -127,25 +120,15 @@ public final class DocValuesMultiRangeQuery {
       return new SortedSetDocValuesMultiRangeQuery(
           fieldName, clauses, this.bytesPerDim, comparator);
     }
-
-    @Override
-    public void accept(BytesRef bytesRef, BytesRef bytesRef2) {
-      add(bytesRef, bytesRef2);
-    }
-
-    @Override
-    public Query get() {
-      return build();
-    }
   }
 
   /**
-   * Builder like {@link SordedSetStabbingFixedBuilder} but using log(ranges) lookup per doc value
+   * Builder like {@link SortedSetStabbingFixedBuilder} but using log(ranges) lookup per doc value
    * instead of bitset check
    */
-  public static class SordedSetStabbingFixedTreeBuilder extends SordedSetStabbingFixedBuilder {
+  public static class SortedSetStabbingFixedTreeBuilder extends SortedSetStabbingFixedBuilder {
 
-    public SordedSetStabbingFixedTreeBuilder(String fieldName, int bytesPerDim) {
+    public SortedSetStabbingFixedTreeBuilder(String fieldName, int bytesPerDim) {
       super(fieldName, bytesPerDim);
     }
 
@@ -159,10 +142,10 @@ public final class DocValuesMultiRangeQuery {
           return new MultiRangeWeight(boost, scoreMode) {
             @Override
             public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-              if (context.reader().getFieldInfos().fieldInfo(field) == null) {
+              if (context.reader().getFieldInfos().fieldInfo(fieldName) == null) {
                 return null;
               }
-              SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
+              SortedSetDocValues values = DocValues.getSortedSet(context.reader(), fieldName);
 
               return new MultiRangeScorerSupplier(values, context) {
                 @Override
@@ -170,13 +153,13 @@ public final class DocValuesMultiRangeQuery {
                   assert !rangeClauses.isEmpty() : "Builder should prevent it";
                   TreeSet<OrdRange> ordRanges =
                       new TreeSet<>((or1, or2) -> (int) (or1.lower - or2.lower));
-                  bytesRangesToOrdRanges(this.values, ordRanges);
+                  createOrdRanges(this.values, ordRanges);
                   if (ordRanges.isEmpty()) {
                     return empty();
                   }
                   long minOrd = ordRanges.getFirst().lower, maxOrd = ordRanges.getLast().upper;
 
-                  DocValuesSkipper skipper = this.context.reader().getDocValuesSkipper(field);
+                  DocValuesSkipper skipper = this.context.reader().getDocValuesSkipper(fieldName);
 
                   if (skipper != null
                       && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue())) {
@@ -185,6 +168,10 @@ public final class DocValuesMultiRangeQuery {
 
                   TwoPhaseIterator iterator;
                   SortedSetDocValues docValues = this.values;
+                  int depth = 1;
+                  for (int pow = 1; pow < ordRanges.size(); pow <<= 1, depth += 1)
+                    ;
+                  int finalDepth = depth;
                   iterator =
                       new TwoPhaseIterator(docValues) {
                         // TODO unwrap singleton?
@@ -206,7 +193,7 @@ public final class DocValuesMultiRangeQuery {
 
                         @Override
                         public float matchCost() {
-                          return 2; // 2 comparisons
+                          return finalDepth; // 2 comparisons
                         }
                       };
                   //                        }

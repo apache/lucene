@@ -142,8 +142,8 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase {
     for (int pass = 0; pass < atLeast(10); pass++) {
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       ArrayUtil.ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(4);
-      DocValuesMultiRangeQuery.SordedSetStabbingFixedBuilder qbuilder =
-          new DocValuesMultiRangeQuery.SordedSetStabbingFixedBuilder(
+      DocValuesMultiRangeQuery.SortedSetStabbingFixedBuilder qbuilder =
+          new DocValuesMultiRangeQuery.SortedSetStabbingFixedBuilder(
               "field", InetAddressPoint.BYTES);
       for (int q = 0; q < atLeast(10); q++) {
         byte[] alfa = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
@@ -155,7 +155,7 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase {
         }
         // ranges.add(InetAddress.getByAddress(alfa));
         // ranges.add(InetAddress.getByAddress(beta));
-        qbuilder.accept(
+        qbuilder.add(
             new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(alfa))),
             new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(beta))));
 
@@ -169,7 +169,7 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase {
             BooleanClause.Occur.SHOULD);
       }
       // InetAddress[] addr = ranges.toArray(new InetAddress[0]);
-      Query multiRange = qbuilder.get();
+      Query multiRange = qbuilder.build();
       long cnt;
       BooleanQuery orRanges = bq.build();
       if (pass == 0) {
@@ -220,14 +220,14 @@ public class TestInetAddrSsDvMultiRange extends LuceneTestCase {
   }
 
   private static Query rangeQuery(String field, InetAddress... addr) throws UnknownHostException {
-    DocValuesMultiRangeQuery.SordedSetStabbingFixedBuilder qbuilder =
-        new DocValuesMultiRangeQuery.SordedSetStabbingFixedBuilder(field, InetAddressPoint.BYTES);
+    DocValuesMultiRangeQuery.SortedSetStabbingFixedBuilder qbuilder =
+        new DocValuesMultiRangeQuery.SortedSetStabbingFixedBuilder(field, InetAddressPoint.BYTES);
     for (int i = 0; i < addr.length; i += 2) {
-      qbuilder.accept(
+      qbuilder.add(
           new BytesRef(InetAddressPoint.encode(addr[i])),
           new BytesRef(InetAddressPoint.encode(addr[i + 1])));
     }
-    return qbuilder.get();
+    return qbuilder.build();
   }
 
   public static byte[] concatenateByteArrays(byte[] array1, byte[] array2) {

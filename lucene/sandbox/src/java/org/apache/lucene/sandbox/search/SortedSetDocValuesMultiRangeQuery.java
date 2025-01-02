@@ -51,18 +51,22 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
     private final boolean point;
     private final boolean upper;
 
+    private static Edge createPoint(DocValuesMultiRangeQuery.Range r) {
+      return new Edge(r);
+    }
+
     BytesRef getValue() {
       return upper ? range.upper : range.lower;
     }
 
-    public Edge(DocValuesMultiRangeQuery.Range range, boolean upper) {
+    private Edge(DocValuesMultiRangeQuery.Range range, boolean upper) {
       this.range = range;
       this.upper = upper;
       this.point = false;
     }
 
     /** expecting Arrays.equals(lower.bytes,upper.bytes) i.e. point */
-    public Edge(DocValuesMultiRangeQuery.Range range) {
+    private Edge(DocValuesMultiRangeQuery.Range range) {
       this.range = range;
       this.upper = false;
       this.point = true;
@@ -79,21 +83,22 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
     }
   }
 
-  protected final String field;
+  protected final String fieldName;
   private final int bytesPerDim;
   protected final List<DocValuesMultiRangeQuery.Range> rangeClauses;
 
   SortedSetDocValuesMultiRangeQuery(
-      String name,
+      String fieldName,
       List<DocValuesMultiRangeQuery.Range> clauses,
       int bytesPerDim,
       ArrayUtil.ByteArrayComparator comparator) {
-    this.field = name;
+    this.fieldName = fieldName;
     this.bytesPerDim = bytesPerDim;
     this.rangeClauses = resolveOverlaps(clauses, comparator);
   }
 
-  private static ArrayList<DocValuesMultiRangeQuery.Range> resolveOverlaps(
+  /** Merges overlapping ranges. */
+  private static List<DocValuesMultiRangeQuery.Range> resolveOverlaps(
       List<DocValuesMultiRangeQuery.Range> clauses, ArrayUtil.ByteArrayComparator comparator) {
     ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>();
     PriorityQueue<Edge> heap =
@@ -106,7 +111,7 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
     for (DocValuesMultiRangeQuery.Range r : clauses) {
       int cmp = cmp(comparator, r.lower, r.upper);
       if (cmp == 0) {
-        heap.add(new Edge(r));
+        heap.add(Edge.createPoint(r));
       } else {
         if (cmp < 0) {
           heap.add(new Edge(r, false));
@@ -169,14 +174,20 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
         '}';
   }
 
-  // TODO how to handle reverse ranges ???
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     return new MultiRangeWeight(boost, scoreMode);
   }
 
-  protected void bytesRangesToOrdRanges(SortedSetDocValues values, Collection<OrdRange> ordRanges)
+  /**
+   * Resolves ordinals for {@linkplain #rangeClauses}. Caveat: sometimes it updates ranges after
+   * inserting
+   *
+   * @param values doc values to lookup ordinals
+   * @param ordRanges destination collection for ord ranges
+   */
+  protected void createOrdRanges(SortedSetDocValues values, Collection<OrdRange> ordRanges)
       throws IOException {
     TermsEnum termsEnum = values.termsEnum();
     OrdRange previous = null;
@@ -219,7 +230,7 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
 
   @Override
   public void visit(QueryVisitor visitor) {
-    if (visitor.acceptField(field)) {
+    if (visitor.acceptField(fieldName)) {
       visitor.visitLeaf(this);
     }
   }
@@ -229,14 +240,14 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     SortedSetDocValuesMultiRangeQuery that = (SortedSetDocValuesMultiRangeQuery) o;
-    return Objects.equals(field, that.field)
+    return Objects.equals(fieldName, that.fieldName)
         && bytesPerDim == that.bytesPerDim
         && Objects.equals(rangeClauses, that.rangeClauses);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, bytesPerDim, rangeClauses);
+    return Objects.hash(fieldName, bytesPerDim, rangeClauses);
   }
 
   protected class MultiRangeWeight extends ConstantScoreWeight {
@@ -249,10 +260,10 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
 
     @Override
     public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-      if (context.reader().getFieldInfos().fieldInfo(field) == null) {
+      if (context.reader().getFieldInfos().fieldInfo(fieldName) == null) {
         return null;
       }
-      SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
+      SortedSetDocValues values = DocValues.getSortedSet(context.reader(), fieldName);
 
       return new MultiRangeScorerSupplier(values, context);
     }
@@ -261,7 +272,7 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
 
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
-      return DocValues.isCacheable(ctx, field);
+      return DocValues.isCacheable(ctx, fieldName);
     }
 
     protected class MultiRangeScorerSupplier extends ScorerSupplier {
@@ -277,14 +288,14 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
       public Scorer get(long leadCost) throws IOException {
         assert !rangeClauses.isEmpty() : "Builder should prevent it";
         List<OrdRange> ordRanges = new ArrayList<>();
-        bytesRangesToOrdRanges(values, ordRanges);
+        createOrdRanges(values, ordRanges);
         if (ordRanges.isEmpty()) {
           return empty();
         }
         LongBitSet matchingOrdsShifted = null;
         long minOrd = ordRanges.getFirst().lower, maxOrd = ordRanges.getLast().upper;
 
-        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
 
         if (skipper != null && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue())) {
           return empty();
