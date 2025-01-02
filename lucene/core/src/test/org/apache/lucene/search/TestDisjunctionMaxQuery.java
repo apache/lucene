@@ -638,6 +638,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
   }
 
   // Non-functional. Compile only - to ensure generics and type inference play nicely together
+  @SuppressWarnings("unused")
   public void testGenerics() {
     var dmq1 =
         new DisjunctionMaxQuery(
