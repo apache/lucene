@@ -211,9 +211,7 @@ public final class DocValuesMultiRangeQuery {
                       };
                   //                        }
                   if (skipper != null) {
-                    iterator =
-                        new DocValuesRangeIterator(
-                            iterator, skipper, minOrd, maxOrd, true);
+                    iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd, true);
                   }
                   return new ConstantScoreScorer(score(), scoreMode, iterator);
                 }
