@@ -33,7 +33,7 @@ import org.apache.lucene.util.FixedBitSet;
 public final class DisjunctionDISIApproximation extends DocIdSetIterator {
 
   public static DisjunctionDISIApproximation of(
-      Collection<DisiWrapper> subIterators, long leadCost) {
+      Collection<? extends DisiWrapper> subIterators, long leadCost) {
 
     return new DisjunctionDISIApproximation(subIterators, leadCost);
   }
@@ -46,7 +46,8 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
   private DisiWrapper leadTop;
   private int minOtherDoc;
 
-  public DisjunctionDISIApproximation(Collection<DisiWrapper> subIterators, long leadCost) {
+  public DisjunctionDISIApproximation(
+      Collection<? extends DisiWrapper> subIterators, long leadCost) {
     // Using a heap to store disjunctive clauses is great for exhaustive evaluation, when a single
     // clause needs to move through the heap on every iteration on average. However, when
     // intersecting with a selective filter, it is possible that all clauses need advancing, which
