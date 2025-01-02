@@ -21,7 +21,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -156,36 +155,20 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     }
 
     // for each node outside of j set:
-    // form the candidate set for the node
-    // by joining the node's neighbours in gS with
-    // the node's neighbours' neighbours in gL
+    // form ep set for the node
+    // by joining the node's neighbours in gS with the set J
     for (int u = 0; u < it.size; u++) {
       if (j.contains(u)) {
         continue;
       }
-      int newu = ordMapS[u];
-      Set<Integer> w = new HashSet<>();
       List<Integer> nsU = nodesNs.get(u);
+      List<Integer> w = new ArrayList<>();
       for (int v : nsU) {
-        // if u's neighbour v is in the join set, or already added to gL (v < u),
-        // then we add v's neighbours from gL to the candidate list
-        if (j.contains(v) || v < u) {
-          int newv = ordMapS[v];
-          // if new ordinal of v > new ordinal of node, then it doesn't exist in gL yet,
-          // so we don't add it to the candidate list
-          if (newv < newu) {
-            w.add(newv);
-          }
-
-          NeighborArray nsVArray = hnsw.getNeighbors(0, newv);
-          int[] nsV = nsVArray.nodes();
-          int nsVSize = nsVArray.size();
-          for (int k = 0; k < nsVSize; k++) {
-            w.add(nsV[k]);
-          }
+        if (v < u || j.contains(v)) {
+          w.add(ordMapS[v]);
         }
       }
-      addGraphNodeWithCandidates(newu, w);
+      addGraphNodeWithCandidates(ordMapS[u], w);
     }
   }
 }
