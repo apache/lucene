@@ -19,7 +19,7 @@ package org.apache.lucene.search;
 
 /**
  * A {@link HnswKnnCollector} that early exits when nearest neighbor queue keeps saturating beyond a 'patience'
- * parameter, function of {@link #k()}.
+ * parameter.
  */
 public class HnswQueueSaturationCollector implements HnswKnnCollector {
 
@@ -28,7 +28,7 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
     private final KnnCollector delegate;
     private double saturationThreshold;
     private int patience;
-    private boolean globalPatienceFinished;
+    private boolean patienceFinished;
     private int countSaturated;
     private int previousQueueSize;
     private int currentQueueSize;
@@ -38,7 +38,7 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
         this.previousQueueSize = 0;
         this.currentQueueSize = 0;
         this.countSaturated = 0;
-        this.globalPatienceFinished = false;
+        this.patienceFinished = false;
         this.saturationThreshold = saturationThreshold;
         this.patience = patience;
     }
@@ -48,7 +48,7 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
         this.previousQueueSize = 0;
         this.currentQueueSize = 0;
         this.countSaturated = 0;
-        this.globalPatienceFinished = false;
+        this.patienceFinished = false;
         this.saturationThreshold = DEFAULT_SATURATION_THRESHOLD;
         this.patience = defaultPatience();
     }
@@ -59,7 +59,7 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
 
     @Override
     public boolean earlyTerminated() {
-        return delegate.earlyTerminated() || globalPatienceFinished;
+        return delegate.earlyTerminated() || patienceFinished;
     }
 
     @Override
@@ -111,7 +111,7 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
             countSaturated = 0;
         }
         if (countSaturated > patience) {
-            globalPatienceFinished = true;
+            patienceFinished = true;
         }
     }
 }

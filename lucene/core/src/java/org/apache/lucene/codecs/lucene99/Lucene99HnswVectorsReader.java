@@ -315,10 +315,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
-    final KnnCollector collector = new HnswQueueSaturationCollector(
-            new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc));
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     if (knnCollector.k() < scorer.maxOrd()) {
+      final KnnCollector collector;
+      OrdinalTranslatedKnnCollector ordinalTranslatedKnnCollector =
+              new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+      if (scorer.maxOrd() > 1000) {
+        collector = new HnswQueueSaturationCollector(ordinalTranslatedKnnCollector);
+      } else {
+        collector = ordinalTranslatedKnnCollector;
+      }
       HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
     } else {
       // if k is larger than the number of vectors, we can just iterate over all vectors
