@@ -47,7 +47,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Ignore;
 
 /** Test of the DisjunctionMaxQuery. */
 @LuceneTestCase.SuppressCodecs("SimpleText")
