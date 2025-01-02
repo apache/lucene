@@ -230,7 +230,6 @@ public class BpVectorReorderer extends AbstractBPReorderer {
 
     @Override
     protected void compute() {
-      System.out.println("ReorderTask.compute " + ids);
       if (depth > 0) {
         Arrays.sort(ids.ints, ids.offset, ids.offset + ids.length);
       } else {
@@ -548,7 +547,6 @@ public class BpVectorReorderer extends AbstractBPReorderer {
 
     @Override
     protected void compute() {
-      System.out.printf("ComputeBiasTask.compute %x-%x\n", start, end);
       final int problemSize = end - start;
       if (problemSize > 1 && shouldFork(problemSize, ids.length)) {
         final int mid = (start + end) >>> 1;
@@ -614,6 +612,9 @@ public class BpVectorReorderer extends AbstractBPReorderer {
       taskExecutor = new TaskExecutor(executor);
     }
     VectorSimilarityFunction vectorScore = checkField(reader, partitionField);
+    if (vectorScore == null) {
+      return null;
+    }
     FloatVectorValues floats = reader.getFloatVectorValues(partitionField);
     Sorter.DocMap valueMap = computeValueMap(floats, vectorScore, taskExecutor);
     return valueMapToDocMap(valueMap, floats, reader.maxDoc());
@@ -728,16 +729,25 @@ public class BpVectorReorderer extends AbstractBPReorderer {
       throws IOException {
     FieldInfo finfo = reader.getFieldInfos().fieldInfo(field);
     if (finfo == null) {
+      return null;
+      /*
       throw new IllegalStateException(
           "field not found: " + field + " in leaf " + reader.getContext().ord);
+      */
     }
     if (finfo.hasVectorValues() == false) {
+      return null;
+      /*
       throw new IllegalStateException(
           "field not a vector field: " + field + " in leaf " + reader.getContext().ord);
+      */
     }
     if (finfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
+      return null;
+      /*
       throw new IllegalStateException(
           "vector field not encoded as float32: " + field + " in leaf " + reader.getContext().ord);
+      */
     }
     return finfo.getVectorSimilarityFunction();
   }
