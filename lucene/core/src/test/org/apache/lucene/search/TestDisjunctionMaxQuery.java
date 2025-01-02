@@ -637,13 +637,26 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // Non-functional. Compile only - to ensure generics and type inference play nicely together
+  public void testGenerics() {
+    var dmq1 =
+        new DisjunctionMaxQuery(
+            Arrays.stream(new String[] {"term"}).map((term) -> tq("test", term)).toList(), 1.0f);
+
+    var disjuncts =
+        List.of(
+            new RegexpQuery(new Term("field", "foobar")),
+            new WildcardQuery(new Term("field", "foobar")));
+    var dmq2 = new DisjunctionMaxQuery(disjuncts, 1.0f);
+  }
+
   /** macro */
-  protected Query tq(String f, String t) {
+  protected TermQuery tq(String f, String t) {
     return new TermQuery(new Term(f, t));
   }
 
   /** macro */
-  protected Query tq(String f, String t, float b) {
+  protected BoostQuery tq(String f, String t, float b) {
     Query q = tq(f, t);
     return new BoostQuery(q, b);
   }
