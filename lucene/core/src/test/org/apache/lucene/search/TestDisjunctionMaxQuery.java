@@ -47,6 +47,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.Ignore;
 
 /** Test of the DisjunctionMaxQuery. */
 @LuceneTestCase.SuppressCodecs("SimpleText")
@@ -637,18 +638,19 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     dir.close();
   }
 
-  // Non-functional. Compile only - to ensure generics and type inference play nicely together
-  @SuppressWarnings("unused")
+  // Ensure generics and type inference play nicely together
   public void testGenerics() {
-    var dmq1 =
+    var query =
         new DisjunctionMaxQuery(
             Arrays.stream(new String[] {"term"}).map((term) -> tq("test", term)).toList(), 1.0f);
+    assertEquals(1, query.getDisjuncts().size());
 
     var disjuncts =
         List.of(
             new RegexpQuery(new Term("field", "foobar")),
             new WildcardQuery(new Term("field", "foobar")));
-    var dmq2 = new DisjunctionMaxQuery(disjuncts, 1.0f);
+    query = new DisjunctionMaxQuery(disjuncts, 1.0f);
+    assertEquals(2, query.getDisjuncts().size());
   }
 
   /** macro */
