@@ -67,6 +67,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   private final GraphBuilderKnnCollector entryCandidates; // for upper levels of graph search
   private final GraphBuilderKnnCollector
       beamCandidates; // for levels of graph where we add the node
+  private final GraphBuilderKnnCollector beamCandidates0;
 
   protected final OnHeapHnswGraph hnsw;
   protected final HnswLock hnswLock;
@@ -151,6 +152,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.graphSearcher = graphSearcher;
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
+    beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth, M * 2));
   }
 
   @Override
@@ -209,11 +211,11 @@ public class HnswGraphBuilder implements HnswBuilder {
     addGraphNodeInternal(node, null);
   }
 
-  public void addGraphNodeWithCandidates(int node, Set<Integer> candidates) throws IOException {
-    addGraphNodeInternal(node, candidates);
+  public void addGraphNodeWithCandidates(int node, Set<Integer> eps0) throws IOException {
+    addGraphNodeInternal(node, eps0);
   }
 
-  private void addGraphNodeInternal(int node, Set<Integer> candidates0) throws IOException {
+  private void addGraphNodeInternal(int node, Set<Integer> eps0) throws IOException {
     /*
     Note: this implementation is thread safe when graph size is fixed (e.g. when merging)
     The process of adding a node is roughly:
@@ -272,19 +274,18 @@ public class HnswGraphBuilder implements HnswBuilder {
       for (int i = scratchPerLevel.length - 1; i >= 0; i--) {
         int level = i + lowestUnsetLevel;
         candidates.clear();
-        if (level == 0 && candidates0 != null && candidates0.size() > 0) {
-          scratchPerLevel[i] = new NeighborArray(candidates0.size(), false);
-          for (int cand0 : candidates0) {
-            float sim = scorer.score(cand0);
-            scratchPerLevel[i].addOutOfOrder(cand0, sim);
+        if (level == 0 && eps0 != null && eps0.size() > 0) {
+          eps = new int[eps0.size()];
+          int j = 0;
+          for (int ep : eps0) {
+            eps[j++] = ep;
           }
-          scratchPerLevel[i].sort();
-        } else {
-          graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-          eps = candidates.popUntilNearestKNodes();
-          scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
-          popToScratch(candidates, scratchPerLevel[i]);
+          candidates = beamCandidates0;
         }
+        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
+        eps = candidates.popUntilNearestKNodes();
+        scratchPerLevel[i] = new NeighborArray(Math.max(candidates.k(), M + 1), false);
+        popToScratch(candidates, scratchPerLevel[i]);
       }
 
       // then do connections from bottom up
