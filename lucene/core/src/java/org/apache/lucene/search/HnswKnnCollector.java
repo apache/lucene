@@ -16,13 +16,9 @@
  */
 package org.apache.lucene.search;
 
-/**
- * {@link KnnCollector} that exposes methods to hook into specific parts of the HNSW algorithm.
- */
+/** {@link KnnCollector} that exposes methods to hook into specific parts of the HNSW algorithm. */
 public interface HnswKnnCollector extends KnnCollector {
 
-    /**
-     * Indicates exploration of the next HNSW candidate graph node.
-     */
-    void nextCandidate();
+  /** Indicates exploration of the next HNSW candidate graph node. */
+  void nextCandidate();
 }

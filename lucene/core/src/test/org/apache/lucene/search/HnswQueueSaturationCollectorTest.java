@@ -16,28 +16,28 @@
  */
 package org.apache.lucene.search;
 
+import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
-import java.util.Random;
-
-/**
- * Tests for  {@link HnswQueueSaturationCollector}
- */
+/** Tests for {@link HnswQueueSaturationCollector} */
 public class HnswQueueSaturationCollectorTest extends LuceneTestCase {
 
-    @Test
-    public void testDelegate() {
-        Random random = random();
-        KnnCollector delegate = new TopKnnCollector(random.nextInt(100), random.nextInt(1000));
-        HnswQueueSaturationCollector queueSaturationCollector = new HnswQueueSaturationCollector(delegate);
-        for (int i = 0; i < random.nextInt(100); i++) {
-            queueSaturationCollector.collect(random.nextInt(1000), random.nextFloat(1.0f));
-        }
-        assertEquals(delegate.k(), queueSaturationCollector.k());
-        assertEquals(delegate.visitedCount(), queueSaturationCollector.visitedCount());
-        assertEquals(delegate.visitLimit(), queueSaturationCollector.visitLimit());
-        assertEquals(delegate.minCompetitiveSimilarity(), queueSaturationCollector.minCompetitiveSimilarity(), 1e-3);
+  @Test
+  public void testDelegate() {
+    Random random = random();
+    KnnCollector delegate = new TopKnnCollector(random.nextInt(100), random.nextInt(1000));
+    HnswQueueSaturationCollector queueSaturationCollector =
+        new HnswQueueSaturationCollector(delegate);
+    for (int i = 0; i < random.nextInt(100); i++) {
+      queueSaturationCollector.collect(random.nextInt(1000), random.nextFloat(1.0f));
     }
-
+    assertEquals(delegate.k(), queueSaturationCollector.k());
+    assertEquals(delegate.visitedCount(), queueSaturationCollector.visitedCount());
+    assertEquals(delegate.visitLimit(), queueSaturationCollector.visitLimit());
+    assertEquals(
+        delegate.minCompetitiveSimilarity(),
+        queueSaturationCollector.minCompetitiveSimilarity(),
+        1e-3);
+  }
 }

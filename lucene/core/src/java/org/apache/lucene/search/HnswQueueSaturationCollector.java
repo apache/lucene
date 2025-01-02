@@ -18,100 +18,102 @@
 package org.apache.lucene.search;
 
 /**
- * A {@link HnswKnnCollector} that early exits when nearest neighbor queue keeps saturating beyond a 'patience'
- * parameter.
+ * A {@link HnswKnnCollector} that early exits when nearest neighbor queue keeps saturating beyond a
+ * 'patience' parameter.
  */
 public class HnswQueueSaturationCollector implements HnswKnnCollector {
 
-    private static final double DEFAULT_SATURATION_THRESHOLD = 0.995d;
+  private static final double DEFAULT_SATURATION_THRESHOLD = 0.995d;
 
-    private final KnnCollector delegate;
-    private double saturationThreshold;
-    private int patience;
-    private boolean patienceFinished;
-    private int countSaturated;
-    private int previousQueueSize;
-    private int currentQueueSize;
+  private final KnnCollector delegate;
+  private double saturationThreshold;
+  private int patience;
+  private boolean patienceFinished;
+  private int countSaturated;
+  private int previousQueueSize;
+  private int currentQueueSize;
 
-    public HnswQueueSaturationCollector(KnnCollector delegate, double saturationThreshold, int patience) {
-        this.delegate = delegate;
-        this.previousQueueSize = 0;
-        this.currentQueueSize = 0;
-        this.countSaturated = 0;
-        this.patienceFinished = false;
-        this.saturationThreshold = saturationThreshold;
-        this.patience = patience;
+  public HnswQueueSaturationCollector(
+      KnnCollector delegate, double saturationThreshold, int patience) {
+    this.delegate = delegate;
+    this.previousQueueSize = 0;
+    this.currentQueueSize = 0;
+    this.countSaturated = 0;
+    this.patienceFinished = false;
+    this.saturationThreshold = saturationThreshold;
+    this.patience = patience;
+  }
+
+  public HnswQueueSaturationCollector(KnnCollector delegate) {
+    this.delegate = delegate;
+    this.previousQueueSize = 0;
+    this.currentQueueSize = 0;
+    this.countSaturated = 0;
+    this.patienceFinished = false;
+    this.saturationThreshold = DEFAULT_SATURATION_THRESHOLD;
+    this.patience = defaultPatience();
+  }
+
+  private int defaultPatience() {
+    return Math.max(7, (int) (k() * 0.3));
+  }
+
+  @Override
+  public boolean earlyTerminated() {
+    return delegate.earlyTerminated() || patienceFinished;
+  }
+
+  @Override
+  public void incVisitedCount(int count) {
+    delegate.incVisitedCount(count);
+  }
+
+  @Override
+  public long visitedCount() {
+    return delegate.visitedCount();
+  }
+
+  @Override
+  public long visitLimit() {
+    return delegate.visitLimit();
+  }
+
+  @Override
+  public int k() {
+    return delegate.k();
+  }
+
+  @Override
+  public boolean collect(int docId, float similarity) {
+    boolean collect = delegate.collect(docId, similarity);
+    if (collect) {
+      currentQueueSize++;
     }
+    return collect;
+  }
 
-    public HnswQueueSaturationCollector(KnnCollector delegate) {
-        this.delegate = delegate;
-        this.previousQueueSize = 0;
-        this.currentQueueSize = 0;
-        this.countSaturated = 0;
-        this.patienceFinished = false;
-        this.saturationThreshold = DEFAULT_SATURATION_THRESHOLD;
-        this.patience = defaultPatience();
-    }
+  @Override
+  public float minCompetitiveSimilarity() {
+    return delegate.minCompetitiveSimilarity();
+  }
 
-    private int defaultPatience() {
-        return Math.max(7, (int) (k() * 0.3));
-    }
+  @Override
+  public TopDocs topDocs() {
+    return delegate.topDocs();
+  }
 
-    @Override
-    public boolean earlyTerminated() {
-        return delegate.earlyTerminated() || patienceFinished;
+  @Override
+  public void nextCandidate() {
+    double queueSaturation =
+        (double) Math.min(currentQueueSize, previousQueueSize) / currentQueueSize;
+    previousQueueSize = currentQueueSize;
+    if (queueSaturation >= saturationThreshold) {
+      countSaturated++;
+    } else {
+      countSaturated = 0;
     }
-
-    @Override
-    public void incVisitedCount(int count) {
-        delegate.incVisitedCount(count);
+    if (countSaturated > patience) {
+      patienceFinished = true;
     }
-
-    @Override
-    public long visitedCount() {
-        return delegate.visitedCount();
-    }
-
-    @Override
-    public long visitLimit() {
-        return delegate.visitLimit();
-    }
-
-    @Override
-    public int k() {
-        return delegate.k();
-    }
-
-    @Override
-    public boolean collect(int docId, float similarity) {
-        boolean collect = delegate.collect(docId, similarity);
-        if (collect) {
-            currentQueueSize++;
-        }
-        return collect;
-    }
-
-    @Override
-    public float minCompetitiveSimilarity() {
-        return delegate.minCompetitiveSimilarity();
-    }
-
-    @Override
-    public TopDocs topDocs() {
-        return delegate.topDocs();
-    }
-
-    @Override
-    public void nextCandidate() {
-        double queueSaturation = (double) Math.min(currentQueueSize, previousQueueSize) / currentQueueSize;
-        previousQueueSize = currentQueueSize;
-        if (queueSaturation >= saturationThreshold) {
-            countSaturated++;
-        } else {
-            countSaturated = 0;
-        }
-        if (countSaturated > patience) {
-            patienceFinished = true;
-        }
-    }
+  }
 }
