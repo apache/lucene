@@ -64,7 +64,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       allScorers[i++] = w;
     }
     this.cost = cost;
-    essentialQueue = new DisiPriorityQueue(allScorers.length);
+    essentialQueue = DisiPriorityQueue.ofMaxSize(allScorers.length);
     maxScoreSums = new double[allScorers.length];
   }
 

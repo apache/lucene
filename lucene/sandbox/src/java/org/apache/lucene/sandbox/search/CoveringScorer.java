@@ -51,7 +51,7 @@ final class CoveringScorer extends Scorer {
     this.minMatchValues = minMatchValues;
     this.doc = -1;
 
-    subScorers = new DisiPriorityQueue(scorers.size());
+    subScorers = DisiPriorityQueue.ofMaxSize(scorers.size());
 
     for (Scorer scorer : scorers) {
       subScorers.add(new DisiWrapper(scorer, false));
