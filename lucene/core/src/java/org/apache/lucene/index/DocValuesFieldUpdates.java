@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.ByteArrayRandomAccessInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
@@ -26,6 +27,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedMutable;
@@ -84,14 +86,22 @@ abstract class DocValuesFieldUpdates implements Accountable {
     /** Wraps the given iterator as a BinaryDocValues instance. */
     static BinaryDocValues asBinaryDocValues(Iterator iterator) {
       return new BinaryDocValues() {
+
+        private final ByteArrayRandomAccessInput input = new ByteArrayRandomAccessInput();
+        private final RandomAccessInputRef ref = new RandomAccessInputRef(input);
+
         @Override
         public int docID() {
           return iterator.docID();
         }
 
         @Override
-        public BytesRef binaryValue() {
-          return iterator.binaryValue();
+        public RandomAccessInputRef randomAccessInputValue() {
+          BytesRef bytesRef = iterator.binaryValue();
+          input.reset(bytesRef.bytes);
+          ref.offset = bytesRef.offset;
+          ref.length = bytesRef.length;
+          return ref;
         }
 
         @Override
