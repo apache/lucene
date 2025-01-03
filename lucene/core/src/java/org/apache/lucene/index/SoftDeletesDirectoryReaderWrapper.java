@@ -32,9 +32,9 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * This reader filters out documents that have a doc-values value in the given field and treats these
- * documents as soft-deleted. Hard deleted documents will also be filtered out in the live docs of
- * this reader.
+ * This reader filters out documents that have a doc-values value in the given field and treats
+ * these documents as soft-deleted. Hard deleted documents will also be filtered out in the live
+ * docs of this reader.
  *
  * @see IndexWriterConfig#setSoftDeletesField(String)
  * @see IndexWriter#softUpdateDocument(Term, Iterable, Field...)

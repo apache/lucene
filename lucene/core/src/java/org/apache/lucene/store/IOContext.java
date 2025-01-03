@@ -34,9 +34,7 @@ import org.apache.lucene.util.Constants;
 public record IOContext(
     Context context, MergeInfo mergeInfo, FlushInfo flushInfo, ReadAdvice readAdvice) {
 
-  /**
-   * Context is an enumerator which specifies the context in which the Directory is being used.
-   */
+  /** Context is an enumerator which specifies the context in which the Directory is being used. */
   public enum Context {
     /** Context for reads and writes that are associated with a merge. */
     MERGE,

@@ -211,8 +211,8 @@ public class DirectIODirectory extends FilterDirectory {
      * bypassing OS buffer
      *
      * @throws UnsupportedOperationException if the JDK does not support Direct I/O
-     * @throws IOException if the operating system or filesystem does not support Direct I/O
-     *     or a sufficient equivalent.
+     * @throws IOException if the operating system or filesystem does not support Direct I/O or a
+     *     sufficient equivalent.
      */
     public DirectIOIndexOutput(Path path, String name, int blockSize, int bufferSize)
         throws IOException {
