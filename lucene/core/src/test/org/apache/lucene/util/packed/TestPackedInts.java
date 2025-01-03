@@ -986,7 +986,7 @@ public class TestPackedInts extends LuceneTestCase {
         new long[RandomNumbers.randomIntBetween(random(), 1, TEST_NIGHTLY ? 1000000 : 10000)];
     float[] ratioOptions = new float[] {PackedInts.DEFAULT, PackedInts.COMPACT, PackedInts.FAST};
     for (int bpv : new int[] {0, 1, 63, 64, RandomNumbers.randomIntBetween(random(), 2, 62)}) {
-      for (DataType dataType : Arrays.asList(DataType.DELTA_PACKED)) {
+      for (DataType dataType : DataType.values()) {
         final int pageSize = 1 << TestUtil.nextInt(random(), 6, 20);
         float acceptableOverheadRatio =
             ratioOptions[TestUtil.nextInt(random(), 0, ratioOptions.length - 1)];
