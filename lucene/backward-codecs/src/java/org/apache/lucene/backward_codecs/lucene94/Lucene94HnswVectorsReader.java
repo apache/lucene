@@ -448,6 +448,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     final int size;
     final long bytesForConns;
     final long bytesForConns0;
+    final int maxConn;
 
     int arcCount;
     int arcUpTo;
@@ -463,6 +464,7 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
       this.bytesForConns = Math.multiplyExact(Math.addExact(entry.M, 1L), Integer.BYTES);
       this.bytesForConns0 =
           Math.multiplyExact(Math.addExact(Math.multiplyExact(entry.M, 2L), 1), Integer.BYTES);
+      maxConn = entry.M;
     }
 
     @Override
@@ -499,6 +501,11 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     @Override
     public int numLevels() {
       return numLevels;
+    }
+
+    @Override
+    public int maxConn() {
+      return maxConn;
     }
 
     @Override

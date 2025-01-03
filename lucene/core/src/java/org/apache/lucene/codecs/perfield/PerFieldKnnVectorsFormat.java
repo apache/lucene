@@ -28,6 +28,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -41,6 +42,7 @@ import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Enables per field numeric vector support.
@@ -189,7 +191,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   }
 
   /** VectorReader that can wrap multiple delegate readers, selected by field. */
-  public static class FieldsReader extends KnnVectorsReader {
+  public static class FieldsReader extends KnnVectorsReader implements HnswGraphProvider {
 
     private final IntObjectHashMap<KnnVectorsReader> fields = new IntObjectHashMap<>();
     private final FieldInfos fieldInfos;
@@ -320,6 +322,17 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
         return;
       }
       reader.search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public HnswGraph getGraph(String field) throws IOException {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      KnnVectorsReader knnVectorsReader = fields.get(info.number);
+      if (knnVectorsReader instanceof HnswGraphProvider) {
+        return ((HnswGraphProvider) knnVectorsReader).getGraph(field);
+      } else {
+        return null;
+      }
     }
 
     @Override

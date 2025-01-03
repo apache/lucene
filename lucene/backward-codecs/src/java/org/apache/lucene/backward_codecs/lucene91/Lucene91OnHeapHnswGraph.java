@@ -161,6 +161,11 @@ public final class Lucene91OnHeapHnswGraph extends HnswGraph {
   }
 
   @Override
+  public int maxConn() {
+    return maxConn;
+  }
+
+  @Override
   public NodesIterator getNodesOnLevel(int level) {
     if (level == 0) {
       return new ArrayNodesIterator(size());

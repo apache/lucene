@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -35,17 +36,32 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
+import org.junit.Before;
 
 public class TestBPReorderingMergePolicy extends LuceneTestCase {
+
+  AbstractBPReorderer reorderer;
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    if (random().nextBoolean()) {
+      BPIndexReorderer bpIndexReorderer = new BPIndexReorderer();
+      bpIndexReorderer.setMinDocFreq(2);
+      reorderer = bpIndexReorderer;
+    } else {
+      BpVectorReorderer bpVectorReorderer = new BpVectorReorderer("vector");
+      reorderer = bpVectorReorderer;
+    }
+    reorderer.setMinPartitionSize(2);
+  }
 
   public void testReorderOnMerge() throws IOException {
     Directory dir1 = newDirectory();
     Directory dir2 = newDirectory();
     IndexWriter w1 =
         new IndexWriter(dir1, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
-    BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setMinDocFreq(2);
-    reorderer.setMinPartitionSize(2);
     BPReorderingMergePolicy mp = new BPReorderingMergePolicy(newLogMergePolicy(), reorderer);
     mp.setMinNaturalMergeNumDocs(2);
     IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig().setMergePolicy(mp));
@@ -54,10 +70,14 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     doc.add(idField);
     StringField bodyField = new StringField("body", "", Store.YES);
     doc.add(bodyField);
+    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[] {0});
+    doc.add(vectorField);
 
     for (int i = 0; i < 10000; ++i) {
       idField.setStringValue(Integer.toString(i));
-      bodyField.setStringValue(Integer.toString(i % 2 == 0 ? 0 : i % 10));
+      int intValue = i % 2 == 0 ? 0 : i % 10;
+      bodyField.setStringValue(Integer.toString(intValue));
+      vectorField.setVectorValue(new float[] {intValue});
       w1.addDocument(doc);
       w2.addDocument(doc);
 
@@ -131,10 +151,15 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     doc.add(idField);
     StringField bodyField = new StringField("body", "", Store.YES);
     doc.add(bodyField);
+    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[] {0});
+    doc.add(vectorField);
 
     for (int i = 0; i < 10000; ++i) {
       idField.setStringValue(Integer.toString(i));
-      bodyField.setStringValue(Integer.toString(i % 2 == 0 ? 0 : i % 10));
+      int intValue = i % 2 == 0 ? 0 : i % 10;
+      bodyField.setStringValue(Integer.toString(intValue));
+      vectorField.setVectorValue(new float[] {intValue});
+
       w1.addDocument(doc);
 
       if (i % 3 == 0) {
@@ -147,9 +172,6 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     }
 
     Directory dir2 = newDirectory();
-    BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setMinDocFreq(2);
-    reorderer.setMinPartitionSize(2);
     BPReorderingMergePolicy mp = new BPReorderingMergePolicy(newLogMergePolicy(), reorderer);
     mp.setMinNaturalMergeNumDocs(2);
     IndexWriter w2 = new IndexWriter(dir2, newIndexWriterConfig().setMergePolicy(mp));
@@ -222,9 +244,6 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
   public void testReorderDoesntHaveEnoughRAM() throws IOException {
     // This just makes sure that reordering the index on merge does not corrupt its content
     Directory dir = newDirectory();
-    BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setMinDocFreq(2);
-    reorderer.setMinPartitionSize(2);
     reorderer.setRAMBudgetMB(Double.MIN_VALUE);
     BPReorderingMergePolicy mp = new BPReorderingMergePolicy(newLogMergePolicy(), reorderer);
     mp.setMinNaturalMergeNumDocs(2);
@@ -234,10 +253,14 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     doc.add(idField);
     StringField bodyField = new StringField("body", "", Store.YES);
     doc.add(bodyField);
+    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[] {0});
+    doc.add(vectorField);
 
     for (int i = 0; i < 10; ++i) {
       idField.setStringValue(Integer.toString(i));
-      bodyField.setStringValue(Integer.toString(i % 2 == 0 ? 0 : i % 10));
+      int intValue = i % 2 == 0 ? 0 : i % 10;
+      bodyField.setStringValue(Integer.toString(intValue));
+      vectorField.setVectorValue(new float[] {intValue});
       w.addDocument(doc);
       DirectoryReader.open(w).close();
     }

@@ -335,6 +335,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       @Override
+      public int maxConn() {
+        return graph.maxConn();
+      }
+
+      @Override
       public int entryNode() {
         throw new UnsupportedOperationException("Not supported on a mock graph");
       }

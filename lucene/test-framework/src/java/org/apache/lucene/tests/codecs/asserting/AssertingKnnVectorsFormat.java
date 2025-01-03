@@ -223,7 +223,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public HnswGraph getGraph(String field) throws IOException {
-      return ((HnswGraphProvider) delegate).getGraph(field);
+      if (delegate instanceof HnswGraphProvider) {
+        return ((HnswGraphProvider) delegate).getGraph(field);
+      } else {
+        return null;
+      }
     }
   }
 }

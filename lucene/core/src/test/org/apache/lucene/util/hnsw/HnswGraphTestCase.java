@@ -550,12 +550,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     // another graph to do the assertion
     OnHeapHnswGraph graphAfterInit =
         InitializedHnswGraphBuilder.initGraph(
-            10, initializerGraph, initializerOrdMap, initializerGraph.size());
+            initializerGraph, initializerOrdMap, initializerGraph.size());
 
     HnswGraphBuilder finalBuilder =
         InitializedHnswGraphBuilder.fromGraph(
             finalscorerSupplier,
-            10,
             30,
             seed,
             initializerGraph,
@@ -593,7 +592,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder finalBuilder =
         InitializedHnswGraphBuilder.fromGraph(
             finalscorerSupplier,
-            10,
             30,
             seed,
             initializerGraph,
@@ -987,7 +985,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder.randSeed = random().nextLong();
     HnswConcurrentMergeBuilder builder =
         new HnswConcurrentMergeBuilder(
-            taskExecutor, 4, scorerSupplier, 10, 30, new OnHeapHnswGraph(10, size), null);
+            taskExecutor, 4, scorerSupplier, 30, new OnHeapHnswGraph(10, size), null);
     builder.setBatchSize(100);
     builder.build(size);
     exec.shutdownNow();
@@ -1335,6 +1333,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     @Override
     public int entryNode() throws IOException {
       return delegate.entryNode();
+    }
+
+    @Override
+    public int maxConn() throws IOException {
+      return delegate.maxConn();
     }
 
     @Override
