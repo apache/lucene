@@ -32,8 +32,8 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * This reader filters out documents that have a doc values value in the given field and treat these
- * documents as soft deleted. Hard deleted documents will also be filtered out in the life docs of
+ * This reader filters out documents that have a doc-values value in the given field and treats these
+ * documents as soft-deleted. Hard deleted documents will also be filtered out in the live docs of
  * this reader.
  *
  * @see IndexWriterConfig#setSoftDeletesField(String)
@@ -68,7 +68,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
   protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) throws IOException {
     Map<CacheKey, LeafReader> readerCache = new HashMap<>();
     for (LeafReader reader : getSequentialSubReaders()) {
-      // we try to reuse the life docs instances here if the reader cache key didn't change
+      // we try to reuse the live docs instances here if the reader cache key didn't change
       if (reader instanceof SoftDeletesFilterLeafReader && reader.getReaderCacheHelper() != null) {
         readerCache.put(
             ((SoftDeletesFilterLeafReader) reader).reader.getReaderCacheHelper().getKey(), reader);

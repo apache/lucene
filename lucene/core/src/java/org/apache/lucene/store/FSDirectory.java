@@ -349,7 +349,7 @@ public abstract class FSDirectory extends BaseDirectory {
         // a WindowsFSDirectory ...
         // LUCENE-6684: we suppress this check for Windows, since a file could be in a confusing
         // "pending delete" state, failing the first
-        // delete attempt with access denied and then apparently falsely failing here when we try ot
+        // delete attempt with access denied and then apparently falsely failing here when we try to
         // delete it again, with NSFE/FNFE
       } else {
         throw e;
