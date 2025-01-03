@@ -52,4 +52,17 @@ public interface VectorUtilSupport {
    * to} is returned.
    */
   int findNextGEQ(int[] buffer, int target, int from, int to);
+
+  /**
+   * Compute the dot product between a quantized int4 vector and a binary quantized vector. It is
+   * assumed that the int4 quantized bits are packed in the byte array in the same way as the {@link
+   * org.apache.lucene.util.quantization.OptimizedScalarQuantizer#transposeHalfByte(byte[], byte[])}
+   * and that the binary bits are packed the same way as {@link
+   * org.apache.lucene.util.quantization.OptimizedScalarQuantizer#packAsBinary(byte[], byte[])}.
+   *
+   * @param int4Quantized half byte packed int4 quantized vector
+   * @param binaryQuantized byte packed binary quantized vector
+   * @return the dot product
+   */
+  long int4BitDotProduct(byte[] int4Quantized, byte[] binaryQuantized);
 }
