@@ -48,7 +48,7 @@ public final class SegmentReader extends CodecReader {
 
   private final SegmentCommitInfo si;
   // this is the original SI that IW uses internally but it's mutated behind the scenes
-  // and we don't want this SI to be used for anything. Yet, IW needs this to do maintainance
+  // and we don't want this SI to be used for anything. Yet, IW needs this to do maintenance
   // and lookup pooled readers etc.
   private final SegmentCommitInfo originalSi;
   private final LeafMetaData metaData;

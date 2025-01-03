@@ -273,7 +273,7 @@ final class ReaderPool implements Closeable {
   }
 
   /**
-   * Returns a list of all currently maintained ReadersAndUpdates sorted by it's ram consumption
+   * Returns a list of all currently maintained ReadersAndUpdates sorted by their ram consumption
    * largest to smallest. This list can also contain readers that don't consume any ram at this
    * point i.e. don't have any updates buffered.
    */

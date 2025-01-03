@@ -32,8 +32,8 @@ public final class CompositeReaderContext extends IndexReaderContext {
   }
 
   /**
-   * Creates a {@link CompositeReaderContext} for intermediate readers that aren't not top-level
-   * readers in the current context
+   * Creates a {@link CompositeReaderContext} for intermediate readers that aren't top-level readers
+   * in the current context
    */
   CompositeReaderContext(
       CompositeReaderContext parent,

@@ -56,8 +56,8 @@ import org.apache.lucene.util.IOUtils;
  * </pre>
  *
  * <p>This will cache all newly flushed segments, all merges whose expected segment size is {@code
- * <= 5 MB}, unless the net cached bytes exceeds 60 MB at which point all writes will not be cached
- * (until the net bytes falls below 60 MB).
+ * <= 5 MB}, unless the net cached bytes exceed 60 MB at which point all writes will not be cached
+ * (until the net bytes fall below 60 MB).
  *
  * @lucene.experimental
  */

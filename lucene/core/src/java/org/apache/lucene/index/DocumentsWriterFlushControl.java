@@ -216,7 +216,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       // we need to commit this under lock but calculate it outside of the lock to minimize the time
       // this lock is held
       // per document. The reason we update this under lock is that we mark DWPTs as pending without
-      // acquiring it's
+      // acquiring its
       // lock in #setFlushPending and this also reads the committed bytes and modifies the
       // flush/activeBytes.
       // In the future we can clean this up to be more intuitive.

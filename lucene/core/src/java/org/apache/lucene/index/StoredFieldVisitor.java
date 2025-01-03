@@ -63,7 +63,7 @@ public abstract class StoredFieldVisitor {
   /** Process a string field. */
   public void stringField(FieldInfo fieldInfo, String value) throws IOException {}
 
-  /** Process a int numeric field. */
+  /** Process an int numeric field. */
   public void intField(FieldInfo fieldInfo, int value) throws IOException {}
 
   /** Process a long numeric field. */

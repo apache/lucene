@@ -223,7 +223,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
     // Since we know we will not be searching for additional indexing, we can just write the
-    // the vectors directly to the new segment.
+    // vectors directly to the new segment.
     // No need to use temporary file as we don't have to re-open for reading
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       ScalarQuantizer mergedQuantizationState =

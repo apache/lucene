@@ -736,7 +736,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
   }
 
   /**
-   * Commits the current {@link #ramBytesUsed()} and stores it's value for later reuse. The last
+   * Commits the current {@link #ramBytesUsed()} and stores its value for later reuse. The last
    * committed bytes used can be retrieved via {@link #getLastCommittedBytesUsed()}
    */
   void commitLastBytesUsed(long delta) {
