@@ -87,7 +87,7 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
     // In case pq was populated with sentinel values, there might be less
     // results than pq.size(). Therefore return all results until either
     // pq.size() or totalHits.
-    return totalHits < pq.size() ? totalHits : pq.size();
+    return Math.min(totalHits, pq.size());
   }
 
   /** Returns the top docs that were collected by this collector. */

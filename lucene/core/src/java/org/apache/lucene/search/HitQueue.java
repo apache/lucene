@@ -62,24 +62,22 @@ public final class HitQueue extends PriorityQueue<ScoreDoc> {
   public HitQueue(int size, boolean prePopulate) {
     super(
         size,
-        () -> {
-          if (prePopulate) {
-            // Always set the doc Id to MAX_VALUE so that it won't be favored by
-            // lessThan. This generally should not happen since if score is not NEG_INF,
-            // TopScoreDocCollector will always add the object to the queue.
-            return new ScoreDoc(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
-          } else {
-            return null;
-          }
-        });
+        prePopulate
+            ? () -> {
+              // Always set the doc Id to MAX_VALUE so that it won't be favored by
+              // lessThan. This generally should not happen since if score is not NEG_INF,
+              // TopScoreDocCollector will always add the object to the queue.
+              return new ScoreDoc(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
+            }
+            : () -> null);
   }
 
   @Override
   protected final boolean lessThan(ScoreDoc hitA, ScoreDoc hitB) {
-    if (hitA.score == hitB.score) {
+    int cmp = Float.compare(hitA.score, hitB.score);
+    if (cmp == 0) {
       return hitA.doc > hitB.doc;
-    } else {
-      return hitA.score < hitB.score;
     }
+    return cmp < 0;
   }
 }
