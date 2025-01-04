@@ -100,7 +100,7 @@ def expand_jinja(text, vars=None):
         'state': state,
         'gpg_key' : state.get_gpg_key(),
         'gradle_cmd' : 'gradlew.bat' if is_windows() else './gradlew',
-        'epoch': unix_time_millis(datetime.utcnow()),
+        'epoch': unix_time_millis(datetime.now(tz=timezone.utc)),
         'get_next_version': state.get_next_version(),
         'current_git_rev': state.get_current_git_rev(),
         'keys_downloaded': keys_downloaded(),
@@ -936,7 +936,7 @@ def expand_multiline(cmd_txt, indent=0):
 
 
 def unix_to_datetime(unix_stamp):
-    return datetime.utcfromtimestamp(timestamp=unix_stamp / 1000, tz=timezone.utc)
+    return datetime.fromtimestamp(timestamp=unix_stamp / 1000, tz=timezone.utc)
 
 
 def generate_asciidoc():
