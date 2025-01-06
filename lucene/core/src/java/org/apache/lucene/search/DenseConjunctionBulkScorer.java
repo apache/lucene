@@ -69,6 +69,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       return lead.docID();
     }
 
+    // This scorer is only used for conjunctions of FILTER clauses, so we set a simple scorer that
+    // always returns a score of zero.
+    collector.setScorer(new SimpleScorable());
     List<DocIdSetIterator> otherIterators = this.others;
     DocIdSetIterator collectorIterator = collector.competitiveIterator();
     if (collectorIterator != null) {
