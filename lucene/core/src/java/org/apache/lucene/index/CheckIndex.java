@@ -2800,14 +2800,10 @@ public final class CheckIndex implements Closeable {
       if (fieldInfos.hasVectorValues()) {
         for (FieldInfo fieldInfo : fieldInfos) {
           if (fieldInfo.hasVectorValues()) {
-            if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader) {
-              KnnVectorsReader fieldReader =
-                  ((PerFieldKnnVectorsFormat.FieldsReader) vectorsReader)
-                      .getFieldReader(fieldInfo.name);
-              if (fieldReader instanceof HnswGraphProvider) {
-                HnswGraph hnswGraph = ((HnswGraphProvider) fieldReader).getGraph(fieldInfo.name);
-                testHnswGraph(hnswGraph, fieldInfo.name, status);
-              }
+            KnnVectorsReader fieldReader = getFieldReaderForName(vectorsReader, fieldInfo.name);
+            if (fieldReader instanceof HnswGraphProvider graphProvider) {
+              HnswGraph hnswGraph = graphProvider.getGraph(fieldInfo.name);
+              testHnswGraph(hnswGraph, fieldInfo.name, status);
             }
           }
         }
@@ -2820,7 +2816,7 @@ public final class CheckIndex implements Closeable {
               status.hnswGraphsStatusByField.size(),
               nsToSec(System.nanoTime() - startNS)));
       printHnswInfo(infoStream, status.hnswGraphsStatusByField);
-    } catch (Throwable e) {
+    } catch (Exception e) {
       if (failFast) {
         throw IOUtils.rethrowAlways(e);
       }
@@ -2832,6 +2828,15 @@ public final class CheckIndex implements Closeable {
     }
 
     return status;
+  }
+
+  private static KnnVectorsReader getFieldReaderForName(
+      KnnVectorsReader vectorsReader, String fieldName) {
+    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+      return fieldsReader.getFieldReader(fieldName);
+    } else {
+      return vectorsReader;
+    }
   }
 
   private static void printHnswInfo(
