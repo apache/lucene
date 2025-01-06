@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import org.apache.lucene.codecs.CodecUtil;
@@ -55,6 +57,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
@@ -167,7 +170,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     writeMeta(
-        fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldData.docsWithField, createMultiVectorMaps(fieldData));
+        fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldData.docsWithField,
+        createMultiVectorMaps(fieldData.docsWithField.iterator(), fieldData.docIdToVectorCount::get, fieldData.vectors.size()));
   }
 
   private void writeFloat32Vectors(FieldWriter<?> fieldData) throws IOException {
@@ -186,12 +190,47 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
   }
 
+  private record DocWithOrd(int docId, int ord) implements Comparable<DocWithOrd> {
+    @Override
+    public int compareTo(DocWithOrd other) {
+      if (this.docId == other.docId && this.ord == other.ord) {
+        return 0;
+      }
+      if (this.docId < other.docId || (this.docId == other.docId && this.ord < other.ord)) {
+        return -1;
+      }
+      return 1;
+    }
+  };
+
   private void writeSortingField(FieldWriter<?> fieldData, int maxDoc, Sorter.DocMap sortMap)
       throws IOException {
-    final int[] ordMap = new int[fieldData.docsWithField.cardinality()]; // new ord to old ord
-
+    int numValues = fieldData.vectors.size();
+    // create a mapping of new docIds to old ordinals
+    DocWithOrd[] docWithOrds = new DocWithOrd[numValues];
+    DocIdSetIterator iterator = fieldData.docsWithField.iterator();
+    int oldOrd = 0;
+    for (int doc = iterator.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iterator.nextDoc()) {
+      int vectorCount = fieldData.docIdToVectorCount.get(doc);
+      for (int i = 0; i < vectorCount; i++) {
+        docWithOrds[oldOrd] = new DocWithOrd(sortMap.oldToNew(doc), oldOrd);
+        oldOrd++;
+      }
+    }
+    // sort by new docIds and create new to old ordinal mapping
+    Arrays.sort(docWithOrds);
+    int[] ordMap = new int[numValues];
     DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
-    mapOldOrdToNewOrd(fieldData.docsWithField, sortMap, null, ordMap, newDocsWithField);
+    for (int i = 0; i < numValues; i++) {
+      ordMap[i] = docWithOrds[i].ord;
+      if (newDocsWithField.bits().get(docWithOrds[i].docId) == false) {
+        newDocsWithField.add(docWithOrds[i].docId);
+      }
+    }
+
+//    final int[] ordMap = new int[fieldData.docsWithField.cardinality()]; // new ord to old ord
+//    DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
+//    mapOldOrdToNewOrd(fieldData.docsWithField, sortMap, null, ordMap, newDocsWithField);
 
     // write vector values
     long vectorDataOffset =
@@ -201,7 +240,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    writeMeta(fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField);
+    writeMeta(fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField,
+        createMultiVectorMaps(newDocsWithField.iterator(), fieldData.docIdToVectorCount::get, fieldData.vectors.size()));
   }
 
   private long writeSortedFloat32Vectors(FieldWriter<?> fieldData, int[] ordMap)
@@ -359,6 +399,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
 
     // write multi-vector config
+    // TODO: We're likely storing similar info in OrdToDocDISIReaderConfiguration. Clean up later.
     MultiVectorOrdConfiguration.writeStoredMeta(
         DIRECT_MONOTONIC_BLOCK_SHIFT,
         meta,
@@ -370,19 +411,17 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   private record MultiVectorMaps(int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {};
 
-  private MultiVectorMaps createMultiVectorMaps(FieldWriter<?> fieldData) {
-    int numValues = fieldData.vectors.size();
+  private MultiVectorMaps createMultiVectorMaps(DocIdSetIterator disi, IntToIntFunction vectorsPerDoc, int numValues) throws IOException {
     int[] ordToDocMap = new int[numValues];
     int[] baseOrdMap = new int[numValues];
     int[] nextBaseOrdMap = new int[numValues];
 
-    DocIdSetIterator iterator = fieldData.docsWithField.iterator();
     int ord = 0;
     int lastDocId = -1;
     int baseOrd = -1;
     int nextBaseOrd = -1;
-    for (int doc = iterator.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iterator.nextDoc()) {
-      int vectorCount = fieldData.docIdToVectorCount.get(doc);
+    for (int doc = disi.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = disi.nextDoc()) {
+      int vectorCount = vectorsPerDoc.apply(doc);
       baseOrd = ord;
       nextBaseOrd = ord + vectorCount;
       for (int i = 0; i < vectorCount; i++) {

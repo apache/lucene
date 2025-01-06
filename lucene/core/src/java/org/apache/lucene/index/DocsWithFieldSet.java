@@ -81,13 +81,13 @@ public final class DocsWithFieldSet extends DocIdSet {
 
   @Override
   public Bits bits() throws IOException {
-    if (set != null) {
-      return set;
-    }
     return new Bits() {
       @Override
       public boolean get(int index) {
-        return index < cardinality;
+        if (set == null) {
+          return index < cardinality;
+        }
+        return set.get(index);
       }
 
       @Override
