@@ -46,6 +46,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -166,7 +167,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     writeMeta(
-        fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldData.docsWithField);
+        fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldData.docsWithField, createMultiVectorMaps(fieldData));
   }
 
   private void writeFloat32Vectors(FieldWriter<?> fieldData) throws IOException {
@@ -341,7 +342,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       int maxDoc,
       long vectorDataOffset,
       long vectorDataLength,
-      DocsWithFieldSet docsWithField)
+      DocsWithFieldSet docsWithField,
+      MultiVectorMaps multiVectorMaps)
       throws IOException {
     meta.writeInt(field.number);
     meta.writeInt(field.getVectorEncoding().ordinal());
@@ -355,6 +357,43 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     meta.writeInt(count);
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
+
+    // write multi-vector config
+    MultiVectorOrdConfiguration.writeStoredMeta(
+        DIRECT_MONOTONIC_BLOCK_SHIFT,
+        meta,
+        vectorData,
+        multiVectorMaps.ordToDocMap,
+        multiVectorMaps.baseOrdMap,
+        multiVectorMaps.nextBaseOrdMap);
+  }
+
+  private record MultiVectorMaps(int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {};
+
+  private MultiVectorMaps createMultiVectorMaps(FieldWriter<?> fieldData) {
+    int numValues = fieldData.vectors.size();
+    int[] ordToDocMap = new int[numValues];
+    int[] baseOrdMap = new int[numValues];
+    int[] nextBaseOrdMap = new int[numValues];
+
+    DocIdSetIterator iterator = fieldData.docsWithField.iterator();
+    int ord = 0;
+    int lastDocId = -1;
+    int baseOrd = -1;
+    int nextBaseOrd = -1;
+    for (int doc = iterator.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iterator.nextDoc()) {
+      int vectorCount = fieldData.docIdToVectorCount.get(doc);
+      baseOrd = ord;
+      nextBaseOrd = ord + vectorCount;
+      for (int i = 0; i < vectorCount; i++) {
+        ordToDocMap[ord] = doc;
+        baseOrdMap[ord] = baseOrd;
+        nextBaseOrdMap[ord] = nextBaseOrd;
+        ord++;
+      }
+    }
+    assert ord == numValues;
+    return new MultiVectorMaps(ordToDocMap, baseOrdMap, nextBaseOrdMap);
   }
 
   /**
