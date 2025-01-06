@@ -29,6 +29,7 @@ import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.FixedBitSet;
 
 /** Utilities for use in tests involving HNSW graphs */
@@ -105,7 +106,9 @@ public class HnswUtil {
     } else {
       entryPoint = connectedNodes.nextSetBit(0);
     }
-    components.add(new Component(entryPoint, total));
+    if (total > 0) {
+      components.add(new Component(entryPoint, total));
+    }
     if (level == 0) {
       int nextClear = nextClearBit(connectedNodes, 0);
       while (nextClear != NO_MORE_DOCS) {
@@ -163,6 +166,10 @@ public class HnswUtil {
       throws IOException {
     // Start at entry point and search all nodes on this level
     // System.out.println("markRooted level=" + level + " entryPoint=" + entryPoint);
+    if (connectedNodes.get(entryPoint)) {
+      return new Component(entryPoint, 0);
+    }
+    IntHashSet nodesInStack = new IntHashSet();
     Deque<Integer> stack = new ArrayDeque<>();
     stack.push(entryPoint);
     int count = 0;
@@ -178,7 +185,10 @@ public class HnswUtil {
       int friendCount = 0;
       while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
         ++friendCount;
-        stack.push(friendOrd);
+        if (connectedNodes.get(friendOrd) == false && nodesInStack.contains(friendOrd) == false) {
+          stack.push(friendOrd);
+          nodesInStack.add(friendOrd);
+        }
       }
       if (friendCount < maxConn && notFullyConnected != null) {
         notFullyConnected.set(node);
