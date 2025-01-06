@@ -19,8 +19,11 @@ package org.apache.lucene.index;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
+
+import java.io.IOException;
 
 /**
  * Accumulator for documents that have a value for a field. This is optimized for the case that all
@@ -74,5 +77,23 @@ public final class DocsWithFieldSet extends DocIdSet {
   /** Return the number of documents of this set. */
   public int cardinality() {
     return cardinality;
+  }
+
+  @Override
+  public Bits bits() throws IOException {
+    if (set != null) {
+      return set;
+    }
+    return new Bits() {
+      @Override
+      public boolean get(int index) {
+        return index < cardinality;
+      }
+
+      @Override
+      public int length() {
+        return cardinality;
+      }
+    };
   }
 }

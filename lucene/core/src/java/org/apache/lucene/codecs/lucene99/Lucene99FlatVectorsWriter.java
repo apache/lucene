@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
@@ -44,6 +45,7 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -405,6 +407,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
+    private final IntIntHashMap docIdToVectorCount;
     private boolean finished;
 
     private int lastDocID = -1;
@@ -435,6 +438,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
+      // TODO: Optimize later.
+//        Multiple ordinals have the same docId for multi-valued vectors.
+//       and ordToDoc mapping can be inferred from DocsWithFieldSet for single-valued vectors.
+      docIdToVectorCount = new IntIntHashMap();
     }
 
     @Override
@@ -442,15 +449,23 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       if (finished) {
         throw new IllegalStateException("already finished, cannot add more values");
       }
-      if (docID == lastDocID) {
+//      if (docID == lastDocID) {
+//        throw new IllegalArgumentException(
+//            "VectorValuesField \""
+//                + fieldInfo.name
+//                + "\" appears more than once in this document (only one value is allowed per field)");
+//      }
+      if (docID < lastDocID) {
         throw new IllegalArgumentException(
-            "VectorValuesField \""
-                + fieldInfo.name
-                + "\" appears more than once in this document (only one value is allowed per field)");
+            "Out of order doc ids: last=" + lastDocID + ", next=" + docID);
       }
-      assert docID > lastDocID;
       T copy = copyValue(vectorValue);
-      docsWithField.add(docID);
+      if (docsWithField.bits().get(docID) == false) {
+        docsWithField.add(docID);
+        docIdToVectorCount.put(docID, 1);
+      } else {
+        docIdToVectorCount.put(docID, docIdToVectorCount.get(docID) + 1);
+      }
       vectors.add(copy);
       lastDocID = docID;
     }
