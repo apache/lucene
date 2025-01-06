@@ -19,16 +19,30 @@ package org.apache.lucene.search.knn;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 
-public class SeededKnnCollector extends KnnCollector.Decorator implements EntryPointProvider {
+/**
+ * A {@link KnnCollector} that provides seeded knn collection. See usage in {@link
+ * SeededKnnCollectorManager}.
+ *
+ * @lucene.experimental
+ */
+class SeededKnnCollector extends KnnCollector.Decorator implements EntryPointProvider {
   private final DocIdSetIterator entryPoints;
+  private final int numberOfEntryPoints;
 
-  public SeededKnnCollector(KnnCollector collector, DocIdSetIterator entryPoints) {
+  SeededKnnCollector(
+      KnnCollector collector, DocIdSetIterator entryPoints, int numberOfEntryPoints) {
     super(collector);
     this.entryPoints = entryPoints;
+    this.numberOfEntryPoints = numberOfEntryPoints;
   }
 
   @Override
   public DocIdSetIterator entryPoints() {
     return entryPoints;
+  }
+
+  @Override
+  public int numberOfEntryPoints() {
+    return numberOfEntryPoints;
   }
 }

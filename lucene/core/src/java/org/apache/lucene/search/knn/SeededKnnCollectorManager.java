@@ -32,7 +32,11 @@ import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.IOFunction;
 
-/** A {@link KnnCollectorManager} that collects results with a timeout. */
+/**
+ * A {@link KnnCollectorManager} that provides seeded knn collection. See usage in {@link
+ * org.apache.lucene.search.SeededKnnFloatVectorQuery} and {@link
+ * org.apache.lucene.search.SeededKnnByteVectorQuery}.
+ */
 public class SeededKnnCollectorManager implements KnnCollectorManager {
   private final KnnCollectorManager delegate;
   private final Weight seedWeight;
@@ -54,9 +58,7 @@ public class SeededKnnCollectorManager implements KnnCollectorManager {
   public KnnCollector newCollector(int visitedLimit, LeafReaderContext ctx) throws IOException {
     // Execute the seed query
     TopScoreDocCollector seedCollector =
-        new TopScoreDocCollectorManager(
-                k /* numHits */, null /* after */, Integer.MAX_VALUE /* totalHitsThreshold */)
-            .newCollector();
+        new TopScoreDocCollectorManager(k, null, Integer.MAX_VALUE).newCollector();
     final LeafReader leafReader = ctx.reader();
     final LeafCollector leafCollector = seedCollector.getLeafCollector(ctx);
     if (leafCollector != null) {
@@ -69,28 +71,29 @@ public class SeededKnnCollectorManager implements KnnCollectorManager {
               0 /* min */,
               DocIdSetIterator.NO_MORE_DOCS /* max */);
         }
-        leafCollector.finish();
       } catch (
           @SuppressWarnings("unused")
           CollectionTerminatedException e) {
       }
+      leafCollector.finish();
     }
 
     TopDocs seedTopDocs = seedCollector.topDocs();
     KnnVectorValues vectorValues = vectorValuesSupplier.apply(leafReader);
+    final KnnCollector delegateCollector = delegate.newCollector(visitedLimit, ctx);
     if (seedTopDocs.totalHits.value() == 0 || vectorValues == null) {
-      return delegate.newCollector(visitedLimit, ctx);
+      return delegateCollector;
     }
     KnnVectorValues.DocIndexIterator indexIterator = vectorValues.iterator();
     DocIdSetIterator seedDocs = new MappedDISI(indexIterator, new TopDocsDISI(seedTopDocs));
-    return new SeededKnnCollector(delegate.newCollector(visitedLimit, ctx), seedDocs);
+    return new SeededKnnCollector(delegateCollector, seedDocs, seedTopDocs.scoreDocs.length);
   }
 
-  public static class MappedDISI extends DocIdSetIterator {
+  private static class MappedDISI extends DocIdSetIterator {
     KnnVectorValues.DocIndexIterator indexedDISI;
     DocIdSetIterator sourceDISI;
 
-    public MappedDISI(KnnVectorValues.DocIndexIterator indexedDISI, DocIdSetIterator sourceDISI) {
+    private MappedDISI(KnnVectorValues.DocIndexIterator indexedDISI, DocIdSetIterator sourceDISI) {
       this.indexedDISI = indexedDISI;
       this.sourceDISI = sourceDISI;
     }
@@ -110,7 +113,7 @@ public class SeededKnnCollectorManager implements KnnCollectorManager {
 
     @Override
     public long cost() {
-      return this.sourceDISI.cost();
+      return sourceDISI.cost();
     }
 
     @Override

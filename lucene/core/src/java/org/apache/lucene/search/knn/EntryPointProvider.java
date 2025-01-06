@@ -22,4 +22,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 public interface EntryPointProvider {
   /** Iterator of valid entry points for the kNN search */
   DocIdSetIterator entryPoints();
+
+  /** Number of valid entry points for the kNN search */
+  int numberOfEntryPoints();
 }

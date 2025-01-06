@@ -167,6 +167,30 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       super(field, target, k, filter, seed);
     }
 
+    private ThrowingKnnVectorQuery(
+        String field, byte[] target, int k, Query filter, Weight seedWeight) {
+      super(field, target, k, filter, seedWeight);
+    }
+
+    @Override
+    // This is test only and we need to overwrite the inner rewrite to throw
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      if (seedWeight != null) {
+        return super.rewrite(indexSearcher);
+      }
+      BooleanQuery.Builder booleanSeedQueryBuilder =
+          new BooleanQuery.Builder()
+              .add(seed, BooleanClause.Occur.MUST)
+              .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER);
+      if (filter != null) {
+        booleanSeedQueryBuilder.add(filter, BooleanClause.Occur.FILTER);
+      }
+      Query seedRewritten = indexSearcher.rewrite(booleanSeedQueryBuilder.build());
+      Weight seedWeight = indexSearcher.createWeight(seedRewritten, ScoreMode.TOP_SCORES, 1f);
+      return new ThrowingKnnVectorQuery(field, target, k, filter, seedWeight)
+          .rewrite(indexSearcher);
+    }
+
     @Override
     protected TopDocs exactSearch(
         LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {

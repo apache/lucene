@@ -25,14 +25,19 @@ import org.apache.lucene.search.knn.SeededKnnCollectorManager;
  * This is a version of knn byte vector query that provides a query seed to initiate the vector
  * search. NOTE: The underlying format is free to ignore the provided seed
  *
+ * <p>See <a href="https://dl.acm.org/doi/10.1145/3539618.3591715">"Lexically-Accelerated Dense
+ * Retrieval"</a> (Kulkarni, Hrishikesh and MacAvaney, Sean and Goharian, Nazli and Frieder, Ophir).
+ * In SIGIR '23: Proceedings of the 46th International ACM SIGIR Conference on Research and
+ * Development in Information Retrieval Pages 152 - 162
+ *
  * @lucene.experimental
  */
 public class SeededKnnByteVectorQuery extends KnnByteVectorQuery {
-  private final Query seed;
-  private final Weight seedWeight;
+  final Query seed;
+  final Weight seedWeight;
 
   /**
-   * Construct a new SeededKnnFloatVectorQuery instance
+   * Construct a new SeededKnnByteVectorQuery instance
    *
    * @param field knn byte vector field to query
    * @param target the query vector
