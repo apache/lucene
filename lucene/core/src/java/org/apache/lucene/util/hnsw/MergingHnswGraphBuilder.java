@@ -113,6 +113,16 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
         }
       }
     }
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "[%d]; visited proportion: [%.2f], visited proportion with eps0: [%.2f],",
+              maxOrd,
+              totalVisitedCount * 100.0 / totalNodes,
+              totalVisitedCountWithEps0 * 100.0 / totalNodesWithEps0));
+    }
 
     return getCompletedGraph();
   }
