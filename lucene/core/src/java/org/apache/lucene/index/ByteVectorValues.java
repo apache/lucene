@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.search.VectorScorer;
@@ -39,6 +40,17 @@ public abstract class ByteVectorValues extends KnnVectorValues {
    * @return the vector value
    */
   public abstract byte[] vectorValue(int ord) throws IOException;
+
+  /** Returns all vector values indexed for the document corresponding to provided ordinal */
+  public List<byte[]> allVectorValues(int ord) throws IOException {
+    int baseOrd = baseOrd(ord);
+    int count = vectorCount(ord);
+    List<byte[]> result = new ArrayList<byte[]>(count);
+    for (int i = 0; i < count; i++) {
+      result.add(vectorValue(baseOrd + i));
+    }
+    return result;
+  }
 
   @Override
   public abstract ByteVectorValues copy() throws IOException;

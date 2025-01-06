@@ -49,6 +49,21 @@ public abstract class KnnVectorValues {
     return ord;
   }
 
+  /** Returns ordinal of the first vector value indexed for the document corresponding to
+   * provided ord. This default implementation is an identity function applicable to
+   * single valued vector fields.
+   */
+  public int baseOrd(int ord) {
+    return ord;
+  }
+
+  /** Returns number of vector values indexed for the document associated with given ordinal.
+   * Default implementation for single valued vector fields returns 1.
+   */
+  public int vectorCount(int ord) {
+    return 1;
+  }
+
   /**
    * Creates a new copy of this {@link KnnVectorValues}. This is helpful when you need to access
    * different values at once, to avoid overwriting the underlying vector returned.
