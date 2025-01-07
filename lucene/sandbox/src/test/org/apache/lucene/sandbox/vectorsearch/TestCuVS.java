@@ -34,7 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @SuppressSysoutChecks(bugUrl = "prints info from within cuvs")
-public class IntegrationTest extends LuceneTestCase {
+public class TestCuVS extends LuceneTestCase {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
