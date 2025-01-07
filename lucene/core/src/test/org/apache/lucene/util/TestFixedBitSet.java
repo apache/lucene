@@ -17,9 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.BaseBitSetTestCase;
@@ -646,40 +644,36 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   }
 
   public void testOrRange() {
-    FixedBitSet set1 = new FixedBitSet(1_000);
-    FixedBitSet set2 = new FixedBitSet(10_000);
-    for (int i = 0; i < set2.length(); i += 3) {
-      set2.set(i);
+    FixedBitSet dest = new FixedBitSet(1_000);
+    FixedBitSet source = new FixedBitSet(10_000);
+    for (int i = 0; i < source.length(); i += 3) {
+      source.set(i);
     }
 
-    // Check different values of `offset`
-    List<Integer> offsets = new ArrayList<>();
-    for (int offset = 64; offset < 128; ++offset) {
-      // Test all possible alignments
-      offsets.add(offset);
-    }
-    for (int offset = set2.length() - 128; offset < set2.length() - 64; ++offset) {
-      // Again, test all possible alignments, but this time we stop or-ing bits when exceeding the
-      // size of set2 rather than set1
-      offsets.add(offset);
-    }
-
-    for (int offset : offsets) {
-      set1.clear();
-      for (int i = 0; i < set1.length(); i += 10) {
-        set1.set(i);
-      }
-      set1.orRange(set2, offset);
-      int upTo = Math.min(set1.length(), set2.length() - offset);
-      for (int i = 0; i < set1.length(); ++i) {
-        if (i % 10 == 0 || i >= upTo) {
-          // These bits were set before, they should still be set
-          assertEquals(i % 10 == 0, set1.get(i));
-        } else if ((offset + i) % 3 == 0) {
-          // These bits were set in set1, should be set in set2
-          assertTrue(set1.get(i));
-        } else {
-          assertFalse(set1.get(i));
+    // Test all possible alignments, and both a "short" (less than 64) and a long length.
+    for (int sourceFrom = 64; sourceFrom < 128; ++sourceFrom) {
+      for (int destFrom = 256; destFrom < 320; ++destFrom) {
+        for (int length :
+            new int[] {
+              0,
+              TestUtil.nextInt(random(), 1, Long.SIZE - 1),
+              TestUtil.nextInt(random(), Long.SIZE, 512)
+            }) {
+          dest.clear();
+          for (int i = 0; i < dest.length(); i += 10) {
+            dest.set(i);
+          }
+          FixedBitSet.orRange(source, sourceFrom, dest, destFrom, length);
+          for (int i = 0; i < dest.length(); ++i) {
+            if (i % 10 == 0) {
+              assertTrue(dest.get(i));
+            } else if (i >= destFrom && i < destFrom + length) {
+              int sourceI = sourceFrom + (i - destFrom);
+              assertEquals("" + i, source.get(sourceI) || i % 10 == 0, dest.get(i));
+            } else {
+              assertFalse(dest.get(i));
+            }
+          }
         }
       }
     }

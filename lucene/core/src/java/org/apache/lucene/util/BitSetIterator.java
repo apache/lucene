@@ -103,13 +103,11 @@ public class BitSetIterator extends DocIdSetIterator {
       throws IOException {
     // TODO: Can we also optimize the case when acceptDocs is not null?
     if (acceptDocs == null
+        && upTo > doc
         && offset < bits.length()
-        && bits instanceof FixedBitSet fixedBits
-        // no bits are set between `offset` and `doc`
-        && fixedBits.nextSetBit(offset) == doc
-        // the whole `bitSet` is getting filled
-        && (upTo - offset == bitSet.length())) {
-      bitSet.orRange(fixedBits, offset);
+        && bits instanceof FixedBitSet fixedBits) {
+      upTo = Math.min(upTo, fixedBits.length());
+      FixedBitSet.orRange(fixedBits, doc, bitSet, doc - offset, upTo - doc);
       advance(upTo); // set the current doc
     } else {
       super.intoBitSet(acceptDocs, upTo, bitSet, offset);
