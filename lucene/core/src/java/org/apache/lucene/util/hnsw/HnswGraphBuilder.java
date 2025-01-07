@@ -71,10 +71,6 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected final HnswLock hnswLock;
 
   protected InfoStream infoStream = InfoStream.getDefault();
-  protected long totalVisitedCount = 0L;
-  protected long totalNodes = 0L;
-  protected long totalVisitedCountWithEps0 = 0L;
-  protected long totalNodesWithEps0 = 0L;
   protected boolean frozen;
 
   public static HnswGraphBuilder create(
@@ -282,15 +278,6 @@ public class HnswGraphBuilder implements HnswBuilder {
           }
         }
         graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-        if (level == 0) {
-          if (eps0 == null) {
-            totalVisitedCount += candidates.visitedCount();
-            totalNodes += scorer.maxOrd();
-          } else {
-            totalVisitedCountWithEps0 += candidates.visitedCount();
-            totalNodesWithEps0 += scorer.maxOrd();
-          }
-        }
         eps = candidates.popUntilNearestKNodes();
         scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
         popToScratch(candidates, scratchPerLevel[i]);
