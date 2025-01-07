@@ -11,7 +11,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 Improvements
 ---------------------
