@@ -868,9 +868,9 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     BinaryDocValues bdv = leafReader.getBinaryDocValues("binary");
     assertNotNull(bdv);
     assertEquals(0, bdv.nextDoc());
-    assertEquals(new BytesRef("lucene"), bdv.binaryValue());
+    assertEquals("lucene", bdv.randomAccessInputValue().utf8ToString());
     assertEquals(1, bdv.nextDoc());
-    assertEquals(new BytesRef("lucene"), bdv.binaryValue());
+    assertEquals("lucene", bdv.randomAccessInputValue().utf8ToString());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bdv.nextDoc());
 
     NumericDocValues ndv = leafReader.getNumericDocValues("numeric");
