@@ -141,6 +141,9 @@ Optimizations
 * GITHUB#14040: Specialized top-level DisjunctionMaxQuery evaluation when the
   tie break multiplier is 0. (Adrien Grand)
 
+* GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance
+  and reducing allocations. (Viswanath Kuchibhotla)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
