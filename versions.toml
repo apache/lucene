@@ -4,6 +4,8 @@ asm = "9.6"
 assertj = "3.21.0"
 commons-codec = "1.13"
 commons-compress = "1.19"
+commons-lang3 = "3.17.0"
+cuvs = "25.02"
 ecj = "3.36.0"
 errorprone = "2.18.0"
 flexmark = "0.61.24"
@@ -33,6 +35,7 @@ s2-geometry = "1.0.0"
 spatial4j = "0.8"
 xerces = "2.12.0"
 zstd = "1.5.5-11"
+jackson-core = "2.18.2"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -42,6 +45,8 @@ asm-core = { module = "org.ow2.asm:asm", version.ref = "asm" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
+cuvs = { module = "com.nvidia.cuvs:cuvs-java", version.ref = "cuvs" }
 ecj = { module = "org.eclipse.jdt:ecj", version.ref = "ecj" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 flexmark-core = { module = "com.vladsch.flexmark:flexmark", version.ref = "flexmark" }
@@ -52,6 +57,7 @@ flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", ver
 groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
+jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson-core" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
 jflex = { module = "de.jflex:jflex", version.ref = "jflex" }
 jgit = { module = "org.eclipse.jgit:org.eclipse.jgit", version.ref = "jgit" }

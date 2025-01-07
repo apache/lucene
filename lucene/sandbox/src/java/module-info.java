@@ -20,7 +20,10 @@ module org.apache.lucene.sandbox {
   requires org.apache.lucene.core;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.facet;
-
+  requires java.logging;
+  requires com.nvidia.cuvs;
+  requires org.apache.commons.lang3;
+  
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.idversion;
   exports org.apache.lucene.sandbox.codecs.quantization;
