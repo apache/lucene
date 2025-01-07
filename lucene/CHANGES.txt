@@ -63,6 +63,8 @@ Optimizations
   longs that would pack two integers. We are now moving back to integers to be
   able to take advantage of 2x more lanes with the vector API. (Adrien Grand)
 
+* GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
