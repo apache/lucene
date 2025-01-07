@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
@@ -85,33 +83,15 @@ public class TestKnnGraph extends LuceneTestCase {
     vectorEncoding = randomVectorEncoding();
     boolean quantized = randomBoolean();
     codec =
-        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          @Override
-          public KnnVectorsFormat knnVectorsFormat() {
-            return new PerFieldKnnVectorsFormat() {
-              @Override
-              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                return quantized
-                    ? new Lucene99HnswScalarQuantizedVectorsFormat(
-                        M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH)
-                    : new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
-              }
-            };
-          }
-        };
+        TestUtil.alwaysKnnVectorsFormat(
+            quantized
+                ? new Lucene99HnswScalarQuantizedVectorsFormat(
+                    M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH)
+                : new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH));
 
     float32Codec =
-        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          @Override
-          public KnnVectorsFormat knnVectorsFormat() {
-            return new PerFieldKnnVectorsFormat() {
-              @Override
-              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
-              }
-            };
-          }
-        };
+        TestUtil.alwaysKnnVectorsFormat(
+            new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH));
   }
 
   private VectorEncoding randomVectorEncoding() {

@@ -570,6 +570,49 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     IOUtils.close(taxoReader, reader, taxoDir, dir);
   }
 
+  public void testAggregationCounts() throws IOException {
+    Directory taxoDir = newDirectory();
+
+    TaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(taxoDir);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setIndexFieldName("a", "$int_facets");
+
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    Document d;
+
+    d = new Document();
+    d.add(new IntAssociationFacetField(1, "a", "1"));
+    writer.addDocument(config.build(taxoWriter, d));
+
+    d = new Document();
+    d.add(new IntAssociationFacetField(5, "a", "2"));
+    writer.addDocument(config.build(taxoWriter, d));
+
+    d = new Document();
+    d.add(new IntAssociationFacetField(1, "a", "1"));
+    writer.addDocument(config.build(taxoWriter, d));
+
+    IndexReader reader = writer.getReader();
+    IOUtils.close(taxoWriter, writer);
+
+    IndexSearcher searcher = newSearcher(reader);
+    Query q = new MatchAllDocsQuery();
+    FacetsCollector fc = searcher.search(q, new FacetsCollectorManager());
+
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
+    IntTaxonomyFacets intFacets =
+        new TaxonomyFacetIntAssociations(
+            "$int_facets", taxoReader, config, fc, AssociationAggregationFunction.SUM);
+
+    FacetResult result = intFacets.getTopChildren(10, "a");
+    assertEquals("dim=a path=[] value=7 childCount=2\n  2 (5)\n  1 (2)\n", result.toString());
+    assertEquals(1, result.labelValues[0].count);
+    assertEquals(2, result.labelValues[1].count);
+
+    IOUtils.close(taxoReader, reader, taxoDir);
+  }
+
   private void validateInts(
       String dim,
       Map<String, Integer> expected,

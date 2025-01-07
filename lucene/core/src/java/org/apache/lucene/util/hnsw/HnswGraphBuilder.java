@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.FixedBitSet;
@@ -338,9 +339,12 @@ public class HnswGraphBuilder implements HnswBuilder {
       }
       int nbr = candidates.nodes()[i];
       if (hnswLock != null) {
-        try (HnswLock.LockedRow rowLock = hnswLock.write(level, nbr)) {
-          NeighborArray nbrsOfNbr = rowLock.row();
+        Lock lock = hnswLock.write(level, nbr);
+        try {
+          NeighborArray nbrsOfNbr = getGraph().getNeighbors(level, nbr);
           nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
+        } finally {
+          lock.unlock();
         }
       } else {
         NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);

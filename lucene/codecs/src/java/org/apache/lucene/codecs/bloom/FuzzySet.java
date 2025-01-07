@@ -196,9 +196,7 @@ public class FuzzySet implements Accountable {
     int bloomSize = in.readInt();
     int numLongs = in.readInt();
     long[] longs = new long[numLongs];
-    for (int i = 0; i < numLongs; i++) {
-      longs[i] = in.readLong();
-    }
+    in.readLongs(longs, 0, numLongs);
     FixedBitSet bits = new FixedBitSet(longs, bloomSize + 1);
     return new FuzzySet(bits, bloomSize, hashCount);
   }

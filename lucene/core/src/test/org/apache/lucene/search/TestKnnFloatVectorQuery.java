@@ -35,6 +35,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -77,6 +78,11 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
       assertEquals("KnnFloatVectorQuery:field[0.0,...][10]", query.toString("ignored"));
 
       assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
+
+      // test with filter
+      Query filter = new TermQuery(new Term("id", "text"));
+      query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, filter);
+      assertEquals("KnnFloatVectorQuery:field[0.0,...][10][id:text]", query.toString("ignored"));
     }
   }
 
@@ -124,7 +130,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         DocIdSetIterator it = scorer.iterator();
         assertEquals(2, it.cost());
         assertEquals(0, it.nextDoc());
-        assertEquals(0, scorer.score(), 0);
+        assertTrue(0 <= scorer.score());
         assertEquals(1, it.advance(1));
         assertEquals(1, scorer.score(), 0);
       }

@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOConsumer;
 
@@ -359,6 +360,20 @@ abstract class MemorySegmentIndexInput extends IndexInput
         });
   }
 
+  @Override
+  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
+    if (NATIVE_ACCESS.isEmpty()) {
+      return;
+    }
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+
+    long offset = 0;
+    for (MemorySegment seg : segments) {
+      advise(offset, seg.byteSize(), segment -> nativeAccess.madvise(segment, readAdvice));
+      offset += seg.byteSize();
+    }
+  }
+
   void advise(long offset, long length, IOConsumer<MemorySegment> advice) throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
       return;
@@ -404,6 +419,24 @@ abstract class MemorySegmentIndexInput extends IndexInput
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
+  }
+
+  @Override
+  public Optional<Boolean> isLoaded() {
+    boolean isLoaded = true;
+    for (MemorySegment seg : segments) {
+      if (seg.isLoaded() == false) {
+        isLoaded = false;
+        break;
+      }
+    }
+
+    if (Constants.WINDOWS && isLoaded == false) {
+      // see https://github.com/apache/lucene/issues/14050
+      return Optional.empty();
+    }
+
+    return Optional.of(isLoaded);
   }
 
   @Override

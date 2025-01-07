@@ -3,6 +3,39 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================= Lucene 10.2.0 =======================
+
+API Changes
+---------------------
+* GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
+  optimize loading doc IDs into a bit set. (Adrien Grand)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+
+* GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
+  (Robert Muir)
+
+Optimizations
+---------------------
+
+* GITHUB#14052: Speed up DisjunctionDISIApproximation#advance. (Adrien Grand)
+
+* GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
+  conjunctions. (Adrien Grand)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.1.0 =======================
 
 API Changes
@@ -15,13 +48,27 @@ API Changes
 * GITHUB#13957: Removed LeafSimScorer class, to save its overhead. Scorers now
   compute scores directly from a SimScorer, postings and norms. (Adrien Grand)
 
+* GITHUB#13998: Add IndexInput::isLoaded to determine if the contents of an
+  input is resident in physical memory. (Chris Hegarty)
+
 New Features
 ---------------------
-(No changes)
+* GITHUB#14034: Add support for storing term vectors in FeatureField. (Jim Ferenczi)
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#13986: Allow easier configuration of the Panama Vectorization provider with
+  newer Java versions. Set the `org.apache.lucene.vectorization.upperJavaFeatureVersion`
+  system property to increase the set of Java versions that Panama Vectorization will
+  provide optimized implementations for. (Chris Hegarty)
+
+* GITHUB#266: TieredMergePolicy now allows merging up to maxMergeAtOnce
+  segments for merges below the floor segment size, even if maxMergeAtOnce is
+  bigger than segsPerTier. (Adrien Grand)
+
+* GITHUB#14033: Combine all postings enum impls of the default codec into a
+  single class. (Adrien Grand)
 
 Optimizations
 ---------------------
@@ -63,7 +110,39 @@ Optimizations
   longs that would pack two integers. We are now moving back to integers to be
   able to take advantage of 2x more lanes with the vector API. (Adrien Grand)
 
-* GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
+* GITHUB#13994: Speed up top-k retrieval of filtered conjunctions.
+  (Adrien Grand)
+
+* GITHUB#13985: Introduces IndexInput#updateReadAdvice to change the ReadAdvice
+  while merging vectors. (Tejas Shah)
+
+* GITHUB#14000: Speed up top-k retrieval of filtered disjunctions.
+  (Adrien Grand)
+
+* GITHUB#13999: CombinedFieldQuery now returns non-infinite maximum scores,
+  making it eligible to dynamic pruning. (Adrien Grand)
+
+* GITHUB#13989: Faster checksum computation. (Jean-François Boeuf)
+
+* GITHUB#14021: WANDScorer now computes scores on the fly, which helps prevent
+  advancing "tail" clauses in many cases. (Adrien Grand)
+
+* GITHUB#14014: Filtered disjunctions now get executed via `MaxScoreBulkScorer`.
+  (Adrien Grand)
+
+* GITHUB#14023: Make JVM inlining decisions more predictable in our main
+  queries. (Adrien Grand)
+
+* GITHUB#14032: Speed up PostingsEnum when positions are requested.
+  (Adrien Grand)
+
+* GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
+
+* GITHUB#14040: Specialized top-level DisjunctionMaxQuery evaluation when the
+  tie break multiplier is 0. (Adrien Grand)
+
+* GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance
+  and reducing allocations. (Viswanath Kuchibhotla)
 
 Bug Fixes
 ---------------------
@@ -75,6 +154,12 @@ Bug Fixes
 * GITHUB#13944: Ensure deterministic order of clauses for `DisjunctionMaxQuery#toString`. (Laurent Jakubina)
 * GITHUB#13841: Improve Tessellatorlogic when two holes share the same vertex with the polygon which was failing
   in valid polygons. (Ignacio Vera)
+* GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
+  and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
+* GITHUB#13819: Prevent flattening of ordered and unordered interval sources (Jim Ferenczi)
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 Build
 ---------------------
@@ -83,13 +168,7 @@ Build
 
 Other
 ---------------------
-(No changes)
-
-======================== Lucene 10.0.1 =======================
-
-Bug Fixes
----------------------
-
+* GITHUB#13982: Remove duplicate test code. (Lu Xugang)
 
 ======================= Lucene 10.0.0 =======================
 

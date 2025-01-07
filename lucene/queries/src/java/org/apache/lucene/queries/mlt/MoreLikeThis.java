@@ -94,9 +94,9 @@ import org.apache.lucene.util.PriorityQueue;
  * Reader target = ... // orig source of doc you want to find similarities to
  * Query query = mlt.like( target);
  *
- * Hits hits = is.search(query);
- * // now the usual iteration thru 'hits' - the only thing to watch for is to make sure
- * //you ignore the doc if it matches your 'target' document, as it should be similar to itself
+ * TopDocs topDocs = is.search(query, 10);
+ * // now the usual iteration thru 'topDocs' - the only thing to watch for is to make sure
+ * // you ignore the doc if it matches your 'target' document, as it should be similar to itself
  *
  * </pre>
  *
