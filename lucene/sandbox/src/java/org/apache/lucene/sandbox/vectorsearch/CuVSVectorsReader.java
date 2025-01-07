@@ -196,34 +196,7 @@ public class CuVSVectorsReader extends KnnVectorsReader {
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    throw new UnsupportedOperationException();
-    /*return new FloatVectorValues() {
-      
-      int pos = -1;
-
-      @Override
-      public int nextDoc() throws IOException {
-        pos++;
-        int size = cuvsIndexes.get(field).get(0).getMapping().size();
-        if (pos >= size) return FloatVectorValues.NO_MORE_DOCS;
-        return cuvsIndexes.get(field).get(0).getMapping().get(pos);
-      }
-      
-      @Override
-      public int docID() {
-        return cuvsIndexes.get(field).get(0).getMapping().get(pos);
-      }
-      
-      @Override
-      public int advance(int target) throws IOException {
-        throw new UnsupportedOperationException();
-      }
-      
-      @Override
-      public float[] vectorValue() throws IOException {
-        return cuvsIndexes.get(field).get(0).getVectors().get(pos);
-
-      }
+    return new FloatVectorValues() {
       
       @Override
       public int size() {
@@ -231,17 +204,20 @@ public class CuVSVectorsReader extends KnnVectorsReader {
       }
       
       @Override
-      public VectorScorer scorer(float[] query) throws IOException {
-        // TODO Auto-generated method stub
-        return null;
+      public int dimension() {
+        return cuvsIndexes.get(field).get(0).getVectors().get(0).length;
       }
       
       @Override
-      public int dimension() {
-        // TODO Auto-generated method stub
-        return cuvsIndexes.get(field).get(0).getVectors().get(0).length;
+      public float[] vectorValue(int pos) throws IOException {
+        return cuvsIndexes.get(field).get(0).getVectors().get(pos);
       }
-    };*/
+      
+      @Override
+      public FloatVectorValues copy() throws IOException {
+        return null;
+      }
+    };
   }
 
   @Override
