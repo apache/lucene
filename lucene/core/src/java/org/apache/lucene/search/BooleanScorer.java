@@ -17,11 +17,11 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
 import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -34,8 +34,6 @@ final class BooleanScorer extends BulkScorer {
   static final int SHIFT = 12;
   static final int SIZE = 1 << SHIFT;
   static final int MASK = SIZE - 1;
-  static final int SET_SIZE = 1 << (SHIFT - 6);
-  static final int SET_MASK = SET_SIZE - 1;
 
   static class Bucket {
     double score;
@@ -74,8 +72,7 @@ final class BooleanScorer extends BulkScorer {
   // One bucket per doc ID in the window, non-null if scores are needed or if frequencies need to be
   // counted
   final Bucket[] buckets;
-  // This is basically an inlined FixedBitSet... seems to help with bound checks
-  final long[] matching = new long[SET_SIZE];
+  final FixedBitSet matching = new FixedBitSet(SIZE);
 
   final DisiWrapper[] leads;
   final HeadPriorityQueue head;
@@ -91,11 +88,12 @@ final class BooleanScorer extends BulkScorer {
 
     @Override
     public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      long[] matching = BooleanScorer.this.matching;
+      FixedBitSet matching = BooleanScorer.this.matching;
       Bucket[] buckets = BooleanScorer.this.buckets;
       int base = this.base;
-      for (int idx = 0; idx < matching.length; idx++) {
-        long bits = matching[idx];
+      long[] bitArray = matching.getBits();
+      for (int idx = 0; idx < bitArray.length; idx++) {
+        long bits = bitArray[idx];
         while (bits != 0L) {
           int ntz = Long.numberOfTrailingZeros(bits);
           if (buckets != null) {
@@ -121,11 +119,7 @@ final class BooleanScorer extends BulkScorer {
         // We can't just count bits in that case
         return super.count();
       }
-      int count = 0;
-      for (long l : matching) {
-        count += Long.bitCount(l);
-      }
-      return count;
+      return matching.cardinality();
     }
   }
 
@@ -173,7 +167,7 @@ final class BooleanScorer extends BulkScorer {
   private void scoreDisiWrapperIntoBitSet(DisiWrapper w, Bits acceptDocs, int min, int max)
       throws IOException {
     boolean needsScores = BooleanScorer.this.needsScores;
-    long[] matching = BooleanScorer.this.matching;
+    FixedBitSet matching = BooleanScorer.this.matching;
     Bucket[] buckets = BooleanScorer.this.buckets;
 
     DocIdSetIterator it = w.iterator;
@@ -182,12 +176,13 @@ final class BooleanScorer extends BulkScorer {
     if (doc < min) {
       doc = it.advance(min);
     }
-    for (; doc < max; doc = it.nextDoc()) {
-      if (acceptDocs == null || acceptDocs.get(doc)) {
-        final int i = doc & MASK;
-        final int idx = i >> 6;
-        matching[idx] |= 1L << i;
-        if (buckets != null) {
+    if (buckets == null) {
+      it.intoBitSet(acceptDocs, max, matching, doc & ~MASK);
+    } else {
+      for (; doc < max; doc = it.nextDoc()) {
+        if (acceptDocs == null || acceptDocs.get(doc)) {
+          final int i = doc & MASK;
+          matching.set(i);
           final Bucket bucket = buckets[i];
           bucket.freq++;
           if (needsScores) {
@@ -197,7 +192,7 @@ final class BooleanScorer extends BulkScorer {
       }
     }
 
-    w.doc = doc;
+    w.doc = it.docID();
   }
 
   private void scoreWindowIntoBitSetAndReplay(
@@ -218,7 +213,7 @@ final class BooleanScorer extends BulkScorer {
     docIdStreamView.base = base;
     collector.collect(docIdStreamView);
 
-    Arrays.fill(matching, 0L);
+    matching.clear();
   }
 
   private DisiWrapper advance(int min) throws IOException {

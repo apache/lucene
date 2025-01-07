@@ -17,7 +17,9 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.BaseBitSetTestCase;
@@ -615,5 +617,71 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     // Further changes are reflected
     set.set(5);
     assertTrue(bits.get(5));
+  }
+
+  public void testScanIsEmpty() {
+    FixedBitSet set = new FixedBitSet(0);
+    assertTrue(set.scanIsEmpty());
+
+    set = new FixedBitSet(13);
+    assertTrue(set.scanIsEmpty());
+    set.set(10);
+    assertFalse(set.scanIsEmpty());
+
+    set = new FixedBitSet(1024);
+    assertTrue(set.scanIsEmpty());
+    set.set(3);
+    assertFalse(set.scanIsEmpty());
+    set.clear(3);
+    set.set(1020);
+    assertFalse(set.scanIsEmpty());
+
+    set = new FixedBitSet(1030);
+    assertTrue(set.scanIsEmpty());
+    set.set(3);
+    assertFalse(set.scanIsEmpty());
+    set.clear(3);
+    set.set(1028);
+    assertFalse(set.scanIsEmpty());
+  }
+
+  public void testOrRange() {
+    FixedBitSet set1 = new FixedBitSet(1_000);
+    FixedBitSet set2 = new FixedBitSet(10_000);
+    for (int i = 0; i < set2.length(); i += 3) {
+      set2.set(i);
+    }
+
+    // Check different values of `offset`
+    List<Integer> offsets = new ArrayList<>();
+    for (int offset = 64; offset < 128; ++offset) {
+      // Test all possible alignments
+      offsets.add(offset);
+    }
+    for (int offset = set2.length() - 128; offset < set2.length() - 64; ++offset) {
+      // Again, test all possible alignments, but this time we stop or-ing bits when exceeding the
+      // size of set2 rather than set1
+      offsets.add(offset);
+    }
+
+    for (int offset : offsets) {
+      set1.clear();
+      for (int i = 0; i < set1.length(); i += 10) {
+        set1.set(i);
+      }
+      set1.orRange(set2, offset);
+      int upTo = Math.min(set1.length(), set2.length() - offset);
+      for (int i = 0; i < set1.length(); ++i) {
+        if (i % 10 == 0 || i >= upTo) {
+          // These bits were set before, they should still be set
+          assertEquals(i % 10 == 0, set1.get(i));
+        } else if ((offset + i) % 3 == 0) {
+          // These bits were set in set1, should be set in set2
+          assertTrue(set1.get(i));
+        } else {
+          assertFalse(set1.get(i));
+        }
+      }
+    }
   }
 }

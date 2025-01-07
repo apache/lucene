@@ -3,6 +3,39 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================= Lucene 10.2.0 =======================
+
+API Changes
+---------------------
+* GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
+  optimize loading doc IDs into a bit set. (Adrien Grand)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+
+* GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
+  (Robert Muir)
+
+Optimizations
+---------------------
+
+* GITHUB#14052: Speed up DisjunctionDISIApproximation#advance. (Adrien Grand)
+
+* GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
+  conjunctions. (Adrien Grand)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.1.0 =======================
 
 API Changes
@@ -121,6 +154,9 @@ Bug Fixes
 * GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
   and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
 * GITHUB#13819: Prevent flattening of ordered and unordered interval sources (Jim Ferenczi)
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 Build
 ---------------------
@@ -130,16 +166,6 @@ Build
 Other
 ---------------------
 * GITHUB#13982: Remove duplicate test code. (Lu Xugang)
-
-======================== Lucene 10.0.1 =======================
-
-Bug Fixes
----------------------
-
-* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
-  their corresponding ordinals. (Paul King)
-
-* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 ======================= Lucene 10.0.0 =======================
 
