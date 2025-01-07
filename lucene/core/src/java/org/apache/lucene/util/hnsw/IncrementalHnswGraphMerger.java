@@ -68,7 +68,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   @Override
   public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
-    if (!noDeletes(liveDocs) || !(reader instanceof HnswGraphProvider)) {
+    if (hasDeletes(liveDocs) || !(reader instanceof HnswGraphProvider)) {
       return this;
     }
     HnswGraph graph = ((HnswGraphProvider) reader).getGraph(fieldInfo.name);
@@ -189,16 +189,16 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     return oldToNewOrdinalMap;
   }
 
-  private static boolean noDeletes(Bits liveDocs) {
+  private static boolean hasDeletes(Bits liveDocs) {
     if (liveDocs == null) {
-      return true;
+      return false;
     }
 
     for (int i = 0; i < liveDocs.length(); i++) {
       if (!liveDocs.get(i)) {
-        return false;
+        return true;
       }
     }
-    return true;
+    return false;
   }
 }

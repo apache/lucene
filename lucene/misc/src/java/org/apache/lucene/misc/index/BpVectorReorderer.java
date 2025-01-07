@@ -50,7 +50,7 @@ import org.apache.lucene.util.VectorUtil;
 /**
  * Implementation of "recursive graph bisection", also called "bipartite graph partitioning" and
  * often abbreviated BP, an approach to doc ID assignment that aims at reducing the sum of the log
- * gap between consecutive neighbor node ids. See BPIndexReorderer in misc module.
+ * gap between consecutive neighbor node ids. See {@link BPIndexReorderer}.
  */
 public class BpVectorReorderer extends AbstractBPReorderer {
 
@@ -72,7 +72,6 @@ public class BpVectorReorderer extends AbstractBPReorderer {
    * be unit vectors. In this case there is no maximum, but since all colinear vectors of whatever
    * scale will generate the same partition for these angular scores, we are free to choose any
    * scale and ignore the normalization factor.
-   *
    */
 
   /** Minimum problem size that will result in tasks being split. */
@@ -84,7 +83,7 @@ public class BpVectorReorderer extends AbstractBPReorderer {
    * prevents any incremental updates from being done, instead the centroids are fully recalculated
    * for each iteration. We're not able to make it very big since too much numerical error
    * accumulates, which seems to be around 50, thus resulting in suboptimal reordering. It's not
-   * clear how helpful this is though; measurements vary.
+   * clear how helpful this is though; measurements vary, so it is currently disabled (= 0).
    */
   private static final int MAX_CENTROID_UPDATES = 0;
 
@@ -281,7 +280,6 @@ public class BpVectorReorderer extends AbstractBPReorderer {
             vectorScalarMul(
                 1 / (float) Math.sqrt(VectorUtil.dotProduct(centroid, centroid)), centroid);
       }
-      ;
     }
 
     /** Shuffle IDs across both partitions so that each partition is closer to its centroid. */
@@ -295,9 +293,12 @@ public class BpVectorReorderer extends AbstractBPReorderer {
         float[] biases)
         throws IOException {
 
-      // Computing biases is typically a bottleneck, because each iteration needs to iterate over
-      // all postings to recompute biases, and the total number of postings is usually one order of
-      // magnitude or more than the number of docs. So we try to parallelize it.
+      /* Computing biases requires a distance calculation for each vector (document) which can be
+       * costly, especially as the vector dimension increases, so we try to parallelize it.  We also
+       * have the option of performing incremental updates based on the difference of the previous and
+       * the new centroid, which can be less costly, but introduces incremental numeric error, and
+       * needs tuning to be usable. It is disabled by default (see MAX_CENTROID_UPDATES).
+       */
       new ComputeBiasTask(
               ids.ints,
               biases,
@@ -323,13 +324,16 @@ public class BpVectorReorderer extends AbstractBPReorderer {
         minRightBias = Math.min(minRightBias, biases[i]);
       }
       float gain = maxLeftBias - minRightBias;
-      // This compares the gain of swapping the doc from the left side that is most attracted to the
-      // right and the doc from the right side that is most attracted to the left against the
-      // average vector length (/500) rather than zero.
-      //
-      // We could try incorporating simulated annealing by including the iteration number in the
-      // formula? eg { 1000 * gain <= scale * iter }.
-      //
+      /* This compares the gain of swapping the doc from the left side that is most attracted to the
+       * right and the doc from the right side that is most attracted to the left against the
+       * average vector length (/500) rather than zero.  500 is an arbitrary heuristic value
+       * determined empirically - basically we stop iterating once the centroids move less than
+       * 1/500 the sum of their lengths.
+       *
+       * TODO We could try incorporating simulated annealing by including the iteration number in the
+       * formula? eg { 1000 * gain <= scale * iter }.
+       */
+
       // System.out.printf("at depth=%d, midPoint=%d, gain=%f\n", depth, midPoint, gain);
       if (500 * gain <= scale) {
         return 0;
