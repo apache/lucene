@@ -1324,8 +1324,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
 
         // Reset the buffer.
-        blockInput =
-            new ByteArrayDataInput(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
+        if (blockInput == null) {
+          blockInput =
+                  new ByteArrayDataInput(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
+        } else {
+          blockInput.reset(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
+        }
       }
     }
 
