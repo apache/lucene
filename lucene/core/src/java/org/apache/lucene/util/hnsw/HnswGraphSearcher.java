@@ -32,6 +32,11 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * search algorithm, see {@link HnswGraph}.
  */
 public class HnswGraphSearcher {
+  // How many extra candidates to consider for 2-hop neighbors
+  private static final float TWO_HOP_LIMIT = 1.5f;
+  // How many filtered candidates must be found to consider 2-hop neighbors
+  private static final float TWO_STEP_LAMBDA = 0.10f;
+
   /**
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
    * to allocate, so they're cleared and reused across calls.
@@ -212,6 +217,8 @@ public class HnswGraphSearcher {
       }
     }
 
+    int[] neighbors = new int[32];
+    int[] filteredNeighbors = new int[32];
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = results.minCompetitiveSimilarity();
@@ -221,25 +228,20 @@ public class HnswGraphSearcher {
       if (topCandidateSimilarity < minAcceptedSimilarity) {
         break;
       }
-
-      int maxConn = 32; // Hardcode for testing TODO: fetch this value properly
-
       int topCandidateNode = candidates.pop();
-      // Pre-fetch neighbors into an array
-      // This is necessary because we need to call `seek` on each neighbor to consider 2-hop neighbors
-      int[] neighbors = new int[maxConn];
       graphSeek(graph, level, topCandidateNode);
-      int neighborCount = 0;
-      int neighborOrd;
-      while ((neighborOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS && neighborCount < maxConn) {
-        neighbors[neighborCount++] = neighborOrd;
-      }
+      // Pre-fetch neighbors into an array
+      // This is necessary because we need to call `seek` on each neighbor to consider 2-hop
+      // neighbors
+      int neighborCount = graph.consumeCurrentNeighbors(neighbors);
+      int expandedNeighborCount = (int) (neighborCount * TWO_HOP_LIMIT);
 
       // We only consider maxConn 1/2-hop neighbors
       int neighborsProcessed = 0;
       // Walk 1-hop neighbors
+      int filteredNeighborsCount = 0;
       for (int i = 0; i < neighborCount; i++) {
-        if (neighborsProcessed > maxConn) break;
+        if (neighborsProcessed > expandedNeighborCount) break;
         int friendOrd = neighbors[i];
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
@@ -248,22 +250,29 @@ public class HnswGraphSearcher {
         if (results.earlyTerminated()) {
           break;
         }
-
-        // Only calculate score and consider candidate if filter matches
-        if (acceptOrds == null || acceptOrds.get(friendOrd)) {
-          neighborsProcessed++;
-          float friendSimilarity = scorer.score(friendOrd);
-          results.incVisitedCount(1);
-          if (friendSimilarity > minAcceptedSimilarity) {
-            candidates.add(friendOrd, friendSimilarity);
-            if (results.collect(friendOrd, friendSimilarity)) {
-              minAcceptedSimilarity = results.minCompetitiveSimilarity();
-            }
+        neighborsProcessed++;
+        if (acceptOrds != null && acceptOrds.get(friendOrd) == false) {
+          filteredNeighbors[filteredNeighborsCount++] = friendOrd;
+          continue;
+        }
+        float friendSimilarity = scorer.score(friendOrd);
+        results.incVisitedCount(1);
+        if (friendSimilarity > minAcceptedSimilarity) {
+          candidates.add(friendOrd, friendSimilarity);
+          if (results.collect(friendOrd, friendSimilarity)) {
+            minAcceptedSimilarity = results.minCompetitiveSimilarity();
           }
-        } else { // Only walk 2-hop neighbors if filter doesn't match
-          graphSeek(graph, level, friendOrd);
+        }
+      }
+      float percentFiltered = (float) filteredNeighborsCount / neighborCount;
+      // If the filter is too restrictive, walk 2-hop neighbors
+      if (percentFiltered > TWO_STEP_LAMBDA) {
+        for (int n = 0; n < filteredNeighborsCount; n++) {
+          // Only walk 2-hop neighbors if filter doesn't match
+          graphSeek(graph, level, filteredNeighbors[n]);
           int twoHopFriendOrd;
-          while ((twoHopFriendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS && neighborsProcessed <= maxConn) {
+          while ((twoHopFriendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS
+              && neighborsProcessed < expandedNeighborCount) {
             assert twoHopFriendOrd < size : "twoHopFriendOrd=" + twoHopFriendOrd + "; size=" + size;
             if (visited.getAndSet(twoHopFriendOrd)) {
               continue;
