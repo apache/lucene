@@ -20,7 +20,7 @@ on:
       - 'lucene/analysis/common/**'
 
 env:
-  DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+  DEVELOCITY_ACCESS_KEY: ${{ DEVELOCITY_ACCESS_KEY }}
 
 jobs:
   test:
