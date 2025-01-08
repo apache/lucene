@@ -30,7 +30,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#14109: prefetch may select the wrong memory segment for
+  multi-segment slices. (Chris Hegarty)
 
 Other
 ---------------------
