@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.SeededKnnCollectorManager;
 
@@ -85,6 +86,12 @@ public class SeededKnnByteVectorQuery extends KnnByteVectorQuery {
         super.getKnnCollectorManager(k, searcher),
         seedWeight,
         k,
-        leaf -> leaf.getFloatVectorValues(field));
+        leaf -> {
+          ByteVectorValues vv = leaf.getByteVectorValues(field);
+          if (vv == null) {
+            ByteVectorValues.checkField(leaf.getContext().reader(), field);
+          }
+          return vv;
+        });
   }
 }
