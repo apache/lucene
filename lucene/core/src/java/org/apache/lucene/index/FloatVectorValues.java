@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.VectorScorer;
@@ -42,14 +43,30 @@ public abstract class FloatVectorValues extends KnnVectorValues {
   public abstract float[] vectorValue(int ord) throws IOException;
 
   /** Returns all vector values indexed for the document corresponding to provided ordinal */
-  public List<float[]> allVectorValues(int ord) throws IOException {
-    int baseOrd = baseOrd(ord);
-    int count = vectorCount(ord);
-    List<float[]> result = new ArrayList<float[]>(count);
-    for (int i = 0; i < count; i++) {
-      result.add(vectorValue(baseOrd + i));
-    }
-    return result;
+  public Iterator<float[]> allVectorValues(int ord) throws IOException {
+    return new Iterator<>() {
+      int baseOrd = baseOrd(ord);
+      int count = vectorCount(ord);
+
+      @Override
+      public boolean hasNext() {
+        return count > 0;
+      }
+
+      @Override
+      public float[] next() {
+        float[] v = null;
+        try {
+          v = vectorValue(baseOrd);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        } finally {
+          baseOrd++;
+          count--;
+        }
+        return v;
+      }
+    };
   }
 
   @Override

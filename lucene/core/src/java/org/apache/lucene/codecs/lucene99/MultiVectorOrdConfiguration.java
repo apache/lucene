@@ -2,6 +2,7 @@ package org.apache.lucene.codecs.lucene99;
 
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -71,12 +72,13 @@ public class MultiVectorOrdConfiguration {
     DirectMonotonicReader.Meta nextBaseOrdMeta = DirectMonotonicReader.loadMeta(inputMeta, numValues, blockShift);
     long nextBaseOrdLength = inputMeta.readLong();
 
-    return new MultiVectorOrdConfiguration(
+    return new MultiVectorOrdConfiguration(numValues,
         ordToDocStart, ordToDocLength, ordToDocMeta,
         baseOrdStart, baseOrdLength, baseOrdMeta,
         nextBaseOrdStart, nextBaseOrdLength, nextBaseOrdMeta);
   }
 
+  final int numValues;
   final long ordToDocStart, ordToDocLength;
   final DirectMonotonicReader.Meta ordToDocMeta;
   final long baseOrdStart, baseOrdLength;
@@ -85,9 +87,10 @@ public class MultiVectorOrdConfiguration {
   final DirectMonotonicReader.Meta nextBaseOrdMeta;
 
   public MultiVectorOrdConfiguration(
-      long ordToDocStart, long ordToDocLength, DirectMonotonicReader.Meta ordToDocMeta,
+      int numValues, long ordToDocStart, long ordToDocLength, DirectMonotonicReader.Meta ordToDocMeta,
       long baseOrdStart, long baseOrdLength, DirectMonotonicReader.Meta baseOrdMeta,
       long nextBaseOrdStart, long nextBaseOrdLength, DirectMonotonicReader.Meta nextBaseOrdMeta) {
+    this.numValues = numValues;
     this.ordToDocStart = ordToDocStart;
     this.ordToDocLength = ordToDocLength;
     this.ordToDocMeta = ordToDocMeta;
@@ -97,5 +100,24 @@ public class MultiVectorOrdConfiguration {
     this.nextBaseOrdStart = nextBaseOrdStart;
     this.nextBaseOrdLength = nextBaseOrdLength;
     this.nextBaseOrdMeta = nextBaseOrdMeta;
+  }
+
+  public DirectMonotonicReader getOrdToDocReader(IndexInput dataIn) throws IOException {
+    final RandomAccessInput slice = dataIn.randomAccessSlice(ordToDocStart, ordToDocLength);
+    return DirectMonotonicReader.getInstance(ordToDocMeta, slice);
+  }
+
+  public DirectMonotonicReader getBaseOrdReader(IndexInput dataIn) throws IOException {
+    final RandomAccessInput slice = dataIn.randomAccessSlice(baseOrdStart, baseOrdLength);
+    return DirectMonotonicReader.getInstance(baseOrdMeta, slice);
+  }
+
+  public DirectMonotonicReader getNextBaseOrdReader(IndexInput dataIn) throws IOException {
+    final RandomAccessInput slice = dataIn.randomAccessSlice(nextBaseOrdStart, nextBaseOrdLength);
+    return DirectMonotonicReader.getInstance(nextBaseOrdMeta, slice);
+  }
+
+  public int size() {
+    return numValues;
   }
 }
