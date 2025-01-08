@@ -380,7 +380,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
     int maxDoc = 0;
     try (Directory dir = newFSDirectory(tmpdir)) {
       // create an index with a single leaf
-      try (IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig())) {
+      try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
         for (float[] vector : vectors) {
           Document doc = new Document();
           if (random().nextBoolean()) {
@@ -394,7 +394,6 @@ public class TestBpVectorReorderer extends LuceneTestCase {
           writer.addDocument(doc);
           maxDoc++;
         }
-        writer.forceMerge(1);
       }
       // reorder using the index reordering tool
       BpVectorReorderer.main(
