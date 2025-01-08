@@ -62,7 +62,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
   }
 
   private void createQuantizedIndex(Directory dir, List<float[]> vectors) throws IOException {
-    IndexWriterConfig cfg = newIndexWriterConfig();
+    IndexWriterConfig cfg = new IndexWriterConfig();
     cfg.setCodec(
         new Lucene101Codec() {
           @Override
