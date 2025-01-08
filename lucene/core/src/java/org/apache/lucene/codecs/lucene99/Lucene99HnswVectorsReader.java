@@ -498,7 +498,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           level == 0
               ? targetOrd
               : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
-      assert targetIndex >= 0;
+      assert targetIndex >= 0
+          : "seek level=" + level + " target=" + targetOrd + " not found: " + targetIndex;
       // unsafe; no bounds checking
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();
@@ -531,6 +532,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     @Override
     public int numLevels() throws IOException {
       return numLevels;
+    }
+
+    @Override
+    public int maxConn() {
+      return currentNeighborsBuffer.length >> 1;
     }
 
     @Override

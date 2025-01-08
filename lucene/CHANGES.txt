@@ -11,7 +11,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 Improvements
 ---------------------
@@ -21,6 +21,7 @@ Improvements
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
+* GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
 
 Bug Fixes
 ---------------------
@@ -60,7 +61,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#14109: prefetch may select the wrong memory segment for
+  multi-segment slices. (Chris Hegarty)
 
 Other
 ---------------------
