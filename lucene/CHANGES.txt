@@ -30,11 +30,13 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#14109: prefetch may select the wrong memory segment for
+  multi-segment slices. (Chris Hegarty)
 
 Other
 ---------------------
-(No changes)
+* GITHUB#14081: Fix urls describing why NIOFS is not recommended for Windows (Marcel Yeonghyeon Ko)
 
 ======================= Lucene 10.1.0 =======================
 
@@ -140,6 +142,9 @@ Optimizations
 
 * GITHUB#14040: Specialized top-level DisjunctionMaxQuery evaluation when the
   tie break multiplier is 0. (Adrien Grand)
+
+* GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance
+  and reducing allocations. (Viswanath Kuchibhotla)
 
 Bug Fixes
 ---------------------
