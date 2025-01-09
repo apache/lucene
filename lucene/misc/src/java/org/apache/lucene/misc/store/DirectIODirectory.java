@@ -529,7 +529,7 @@ public class DirectIODirectory extends FilterDirectory {
     public DirectIOIndexInput clone() {
       try {
         var clone = new DirectIOIndexInput("clone:" + this, this, offset, length);
-        clone.seek(getFilePointer());
+        clone.seekInternal(getFilePointer());
         return clone;
       } catch (IOException ioe) {
         throw new UncheckedIOException(ioe);

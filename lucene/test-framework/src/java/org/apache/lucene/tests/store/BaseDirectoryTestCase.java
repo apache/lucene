@@ -1200,6 +1200,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         slice1.seek(TestUtil.nextLong(random(), 0, slice1.length()));
         for (int j = 0; j < slice1.length(); j += 16) {
           IndexInput slice2 = slice1.slice("slice2", j, num - i - j);
+          if (random().nextBoolean()) {
+            slice2 = slice2.clone(); // clone shouldn't impact slice data
+          }
           assertEquals(0, slice2.getFilePointer());
           assertEquals(num - i - j, slice2.length());
           byte[] data = new byte[num];
