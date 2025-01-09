@@ -311,10 +311,8 @@ public class BpVectorReorderer extends AbstractBPReorderer {
               depth,
               vectorScore)
           .compute();
-
-      float scale =
-          VectorUtil.dotProduct(leftCentroid, leftCentroid)
-              + VectorUtil.dotProduct(rightCentroid, rightCentroid);
+      vectorSubtract(leftCentroid, rightCentroid, scratch);
+      float scale = (float) Math.sqrt(VectorUtil.dotProduct(scratch, scratch));
       float maxLeftBias = Float.NEGATIVE_INFINITY;
       for (int i = ids.offset; i < midPoint; ++i) {
         maxLeftBias = Math.max(maxLeftBias, biases[i]);
