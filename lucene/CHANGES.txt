@@ -68,7 +68,10 @@ Bug Fixes
 
 Other
 ---------------------
+
 * GITHUB#14081: Fix urls describing why NIOFS is not recommended for Windows (Marcel Yeonghyeon Ko)
+
+* GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
 
 ======================= Lucene 10.1.0 =======================
 
