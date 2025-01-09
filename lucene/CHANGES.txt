@@ -36,7 +36,7 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+* GITHUB#14081: Fix urls describing why NIOFS is not recommended for Windows (Marcel Yeonghyeon Ko)
 
 ======================= Lucene 10.1.0 =======================
 
