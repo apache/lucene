@@ -25,6 +25,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.document.BinaryDocValuesField;
@@ -247,8 +249,13 @@ public class TestSortingCodecReader extends LuceneTestCase {
             SortedSetDocValues sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
             SortedDocValues binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
             FloatVectorValues vectorValues = leaf.getFloatVectorValues("vector");
-            HnswGraph graph =
-                ((HnswGraphProvider) ((CodecReader) leaf).getVectorReader()).getGraph("vector");
+            KnnVectorsReader vectorsReader = ((CodecReader) leaf).getVectorReader();
+            HnswGraph graph;
+            if (vectorsReader instanceof HnswGraphProvider hnswGraphProvider) {
+              graph = hnswGraphProvider.getGraph("vector");
+            } else {
+              graph = null;
+            }
             NumericDocValues ids = leaf.getNumericDocValues("id");
             long prevValue = -1;
             boolean usingAltIds = false;
@@ -276,8 +283,10 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertTrue(binary_sorted_dv.advanceExact(idNext));
               if (dense || prevValue % 2 == 0) {
                 assertEquals(idNext, valuesIterator.advance(idNext));
-                graph.seek(0, valuesIterator.index());
-                assertNotEquals(DocIdSetIterator.NO_MORE_DOCS, graph.nextNeighbor());
+                if (graph != null) {
+                  graph.seek(0, valuesIterator.index());
+                  assertNotEquals(DocIdSetIterator.NO_MORE_DOCS, graph.nextNeighbor());
+                }
               }
 
               assertEquals(new BytesRef(ids.longValue() + ""), binary_dv.binaryValue());
