@@ -34,6 +34,8 @@ Bug Fixes
 * GITHUB#14109: prefetch may select the wrong memory segment for
   multi-segment slices. (Chris Hegarty)
 
+* GITHUB#14123: SortingCodecReader NPE when segment has no (points, vectors, etc...) (Mike Sokolov)
+
 Other
 ---------------------
 
