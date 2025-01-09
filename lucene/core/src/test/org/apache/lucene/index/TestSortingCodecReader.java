@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
@@ -248,9 +249,9 @@ public class TestSortingCodecReader extends LuceneTestCase {
             SortedSetDocValues sorted_set_dv = leaf.getSortedSetDocValues("sorted_set_dv");
             SortedDocValues binary_sorted_dv = leaf.getSortedDocValues("binary_sorted_dv");
             FloatVectorValues vectorValues = leaf.getFloatVectorValues("vector");
-            KnnVectorsReader vectorReader = ((CodecReader) leaf).getVectorReader();
+            KnnVectorsReader vectorsReader = ((CodecReader) leaf).getVectorReader();
             HnswGraph graph;
-            if (vectorReader instanceof HnswGraphProvider hnswGraphProvider) {
+            if (vectorsReader instanceof HnswGraphProvider hnswGraphProvider) {
               graph = hnswGraphProvider.getGraph("vector");
             } else {
               graph = null;
