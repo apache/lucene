@@ -349,12 +349,6 @@ public class DirectIODirectory extends FilterDirectory {
           .order(LITTLE_ENDIAN);
     }
 
-    private static ByteBuffer allocateBuffer(int bufferSize, int blockSize) {
-      return ByteBuffer.allocateDirect(bufferSize + blockSize - 1)
-          .alignedSlice(blockSize)
-          .order(LITTLE_ENDIAN);
-    }
-
     @Override
     public void close() throws IOException {
       if (isOpen && isClosable) {
