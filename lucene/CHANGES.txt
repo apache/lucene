@@ -51,6 +51,8 @@ Improvements
 * GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
   (Robert Muir)
 
+* GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
+
 Optimizations
 ---------------------
 
