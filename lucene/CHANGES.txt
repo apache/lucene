@@ -50,6 +50,7 @@ Improvements
 
 * GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
   (Robert Muir)
+* GITHUB#13984: Add HNSW graph checks and stats to CheckIndex
 
 Optimizations
 ---------------------
@@ -67,6 +68,8 @@ Bug Fixes
 
 Other
 ---------------------
+
+* GITHUB#14081: Fix urls describing why NIOFS is not recommended for Windows (Marcel Yeonghyeon Ko)
 
 * GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
 
