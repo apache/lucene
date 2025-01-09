@@ -452,11 +452,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(vectorIndexLength);
     meta.writeVInt(field.getVectorDimension());
     meta.writeInt(count);
-    meta.writeVInt(M);
     // write graph nodes on each level
     if (graph == null) {
+      meta.writeVInt(M);
       meta.writeVInt(0);
     } else {
+      meta.writeVInt(graph.maxConn());
       meta.writeVInt(graph.numLevels());
       long valueCount = 0;
       for (int level = 0; level < graph.numLevels(); level++) {
