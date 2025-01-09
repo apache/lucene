@@ -549,6 +549,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int maxConn() {
+      return (int) bytesForConns / Integer.BYTES - 1;
+    }
+
+    @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
         return new ArrayNodesIterator(size());

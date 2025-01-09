@@ -349,6 +349,12 @@ public class DirectIODirectory extends FilterDirectory {
           .order(LITTLE_ENDIAN);
     }
 
+    private static ByteBuffer allocateBuffer(int bufferSize, int blockSize) {
+      return ByteBuffer.allocateDirect(bufferSize + blockSize - 1)
+          .alignedSlice(blockSize)
+          .order(LITTLE_ENDIAN);
+    }
+
     @Override
     public void close() throws IOException {
       if (isOpen && isClosable) {
@@ -402,6 +408,33 @@ public class DirectIODirectory extends FilterDirectory {
       return buffer.get();
     }
 
+    @Override
+    public short readShort() throws IOException {
+      if (buffer.remaining() >= Short.BYTES) {
+        return buffer.getShort();
+      } else {
+        return super.readShort();
+      }
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      if (buffer.remaining() >= Integer.BYTES) {
+        return buffer.getInt();
+      } else {
+        return super.readInt();
+      }
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      if (buffer.remaining() >= Long.BYTES) {
+        return buffer.getLong();
+      } else {
+        return super.readLong();
+      }
+    }
+
     private void refill(int bytesToRead) throws IOException {
       filePos += buffer.capacity();
 
@@ -438,33 +471,6 @@ public class DirectIODirectory extends FilterDirectory {
           buffer.get(dst, offset, toRead);
           break;
         }
-      }
-    }
-
-    @Override
-    public short readShort() throws IOException {
-      if (buffer.remaining() >= Short.BYTES) {
-        return buffer.getShort();
-      } else {
-        return super.readShort();
-      }
-    }
-
-    @Override
-    public int readInt() throws IOException {
-      if (buffer.remaining() >= Integer.BYTES) {
-        return buffer.getInt();
-      } else {
-        return super.readInt();
-      }
-    }
-
-    @Override
-    public long readLong() throws IOException {
-      if (buffer.remaining() >= Long.BYTES) {
-        return buffer.getLong();
-      } else {
-        return super.readLong();
       }
     }
 
