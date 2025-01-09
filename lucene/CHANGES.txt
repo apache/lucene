@@ -67,7 +67,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
 
 ======================= Lucene 10.1.0 =======================
 
