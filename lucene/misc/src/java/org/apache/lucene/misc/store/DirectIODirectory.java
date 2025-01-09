@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.misc.store;
 
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -314,7 +316,7 @@ public class DirectIODirectory extends FilterDirectory {
       this.blockSize = blockSize;
 
       this.channel = FileChannel.open(path, StandardOpenOption.READ, getDirectOpenOption());
-      this.buffer = ByteBuffer.allocateDirect(bufferSize + blockSize - 1).alignedSlice(blockSize);
+      this.buffer = allocateBuffer(bufferSize, blockSize);
 
       isOpen = true;
       isClone = false;
@@ -329,13 +331,19 @@ public class DirectIODirectory extends FilterDirectory {
       this.blockSize = other.blockSize;
 
       final int bufferSize = other.buffer.capacity();
-      this.buffer = ByteBuffer.allocateDirect(bufferSize + blockSize - 1).alignedSlice(blockSize);
+      this.buffer = allocateBuffer(bufferSize, blockSize);
 
       isOpen = true;
       isClone = true;
       filePos = -bufferSize;
       buffer.limit(0);
       seek(other.getFilePointer());
+    }
+
+    private static ByteBuffer allocateBuffer(int bufferSize, int blockSize) {
+      return ByteBuffer.allocateDirect(bufferSize + blockSize - 1)
+          .alignedSlice(blockSize)
+          .order(LITTLE_ENDIAN);
     }
 
     @Override
@@ -387,6 +395,33 @@ public class DirectIODirectory extends FilterDirectory {
       }
 
       return buffer.get();
+    }
+
+    @Override
+    public short readShort() throws IOException {
+      if (buffer.remaining() >= Short.BYTES) {
+        return buffer.getShort();
+      } else {
+        return super.readShort();
+      }
+    }
+
+    @Override
+    public int readInt() throws IOException {
+      if (buffer.remaining() >= Integer.BYTES) {
+        return buffer.getInt();
+      } else {
+        return super.readInt();
+      }
+    }
+
+    @Override
+    public long readLong() throws IOException {
+      if (buffer.remaining() >= Long.BYTES) {
+        return buffer.getLong();
+      } else {
+        return super.readLong();
+      }
     }
 
     private void refill(int bytesToRead) throws IOException {
