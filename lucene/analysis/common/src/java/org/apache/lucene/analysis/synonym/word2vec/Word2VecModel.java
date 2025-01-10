@@ -18,10 +18,10 @@
 package org.apache.lucene.analysis.synonym.word2vec;
 
 import java.io.IOException;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.TermAndVector;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Word2VecModel is a class representing the parsed Word2Vec model containing the vectors for each
@@ -29,7 +29,7 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  *
  * @lucene.experimental
  */
-public class Word2VecModel implements RandomAccessVectorValues<float[]> {
+public class Word2VecModel extends FloatVectorValues {
 
   private final int dictionarySize;
   private final int vectorDimension;
@@ -56,25 +56,25 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
   }
 
   public void addTermAndVector(TermAndVector modelEntry) {
-    modelEntry.normalizeVector();
+    modelEntry = modelEntry.normalizeVector();
     this.termsAndVectors[loadedCount++] = modelEntry;
-    this.word2Vec.add(modelEntry.getTerm());
+    this.word2Vec.add(modelEntry.term());
   }
 
   @Override
   public float[] vectorValue(int targetOrd) {
-    return termsAndVectors[targetOrd].getVector();
+    return termsAndVectors[targetOrd].vector();
   }
 
   public float[] vectorValue(BytesRef term) {
     int termOrd = this.word2Vec.find(term);
     if (termOrd < 0) return null;
     TermAndVector entry = this.termsAndVectors[termOrd];
-    return (entry == null) ? null : entry.getVector();
+    return (entry == null) ? null : entry.vector();
   }
 
   public BytesRef termValue(int targetOrd) {
-    return termsAndVectors[targetOrd].getTerm();
+    return termsAndVectors[targetOrd].term();
   }
 
   @Override
@@ -88,7 +88,7 @@ public class Word2VecModel implements RandomAccessVectorValues<float[]> {
   }
 
   @Override
-  public RandomAccessVectorValues<float[]> copy() throws IOException {
+  public Word2VecModel copy() throws IOException {
     return new Word2VecModel(
         this.dictionarySize, this.vectorDimension, this.termsAndVectors, this.word2Vec);
   }

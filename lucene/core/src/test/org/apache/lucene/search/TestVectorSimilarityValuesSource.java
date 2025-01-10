@@ -18,6 +18,7 @@
 package org.apache.lucene.search;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -29,8 +30,10 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
@@ -47,6 +50,13 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     dir = newDirectory();
     analyzer = new MockAnalyzer(random());
     IndexWriterConfig iwConfig = newIndexWriterConfig(analyzer);
+    iwConfig.setCodec(
+        new AssertingCodec() {
+          @Override
+          public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+            return TestUtil.getDefaultKnnVectorsFormat();
+          }
+        });
     iwConfig.setMergePolicy(newLogMergePolicy());
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwConfig);
 

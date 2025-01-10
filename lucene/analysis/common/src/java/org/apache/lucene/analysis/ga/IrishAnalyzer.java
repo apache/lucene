@@ -43,7 +43,7 @@ public final class IrishAnalyzer extends StopwordAnalyzerBase {
   private final CharArraySet stemExclusionSet;
 
   /** File containing default Irish stopwords. */
-  public static final String DEFAULT_STOPWORD_FILE = "stopwords.txt";
+  public static final String DEFAULT_STOPWORD_FILE = "irish_stop.txt";
 
   private static final CharArraySet DEFAULT_ARTICLES =
       CharArraySet.unmodifiableSet(new CharArraySet(Arrays.asList("d", "m", "b"), true));
@@ -75,11 +75,10 @@ public final class IrishAnalyzer extends StopwordAnalyzerBase {
     static {
       try {
         DEFAULT_STOP_SET =
-            WordlistLoader.getWordSet(
+            WordlistLoader.getSnowballWordSet(
                 IOUtils.requireResourceNonNull(
-                    IrishAnalyzer.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
-                    DEFAULT_STOPWORD_FILE),
-                "#");
+                    SnowballFilter.class.getResourceAsStream(DEFAULT_STOPWORD_FILE),
+                    DEFAULT_STOPWORD_FILE));
       } catch (IOException ex) {
         // default set should always be present as it is part of the
         // distribution (JAR)

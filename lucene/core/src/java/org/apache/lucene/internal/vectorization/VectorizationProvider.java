@@ -17,11 +17,10 @@
 
 package org.apache.lucene.internal.vectorization;
 
-import java.lang.Runtime.Version;
+import java.io.IOException;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -29,6 +28,8 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.VectorUtil;
 
@@ -37,19 +38,23 @@ import org.apache.lucene.util.VectorUtil;
  * vectorization modules in the Java runtime this class provides optimized implementations (using
  * SIMD) of several algorithms used throughout Apache Lucene.
  *
+ * <p>Expert: set the {@value #UPPER_JAVA_FEATURE_VERSION_SYSPROP} system property to increase the
+ * set of Java versions this class will provide optimized implementations for.
+ *
  * @lucene.internal
  */
 public abstract class VectorizationProvider {
 
   static final OptionalInt TESTS_VECTOR_SIZE;
   static final boolean TESTS_FORCE_INTEGER_VECTORS;
+  static final int UPPER_JAVA_FEATURE_VERSION = getUpperJavaFeatureVersion();
 
   static {
     var vs = OptionalInt.empty();
     try {
       vs =
           Stream.ofNullable(System.getProperty("tests.vectorsize"))
-              .filter(Predicate.not(String::isEmpty))
+              .filter(Predicate.not(Set.of("", "default")::contains))
               .mapToInt(Integer::parseInt)
               .findAny();
     } catch (
@@ -68,6 +73,27 @@ public abstract class VectorizationProvider {
       // ignored
     }
     TESTS_FORCE_INTEGER_VECTORS = enforce;
+  }
+
+  private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
+      "org.apache.lucene.vectorization.upperJavaFeatureVersion";
+  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 23;
+
+  private static int getUpperJavaFeatureVersion() {
+    int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
+    try {
+      String str = System.getProperty(UPPER_JAVA_FEATURE_VERSION_SYSPROP);
+      if (str != null) {
+        runtimeVersion = Math.max(Integer.parseInt(str), runtimeVersion);
+      }
+    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+      Logger.getLogger(VectorizationProvider.class.getName())
+          .warning(
+              "Cannot read sysprop "
+                  + UPPER_JAVA_FEATURE_VERSION_SYSPROP
+                  + ", so the default value will be used.");
+    }
+    return runtimeVersion;
   }
 
   /**
@@ -93,24 +119,21 @@ public abstract class VectorizationProvider {
    */
   public abstract VectorUtilSupport getVectorUtilSupport();
 
+  /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
+  public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
+
+  /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
+  public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
+
   // *** Lookup mechanism: ***
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
 
-  /** The minimal version of Java that has the bugfix for JDK-8301190. */
-  private static final Version VERSION_JDK8301190_FIXED = Version.parse("20.0.2");
-
   // visible for tests
   static VectorizationProvider lookup(boolean testMode) {
     final int runtimeVersion = Runtime.version().feature();
-    if (runtimeVersion >= 20 && runtimeVersion <= 21) {
-      // is locale sane (only buggy in Java 20)
-      if (isAffectedByJDK8301190()) {
-        LOG.warning(
-            "Java runtime is using a buggy default locale; Java vector incubator API can't be enabled: "
-                + Locale.getDefault());
-        return new DefaultVectorizationProvider();
-      }
+    assert runtimeVersion >= 21;
+    if (runtimeVersion <= UPPER_JAVA_FEATURE_VERSION) {
       // only use vector module with Hotspot VM
       if (!Constants.IS_HOTSPOT_VM) {
         LOG.warning(
@@ -169,13 +192,11 @@ public abstract class VectorizationProvider {
       } catch (ClassNotFoundException cnfe) {
         throw new LinkageError("PanamaVectorizationProvider is missing in Lucene JAR file", cnfe);
       }
-    } else if (runtimeVersion >= 22) {
+    } else {
       LOG.warning(
-          "You are running with Java 22 or later. To make full use of the Vector API, please update Apache Lucene.");
-    } else if (lookupVectorModule().isPresent()) {
-      LOG.warning(
-          "Java vector incubator module was enabled by command line flags, but your Java version is too old: "
-              + runtimeVersion);
+          "You are running with unsupported Java "
+              + runtimeVersion
+              + ". To make full use of the Vector API, please update Apache Lucene.");
     }
     return new DefaultVectorizationProvider();
   }
@@ -189,17 +210,13 @@ public abstract class VectorizationProvider {
         .findModule("jdk.incubator.vector");
   }
 
-  /**
-   * Check if runtime is affected by JDK-8301190 (avoids assertion when default language is say
-   * "tr").
-   */
-  private static boolean isAffectedByJDK8301190() {
-    return VERSION_JDK8301190_FIXED.compareToIgnoreOptional(Runtime.version()) > 0
-        && !Objects.equals("I", "i".toUpperCase(Locale.getDefault()));
-  }
-
   // add all possible callers here as FQCN:
-  private static final Set<String> VALID_CALLERS = Set.of("org.apache.lucene.util.VectorUtil");
+  private static final Set<String> VALID_CALLERS =
+      Set.of(
+          "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
+          "org.apache.lucene.util.VectorUtil",
+          "org.apache.lucene.codecs.lucene101.Lucene101PostingsReader",
+          "org.apache.lucene.codecs.lucene101.PostingIndexInput");
 
   private static void ensureCaller() {
     final boolean validCaller =

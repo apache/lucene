@@ -571,63 +571,69 @@ public class PlanetModel implements SerializableObject {
 
     double lat = from.getLatitude();
     double lon = from.getLongitude();
-    double sinα1 = Math.sin(bearing);
-    double cosα1 = Math.cos(bearing);
+    double sinalpha1 = Math.sin(bearing);
+    double cosalpha1 = Math.cos(bearing);
 
     double tanU1 = (1.0 - scaledFlattening) * Math.tan(lat);
     double cosU1 = 1.0 / Math.sqrt((1.0 + tanU1 * tanU1));
     double sinU1 = tanU1 * cosU1;
 
-    double σ1 = Math.atan2(tanU1, cosα1);
-    double sinα = cosU1 * sinα1;
-    double cosSqα = 1.0 - sinα * sinα;
-    double uSq = cosSqα * squareRatio;
+    double sigma1 = Math.atan2(tanU1, cosalpha1);
+    double sinalpha = cosU1 * sinalpha1;
+    double cosSqalpha = 1.0 - sinalpha * sinalpha;
+    double uSq = cosSqalpha * squareRatio;
     double A = 1.0 + uSq / 16384.0 * (4096.0 + uSq * (-768.0 + uSq * (320.0 - 175.0 * uSq)));
     double B = uSq / 1024.0 * (256.0 + uSq * (-128.0 + uSq * (74.0 - 47.0 * uSq)));
 
-    double cos2σM;
-    double sinσ;
-    double cosσ;
-    double Δσ;
+    double cos2sigmaM;
+    double sinsigma;
+    double cossigma;
+    double deltasigma;
 
-    double σ = dist / (zScaling * inverseScale * A);
-    double σʹ;
+    double sigma = dist / (zScaling * inverseScale * A);
+    double sigmaprime;
     double iterations = 0;
     do {
-      cos2σM = Math.cos(2.0 * σ1 + σ);
-      sinσ = Math.sin(σ);
-      cosσ = Math.cos(σ);
-      Δσ =
+      cos2sigmaM = Math.cos(2.0 * sigma1 + sigma);
+      sinsigma = Math.sin(sigma);
+      cossigma = Math.cos(sigma);
+      deltasigma =
           B
-              * sinσ
-              * (cos2σM
+              * sinsigma
+              * (cos2sigmaM
                   + B
                       / 4.0
-                      * (cosσ * (-1.0 + 2.0 * cos2σM * cos2σM)
+                      * (cossigma * (-1.0 + 2.0 * cos2sigmaM * cos2sigmaM)
                           - B
                               / 6.0
-                              * cos2σM
-                              * (-3.0 + 4.0 * sinσ * sinσ)
-                              * (-3.0 + 4.0 * cos2σM * cos2σM)));
-      σʹ = σ;
-      σ = dist / (zScaling * inverseScale * A) + Δσ;
-    } while (Math.abs(σ - σʹ) >= Vector.MINIMUM_RESOLUTION && ++iterations < 100);
-    double x = sinU1 * sinσ - cosU1 * cosσ * cosα1;
-    double φ2 =
+                              * cos2sigmaM
+                              * (-3.0 + 4.0 * sinsigma * sinsigma)
+                              * (-3.0 + 4.0 * cos2sigmaM * cos2sigmaM)));
+      sigmaprime = sigma;
+      sigma = dist / (zScaling * inverseScale * A) + deltasigma;
+    } while (Math.abs(sigma - sigmaprime) >= Vector.MINIMUM_RESOLUTION && ++iterations < 100);
+    double x = sinU1 * sinsigma - cosU1 * cossigma * cosalpha1;
+    double phi2 =
         Math.atan2(
-            sinU1 * cosσ + cosU1 * sinσ * cosα1,
-            (1.0 - scaledFlattening) * Math.sqrt(sinα * sinα + x * x));
-    double λ = Math.atan2(sinσ * sinα1, cosU1 * cosσ - sinU1 * sinσ * cosα1);
-    double C = scaledFlattening / 16.0 * cosSqα * (4.0 + scaledFlattening * (4.0 - 3.0 * cosSqα));
+            sinU1 * cossigma + cosU1 * sinsigma * cosalpha1,
+            (1.0 - scaledFlattening) * Math.sqrt(sinalpha * sinalpha + x * x));
+    double lambda =
+        Math.atan2(sinsigma * sinalpha1, cosU1 * cossigma - sinU1 * sinsigma * cosalpha1);
+    double C =
+        scaledFlattening / 16.0 * cosSqalpha * (4.0 + scaledFlattening * (4.0 - 3.0 * cosSqalpha));
     double L =
-        λ
+        lambda
             - (1.0 - C)
                 * scaledFlattening
-                * sinα
-                * (σ + C * sinσ * (cos2σM + C * cosσ * (-1.0 + 2.0 * cos2σM * cos2σM)));
-    double λ2 = (lon + L + 3.0 * Math.PI) % (2.0 * Math.PI) - Math.PI; // normalise to -180..+180
+                * sinalpha
+                * (sigma
+                    + C
+                        * sinsigma
+                        * (cos2sigmaM + C * cossigma * (-1.0 + 2.0 * cos2sigmaM * cos2sigmaM)));
+    double lambda2 =
+        (lon + L + 3.0 * Math.PI) % (2.0 * Math.PI) - Math.PI; // normalise to -180..+180
 
-    return new GeoPoint(this, φ2, λ2);
+    return new GeoPoint(this, phi2, lambda2);
   }
 
   /**

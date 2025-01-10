@@ -33,6 +33,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Base class for Directories that "chunk" the input into blocks.
@@ -50,10 +51,19 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   /** Creates a new directory with the specified max chunk size */
   protected abstract Directory getDirectory(Path path, int maxChunkSize) throws IOException;
 
+  public void testGroupVIntMultiBlocks() throws IOException {
+    final int maxChunkSize = random().nextInt(64, 512);
+    try (Directory dir = getDirectory(createTempDir(), maxChunkSize)) {
+      doTestGroupVInt(dir, 10, 1, 31, 1024);
+    }
+  }
+
   public void testCloneClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneClose"));
     IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+    final long[] values = new long[] {0, 7, 11, 9};
     io.writeVInt(5);
+    io.writeGroupVInts(values, values.length);
     io.close();
     IndexInput one = dir.openInput("bytes", IOContext.DEFAULT);
     IndexInput two = one.clone();
@@ -65,6 +75,11 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
         () -> {
           two.readVInt();
         });
+    expectThrows(
+        AlreadyClosedException.class,
+        () -> {
+          GroupVIntUtil.readGroupVInts(two, values, values.length);
+        });
     assertEquals(5, three.readVInt());
     one.close();
     three.close();
@@ -74,17 +89,24 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   public void testCloneSliceClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneSliceClose"));
     IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
+    final long[] values = new long[] {0, 7, 11, 9};
     io.writeInt(1);
     io.writeInt(2);
+    io.writeGroupVInts(values, values.length); // will write 5 bytes
     io.close();
     IndexInput slicer = dir.openInput("bytes", newIOContext(random()));
-    IndexInput one = slicer.slice("first int", 0, 4);
+    IndexInput one = slicer.slice("first int", 0, 4 + 5);
     IndexInput two = slicer.slice("second int", 4, 4);
     one.close();
     expectThrows(
         AlreadyClosedException.class,
         () -> {
           one.readInt();
+        });
+    expectThrows(
+        AlreadyClosedException.class,
+        () -> {
+          GroupVIntUtil.readGroupVInts(one, values, values.length);
         });
     assertEquals(2, two.readInt());
     // reopen a new slice "another":

@@ -1,6 +1,6 @@
 {
     "gradle/generation/jflex/skeleton.disable.buffer.expansion.txt": "6e43a3a64a9b5eb82ec5b4bc21f95aff5a2a061e",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex": "346eb94735de07f845269e8f042ed0a25f09bc7f",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java": "971a80479af08c54fd2fab9a75bb2321904cb3ef",
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex": "00a4d8cccb5e8d05aba986d48ef1acedd88a15cf"
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex": "eddfb929c5664b2081a20314ac1a8363c462f27c",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java": "ad17a3b0bc254749685ac34c3071bb0881f7b185",
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.jflex": "8d7cd1a935443deda6cad73b91f1a45c1c714535"
 }

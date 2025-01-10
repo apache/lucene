@@ -31,19 +31,19 @@ public interface TwoPhaseCommit {
    * method, but avoid actual committing changes. If the 2-phase commit fails, {@link #rollback()}
    * is called to discard all changes since last successful commit.
    */
-  public long prepareCommit() throws IOException;
+  long prepareCommit() throws IOException;
 
   /**
    * The second phase of a 2-phase commit. Implementations should ideally do very little work in
    * this method (following {@link #prepareCommit()}, and after it returns, the caller can assume
    * that the changes were successfully committed to the underlying storage.
    */
-  public long commit() throws IOException;
+  long commit() throws IOException;
 
   /**
    * Discards any changes that have occurred since the last commit. In a 2-phase commit algorithm,
    * where one of the objects failed to {@link #commit()} or {@link #prepareCommit()}, this method
    * is used to roll all other objects back to their previous state.
    */
-  public void rollback() throws IOException;
+  void rollback() throws IOException;
 }

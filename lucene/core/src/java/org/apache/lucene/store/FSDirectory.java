@@ -44,31 +44,27 @@ import org.apache.lucene.util.IOUtils;
 
 /**
  * Base class for Directory implementations that store index files in the file system. <a
- * id="subclasses"></a> There are currently three core subclasses:
+ * id="subclasses"></a> There are currently two core subclasses:
  *
  * <ul>
- *   <li>{@link NIOFSDirectory} uses java.nio's FileChannel's positional io when reading to avoid
- *       synchronization when reading from the same file. Unfortunately, due to a Windows-only <a
- *       href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6265734">Sun JRE bug</a> this is a
- *       poor choice for Windows, but on all other platforms this is the preferred choice.
- *       Applications using {@link Thread#interrupt()} or {@link Future#cancel(boolean)} should use
- *       {@code RAFDirectory} instead. See {@link NIOFSDirectory} java doc for details.
  *   <li>{@link MMapDirectory} uses memory-mapped IO when reading. This is a good choice if you have
  *       plenty of virtual memory relative to your index size, eg if you are running on a 64 bit
  *       JRE, or you are running on a 32 bit JRE but your index sizes are small enough to fit into
- *       the virtual memory space. Java has currently the limitation of not being able to unmap
- *       files from user code. The files are unmapped, when GC releases the byte buffers. Due to <a
- *       href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038">this bug</a> in Sun's
- *       JRE, MMapDirectory's {@link IndexInput#close} is unable to close the underlying OS file
- *       handle. Only when GC finally collects the underlying objects, which could be quite some
- *       time later, will the file handle be closed. This will consume additional transient disk
- *       usage: on Windows, attempts to delete or overwrite the files will result in an exception;
- *       on other platforms, which typically have a &quot;delete on last close&quot; semantics,
- *       while such operations will succeed, the bytes are still consuming space on disk. For many
- *       applications this limitation is not a problem (e.g. if you have plenty of disk space, and
- *       you don't rely on overwriting files on Windows) but it's still an important limitation to
- *       be aware of. This class supplies a (possibly dangerous) workaround mentioned in the bug
- *       report, which may fail on non-Sun JVMs.
+ *       the virtual memory space. This class will use the modern {@link
+ *       java.lang.foreign.MemorySegment} API available since Java 21 which allows to safely unmap
+ *       previously mmapped files after closing the {@link IndexInput}s. There is no need to enable
+ *       the "preview feature" of your Java version; it works out of box with some compilation
+ *       tricks. For more information about the foreign memory API read documentation of the {@link
+ *       java.lang.foreign} package and <a
+ *       href="https://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html">Uwe's blog
+ *       post</a>.
+ *   <li>{@link NIOFSDirectory} uses java.nio's FileChannel's positional io when reading to avoid
+ *       synchronization when reading from the same file. Unfortunately, due to a Windows-only <a
+ *       href="https://bugs.java.com/bugdatabase/view_bug?bug_id=6265734">Sun JRE bug</a> this is a
+ *       poor choice for Windows, but on all other platforms this is the preferred choice.
+ *       Applications using {@link Thread#interrupt()} or {@link Future#cancel(boolean)} should use
+ *       {@code RAFDirectory} instead, which is provided in the {@code misc} module. See {@link
+ *       NIOFSDirectory} javadoc for details.
  * </ul>
  *
  * <p>Unfortunately, because of system peculiarities, there is no single overall best
@@ -98,8 +94,7 @@ public abstract class FSDirectory extends BaseDirectory {
    * Maps files that we are trying to delete (or we tried already but failed) before attempting to
    * delete that key.
    */
-  private final Set<String> pendingDeletes =
-      Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+  private final Set<String> pendingDeletes = ConcurrentHashMap.newKeySet();
 
   private final AtomicInteger opsSinceLastDelete = new AtomicInteger();
 
@@ -158,7 +153,7 @@ public abstract class FSDirectory extends BaseDirectory {
 
   /** Just like {@link #open(Path)}, but allows you to also specify a custom {@link LockFactory}. */
   public static FSDirectory open(Path path, LockFactory lockFactory) throws IOException {
-    if (Constants.JRE_IS_64BIT && MMapDirectory.UNMAP_SUPPORTED) {
+    if (Constants.JRE_IS_64BIT) {
       return new MMapDirectory(path, lockFactory);
     } else {
       return new NIOFSDirectory(path, lockFactory);
@@ -186,7 +181,7 @@ public abstract class FSDirectory extends BaseDirectory {
       }
     }
 
-    String[] array = entries.toArray(new String[entries.size()]);
+    String[] array = entries.toArray(new String[0]);
     // Directory.listAll javadocs state that we sort the results here, so we don't let filesystem
     // specifics leak out of this abstraction:
     Arrays.sort(array);
@@ -214,7 +209,7 @@ public abstract class FSDirectory extends BaseDirectory {
     maybeDeletePendingFiles();
     // If this file was pending delete, we are now bringing it back to life:
     if (pendingDeletes.remove(name)) {
-      privateDeleteFile(name, true); // try again to delete it - this is best effort
+      privateDeleteFile(name, true); // try again to delete it - this is the best effort
       pendingDeletes.remove(name); // watch out - if the delete fails it put
     }
     return new FSIndexOutput(name);
@@ -266,8 +261,8 @@ public abstract class FSDirectory extends BaseDirectory {
     }
     maybeDeletePendingFiles();
     if (pendingDeletes.remove(dest)) {
-      privateDeleteFile(dest, true); // try again to delete it - this is best effort
-      pendingDeletes.remove(dest); // watch out if the delete fails it's back in here.
+      privateDeleteFile(dest, true); // try again to delete it - this is the best effort
+      pendingDeletes.remove(dest); // watch out if the delete fails, it's back in here
     }
     Files.move(directory.resolve(source), directory.resolve(dest), StandardCopyOption.ATOMIC_MOVE);
   }

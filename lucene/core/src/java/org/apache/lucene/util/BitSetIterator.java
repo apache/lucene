@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
@@ -95,5 +96,23 @@ public class BitSetIterator extends DocIdSetIterator {
   @Override
   public long cost() {
     return cost;
+  }
+
+  @Override
+  public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
+      throws IOException {
+    // TODO: Can we also optimize the case when acceptDocs is not null?
+    if (acceptDocs == null
+        && offset < bits.length()
+        && bits instanceof FixedBitSet fixedBits
+        // no bits are set between `offset` and `doc`
+        && fixedBits.nextSetBit(offset) == doc
+        // the whole `bitSet` is getting filled
+        && (upTo - offset == bitSet.length())) {
+      bitSet.orRange(fixedBits, offset);
+      advance(upTo); // set the current doc
+    } else {
+      super.intoBitSet(acceptDocs, upTo, bitSet, offset);
+    }
   }
 }

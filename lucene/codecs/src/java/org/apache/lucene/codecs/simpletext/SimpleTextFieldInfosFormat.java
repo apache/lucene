@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -60,6 +61,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   static final BytesRef PAYLOADS = new BytesRef("  payloads ");
   static final BytesRef NORMS = new BytesRef("  norms ");
   static final BytesRef DOCVALUES = new BytesRef("  doc values ");
+  static final BytesRef DOCVALUES_SKIP_INDEX = new BytesRef("  doc values skip index");
   static final BytesRef DOCVALUES_GEN = new BytesRef("  doc values gen ");
   static final BytesRef INDEXOPTIONS = new BytesRef("  index options ");
   static final BytesRef NUM_ATTS = new BytesRef("  attributes ");
@@ -72,6 +74,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   static final BytesRef VECTOR_ENCODING = new BytesRef("  vector encoding ");
   static final BytesRef VECTOR_SIMILARITY = new BytesRef("  vector similarity ");
   static final BytesRef SOFT_DELETES = new BytesRef("  soft-deletes ");
+  static final BytesRef PARENT = new BytesRef("  parent ");
 
   @Override
   public FieldInfos read(
@@ -122,6 +125,11 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         final DocValuesType docValuesType = docValuesType(dvType);
 
         SimpleTextUtil.readLine(input, scratch);
+        assert StringHelper.startsWith(scratch.get(), DOCVALUES_SKIP_INDEX);
+        DocValuesSkipIndexType docValueSkipper =
+            docValuesSkipIndexType(readString(DOCVALUES_SKIP_INDEX.length, scratch));
+
+        SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), DOCVALUES_GEN);
         final long dvGen = Long.parseLong(readString(DOCVALUES_GEN.length, scratch));
 
@@ -170,6 +178,9 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.readLine(input, scratch);
         assert StringHelper.startsWith(scratch.get(), SOFT_DELETES);
         boolean isSoftDeletesField = Boolean.parseBoolean(readString(SOFT_DELETES.length, scratch));
+        SimpleTextUtil.readLine(input, scratch);
+        assert StringHelper.startsWith(scratch.get(), PARENT);
+        boolean isParentField = Boolean.parseBoolean(readString(PARENT.length, scratch));
 
         infos[i] =
             new FieldInfo(
@@ -180,6 +191,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 storePayloads,
                 indexOptions,
                 docValuesType,
+                docValueSkipper,
                 dvGen,
                 Collections.unmodifiableMap(atts),
                 dimensionalCount,
@@ -188,7 +200,8 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
                 vectorNumDimensions,
                 vectorEncoding,
                 vectorDistFunc,
-                isSoftDeletesField);
+                isSoftDeletesField,
+                isParentField);
       }
 
       SimpleTextUtil.checkFooter(input);
@@ -207,6 +220,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
   public DocValuesType docValuesType(String dvType) {
     return DocValuesType.valueOf(dvType);
+  }
+
+  public DocValuesSkipIndexType docValuesSkipIndexType(String dvSkipIndexType) {
+    return DocValuesSkipIndexType.valueOf(dvSkipIndexType);
   }
 
   public VectorEncoding vectorEncoding(String vectorEncoding) {
@@ -256,7 +273,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, STORETV);
-        SimpleTextUtil.write(out, Boolean.toString(fi.hasVectors()), scratch);
+        SimpleTextUtil.write(out, Boolean.toString(fi.hasTermVectors()), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, PAYLOADS);
@@ -269,6 +286,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
         SimpleTextUtil.write(out, DOCVALUES);
         SimpleTextUtil.write(out, getDocValuesType(fi.getDocValuesType()), scratch);
+        SimpleTextUtil.writeNewline(out);
+
+        SimpleTextUtil.write(out, DOCVALUES_SKIP_INDEX);
+        SimpleTextUtil.write(out, getDocValuesSkipIndexType(fi.docValuesSkipIndexType()), scratch);
         SimpleTextUtil.writeNewline(out);
 
         SimpleTextUtil.write(out, DOCVALUES_GEN);
@@ -320,6 +341,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.write(out, SOFT_DELETES);
         SimpleTextUtil.write(out, Boolean.toString(fi.isSoftDeletesField()), scratch);
         SimpleTextUtil.writeNewline(out);
+
+        SimpleTextUtil.write(out, PARENT);
+        SimpleTextUtil.write(out, Boolean.toString(fi.isParentField()), scratch);
+        SimpleTextUtil.writeNewline(out);
       }
       SimpleTextUtil.writeChecksum(out, scratch);
       success = true;
@@ -333,6 +358,10 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
   }
 
   private static String getDocValuesType(DocValuesType type) {
+    return type.toString();
+  }
+
+  private static String getDocValuesSkipIndexType(DocValuesSkipIndexType type) {
     return type.toString();
   }
 }

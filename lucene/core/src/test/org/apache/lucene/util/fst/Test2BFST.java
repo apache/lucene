@@ -31,9 +31,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IntsRef;
 import org.junit.Ignore;
 
-// TODO: soon we will be able to run this test with small heaps!  Once #12633 and #12543
-// are done
-//
 // Run something like this:
 //    ./gradlew test --tests Test2BFST -Dtests.heapsize=32g -Dtests.verbose=true --max-workers=1
 
@@ -45,8 +42,6 @@ public class Test2BFST extends LuceneTestCase {
   private static long LIMIT = 3L * 1024 * 1024 * 1024;
 
   public void test() throws Exception {
-    assumeWorkingMMapOnWindows();
-
     int[] ints = new int[7];
     IntsRef input = new IntsRef(ints, 0, ints.length);
     long seed = random().nextLong();
@@ -66,6 +61,7 @@ public class Test2BFST extends LuceneTestCase {
         Random r = new Random(seed);
         int[] ints2 = new int[200];
         IntsRef input2 = new IntsRef(ints2, 0, ints2.length);
+        long startTime = System.nanoTime();
         while (true) {
           // System.out.println("add: " + input + " -> " + output);
           for (int i = 10; i < ints2.length; i++) {
@@ -78,9 +74,13 @@ public class Test2BFST extends LuceneTestCase {
                 count
                     + ": "
                     + fstCompiler.fstRamBytesUsed()
-                    + " bytes; "
+                    + " RAM bytes used; "
+                    + fstCompiler.fstSizeInBytes()
+                    + " FST bytes; "
                     + fstCompiler.getNodeCount()
-                    + " nodes");
+                    + " nodes; took "
+                    + (long) ((System.nanoTime() - startTime) / 1e9)
+                    + " seconds");
           }
           if (fstCompiler.getNodeCount() > Integer.MAX_VALUE + 100L * 1024 * 1024) {
             break;
@@ -88,12 +88,12 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints2);
         }
 
-        FST<Object> fst = fstCompiler.compile();
+        FST<Object> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
         for (int verify = 0; verify < 2; verify++) {
           System.out.println(
               "\nTEST: now verify [fst size="
-                  + fst.ramBytesUsed()
+                  + fst.numBytes()
                   + "; nodeCount="
                   + fstCompiler.getNodeCount()
                   + "; arcCount="
@@ -103,9 +103,11 @@ public class Test2BFST extends LuceneTestCase {
           Arrays.fill(ints2, 0);
           r = new Random(seed);
 
+          startTime = System.nanoTime();
           for (int i = 0; i < count; i++) {
             if (i % 1000000 == 0) {
-              System.out.println(i + "...: ");
+              System.out.println(
+                  i + "...: took " + (long) ((System.nanoTime() - startTime) / 1e9) + " seconds");
             }
             for (int j = 10; j < ints2.length; j++) {
               ints2[j] = r.nextInt(256);
@@ -168,7 +170,7 @@ public class Test2BFST extends LuceneTestCase {
           fstCompiler.add(input, BytesRef.deepCopyOf(output));
           count++;
           if (count % 10000 == 0) {
-            long size = fstCompiler.fstRamBytesUsed();
+            long size = fstCompiler.fstSizeInBytes();
             if (count % 1000000 == 0) {
               System.out.println(count + "...: " + size + " bytes");
             }
@@ -179,12 +181,12 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints);
         }
 
-        FST<BytesRef> fst = fstCompiler.compile();
+        FST<BytesRef> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
         for (int verify = 0; verify < 2; verify++) {
 
           System.out.println(
               "\nTEST: now verify [fst size="
-                  + fst.ramBytesUsed()
+                  + fst.numBytes()
                   + "; nodeCount="
                   + fstCompiler.getNodeCount()
                   + "; arcCount="
@@ -194,9 +196,12 @@ public class Test2BFST extends LuceneTestCase {
           r = new Random(seed);
           Arrays.fill(ints, 0);
 
+          long startTime = System.nanoTime();
+
           for (int i = 0; i < count; i++) {
             if (i % 1000000 == 0) {
-              System.out.println(i + "...: ");
+              System.out.println(
+                  i + "...: took " + (long) ((System.nanoTime() - startTime) / 1e9) + " seconds");
             }
             r.nextBytes(outputBytes);
             assertEquals(output, Util.get(fst, input));
@@ -255,7 +260,7 @@ public class Test2BFST extends LuceneTestCase {
           output += 1 + r.nextInt(10);
           count++;
           if (count % 10000 == 0) {
-            long size = fstCompiler.fstRamBytesUsed();
+            long size = fstCompiler.fstSizeInBytes();
             if (count % 1000000 == 0) {
               System.out.println(count + "...: " + size + " bytes");
             }
@@ -266,13 +271,13 @@ public class Test2BFST extends LuceneTestCase {
           nextInput(r, ints);
         }
 
-        FST<Long> fst = fstCompiler.compile();
+        FST<Long> fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
 
         for (int verify = 0; verify < 2; verify++) {
 
           System.out.println(
               "\nTEST: now verify [fst size="
-                  + fst.ramBytesUsed()
+                  + fst.numBytes()
                   + "; nodeCount="
                   + fstCompiler.getNodeCount()
                   + "; arcCount="
@@ -283,9 +288,11 @@ public class Test2BFST extends LuceneTestCase {
 
           output = 1;
           r = new Random(seed);
+          long startTime = System.nanoTime();
           for (int i = 0; i < count; i++) {
             if (i % 1000000 == 0) {
-              System.out.println(i + "...: ");
+              System.out.println(
+                  i + "...: took " + (long) ((System.nanoTime() - startTime) / 1e9) + " seconds");
             }
 
             assertEquals(output, Util.get(fst, input).longValue());

@@ -157,7 +157,7 @@ public abstract class CompressionMode {
 
     @Override
     public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
-      final int len = (int) buffersInput.size();
+      final int len = (int) buffersInput.length();
       byte[] bytes = new byte[len];
       buffersInput.readBytes(bytes, 0, len);
       LZ4.compress(bytes, 0, len, out, ht);
@@ -179,7 +179,7 @@ public abstract class CompressionMode {
 
     @Override
     public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
-      final int len = (int) buffersInput.size();
+      final int len = (int) buffersInput.length();
       byte[] bytes = new byte[len];
       buffersInput.readBytes(bytes, 0, len);
       LZ4.compress(bytes, 0, len, out, ht);
@@ -265,7 +265,7 @@ public abstract class CompressionMode {
 
     @Override
     public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
-      final int len = (int) buffersInput.size();
+      final int len = (int) buffersInput.length();
 
       byte[] bytes = new byte[len];
       buffersInput.readBytes(bytes, 0, len);

@@ -20,9 +20,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.analysis.AbstractAnalysisFactory;
@@ -55,10 +53,8 @@ public class TestFactories extends BaseTokenStreamTestCase {
 
   /** Factories that are excluded from testing it with random data */
   private static final Set<Class<? extends AbstractAnalysisFactory>> EXCLUDE_FACTORIES_RANDOM_DATA =
-      new HashSet<>(
-          Arrays.asList(
-              DelimitedTermFrequencyTokenFilterFactory.class,
-              DelimitedBoostTokenFilterFactory.class));
+      Set.of(
+          DelimitedTermFrequencyTokenFilterFactory.class, DelimitedBoostTokenFilterFactory.class);
 
   public void test() throws IOException {
     for (String tokenizer : TokenizerFactory.availableTokenizers()) {

@@ -41,7 +41,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -49,9 +48,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntryAccumulator;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntrySupplier;
+import org.apache.lucene.internal.hppc.CharHashSet;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRef;
@@ -330,10 +331,10 @@ public class Dictionary {
    */
   private void readAffixFile(InputStream affixStream, CharsetDecoder decoder, FlagEnumerator flags)
       throws IOException, ParseException {
-    TreeMap<String, List<Integer>> prefixes = new TreeMap<>();
-    TreeMap<String, List<Integer>> suffixes = new TreeMap<>();
-    Set<Character> prefixContFlags = new HashSet<>();
-    Set<Character> suffixContFlags = new HashSet<>();
+    TreeMap<String, IntArrayList> prefixes = new TreeMap<>();
+    TreeMap<String, IntArrayList> suffixes = new TreeMap<>();
+    CharHashSet prefixContFlags = new CharHashSet();
+    CharHashSet suffixContFlags = new CharHashSet();
     Map<String, Integer> seenPatterns = new HashMap<>();
 
     // zero condition -> 0 ord
@@ -404,10 +405,18 @@ public class Dictionary {
       } else if ("TRY".equals(firstWord)) {
         tryChars = firstArgument(reader, line);
       } else if ("REP".equals(firstWord)) {
-        int count = parseNum(reader, line);
-        for (int i = 0; i < count; i++) {
-          String[] parts = splitBySpace(reader, reader.readLine(), 3, Integer.MAX_VALUE);
-          repTable.add(new RepEntry(parts[1], parts[2]));
+        if (tolerateRepRuleCountMismatches()) {
+          String[] parts = splitBySpace(reader, line, 2, Integer.MAX_VALUE);
+          // ignore REP N, as actual N may be incorrect
+          if (parts.length >= 3) {
+            repTable.add(new RepEntry(parts[1], parts[2]));
+          }
+        } else {
+          int count = parseNum(reader, line);
+          for (int i = 0; i < count; i++) {
+            String[] parts = splitBySpace(reader, reader.readLine(), 3, Integer.MAX_VALUE);
+            repTable.add(new RepEntry(parts[1], parts[2]));
+          }
         }
       } else if ("MAP".equals(firstWord)) {
         int count = parseNum(reader, line);
@@ -585,7 +594,7 @@ public class Dictionary {
   }
 
   static String extractLanguageCode(String isoCode) {
-    int underscore = isoCode.indexOf("_");
+    int underscore = isoCode.indexOf('_');
     return underscore < 0 ? isoCode : isoCode.substring(0, underscore);
   }
 
@@ -643,21 +652,21 @@ public class Dictionary {
     return new Breaks(starting, ending, middle);
   }
 
-  private FST<IntsRef> affixFST(TreeMap<String, List<Integer>> affixes) throws IOException {
+  private FST<IntsRef> affixFST(TreeMap<String, IntArrayList> affixes) throws IOException {
     IntSequenceOutputs outputs = IntSequenceOutputs.getSingleton();
     FSTCompiler<IntsRef> fstCompiler =
         new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE4, outputs).build();
     IntsRefBuilder scratch = new IntsRefBuilder();
-    for (Map.Entry<String, List<Integer>> entry : affixes.entrySet()) {
+    for (Map.Entry<String, IntArrayList> entry : affixes.entrySet()) {
       Util.toUTF32(entry.getKey(), scratch);
-      List<Integer> entries = entry.getValue();
+      IntArrayList entries = entry.getValue();
       IntsRef output = new IntsRef(entries.size());
-      for (Integer c : entries) {
-        output.ints[output.length++] = c;
+      for (IntCursor c : entries) {
+        output.ints[output.length++] = c.value;
       }
       fstCompiler.add(scratch.get(), output);
     }
-    return fstCompiler.compile();
+    return FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
   }
 
   /**
@@ -670,8 +679,8 @@ public class Dictionary {
    * @throws IOException Can be thrown while reading the rule
    */
   private void parseAffix(
-      TreeMap<String, List<Integer>> affixes,
-      Set<Character> secondStageFlags,
+      TreeMap<String, IntArrayList> affixes,
+      CharHashSet secondStageFlags,
       String header,
       LineNumberReader reader,
       AffixKind kind,
@@ -792,7 +801,7 @@ public class Dictionary {
         affixArg = new StringBuilder(affixArg).reverse().toString();
       }
 
-      affixes.computeIfAbsent(affixArg, __ -> new ArrayList<>()).add(currentAffix);
+      affixes.computeIfAbsent(affixArg, __ -> new IntArrayList()).add(currentAffix);
       currentAffix++;
     }
   }
@@ -815,7 +824,7 @@ public class Dictionary {
 
     for (int i = 0; i < num; i++) {
       String[] parts = splitBySpace(reader, reader.readLine(), 3);
-      if (mappings.put(parts[1], parts[2]) != null) {
+      if (mappings.put(parts[1], parts[2]) != null && !tolerateDuplicateConversionMappings()) {
         throw new IllegalStateException("duplicate mapping specified for: " + parts[1]);
       }
     }
@@ -1167,11 +1176,31 @@ public class Dictionary {
     return false;
   }
 
+  /**
+   * Whether incorrect REP rule counts will be silently ignored. False by default: a {@link
+   * ParseException} will happen.
+   */
+  protected boolean tolerateRepRuleCountMismatches() {
+    return false;
+  }
+
+  /**
+   * Whether duplicate ICONV/OCONV lines should be silently ignored. False by default: an {@link
+   * IllegalStateException} will happen.
+   */
+  protected boolean tolerateDuplicateConversionMappings() {
+    return false;
+  }
+
   char[] allNonSuggestibleFlags() {
-    return Dictionary.toSortedCharArray(
-        Stream.of(HIDDEN_FLAG, noSuggest, forbiddenword, onlyincompound, subStandard)
-            .filter(c -> c != FLAG_UNSET)
-            .collect(Collectors.toSet()));
+    CharHashSet set = new CharHashSet(5);
+    set.add(HIDDEN_FLAG);
+    for (char c : new char[] {noSuggest, forbiddenword, onlyincompound, subStandard}) {
+      if (c != FLAG_UNSET) {
+        set.add(c);
+      }
+    }
+    return Dictionary.toSortedCharArray(set);
   }
 
   private List<String> readMorphFields(String word, String unparsed) {
@@ -1528,12 +1557,8 @@ public class Dictionary {
     return reuse;
   }
 
-  static char[] toSortedCharArray(Set<Character> set) {
-    char[] chars = new char[set.size()];
-    int i = 0;
-    for (Character c : set) {
-      chars[i++] = c;
-    }
+  static char[] toSortedCharArray(CharHashSet set) {
+    char[] chars = set.toArray();
     Arrays.sort(chars);
     return chars;
   }

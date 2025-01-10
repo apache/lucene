@@ -18,16 +18,21 @@
 package org.apache.lucene.util.hnsw;
 
 import static java.lang.Math.log;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.hnsw.HnswUtil.Component;
 
 /**
  * Builder for HNSW graph. See {@link HnswGraph} for a gloss on the algorithm and the meaning of the
@@ -63,8 +68,10 @@ public class HnswGraphBuilder implements HnswBuilder {
       beamCandidates; // for levels of graph where we add the node
 
   protected final OnHeapHnswGraph hnsw;
+  protected final HnswLock hnswLock;
 
   private InfoStream infoStream = InfoStream.getDefault();
+  private boolean frozen;
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
@@ -93,22 +100,18 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected HnswGraphBuilder(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed, int graphSize)
       throws IOException {
-    this(scorerSupplier, M, beamWidth, seed, new OnHeapHnswGraph(M, graphSize));
+    this(scorerSupplier, beamWidth, seed, new OnHeapHnswGraph(M, graphSize));
   }
 
   protected HnswGraphBuilder(
-      RandomVectorScorerSupplier scorerSupplier,
-      int M,
-      int beamWidth,
-      long seed,
-      OnHeapHnswGraph hnsw)
+      RandomVectorScorerSupplier scorerSupplier, int beamWidth, long seed, OnHeapHnswGraph hnsw)
       throws IOException {
     this(
         scorerSupplier,
-        M,
         beamWidth,
         seed,
         hnsw,
+        null,
         new HnswGraphSearcher(new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.size())));
   }
 
@@ -117,8 +120,6 @@ public class HnswGraphBuilder implements HnswBuilder {
    * ordinals, using the given hyperparameter settings, and returns the resulting graph.
    *
    * @param scorerSupplier a supplier to create vector scorer from ordinals.
-   * @param M – graph fanout parameter used to calculate the maximum number of connections a node
-   *     can have – M on upper layers, and M * 2 on the lowest level.
    * @param beamWidth the size of the beam search to use when finding nearest neighbors.
    * @param seed the seed for a random number generator used during graph construction. Provide this
    *     to ensure repeatable construction.
@@ -126,25 +127,26 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   protected HnswGraphBuilder(
       RandomVectorScorerSupplier scorerSupplier,
-      int M,
       int beamWidth,
       long seed,
       OnHeapHnswGraph hnsw,
+      HnswLock hnswLock,
       HnswGraphSearcher graphSearcher)
       throws IOException {
-    if (M <= 0) {
-      throw new IllegalArgumentException("maxConn must be positive");
+    if (hnsw.maxConn() <= 0) {
+      throw new IllegalArgumentException("M (max connections) must be positive");
     }
     if (beamWidth <= 0) {
       throw new IllegalArgumentException("beamWidth must be positive");
     }
-    this.M = M;
+    this.M = hnsw.maxConn();
     this.scorerSupplier =
         Objects.requireNonNull(scorerSupplier, "scorer supplier must not be null");
     // normalization factor for level generation; currently not configurable
     this.ml = M == 1 ? 1 : 1 / Math.log(1.0 * M);
     this.random = new SplittableRandom(seed);
     this.hnsw = hnsw;
+    this.hnswLock = hnswLock;
     this.graphSearcher = graphSearcher;
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
@@ -152,16 +154,27 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   @Override
   public OnHeapHnswGraph build(int maxOrd) throws IOException {
+    if (frozen) {
+      throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
+    }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "build graph from " + maxOrd + " vectors");
     }
     addVectors(maxOrd);
-    return hnsw;
+    return getCompletedGraph();
   }
 
   @Override
   public void setInfoStream(InfoStream infoStream) {
     this.infoStream = infoStream;
+  }
+
+  @Override
+  public OnHeapHnswGraph getCompletedGraph() throws IOException {
+    if (!frozen) {
+      finish();
+    }
+    return getGraph();
   }
 
   @Override
@@ -171,6 +184,9 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   /** add vectors in range [minOrd, maxOrd) */
   protected void addVectors(int minOrd, int maxOrd) throws IOException {
+    if (frozen) {
+      throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
+    }
     long start = System.nanoTime(), t = start;
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "addVectors [" + minOrd + " " + maxOrd + ")");
@@ -207,6 +223,9 @@ public class HnswGraphBuilder implements HnswBuilder {
        to the newly introduced levels (repeating step 2,3 for new levels) and again try to
        promote the node to entry node.
     */
+    if (frozen) {
+      throw new IllegalStateException("Graph builder is already frozen");
+    }
     RandomVectorScorer scorer = scorerSupplier.scorer(node);
     final int nodeLevel = getRandomGraphLevel(ml, random);
     // first add nodes to all levels
@@ -310,17 +329,18 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (mask[i] == false) {
         continue;
       }
-      int nbr = candidates.node[i];
-      NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-      nbrsOfNbr.rwlock.writeLock().lock();
-      try {
-        nbrsOfNbr.addOutOfOrder(node, candidates.score[i]);
-        if (nbrsOfNbr.size() > maxConnOnLevel) {
-          int indexToRemove = findWorstNonDiverse(nbrsOfNbr, nbr);
-          nbrsOfNbr.removeIndex(indexToRemove);
+      int nbr = candidates.nodes()[i];
+      if (hnswLock != null) {
+        Lock lock = hnswLock.write(level, nbr);
+        try {
+          NeighborArray nbrsOfNbr = getGraph().getNeighbors(level, nbr);
+          nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
+        } finally {
+          lock.unlock();
         }
-      } finally {
-        nbrsOfNbr.rwlock.writeLock().unlock();
+      } else {
+        NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
+        nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorerSupplier);
       }
     }
   }
@@ -336,8 +356,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     for (int i = candidates.size() - 1; neighbors.size() < maxConnOnLevel && i >= 0; i--) {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
-      int cNode = candidates.node[i];
-      float cScore = candidates.score[i];
+      int cNode = candidates.nodes()[i];
+      float cScore = candidates.scores()[i];
       assert cNode <= hnsw.maxNodeId();
       if (diversityCheck(cNode, cScore, neighbors)) {
         mask[i] = true;
@@ -371,68 +391,12 @@ public class HnswGraphBuilder implements HnswBuilder {
       throws IOException {
     RandomVectorScorer scorer = scorerSupplier.scorer(candidate);
     for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity = scorer.score(neighbors.node[i]);
+      float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
       if (neighborSimilarity >= score) {
         return false;
       }
     }
     return true;
-  }
-
-  /**
-   * Find first non-diverse neighbour among the list of neighbors starting from the most distant
-   * neighbours
-   */
-  private int findWorstNonDiverse(NeighborArray neighbors, int nodeOrd) throws IOException {
-    RandomVectorScorer scorer = scorerSupplier.scorer(nodeOrd);
-    int[] uncheckedIndexes = neighbors.sort(scorer);
-    if (uncheckedIndexes == null) {
-      // all nodes are checked, we will directly return the most distant one
-      return neighbors.size() - 1;
-    }
-    int uncheckedCursor = uncheckedIndexes.length - 1;
-    for (int i = neighbors.size() - 1; i > 0; i--) {
-      if (uncheckedCursor < 0) {
-        // no unchecked node left
-        break;
-      }
-      if (isWorstNonDiverse(i, neighbors, uncheckedIndexes, uncheckedCursor)) {
-        return i;
-      }
-      if (i == uncheckedIndexes[uncheckedCursor]) {
-        uncheckedCursor--;
-      }
-    }
-    return neighbors.size() - 1;
-  }
-
-  private boolean isWorstNonDiverse(
-      int candidateIndex, NeighborArray neighbors, int[] uncheckedIndexes, int uncheckedCursor)
-      throws IOException {
-    float minAcceptedSimilarity = neighbors.score[candidateIndex];
-    RandomVectorScorer scorer = scorerSupplier.scorer(neighbors.node[candidateIndex]);
-    if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
-      // the candidate itself is unchecked
-      for (int i = candidateIndex - 1; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(neighbors.node[i]);
-        // candidate node is too similar to node i given its score relative to the base node
-        if (neighborSimilarity >= minAcceptedSimilarity) {
-          return true;
-        }
-      }
-    } else {
-      // else we just need to make sure candidate does not violate diversity with the (newly
-      // inserted) unchecked nodes
-      assert candidateIndex > uncheckedIndexes[uncheckedCursor];
-      for (int i = uncheckedCursor; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(neighbors.node[uncheckedIndexes[i]]);
-        // candidate node is too similar to node i given its score relative to the base node
-        if (neighborSimilarity >= minAcceptedSimilarity) {
-          return true;
-        }
-      }
-    }
-    return false;
   }
 
   private static int getRandomGraphLevel(double ml, SplittableRandom random) {
@@ -441,6 +405,117 @@ public class HnswGraphBuilder implements HnswBuilder {
       randDouble = random.nextDouble(); // avoid 0 value, as log(0) is undefined
     } while (randDouble == 0.0);
     return ((int) (-log(randDouble) * ml));
+  }
+
+  void finish() throws IOException {
+    // System.out.println("finish " + frozen);
+    connectComponents();
+    frozen = true;
+  }
+
+  private void connectComponents() throws IOException {
+    long start = System.nanoTime();
+    for (int level = 0; level < hnsw.numLevels(); level++) {
+      if (connectComponents(level) == false) {
+        if (infoStream.isEnabled(HNSW_COMPONENT)) {
+          infoStream.message(HNSW_COMPONENT, "connectComponents failed on level " + level);
+        }
+      }
+    }
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT, "connectComponents " + (System.nanoTime() - start) / 1_000_000 + " ms");
+    }
+  }
+
+  private boolean connectComponents(int level) throws IOException {
+    FixedBitSet notFullyConnected = new FixedBitSet(hnsw.size());
+    int maxConn = M;
+    if (level == 0) {
+      maxConn *= 2;
+    }
+    List<Component> components = HnswUtil.components(hnsw, level, notFullyConnected, maxConn);
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      infoStream.message(
+          HNSW_COMPONENT, "connect " + components.size() + " components on level=" + level);
+    }
+    // System.out.println("HnswGraphBuilder. level=" + level + ": " + components);
+    boolean result = true;
+    if (components.size() > 1) {
+      // connect other components to the largest one
+      Component c0 = components.stream().max(Comparator.comparingInt(Component::size)).get();
+      if (c0.start() == NO_MORE_DOCS) {
+        // the component is already fully connected - no room for new connections
+        return false;
+      }
+      // try for more connections? We only do one since otherwise they may become full
+      // while linking
+      GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(2);
+      int[] eps = new int[1];
+      for (Component c : components) {
+        if (c != c0) {
+          if (c.start() == NO_MORE_DOCS) {
+            continue;
+          }
+          if (infoStream.isEnabled(HNSW_COMPONENT)) {
+            infoStream.message(HNSW_COMPONENT, "connect component " + c + " to " + c0);
+          }
+
+          beam.clear();
+          eps[0] = c0.start();
+          RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
+          // find the closest node in the largest component to the lowest-numbered node in this
+          // component that has room to make a connection
+          graphSearcher.searchLevel(beam, scorer, level, eps, hnsw, notFullyConnected);
+          boolean linked = false;
+          while (beam.size() > 0) {
+            int c0node = beam.popNode();
+            if (c0node == c.start() || notFullyConnected.get(c0node) == false) {
+              continue;
+            }
+            float score = beam.minimumScore();
+            assert notFullyConnected.get(c0node);
+            // link the nodes
+            // System.out.println("link " + c0 + "." + c0node + " to " + c + "." + c.start());
+            link(level, c0node, c.start(), score, notFullyConnected);
+            linked = true;
+            if (infoStream.isEnabled(HNSW_COMPONENT)) {
+              infoStream.message(HNSW_COMPONENT, "connected ok " + c0node + " -> " + c.start());
+            }
+          }
+          if (!linked) {
+            if (infoStream.isEnabled(HNSW_COMPONENT)) {
+              infoStream.message(HNSW_COMPONENT, "not connected; no free nodes found");
+            }
+            result = false;
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  // Try to link two nodes bidirectionally; the forward connection will always be made.
+  // Update notFullyConnected.
+  private void link(int level, int n0, int n1, float score, FixedBitSet notFullyConnected) {
+    NeighborArray nbr0 = hnsw.getNeighbors(level, n0);
+    NeighborArray nbr1 = hnsw.getNeighbors(level, n1);
+    // must subtract 1 here since the nodes array is one larger than the configured
+    // max neighbors (M / 2M).
+    // We should have taken care of this check by searching for not-full nodes
+    int maxConn = nbr0.nodes().length - 1;
+    assert notFullyConnected.get(n0);
+    assert nbr0.size() < maxConn : "node " + n0 + " is full, has " + nbr0.size() + " friends";
+    nbr0.addOutOfOrder(n1, score);
+    if (nbr0.size() == maxConn) {
+      notFullyConnected.clear(n0);
+    }
+    if (nbr1.size() < maxConn) {
+      nbr1.addOutOfOrder(n0, score);
+      if (nbr1.size() == maxConn) {
+        notFullyConnected.clear(n1);
+      }
+    }
   }
 
   /**
@@ -476,7 +551,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       return queue.nodes();
     }
 
-    float minimumScore() {
+    public float minimumScore() {
       return queue.topScore();
     }
 

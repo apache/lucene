@@ -97,7 +97,7 @@ public class PatternTypingFilterFactory extends TokenFilterFactory implements Re
     // eg: 2 (\d+\(?([a-z])\)?\(?(\d+)\)? ::: legal3_$1_$2_3
     // which yields legal3_501_c_3 for 501(c)(3) or 501c3 and sets the second lowest bit in flags
     for (String line : lines) {
-      int firstSpace = line.indexOf(" "); // no leading spaces allowed
+      int firstSpace = line.indexOf(' '); // no leading spaces allowed
       int flagsVal = Integer.parseInt(line.substring(0, firstSpace));
       line = line.substring(firstSpace + 1);
       String[] split =

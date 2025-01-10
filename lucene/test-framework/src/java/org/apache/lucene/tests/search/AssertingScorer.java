@@ -24,6 +24,8 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Wraps a Scorer with additional checks */
 public class AssertingScorer extends Scorer {
@@ -55,7 +57,6 @@ public class AssertingScorer extends Scorer {
 
   private AssertingScorer(
       Random random, Scorer in, ScoreMode scoreMode, boolean canCallMinCompetitiveScore) {
-    super(in.getWeight());
     this.random = random;
     this.in = in;
     this.scoreMode = scoreMode;
@@ -184,7 +185,7 @@ public class AssertingScorer extends Scorer {
         } else {
           state = IteratorState.ITERATING;
         }
-        assert in.docID() == advanced;
+        assert in.docID() == advanced : in.docID() + " != " + advanced + " in " + in;
         assert AssertingScorer.this.in.docID() == in.docID();
         return doc = advanced;
       }
@@ -192,6 +193,15 @@ public class AssertingScorer extends Scorer {
       @Override
       public long cost() {
         return in.cost();
+      }
+
+      @Override
+      public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
+          throws IOException {
+        assert docID() != -1;
+        assert offset <= docID();
+        in.intoBitSet(acceptDocs, upTo, bitSet, offset);
+        assert docID() >= upTo;
       }
     };
   }

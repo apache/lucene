@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-apply plugin: "de.undercouch.download"
+apply plugin: deps.plugins.undercouch.download.get().pluginId
 
 def resources = scriptResources(buildscript)
 
@@ -105,8 +105,13 @@ configure(project(":lucene:core")) {
     description "Regenerate Moman-based sources."
     group "generation"
 
-    dependsOn wrapWithPersistentChecksums(utilGenPackedInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
-    dependsOn wrapWithPersistentChecksums(utilGenLevInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+    def extraConfig = [
+            andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+            mustRunBefore: [ "compileJava" ]
+    ]
+
+    dependsOn wrapWithPersistentChecksums(utilGenPackedInternal, extraConfig)
+    dependsOn wrapWithPersistentChecksums(utilGenLevInternal, extraConfig)
   }
 
   regenerate.dependsOn moman

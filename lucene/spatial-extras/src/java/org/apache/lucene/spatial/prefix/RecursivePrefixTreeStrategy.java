@@ -113,7 +113,7 @@ public class RecursivePrefixTreeStrategy extends PrefixTreeStrategy {
     if (pointsOnly) str.append(",pointsOnly");
     if (pruneLeafyBranches) str.append(",pruneLeafyBranches");
     if (prefixGridScanLevel != grid.getMaxLevels() - 4)
-      str.append(",prefixGridScanLevel:").append("").append(prefixGridScanLevel);
+      str.append(",prefixGridScanLevel:").append(prefixGridScanLevel);
     if (!multiOverlappingIndexedShapes) str.append(",!multiOverlappingIndexedShapes");
     return str.append(')').toString();
   }

@@ -41,6 +41,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 
@@ -62,7 +63,7 @@ public class TestBKD extends LuceneTestCase {
 
       long indexFP;
       try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-        Runnable finalizer = w.finish(out, out, out);
+        IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
       }
@@ -133,7 +134,7 @@ public class TestBKD extends LuceneTestCase {
 
       long indexFP;
       try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-        Runnable finalizer = w.finish(out, out, out);
+        IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
       }
@@ -228,7 +229,7 @@ public class TestBKD extends LuceneTestCase {
 
       long indexFP;
       try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-        Runnable finalizer = w.finish(out, out, out);
+        IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
       }
@@ -735,7 +736,7 @@ public class TestBKD extends LuceneTestCase {
           }
           final int curDocIDBase = lastDocIDBase;
           docMaps.add(docID1 -> curDocIDBase + docID1);
-          Runnable finalizer = w.finish(out, out, out);
+          IORunnable finalizer = w.finish(out, out, out);
           toMerge.add(out.getFilePointer());
           finalizer.run();
           valuesInThisSeg = TestUtil.nextInt(random(), numValues / 10, numValues / 2);
@@ -760,7 +761,7 @@ public class TestBKD extends LuceneTestCase {
 
       if (toMerge != null) {
         if (segCount > 0) {
-          Runnable finalizer = w.finish(out, out, out);
+          IORunnable finalizer = w.finish(out, out, out);
           toMerge.add(out.getFilePointer());
           finalizer.run();
           final int curDocIDBase = lastDocIDBase;
@@ -783,14 +784,14 @@ public class TestBKD extends LuceneTestCase {
           readers.add(getPointValues(in));
         }
         out = dir.createOutput("bkd2", IOContext.DEFAULT);
-        Runnable finalizer = w.merge(out, out, out, docMaps, readers);
+        IORunnable finalizer = w.merge(out, out, out, docMaps, readers);
         indexFP = out.getFilePointer();
         finalizer.run();
         out.close();
         in.close();
         in = dir.openInput("bkd2", IOContext.DEFAULT);
       } else {
-        Runnable finalizer = w.finish(out, out, out);
+        IORunnable finalizer = w.finish(out, out, out);
         indexFP = out.getFilePointer();
         finalizer.run();
         out.close();
@@ -953,22 +954,22 @@ public class TestBKD extends LuceneTestCase {
       @Override
       public void visit(int docID, byte[] packedValue) {
         // System.out.println("visit check docID=" + docID);
-        for (int dim = 0; dim < config.numIndexDims; dim++) {
+        for (int dim = 0; dim < config.numIndexDims(); dim++) {
           if (Arrays.compareUnsigned(
                       packedValue,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMin[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   < 0
               || Arrays.compareUnsigned(
                       packedValue,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMax[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   > 0) {
             // System.out.println("  no");
             return;
@@ -1004,39 +1005,39 @@ public class TestBKD extends LuceneTestCase {
       @Override
       public Relation compare(byte[] minPacked, byte[] maxPacked) {
         boolean crosses = false;
-        for (int dim = 0; dim < config.numIndexDims; dim++) {
+        for (int dim = 0; dim < config.numIndexDims(); dim++) {
           if (Arrays.compareUnsigned(
                       maxPacked,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMin[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   < 0
               || Arrays.compareUnsigned(
                       minPacked,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMax[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   > 0) {
             return Relation.CELL_OUTSIDE_QUERY;
           } else if (Arrays.compareUnsigned(
                       minPacked,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMin[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   < 0
               || Arrays.compareUnsigned(
                       maxPacked,
-                      dim * config.bytesPerDim,
-                      dim * config.bytesPerDim + config.bytesPerDim,
+                      dim * config.bytesPerDim(),
+                      dim * config.bytesPerDim() + config.bytesPerDim(),
                       queryMax[dim],
                       0,
-                      config.bytesPerDim)
+                      config.bytesPerDim())
                   > 0) {
             crosses = true;
           }
@@ -1204,7 +1205,7 @@ public class TestBKD extends LuceneTestCase {
       }
 
       IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
-      Runnable finalizer = w.finish(out, out, out);
+      IORunnable finalizer = w.finish(out, out, out);
       long fp = out.getFilePointer();
       finalizer.run();
       out.close();
@@ -1270,7 +1271,7 @@ public class TestBKD extends LuceneTestCase {
     }
     final long indexFP;
     try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-      Runnable finalizer = w.finish(out, out, out);
+      IORunnable finalizer = w.finish(out, out, out);
       indexFP = out.getFilePointer();
       finalizer.run();
       w.close();
@@ -1332,7 +1333,7 @@ public class TestBKD extends LuceneTestCase {
       }
 
       IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
-      Runnable finalizer = w.finish(out, out, out);
+      IORunnable finalizer = w.finish(out, out, out);
       long fp = out.getFilePointer();
       finalizer.run();
       out.close();
@@ -1399,7 +1400,7 @@ public class TestBKD extends LuceneTestCase {
     }
 
     IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT);
-    Runnable finalizer = w.finish(out, out, out);
+    IORunnable finalizer = w.finish(out, out, out);
     long fp = out.getFilePointer();
     finalizer.run();
     out.close();
@@ -1467,7 +1468,7 @@ public class TestBKD extends LuceneTestCase {
     }
     final long indexFP;
     try (IndexOutput out = dir.createOutput("bkd", IOContext.DEFAULT)) {
-      Runnable finalizer = w.finish(out, out, out);
+      IORunnable finalizer = w.finish(out, out, out);
       indexFP = out.getFilePointer();
       finalizer.run();
       w.close();

@@ -71,6 +71,40 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     return codec;
   }
 
+  public void testMissingFieldReturnsNoResults() throws IOException {
+    try (Directory directory = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(
+          new AssertingCodec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return TestUtil.getDefaultKnnVectorsFormat();
+            }
+          });
+      try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
+        Document doc = new Document();
+        doc.add(newTextField("id", "1", Field.Store.YES));
+        iwriter.addDocument(doc);
+      }
+
+      try (IndexReader ireader = DirectoryReader.open(directory)) {
+        LeafReader reader = ireader.leaves().get(0).reader();
+        TopDocs hits =
+            reader.searchNearestVectors(
+                "missing_field",
+                new float[] {1, 2, 3},
+                10,
+                reader.getLiveDocs(),
+                Integer.MAX_VALUE);
+        assertEquals(0, hits.scoreDocs.length);
+        hits =
+            reader.searchNearestVectors(
+                "id", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+        assertEquals(0, hits.scoreDocs.length);
+      }
+    }
+  }
+
   public void testTwoFieldsTwoFormats() throws IOException {
     try (Directory directory = newDirectory()) {
       // we don't use RandomIndexWriter because it might add more values than we expect !!!!1

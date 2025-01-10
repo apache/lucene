@@ -24,7 +24,6 @@ import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -40,16 +39,14 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
-public class TestUnifiedHighlighterRanking extends LuceneTestCase {
+public class TestUnifiedHighlighterRanking extends UnifiedHighlighterTestBase {
 
-  Analyzer indexAnalyzer;
-
-  // note: all offset sources, by default, use term freq, so it shouldn't matter which we choose.
-  final FieldType fieldType = UHTestHelper.randomFieldType(random());
+  public TestUnifiedHighlighterRanking() {
+    super(randomFieldType(random()));
+  }
 
   /**
    * indexes a bunch of gibberish, and then highlights top(n). asserts that top(n) highlights is a
@@ -66,9 +63,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     // maximum number of sentences in a document
     final int maxNumSentences = 20;
 
-    Directory dir = newDirectory();
-    indexAnalyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+    RandomIndexWriter iw = newIndexOrderPreservingWriter();
     Document document = new Document();
     Field id = new StringField("id", "", Field.Store.NO);
     Field body = new Field("body", "", fieldType);
@@ -208,23 +203,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
     }
   }
 
-  static class Pair {
-    final int start;
-    final int end;
-
-    Pair(int start, int end) {
-      this.start = start;
-      this.end = end;
-    }
-
-    @Override
-    public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + end;
-      result = prime * result + start;
-      return result;
-    }
+  record Pair(int start, int end) {
 
     @Override
     public boolean equals(Object obj) {
@@ -255,8 +234,6 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
 
   /** sets b=0 to disable passage length normalization */
   public void testCustomB() throws Exception {
-    Directory dir = newDirectory();
-    indexAnalyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
     IndexWriterConfig iwc = newIndexWriterConfig(indexAnalyzer);
     iwc.setMergePolicy(newLogMergePolicy());
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
@@ -296,7 +273,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
         };
     Query query = new TermQuery(new Term("body", "test"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     String[] snippets = highlighter.highlight("body", query, topDocs, 1);
     assertEquals(1, snippets.length);
     assertTrue(snippets[0].startsWith("This <b>test</b> is a better <b>test</b>"));
@@ -308,7 +285,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
   /** sets k1=0 for simple coordinate-level match (# of query terms present) */
   public void testCustomK1() throws Exception {
     Directory dir = newDirectory();
-    indexAnalyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
+    Analyzer indexAnalyzer = new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
     IndexWriterConfig iwc = newIndexWriterConfig(indexAnalyzer);
     iwc.setMergePolicy(newLogMergePolicy());
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
@@ -354,7 +331,7 @@ public class TestUnifiedHighlighterRanking extends LuceneTestCase {
             .add(new TermQuery(new Term("body", "bar")), BooleanClause.Occur.SHOULD)
             .build();
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     String[] snippets = highlighter.highlight("body", query, topDocs, 1);
     assertEquals(1, snippets.length);
     assertTrue(snippets[0].startsWith("On the other hand"));

@@ -114,7 +114,7 @@ public class FieldQuery {
       BooleanQuery bq = (BooleanQuery) sourceQuery;
       for (BooleanClause clause : bq) {
         if (!clause.isProhibited()) {
-          flatten(clause.getQuery(), searcher, flatQueries, boost);
+          flatten(clause.query(), searcher, flatQueries, boost);
         }
       }
     } else if (sourceQuery instanceof DisjunctionMaxQuery) {
@@ -330,7 +330,7 @@ public class FieldQuery {
       } else if (query instanceof MultiTermQuery && searcher != null) {
         BooleanQuery mtqTerms = (BooleanQuery) query.rewrite(searcher);
         for (BooleanClause clause : mtqTerms) {
-          termSet.add(((TermQuery) clause.getQuery()).getTerm().text());
+          termSet.add(((TermQuery) clause.query()).getTerm().text());
         }
       } else
         throw new RuntimeException("query \"" + query.toString() + "\" must be flatten first.");

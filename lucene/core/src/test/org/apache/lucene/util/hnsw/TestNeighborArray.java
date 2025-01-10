@@ -215,13 +215,13 @@ public class TestNeighborArray extends LuceneTestCase {
 
   private void assertScoresEqual(float[] scores, NeighborArray neighbors) {
     for (int i = 0; i < scores.length; i++) {
-      assertEquals(scores[i], neighbors.score[i], 0.01f);
+      assertEquals(scores[i], neighbors.scores()[i], 0.01f);
     }
   }
 
   private void assertNodesEqual(int[] nodes, NeighborArray neighbors) {
     for (int i = 0; i < nodes.length; i++) {
-      assertEquals(nodes[i], neighbors.node[i]);
+      assertEquals(nodes[i], neighbors.nodes()[i]);
     }
   }
 

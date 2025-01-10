@@ -152,6 +152,25 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
+    assert (apacked && bpacked) == false;
+    if (apacked || bpacked) {
+      byte[] packed = apacked ? a : b;
+      byte[] unpacked = apacked ? b : a;
+      int total = 0;
+      for (int i = 0; i < packed.length; i++) {
+        byte packedByte = packed[i];
+        byte unpacked1 = unpacked[i];
+        byte unpacked2 = unpacked[i + packed.length];
+        total += (packedByte & 0x0F) * unpacked2;
+        total += ((packedByte & 0xFF) >> 4) * unpacked1;
+      }
+      return total;
+    }
+    return dotProduct(a, b);
+  }
+
+  @Override
   public float cosine(byte[] a, byte[] b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int sum = 0;
@@ -177,5 +196,15 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       squareSum += diff * diff;
     }
     return squareSum;
+  }
+
+  @Override
+  public int findNextGEQ(int[] buffer, int target, int from, int to) {
+    for (int i = from; i < to; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return to;
   }
 }

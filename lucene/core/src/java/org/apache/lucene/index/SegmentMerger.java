@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
@@ -48,6 +49,7 @@ final class SegmentMerger {
 
   final MergeState mergeState;
   private final FieldInfos.Builder fieldInfosBuilder;
+  final Thread mergeStateCreationThread;
 
   // note, just like in codec apis Directory 'dir' is NOT the same as segmentInfo.dir!!
   SegmentMerger(
@@ -56,20 +58,22 @@ final class SegmentMerger {
       InfoStream infoStream,
       Directory dir,
       FieldInfos.FieldNumbers fieldNumbers,
-      IOContext context)
+      IOContext context,
+      Executor intraMergeTaskExecutor)
       throws IOException {
-    if (context.context != IOContext.Context.MERGE) {
+    if (context.context() != IOContext.Context.MERGE) {
       throw new IllegalArgumentException(
-          "IOContext.context should be MERGE; got: " + context.context);
+          "IOContext.context should be MERGE; got: " + context.context());
     }
-    mergeState = new MergeState(readers, segmentInfo, infoStream);
+    mergeState = new MergeState(readers, segmentInfo, infoStream, intraMergeTaskExecutor);
+    mergeStateCreationThread = Thread.currentThread();
     directory = dir;
     this.codec = segmentInfo.getCodec();
     this.context = context;
     this.fieldInfosBuilder = new FieldInfos.Builder(fieldNumbers);
     Version minVersion = Version.LATEST;
     for (CodecReader reader : readers) {
-      Version leafMinVersion = reader.getMetaData().getMinVersion();
+      Version leafMinVersion = reader.getMetaData().minVersion();
       if (leafMinVersion == null) {
         minVersion = null;
         break;
@@ -92,6 +96,11 @@ final class SegmentMerger {
   /** True if any merging should happen */
   boolean shouldMerge() {
     return mergeState.segmentInfo.maxDoc() > 0;
+  }
+
+  private MergeState mergeState() {
+    assert Thread.currentThread() == mergeStateCreationThread;
+    return mergeState;
   }
 
   /**
@@ -127,7 +136,7 @@ final class SegmentMerger {
             directory,
             mergeState.segmentInfo,
             mergeState.mergeFieldInfos,
-            IOContext.READ,
+            IOContext.DEFAULT,
             segmentWriteState.segmentSuffix);
 
     if (mergeState.mergeFieldInfos.hasNorms()) {
@@ -154,7 +163,7 @@ final class SegmentMerger {
           numMerged);
     }
 
-    if (mergeState.mergeFieldInfos.hasVectors()) {
+    if (mergeState.mergeFieldInfos.hasTermVectors()) {
       mergeWithLogging(this::mergeTermVectors, "term vectors");
     }
 
@@ -174,6 +183,7 @@ final class SegmentMerger {
 
   private void mergeDocValues(
       SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
+    MergeState mergeState = mergeState();
     try (DocValuesConsumer consumer = codec.docValuesFormat().fieldsConsumer(segmentWriteState)) {
       consumer.merge(mergeState);
     }
@@ -181,6 +191,7 @@ final class SegmentMerger {
 
   private void mergePoints(SegmentWriteState segmentWriteState, SegmentReadState segmentReadState)
       throws IOException {
+    MergeState mergeState = mergeState();
     try (PointsWriter writer = codec.pointsFormat().fieldsWriter(segmentWriteState)) {
       writer.merge(mergeState);
     }
@@ -188,6 +199,7 @@ final class SegmentMerger {
 
   private void mergeNorms(SegmentWriteState segmentWriteState, SegmentReadState segmentReadState)
       throws IOException {
+    MergeState mergeState = mergeState();
     try (NormsConsumer consumer = codec.normsFormat().normsConsumer(segmentWriteState)) {
       consumer.merge(mergeState);
     }
@@ -195,6 +207,7 @@ final class SegmentMerger {
 
   private void mergeTerms(SegmentWriteState segmentWriteState, SegmentReadState segmentReadState)
       throws IOException {
+    MergeState mergeState = mergeState();
     try (NormsProducer norms =
         mergeState.mergeFieldInfos.hasNorms()
             ? codec.normsFormat().normsProducer(segmentReadState)
@@ -229,6 +242,7 @@ final class SegmentMerger {
    * @throws IOException if there is a low-level IO error
    */
   private int mergeFields() throws IOException {
+    MergeState mergeState = mergeState();
     try (StoredFieldsWriter fieldsWriter =
         codec.storedFieldsFormat().fieldsWriter(directory, mergeState.segmentInfo, context)) {
       return fieldsWriter.merge(mergeState);
@@ -241,6 +255,7 @@ final class SegmentMerger {
    * @throws IOException if there is a low-level IO error
    */
   private int mergeTermVectors() throws IOException {
+    MergeState mergeState = mergeState();
     try (TermVectorsWriter termVectorsWriter =
         codec.termVectorsFormat().vectorsWriter(directory, mergeState.segmentInfo, context)) {
       int numMerged = termVectorsWriter.merge(mergeState);
@@ -251,6 +266,7 @@ final class SegmentMerger {
 
   private void mergeVectorValues(
       SegmentWriteState segmentWriteState, SegmentReadState segmentReadState) throws IOException {
+    MergeState mergeState = mergeState();
     try (KnnVectorsWriter writer = codec.knnVectorsFormat().fieldsWriter(segmentWriteState)) {
       writer.merge(mergeState);
     }

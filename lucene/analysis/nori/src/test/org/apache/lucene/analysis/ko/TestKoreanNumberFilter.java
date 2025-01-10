@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
@@ -62,8 +62,7 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
   public void setUp() throws Exception {
     super.setUp();
     UserDictionary userDictionary = readDict();
-    Set<POS.Tag> stopTags = new HashSet<>();
-    stopTags.add(POS.Tag.SP);
+    Set<POS.Tag> stopTags = EnumSet.of(POS.Tag.SP);
     analyzer =
         new Analyzer() {
           @Override
@@ -205,8 +204,7 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
             CharArraySet set = new CharArraySet(1, false);
             set.add("경일");
             UserDictionary userDictionary = readDict();
-            Set<POS.Tag> stopTags = new HashSet<>();
-            stopTags.add(POS.Tag.SP);
+            Set<POS.Tag> stopTags = EnumSet.of(POS.Tag.SP);
             Tokenizer tokenizer =
                 new KoreanTokenizer(
                     newAttributeFactory(),
@@ -303,8 +301,7 @@ public class TestKoreanNumberFilter extends BaseTokenStreamTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             UserDictionary userDictionary = readDict();
-            Set<POS.Tag> stopTags = new HashSet<>();
-            stopTags.add(POS.Tag.SP);
+            Set<POS.Tag> stopTags = EnumSet.of(POS.Tag.SP);
             Tokenizer tokenizer =
                 new KoreanTokenizer(
                     newAttributeFactory(),

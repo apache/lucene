@@ -17,17 +17,10 @@
 
 def resources = scriptResources(buildscript)
 
-configure(rootProject) {
-  ext {
-    // also change this in extractor tool: ExtractForeignAPI
-    vectorIncubatorJavaVersions = [ JavaVersion.VERSION_20, JavaVersion.VERSION_21 ] as Set
-  }
-}
-
 configure(project(":lucene:core")) {
   ext {
     apijars = layout.projectDirectory.dir("src/generated/jdk")
-    mrjarJavaVersions = [ 19, 20, 21 ]
+    mrjarJavaVersions = [ 21 ]
   }
   
   configurations {
@@ -35,41 +28,44 @@ configure(project(":lucene:core")) {
   }
 
   dependencies {
-    apiextractor "org.ow2.asm:asm:${scriptDepVersions['asm']}"
+    apiextractor deps.asm.core
   }
 
-  mrjarJavaVersions.each { jdkVersion ->
-    def task = tasks.create(name: "generateJdkApiJar${jdkVersion}", type: JavaExec) {
-      description "Regenerate the API-only JAR file with public Panama Foreign & Vector API from JDK ${jdkVersion}"
-      group "generation"
-      
-      javaLauncher = javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(jdkVersion)
-      }
-      
-      onlyIf {
-        try {
-          javaLauncher.get()
-          return true
-        } catch (Exception e) {
-          logger.warn('Launcher for Java {} is not available; skipping regeneration of Panama Foreign & Vector API JAR.', jdkVersion)
-          logger.warn('Error: {}', e.cause?.message)
-          logger.warn("Please make sure to point env 'JAVA{}_HOME' to exactly JDK version {} or enable Gradle toolchain auto-download.", jdkVersion, jdkVersion)
-          return false
+  plugins.withType(JavaPlugin) {
+    mrjarJavaVersions.each { jdkVersion ->
+      def task = tasks.create(name: "generateJdkApiJar${jdkVersion}", type: JavaExec) {
+        description "Regenerate the API-only JAR file with public Panama Foreign & Vector API from JDK ${jdkVersion}"
+        group "generation"
+
+        javaLauncher = javaToolchains.launcherFor {
+          languageVersion = JavaLanguageVersion.of(jdkVersion)
         }
+
+        onlyIf {
+          try {
+            javaLauncher.get()
+            return true
+          } catch (Exception e) {
+            logger.warn('Launcher for Java {} is not available; skipping regeneration of Panama Foreign & Vector API JAR.', jdkVersion)
+            logger.warn('Error: {}', e.cause?.message)
+            logger.warn("Please make sure to point env 'JAVA{}_HOME' to exactly JDK version {} or enable Gradle toolchain auto-download.", jdkVersion, jdkVersion)
+            return false
+          }
+        }
+
+        classpath = configurations.apiextractor
+        mainClass = file("${resources}/ExtractJdkApis.java") as String
+        systemProperties = [
+                'user.timezone': 'UTC',
+                'file.encoding': 'UTF-8',
+        ]
+        args = [
+                jdkVersion,
+                apijars.file("jdk${jdkVersion}.apijar"),
+        ]
       }
 
-      classpath = configurations.apiextractor
-      mainClass = file("${resources}/ExtractJdkApis.java") as String
-      systemProperties = [
-        'user.timezone': 'UTC'
-      ]
-      args = [
-        jdkVersion,
-        apijars.file("jdk${jdkVersion}.apijar"),
-      ]
+      regenerate.dependsOn task
     }
-
-    regenerate.dependsOn task
   }
 }

@@ -39,6 +39,8 @@ import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Accountable;
@@ -243,7 +245,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
    * Expert: returns the underlying {@link DirectoryReader} instance that is used by this {@link
    * TaxonomyReader}.
    */
-  protected DirectoryReader getInternalIndexReader() {
+  public DirectoryReader getInternalIndexReader() {
     ensureOpen();
     return indexReader;
   }
@@ -279,21 +281,22 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
 
     // First try to find the answer in the LRU cache:
+    Integer res;
     synchronized (ordinalCache) {
-      Integer res = ordinalCache.get(cp);
-      if (res != null) {
-        if (res < indexReader.maxDoc()) {
-          // Since the cache is shared with DTR instances allocated from
-          // doOpenIfChanged, we need to ensure that the ordinal is one that
-          // this DTR instance recognizes.
-          return res;
-        } else {
-          // if we get here, it means that the category was found in the cache,
-          // but is not recognized by this TR instance. Therefore, there's no
-          // need to continue search for the path on disk, because we won't find
-          // it there too.
-          return TaxonomyReader.INVALID_ORDINAL;
-        }
+      res = ordinalCache.get(cp);
+    }
+    if (res != null) {
+      if (res < indexReader.maxDoc()) {
+        // Since the cache is shared with DTR instances allocated from
+        // doOpenIfChanged, we need to ensure that the ordinal is one that
+        // this DTR instance recognizes.
+        return res;
+      } else {
+        // if we get here, it means that the category was found in the cache,
+        // but is not recognized by this TR instance. Therefore, there's no
+        // need to continue search for the path on disk, because we won't find
+        // it there too.
+        return TaxonomyReader.INVALID_ORDINAL;
       }
     }
 
@@ -327,7 +330,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     }
     // First try to find results in the cache:
     int[] result = new int[categoryPaths.length];
-    int[] indexesMissingFromCache = new int[10]; // initial size, will grow when required
+    // Will grow when required, but never beyond categoryPaths.length
+    int[] indexesMissingFromCache = new int[Math.min(10, categoryPaths.length)];
     int numberOfMissingFromCache = 0;
     FacetLabel cp;
     Integer res;
@@ -351,7 +355,8 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
         }
       } else {
         indexesMissingFromCache =
-            ArrayUtil.grow(indexesMissingFromCache, numberOfMissingFromCache + 1);
+            ArrayUtil.growInRange(
+                indexesMissingFromCache, numberOfMissingFromCache + 1, categoryPaths.length);
         indexesMissingFromCache[numberOfMissingFromCache++] = i;
       }
     }
@@ -546,7 +551,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
     LeafReader leafReader;
     LeafReaderContext leafReaderContext;
     BinaryDocValues values = null;
-    List<Integer> uncachedOrdinalPositions = new ArrayList<>();
+    IntArrayList uncachedOrdinalPositions = new IntArrayList();
 
     for (int i = 0; i < ordinalsLength; i++) {
       if (bulkPath[originalPosition[i]] == null) {
@@ -583,9 +588,9 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
 
     if (uncachedOrdinalPositions.isEmpty() == false) {
       synchronized (categoryCache) {
-        for (int i : uncachedOrdinalPositions) {
+        for (IntCursor i : uncachedOrdinalPositions) {
           // add the value to the categoryCache after computation
-          categoryCache.put(ordinals[i], bulkPath[originalPosition[i]]);
+          categoryCache.put(ordinals[i.value], bulkPath[originalPosition[i.value]]);
         }
       }
     }

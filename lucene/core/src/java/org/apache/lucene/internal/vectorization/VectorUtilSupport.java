@@ -36,9 +36,20 @@ public interface VectorUtilSupport {
   /** Returns the dot product computed over signed bytes. */
   int dotProduct(byte[] a, byte[] b);
 
+  /** Returns the dot product over the computed bytes, assuming the values are int4 encoded. */
+  int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked);
+
   /** Returns the cosine similarity between the two byte vectors. */
   float cosine(byte[] a, byte[] b);
 
   /** Returns the sum of squared differences of the two byte vectors. */
   int squareDistance(byte[] a, byte[] b);
+
+  /**
+   * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}
+   * exclusive, find the first array index whose value is greater than or equal to {@code target}.
+   * This index is guaranteed to be at least {@code from}. If there is no such array index, {@code
+   * to} is returned.
+   */
+  int findNextGEQ(int[] buffer, int target, int from, int to);
 }

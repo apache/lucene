@@ -20,17 +20,20 @@ import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
@@ -43,6 +46,10 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.SameThreadExecutorService;
+import org.apache.lucene.util.StringHelper;
+import org.apache.lucene.util.SuppressForbidden;
+import org.apache.lucene.util.Version;
 
 public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
@@ -90,12 +97,22 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
                   || (th instanceof IllegalStateException
                       && th.getMessage().contains("this writer hit an unrecoverable error"));
             }
+
+            @Override
+            // override here to ensure even tiny merges get the parallel executor
+            public Executor getIntraMergeExecutor(MergePolicy.OneMerge merge) {
+              assert intraMergeExecutor != null : "intraMergeExecutor is not initialized";
+              return intraMergeExecutor;
+            }
           });
     }
     IndexWriter writer = new IndexWriter(directory, iwc);
     Document doc = new Document();
     Field idField = newStringField("id", "", Field.Store.YES);
+    KnnFloatVectorField knnField = new KnnFloatVectorField("knn", new float[] {0.0f, 0.0f});
     doc.add(idField);
+    // Add knn float vectors to test parallel merge
+    doc.add(knnField);
 
     outer:
     for (int i = 0; i < 10; i++) {
@@ -105,6 +122,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
       for (int j = 0; j < 20; j++) {
         idField.setStringValue(Integer.toString(i * 20 + j));
+        knnField.setVectorValue(new float[] {random().nextFloat(), random().nextFloat()});
         writer.addDocument(doc);
       }
 
@@ -154,6 +172,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     IndexWriter writer =
         new IndexWriter(
             directory, newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(mp));
+    TestUtil.reduceOpenFiles(writer);
 
     Document doc = new Document();
     Field idField = newStringField("id", "", Field.Store.YES);
@@ -225,23 +244,35 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     Directory directory = newDirectory();
     Document doc = new Document();
     Field idField = newStringField("id", "", Field.Store.YES);
+    KnnFloatVectorField knnField = new KnnFloatVectorField("knn", new float[] {0.0f, 0.0f});
     doc.add(idField);
+    doc.add(knnField);
+    IndexWriterConfig iwc =
+        newIndexWriterConfig(new MockAnalyzer(random()))
+            // Force excessive merging:
+            .setMaxBufferedDocs(2)
+            .setMergePolicy(newLogMergePolicy(100))
+            .setCommitOnClose(false);
+    if (iwc.getMergeScheduler() instanceof ConcurrentMergeScheduler) {
+      iwc.setMergeScheduler(
+          new ConcurrentMergeScheduler() {
+            @Override
+            // override here to ensure even tiny merges get the parallel executor
+            public Executor getIntraMergeExecutor(MergePolicy.OneMerge merge) {
+              assert intraMergeExecutor != null : "scaledExecutor is not initialized";
+              return intraMergeExecutor;
+            }
+          });
+    }
 
-    IndexWriter writer =
-        new IndexWriter(
-            directory,
-            newIndexWriterConfig(new MockAnalyzer(random()))
-                .
-                // Force excessive merging:
-                setMaxBufferedDocs(2)
-                .setMergePolicy(newLogMergePolicy(100))
-                .setCommitOnClose(false));
+    IndexWriter writer = new IndexWriter(directory, iwc);
 
     int numIters = TEST_NIGHTLY ? 10 : 3;
     for (int iter = 0; iter < numIters; iter++) {
 
       for (int j = 0; j < 201; j++) {
         idField.setStringValue(Integer.toString(iter * 201 + j));
+        knnField.setVectorValue(new float[] {random().nextFloat(), random().nextFloat()});
         writer.addDocument(doc);
       }
 
@@ -284,6 +315,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
   }
 
   // LUCENE-4544
+  @SuppressForbidden(reason = "Thread sleep")
   public void testMaxMergeCount() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc =
@@ -302,7 +334,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     ConcurrentMergeScheduler cms =
         new ConcurrentMergeScheduler() {
-
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           protected void doMerge(MergeSource mergeSource, MergePolicy.OneMerge merge)
               throws IOException {
@@ -362,6 +394,122 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     dir.close();
   }
 
+  public void testSmallMergesDonNotGetThreads() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setMaxBufferedDocs(2);
+    iwc.setMergeScheduler(
+        new ConcurrentMergeScheduler() {
+          @Override
+          protected void doMerge(MergeSource mergeSource, MergePolicy.OneMerge merge)
+              throws IOException {
+            assertTrue(this.getIntraMergeExecutor(merge) instanceof SameThreadExecutorService);
+            super.doMerge(mergeSource, merge);
+          }
+        });
+    IndexWriter w = new IndexWriter(dir, iwc);
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("id", "" + i, Field.Store.NO));
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    w.close();
+    dir.close();
+  }
+
+  public void testIntraMergeThreadPoolIsLimitedByMaxThreads() throws IOException {
+    ConcurrentMergeScheduler mergeScheduler = new ConcurrentMergeScheduler();
+    MergeScheduler.MergeSource mergeSource =
+        new MergeScheduler.MergeSource() {
+          @Override
+          public MergePolicy.OneMerge getNextMerge() {
+            fail("should not be called");
+            return null;
+          }
+
+          @Override
+          public void onMergeFinished(MergePolicy.OneMerge merge) {
+            fail("should not be called");
+          }
+
+          @Override
+          public boolean hasPendingMerges() {
+            fail("should not be called");
+            return false;
+          }
+
+          @Override
+          public void merge(MergePolicy.OneMerge merge) throws IOException {
+            fail("should not be called");
+          }
+        };
+    try (Directory dir = newDirectory();
+        mergeScheduler) {
+      MergePolicy.OneMerge merge =
+          new MergePolicy.OneMerge(
+              List.of(
+                  new SegmentCommitInfo(
+                      new SegmentInfo(
+                          dir,
+                          Version.LATEST,
+                          null,
+                          "test",
+                          0,
+                          false,
+                          false,
+                          Codec.getDefault(),
+                          Collections.emptyMap(),
+                          StringHelper.randomId(),
+                          new HashMap<>(),
+                          null),
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      new byte[16])));
+      mergeScheduler.initialize(InfoStream.NO_OUTPUT, dir);
+      mergeScheduler.setMaxMergesAndThreads(6, 6);
+      Executor executor = mergeScheduler.intraMergeExecutor;
+      AtomicInteger threadsExecutedOnPool = new AtomicInteger();
+      AtomicInteger threadsExecutedOnSelf = new AtomicInteger();
+      CountDownLatch latch = new CountDownLatch(1);
+      final int totalThreads = 4;
+      for (int i = 0; i < totalThreads; i++) {
+        mergeScheduler.mergeThreads.add(
+            mergeScheduler.new MergeThread(mergeSource, merge) {
+              @Override
+              public void run() {
+                executor.execute(
+                    () -> {
+                      if (Thread.currentThread() == this) {
+                        threadsExecutedOnSelf.incrementAndGet();
+                      } else {
+                        threadsExecutedOnPool.incrementAndGet();
+                      }
+                      try {
+                        latch.await();
+                      } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                      }
+                    });
+              }
+            });
+      }
+      for (ConcurrentMergeScheduler.MergeThread thread : mergeScheduler.mergeThreads) {
+        thread.start();
+      }
+      while (threadsExecutedOnSelf.get() + threadsExecutedOnPool.get() < totalThreads) {
+        Thread.yield();
+      }
+      latch.countDown();
+      mergeScheduler.sync();
+      assertEquals(3, threadsExecutedOnSelf.get());
+      assertEquals(1, threadsExecutedOnPool.get());
+    }
+  }
+
   private static class TrackingCMS extends ConcurrentMergeScheduler {
     long totMergedBytes;
     CountDownLatch atLeastOneMerge;
@@ -412,14 +560,12 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 3);
-        });
+        () ->
+            cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 3));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          cms.setMaxMergesAndThreads(3, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS);
-        });
+        () ->
+            cms.setMaxMergesAndThreads(3, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS));
   }
 
   public void testLiveMaxMergeCount() throws Exception {
@@ -554,6 +700,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
   }
 
   // LUCENE-6094
+  @SuppressForbidden(reason = "Thread sleep")
   public void testHangDuringRollback() throws Throwable {
     Directory dir = newMockDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
@@ -653,13 +800,13 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
           @Override
           public boolean isEnabled(String component) {
-            if (component.equals("MS")) return true;
-            return false;
+            return component.equals("MS");
           }
         });
     iwc.setMaxBufferedDocs(2);
     LogMergePolicy lmp = newLogMergePolicy();
     lmp.setMergeFactor(2);
+    lmp.setTargetSearchConcurrency(1);
     iwc.setMergePolicy(lmp);
 
     IndexWriter w = new IndexWriter(dir, iwc);
@@ -681,9 +828,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     for (Thread t : mergeThreadSet) {
       String name = t.getName();
       List<String> threadMsgs =
-          messages.stream()
-              .filter(line -> line.startsWith("merge thread " + name))
-              .collect(Collectors.toList());
+          messages.stream().filter(line -> line.startsWith("merge thread " + name)).toList();
       assertTrue(
           "Expected:·a·value·equal·to·or·greater·than·3,·got:"
               + threadMsgs.size()
@@ -736,15 +881,13 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 4);
-        });
+        () ->
+            cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 4));
 
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          cms.setMaxMergesAndThreads(4, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS);
-        });
+        () ->
+            cms.setMaxMergesAndThreads(4, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS));
 
     cms.setMaxMergesAndThreads(
         ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS,
@@ -762,10 +905,11 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
   public void testAutoIOThrottleGetter() throws Exception {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
-    cms.disableAutoIOThrottle();
     assertFalse(cms.getAutoIOThrottle());
     cms.enableAutoIOThrottle();
     assertTrue(cms.getAutoIOThrottle());
+    cms.disableAutoIOThrottle();
+    assertFalse(cms.getAutoIOThrottle());
   }
 
   public void testNonSpinningDefaults() throws Exception {
@@ -784,6 +928,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
     iwc.setMergePolicy(NoMergePolicy.INSTANCE);
     iwc.setMaxBufferedDocs(2);
+    iwc.setUseCompoundFile(true); // reduce open files
     IndexWriter w = new IndexWriter(dir, iwc);
     int numDocs = TEST_NIGHTLY ? 1000 : 100;
     for (int i = 0; i < numDocs; i++) {
@@ -805,6 +950,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
             super.doStall();
           }
         };
+    cms.enableAutoIOThrottle();
     cms.setMaxMergesAndThreads(2, 1);
     iwc.setMergeScheduler(cms);
     iwc.setMaxBufferedDocs(2);

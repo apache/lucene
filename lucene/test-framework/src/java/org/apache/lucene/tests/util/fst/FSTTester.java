@@ -155,7 +155,7 @@ public class FSTTester<T> {
   }
 
   static IntsRef toIntsRef(BytesRef br, IntsRefBuilder ir) {
-    ir.grow(br.length);
+    ir.growNoCopy(br.length);
     ir.clear();
     for (int i = 0; i < br.length; i++) {
       ir.append(br.bytes[br.offset + i] & 0xFF);
@@ -164,14 +164,7 @@ public class FSTTester<T> {
   }
 
   /** Holds one input/output pair. */
-  public static class InputOutput<T> implements Comparable<InputOutput<T>> {
-    public final IntsRef input;
-    public final T output;
-
-    public InputOutput(IntsRef input, T output) {
-      this.input = input;
-      this.output = output;
-    }
+  public record InputOutput<T>(IntsRef input, T output) implements Comparable<InputOutput<T>> {
 
     @Override
     public int compareTo(InputOutput<T> other) {
@@ -255,10 +248,19 @@ public class FSTTester<T> {
 
   public FST<T> doTest() throws IOException {
 
-    final FSTCompiler<T> fstCompiler =
+    final FSTCompiler.Builder<T> fstCompilerBuilder =
         new FSTCompiler.Builder<>(
-                inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs)
-            .build();
+            inputMode == 0 ? FST.INPUT_TYPE.BYTE1 : FST.INPUT_TYPE.BYTE4, outputs);
+
+    IndexOutput indexOutput = null;
+    boolean useOffHeap = random.nextBoolean();
+
+    if (useOffHeap) {
+      indexOutput = dir.createOutput("fstOffHeap.bin", IOContext.DEFAULT);
+      fstCompilerBuilder.dataOutput(indexOutput);
+    }
+
+    final FSTCompiler<T> fstCompiler = fstCompilerBuilder.build();
 
     for (InputOutput<T> pair : pairs) {
       if (pair.output instanceof List) {
@@ -273,17 +275,33 @@ public class FSTTester<T> {
         fstCompiler.add(pair.input, pair.output);
       }
     }
-    FST<T> fst = fstCompiler.compile();
 
-    if (random.nextBoolean() && fst != null) {
-      IOContext context = LuceneTestCase.newIOContext(random);
-      try (IndexOutput out = dir.createOutput("fst.bin", context)) {
-        fst.save(out, out);
+    FST<T> fst = null;
+    FST.FSTMetadata<T> fstMetadata = fstCompiler.compile();
+
+    if (useOffHeap) {
+      indexOutput.close();
+      if (fstMetadata == null) {
+        dir.deleteFile("fstOffHeap.bin");
+      } else {
+        try (IndexInput in = dir.openInput("fstOffHeap.bin", IOContext.DEFAULT)) {
+          fst = new FST<>(fstMetadata, in);
+        } finally {
+          dir.deleteFile("fstOffHeap.bin");
+        }
       }
-      try (IndexInput in = dir.openInput("fst.bin", context)) {
-        fst = new FST<>(FST.readMetadata(in, outputs), in);
-      } finally {
-        dir.deleteFile("fst.bin");
+    } else if (fstMetadata != null) {
+      fst = FST.fromFSTReader(fstMetadata, fstCompiler.getFSTReader());
+      if (random.nextBoolean()) {
+        IOContext context = LuceneTestCase.newIOContext(random);
+        try (IndexOutput out = dir.createOutput("fst.bin", context)) {
+          fst.save(out, out);
+        }
+        try (IndexInput in = dir.openInput("fst.bin", context)) {
+          fst = new FST<>(FST.readMetadata(in, outputs), in);
+        } finally {
+          dir.deleteFile("fst.bin");
+        }
       }
     }
 

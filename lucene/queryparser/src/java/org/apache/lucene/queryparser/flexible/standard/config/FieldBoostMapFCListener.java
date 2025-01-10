@@ -34,7 +34,7 @@ import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfi
  */
 public class FieldBoostMapFCListener implements FieldConfigListener {
 
-  private QueryConfigHandler config = null;
+  private final QueryConfigHandler config;
 
   public FieldBoostMapFCListener(QueryConfigHandler config) {
     this.config = config;

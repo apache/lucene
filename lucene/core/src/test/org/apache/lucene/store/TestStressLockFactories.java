@@ -18,6 +18,8 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -40,6 +42,22 @@ public class TestStressLockFactories extends LuceneTestCase {
     }
   }
 
+  private String readIfExists(Path path) throws IOException {
+    if (Files.exists(path)) {
+      return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+    } else {
+      return null;
+    }
+  }
+
+  private String readClientStdout(Path dir, int client) throws IOException {
+    return readIfExists(dir.resolve("out-" + client + ".txt"));
+  }
+
+  private String readClientStderr(Path dir, int client) throws IOException {
+    return readIfExists(dir.resolve("err-" + client + ".txt"));
+  }
+
   private void runImpl(Class<? extends LockFactory> impl) throws Exception {
     final int clients = TEST_NIGHTLY ? 5 : 2;
     final String host = "127.0.0.1";
@@ -50,41 +68,89 @@ public class TestStressLockFactories extends LuceneTestCase {
 
     final List<Process> processes = new ArrayList<>(clients);
 
-    LockVerifyServer.run(
-        host,
-        clients,
-        addr -> {
-          // spawn clients as separate Java processes
-          for (int i = 0; i < clients; i++) {
-            try {
-              List<String> args = new ArrayList<>();
-              args.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
-              args.addAll(getJvmForkArguments());
-              args.addAll(
-                  List.of(
-                      "-Xmx32M",
-                      LockStressTest.class.getName(),
-                      Integer.toString(i),
-                      addr.getHostString(),
-                      Integer.toString(addr.getPort()),
-                      impl.getName(),
-                      dir.toString(),
-                      Integer.toString(delay),
-                      Integer.toString(rounds)));
+    try {
+      LockVerifyServer.run(
+          host,
+          clients,
+          addr -> {
+            // spawn clients as separate Java processes
+            for (int i = 0; i < clients; i++) {
+              try {
+                List<String> args = new ArrayList<>();
+                args.add(Paths.get(System.getProperty("java.home"), "bin", "java").toString());
+                args.addAll(getJvmForkArguments());
+                args.addAll(
+                    List.of(
+                        "-Xmx32M",
+                        LockStressTest.class.getName(),
+                        Integer.toString(i),
+                        addr.getHostString(),
+                        Integer.toString(addr.getPort()),
+                        impl.getName(),
+                        dir.toString(),
+                        Integer.toString(delay),
+                        Integer.toString(rounds)));
 
-              processes.add(applyRedirection(new ProcessBuilder(args), i, dir).start());
-            } catch (IOException ioe) {
-              throw new AssertionError("Failed to start child process.", ioe);
+                processes.add(applyRedirection(new ProcessBuilder(args), i, dir).start());
+              } catch (IOException ioe) {
+                throw new AssertionError("Failed to start child process.", ioe);
+              }
             }
-          }
-        });
+          });
+    } catch (Exception e) {
+      System.err.println("Server failed");
+      int client = 0;
+      for (Process p : processes) {
+        System.err.println("stderr for " + p.pid() + ":\n" + readClientStderr(dir, client));
+        System.err.println("stdout for " + p.pid() + ":\n" + readClientStdout(dir, client));
+        client++;
+      }
+
+      throw e;
+    }
 
     // wait for all processes to exit...
     try {
+      int client = 0;
       for (Process p : processes) {
-        if (p.waitFor(15, TimeUnit.SECONDS)) {
-          assertEquals("Process " + p.pid() + " died abnormally?", 0, p.waitFor());
+        int clientTimeoutSeconds = 15;
+
+        boolean doFail = false;
+        String reason = null;
+
+        if (p.waitFor(clientTimeoutSeconds, TimeUnit.SECONDS)) {
+          // process finished within our 15 second wait period; get its exit code
+          int exitCode = p.waitFor();
+          if (exitCode != 0) {
+            doFail = true;
+            reason =
+                "Process "
+                    + p.pid()
+                    + " (client "
+                    + client
+                    + ") exited abnormally: exit code "
+                    + exitCode;
+          }
+        } else {
+          doFail = true;
+          reason =
+              "Process "
+                  + p.pid()
+                  + " (client "
+                  + client
+                  + ") did not finish within "
+                  + clientTimeoutSeconds
+                  + " second timeout";
         }
+
+        if (doFail) {
+          System.err.println(reason);
+          System.err.println("stderr for " + p.pid() + ":\n" + readClientStderr(dir, client));
+          System.err.println("stdout for " + p.pid() + ":\n" + readClientStdout(dir, client));
+          fail(reason);
+        }
+
+        client++;
       }
     } finally {
       // kill all processes, which are still alive.

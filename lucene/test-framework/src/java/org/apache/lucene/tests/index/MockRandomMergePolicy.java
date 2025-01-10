@@ -23,7 +23,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.FutureTask;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeTrigger;
@@ -34,6 +38,9 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.ThreadInterruptedException;
 
 /** MergePolicy that makes random decisions for testing. */
 public class MockRandomMergePolicy extends MergePolicy {
@@ -230,8 +237,7 @@ public class MockRandomMergePolicy extends MergePolicy {
               "NOTE: MockRandomMergePolicy now swaps in a MismatchedLeafReader for merging reader="
                   + reader);
         }
-        return SlowCodecReaderWrapper.wrap(
-            new MismatchedLeafReader(new MergeReaderWrapper(reader), r));
+        return new MismatchedCodecReader(reader, r);
       } else {
         // otherwise, reader is unchanged
         return reader;
@@ -239,29 +245,70 @@ public class MockRandomMergePolicy extends MergePolicy {
     }
 
     @Override
-    public Sorter.DocMap reorder(CodecReader reader, Directory dir) throws IOException {
+    public Sorter.DocMap reorder(CodecReader reader, Directory dir, Executor executor)
+        throws IOException {
       if (r.nextBoolean()) {
+        if (LuceneTestCase.VERBOSE) {
+          System.out.println("NOTE: MockRandomMergePolicy now reverses reader=" + reader);
+        }
         // Reverse the doc ID order
-        final int maxDoc = reader.maxDoc();
-        return new Sorter.DocMap() {
-
-          @Override
-          public int size() {
-            return maxDoc;
-          }
-
-          @Override
-          public int oldToNew(int docID) {
-            return maxDoc - 1 - docID;
-          }
-
-          @Override
-          public int newToOld(int docID) {
-            return maxDoc - 1 - docID;
-          }
-        };
+        return reverse(reader);
+      }
+      if (executor != null && r.nextBoolean()) {
+        // submit random work to the executor
+        Runnable dummyRunnable = () -> {};
+        FutureTask<Void> task = new FutureTask<>(dummyRunnable, null);
+        executor.execute(task);
+        try {
+          task.get();
+        } catch (InterruptedException e) {
+          throw new ThreadInterruptedException(e);
+        } catch (ExecutionException e) {
+          throw IOUtils.rethrowAlways(e.getCause());
+        }
       }
       return null;
     }
+  }
+
+  static Sorter.DocMap reverse(CodecReader reader) throws IOException {
+    final int maxDoc = reader.maxDoc();
+    final BitSet parents;
+    if (reader.getFieldInfos().getParentField() == null) {
+      parents = null;
+    } else {
+      parents =
+          BitSet.of(DocValues.getNumeric(reader, reader.getFieldInfos().getParentField()), maxDoc);
+    }
+    return new Sorter.DocMap() {
+
+      @Override
+      public int size() {
+        return maxDoc;
+      }
+
+      @Override
+      public int oldToNew(int docID) {
+        if (parents == null) {
+          return maxDoc - 1 - docID;
+        } else {
+          final int oldBlockStart = docID == 0 ? 0 : parents.prevSetBit(docID - 1) + 1;
+          final int oldBlockEnd = parents.nextSetBit(docID);
+          final int newBlockEnd = maxDoc - 1 - oldBlockStart;
+          return newBlockEnd - (oldBlockEnd - docID);
+        }
+      }
+
+      @Override
+      public int newToOld(int docID) {
+        if (parents == null) {
+          return maxDoc - 1 - docID;
+        } else {
+          final int oldBlockEnd = parents.nextSetBit(maxDoc - 1 - docID);
+          final int newBlockEnd = oldToNew(oldBlockEnd);
+          return oldBlockEnd - (newBlockEnd - docID);
+        }
+      }
+    };
   }
 }

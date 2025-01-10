@@ -334,7 +334,7 @@ EMAIL = {EMAILlocalPart} "@" ({DomainNameStrict} | {EMAILbracketedHost})
   //
   //     In particular, the above docs recommend a modified UAX#29 WB3c rule (covered by TR#51's "emoji_zwj_sequence"):
   //
-  //         WB3c′ ZWJ × ​(Extended_Pictographic | EmojiNRK)
+  //         WB3c′ ZWJ × (Extended_Pictographic | EmojiNRK)
   //
     {EmojiCharOrPresSeqOrModSeq} ( ( \p{WB:ZWJ} {EmojiCharOrPresSeqOrModSeq} )* | {TagSpec}+ {TagTerm} ) 
   | {KeyCapBaseCharEx} {EmojiPresentationSelector}? {KeyCapEx} 

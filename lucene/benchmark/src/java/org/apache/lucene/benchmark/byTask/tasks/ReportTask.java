@@ -140,7 +140,7 @@ public abstract class ReportTask extends PerfTask {
       String line = taskReportLine(longetOp, stat);
       lineNum++;
       if (partOfTasks.size() > 2 && lineNum % 2 == 0) {
-        line = line.replaceAll("   ", " - ");
+        line = line.replace("   ", " - ");
       }
       sb.append(line);
       int[] byTime = stat.getCountsByTime();

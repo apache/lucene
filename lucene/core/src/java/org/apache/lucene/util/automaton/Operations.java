@@ -35,10 +35,13 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.lucene.internal.hppc.BitMixer;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntHashSet;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -47,7 +50,6 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hppc.BitMixer;
 
 /**
  * Automata operations.
@@ -157,6 +159,37 @@ public final class Operations {
    * <p>Complexity: linear in number of states.
    */
   public static Automaton optional(Automaton a) {
+    if (a.isAccept(0)) {
+      // If the initial state is accepted, then the empty string is already accepted.
+      return a;
+    }
+
+    boolean hasTransitionsToInitialState = false;
+    Transition t = new Transition();
+    outer:
+    for (int state = 0; state < a.getNumStates(); ++state) {
+      int count = a.initTransition(state, t);
+      for (int i = 0; i < count; ++i) {
+        a.getNextTransition(t);
+        if (t.dest == 0) {
+          hasTransitionsToInitialState = true;
+          break outer;
+        }
+      }
+    }
+
+    if (hasTransitionsToInitialState == false) {
+      // If the automaton has no transition to the initial state, we can simply mark the initial
+      // state as accepted.
+      Automaton result = new Automaton();
+      result.copy(a);
+      if (result.getNumStates() == 0) {
+        result.createState();
+      }
+      result.setAccept(0, true);
+      return result;
+    }
+
     Automaton result = new Automaton();
     result.createState();
     result.setAccept(0, true);
@@ -179,30 +212,65 @@ public final class Operations {
       // Repeating the empty automata will still only accept the empty automata.
       return a;
     }
+
+    if (a.isAccept(0) && a.getAcceptStates().cardinality() == 1) {
+      // If state 0 is the only accept state, then this automaton already repeats itself.
+      return a;
+    }
+
     Automaton.Builder builder = new Automaton.Builder();
+    // Create the initial state, which is accepted
     builder.createState();
     builder.setAccept(0, true);
-    builder.copy(a);
-
     Transition t = new Transition();
+
+    int[] stateMap = new int[a.getNumStates()];
+    for (int state = 0; state < a.getNumStates(); ++state) {
+      if (a.isAccept(state) == false) {
+        stateMap[state] = builder.createState();
+      } else if (a.getNumTransitions(state) == 0) {
+        // Accept states that have no transitions get merged into state 0.
+        stateMap[state] = 0;
+      } else {
+        int newState = builder.createState();
+        stateMap[state] = newState;
+        builder.setAccept(newState, true);
+      }
+    }
+
+    // Now copy the automaton while renumbering states.
+    for (int state = 0; state < a.getNumStates(); ++state) {
+      int src = stateMap[state];
+      int count = a.initTransition(state, t);
+      for (int i = 0; i < count; i++) {
+        a.getNextTransition(t);
+        int dest = stateMap[t.dest];
+        builder.addTransition(src, dest, t.min, t.max);
+      }
+    }
+
+    // Now copy transitions of the initial state to our new initial state.
     int count = a.initTransition(0, t);
     for (int i = 0; i < count; i++) {
       a.getNextTransition(t);
-      builder.addTransition(0, t.dest + 1, t.min, t.max);
+      builder.addTransition(0, stateMap[t.dest], t.min, t.max);
     }
 
-    int numStates = a.getNumStates();
-    for (int s = 0; s < numStates; s++) {
-      if (a.isAccept(s)) {
+    // Now copy transitions of the initial state to final states to make the automaton repeat
+    // itself.
+    for (int s = a.getAcceptStates().nextSetBit(0);
+        s != -1;
+        s = a.getAcceptStates().nextSetBit(s + 1)) {
+      if (stateMap[s] != 0) {
         count = a.initTransition(0, t);
         for (int i = 0; i < count; i++) {
           a.getNextTransition(t);
-          builder.addTransition(s + 1, t.dest + 1, t.min, t.max);
+          builder.addTransition(stateMap[s], stateMap[t.dest], t.min, t.max);
         }
       }
     }
 
-    return builder.finish();
+    return removeDeadStates(builder.finish());
   }
 
   /**
@@ -248,14 +316,14 @@ public final class Operations {
       b = concatenate(as);
     }
 
-    Set<Integer> prevAcceptStates = toSet(b, 0);
+    IntHashSet prevAcceptStates = toSet(b, 0);
     Automaton.Builder builder = new Automaton.Builder();
     builder.copy(b);
     for (int i = min; i < max; i++) {
       int numStates = builder.getNumStates();
       builder.copy(a);
-      for (int s : prevAcceptStates) {
-        builder.addEpsilon(s, numStates);
+      for (IntCursor s : prevAcceptStates) {
+        builder.addEpsilon(s.value, numStates);
       }
       prevAcceptStates = toSet(a, numStates);
     }
@@ -263,16 +331,15 @@ public final class Operations {
     return builder.finish();
   }
 
-  private static Set<Integer> toSet(Automaton a, int offset) {
+  private static IntHashSet toSet(Automaton a, int offset) {
     int numStates = a.getNumStates();
     BitSet isAccept = a.getAcceptStates();
-    Set<Integer> result = new HashSet<Integer>();
+    IntHashSet result = new IntHashSet();
     int upto = 0;
     while (upto < numStates && (upto = isAccept.nextSetBit(upto)) != -1) {
       result.add(offset + upto);
       upto++;
     }
-
     return result;
   }
 
@@ -372,17 +439,6 @@ public final class Operations {
     return removeDeadStates(c);
   }
 
-  /**
-   * Returns true if these two automata accept exactly the same language. This is a costly
-   * computation! Both automata must be determinized and have no dead states!
-   */
-  public static boolean sameLanguage(Automaton a1, Automaton a2) {
-    if (a1 == a2) {
-      return true;
-    }
-    return subsetOf(a2, a1) && subsetOf(a1, a2);
-  }
-
   // TODO: move to test-framework?
   /**
    * Returns true if this automaton has any states that cannot be reached from the initial state or
@@ -413,73 +469,6 @@ public final class Operations {
     BitSet reachableFromAccept = getLiveStatesToAccept(a);
     reachableFromAccept.andNot(reachableFromInitial);
     return reachableFromAccept.isEmpty() == false;
-  }
-
-  /**
-   * Returns true if the language of <code>a1</code> is a subset of the language of <code>a2</code>.
-   * Both automata must be determinized and must have no dead states.
-   *
-   * <p>Complexity: quadratic in number of states.
-   */
-  public static boolean subsetOf(Automaton a1, Automaton a2) {
-    if (a1.isDeterministic() == false) {
-      throw new IllegalArgumentException("a1 must be deterministic");
-    }
-    if (a2.isDeterministic() == false) {
-      throw new IllegalArgumentException("a2 must be deterministic");
-    }
-    assert hasDeadStatesFromInitial(a1) == false;
-    assert hasDeadStatesFromInitial(a2) == false;
-    if (a1.getNumStates() == 0) {
-      // Empty language is alwyas a subset of any other language
-      return true;
-    } else if (a2.getNumStates() == 0) {
-      return isEmpty(a1);
-    }
-
-    // TODO: cutover to iterators instead
-    Transition[][] transitions1 = a1.getSortedTransitions();
-    Transition[][] transitions2 = a2.getSortedTransitions();
-    ArrayDeque<StatePair> worklist = new ArrayDeque<>();
-    HashSet<StatePair> visited = new HashSet<>();
-    StatePair p = new StatePair(0, 0);
-    worklist.add(p);
-    visited.add(p);
-    while (worklist.size() > 0) {
-      p = worklist.removeFirst();
-      if (a1.isAccept(p.s1) && a2.isAccept(p.s2) == false) {
-        return false;
-      }
-      Transition[] t1 = transitions1[p.s1];
-      Transition[] t2 = transitions2[p.s2];
-      for (int n1 = 0, b2 = 0; n1 < t1.length; n1++) {
-        while (b2 < t2.length && t2[b2].max < t1[n1].min) {
-          b2++;
-        }
-        int min1 = t1[n1].min, max1 = t1[n1].max;
-
-        for (int n2 = b2; n2 < t2.length && t1[n1].max >= t2[n2].min; n2++) {
-          if (t2[n2].min > min1) {
-            return false;
-          }
-          if (t2[n2].max < Character.MAX_CODE_POINT) {
-            min1 = t2[n2].max + 1;
-          } else {
-            min1 = Character.MAX_CODE_POINT;
-            max1 = Character.MIN_CODE_POINT;
-          }
-          StatePair q = new StatePair(t1[n1].dest, t2[n2].dest);
-          if (!visited.contains(q)) {
-            worklist.add(q);
-            visited.add(q);
-          }
-        }
-        if (min1 <= max1) {
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   /**
@@ -573,7 +562,7 @@ public final class Operations {
     PointTransitions[] points = new PointTransitions[5];
 
     private static final int HASHMAP_CUTOVER = 30;
-    private final HashMap<Integer, PointTransitions> map = new HashMap<>();
+    private final IntObjectHashMap<PointTransitions> map = new IntObjectHashMap<>();
     private boolean useHash = false;
 
     private PointTransitions next(int point) {
@@ -855,22 +844,48 @@ public final class Operations {
     return true;
   }
 
-  /** Returns true if the given automaton accepts all strings. The automaton must be minimized. */
+  /**
+   * Returns true if the given automaton accepts all strings.
+   *
+   * <p>The automaton must be deterministic, or this method may return false.
+   *
+   * <p>Complexity: linear in number of states and transitions.
+   */
   public static boolean isTotal(Automaton a) {
     return isTotal(a, Character.MIN_CODE_POINT, Character.MAX_CODE_POINT);
   }
 
   /**
    * Returns true if the given automaton accepts all strings for the specified min/max range of the
-   * alphabet. The automaton must be minimized.
+   * alphabet.
+   *
+   * <p>The automaton must be deterministic, or this method may return false.
+   *
+   * <p>Complexity: linear in number of states and transitions.
    */
   public static boolean isTotal(Automaton a, int minAlphabet, int maxAlphabet) {
-    if (a.isAccept(0) && a.getNumTransitions(0) == 1) {
-      Transition t = new Transition();
-      a.getTransition(0, 0, t);
-      return t.dest == 0 && t.min == minAlphabet && t.max == maxAlphabet;
+    BitSet states = getLiveStates(a);
+    Transition spare = new Transition();
+    int seenStates = 0;
+    for (int state = states.nextSetBit(0); state >= 0; state = states.nextSetBit(state + 1)) {
+      // all reachable states must be accept states
+      if (a.isAccept(state) == false) return false;
+      // all reachable states must contain transitions covering minAlphabet-maxAlphabet
+      int previousLabel = minAlphabet - 1;
+      for (int transition = 0; transition < a.getNumTransitions(state); transition++) {
+        a.getTransition(state, transition, spare);
+        // no gaps are allowed
+        if (spare.min > previousLabel + 1) return false;
+        previousLabel = spare.max;
+      }
+      if (previousLabel < maxAlphabet) return false;
+      if (state == Integer.MAX_VALUE) {
+        break; // or (state+1) would overflow
+      }
+      seenStates++;
     }
-    return false;
+    // we've checked all the states, automaton is either total or empty
+    return seenStates > 0;
   }
 
   /**
@@ -1002,6 +1017,9 @@ public final class Operations {
   public static Automaton removeDeadStates(Automaton a) {
     int numStates = a.getNumStates();
     BitSet liveSet = getLiveStates(a);
+    if (liveSet.cardinality() == numStates) {
+      return a;
+    }
 
     int[] map = new int[numStates];
 
@@ -1129,7 +1147,7 @@ public final class Operations {
       throw new IllegalArgumentException("input automaton must be deterministic");
     }
     IntsRefBuilder builder = new IntsRefBuilder();
-    HashSet<Integer> visited = new HashSet<>();
+    IntHashSet visited = new IntHashSet();
     int s = 0;
     Transition t = new Transition();
     while (true) {

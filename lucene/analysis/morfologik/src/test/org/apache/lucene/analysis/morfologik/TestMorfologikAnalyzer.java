@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis.morfologik;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.TreeSet;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
@@ -127,9 +128,7 @@ public class TestMorfologikAnalyzer extends BaseTokenStreamTestCase {
     for (StringBuilder b : ts.getAttribute(MorphosyntacticTagsAttribute.class).getTags()) {
       actual.add(b.toString());
     }
-    for (String s : tags) {
-      expected.add(s);
-    }
+    Collections.addAll(expected, tags);
 
     if (!expected.equals(actual)) {
       System.out.println("Expected:\n" + expected);

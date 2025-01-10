@@ -41,6 +41,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.TestVectorUtil;
 
 /**
@@ -67,6 +68,7 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       }
 
       /** Sleep between iterations to timeout things. */
+      @SuppressForbidden(reason = "Thread sleep")
       @Override
       public BytesRef next() throws IOException {
         try {
@@ -457,8 +459,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       expectThrows(
           ExitingReaderException.class,
           () -> {
-            DocIdSetIterator iter = leaf.getFloatVectorValues("vector");
-            scanAndRetrieve(leaf, iter);
+            KnnVectorValues values = leaf.getFloatVectorValues("vector");
+            scanAndRetrieve(leaf, values);
           });
 
       expectThrows(
@@ -471,8 +473,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
                   leaf.getLiveDocs(),
                   Integer.MAX_VALUE));
     } else {
-      DocIdSetIterator iter = leaf.getFloatVectorValues("vector");
-      scanAndRetrieve(leaf, iter);
+      KnnVectorValues values = leaf.getFloatVectorValues("vector");
+      scanAndRetrieve(leaf, values);
 
       leaf.searchNearestVectors(
           "vector",
@@ -532,8 +534,8 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       expectThrows(
           ExitingReaderException.class,
           () -> {
-            DocIdSetIterator iter = leaf.getByteVectorValues("vector");
-            scanAndRetrieve(leaf, iter);
+            KnnVectorValues values = leaf.getByteVectorValues("vector");
+            scanAndRetrieve(leaf, values);
           });
 
       expectThrows(
@@ -545,9 +547,10 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
                   5,
                   leaf.getLiveDocs(),
                   Integer.MAX_VALUE));
+
     } else {
-      DocIdSetIterator iter = leaf.getByteVectorValues("vector");
-      scanAndRetrieve(leaf, iter);
+      KnnVectorValues values = leaf.getByteVectorValues("vector");
+      scanAndRetrieve(leaf, values);
 
       leaf.searchNearestVectors(
           "vector",
@@ -561,20 +564,24 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
     directory.close();
   }
 
-  private static void scanAndRetrieve(LeafReader leaf, DocIdSetIterator iter) throws IOException {
+  private static void scanAndRetrieve(LeafReader leaf, KnnVectorValues values) throws IOException {
+    KnnVectorValues.DocIndexIterator iter = values.iterator();
     for (iter.nextDoc();
         iter.docID() != DocIdSetIterator.NO_MORE_DOCS && iter.docID() < leaf.maxDoc(); ) {
-      final int nextDocId = iter.docID() + 1;
+      int docId = iter.docID();
+      if (docId >= leaf.maxDoc()) {
+        break;
+      }
+      final int nextDocId = docId + 1;
       if (random().nextBoolean() && nextDocId < leaf.maxDoc()) {
         iter.advance(nextDocId);
       } else {
         iter.nextDoc();
       }
-
       if (random().nextBoolean()
           && iter.docID() != DocIdSetIterator.NO_MORE_DOCS
-          && iter instanceof FloatVectorValues) {
-        ((FloatVectorValues) iter).vectorValue();
+          && values instanceof FloatVectorValues) {
+        ((FloatVectorValues) values).vectorValue(iter.index());
       }
     }
   }

@@ -61,7 +61,7 @@ final class TimeLimitingBulkScorer extends BulkScorer {
    *     TimeLimitingBulkScorer.TimeExceededException} is thrown
    */
   public TimeLimitingBulkScorer(BulkScorer bulkScorer, QueryTimeout queryTimeout) {
-    this.in = bulkScorer;
+    this.in = Objects.requireNonNull(bulkScorer);
     this.queryTimeout = Objects.requireNonNull(queryTimeout);
   }
 

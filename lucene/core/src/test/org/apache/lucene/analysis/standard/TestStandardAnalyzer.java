@@ -677,16 +677,11 @@ public class TestStandardAnalyzer extends BaseTokenStreamTestCase {
   public void testMaxTokenLengthDefault() throws Exception {
     StandardAnalyzer a = new StandardAnalyzer();
 
-    StringBuilder bToken = new StringBuilder();
     // exact max length:
-    for (int i = 0; i < StandardAnalyzer.DEFAULT_MAX_TOKEN_LENGTH; i++) {
-      bToken.append('b');
-    }
-
-    String bString = bToken.toString();
+    String bString = "b".repeat(StandardAnalyzer.DEFAULT_MAX_TOKEN_LENGTH);
     // first bString is exact max default length; next one is 1 too long
     String input = "x " + bString + " " + bString + "b";
-    assertAnalyzesTo(a, input.toString(), new String[] {"x", bString, bString, "b"});
+    assertAnalyzesTo(a, input, new String[] {"x", bString, bString, "b"});
     a.close();
   }
 

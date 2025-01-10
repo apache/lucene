@@ -17,6 +17,7 @@
 package org.apache.lucene.benchmark.byTask.tasks;
 
 import org.apache.lucene.benchmark.byTask.PerfRunData;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * Simply waits for the specified (via the parameter) amount of time. For example Wait(30s) waits
@@ -58,6 +59,7 @@ public class WaitTask extends PerfTask {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Override
   public int doLogic() throws Exception {
     Thread.sleep((long) (1000 * waitTimeSec));

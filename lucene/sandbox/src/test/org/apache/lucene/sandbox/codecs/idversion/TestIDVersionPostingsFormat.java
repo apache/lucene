@@ -56,6 +56,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.SuppressForbidden;
 
 /** Basic tests for IDVersionPostingsFormat */
 // Cannot extend BasePostingsFormatTestCase because this PF is not
@@ -342,7 +343,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
 
     /** Returns docID if found, else -1. */
     public int lookup(BytesRef id, long version) throws IOException {
-      for (int seg = 0; seg < numSegs; seg++) {
+      for (int seg = 0; seg < numEnums; seg++) {
         if (((IDVersionSegmentTermsEnum) termsEnums[seg]).seekExact(id, version)) {
           if (VERBOSE) {
             System.out.println("  found in seg=" + termsEnums[seg]);
@@ -677,6 +678,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
 
   // Simulates optimistic concurrency in a distributed indexing app and confirms the latest version
   // always wins:
+  @SuppressForbidden(reason = "Thread sleep")
   public void testGlobalVersions() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -750,6 +752,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
               }
             }
 
+            @SuppressForbidden(reason = "Thread sleep")
             private void runForReal() throws IOException, InterruptedException {
               startingGun.await();
               PerThreadVersionPKLookup lookup = null;

@@ -253,7 +253,7 @@ public class RoaringDocIdSet extends DocIdSet {
   private class Iterator extends DocIdSetIterator {
 
     int block;
-    DocIdSetIterator sub = null;
+    DocIdSetIterator sub;
     int doc;
 
     Iterator() throws IOException {

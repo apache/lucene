@@ -40,12 +40,12 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.IntToLongFunction;
-import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -75,6 +75,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil.RandomAcceptedStrings;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.UnicodeUtil;
@@ -110,20 +111,23 @@ public class RandomPostingsTester {
     // Sometimes don't fully consume positions at each doc
     PARTIAL_POS_CONSUME,
 
+    // Check DocIdSetIterator#intoBitSet
+    INTO_BIT_SET,
+
     // Sometimes check payloads
     PAYLOADS,
 
     // Test w/ multiple threads
     THREADS
-  };
+  }
 
   private long totalPostings;
   private long totalPayloadBytes;
 
   // Holds all postings:
-  private Map<String, SortedMap<BytesRef, SeedAndOrd>> fields;
+  private final Map<String, SortedMap<BytesRef, SeedAndOrd>> fields;
 
-  private FieldInfos fieldInfos;
+  private final FieldInfos fieldInfos;
 
   List<FieldAndTerm> allTerms;
   private int maxDoc;
@@ -158,6 +162,7 @@ public class RandomPostingsTester {
               true,
               IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
               DocValuesType.NONE,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -166,6 +171,7 @@ public class RandomPostingsTester {
               0,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
+              false,
               false);
       fieldUpto++;
 
@@ -731,6 +737,7 @@ public class RandomPostingsTester {
               doPayloads,
               indexOptions,
               DocValuesType.NONE,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -739,6 +746,7 @@ public class RandomPostingsTester {
               0,
               VectorEncoding.FLOAT32,
               VectorSimilarityFunction.EUCLIDEAN,
+              false,
               false);
     }
 
@@ -838,7 +846,7 @@ public class RandomPostingsTester {
     currentFieldInfos = newFieldInfos;
 
     SegmentReadState readState =
-        new SegmentReadState(dir, segmentInfo, newFieldInfos, IOContext.READ);
+        new SegmentReadState(dir, segmentInfo, newFieldInfos, IOContext.DEFAULT);
 
     return codec.postingsFormat().fieldsProducer(readState);
   }
@@ -956,7 +964,7 @@ public class RandomPostingsTester {
 
     assertNotNull("null DocsEnum", postingsEnum);
     int initialDocID = postingsEnum.docID();
-    assertEquals("inital docID should be -1" + postingsEnum, -1, initialDocID);
+    assertEquals("initial docID should be -1: " + postingsEnum, -1, initialDocID);
 
     if (LuceneTestCase.VERBOSE) {
       if (prevPostingsEnum == null) {
@@ -1252,9 +1260,7 @@ public class RandomPostingsTester {
           Impacts impacts = impactsEnum.getImpacts();
           INDEX_PACKAGE_ACCESS.checkImpacts(impacts, doc);
           impactsCopy =
-              impacts.getImpacts(0).stream()
-                  .map(i -> new Impact(i.freq, i.norm))
-                  .collect(Collectors.toList());
+              impacts.getImpacts(0).stream().map(i -> new Impact(i.freq, i.norm)).toList();
         }
         freq = impactsEnum.freq();
         long norm = docToNorm.applyAsLong(doc);
@@ -1301,9 +1307,7 @@ public class RandomPostingsTester {
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
               impactsCopy =
-                  impacts.getImpacts(level).stream()
-                      .map(i -> new Impact(i.freq, i.norm))
-                      .collect(Collectors.toList());
+                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
               break;
             }
           }
@@ -1342,9 +1346,7 @@ public class RandomPostingsTester {
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
               impactsCopy =
-                  impacts.getImpacts(level).stream()
-                      .map(i -> new Impact(i.freq, i.norm))
-                      .collect(Collectors.toList());
+                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
               break;
             }
           }
@@ -1366,16 +1368,64 @@ public class RandomPostingsTester {
             idx <= impactsCopy.size() && impactsCopy.get(idx).norm <= norm);
       }
     }
+
+    if (options.contains(Option.INTO_BIT_SET)) {
+      int flags = PostingsEnum.FREQS;
+      if (doCheckPositions) {
+        flags |= PostingsEnum.POSITIONS;
+        if (doCheckOffsets) {
+          flags |= PostingsEnum.OFFSETS;
+        }
+        if (doCheckPayloads) {
+          flags |= PostingsEnum.PAYLOADS;
+        }
+      }
+      PostingsEnum pe1 = termsEnum.postings(null, flags);
+      if (random.nextBoolean()) {
+        pe1.advance(maxDoc / 2);
+        pe1 = termsEnum.postings(pe1, flags);
+      }
+      PostingsEnum pe2 = termsEnum.postings(null, flags);
+      FixedBitSet set1 = new FixedBitSet(1024);
+      FixedBitSet set2 = new FixedBitSet(1024);
+      FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
+      for (int i = 0; i < maxDoc; i += 2) {
+        acceptDocs.set(i);
+      }
+
+      while (true) {
+        pe1.nextDoc();
+        pe2.nextDoc();
+
+        int offset =
+            TestUtil.nextInt(random, Math.max(0, pe1.docID() - set1.length()), pe1.docID());
+        int upTo = offset + random.nextInt(set1.length());
+        pe1.intoBitSet(acceptDocs, upTo, set1, offset);
+        for (int d = pe2.docID(); d < upTo; d = pe2.nextDoc()) {
+          if (acceptDocs.get(d)) {
+            set2.set(d - offset);
+          }
+        }
+
+        assertEquals(set1, set2);
+        assertEquals(pe1.docID(), pe2.docID());
+        if (pe1.docID() == DocIdSetIterator.NO_MORE_DOCS) {
+          break;
+        }
+        set1.clear();
+        set2.clear();
+      }
+    }
   }
 
   private static class TestThread extends Thread {
     private Fields fieldsSource;
-    private EnumSet<Option> options;
-    private IndexOptions maxIndexOptions;
-    private IndexOptions maxTestOptions;
-    private boolean alwaysTestMax;
+    private final EnumSet<Option> options;
+    private final IndexOptions maxIndexOptions;
+    private final IndexOptions maxTestOptions;
+    private final boolean alwaysTestMax;
     private RandomPostingsTester postingsTester;
-    private Random random;
+    private final Random random;
 
     public TestThread(
         Random random,
@@ -1631,7 +1681,7 @@ public class RandomPostingsTester {
         }
         TermsEnum intersected = fieldsSource.terms(field).intersect(ca, startTerm);
 
-        Set<BytesRef> intersectedTerms = new HashSet<BytesRef>();
+        Set<BytesRef> intersectedTerms = new HashSet<>();
         BytesRef term;
         while ((term = intersected.next()) != null) {
           if (startTerm != null) {
@@ -1684,11 +1734,7 @@ public class RandomPostingsTester {
       }
     }
     assertFalse(iterator.hasNext());
-    LuceneTestCase.expectThrows(
-        NoSuchElementException.class,
-        () -> {
-          iterator.next();
-        });
+    LuceneTestCase.expectThrows(NoSuchElementException.class, iterator::next);
   }
 
   /**

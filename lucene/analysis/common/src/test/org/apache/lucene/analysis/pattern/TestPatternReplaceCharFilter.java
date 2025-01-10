@@ -82,8 +82,8 @@ public class TestPatternReplaceCharFilter extends BaseTokenStreamTestCase {
       indexMatched.append((cs.correctOffset(i) < 0 ? "-" : input.charAt(cs.correctOffset(i))));
     }
 
-    boolean outputGood = expectedOutput.equals(output.toString());
-    boolean indexMatchedGood = expectedIndexMatchedOutput.equals(indexMatched.toString());
+    boolean outputGood = expectedOutput.contentEquals(output);
+    boolean indexMatchedGood = expectedIndexMatchedOutput.contentEquals(indexMatched);
 
     if (!outputGood || !indexMatchedGood || false) {
       System.out.println("Pattern : " + pattern);

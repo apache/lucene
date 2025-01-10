@@ -24,17 +24,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
 import org.apache.lucene.search.PhraseQuery;
@@ -42,12 +43,14 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.automaton.Automaton;
@@ -85,7 +88,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
   private final Automaton.Builder builder;
   Automaton det;
   private final Map<BytesRef, Integer> termToID = new HashMap<>();
-  private final Map<Integer, BytesRef> idToTerm = new HashMap<>();
+  private final IntObjectHashMap<BytesRef> idToTerm = new IntObjectHashMap<>();
   private int anyTermID = -1;
 
   public TermAutomatonQuery(String field) {
@@ -208,7 +211,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    Map<Integer, TermStates> termStates = new HashMap<>();
+    IntObjectHashMap<TermStates> termStates = new IntObjectHashMap<>();
 
     for (Map.Entry<BytesRef, Integer> ent : termToID.entrySet()) {
       if (ent.getKey() != null) {
@@ -359,14 +362,14 @@ public class TermAutomatonQuery extends Query implements Accountable {
 
   final class TermAutomatonWeight extends Weight {
     final Automaton automaton;
-    private final Map<Integer, TermStates> termStates;
+    private final IntObjectHashMap<TermStates> termStates;
     private final Similarity.SimScorer stats;
     private final Similarity similarity;
 
     public TermAutomatonWeight(
         Automaton automaton,
         IndexSearcher searcher,
-        Map<Integer, TermStates> termStates,
+        IntObjectHashMap<TermStates> termStates,
         float boost)
         throws IOException {
       super(TermAutomatonQuery.this);
@@ -374,14 +377,13 @@ public class TermAutomatonQuery extends Query implements Accountable {
       this.termStates = termStates;
       this.similarity = searcher.getSimilarity();
       List<TermStatistics> allTermStats = new ArrayList<>();
-      for (Map.Entry<Integer, BytesRef> ent : idToTerm.entrySet()) {
-        Integer termID = ent.getKey();
-        if (ent.getValue() != null) {
-          TermStates ts = termStates.get(termID);
+      for (IntObjectHashMap.IntObjectCursor<BytesRef> ent : idToTerm) {
+        if (ent.value != null) {
+          TermStates ts = termStates.get(ent.key);
           if (ts.docFreq() > 0) {
             allTermStats.add(
                 searcher.termStatistics(
-                    new Term(field, ent.getValue()), ts.docFreq(), ts.totalTermFreq()));
+                    new Term(field, ent.value), ts.docFreq(), ts.totalTermFreq()));
           }
         }
       }
@@ -403,34 +405,36 @@ public class TermAutomatonQuery extends Query implements Accountable {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final Scorer scorer;
       // Initialize the enums; null for a given slot means that term didn't appear in this reader
       EnumAndScorer[] enums = new EnumAndScorer[idToTerm.size()];
 
       boolean any = false;
-      for (Map.Entry<Integer, TermStates> ent : termStates.entrySet()) {
-        TermStates termStates = ent.getValue();
+      for (IntObjectHashMap.IntObjectCursor<TermStates> ent : termStates) {
+        TermStates termStates = ent.value;
         assert termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context))
             : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
                 + ReaderUtil.getTopLevelContext(context);
-        BytesRef term = idToTerm.get(ent.getKey());
-        TermState state = termStates.get(context);
+        BytesRef term = idToTerm.get(ent.key);
+        IOSupplier<TermState> supplier = termStates.get(context);
+        TermState state = supplier == null ? null : supplier.get();
         if (state != null) {
           TermsEnum termsEnum = context.reader().terms(field).iterator();
           termsEnum.seekExact(term, state);
-          enums[ent.getKey()] =
-              new EnumAndScorer(ent.getKey(), termsEnum.postings(null, PostingsEnum.POSITIONS));
+          enums[ent.key] =
+              new EnumAndScorer(ent.key, termsEnum.postings(null, PostingsEnum.POSITIONS));
           any = true;
         }
       }
 
       if (any) {
-        return new TermAutomatonScorer(
-            this, enums, anyTermID, new LeafSimScorer(stats, context.reader(), field, true));
+        NumericDocValues norms = context.reader().getNormValues(field);
+        scorer = new TermAutomatonScorer(this, enums, anyTermID, stats, norms);
       } else {
         return null;
       }
+      return new DefaultScorerSupplier(scorer);
     }
 
     @Override
@@ -451,15 +455,20 @@ public class TermAutomatonQuery extends Query implements Accountable {
       }
 
       float score = scorer.score();
-      LeafSimScorer leafSimScorer = ((TermAutomatonScorer) scorer).getLeafSimScorer();
       EnumAndScorer[] originalSubsOnDoc = ((TermAutomatonScorer) scorer).getOriginalSubsOnDoc();
+
+      NumericDocValues norms = context.reader().getNormValues(field);
+      long norm = 1L;
+      if (norms != null && norms.advanceExact(doc)) {
+        norm = norms.longValue();
+      }
 
       List<Explanation> termExplanations = new ArrayList<>();
       for (EnumAndScorer enumAndScorer : originalSubsOnDoc) {
         if (enumAndScorer != null) {
           PostingsEnum postingsEnum = enumAndScorer.posEnum;
           if (postingsEnum.docID() == doc) {
-            float termScore = leafSimScorer.score(doc, postingsEnum.freq());
+            float termScore = stats.score(postingsEnum.freq(), norm);
             termExplanations.add(
                 Explanation.match(
                     postingsEnum.freq(),
@@ -477,7 +486,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
 
       Explanation freqExplanation =
           Explanation.match(score, "TermAutomatonQuery, sum of:", termExplanations);
-      return leafSimScorer.explain(doc, freqExplanation);
+      return stats.explain(freqExplanation, norm);
     }
   }
 

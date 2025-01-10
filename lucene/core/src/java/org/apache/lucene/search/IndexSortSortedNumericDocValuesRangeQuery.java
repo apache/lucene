@@ -158,14 +158,13 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final Weight weight = this;
         IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
         if (itAndCount != null) {
           DocIdSetIterator disi = itAndCount.it;
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {
-              return new ConstantScoreScorer(weight, score(), scoreMode, disi);
+              return new ConstantScoreScorer(score(), scoreMode, disi);
             }
 
             @Override
@@ -178,15 +177,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
-
-      @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         // Both queries should always return the same values, so we can just check
         // if the fallback query is cacheable.
@@ -196,9 +186,43 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       @Override
       public int count(LeafReaderContext context) throws IOException {
         if (context.reader().hasDeletions() == false) {
-          IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
+          if (lowerValue > upperValue) {
+            return 0;
+          }
+          IteratorAndCount itAndCount = null;
+          LeafReader reader = context.reader();
+
+          // first use bkd optimization if possible
+          SortedNumericDocValues sortedNumericValues = DocValues.getSortedNumeric(reader, field);
+          NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
+          PointValues pointValues = reader.getPointValues(field);
+          if (pointValues != null && pointValues.getDocCount() == reader.maxDoc()) {
+            itAndCount = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
+          }
           if (itAndCount != null && itAndCount.count != -1) {
             return itAndCount.count;
+          }
+
+          // use index sort optimization if possible
+          Sort indexSort = reader.getMetaData().sort();
+          if (indexSort != null
+              && indexSort.getSort().length > 0
+              && indexSort.getSort()[0].getField().equals(field)) {
+            final SortField sortField = indexSort.getSort()[0];
+            final SortField.Type sortFieldType = getSortFieldType(sortField);
+            // The index sort optimization is only supported for Type.INT and Type.LONG
+            if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
+              Object missingValue = sortField.getMissingValue();
+              final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+              // all documents have docValues or missing value falls outside the range
+              if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
+                  || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
+                itAndCount = getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
+              }
+              if (itAndCount != null && itAndCount.count != -1) {
+                return itAndCount.count;
+              }
+            }
           }
         }
         return fallbackWeight.count(context);
@@ -408,7 +432,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
   private IteratorAndCount getDocIdSetIteratorOrNullFromBkd(
       LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
-    Sort indexSort = context.reader().getMetaData().getSort();
+    Sort indexSort = context.reader().getMetaData().sort();
     if (indexSort == null
         || indexSort.getSort().length == 0
         || indexSort.getSort()[0].getField().equals(field) == false) {
@@ -508,7 +532,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       if (itAndCount != null) {
         return itAndCount;
       }
-      Sort indexSort = context.reader().getMetaData().getSort();
+      Sort indexSort = context.reader().getMetaData().sort();
       if (indexSort != null
           && indexSort.getSort().length > 0
           && indexSort.getSort()[0].getField().equals(field)) {

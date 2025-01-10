@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocIDMerger;
 import org.apache.lucene.index.DocValues;
@@ -55,7 +56,7 @@ import org.apache.lucene.util.packed.PackedInts;
  * <p>The lifecycle is:
  *
  * <ol>
- *   <li>DocValuesConsumer is created by {@link NormsFormat#normsConsumer(SegmentWriteState)}.
+ *   <li>DocValuesConsumer is created by {@link DocValuesFormat#fieldsConsumer(SegmentWriteState)}.
  *   <li>{@link #addNumericField}, {@link #addBinaryField}, {@link #addSortedField}, {@link
  *       #addSortedSetField}, or {@link #addSortedNumericField} are called for each Numeric, Binary,
  *       Sorted, SortedSet, or SortedNumeric docvalues field. The API is a "pull" rather than
@@ -498,7 +499,7 @@ public abstract class DocValuesConsumer implements Closeable {
    * {@link SortedDocValues#lookupOrd(int)} or {@link SortedSetDocValues#lookupOrd(long)} on every
    * call to {@link TermsEnum#next()}.
    */
-  private static class MergedTermsEnum extends TermsEnum {
+  private static class MergedTermsEnum extends BaseTermsEnum {
 
     private final TermsEnum[] subs;
     private final OrdinalMap ordinalMap;
@@ -543,22 +544,12 @@ public abstract class DocValuesConsumer implements Closeable {
     }
 
     @Override
-    public boolean seekExact(BytesRef text) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
     public SeekStatus seekCeil(BytesRef text) throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
     public void seekExact(long ord) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void seekExact(BytesRef term, TermState state) throws IOException {
       throw new UnsupportedOperationException();
     }
 
@@ -622,7 +613,7 @@ public abstract class DocValuesConsumer implements Closeable {
       if (docValuesProducer != null) {
         FieldInfo readerFieldInfo = mergeState.fieldInfos[i].fieldInfo(fieldInfo.name);
         if (readerFieldInfo != null && readerFieldInfo.getDocValuesType() == DocValuesType.SORTED) {
-          values = docValuesProducer.getSorted(fieldInfo);
+          values = docValuesProducer.getSorted(readerFieldInfo);
         }
       }
       if (values == null) {

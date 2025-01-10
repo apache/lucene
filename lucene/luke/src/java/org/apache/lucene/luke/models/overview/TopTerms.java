@@ -22,11 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.misc.HighFreqTerms;
 
-/** An utility class that collects terms and their statistics in a specific field. */
+/** A utility class that collects terms and their statistics in a specific field. */
 final class TopTerms {
 
   private final IndexReader reader;
@@ -52,8 +51,7 @@ final class TopTerms {
           HighFreqTerms.getHighFreqTerms(
               reader, numTerms, field, new HighFreqTerms.DocFreqComparator());
 
-      List<TermStats> topTerms =
-          Arrays.stream(stats).map(TermStats::of).collect(Collectors.toList());
+      List<TermStats> topTerms = Arrays.stream(stats).map(TermStats::of).toList();
 
       // cache computed statistics for later uses
       topTermsCache.put(field, topTerms);

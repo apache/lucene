@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -545,7 +547,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
   private long getHitCount(Directory dir, Term term) throws IOException {
     IndexReader reader = DirectoryReader.open(dir);
     IndexSearcher searcher = newSearcher(reader);
-    long hitCount = searcher.search(new TermQuery(term), 1000).totalHits.value;
+    long hitCount = searcher.search(new TermQuery(term), 1000).totalHits.value();
     reader.close();
     return hitCount;
   }
@@ -597,7 +599,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
 
     boolean done = false;
 
-    // Iterate w/ ever increasing free disk space:
+    // Iterate w/ ever-increasing free disk space:
     while (!done) {
       if (VERBOSE) {
         System.out.println("TEST: cycle");
@@ -903,7 +905,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
 
     modifier.deleteDocuments(term);
 
-    // add a doc
+    // add a doc,
     // doc remains buffered
 
     if (VERBOSE) {
@@ -928,12 +930,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println("TEST: now commit for failure");
     }
-    RuntimeException expected =
-        expectThrows(
-            RuntimeException.class,
-            () -> {
-              modifier.commit();
-            });
+    RuntimeException expected = expectThrows(RuntimeException.class, modifier::commit);
     if (VERBOSE) {
       System.out.println("TEST: hit exc:");
       expected.printStackTrace(System.out);
@@ -1152,7 +1149,7 @@ public class TestIndexWriterDelete extends LuceneTestCase {
     Directory dir = newDirectory();
     // Cannot use RandomIndexWriter because we don't want to
     // ever call commit() for this test:
-    // note: tiny rambuffer used, as with a 1MB buffer the test is too slow (flush @ 128,999)
+    // note: tiny RAM buffer used, as with a 1MB buffer the test is too slow (flush @ 128,999)
     IndexWriter w =
         new IndexWriter(
             dir,
@@ -1278,11 +1275,11 @@ public class TestIndexWriterDelete extends LuceneTestCase {
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream(1024);
     CheckIndex checker = new CheckIndex(dir);
-    checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8), false);
+    checker.setInfoStream(new PrintStream(bos, false, UTF_8), false);
     CheckIndex.Status indexStatus = checker.checkIndex(null);
     assertTrue(indexStatus.clean);
     checker.close();
-    String s = bos.toString(IOUtils.UTF_8);
+    String s = bos.toString(UTF_8);
 
     // Segment should have deletions:
     assertTrue(s.contains("has deletions"));
@@ -1293,11 +1290,11 @@ public class TestIndexWriterDelete extends LuceneTestCase {
 
     bos = new ByteArrayOutputStream(1024);
     checker = new CheckIndex(dir);
-    checker.setInfoStream(new PrintStream(bos, false, IOUtils.UTF_8), false);
+    checker.setInfoStream(new PrintStream(bos, false, UTF_8), false);
     indexStatus = checker.checkIndex(null);
     assertTrue(indexStatus.clean);
     checker.close();
-    s = bos.toString(IOUtils.UTF_8);
+    s = bos.toString(UTF_8);
     assertFalse(s.contains("has deletions"));
     dir.close();
   }

@@ -37,24 +37,25 @@ if (skipReason) {
 
 allprojects { prj ->
   plugins.withType(JavaPlugin) {
-    // LUCENE-9650: Errorprone on master/gradle does not work when running as plugin
-    // inside a forked Javac process. Javac running inside Gradle works, because we have
-    // additional module system opens in place.
-    // This is a hack to keep the dependency (so that palantir's version check doesn't complain)
-    // but don't include the plugin (which fails on JDK16+).
+    // LUCENE-9650: Errorprone does not work when running as a plugin inside a forked Javac process.
+    // Javac running inside Gradle works, because we have additional module system opens in place.
     if (skipReason) {
       tasks.withType(JavaCompile) { task -> task.dependsOn ":errorProneSkipped" }
+
+      // Error prone plugin adds error prone to test classpath. We need to add it here too (manually) so that
+      // versions.lock is consistent with or without error prone.
       configurations {
         errorprone
       }
       dependencies {
-        errorprone("com.google.errorprone:error_prone_core")
+        errorprone deps.errorprone
       }
+      configurations.annotationProcessor.extendsFrom(configurations.errorprone)
     } else {
-      prj.apply plugin: 'net.ltgt.errorprone'
+      prj.apply plugin: deps.plugins.errorprone.get().pluginId
 
       dependencies {
-        errorprone("com.google.errorprone:error_prone_core")
+        errorprone deps.errorprone
       }
 
       tasks.withType(JavaCompile) { task ->
@@ -244,7 +245,7 @@ allprojects { prj ->
             // '-Xep:TryFailThrowable:OFF',
             '-Xep:TypeParameterQualifier:ERROR',
             '-Xep:UnicodeDirectionalityCharacters:ERROR',
-            // '-Xep:UnicodeInCode:OFF', // noisy (spatial3d)
+            '-Xep:UnicodeInCode:ERROR',
             '-Xep:UnnecessaryCheckNotNull:ERROR',
             '-Xep:UnnecessaryTypeArgument:ERROR',
             '-Xep:UnsafeWildcard:ERROR',

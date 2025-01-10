@@ -755,7 +755,7 @@ public class TestPhraseQuery extends LuceneTestCase {
   public void testTopPhrases() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-    String[] docs = ArrayUtil.copyOfSubArray(DOCS, 0, DOCS.length);
+    String[] docs = ArrayUtil.copyArray(DOCS);
     Collections.shuffle(Arrays.asList(docs), random());
     for (String value : DOCS) {
       Document doc = new Document();
@@ -772,13 +772,14 @@ public class TestPhraseQuery extends LuceneTestCase {
             new PhraseQuery("f", "d", "d") // repeated term
             )) {
       for (int topN = 1; topN <= 2; ++topN) {
-        CollectorManager<TopScoreDocCollector, TopDocs> manager =
-            TopScoreDocCollector.createSharedManager(topN, null, Integer.MAX_VALUE);
-        TopDocs topDocs = searcher.search(query, manager);
-        ScoreDoc[] hits1 = topDocs.scoreDocs;
-        manager = TopScoreDocCollector.createSharedManager(topN, null, 1);
-        topDocs = searcher.search(query, manager);
-        ScoreDoc[] hits2 = topDocs.scoreDocs;
+        TopScoreDocCollectorManager collectorManager =
+            new TopScoreDocCollectorManager(topN, Integer.MAX_VALUE);
+        ScoreDoc[] hits1 = searcher.search(query, collectorManager).scoreDocs;
+
+        collectorManager = new TopScoreDocCollectorManager(topN, 1);
+        TopDocs topDocs2 = searcher.search(query, collectorManager);
+        ScoreDoc[] hits2 = topDocs2.scoreDocs;
+
         assertTrue("" + query, hits1.length > 0);
         CheckHits.checkEqual(query, hits1, hits2);
       }
@@ -1029,10 +1030,10 @@ public class TestPhraseQuery extends LuceneTestCase {
       for (String secondTerm : new String[] {"a", "b", "c"}) {
         Query query = new PhraseQuery("foo", newBytesRef(firstTerm), newBytesRef(secondTerm));
 
-        CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
-            TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE); // COMPLETE
-        CollectorManager<TopScoreDocCollector, TopDocs> topScoresManager =
-            TopScoreDocCollector.createSharedManager(10, null, 10); // TOP_SCORES
+        TopScoreDocCollectorManager completeManager =
+            new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+        TopScoreDocCollectorManager topScoresManager =
+            new TopScoreDocCollectorManager(10, 10); // TOP_SCORES
 
         TopDocs complete = searcher.search(query, completeManager);
         TopDocs topScores = searcher.search(query, topScoresManager);
@@ -1044,9 +1045,9 @@ public class TestPhraseQuery extends LuceneTestCase {
                 .add(new TermQuery(new Term("foo", "b")), Occur.FILTER)
                 .build();
 
-        completeManager =
-            TopScoreDocCollector.createSharedManager(10, null, Integer.MAX_VALUE); // COMPLETE
-        topScoresManager = TopScoreDocCollector.createSharedManager(10, null, 10); // TOP_SCORES
+        completeManager = new TopScoreDocCollectorManager(10, Integer.MAX_VALUE); // COMPLETE
+        topScoresManager = new TopScoreDocCollectorManager(10, 10); // TOP_SCORES
+
         complete = searcher.search(filteredQuery, completeManager);
         topScores = searcher.search(filteredQuery, topScoresManager);
         CheckHits.checkEqual(query, complete.scoreDocs, topScores.scoreDocs);

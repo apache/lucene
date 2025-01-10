@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -489,12 +490,84 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     assertEquals(q1, q2);
   }
 
+  /* Inspired from TestIntervals.testIntervalDisjunctionToStringStability */
+  public void testToStringOrderMatters() {
+    final int clauseNbr =
+        random().nextInt(22) + 4; // ensure a reasonably large minimum number of clauses
+    final String[] terms = new String[clauseNbr];
+    for (int i = 0; i < clauseNbr; i++) {
+      terms[i] = Character.toString((char) ('a' + i));
+    }
+
+    final String expected =
+        Arrays.stream(terms)
+            .map((term) -> "test:" + term)
+            .collect(Collectors.joining(" | ", "(", ")~1.0"));
+
+    DisjunctionMaxQuery source =
+        new DisjunctionMaxQuery(
+            Arrays.stream(terms).map((term) -> tq("test", term)).toList(), 1.0f);
+
+    assertEquals(expected, source.toString(""));
+  }
+
   public void testRandomTopDocs() throws Exception {
     doTestRandomTopDocs(2, 0.05f, 0.05f);
     doTestRandomTopDocs(2, 1.0f, 0.05f);
     doTestRandomTopDocs(3, 1.0f, 0.5f, 0.05f);
     doTestRandomTopDocs(4, 1.0f, 0.5f, 0.05f, 0f);
     doTestRandomTopDocs(4, 1.0f, 0.5f, 0.05f, 0f);
+  }
+
+  public void testExplainMatch() throws IOException {
+    // Both match
+    Query sub1 = tq("hed", "elephant");
+    Query sub2 = tq("dek", "elephant");
+
+    final DisjunctionMaxQuery dq = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+
+    final Weight dw = s.createWeight(s.rewrite(dq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext context = (LeafReaderContext) s.getTopReaderContext();
+    Explanation explanation = dw.explain(context, 1);
+
+    assertEquals("max of:", explanation.getDescription());
+    // Two matching sub queries should be included in the explanation details
+    assertEquals(2, explanation.getDetails().length);
+  }
+
+  public void testExplainNoMatch() throws IOException {
+    // No match
+    Query sub1 = tq("abc", "elephant");
+    Query sub2 = tq("def", "elephant");
+
+    final DisjunctionMaxQuery dq = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+
+    final Weight dw = s.createWeight(s.rewrite(dq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext context = (LeafReaderContext) s.getTopReaderContext();
+    Explanation explanation = dw.explain(context, 1);
+
+    assertEquals("No matching clause", explanation.getDescription());
+    // Two non-matching sub queries should be included in the explanation details
+    assertEquals(2, explanation.getDetails().length);
+  }
+
+  public void testExplainMatch_OneNonMatchingSubQuery_NotIncludedInExplanation()
+      throws IOException {
+    // Matches
+    Query sub1 = tq("hed", "elephant");
+
+    // Doesn't match
+    Query sub2 = tq("def", "elephant");
+
+    final DisjunctionMaxQuery dq = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 0.0f);
+
+    final Weight dw = s.createWeight(s.rewrite(dq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext context = (LeafReaderContext) s.getTopReaderContext();
+    Explanation explanation = dw.explain(context, 1);
+
+    assertEquals("max of:", explanation.getDescription());
+    // Only the matching sub query (sub1) should be included in the explanation details
+    assertEquals(1, explanation.getDetails().length);
   }
 
   private void doTestRandomTopDocs(int numFields, double... freqs) throws IOException {
@@ -564,13 +637,28 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // Ensure generics and type inference play nicely together
+  public void testGenerics() {
+    var query =
+        new DisjunctionMaxQuery(
+            Arrays.stream(new String[] {"term"}).map((term) -> tq("test", term)).toList(), 1.0f);
+    assertEquals(1, query.getDisjuncts().size());
+
+    var disjuncts =
+        List.of(
+            new RegexpQuery(new Term("field", "foobar")),
+            new WildcardQuery(new Term("field", "foobar")));
+    query = new DisjunctionMaxQuery(disjuncts, 1.0f);
+    assertEquals(2, query.getDisjuncts().size());
+  }
+
   /** macro */
-  protected Query tq(String f, String t) {
+  protected TermQuery tq(String f, String t) {
     return new TermQuery(new Term(f, t));
   }
 
   /** macro */
-  protected Query tq(String f, String t, float b) {
+  protected BoostQuery tq(String f, String t, float b) {
     Query q = tq(f, t);
     return new BoostQuery(q, b);
   }

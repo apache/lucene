@@ -17,7 +17,10 @@
 package org.apache.lucene.tests.store;
 
 import java.io.IOException;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
@@ -27,11 +30,21 @@ import org.apache.lucene.util.ThreadInterruptedException;
  */
 class SlowClosingMockIndexInputWrapper extends MockIndexInputWrapper {
 
-  public SlowClosingMockIndexInputWrapper(
-      MockDirectoryWrapper dir, String name, IndexInput delegate) {
-    super(dir, name, delegate, null);
+  static {
+    TestSecrets.getFilterInputIndexAccess()
+        .addTestFilterType(SlowClosingMockIndexInputWrapper.class);
   }
 
+  public SlowClosingMockIndexInputWrapper(
+      MockDirectoryWrapper dir,
+      String name,
+      IndexInput delegate,
+      ReadAdvice readAdvice,
+      boolean confined) {
+    super(dir, name, delegate, null, readAdvice, confined);
+  }
+
+  @SuppressForbidden(reason = "Thread sleep")
   @Override
   public void close() throws IOException {
     try {

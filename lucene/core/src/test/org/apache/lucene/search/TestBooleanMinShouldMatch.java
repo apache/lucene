@@ -93,9 +93,9 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
     assertEquals("result count", expected, h.length);
     // System.out.println("TEST: now check");
     // bs2
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(1000, null, Integer.MAX_VALUE);
-    ScoreDoc[] h2 = s.search(q, manager).scoreDocs;
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(1000, Integer.MAX_VALUE);
+    ScoreDoc[] h2 = s.search(q, collectorManager).scoreDocs;
     if (expected != h2.length) {
       printHits(getTestName(), h2, s);
     }
@@ -320,7 +320,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
           public void postCreate(BooleanQuery.Builder q) {
             int opt = 0;
             for (BooleanClause clause : q.build().clauses()) {
-              if (clause.getOccur() == BooleanClause.Occur.SHOULD) opt++;
+              if (clause.occur() == BooleanClause.Occur.SHOULD) opt++;
             }
             q.setMinimumNumberShouldMatch(random().nextInt(opt + 2));
             if (random().nextBoolean()) {
@@ -362,7 +362,7 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
   private void assertSubsetOfSameScores(Query q, TopDocs top1, TopDocs top2) {
     // The constrained query
     // should be a subset to the unconstrained query.
-    if (top2.totalHits.value > top1.totalHits.value) {
+    if (top2.totalHits.value() > top1.totalHits.value()) {
       fail(
           "Constrained results not a subset:\n"
               + CheckHits.topdocsString(top1, 0, 0)
@@ -371,12 +371,12 @@ public class TestBooleanMinShouldMatch extends LuceneTestCase {
               + q.toString());
     }
 
-    for (int hit = 0; hit < top2.totalHits.value; hit++) {
+    for (int hit = 0; hit < top2.totalHits.value(); hit++) {
       int id = top2.scoreDocs[hit].doc;
       float score = top2.scoreDocs[hit].score;
       boolean found = false;
       // find this doc in other hits
-      for (int other = 0; other < top1.totalHits.value; other++) {
+      for (int other = 0; other < top1.totalHits.value(); other++) {
         if (top1.scoreDocs[other].doc == id) {
           found = true;
           float otherScore = top1.scoreDocs[other].score;

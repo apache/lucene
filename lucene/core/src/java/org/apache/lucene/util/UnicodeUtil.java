@@ -511,8 +511,9 @@ public final class UnicodeUtil {
       case 2 -> v = leadByte & 31; // 5 useful bits
       case 3 -> v = leadByte & 15; // 4 useful bits
       case 4 -> v = leadByte & 7; // 3 useful bits
-      default -> throw new IllegalArgumentException(
-          "Invalid UTF8 header byte: 0x" + Integer.toHexString(leadByte));
+      default ->
+          throw new IllegalArgumentException(
+              "Invalid UTF8 header byte: 0x" + Integer.toHexString(leadByte));
     }
 
     // TODO: this may read past utf8's limit.

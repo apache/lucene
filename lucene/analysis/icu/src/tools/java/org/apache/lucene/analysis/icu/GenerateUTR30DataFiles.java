@@ -40,7 +40,6 @@ import java.util.Locale;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * Downloads/generates lucene/analysis/icu/src/data/utr30/*.txt for the specified icu release tag.
@@ -97,7 +96,7 @@ public class GenerateUTR30DataFiles {
               && !name.equals(NFKC_CF_TXT);
         };
     try (var stream = Files.list(Paths.get(".")).filter(predicate)) {
-      for (Path file : stream.collect(Collectors.toList())) {
+      for (Path file : stream.toList()) {
         expandDataFileRules(file);
       }
     }

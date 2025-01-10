@@ -180,7 +180,7 @@ public class FSTCompletionLookup extends Lookup {
       int inputLineCount = 0;
       while ((spare = iterator.next()) != null) {
         if (spare.length + 4 >= buffer.length) {
-          buffer = ArrayUtil.grow(buffer, spare.length + 4);
+          buffer = ArrayUtil.growNoCopy(buffer, spare.length + 4);
         }
 
         output.reset(buffer);

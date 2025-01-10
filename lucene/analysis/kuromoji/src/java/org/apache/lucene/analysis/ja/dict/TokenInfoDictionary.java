@@ -111,7 +111,7 @@ public final class TokenInfoDictionary extends BinaryDictionary<TokenInfoMorphDa
     this.fst = new TokenInfoFST(fst, true);
   }
 
-  private static InputStream getClassResource(String suffix) throws IOException {
+  static InputStream getClassResource(String suffix) throws IOException {
     final String resourcePath = TokenInfoDictionary.class.getSimpleName() + suffix;
     return IOUtils.requireResourceNonNull(
         TokenInfoDictionary.class.getResourceAsStream(resourcePath), resourcePath);

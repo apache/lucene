@@ -47,7 +47,7 @@ public class LockStressTest {
               + "  verifierPort = port that LockVerifyServer is listening on\n"
               + "  lockFactoryClassName = primary FSLockFactory class that we will use\n"
               + "  lockDirName = path to the lock directory\n"
-              + "  sleepTimeMS = milliseconds to pause betweeen each lock obtain/release\n"
+              + "  sleepTimeMS = milliseconds to pause between each lock obtain/release\n"
               + "  count = number of locking tries\n"
               + "\n"
               + "You should run multiple instances of this process, each with its own\n"
@@ -103,8 +103,7 @@ public class LockStressTest {
     System.out.println(
         "Connecting to server " + addr + " and registering as client " + myID + "...");
     try (Socket socket = new Socket()) {
-      socket.setReuseAddress(true);
-      socket.connect(addr, 500);
+      socket.connect(addr, 3000); // wait at most 3 seconds to successfully connect, else fail
       final OutputStream out = socket.getOutputStream();
       final InputStream in = socket.getInputStream();
 

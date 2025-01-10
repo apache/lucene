@@ -23,9 +23,10 @@ description = 'Lucene JMH micro-benchmarking module'
 
 dependencies {
   moduleImplementation project(':lucene:core')
+  moduleImplementation project(':lucene:expressions')
 
-  moduleImplementation "org.openjdk.jmh:jmh-core:1.37"
-  annotationProcessor "org.openjdk.jmh:jmh-generator-annprocess:1.37"
+  moduleImplementation deps.jmh.core
+  annotationProcessor deps.jmh.annprocess
 }
 
 
@@ -42,7 +43,7 @@ tasks.matching { it.name == "forbiddenApisMain" }.configureEach {
 tasks.matching { it.name in [
     // Turn off JMH dependency checksums and licensing (it's GPL w/ classpath exception
     // but this seems fine for test/build only tools).
-    "validateJarChecksums", "validateJarLicenses",
+    "validateJarChecksums", "validateJarLicenses", "collectJarInfos",
     // No special javadocs for JMH benchmarks.
     "renderSiteJavadoc",
     "renderJavadoc",

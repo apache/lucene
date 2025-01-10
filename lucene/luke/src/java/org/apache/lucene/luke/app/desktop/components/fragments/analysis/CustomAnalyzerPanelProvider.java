@@ -39,7 +39,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
@@ -164,7 +163,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
     panel.add(confDirBtn);
     buildBtn.setText(
         FontUtils.elegantIconHtml(
-            "&#xe102;", MessageUtils.getLocalizedMessage("analysis.button.build_analyzser")));
+            "&#xe102;", MessageUtils.getLocalizedMessage("analysis.button.build_analyzer")));
     buildBtn.setFont(StyleConstants.FONT_BUTTON_LARGE);
     buildBtn.setMargin(new Insets(3, 3, 3, 3));
     buildBtn.addActionListener(listeners::buildAnalyzer);
@@ -464,11 +463,10 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
     int ret = fileChooser.showOpenDialog(containerPanel);
     if (ret == JFileChooser.APPROVE_OPTION) {
       File[] files = fileChooser.getSelectedFiles();
-      analysisModel.addExternalJars(
-          Arrays.stream(files).map(File::getAbsolutePath).collect(Collectors.toList()));
+      analysisModel.addExternalJars(Arrays.stream(files).map(File::getAbsolutePath).toList());
       operatorRegistry
           .get(CustomAnalyzerPanelOperator.class)
-          .ifPresent(operator -> operator.resetAnalysisComponents());
+          .ifPresent(CustomAnalyzerPanelOperator::resetAnalysisComponents);
       messageBroker.showStatusMessage("External jars were added.");
     }
   }
@@ -569,8 +567,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
         selectedItem,
         tfParamsList.get(tfParamsList.size() - 1),
         () -> {
-          selectedTfList.setModel(
-              new DefaultComboBoxModel<>(updatedList.toArray(new String[updatedList.size()])));
+          selectedTfList.setModel(new DefaultComboBoxModel<>(updatedList.toArray(new String[0])));
           tfFactoryCombo.setSelectedItem("");
           tfEditBtn.setEnabled(true);
           buildBtn.setEnabled(true);
@@ -617,9 +614,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
         -1,
         selectedItem,
         tokParams,
-        () -> {
-          buildBtn.setEnabled(true);
-        });
+        () -> buildBtn.setEnabled(true));
   }
 
   private void editTokenFilters() {
@@ -704,7 +699,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
         IntStream.range(0, cfParamsList.size())
             .filter(i -> !deletedIndexes.contains(i))
             .mapToObj(cfParamsList::get)
-            .collect(Collectors.toList());
+            .toList();
     cfParamsList.clear();
     cfParamsList.addAll(updatedParamList);
     assert selectedCfList.getModel().getSize() == cfParamsList.size();
@@ -725,7 +720,7 @@ public final class CustomAnalyzerPanelProvider implements CustomAnalyzerPanelOpe
         IntStream.range(0, tfParamsList.size())
             .filter(i -> !deletedIndexes.contains(i))
             .mapToObj(tfParamsList::get)
-            .collect(Collectors.toList());
+            .toList();
     tfParamsList.clear();
     tfParamsList.addAll(updatedParamList);
     assert selectedTfList.getModel().getSize() == tfParamsList.size();

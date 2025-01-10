@@ -70,8 +70,8 @@ public class TermFilteredPresearcher extends Presearcher {
   private final Set<String> filterFields;
   private final List<CustomQueryHandler> queryHandlers = new ArrayList<>();
 
-  static final String ANYTOKEN_FIELD = "__anytokenfield";
-  static final String ANYTOKEN = "__ANYTOKEN__";
+  public static final String ANYTOKEN_FIELD = "__anytokenfield";
+  public static final String ANYTOKEN = "__ANYTOKEN__";
 
   /** Creates a new TermFilteredPresearcher using the default term weighting */
   public TermFilteredPresearcher() {

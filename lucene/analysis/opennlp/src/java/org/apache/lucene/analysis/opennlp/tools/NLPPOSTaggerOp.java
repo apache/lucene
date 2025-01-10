@@ -27,7 +27,7 @@ import opennlp.tools.postag.POSTaggerME;
  * SourceForge.
  */
 public class NLPPOSTaggerOp {
-  private POSTagger tagger = null;
+  private final POSTagger tagger;
 
   public NLPPOSTaggerOp(POSModel model) throws IOException {
     tagger = new POSTaggerME(model);

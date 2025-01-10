@@ -27,7 +27,8 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
   private static final double DELTA = 1e-3;
 
   private static final int[] VECTOR_SIZES = {
-    1, 4, 6, 8, 13, 16, 25, 32, 64, 100, 128, 207, 256, 300, 512, 702, 1024
+    1, 4, 6, 8, 13, 16, 25, 32, 64, 100, 128, 207, 256, 300, 512, 702, 1024, 1536, 2046, 2048, 4096,
+    4098
   };
 
   private final int size;
@@ -90,6 +91,55 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
+  }
+
+  public void testInt4DotProduct() {
+    assumeTrue("even sizes only", size % 2 == 0);
+    var a = new byte[size];
+    var b = new byte[size];
+    for (int i = 0; i < size; ++i) {
+      a[i] = (byte) random().nextInt(16);
+      b[i] = (byte) random().nextInt(16);
+    }
+
+    assertIntReturningProviders(p -> p.int4DotProduct(a, false, pack(b), true));
+    assertIntReturningProviders(p -> p.int4DotProduct(pack(a), true, b, false));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, false, pack(b), true));
+  }
+
+  public void testInt4DotProductBoundaries() {
+    assumeTrue("even sizes only", size % 2 == 0);
+    byte MAX_VALUE = 15;
+    var a = new byte[size];
+    var b = new byte[size];
+
+    Arrays.fill(a, MAX_VALUE);
+    Arrays.fill(b, MAX_VALUE);
+    assertIntReturningProviders(p -> p.int4DotProduct(a, false, pack(b), true));
+    assertIntReturningProviders(p -> p.int4DotProduct(pack(a), true, b, false));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, false, pack(b), true));
+
+    byte MIN_VALUE = 0;
+    Arrays.fill(a, MIN_VALUE);
+    Arrays.fill(b, MIN_VALUE);
+    assertIntReturningProviders(p -> p.int4DotProduct(a, false, pack(b), true));
+    assertIntReturningProviders(p -> p.int4DotProduct(pack(a), true, b, false));
+    assertEquals(
+        LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, b),
+        PANAMA_PROVIDER.getVectorUtilSupport().int4DotProduct(a, false, pack(b), true));
+  }
+
+  static byte[] pack(byte[] unpacked) {
+    int len = (unpacked.length + 1) / 2;
+    var packed = new byte[len];
+    for (int i = 0; i < len; i++) {
+      packed[i] = (byte) (unpacked[i] << 4 | unpacked[packed.length + i]);
+    }
+    return packed;
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {

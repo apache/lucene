@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomLongBetween;
-import static java.util.stream.Collectors.toList;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -410,7 +409,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
 
     addDirThreads.close(true);
 
-    assertTrue(addDirThreads.failures.size() == 0);
+    assertTrue(addDirThreads.failures.isEmpty());
 
     TestUtil.checkIndex(mainDir);
 
@@ -736,11 +735,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(r);
     assertEquals(100, searcher.count(q));
 
-    expectThrows(
-        AlreadyClosedException.class,
-        () -> {
-          DirectoryReader.openIfChanged(r);
-        });
+    expectThrows(AlreadyClosedException.class, () -> DirectoryReader.openIfChanged(r));
 
     r.close();
     dir1.close();
@@ -769,7 +764,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     DirectoryReader r = DirectoryReader.open(writer);
 
     final int numIterations = 10;
-    final List<Throwable> excs = Collections.synchronizedList(new ArrayList<Throwable>());
+    final List<Throwable> excs = Collections.synchronizedList(new ArrayList<>());
 
     // Only one thread can addIndexes at a time, because
     // IndexWriter acquires a write lock in each directory:
@@ -812,8 +807,8 @@ public class TestIndexWriterReader extends LuceneTestCase {
       }
     }
 
-    for (int i = 0; i < threads.length; i++) {
-      threads[i].join();
+    for (Thread thread : threads) {
+      thread.join();
     }
     // final check
     DirectoryReader r2 = DirectoryReader.openIfChanged(r);
@@ -853,7 +848,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
         newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy(2));
     if (TEST_NIGHTLY) {
       // if we have a ton of iterations we need to make sure we don't do unnecessary
-      // extra flushing otherwise we will timeout on nightly
+      // extra flushing otherwise we will time out on nightly
       iwc.setRAMBufferSizeMB(IndexWriterConfig.DEFAULT_RAM_BUFFER_SIZE_MB);
       iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
     }
@@ -1004,6 +999,8 @@ public class TestIndexWriterReader extends LuceneTestCase {
   public void testSegmentWarmer() throws Exception {
     Directory dir = newDirectory();
     final AtomicBoolean didWarm = new AtomicBoolean();
+    LogMergePolicy mp = newLogMergePolicy(10);
+    mp.setTargetSearchConcurrency(1);
     IndexWriter w =
         new IndexWriter(
             dir,
@@ -1017,7 +1014,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                       assertEquals(20, count);
                       didWarm.set(true);
                     })
-                .setMergePolicy(newLogMergePolicy(10)));
+                .setMergePolicy(mp));
 
     Document doc = new Document();
     doc.add(newStringField("foo", "bar", Field.Store.NO));
@@ -1050,6 +1047,8 @@ public class TestIndexWriterReader extends LuceneTestCase {
             return true;
           }
         };
+    LogMergePolicy mp = newLogMergePolicy(10);
+    mp.setTargetSearchConcurrency(1);
     IndexWriter w =
         new IndexWriter(
             dir,
@@ -1058,7 +1057,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                 .setReaderPooling(true)
                 .setInfoStream(infoStream)
                 .setMergedSegmentWarmer(new SimpleMergedSegmentWarmer(infoStream))
-                .setMergePolicy(newLogMergePolicy(10)));
+                .setMergePolicy(mp));
 
     Document doc = new Document();
     doc.add(newStringField("foo", "bar", Field.Store.NO));
@@ -1148,11 +1147,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     // other NRT reader, since it is already marked closed!
     for (int i = 0; i < 2; i++) {
       shouldFail.set(true);
-      expectThrows(
-          FakeIOException.class,
-          () -> {
-            DirectoryReader.open(writer).close();
-          });
+      expectThrows(FakeIOException.class, () -> DirectoryReader.open(writer).close());
     }
 
     writer.close();
@@ -1214,7 +1209,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
     final long MISSING_VALUE =
         ASC_SORT ? Long.MAX_VALUE : Long.MIN_VALUE; // missing values at the end
 
-    // create a comparator that sort leaf readers according with
+    // create a comparator that sort leaf readers according to
     // the min value (asc sort) or max value (desc sort) of its points
     Comparator<LeafReader> leafSorter =
         Comparator.comparingLong(
@@ -1347,13 +1342,9 @@ public class TestIndexWriterReader extends LuceneTestCase {
   // provided leafSorter
   private static void assertLeavesSorted(
       DirectoryReader reader, Comparator<LeafReader> leafSorter) {
-    List<LeafReader> lrs =
-        reader.leaves().stream().map(LeafReaderContext::reader).collect(toList());
+    List<LeafReader> lrs = reader.leaves().stream().map(LeafReaderContext::reader).toList();
     List<LeafReader> expectedSortedlrs =
-        reader.leaves().stream()
-            .map(LeafReaderContext::reader)
-            .sorted(leafSorter)
-            .collect(toList());
+        reader.leaves().stream().map(LeafReaderContext::reader).sorted(leafSorter).toList();
     assertEquals(expectedSortedlrs, lrs);
   }
 }

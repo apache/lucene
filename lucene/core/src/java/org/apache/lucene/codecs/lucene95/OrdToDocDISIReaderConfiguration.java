@@ -24,8 +24,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -33,10 +31,7 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  * Configuration for {@link DirectMonotonicReader} and {@link IndexedDISI} for reading sparse
  * vectors. The format in the static writing methods adheres to the Lucene95HnswVectorsFormat
  */
-public class OrdToDocDISIReaderConfiguration implements Accountable {
-
-  private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(OrdToDocDISIReaderConfiguration.class);
+public class OrdToDocDISIReaderConfiguration {
 
   /**
    * Writes out the docsWithField and ordToDoc mapping to the outputMeta and vectorData
@@ -45,7 +40,7 @@ public class OrdToDocDISIReaderConfiguration implements Accountable {
    * <p>Within outputMeta the format is as follows:
    *
    * <ul>
-   *   <li><b>[int8]</b> if equals to -2, empty - no vectory values. If equals to -1, dense – all
+   *   <li><b>[int8]</b> if equals to -2, empty - no vector values. If equals to -1, dense – all
    *       documents have values for a field. If equals to 0, sparse – some documents missing
    *       values.
    *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput,
@@ -186,11 +181,6 @@ public class OrdToDocDISIReaderConfiguration implements Accountable {
     this.docsWithFieldLength = docsWithFieldLength;
     this.denseRankPower = denseRankPower;
     this.meta = meta;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return SHALLOW_SIZE + RamUsageEstimator.sizeOf(meta);
   }
 
   /**

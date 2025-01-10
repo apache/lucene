@@ -32,11 +32,16 @@ import org.apache.lucene.util.packed.PackedInts;
 /**
  * Handles how documents should be sorted in an index, both within a segment and between segments.
  *
- * <p>Implementers must provide the following methods: {@link #getDocComparator(LeafReader,int)} -
- * an object that determines how documents within a segment are to be sorted {@link
- * #getComparableProviders(List)} - an array of objects that return a sortable long value per
- * document and segment {@link #getProviderName()} - the SPI-registered name of a {@link
- * SortFieldProvider} to serialize the sort
+ * <p>Implementers must provide the following methods:
+ *
+ * <ul>
+ *   <li>{@link #getDocComparator(LeafReader,int)} - an object that determines how documents within
+ *       a segment are to be sorted
+ *   <li>{@link #getComparableProviders(List)} - an array of objects that return a sortable long
+ *       value per document and segment
+ *   <li>{@link #getProviderName()} - the SPI-registered name of a {@link SortFieldProvider} to
+ *       serialize the sort
+ * </ul>
  *
  * <p>The companion {@link SortFieldProvider} should be registered with SPI via {@code
  * META-INF/services}
@@ -266,23 +271,16 @@ public interface IndexSorter {
     public ComparableProvider[] getComparableProviders(List<? extends LeafReader> readers)
         throws IOException {
       ComparableProvider[] providers = new ComparableProvider[readers.size()];
-      final float missingValue;
-      if (this.missingValue != null) {
-        missingValue = this.missingValue;
-      } else {
-        missingValue = 0.0f;
-      }
+      final int missValueBits = Float.floatToIntBits(missingValue != null ? missingValue : 0.0f);
 
       for (int readerIndex = 0; readerIndex < readers.size(); readerIndex++) {
         final NumericDocValues values = valuesProvider.get(readers.get(readerIndex));
 
         providers[readerIndex] =
             docID -> {
-              float value = missingValue;
-              if (values.advanceExact(docID)) {
-                value = Float.intBitsToFloat((int) values.longValue());
-              }
-              return NumericUtils.floatToSortableInt(value);
+              final int valueBits =
+                  values.advanceExact(docID) ? (int) values.longValue() : missValueBits;
+              return NumericUtils.sortableFloatBits(valueBits);
             };
       }
       return providers;
@@ -336,23 +334,17 @@ public interface IndexSorter {
     public ComparableProvider[] getComparableProviders(List<? extends LeafReader> readers)
         throws IOException {
       ComparableProvider[] providers = new ComparableProvider[readers.size()];
-      final double missingValue;
-      if (this.missingValue != null) {
-        missingValue = this.missingValue;
-      } else {
-        missingValue = 0.0f;
-      }
+      final long missingValueBits =
+          Double.doubleToLongBits(missingValue != null ? missingValue : 0.0f);
 
       for (int readerIndex = 0; readerIndex < readers.size(); readerIndex++) {
         final NumericDocValues values = valuesProvider.get(readers.get(readerIndex));
 
         providers[readerIndex] =
             docID -> {
-              double value = missingValue;
-              if (values.advanceExact(docID)) {
-                value = Double.longBitsToDouble(values.longValue());
-              }
-              return NumericUtils.doubleToSortableLong(value);
+              final long valueBits =
+                  values.advanceExact(docID) ? values.longValue() : missingValueBits;
+              return NumericUtils.sortableDoubleBits(valueBits);
             };
       }
       return providers;

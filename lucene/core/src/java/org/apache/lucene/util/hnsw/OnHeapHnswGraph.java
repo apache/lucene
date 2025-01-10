@@ -19,10 +19,9 @@ package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -44,7 +43,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // essentially another 2d map which the first dimension is level and second dimension is node id,
   // this is only
   // generated on demand when there's someone calling getNodeOnLevel on a non-zero level
-  private List<Integer>[] levelToNodes;
+  private IntArrayList[] levelToNodes;
   private int
       lastFreezeSize; // remember the size we are at last time to freeze the graph and generate
   // levelToNodes
@@ -91,7 +90,17 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    * @param node the node whose neighbors are returned, represented as an ordinal on the level 0.
    */
   public NeighborArray getNeighbors(int level, int node) {
-    assert graph[node][level] != null;
+    assert node < graph.length;
+    assert level < graph[node].length
+        : "level="
+            + level
+            + ", node "
+            + node
+            + " has only "
+            + graph[node].length
+            + " levels for graph "
+            + this;
+    assert graph[node][level] != null : "node=" + node + ", level=" + level;
     return graph[node][level];
   }
 
@@ -164,7 +173,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public int nextNeighbor() {
     if (++upto < cur.size()) {
-      return cur.node[upto];
+      return cur.nodes()[upto];
     }
     return NO_MORE_DOCS;
   }
@@ -177,6 +186,11 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public int numLevels() {
     return entryNode.get().level + 1;
+  }
+
+  @Override
+  public int maxConn() {
+    return nsize - 1;
   }
 
   /**
@@ -252,9 +266,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       return;
     }
     int maxLevels = numLevels();
-    levelToNodes = new List[maxLevels];
+    levelToNodes = new IntArrayList[maxLevels];
     for (int i = 1; i < maxLevels; i++) {
-      levelToNodes[i] = new ArrayList<>();
+      levelToNodes[i] = new IntArrayList();
     }
     int nonNullNode = 0;
     for (int node = 0; node < graph.length; node++) {

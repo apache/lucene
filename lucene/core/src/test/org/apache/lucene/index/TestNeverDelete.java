@@ -26,12 +26,14 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.SuppressForbidden;
 
 // Make sure if you use NoDeletionPolicy that no file
 // referenced by a commit point is ever deleted
 
 public class TestNeverDelete extends LuceneTestCase {
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testIndexing() throws Exception {
     final Path tmpDir = createTempDir("TestNeverDelete");
     final BaseDirectoryWrapper d = newFSDirectory(tmpDir);

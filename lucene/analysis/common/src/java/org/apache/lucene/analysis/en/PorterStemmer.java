@@ -456,7 +456,7 @@ class PorterStemmer {
         /* j >= 0 fixes Bug 2 */
         if (ends("ou")) break;
         return;
-        /* takes care of -ous */
+      /* takes care of -ous */
       case 's':
         if (ends("ism")) break;
         return;

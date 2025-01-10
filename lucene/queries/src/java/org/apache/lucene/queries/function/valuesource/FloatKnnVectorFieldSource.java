@@ -20,7 +20,10 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -39,18 +42,33 @@ public class FloatKnnVectorFieldSource extends ValueSource {
   public FunctionValues getValues(Map<Object, Object> context, LeafReaderContext readerContext)
       throws IOException {
 
-    final FloatVectorValues vectorValues = readerContext.reader().getFloatVectorValues(fieldName);
+    final LeafReader reader = readerContext.reader();
+    final FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
 
     if (vectorValues == null) {
-      throw new IllegalArgumentException(
-          "no float vector value is indexed for field '" + fieldName + "'");
+      VectorFieldFunction.checkField(reader, fieldName, VectorEncoding.FLOAT32);
+      return new VectorFieldFunction(this) {
+        private final DocIdSetIterator empty = DocIdSetIterator.empty();
+
+        @Override
+        public float[] floatVectorVal(int doc) throws IOException {
+          return null;
+        }
+
+        @Override
+        protected DocIdSetIterator getVectorIterator() {
+          return empty;
+        }
+      };
     }
+
     return new VectorFieldFunction(this) {
+      KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
 
       @Override
       public float[] floatVectorVal(int doc) throws IOException {
         if (exists(doc)) {
-          return vectorValues.vectorValue();
+          return vectorValues.vectorValue(iterator.index());
         } else {
           return null;
         }
@@ -58,7 +76,7 @@ public class FloatKnnVectorFieldSource extends ValueSource {
 
       @Override
       protected DocIdSetIterator getVectorIterator() {
-        return vectorValues;
+        return iterator;
       }
     };
   }

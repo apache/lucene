@@ -36,7 +36,7 @@ class ReqOptSumScorer extends Scorer {
   private final TwoPhaseIterator twoPhase;
 
   private float minScore = 0;
-  private float reqMaxScore;
+  private final float reqMaxScore;
   private boolean optIsRequired;
 
   /**
@@ -48,7 +48,6 @@ class ReqOptSumScorer extends Scorer {
    */
   public ReqOptSumScorer(Scorer reqScorer, Scorer optScorer, ScoreMode scoreMode)
       throws IOException {
-    super(reqScorer.weight);
     assert reqScorer != null;
     assert optScorer != null;
     this.reqScorer = reqScorer;
@@ -295,6 +294,15 @@ class ReqOptSumScorer extends Scorer {
     // Potentially move to a conjunction
     if (reqMaxScore < minScore) {
       optIsRequired = true;
+      if (reqMaxScore == 0) {
+        // If the required clause doesn't contribute scores, we can propagate the minimum
+        // competitive score to the optional clause. This happens when the required clause is a
+        // FILTER clause.
+        // In theory we could generalize this and set minScore - reqMaxScore as a minimum
+        // competitive score, but it's unlikely to help in practice unless reqMaxScore is much
+        // smaller than typical scores of the optional clause.
+        optScorer.setMinCompetitiveScore(minScore);
+      }
     }
   }
 

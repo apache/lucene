@@ -103,7 +103,7 @@ public class TestSimpleExplanationsWithFillerDocs extends TestSimpleExplanations
   @Override
   public void qtest(Query q, int[] expDocNrs) throws Exception {
 
-    expDocNrs = ArrayUtil.copyOfSubArray(expDocNrs, 0, expDocNrs.length);
+    expDocNrs = ArrayUtil.copyArray(expDocNrs);
     for (int i = 0; i < expDocNrs.length; i++) {
       expDocNrs[i] = PRE_FILLER_DOCS + ((NUM_FILLER_DOCS + 1) * expDocNrs[i]);
     }

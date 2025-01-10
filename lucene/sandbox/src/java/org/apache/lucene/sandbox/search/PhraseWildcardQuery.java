@@ -48,7 +48,7 @@ import org.apache.lucene.search.PhraseWeight;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SloppyPhraseMatcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
@@ -56,6 +56,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.mutable.MutableValueBool;
 
 /**
@@ -229,7 +230,7 @@ public class PhraseWildcardQuery extends Query {
   protected Weight noMatchWeight() {
     return new ConstantScoreWeight(this, 0) {
       @Override
-      public Scorer scorer(LeafReaderContext leafReaderContext) {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         return null;
       }
 
@@ -387,7 +388,8 @@ public class PhraseWildcardQuery extends Query {
       Terms terms = leafReaderContext.reader().terms(term.field());
       if (terms != null) {
         checkTermsHavePositions(terms);
-        TermState termState = termStates.get(leafReaderContext);
+        IOSupplier<TermState> supplier = termStates.get(leafReaderContext);
+        TermState termState = supplier == null ? null : supplier.get();
         if (termState != null) {
           termMatchesInSegment = true;
           numMatches++;

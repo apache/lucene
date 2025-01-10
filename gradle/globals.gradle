@@ -27,7 +27,7 @@ allprojects {
 
   // Artifacts will have names after full gradle project path
   // so :solr:core will have solr-core.jar, etc.
-  project.archivesBaseName = project.path.replaceAll("^:", "").replace(':', '-')
+  project.base.archivesName = project.path.replaceAll("^:", "").replace(':', '-')
 
   ext {
     // Utility method to support passing overrides via -P or -D.
@@ -57,12 +57,6 @@ allprojects {
     // Either a project, system property, environment variable or default value.
     propertyOrEnvOrDefault = { propName, envName, defValue ->
       return propertyOrDefault(propName, envOrDefault(envName, defValue));
-    }
-
-    // Locate script-relative resource folder. This is context-sensitive so pass
-    // the right buildscript (top-level).
-    scriptResources = { buildscript ->
-      return file(buildscript.sourceFile.absolutePath.replaceAll('.gradle$', ""))
     }
 
     // Utility function similar to project.exec but not emitting

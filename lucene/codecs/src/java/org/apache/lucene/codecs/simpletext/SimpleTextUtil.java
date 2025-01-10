@@ -111,6 +111,9 @@ class SimpleTextUtil {
       throw new IllegalArgumentException(
           "string " + s + " was not created from BytesRef.toString?");
     }
+    if (s.length() == 2) {
+      return new BytesRef(BytesRef.EMPTY_BYTES);
+    }
     String[] parts = s.substring(1, s.length() - 1).split(" ");
     byte[] bytes = new byte[parts.length];
     for (int i = 0; i < parts.length; i++) {

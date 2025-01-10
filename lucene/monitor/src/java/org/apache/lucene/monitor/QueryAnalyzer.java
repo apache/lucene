@@ -84,9 +84,7 @@ class QueryAnalyzer {
         if (parent instanceof BooleanQuery) {
           BooleanQuery bq = (BooleanQuery) parent;
           long positiveCount =
-              bq.clauses().stream()
-                  .filter(c -> c.getOccur() != BooleanClause.Occur.MUST_NOT)
-                  .count();
+              bq.clauses().stream().filter(c -> c.occur() != BooleanClause.Occur.MUST_NOT).count();
           if (positiveCount == 0) {
             children.add(w -> QueryTree.anyTerm("PURE NEGATIVE QUERY[" + parent + "]"));
           }
@@ -101,8 +99,8 @@ class QueryAnalyzer {
             bq.clauses().stream()
                 .filter(
                     c ->
-                        c.getOccur() == BooleanClause.Occur.MUST
-                            || c.getOccur() == BooleanClause.Occur.FILTER)
+                        c.occur() == BooleanClause.Occur.MUST
+                            || c.occur() == BooleanClause.Occur.FILTER)
                 .count();
         if (requiredCount > 0) {
           return QueryVisitor.EMPTY_VISITOR;

@@ -29,16 +29,18 @@ import java.util.List;
  */
 final class BlockMaxConjunctionScorer extends Scorer {
   final Scorer[] scorers;
+  final Scorable[] scorables;
   final DocIdSetIterator[] approximations;
   final TwoPhaseIterator[] twoPhases;
   float minScore;
 
   /** Create a new {@link BlockMaxConjunctionScorer} from scoring clauses. */
-  BlockMaxConjunctionScorer(Weight weight, Collection<Scorer> scorersList) throws IOException {
-    super(weight);
+  BlockMaxConjunctionScorer(Collection<Scorer> scorersList) throws IOException {
     this.scorers = scorersList.toArray(new Scorer[scorersList.size()]);
     // Sort scorer by cost
     Arrays.sort(this.scorers, Comparator.comparingLong(s -> s.iterator().cost()));
+    this.scorables =
+        Arrays.stream(scorers).map(ScorerUtil::likelyTermScorer).toArray(Scorable[]::new);
 
     this.approximations = new DocIdSetIterator[scorers.length];
     List<TwoPhaseIterator> twoPhaseList = new ArrayList<>();
@@ -51,6 +53,7 @@ final class BlockMaxConjunctionScorer extends Scorer {
       } else {
         approximations[i] = scorer.iterator();
       }
+      approximations[i] = ScorerUtil.likelyImpactsEnum(approximations[i]);
       scorer.advanceShallow(0);
     }
     this.twoPhases = twoPhaseList.toArray(new TwoPhaseIterator[twoPhaseList.size()]);
@@ -110,8 +113,13 @@ final class BlockMaxConjunctionScorer extends Scorer {
       }
 
       private void moveToNextBlock(int target) throws IOException {
-        upTo = advanceShallow(target);
-        maxScore = getMaxScore(upTo);
+        if (minScore == 0) {
+          upTo = target;
+          maxScore = Float.POSITIVE_INFINITY;
+        } else {
+          upTo = advanceShallow(target);
+          maxScore = getMaxScore(upTo);
+        }
       }
 
       private int advanceTarget(int target) throws IOException {
@@ -203,7 +211,7 @@ final class BlockMaxConjunctionScorer extends Scorer {
   @Override
   public float score() throws IOException {
     double score = 0;
-    for (Scorer scorer : scorers) {
+    for (Scorable scorer : scorables) {
       score += scorer.score();
     }
     return (float) score;

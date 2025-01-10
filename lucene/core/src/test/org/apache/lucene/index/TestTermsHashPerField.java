@@ -20,7 +20,7 @@ package org.apache.lucene.index;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -257,21 +257,19 @@ public class TestTermsHashPerField extends LuceneTestCase {
           RandomStrings.randomRealisticUnicodeOfCodepointLengthBetween(random(), 1, 10);
       postingMap.putIfAbsent(newBytesRef(randomString), new Posting());
     }
-    List<BytesRef> bytesRefs = Arrays.asList(postingMap.keySet().toArray(new BytesRef[0]));
+    List<BytesRef> bytesRefs = new ArrayList<>(postingMap.keySet());
     Collections.sort(bytesRefs);
     int numDocs = 1 + random().nextInt(200);
     int termOrd = 0;
-    for (int i = 0; i < numDocs; i++) {
+    for (int doc = 0; doc < numDocs; doc++) {
       int numTerms = 1 + random().nextInt(200);
-      int doc = i;
       for (int j = 0; j < numTerms; j++) {
         BytesRef ref = RandomPicks.randomFrom(random(), bytesRefs);
         Posting posting = postingMap.get(ref);
         if (posting.termId == -1) {
           posting.termId = termOrd++;
         }
-        posting.docAndFreq.putIfAbsent(doc, 0);
-        posting.docAndFreq.compute(doc, (key, oldVal) -> oldVal + 1);
+        posting.docAndFreq.merge(doc, 1, Integer::sum);
         hash.add(ref, doc);
       }
       hash.finish();

@@ -20,6 +20,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /** Base implementation class for buffered {@link IndexInput}. */
 public abstract class BufferedIndexInput extends IndexInput implements RandomAccessInput {
@@ -146,6 +147,16 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
       return buffer.getInt();
     } else {
       return super.readInt();
+    }
+  }
+
+  @Override
+  public void readGroupVInt(int[] dst, int offset) throws IOException {
+    final int len =
+        GroupVIntUtil.readGroupVInt(
+            this, buffer.remaining(), p -> buffer.getInt((int) p), buffer.position(), dst, offset);
+    if (len > 0) {
+      buffer.position(buffer.position() + len);
     }
   }
 
@@ -358,12 +369,11 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   /** Returns default buffer sizes for the given {@link IOContext} */
   public static int bufferSize(IOContext context) {
-    switch (context.context) {
+    switch (context.context()) {
       case MERGE:
         return MERGE_BUFFER_SIZE;
       case DEFAULT:
       case FLUSH:
-      case READ:
       default:
         return BUFFER_SIZE;
     }

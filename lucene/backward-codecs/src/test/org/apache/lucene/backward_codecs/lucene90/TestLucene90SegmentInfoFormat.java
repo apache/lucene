@@ -25,11 +25,16 @@ public class TestLucene90SegmentInfoFormat extends BaseSegmentInfoFormatTestCase
 
   @Override
   protected Version[] getVersions() {
-    return new Version[] {Version.LUCENE_9_0_0};
+    return new Version[] {Version.fromBits(9, 0, 0)};
   }
 
   @Override
   protected Codec getCodec() {
     return new Lucene90RWCodec();
+  }
+
+  @Override
+  protected boolean supportsHasBlocks() {
+    return false;
   }
 }

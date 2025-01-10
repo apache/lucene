@@ -1,0 +1,72 @@
+name: "Run checks: all modules"
+
+on: 
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - '*'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_10x'
+
+env:
+  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+
+# We split the workflow into two parallel jobs for efficiency:
+# one is running all validation checks without tests,
+# the other runs all tests without other validation checks.
+
+jobs:
+
+  # This runs all validation checks without tests.
+  checks:
+    name: checks without tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        java: [ '21' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Correct git autocrlf
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-for-build
+
+      - name: Run gradle check (without tests)
+        run: ./gradlew check -x test "-Ptask.times=true" --max-workers 2
+
+
+  # This runs all tests without any other validation checks.
+  tests:
+    name: tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        # Operating systems to run on.
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        java: [ '21' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Correct git autocrlf on Windows
+        if: startsWith(matrix.os, 'windows')
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-for-build
+
+      - name: Run gradle tests
+        run: ./gradlew test "-Ptask.times=true" --max-workers 2
+
+      - name: List automatically-initialized gradle.properties
+        run: cat gradle.properties

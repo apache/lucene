@@ -37,7 +37,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
@@ -45,7 +44,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
@@ -518,9 +517,9 @@ public class TestBasics extends LuceneTestCase {
     SpanQuery sq2 = new SpanTermQuery(new Term(FIELD, "clckwork"));
     query.add(sq1, BooleanClause.Occur.SHOULD);
     query.add(sq2, BooleanClause.Occur.SHOULD);
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(1000, null, Integer.MAX_VALUE);
-    TopDocs topDocs = searcher.search(query.build(), manager);
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(1000, Integer.MAX_VALUE);
+    TopDocs topDocs = searcher.search(query.build(), collectorManager);
     hits = topDocs.scoreDocs.length;
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
       System.out.println(scoreDoc.doc);
@@ -554,9 +553,9 @@ public class TestBasics extends LuceneTestCase {
                 new SpanTermQuery(new Term(FIELD, "clockwork")),
                 new SpanTermQuery(new Term(FIELD, "clckwork"))),
             1.0f);
-    CollectorManager<TopScoreDocCollector, TopDocs> manager =
-        TopScoreDocCollector.createSharedManager(1000, null, Integer.MAX_VALUE);
-    TopDocs topDocs = searcher.search(query, manager);
+    TopScoreDocCollectorManager collectorManager =
+        new TopScoreDocCollectorManager(1000, Integer.MAX_VALUE);
+    TopDocs topDocs = searcher.search(query, collectorManager);
     hits = topDocs.scoreDocs.length;
     for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
       System.out.println(scoreDoc.doc);

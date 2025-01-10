@@ -44,6 +44,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 @LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestSearcherTaxonomyManager extends FacetTestCase {
@@ -124,6 +125,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testNRT() throws Exception {
     Directory dir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -151,6 +153,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
 
     Thread reopener =
         new Thread() {
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           public void run() {
             while (!stop.get()) {
@@ -186,10 +189,10 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
           FacetsCollector sfc =
-              pair.searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-          Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
+              pair.searcher().search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+          Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
-          if (pair.searcher.getIndexReader().numDocs() > 0) {
+          if (pair.searcher().getIndexReader().numDocs() > 0) {
             // System.out.println(pair.taxonomyReader.getSize());
             assertTrue(result.childCount > 0);
             assertTrue(result.labelValues.length > 0);
@@ -241,10 +244,10 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
         try {
           // System.out.println("search maxOrd=" + pair.taxonomyReader.getSize());
           FacetsCollector sfc =
-              pair.searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
-          Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader, config, sfc);
+              pair.searcher().search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+          Facets facets = getTaxonomyFacetCounts(pair.taxonomyReader(), config, sfc);
           FacetResult result = facets.getTopChildren(10, "field");
-          if (pair.searcher.getIndexReader().numDocs() > 0) {
+          if (pair.searcher().getIndexReader().numDocs() > 0) {
             // System.out.println(pair.taxonomyReader.getSize());
             assertTrue(result.childCount > 0);
             assertTrue(result.labelValues.length > 0);
@@ -284,11 +287,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     tw.replaceTaxonomy(taxoDir2);
     taxoDir2.close();
 
-    expectThrows(
-        IllegalStateException.class,
-        () -> {
-          mgr.maybeRefresh();
-        });
+    expectThrows(IllegalStateException.class, mgr::maybeRefresh);
 
     w.close();
     IOUtils.close(mgr, tw, taxoDir, dir);
@@ -310,7 +309,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     SearcherTaxonomyManager mgr = new SearcherTaxonomyManager(indexDir, taxoDir, null);
     SearcherAndTaxonomy pair = mgr.acquire();
     try {
-      assertEquals(1, pair.taxonomyReader.getSize());
+      assertEquals(1, pair.taxonomyReader().getSize());
     } finally {
       mgr.release(pair);
     }
@@ -324,7 +323,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     mgr.maybeRefresh();
     pair = mgr.acquire();
     try {
-      assertEquals(3, pair.taxonomyReader.getSize());
+      assertEquals(3, pair.taxonomyReader().getSize());
     } finally {
       mgr.release(pair);
     }

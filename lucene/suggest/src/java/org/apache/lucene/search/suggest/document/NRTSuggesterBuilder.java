@@ -104,7 +104,8 @@ final class NRTSuggesterBuilder {
    * CompletionPostingsFormat.FSTLoadMode)})}
    */
   public boolean store(DataOutput output) throws IOException {
-    final FST<PairOutputs.Pair<Long, BytesRef>> fst = fstCompiler.compile();
+    final FST<PairOutputs.Pair<Long, BytesRef>> fst =
+        FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
     if (fst == null) {
       return false;
     }
@@ -135,14 +136,7 @@ final class NRTSuggesterBuilder {
     return (int) Math.min(maxArcs, 255);
   }
 
-  private static final class Entry implements Comparable<Entry> {
-    final BytesRef payload;
-    final long weight;
-
-    public Entry(BytesRef payload, long weight) {
-      this.payload = payload;
-      this.weight = weight;
-    }
+  private record Entry(BytesRef payload, long weight) implements Comparable<Entry> {
 
     @Override
     public int compareTo(Entry o) {

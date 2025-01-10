@@ -67,7 +67,7 @@ final class FieldsIndexReader extends FieldsIndex {
 
     indexInput =
         EndiannessReverserUtil.openInput(
-            dir, IndexFileNames.segmentFileName(name, suffix, extension), IOContext.READ);
+            dir, IndexFileNames.segmentFileName(name, suffix, extension), IOContext.DEFAULT);
     boolean success = false;
     try {
       CodecUtil.checkIndexHeader(

@@ -61,8 +61,9 @@ public final class NumericUtils {
    * Converts a <code>float</code> value to a sortable signed <code>int</code>. The value is
    * converted by getting their IEEE 754 floating-point &quot;float format&quot; bit layout and then
    * some bits are swapped, to be able to compare the result as int. By this the precision is not
-   * reduced, but the value can easily used as an int. The sort order (including {@link Float#NaN})
-   * is defined by {@link Float#compareTo}; {@code NaN} is greater than positive infinity.
+   * reduced, but the value can easily be used as an int. The sort order (including {@link
+   * Float#NaN}) is defined by {@link Float#compareTo}; {@code NaN} is greater than positive
+   * infinity.
    *
    * @see #sortableIntToFloat
    */
@@ -130,52 +131,6 @@ public final class NumericUtils {
     if (carry != 0) {
       throw new IllegalArgumentException("a + b overflows bytesPerDim=" + bytesPerDim);
     }
-  }
-
-  /**
-   * Modify in-place the given bytes to the next value of the same length that compares greater than
-   * the current value. This returns false if, and only if, the value is currently equal to the
-   * maximum possible value.
-   */
-  public static boolean nextUp(byte[] bytes) {
-    boolean isMax = true;
-    for (byte b : bytes) {
-      if (b != (byte) 0xff) {
-        isMax = false;
-        break;
-      }
-    }
-    if (isMax) return false;
-
-    for (int i = bytes.length - 1; i >= 0; --i) {
-      if (++bytes[i] != 0) {
-        break;
-      }
-    }
-    return true;
-  }
-
-  /**
-   * Modify in-place the given bytes to the previous value of the same length that compares less
-   * than the current value. This returns false if, and only if, the value is currently equal to the
-   * minimum possible value.
-   */
-  public static boolean nextDown(byte[] bytes) {
-    boolean isMin = true;
-    for (byte b : bytes) {
-      if (b != 0) {
-        isMin = false;
-        break;
-      }
-    }
-    if (isMin) return false;
-
-    for (int i = bytes.length - 1; i >= 0; --i) {
-      if (bytes[i]-- != 0) {
-        break;
-      }
-    }
-    return true;
   }
 
   /**

@@ -19,8 +19,8 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,6 +40,8 @@ import org.apache.lucene.util.Version;
 
 public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
+  private record DocCountAndSizeInBytes(int docCount, long sizeInBytes) {}
+
   @Override
   public TieredMergePolicy mergePolicy() {
     return newTieredMergePolicy();
@@ -55,7 +57,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     int totalDelCount = 0;
     int totalMaxDoc = 0;
     long totalBytes = 0;
-    List<Long> segmentSizes = new ArrayList<>();
+    List<DocCountAndSizeInBytes> segmentSizes = new ArrayList<>();
     for (SegmentCommitInfo sci : infos) {
       totalDelCount += sci.getDelCount();
       totalMaxDoc += sci.info.maxDoc();
@@ -63,9 +65,11 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       double liveRatio = 1 - (double) sci.getDelCount() / sci.info.maxDoc();
       long weightedByteSize = (long) (liveRatio * byteSize);
       totalBytes += weightedByteSize;
-      segmentSizes.add(weightedByteSize);
+      segmentSizes.add(
+          new DocCountAndSizeInBytes(sci.info.maxDoc() - sci.getDelCount(), weightedByteSize));
       minSegmentBytes = Math.min(minSegmentBytes, weightedByteSize);
     }
+    Collections.sort(segmentSizes, Comparator.comparingLong(DocCountAndSizeInBytes::sizeInBytes));
 
     final double delPercentage = 100.0 * totalDelCount / totalMaxDoc;
     assertTrue(
@@ -78,12 +82,33 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     long levelSizeBytes = Math.max(minSegmentBytes, (long) (tmp.getFloorSegmentMB() * 1024 * 1024));
     long bytesLeft = totalBytes;
     double allowedSegCount = 0;
+    List<DocCountAndSizeInBytes> biggestSegments = segmentSizes;
+    if (biggestSegments.size() > tmp.getTargetSearchConcurrency() - 1) {
+      biggestSegments =
+          biggestSegments.subList(
+              biggestSegments.size() - tmp.getTargetSearchConcurrency() + 1,
+              biggestSegments.size());
+    }
+    // Allow whole segments for the targetSearchConcurrency-1 biggest segments
+    for (DocCountAndSizeInBytes size : biggestSegments) {
+      bytesLeft -= size.sizeInBytes();
+      allowedSegCount++;
+    }
+
+    int tooBigCount = 0;
+    for (DocCountAndSizeInBytes size : segmentSizes) {
+      if (size.sizeInBytes() >= maxMergedSegmentBytes / 2) {
+        tooBigCount++;
+      }
+    }
+
     // below we make the assumption that segments that reached the max segment
     // size divided by 2 don't need merging anymore
     int mergeFactor = (int) Math.min(tmp.getSegmentsPerTier(), tmp.getMaxMergeAtOnce());
     while (true) {
       final double segCountLevel = bytesLeft / (double) levelSizeBytes;
-      if (segCountLevel < tmp.getSegmentsPerTier() || levelSizeBytes >= maxMergedSegmentBytes / 2) {
+      if (segCountLevel <= tmp.getSegmentsPerTier()
+          || levelSizeBytes >= maxMergedSegmentBytes / 2) {
         allowedSegCount += Math.ceil(segCountLevel);
         break;
       }
@@ -91,23 +116,27 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       bytesLeft -= tmp.getSegmentsPerTier() * levelSizeBytes;
       levelSizeBytes = Math.min(levelSizeBytes * mergeFactor, maxMergedSegmentBytes / 2);
     }
-    allowedSegCount = Math.max(allowedSegCount, tmp.getSegmentsPerTier());
+    // Allow at least a full tier in addition of the too big segments.
+    allowedSegCount = Math.max(allowedSegCount, tooBigCount + tmp.getSegmentsPerTier());
+    // Allow at least `targetSearchConcurrency` segments.
+    allowedSegCount = Math.max(allowedSegCount, tmp.getTargetSearchConcurrency());
 
-    // It's ok to be over the allowed segment count if none of the most balanced merges are balanced
-    // enough
-    Collections.sort(segmentSizes);
-    boolean hasBalancedMerges = false;
-    for (int i = 0; i < segmentSizes.size() - mergeFactor; ++i) {
-      long maxMergeSegmentSize = segmentSizes.get(i + mergeFactor - 1);
-      if (maxMergeSegmentSize >= maxMergedSegmentBytes / 2) {
-        break;
-      }
-      long totalMergeSize = 0;
-      for (int j = 0; j < i + mergeFactor; ++j) {
-        totalMergeSize += segmentSizes.get(j);
-      }
-      if (maxMergedSegmentBytes * 1.5 <= totalMergeSize) {
-        hasBalancedMerges = true;
+    // It's ok to be over the allowed segment count if none of the merges are legal, because they
+    // are either not balanced or because they exceed the max merged segment doc count.
+    // We only check pairwise merges instead of every possible merge to keep things simple. If none
+    // of the pairwise merges are legal, chances are high that no merge is legal.
+    int maxDocsPerSegment = tmp.getMaxAllowedDocs(infos.totalMaxDoc(), totalDelCount);
+    boolean hasLegalMerges = false;
+    for (int i = 0; i < segmentSizes.size() - 1; ++i) {
+      DocCountAndSizeInBytes size1 = segmentSizes.get(i);
+      DocCountAndSizeInBytes size2 = segmentSizes.get(i + 1);
+      long mergedSegmentSizeInBytes = size1.sizeInBytes() + size2.sizeInBytes();
+      int mergedSegmentDocCount = size1.docCount() + size2.docCount();
+
+      if (mergedSegmentSizeInBytes <= maxMergedSegmentBytes
+          && size2.sizeInBytes() * 1.5 <= mergedSegmentSizeInBytes
+          && mergedSegmentDocCount <= maxDocsPerSegment) {
+        hasLegalMerges = true;
         break;
       }
     }
@@ -116,7 +145,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     assertTrue(
         String.format(
             Locale.ROOT,
-            "mergeFactor=%d minSegmentBytes=%,d maxMergedSegmentBytes=%,d segmentsPerTier=%g maxMergeAtOnce=%d numSegments=%d allowed=%g totalBytes=%,d delPercentage=%g deletesPctAllowed=%g",
+            "mergeFactor=%d minSegmentBytes=%,d maxMergedSegmentBytes=%,d segmentsPerTier=%g maxMergeAtOnce=%d numSegments=%d allowed=%g totalBytes=%,d delPercentage=%g deletesPctAllowed=%g targetNumSegments=%d",
             mergeFactor,
             minSegmentBytes,
             maxMergedSegmentBytes,
@@ -126,16 +155,16 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
             allowedSegCount,
             totalBytes,
             delPercentage,
-            tmp.getDeletesPctAllowed()),
-        numSegments <= allowedSegCount || hasBalancedMerges == false);
+            tmp.getDeletesPctAllowed(),
+            tmp.getTargetSearchConcurrency()),
+        numSegments <= allowedSegCount || hasLegalMerges == false);
   }
 
   @Override
   protected void assertMerge(MergePolicy policy, MergeSpecification merges) {
     TieredMergePolicy tmp = (TieredMergePolicy) policy;
-    final int mergeFactor = (int) Math.min(tmp.getMaxMergeAtOnce(), tmp.getSegmentsPerTier());
     for (OneMerge merge : merges.merges) {
-      assertTrue(merge.segments.size() <= mergeFactor);
+      assertTrue(merge.segments.size() <= tmp.getMaxMergeAtOnce());
     }
   }
 
@@ -209,6 +238,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
       int segmentCount = w.getSegmentCount();
       int targetCount = TestUtil.nextInt(random(), 1, segmentCount);
+
       if (VERBOSE) {
         System.out.println(
             "TEST: merge to " + targetCount + " segs (current count=" + segmentCount + ")");
@@ -232,9 +262,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         // 2> We could have 10 segments and a target count of 2. In that case there could be 5
         // segments resulting.
         //    as long as they're all < 125% max seg size, that's valid.
-        Iterator<SegmentCommitInfo> iterator = w.cloneSegmentInfos().iterator();
-        while (iterator.hasNext()) {
-          SegmentCommitInfo info = iterator.next();
+        for (SegmentCommitInfo info : w.cloneSegmentInfos()) {
           assertTrue(
               "No segment should be more than 125% of max segment size ",
               max125Pct >= info.sizeInBytes());
@@ -294,8 +322,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
   }
 
   // LUCENE-7976 makes findForceMergeDeletes and findForcedDeletes respect max segment size by
-  // default,
-  // so insure that this works.
+  // default, so ensure that this works.
   public void testForcedMergesRespectSegSize() throws Exception {
     final Directory dir = newDirectory();
     final IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -359,7 +386,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
         "Should still be deleted docs in the index",
         w.getDocStats().numDocs < w.getDocStats().maxDoc);
 
-    // This time, forceMerge. By default this should respect max segment size.
+    // This time, forceMerge. By default, this should respect max segment size.
     // Will change for LUCENE-8236
     w.forceMerge(Integer.MAX_VALUE);
     checkSegmentSizeNotExceeded(w.cloneSegmentInfos(), maxSegBytes);
@@ -367,7 +394,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     // Now forceMerge down to one segment, there should be exactly remainingDocs in exactly one
     // segment.
     w.forceMerge(1);
-    assertEquals("There should be exaclty one segment now", 1, w.getSegmentCount());
+    assertEquals("There should be exactly one segment now", 1, w.getSegmentCount());
     assertEquals(
         "maxDoc and numDocs should be identical", w.getDocStats().numDocs, w.getDocStats().maxDoc);
     assertEquals(
@@ -412,7 +439,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     for (int i = 0; i < 50; i++) {
       Document doc = new Document();
-      doc.add(newStringField("id", "" + i + numDocs, Field.Store.NO));
+      doc.add(newStringField("id", "" + (i + numDocs), Field.Store.NO));
       doc.add(newTextField("content", "aaa " + i, Field.Store.NO));
       w.addDocument(doc);
     }
@@ -428,7 +455,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     int largeSegDocCount = Math.max(info0.info.maxDoc(), info1.info.maxDoc());
     int smallSegDocCount = Math.min(info0.info.maxDoc(), info1.info.maxDoc());
     assertEquals("The large segment should have a bunch of docs", largeSegDocCount, remainingDocs);
-    assertEquals("Small segment shold have fewer docs", smallSegDocCount, 50);
+    assertEquals("Small segment should have fewer docs", smallSegDocCount, 50);
 
     w.close();
 
@@ -489,17 +516,16 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     }
   }
 
-  // LUCENE-8688 reports that force merges merged more segments that necessary to respect
+  // LUCENE-8688 reports that force-merges merged more segments that necessary to respect
   // maxSegmentCount as a result
-  // of LUCENE-7976 so we ensure that it only does the minimum number of merges here.
+  // of LUCENE-7976, so we ensure that it only does the minimum number of merges here.
   public void testForcedMergesUseLeastNumberOfMerges() throws Exception {
     TieredMergePolicy tmp = new TieredMergePolicy();
     double oneSegmentSizeMB = 1.0D;
     double maxMergedSegmentSizeMB = 10 * oneSegmentSizeMB;
     tmp.setMaxMergedSegmentMB(maxMergedSegmentSizeMB);
     if (VERBOSE) {
-      System.out.println(
-          String.format(Locale.ROOT, "TEST: maxMergedSegmentSizeMB=%.2f", maxMergedSegmentSizeMB));
+      System.out.printf(Locale.ROOT, "TEST: maxMergedSegmentSizeMB=%.2f%n", maxMergedSegmentSizeMB);
     }
 
     // create simulated 30 segment index where each segment is 1 MB
@@ -581,8 +607,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     final MergeSpecification specification =
         tmp.findForcedMerges(infos, expectedCount, segmentsToMerge(infos), mergeContext);
     // Since we have fewer than 30 (the max merge count) segments more than the final size this
-    // would have been the final merge
-    // so we check that it was prevented.
+    // would have been the final merge, so we check that it was prevented.
     assertNull(specification);
   }
 
@@ -624,19 +649,15 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     if (twoMayHaveBeenMerged == false || segNamesAfter.size() == segNamesBefore.size()) {
       if (segNamesAfter.size() != segNamesBefore.size()) {
-        fail(
-            "Segment lists different sizes!: "
-                + segNamesBefore.toString()
-                + " After list: "
-                + segNamesAfter.toString());
+        fail("Segment lists different sizes!: " + segNamesBefore + " After list: " + segNamesAfter);
       }
 
       if (segNamesAfter.containsAll(segNamesBefore) == false) {
         fail(
             "Segment lists should be identical: "
-                + segNamesBefore.toString()
+                + segNamesBefore
                 + " After list: "
-                + segNamesAfter.toString());
+                + segNamesAfter);
       }
       return;
     }
@@ -646,12 +667,12 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     if (segNamesAfter.size() != segNamesBefore.size() - 1) {
       fail(
           "forceMerge didn't merge a small and large segment into one segment as expected: "
-              + segNamesBefore.toString()
+              + segNamesBefore
               + " After list: "
-              + segNamesAfter.toString());
+              + segNamesAfter);
     }
 
-    // There shold be exactly two segments in the before not in after and one in after not in
+    // There should be exactly two segments in the before not in after and one in after not in
     // before.
     List<String> testBefore = new ArrayList<>(segNamesBefore);
     List<String> testAfter = new ArrayList<>(segNamesAfter);
@@ -661,10 +682,10 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     if (testBefore.size() != 2 || testAfter.size() != 1) {
       fail(
-          "Segment lists different sizes!: "
-              + segNamesBefore.toString()
+          "Expected two unique 'before' segments and one unique 'after' segment: "
+              + segNamesBefore
               + " After list: "
-              + segNamesAfter.toString());
+              + segNamesAfter);
     }
   }
 
@@ -816,7 +837,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     IndexWriter w = new IndexWriter(dir, iwc);
     for (int i = 0; i < 15000 * RANDOM_MULTIPLIER; i++) {
       Document doc = new Document();
-      // Uncompressible content so that merging 10 segments of size x creates a segment whose size
+      // Incompressible content so that merging 10 segments of size x creates a segment whose size
       // is about 10x
       byte[] idBytes = new byte[128];
       random().nextBytes(idBytes);
@@ -921,6 +942,48 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     doTestSimulateUpdates(mergePolicy, numDocs, 2500);
   }
 
+  public void testMergeSizeIsLessThanFloorSize() throws IOException {
+    MergeContext mergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
+
+    SegmentInfos infos = new SegmentInfos(Version.LATEST.major);
+    // 50 1MB segments
+    for (int i = 0; i < 50; ++i) {
+      infos.add(makeSegmentCommitInfo("_0", 1_000_000, 0, 1, IndexWriter.SOURCE_FLUSH));
+    }
+
+    TieredMergePolicy mergePolicy = new TieredMergePolicy();
+    mergePolicy.setFloorSegmentMB(0.1);
+
+    // Segments are above the floor segment size, we get 4 merges of mergeFactor=10 segments each
+    MergeSpecification mergeSpec =
+        mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
+    assertNotNull(mergeSpec);
+    assertEquals(4, mergeSpec.merges.size());
+    for (OneMerge oneMerge : mergeSpec.merges) {
+      assertEquals(mergePolicy.getSegmentsPerTier(), oneMerge.segments.size(), 0d);
+    }
+
+    // Segments are below the floor segment size and it takes 15 segments to go above the floor
+    // segment size. We get 3 merges of 15 segments each
+    mergePolicy.setFloorSegmentMB(15);
+    mergeSpec = mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
+    assertNotNull(mergeSpec);
+    assertEquals(3, mergeSpec.merges.size());
+    for (OneMerge oneMerge : mergeSpec.merges) {
+      assertEquals(15, oneMerge.segments.size());
+    }
+
+    // Segments are below the floor segment size and we'd need to merge more than maxMergeAtOnce
+    // segments to go above the minimum segment size. We get 1 merge of maxMergeAtOnce=30 segments
+    // and 1 merge of 50-30=20 segments.
+    mergePolicy.setFloorSegmentMB(60);
+    mergeSpec = mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
+    assertNotNull(mergeSpec);
+    assertEquals(2, mergeSpec.merges.size());
+    assertEquals(30, mergeSpec.merges.get(0).segments.size());
+    assertEquals(20, mergeSpec.merges.get(1).segments.size());
+  }
+
   public void testFullFlushMerges() throws IOException {
     AtomicLong segNameGenerator = new AtomicLong();
     IOStats stats = new IOStats();
@@ -929,7 +992,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
 
     TieredMergePolicy mp = new TieredMergePolicy();
 
-    for (int i = 0; i < 11; ++i) {
+    for (int i = 0; i < 31; ++i) {
       segmentInfos.add(
           makeSegmentCommitInfo(
               "_" + segNameGenerator.getAndIncrement(),

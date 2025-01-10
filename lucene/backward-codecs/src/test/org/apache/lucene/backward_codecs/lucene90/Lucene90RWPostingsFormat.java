@@ -75,7 +75,11 @@ public final class Lucene90RWPostingsFormat extends PostingsFormat {
     try {
       FieldsConsumer ret =
           new Lucene90BlockTreeTermsWriter(
-              state, postingsWriter, minTermBlockSize, maxTermBlockSize);
+              state,
+              postingsWriter,
+              minTermBlockSize,
+              maxTermBlockSize,
+              Lucene90BlockTreeTermsReader.VERSION_START);
       success = true;
       return ret;
     } finally {

@@ -38,7 +38,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 
 /**
- * On-disk sorting of byte arrays. Each byte array (entry) is a composed of the following fields:
+ * On-disk sorting of byte arrays. Each byte array (entry) is composed of the following fields:
  *
  * <ul>
  *   <li>(two bytes) length of the following byte array,
@@ -87,7 +87,7 @@ public class OfflineSorter {
     private BufferSize(long bytes) {
       if (bytes > Integer.MAX_VALUE) {
         throw new IllegalArgumentException(
-            "Buffer too large for Java (" + (Integer.MAX_VALUE / MB) + "mb max): " + bytes);
+            "Buffer too large for Java (" + (Integer.MAX_VALUE / MB) + "MB max): " + bytes);
       }
 
       if (bytes < ABSOLUTE_MIN_SORT_BUFFER_SIZE) {
@@ -120,7 +120,7 @@ public class OfflineSorter {
       // by free mem (attempting to not grow the heap for this)
       long sortBufferByteSize = free / 2;
       final long minBufferSizeBytes = MIN_BUFFER_SIZE_MB * MB;
-      // lets see if we need/should to grow the heap
+      // let's see if we need/should to grow the heap
       if (sortBufferByteSize < minBufferSizeBytes
           || totalAvailableBytes > 10 * minBufferSizeBytes) {
         // there is enough mem for a reasonable buffer
@@ -131,7 +131,7 @@ public class OfflineSorter {
           sortBufferByteSize = Math.max(ABSOLUTE_MIN_SORT_BUFFER_SIZE, sortBufferByteSize);
         }
       }
-      return new BufferSize(Math.min((long) Integer.MAX_VALUE, sortBufferByteSize));
+      return new BufferSize(Math.min(Integer.MAX_VALUE, sortBufferByteSize));
     }
   }
 
@@ -183,7 +183,7 @@ public class OfflineSorter {
   private final BufferSize ramBufferSize;
 
   SortInfo sortInfo;
-  private int maxTempFiles;
+  private final int maxTempFiles;
   private final Comparator<BytesRef> comparator;
 
   /** Default comparator: sorts in binary (codepoint) order */
@@ -593,7 +593,7 @@ public class OfflineSorter {
       }
 
       short length = in.readShort();
-      ref.grow(length);
+      ref.growNoCopy(length);
       ref.setLength(length);
       in.readBytes(ref.bytes(), 0, length);
       return ref.get();
@@ -629,7 +629,7 @@ public class OfflineSorter {
     public Partition call() throws IOException {
       try (IndexOutput tempFile =
               dir.createTempOutput(tempFileNamePrefix, "sort", IOContext.DEFAULT);
-          ByteSequencesWriter out = getWriter(tempFile, part.buffer.size()); ) {
+          ByteSequencesWriter out = getWriter(tempFile, part.buffer.size())) {
 
         BytesRef spare;
 
@@ -687,7 +687,7 @@ public class OfflineSorter {
       }
 
       PriorityQueue<FileAndTop> queue =
-          new PriorityQueue<FileAndTop>(segmentsToMerge.size()) {
+          new PriorityQueue<>(segmentsToMerge.size()) {
             @Override
             protected boolean lessThan(FileAndTop a, FileAndTop b) {
               return comparator.compare(a.current, b.current) < 0;

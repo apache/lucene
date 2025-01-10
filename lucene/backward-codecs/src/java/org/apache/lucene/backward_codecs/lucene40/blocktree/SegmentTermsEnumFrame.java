@@ -317,8 +317,8 @@ final class SegmentTermsEnumFrame {
   }
 
   public void nextLeaf() {
-    // if (DEBUG) System.out.println("  frame.next ord=" + ord + " nextEnt=" + nextEnt + "
-    // entCount=" + entCount);
+    // if (DEBUG) System.out.println("  frame.next ord=" + ord + " nextEnt=" + nextEnt +
+    // " entCount=" + entCount);
     assert nextEnt != -1 && nextEnt < entCount
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
     nextEnt++;
@@ -410,8 +410,8 @@ final class SegmentTermsEnumFrame {
       newFP = fpOrig + (code >>> 1);
       hasTerms = (code & 1) != 0;
       // if (DEBUG) {
-      //   System.out.println("      label=" + toHex(nextFloorLabel) + " fp=" + newFP + "
-      // hasTerms?=" + hasTerms + " numFollowFloor=" + numFollowFloorBlocks);
+      //   System.out.println("      label=" + toHex(nextFloorLabel) + " fp=" + newFP +
+      // " hasTerms?=" + hasTerms + " numFollowFloor=" + numFollowFloorBlocks);
       // }
 
       isLastInFloor = numFollowFloorBlocks == 1;
@@ -566,28 +566,14 @@ final class SegmentTermsEnumFrame {
   private long subCode;
   CompressionAlgorithm compressionAlg = CompressionAlgorithm.NO_COMPRESSION;
 
-  // for debugging
-  /*
-  @SuppressWarnings("unused")
-  static String brToString(BytesRef b) {
-    try {
-      return b.utf8ToString() + " " + b;
-    } catch (Throwable t) {
-      // If BytesRef isn't actually UTF8, or it's eg a
-      // prefix of UTF8 that ends mid-unicode-char, we
-      // fallback to hex:
-      return b.toString();
-    }
-  }
-  */
-
   // Target's prefix matches this block's prefix; we
   // scan the entries check if the suffix matches.
   public SeekStatus scanToTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
-    // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix + "
-    // nextEnt=" + nextEnt + " (of " + entCount + ") target=" + brToString(target) + " term=" +
-    // brToString(term));
+    // if (DEBUG) System.out.println("    scanToTermLeaf: block fp=" + fp + " prefix=" + prefix +
+    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
+    // ToStringUtils.bytesRefToString(target) +
+    // " term=" + ToStringUtils.bytesRefToString(term));
 
     assert nextEnt != -1;
 
@@ -617,7 +603,7 @@ final class SegmentTermsEnumFrame {
       //   suffixBytesRef.offset = suffixesReader.getPosition();
       //   suffixBytesRef.length = suffix;
       //   System.out.println("      cycle: term " + (nextEnt-1) + " (of " + entCount + ") suffix="
-      // + brToString(suffixBytesRef));
+      // + ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
       startBytePos = suffixesReader.getPosition();
@@ -682,8 +668,9 @@ final class SegmentTermsEnumFrame {
   public SeekStatus scanToTermNonLeaf(BytesRef target, boolean exactOnly) throws IOException {
 
     // if (DEBUG) System.out.println("    scanToTermNonLeaf: block fp=" + fp + " prefix=" + prefix +
-    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" + brToString(target) + " term=" +
-    // brToString(target));
+    // " nextEnt=" + nextEnt + " (of " + entCount + ") target=" +
+    // ToStringUtils.bytesRefToString(target) +
+    // " term=" + ToStringUtils.bytesRefToString(term));
 
     assert nextEnt != -1;
 
@@ -711,7 +698,8 @@ final class SegmentTermsEnumFrame {
       //  suffixBytesRef.offset = suffixesReader.getPosition();
       //  suffixBytesRef.length = suffix;
       //  System.out.println("      cycle: " + ((code&1)==1 ? "sub-block" : "term") + " " +
-      // (nextEnt-1) + " (of " + entCount + ") suffix=" + brToString(suffixBytesRef));
+      // (nextEnt-1) + " (of " + entCount + ") suffix=" +
+      // ToStringUtils.bytesRefToString(suffixBytesRef));
       // }
 
       final int termLen = prefix + suffix;
@@ -743,8 +731,8 @@ final class SegmentTermsEnumFrame {
         // return NOT_FOUND:
         fillTerm();
 
-        // if (DEBUG) System.out.println("        maybe done exactOnly=" + exactOnly + "
-        // ste.termExists=" + ste.termExists);
+        // if (DEBUG) System.out.println("        maybe done exactOnly=" + exactOnly +
+        // " ste.termExists=" + ste.termExists);
 
         if (!exactOnly && !ste.termExists) {
           // System.out.println("  now pushFrame");

@@ -21,15 +21,18 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.codecs.lucene99.GroupVIntReader;
-import org.apache.lucene.codecs.lucene99.GroupVIntWriter;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.store.ByteBuffersDataInput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.util.GroupVIntUtil;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -83,15 +86,20 @@ public class GroupVIntBenchmark {
       };
 
   final int maxSize = 256;
+  final long[] docs = new long[maxSize];
   final long[] values = new long[maxSize];
 
   IndexInput byteBufferGVIntIn;
+  IndexInput nioGVIntIn;
   IndexInput byteBufferVIntIn;
+  ByteBuffersDataInput byteBuffersGVIntIn;
 
   ByteArrayDataInput byteArrayVIntIn;
   ByteArrayDataInput byteArrayGVIntIn;
 
-  // @Param({"16", "32", "64", "128", "248"})
+  // benchmark for write
+  ByteBuffersDataOutput byteBuffersGVIntOut = new ByteBuffersDataOutput();
+
   @Param({"64"})
   public int size;
 
@@ -99,8 +107,8 @@ public class GroupVIntBenchmark {
     byte[] gVIntBytes = new byte[Integer.BYTES * maxSize * 2];
     byte[] vIntBytes = new byte[Integer.BYTES * maxSize * 2];
     ByteArrayDataOutput vIntOut = new ByteArrayDataOutput(vIntBytes);
-    GroupVIntWriter w = new GroupVIntWriter();
-    w.writeValues(new ByteArrayDataOutput(gVIntBytes), docs, docs.length);
+    ByteArrayDataOutput out = new ByteArrayDataOutput(gVIntBytes);
+    out.writeGroupVInts(docs, docs.length);
     for (long v : docs) {
       vIntOut.writeVInt((int) v);
     }
@@ -108,13 +116,26 @@ public class GroupVIntBenchmark {
     byteArrayGVIntIn = new ByteArrayDataInput(gVIntBytes);
   }
 
+  void initNioInput(long[] docs) throws Exception {
+    Directory dir = new NIOFSDirectory(Files.createTempDirectory("groupvintdata"));
+    IndexOutput out = dir.createOutput("gvint", IOContext.DEFAULT);
+    out.writeGroupVInts(docs, docs.length);
+    out.close();
+    nioGVIntIn = dir.openInput("gvint", IOContext.DEFAULT);
+  }
+
+  void initByteBuffersInput(long[] docs) throws Exception {
+    ByteBuffersDataOutput buffer = new ByteBuffersDataOutput();
+    buffer.writeGroupVInts(docs, docs.length);
+    byteBuffersGVIntIn = buffer.toDataInput();
+  }
+
   void initByteBufferInput(long[] docs) throws Exception {
-    Directory dir = MMapDirectory.open(Files.createTempDirectory("groupvintdata"));
+    Directory dir = new MMapDirectory(Files.createTempDirectory("groupvintdata"));
     IndexOutput vintOut = dir.createOutput("vint", IOContext.DEFAULT);
     IndexOutput gvintOut = dir.createOutput("gvint", IOContext.DEFAULT);
 
-    GroupVIntWriter w = new GroupVIntWriter();
-    w.writeValues(gvintOut, docs, docs.length);
+    gvintOut.writeGroupVInts(docs, docs.length);
     for (long v : docs) {
       vintOut.writeVInt((int) v);
     }
@@ -124,9 +145,18 @@ public class GroupVIntBenchmark {
     byteBufferVIntIn = dir.openInput("vint", IOContext.DEFAULT);
   }
 
+  private void readGroupVIntsBaseline(DataInput in, long[] dst, int limit) throws IOException {
+    int i;
+    for (i = 0; i <= limit - 4; i += 4) {
+      GroupVIntUtil.readGroupVInt(in, dst, i);
+    }
+    for (; i < limit; ++i) {
+      dst[i] = in.readVInt();
+    }
+  }
+
   @Setup(Level.Trial)
   public void init() throws Exception {
-    long[] docs = new long[maxSize];
     Random r = new Random(0);
     for (int i = 0; i < maxSize; ++i) {
       float randomFloat = r.nextFloat();
@@ -140,10 +170,12 @@ public class GroupVIntBenchmark {
     }
     initByteBufferInput(docs);
     initArrayInput(docs);
+    initNioInput(docs);
+    initByteBuffersInput(docs);
   }
 
   @Benchmark
-  public void byteBufferReadVInt(Blackhole bh) throws IOException {
+  public void benchMMapDirectoryInputs_readVInt(Blackhole bh) throws IOException {
     byteBufferVIntIn.seek(0);
     for (int i = 0; i < size; i++) {
       values[i] = byteBufferVIntIn.readVInt();
@@ -152,14 +184,21 @@ public class GroupVIntBenchmark {
   }
 
   @Benchmark
-  public void byteBufferReadGroupVInt(Blackhole bh) throws IOException {
+  public void benchMMapDirectoryInputs_readGroupVInt(Blackhole bh) throws IOException {
     byteBufferGVIntIn.seek(0);
-    GroupVIntReader.readValues(byteBufferGVIntIn, values, size);
+    GroupVIntUtil.readGroupVInts(byteBufferGVIntIn, values, size);
     bh.consume(values);
   }
 
   @Benchmark
-  public void byteArrayReadVInt(Blackhole bh) {
+  public void benchMMapDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
+    byteBufferGVIntIn.seek(0);
+    this.readGroupVIntsBaseline(byteBufferGVIntIn, values, size);
+    bh.consume(values);
+  }
+
+  @Benchmark
+  public void benchByteArrayDataInput_readVInt(Blackhole bh) {
     byteArrayVIntIn.rewind();
     for (int i = 0; i < size; i++) {
       values[i] = byteArrayVIntIn.readVInt();
@@ -168,9 +207,43 @@ public class GroupVIntBenchmark {
   }
 
   @Benchmark
-  public void byteArrayReadGroupVInt(Blackhole bh) throws IOException {
+  public void benchByteArrayDataInput_readGroupVInt(Blackhole bh) throws IOException {
     byteArrayGVIntIn.rewind();
-    GroupVIntReader.readValues(byteArrayGVIntIn, values, size);
+    GroupVIntUtil.readGroupVInts(byteArrayGVIntIn, values, size);
     bh.consume(values);
+  }
+
+  @Benchmark
+  public void benchNIOFSDirectoryInputs_readGroupVInt(Blackhole bh) throws IOException {
+    nioGVIntIn.seek(0);
+    GroupVIntUtil.readGroupVInts(nioGVIntIn, values, size);
+    bh.consume(values);
+  }
+
+  @Benchmark
+  public void benchNIOFSDirectoryInputs_readGroupVIntBaseline(Blackhole bh) throws IOException {
+    nioGVIntIn.seek(0);
+    this.readGroupVIntsBaseline(nioGVIntIn, values, size);
+    bh.consume(values);
+  }
+
+  @Benchmark
+  public void benchByteBuffersIndexInput_readGroupVInt(Blackhole bh) throws IOException {
+    byteBuffersGVIntIn.seek(0);
+    GroupVIntUtil.readGroupVInts(byteBuffersGVIntIn, values, size);
+    bh.consume(values);
+  }
+
+  @Benchmark
+  public void benchByteBuffersIndexInput_readGroupVIntBaseline(Blackhole bh) throws IOException {
+    byteBuffersGVIntIn.seek(0);
+    this.readGroupVIntsBaseline(byteBuffersGVIntIn, values, size);
+    bh.consume(values);
+  }
+
+  @Benchmark
+  public void bench_writeGroupVInt(Blackhole bh) throws IOException {
+    byteBuffersGVIntOut.reset();
+    byteBuffersGVIntOut.writeGroupVInts(docs, size);
   }
 }

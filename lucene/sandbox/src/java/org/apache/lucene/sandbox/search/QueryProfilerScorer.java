@@ -22,7 +22,6 @@ import java.util.Collection;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.Weight;
 
 /**
  * {@link Scorer} wrapper that will compute how much time is spent on moving the iterator,
@@ -31,8 +30,6 @@ import org.apache.lucene.search.Weight;
 class QueryProfilerScorer extends Scorer {
 
   private final Scorer scorer;
-  private final QueryProfilerWeight profileWeight;
-
   private final QueryProfilerTimer scoreTimer,
       nextDocTimer,
       advanceTimer,
@@ -41,10 +38,8 @@ class QueryProfilerScorer extends Scorer {
       computeMaxScoreTimer,
       setMinCompetitiveScoreTimer;
 
-  QueryProfilerScorer(QueryProfilerWeight w, Scorer scorer, QueryProfilerBreakdown profile) {
-    super(w);
+  QueryProfilerScorer(Scorer scorer, QueryProfilerBreakdown profile) {
     this.scorer = scorer;
-    this.profileWeight = w;
     scoreTimer = profile.getTimer(QueryProfilerTimingType.SCORE);
     nextDocTimer = profile.getTimer(QueryProfilerTimingType.NEXT_DOC);
     advanceTimer = profile.getTimer(QueryProfilerTimingType.ADVANCE);
@@ -68,11 +63,6 @@ class QueryProfilerScorer extends Scorer {
     } finally {
       scoreTimer.stop();
     }
-  }
-
-  @Override
-  public Weight getWeight() {
-    return profileWeight;
   }
 
   @Override

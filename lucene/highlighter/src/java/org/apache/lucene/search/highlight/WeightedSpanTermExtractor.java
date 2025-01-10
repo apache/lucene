@@ -54,6 +54,7 @@ import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.FieldExistsQuery;
+import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
@@ -100,8 +101,8 @@ import org.apache.lucene.util.IOUtils;
 public class WeightedSpanTermExtractor {
 
   private String fieldName;
-  private TokenStream tokenStream; // set subsequent to getWeightedSpanTerms* methods
-  private String defaultField;
+  private TokenStream tokenStream; // set after getWeightedSpanTerms* methods
+  private final String defaultField;
   private boolean expandMultiTermQuery;
   private boolean cachedTokenStream;
   private boolean wrapToCaching = true;
@@ -133,7 +134,7 @@ public class WeightedSpanTermExtractor {
     } else if (query instanceof BooleanQuery) {
       for (BooleanClause clause : (BooleanQuery) query) {
         if (!clause.isProhibited()) {
-          extract(clause.getQuery(), boost, terms);
+          extract(clause.query(), boost, terms);
         }
       }
     } else if (query instanceof PhraseQuery) {
@@ -162,6 +163,11 @@ public class WeightedSpanTermExtractor {
         SpanNearQuery sp =
             new SpanNearQuery(clauses, phraseQuery.getSlop() + positionGaps, inorder);
         extractWeightedSpanTerms(terms, sp, boost);
+      }
+    } else if (query instanceof IndexOrDocValuesQuery) {
+      Query indexQuery = ((IndexOrDocValuesQuery) query).getIndexQuery();
+      if (indexQuery != null) {
+        extract(indexQuery, boost, terms);
       }
     } else if (query instanceof TermQuery || query instanceof SynonymQuery) {
       extractWeightedTerms(terms, query, boost);
@@ -244,7 +250,6 @@ public class WeightedSpanTermExtractor {
           && (!expandMultiTermQuery || !fieldNameComparator(((MultiTermQuery) query).getField()))) {
         return;
       }
-      Query origQuery = query;
       final IndexReader reader = getLeafContext().reader();
       Query rewritten;
       if (query instanceof MultiTermQuery) {
@@ -252,12 +257,11 @@ public class WeightedSpanTermExtractor {
             MultiTermQuery.SCORING_BOOLEAN_REWRITE.rewrite(
                 new IndexSearcher(reader), (MultiTermQuery) query);
       } else {
-        rewritten = origQuery.rewrite(new IndexSearcher(reader));
+        rewritten = query.rewrite(new IndexSearcher(reader));
       }
-      if (rewritten != origQuery) {
+      if (rewritten != query) {
         // only rewrite once and then flatten again - the rewritten query could have a special
-        // treatment
-        // if this method is overwritten in a subclass or above in the next recursion
+        // treatment if this method is overwritten in a subclass or above in the next recursion
         extract(rewritten, boost, terms);
       } else {
         extractUnknownQuery(query, terms);
@@ -293,67 +297,49 @@ public class WeightedSpanTermExtractor {
    */
   protected void extractWeightedSpanTerms(
       Map<String, WeightedSpanTerm> terms, SpanQuery spanQuery, float boost) throws IOException {
-    Set<String> fieldNames;
 
-    if (fieldName == null) {
-      fieldNames = new HashSet<>();
-      collectSpanQueryFields(spanQuery, fieldNames);
-    } else {
-      fieldNames = new HashSet<>(1);
-      fieldNames.add(fieldName);
-    }
-    // To support the use of the default field name
-    if (defaultField != null) {
-      fieldNames.add(defaultField);
+    Set<String> queryFieldNames = new HashSet<>();
+    collectSpanQueryFields(spanQuery, queryFieldNames);
+    if (fieldName != null
+        && queryFieldNames.contains(fieldName) == false
+        && (defaultField == null || queryFieldNames.contains(defaultField) == false)) {
+      return;
     }
 
-    Map<String, SpanQuery> queries = new HashMap<>();
-
-    Set<Term> nonWeightedTerms = new HashSet<>();
     final boolean mustRewriteQuery = mustRewriteQuery(spanQuery);
     final IndexSearcher searcher = new IndexSearcher(getLeafContext());
     searcher.setQueryCache(null);
-    if (mustRewriteQuery) {
-      final SpanQuery rewrittenQuery = (SpanQuery) searcher.rewrite(spanQuery);
-      for (final String field : fieldNames) {
-        queries.put(field, rewrittenQuery);
-      }
-      rewrittenQuery.visit(QueryVisitor.termCollector(nonWeightedTerms));
-    } else {
-      spanQuery.visit(QueryVisitor.termCollector(nonWeightedTerms));
+    final SpanQuery query = mustRewriteQuery ? (SpanQuery) searcher.rewrite(spanQuery) : spanQuery;
+
+    final Set<Term> nonWeightedTerms = new HashSet<>();
+    query.visit(QueryVisitor.termCollector(nonWeightedTerms));
+    if (nonWeightedTerms.isEmpty()) {
+      return;
     }
 
-    List<PositionSpan> spanPositions = new ArrayList<>();
+    final List<PositionSpan> spanPositions = new ArrayList<>();
 
-    for (final String field : fieldNames) {
-      final SpanQuery q;
-      if (mustRewriteQuery) {
-        q = queries.get(field);
-      } else {
-        q = spanQuery;
-      }
-      LeafReaderContext context = getLeafContext();
-      SpanWeight w =
-          (SpanWeight) searcher.createWeight(searcher.rewrite(q), ScoreMode.COMPLETE_NO_SCORES, 1);
-      Bits acceptDocs = context.reader().getLiveDocs();
-      final Spans spans = w.getSpans(context, SpanWeight.Postings.POSITIONS);
-      if (spans == null) {
-        return;
-      }
+    LeafReaderContext context = getLeafContext();
+    SpanWeight w =
+        (SpanWeight)
+            searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
+    final Spans spans = w.getSpans(context, SpanWeight.Postings.POSITIONS);
+    if (spans == null) {
+      return;
+    }
 
-      // collect span positions
-      while (spans.nextDoc() != Spans.NO_MORE_DOCS) {
-        if (acceptDocs != null && acceptDocs.get(spans.docID()) == false) {
-          continue;
-        }
-        while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
-          spanPositions.add(new PositionSpan(spans.startPosition(), spans.endPosition() - 1));
-        }
+    final Bits acceptDocs = context.reader().getLiveDocs();
+    // collect span positions
+    while (spans.nextDoc() != Spans.NO_MORE_DOCS) {
+      if (acceptDocs != null && acceptDocs.get(spans.docID()) == false) {
+        continue;
+      }
+      while (spans.nextStartPosition() != Spans.NO_MORE_POSITIONS) {
+        spanPositions.add(new PositionSpan(spans.startPosition(), spans.endPosition() - 1));
       }
     }
 
-    if (spanPositions.size() == 0) {
-      // no spans found
+    if (spanPositions.isEmpty()) {
       return;
     }
 
@@ -401,11 +387,9 @@ public class WeightedSpanTermExtractor {
 
   /** Necessary to implement matches for queries against <code>defaultField</code> */
   protected boolean fieldNameComparator(String fieldNameToCheck) {
-    boolean rv =
-        fieldName == null
-            || fieldName.equals(fieldNameToCheck)
-            || (defaultField != null && defaultField.equals(fieldNameToCheck));
-    return rv;
+    return fieldName == null
+        || fieldName.equals(fieldNameToCheck)
+        || (defaultField != null && defaultField.equals(fieldNameToCheck));
   }
 
   protected LeafReaderContext getLeafContext() throws IOException {
@@ -555,11 +539,7 @@ public class WeightedSpanTermExtractor {
   public Map<String, WeightedSpanTerm> getWeightedSpanTermsWithScores(
       Query query, float boost, TokenStream tokenStream, String fieldName, IndexReader reader)
       throws IOException {
-    if (fieldName != null) {
-      this.fieldName = fieldName;
-    } else {
-      this.fieldName = null;
-    }
+    this.fieldName = fieldName;
     this.tokenStream = tokenStream;
 
     Map<String, WeightedSpanTerm> terms = new PositionCheckingMap<>();
@@ -640,7 +620,6 @@ public class WeightedSpanTermExtractor {
    * This class makes sure that if both position sensitive and insensitive versions of the same term
    * are added, the position insensitive one wins.
    */
-  @SuppressWarnings("serial")
   protected static class PositionCheckingMap<K> extends HashMap<K, WeightedSpanTerm> {
 
     @Override
@@ -650,15 +629,12 @@ public class WeightedSpanTermExtractor {
     }
 
     @Override
-    public WeightedSpanTerm put(K key, WeightedSpanTerm value) {
-      WeightedSpanTerm prev = super.put(key, value);
-      if (prev == null) return prev;
-      WeightedSpanTerm prevTerm = prev;
-      WeightedSpanTerm newTerm = value;
-      if (!prevTerm.positionSensitive) {
+    public WeightedSpanTerm put(K key, WeightedSpanTerm newTerm) {
+      WeightedSpanTerm prevTerm = super.put(key, newTerm);
+      if (prevTerm != null && prevTerm.positionSensitive == false) {
         newTerm.positionSensitive = false;
       }
-      return prev;
+      return prevTerm;
     }
   }
 

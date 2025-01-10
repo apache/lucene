@@ -20,8 +20,10 @@ package org.apache.lucene.util.automaton;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.lucene.internal.hppc.BitMixer;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.hppc.BitMixer;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A RunAutomaton that does not require DFA. It will lazily determinize on-demand, memorizing the
@@ -31,12 +33,15 @@ import org.apache.lucene.util.hppc.BitMixer;
  *
  * @lucene.internal
  */
-public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
+public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accountable {
 
   /** state ordinal of "no such state" */
-  public static final int MISSING = -1;
+  private static final int MISSING = -1;
 
   private static final int NOT_COMPUTED = -2;
+
+  private static final long BASE_RAM_BYTES =
+      RamUsageEstimator.shallowSizeOfInstance(NFARunAutomaton.class);
 
   private final Automaton automaton;
   private final int[] points;
@@ -193,8 +198,12 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
       // numTransitions times
     }
     assert dStates[t.source].transitions[t.transitionUpto] != NOT_COMPUTED;
-    t.dest = dStates[t.source].transitions[t.transitionUpto];
 
+    setTransitionAccordingly(t);
+  }
+
+  private void setTransitionAccordingly(Transition t) {
+    t.dest = dStates[t.source].transitions[t.transitionUpto];
     t.min = points[t.transitionUpto];
     if (t.transitionUpto == points.length - 1) {
       t.max = alphabetSize - 1;
@@ -222,15 +231,20 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
     }
     assert outgoingTransitions == index;
 
-    t.min = points[t.transitionUpto];
-    if (t.transitionUpto == points.length - 1) {
-      t.max = alphabetSize - 1;
-    } else {
-      t.max = points[t.transitionUpto + 1] - 1;
-    }
+    setTransitionAccordingly(t);
   }
 
-  private class DState {
+  @Override
+  public long ramBytesUsed() {
+    return BASE_RAM_BYTES
+        + RamUsageEstimator.sizeOfObject(automaton)
+        + RamUsageEstimator.sizeOfObject(points)
+        + RamUsageEstimator.sizeOfMap(dStateToOrd)
+        + RamUsageEstimator.sizeOfObject(dStates)
+        + RamUsageEstimator.sizeOfObject(classmap);
+  }
+
+  private class DState implements Accountable {
     private final int[] nfaStates;
     // this field is lazily init'd when first time caller wants to add a new transition
     private int[] transitions;
@@ -426,6 +440,18 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor {
       if (o == null || getClass() != o.getClass()) return false;
       DState dState = (DState) o;
       return hashCode == dState.hashCode && Arrays.equals(nfaStates, dState.nfaStates);
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return RamUsageEstimator.alignObjectSize(
+              Integer.BYTES * 3
+                  + 1
+                  + Transition.BYTES_USED * 2
+                  + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+                  + RamUsageEstimator.NUM_BYTES_OBJECT_REF * 4L)
+          + RamUsageEstimator.sizeOfObject(nfaStates)
+          + RamUsageEstimator.sizeOfObject(transitions);
     }
   }
 }

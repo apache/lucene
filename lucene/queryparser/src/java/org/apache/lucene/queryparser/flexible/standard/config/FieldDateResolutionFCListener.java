@@ -36,7 +36,7 @@ import org.apache.lucene.queryparser.flexible.standard.config.StandardQueryConfi
  */
 public class FieldDateResolutionFCListener implements FieldConfigListener {
 
-  private QueryConfigHandler config = null;
+  private final QueryConfigHandler config;
 
   public FieldDateResolutionFCListener(QueryConfigHandler config) {
     this.config = config;

@@ -64,7 +64,7 @@ public class TestAllFilesCheckIndexHeader extends LuceneTestCase {
       }
       if (random().nextInt(15) == 0) {
         riw.updateNumericDocValue(
-            new Term("docid", Integer.toString(i)), "docid_intDV", Long.valueOf(i));
+            new Term("docid", Integer.toString(i)), "page_views", Long.valueOf(i));
       }
     }
 
@@ -115,7 +115,7 @@ public class TestAllFilesCheckIndexHeader extends LuceneTestCase {
           // time this will only require one iteration!
           while (true) {
             try (IndexOutput out = dirCopy.createOutput(name, IOContext.DEFAULT);
-                IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
+                IndexInput in = dir.openInput(name, IOContext.READONCE)) {
               // keeps same file length, but replaces the first wrongBytes with random bytes:
               byte[] bytes = new byte[wrongBytes];
               random().nextBytes(bytes);

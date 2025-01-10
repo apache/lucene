@@ -41,7 +41,7 @@ public class TestQueryTreeBuilder extends LuceneTestCase {
     assertEquals("OK", result);
   }
 
-  private static interface DummyQueryNodeInterface extends QueryNode {}
+  private interface DummyQueryNodeInterface extends QueryNode {}
 
   private abstract static class AbstractDummyQueryNode extends QueryNodeImpl
       implements DummyQueryNodeInterface {}

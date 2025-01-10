@@ -18,10 +18,12 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -34,6 +36,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /** Wraps the default KnnVectorsFormat and provides additional assertions. */
 public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
@@ -100,14 +103,22 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
   }
 
-  static class AssertingKnnVectorsReader extends KnnVectorsReader {
+  static class AssertingKnnVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
     final KnnVectorsReader delegate;
     final FieldInfos fis;
+    final boolean mergeInstance;
+    AtomicInteger mergeInstanceCount = new AtomicInteger();
+    AtomicInteger finishMergeCount = new AtomicInteger();
 
     AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
+      this(delegate, fis, false);
+    }
+
+    AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis, boolean mergeInstance) {
       assert delegate != null;
       this.delegate = delegate;
       this.fis = fis;
+      this.mergeInstance = mergeInstance;
     }
 
     @Override
@@ -123,7 +134,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
           && fi.getVectorEncoding() == VectorEncoding.FLOAT32;
       FloatVectorValues floatValues = delegate.getFloatVectorValues(field);
       assert floatValues != null;
-      assert floatValues.docID() == -1;
+      assert floatValues.iterator().docID() == -1;
       assert floatValues.size() >= 0;
       assert floatValues.dimension() > 0;
       return floatValues;
@@ -137,7 +148,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
           && fi.getVectorEncoding() == VectorEncoding.BYTE;
       ByteVectorValues values = delegate.getByteVectorValues(field);
       assert values != null;
-      assert values.docID() == -1;
+      assert values.iterator().docID() == -1;
       assert values.size() >= 0;
       assert values.dimension() > 0;
       return values;
@@ -146,6 +157,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
+      assert !mergeInstance;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -156,6 +168,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
+      assert !mergeInstance;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -164,14 +177,57 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void close() throws IOException {
-      delegate.close();
-      delegate.close();
+    public KnnVectorsReader getMergeInstance() {
+      assert !mergeInstance;
+      var mergeVectorsReader = delegate.getMergeInstance();
+      assert mergeVectorsReader != null;
+      mergeInstanceCount.incrementAndGet();
+
+      final var parent = this;
+      return new AssertingKnnVectorsReader(
+          mergeVectorsReader, AssertingKnnVectorsReader.this.fis, true) {
+        @Override
+        public KnnVectorsReader getMergeInstance() {
+          assert false; // merging from a merge instance it not allowed
+          return null;
+        }
+
+        @Override
+        public void finishMerge() throws IOException {
+          assert mergeInstance;
+          delegate.finishMerge();
+          parent.finishMergeCount.incrementAndGet();
+        }
+
+        @Override
+        public void close() {
+          assert false; // closing the merge instance it not allowed
+        }
+      };
     }
 
     @Override
-    public long ramBytesUsed() {
-      return delegate.ramBytesUsed();
+    public void finishMerge() throws IOException {
+      assert mergeInstance;
+      delegate.finishMerge();
+      finishMergeCount.incrementAndGet();
+    }
+
+    @Override
+    public void close() throws IOException {
+      assert !mergeInstance;
+      delegate.close();
+      delegate.close();
+      assert finishMergeCount.get() <= 0 || mergeInstanceCount.get() == finishMergeCount.get();
+    }
+
+    @Override
+    public HnswGraph getGraph(String field) throws IOException {
+      if (delegate instanceof HnswGraphProvider) {
+        return ((HnswGraphProvider) delegate).getGraph(field);
+      } else {
+        return null;
+      }
     }
   }
 }

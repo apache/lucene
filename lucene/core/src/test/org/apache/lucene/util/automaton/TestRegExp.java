@@ -19,6 +19,7 @@ package org.apache.lucene.util.automaton;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestRegExp extends LuceneTestCase {
@@ -119,7 +120,7 @@ public class TestRegExp extends LuceneTestCase {
 
     // Add any head to the result, unchanged
     if (substitutionPoint > 0) {
-      result.append(docValue.substring(0, substitutionPoint));
+      result.append(docValue, 0, substitutionPoint);
     }
 
     // Modify the middle...
@@ -142,11 +143,11 @@ public class TestRegExp extends LuceneTestCase {
         break;
       case 3:
         // Star-replace all ab sequences.
-        result.append(replacementPart.replaceAll("ab", ".*"));
+        result.append(replacementPart.replace("ab", ".*"));
         break;
       case 4:
         // .-replace all b chars
-        result.append(replacementPart.replaceAll("b", "."));
+        result.append(replacementPart.replace("b", "."));
         break;
       case 5:
         // length-limited stars {1,2}
@@ -165,7 +166,7 @@ public class TestRegExp extends LuceneTestCase {
         break;
       case 8:
         // NOT a character - replace all b's with "not a"
-        result.append(replacementPart.replaceAll("b", "[^a]"));
+        result.append(replacementPart.replace("b", "[^a]"));
         break;
       case 9:
         // Make whole part repeatable 1 or more times
@@ -258,5 +259,20 @@ public class TestRegExp extends LuceneTestCase {
 
   public void testRegExpNoStackOverflow() {
     new RegExp("(a)|".repeat(50000) + "(a)");
+  }
+
+  /**
+   * Tests the deprecate complement flag. Keep the simple test only, no random tests to let it cause
+   * us pain.
+   *
+   * @deprecated Remove in Lucene 11
+   */
+  @Deprecated
+  public void testDeprecatedComplement() {
+    Automaton expected =
+        Operations.complement(
+            Automata.makeString("abcd"), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    Automaton actual = new RegExp("~(abcd)", RegExp.DEPRECATED_COMPLEMENT).toAutomaton();
+    assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
   }
 }

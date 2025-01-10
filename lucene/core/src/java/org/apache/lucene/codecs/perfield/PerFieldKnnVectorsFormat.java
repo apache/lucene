@@ -19,24 +19,30 @@ package org.apache.lucene.codecs.perfield;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.TreeMap;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Enables per field numeric vector support.
@@ -185,9 +191,10 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
   }
 
   /** VectorReader that can wrap multiple delegate readers, selected by field. */
-  public static class FieldsReader extends KnnVectorsReader {
+  public static class FieldsReader extends KnnVectorsReader implements HnswGraphProvider {
 
-    private final Map<String, KnnVectorsReader> fields = new TreeMap<>();
+    private final IntObjectHashMap<KnnVectorsReader> fields = new IntObjectHashMap<>();
+    private final FieldInfos fieldInfos;
 
     /**
      * Create a FieldsReader over a segment, opening VectorReaders for each KnnVectorsFormat
@@ -197,7 +204,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
      * @throws IOException if one of the delegate readers throws
      */
     public FieldsReader(final SegmentReadState readState) throws IOException {
-
+      this.fieldInfos = readState.fieldInfos;
       // Init each unique format:
       boolean success = false;
       Map<String, KnnVectorsReader> formats = new HashMap<>();
@@ -222,7 +229,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
                     segmentSuffix,
                     format.fieldsReader(new SegmentReadState(readState, segmentSuffix)));
               }
-              fields.put(fieldName, formats.get(segmentSuffix));
+              fields.put(fi.number, formats.get(segmentSuffix));
             }
           }
         }
@@ -234,66 +241,107 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
       }
     }
 
+    private FieldsReader(final FieldsReader fieldsReader) {
+      this.fieldInfos = fieldsReader.fieldInfos;
+      for (FieldInfo fi : this.fieldInfos) {
+        if (fi.hasVectorValues() && fieldsReader.fields.containsKey(fi.number)) {
+          this.fields.put(fi.number, fieldsReader.fields.get(fi.number).getMergeInstance());
+        }
+      }
+    }
+
+    @Override
+    public KnnVectorsReader getMergeInstance() {
+      return new FieldsReader(this);
+    }
+
+    @Override
+    public void finishMerge() throws IOException {
+      for (ObjectCursor<KnnVectorsReader> knnVectorReader : fields.values()) {
+        knnVectorReader.value.finishMerge();
+      }
+    }
+
     /**
      * Return the underlying VectorReader for the given field
      *
      * @param field the name of a numeric vector field
      */
     public KnnVectorsReader getFieldReader(String field) {
-      return fields.get(field);
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      if (info == null) {
+        return null;
+      }
+      return fields.get(info.number);
     }
 
     @Override
     public void checkIntegrity() throws IOException {
-      for (KnnVectorsReader reader : fields.values()) {
-        reader.checkIntegrity();
+      for (ObjectCursor<KnnVectorsReader> cursor : fields.values()) {
+        cursor.value.checkIntegrity();
       }
     }
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-      KnnVectorsReader knnVectorsReader = fields.get(field);
-      if (knnVectorsReader == null) {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
         return null;
-      } else {
-        return knnVectorsReader.getFloatVectorValues(field);
       }
+      return reader.getFloatVectorValues(field);
     }
 
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
-      KnnVectorsReader knnVectorsReader = fields.get(field);
-      if (knnVectorsReader == null) {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
         return null;
-      } else {
-        return knnVectorsReader.getByteVectorValues(field);
       }
+      return reader.getByteVectorValues(field);
     }
 
     @Override
     public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      fields.get(field).search(field, target, knnCollector, acceptDocs);
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
+        return;
+      }
+      reader.search(field, target, knnCollector, acceptDocs);
     }
 
     @Override
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      fields.get(field).search(field, target, knnCollector, acceptDocs);
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
+        return;
+      }
+      reader.search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public HnswGraph getGraph(String field) throws IOException {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      KnnVectorsReader knnVectorsReader = fields.get(info.number);
+      if (knnVectorsReader instanceof HnswGraphProvider) {
+        return ((HnswGraphProvider) knnVectorsReader).getGraph(field);
+      } else {
+        return null;
+      }
     }
 
     @Override
     public void close() throws IOException {
-      IOUtils.close(fields.values());
-    }
-
-    @Override
-    public long ramBytesUsed() {
-      long total = 0;
-      for (KnnVectorsReader reader : fields.values()) {
-        total += reader.ramBytesUsed();
+      List<KnnVectorsReader> readers = new ArrayList<>(fields.size());
+      for (ObjectCursor<KnnVectorsReader> cursor : fields.values()) {
+        readers.add(cursor.value);
       }
-      return total;
+      IOUtils.close(readers);
     }
   }
 
@@ -309,14 +357,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
   }
 
-  private static class WriterAndSuffix implements Closeable {
-    final KnnVectorsWriter writer;
-    final int suffix;
-
-    WriterAndSuffix(KnnVectorsWriter writer, int suffix) {
-      this.writer = writer;
-      this.suffix = suffix;
-    }
+  private record WriterAndSuffix(KnnVectorsWriter writer, int suffix) implements Closeable {
 
     @Override
     public void close() throws IOException {

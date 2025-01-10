@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.document;
 
+import java.util.Collection;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.MultiTermQuery;
@@ -41,9 +43,27 @@ public class SortedSetDocValuesField extends Field {
   /** Type for sorted bytes DocValues */
   public static final FieldType TYPE = new FieldType();
 
+  private static final FieldType INDEXED_TYPE;
+
   static {
     TYPE.setDocValuesType(DocValuesType.SORTED_SET);
     TYPE.freeze();
+
+    INDEXED_TYPE = new FieldType(TYPE);
+    INDEXED_TYPE.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
+    INDEXED_TYPE.freeze();
+  }
+
+  /**
+   * Creates a new {@link SortedSetDocValuesField} with the specified 64-bit long value that also
+   * creates a {@link FieldType#docValuesSkipIndexType() skip index}.
+   *
+   * @param name field name
+   * @param bytes binary content
+   * @throws IllegalArgumentException if the field name is null
+   */
+  public static SortedSetDocValuesField indexedField(String name, BytesRef bytes) {
+    return new SortedSetDocValuesField(name, bytes, INDEXED_TYPE);
   }
 
   /**
@@ -54,7 +74,11 @@ public class SortedSetDocValuesField extends Field {
    * @throws IllegalArgumentException if the field name is null
    */
   public SortedSetDocValuesField(String name, BytesRef bytes) {
-    super(name, TYPE);
+    this(name, bytes, TYPE);
+  }
+
+  private SortedSetDocValuesField(String name, BytesRef bytes, FieldType fieldType) {
+    super(name, fieldType);
     fieldsData = bytes;
   }
 
@@ -103,7 +127,7 @@ public class SortedSetDocValuesField extends Field {
    * in an {@link IndexOrDocValuesQuery}, alongside a set query that executes on postings, such as
    * {@link TermInSetQuery}.
    */
-  public static Query newSlowSetQuery(String field, BytesRef... values) {
+  public static Query newSlowSetQuery(String field, Collection<BytesRef> values) {
     return new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, values);
   }
 }

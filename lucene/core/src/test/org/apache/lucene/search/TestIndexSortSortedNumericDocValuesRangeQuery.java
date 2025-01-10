@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.search;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.Matchers.instanceOf;
 
 import java.io.IOException;
 import java.util.Random;
@@ -36,6 +36,7 @@ import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.hamcrest.MatcherAssert;
 
 @LuceneTestCase.SuppressCodecs(value = "SimpleText")
 public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCase {
@@ -98,7 +99,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (scores) {
@@ -359,7 +360,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     Query rewrittenQuery = query.rewrite(newSearcher(reader));
     assertNotEquals(query, rewrittenQuery);
-    assertThat(rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
+    MatcherAssert.assertThat(
+        rewrittenQuery, instanceOf(IndexSortSortedNumericDocValuesRangeQuery.class));
 
     IndexSortSortedNumericDocValuesRangeQuery rangeQuery =
         (IndexSortSortedNumericDocValuesRangeQuery) rewrittenQuery;
