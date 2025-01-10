@@ -1,13 +1,28 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.sandbox.vectorsearch;
 
+import com.nvidia.cuvs.CuVSResources;
+import com.nvidia.cuvs.LibraryNotFoundException;
 import java.io.IOException;
-
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.sandbox.vectorsearch.CuVSVectorsWriter.MergeStrategy;
-
-import com.nvidia.cuvs.CuVSResources;
 
 public class CuVSVectorsFormat extends KnnVectorsFormat {
 
@@ -30,11 +45,13 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
     try {
       resources = new CuVSResources();
     } catch (Throwable e) {
-      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
-  public CuVSVectorsFormat(int cuvsWriterThreads, int intGraphDegree, int graphDegree, MergeStrategy mergeStrategy) {
+  public CuVSVectorsFormat(
+      int cuvsWriterThreads, int intGraphDegree, int graphDegree, MergeStrategy mergeStrategy)
+      throws LibraryNotFoundException {
     super("CuVSVectorsFormat");
     this.mergeStrategy = mergeStrategy;
     this.cuvsWriterThreads = cuvsWriterThreads;
@@ -42,14 +59,17 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
     this.graphDegree = graphDegree;
     try {
       resources = new CuVSResources();
+    } catch (LibraryNotFoundException ex) {
+      throw ex;
     } catch (Throwable e) {
-      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 
   @Override
   public CuVSVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new CuVSVectorsWriter(state, cuvsWriterThreads, intGraphDegree, graphDegree, mergeStrategy, resources);
+    return new CuVSVectorsWriter(
+        state, cuvsWriterThreads, intGraphDegree, graphDegree, mergeStrategy, resources);
   }
 
   @Override
@@ -57,14 +77,12 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
     try {
       return new CuVSVectorsReader(state, resources);
     } catch (Throwable e) {
-      e.printStackTrace();
+      throw new RuntimeException(e);
     }
-    return null;
   }
 
   @Override
   public int getMaxDimensions(String fieldName) {
     return maxDimensions;
   }
-
 }
