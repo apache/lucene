@@ -117,7 +117,7 @@ public class MultiVectorOrdConfiguration {
     return DirectMonotonicReader.getInstance(nextBaseOrdMeta, slice);
   }
 
-  public int size() {
+  public int ordCount() {
     return numValues;
   }
 }
