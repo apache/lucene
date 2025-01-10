@@ -52,6 +52,8 @@ Improvements
   (Robert Muir)
 * GITHUB#13984: Add HNSW graph checks and stats to CheckIndex
 
+* GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
+
 Optimizations
 ---------------------
 
