@@ -581,7 +581,8 @@ public class IndexSearcher {
    * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
    *     clauses.
    */
-  public TopDocs searchAfter(@Nullable ScoreDoc after, Query query, int numHits) throws IOException {
+  public TopDocs searchAfter(@Nullable ScoreDoc after, Query query, int numHits)
+      throws IOException {
     final int limit = Math.max(1, reader.maxDoc());
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(
@@ -714,7 +715,8 @@ public class IndexSearcher {
   }
 
   private TopFieldDocs searchAfter(
-      @Nullable FieldDoc after, Query query, int numHits, Sort sort, boolean doDocScores) throws IOException {
+      @Nullable FieldDoc after, Query query, int numHits, Sort sort, boolean doDocScores)
+      throws IOException {
     final int limit = Math.max(1, reader.maxDoc());
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(

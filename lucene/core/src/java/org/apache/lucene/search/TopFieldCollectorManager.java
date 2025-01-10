@@ -77,7 +77,8 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
    *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
    *     count accurate, but this will also make query processing slower.
    */
-  public TopFieldCollectorManager(Sort sort, int numHits, @Nullable FieldDoc after, int totalHitsThreshold) {
+  public TopFieldCollectorManager(
+      Sort sort, int numHits, @Nullable FieldDoc after, int totalHitsThreshold) {
     if (totalHitsThreshold < 0) {
       throw new IllegalArgumentException(
           "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
