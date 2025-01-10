@@ -20,6 +20,9 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.util.BitSet;
@@ -33,7 +36,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
  */
 public class HnswGraphSearcher {
   // How many extra candidates to consider for 2-hop neighbors
-  private static final float TWO_HOP_LIMIT = 1.5f;
+  private static final float MAX_TWO_HOP_LIMIT = 2.0f;
   // How many filtered candidates must be found to consider 2-hop neighbors
   private static final float TWO_STEP_LAMBDA = 0.10f;
 
@@ -96,6 +99,10 @@ public class HnswGraphSearcher {
             new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
     return knnCollector;
+  }
+
+  private static BitSet bitSet(Bits acceptOrds, int graphSize, int topk) {
+    int approximateVisitation = (int) (16 * Math.log(graphSize) * topk);
   }
 
   private static void search(
@@ -218,7 +225,7 @@ public class HnswGraphSearcher {
     }
 
     int[] neighbors = new int[32];
-    int[] filteredNeighbors = new int[32];
+    IntArrayQueue filteredNeighborQueue = new IntArrayQueue(32);
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = results.minCompetitiveSimilarity();
@@ -234,14 +241,11 @@ public class HnswGraphSearcher {
       // This is necessary because we need to call `seek` on each neighbor to consider 2-hop
       // neighbors
       int neighborCount = graph.consumeCurrentNeighbors(neighbors);
-      int expandedNeighborCount = (int) (neighborCount * TWO_HOP_LIMIT);
+      filteredNeighborQueue.clear();
 
       // We only consider maxConn 1/2-hop neighbors
       int neighborsProcessed = 0;
-      // Walk 1-hop neighbors
-      int filteredNeighborsCount = 0;
       for (int i = 0; i < neighborCount; i++) {
-        if (neighborsProcessed > expandedNeighborCount) break;
         int friendOrd = neighbors[i];
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
@@ -252,7 +256,7 @@ public class HnswGraphSearcher {
         }
         neighborsProcessed++;
         if (acceptOrds != null && acceptOrds.get(friendOrd) == false) {
-          filteredNeighbors[filteredNeighborsCount++] = friendOrd;
+          filteredNeighborQueue.add(friendOrd);
           continue;
         }
         float friendSimilarity = scorer.score(friendOrd);
@@ -264,12 +268,17 @@ public class HnswGraphSearcher {
           }
         }
       }
-      float percentFiltered = (float) filteredNeighborsCount / neighborCount;
-      // If the filter is too restrictive, walk 2-hop neighbors
+      float percentFiltered = (float) filteredNeighborQueue.count() / neighborCount;
+      int expandedNeighborCount = (int) Math.min(neighborCount * MAX_TWO_HOP_LIMIT, neighborCount/(1 - percentFiltered));
+      filteredNeighborQueue.expand(expandedNeighborCount);
+      int maxExpandedNeighbors = (int)(Math.log(neighborCount / (1 - percentFiltered)) * (neighborCount - filteredNeighborQueue.count()));
+      int filteredProcessed = filteredNeighborQueue.count();
+      // print the percent of neighbors that were filtered
       if (percentFiltered > TWO_STEP_LAMBDA) {
-        for (int n = 0; n < filteredNeighborsCount; n++) {
+        while (filteredNeighborQueue.isEmpty() == false && neighborsProcessed < expandedNeighborCount) {
+          int filteredNeighbor = filteredNeighborQueue.poll();
           // Only walk 2-hop neighbors if filter doesn't match
-          graphSeek(graph, level, filteredNeighbors[n]);
+          graphSeek(graph, level, filteredNeighbor);
           int twoHopFriendOrd;
           while ((twoHopFriendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS
               && neighborsProcessed < expandedNeighborCount) {
@@ -280,7 +289,7 @@ public class HnswGraphSearcher {
             if (results.earlyTerminated()) {
               break;
             }
-
+            filteredProcessed++;
             // Only calculate score and consider candidate if filter matches
             if (acceptOrds.get(twoHopFriendOrd)) {
               neighborsProcessed++;
@@ -292,6 +301,8 @@ public class HnswGraphSearcher {
                   minAcceptedSimilarity = results.minCompetitiveSimilarity();
                 }
               }
+            } else if (filteredProcessed < maxExpandedNeighbors) {
+              filteredNeighborQueue.add(twoHopFriendOrd);
             }
           }
         }
@@ -362,6 +373,48 @@ public class HnswGraphSearcher {
         return cur.nodes()[upto];
       }
       return NO_MORE_DOCS;
+    }
+  }
+
+  private static class IntArrayQueue {
+    private int[] nodes;
+    private int upto;
+    private int size;
+
+    IntArrayQueue(int capacity) {
+      nodes = new int[capacity];
+    }
+
+    int count() {
+      return size - upto;
+    }
+
+    void expand(int capacity) {
+      if (nodes.length < capacity) {
+        int[] newNodes = new int[capacity];
+        System.arraycopy(nodes, 0, newNodes, 0, size);
+        nodes = newNodes;
+      }
+    }
+
+    void add(int node) {
+      if (size == nodes.length) {
+        expand(size * 2);
+      }
+      nodes[size++] = node;
+    }
+
+    boolean isEmpty() {
+      return upto == size;
+    }
+
+    int poll() {
+      return nodes[upto++];
+    }
+
+    void clear() {
+      upto = 0;
+      size = 0;
     }
   }
 }
