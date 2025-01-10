@@ -146,14 +146,17 @@ abstract class AbstractKnnVectorQuery extends Query {
     // Perform the approximate kNN search
     // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, timeLimitingKnnCollectorManager);
-    if ((results.totalHits.relation() == TotalHits.Relation.EQUAL_TO && results.totalHits.value() >= k)
+    if ((results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
+            && results.totalHits.value() >= k)
         // Return partial results only when timeout is met
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
     } else {
       TopDocs exactResults = exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
       return new TopDocs(
-        new TotalHits(exactResults.totalHits.value() + results.totalHits.value(), TotalHits.Relation.EQUAL_TO),
+          new TotalHits(
+              exactResults.totalHits.value() + results.totalHits.value(),
+              TotalHits.Relation.EQUAL_TO),
           exactResults.scoreDocs);
     }
   }

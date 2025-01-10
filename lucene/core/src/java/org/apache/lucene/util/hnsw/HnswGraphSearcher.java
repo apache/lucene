@@ -20,9 +20,6 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-
-import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.util.BitSet;
@@ -74,7 +71,8 @@ public class HnswGraphSearcher {
       throws IOException {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
-            new NeighborQueue(knnCollector.k(), true), bitSet(acceptOrds, getGraphSize(graph), knnCollector.k()));
+            new NeighborQueue(knnCollector.k(), true),
+            bitSet(acceptOrds, getGraphSize(graph), knnCollector.k()));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
   }
 
@@ -104,10 +102,13 @@ public class HnswGraphSearcher {
   private static BitSet bitSet(Bits acceptOrds, int graphSize, int topk) {
     float percentFiltered = 0.0f;
     if (acceptOrds instanceof BitSet bitSet) {
-      percentFiltered = (float)bitSet.cardinality() / graphSize;
+      percentFiltered = (float) bitSet.cardinality() / graphSize;
     }
     assert percentFiltered >= 0.0f && percentFiltered <= 1.0f;
-    int approximateVisitation = (int) (((int)Math.log(Math.sqrt(16)) * (int)Math.log(graphSize) * topk) * (1f / percentFiltered));
+    int approximateVisitation =
+        (int)
+            (((int) Math.log(Math.sqrt(16)) * (int) Math.log(graphSize) * topk)
+                * (1f / percentFiltered));
     if (approximateVisitation < (graphSize >>> 7)) {
       return new SparseFixedBitSet(graphSize);
     } else {
@@ -279,13 +280,18 @@ public class HnswGraphSearcher {
         }
       }
       float percentFiltered = (float) filteredNeighborQueue.count() / neighborCount;
-      int expandedNeighborCount = (int) Math.min(neighborCount * MAX_TWO_HOP_LIMIT, neighborCount/(1 - percentFiltered));
+      int expandedNeighborCount =
+          (int) Math.min(neighborCount * MAX_TWO_HOP_LIMIT, neighborCount / (1 - percentFiltered));
       filteredNeighborQueue.expand(expandedNeighborCount);
-      int maxExpandedNeighbors = (int)(Math.log(neighborCount / (1 - percentFiltered)) * (neighborCount - filteredNeighborQueue.count()));
+      int maxExpandedNeighbors =
+          (int)
+              (Math.log(neighborCount / (1 - percentFiltered))
+                  * (neighborCount - filteredNeighborQueue.count()));
       int filteredProcessed = filteredNeighborQueue.count();
       // print the percent of neighbors that were filtered
       if (percentFiltered > TWO_STEP_LAMBDA) {
-        while (filteredNeighborQueue.isEmpty() == false && neighborsProcessed < expandedNeighborCount) {
+        while (filteredNeighborQueue.isEmpty() == false
+            && neighborsProcessed < expandedNeighborCount) {
           int filteredNeighbor = filteredNeighborQueue.poll();
           // Only walk 2-hop neighbors if filter doesn't match
           graphSeek(graph, level, filteredNeighbor);
