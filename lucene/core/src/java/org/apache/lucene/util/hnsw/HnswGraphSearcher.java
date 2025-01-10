@@ -74,7 +74,7 @@ public class HnswGraphSearcher {
       throws IOException {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
-            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
+            new NeighborQueue(knnCollector.k(), true), bitSet(acceptOrds, getGraphSize(graph), knnCollector.k()));
     search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
   }
 
@@ -102,7 +102,17 @@ public class HnswGraphSearcher {
   }
 
   private static BitSet bitSet(Bits acceptOrds, int graphSize, int topk) {
-    int approximateVisitation = (int) (16 * Math.log(graphSize) * topk);
+    float percentFiltered = 0.0f;
+    if (acceptOrds instanceof BitSet bitSet) {
+      percentFiltered = (float)bitSet.cardinality() / graphSize;
+    }
+    assert percentFiltered >= 0.0f && percentFiltered <= 1.0f;
+    int approximateVisitation = (int) (((int)Math.log(Math.sqrt(16)) * (int)Math.log(graphSize) * topk) * (1f / percentFiltered));
+    if (approximateVisitation < (graphSize >>> 7)) {
+      return new SparseFixedBitSet(graphSize);
+    } else {
+      return new FixedBitSet(graphSize);
+    }
   }
 
   private static void search(

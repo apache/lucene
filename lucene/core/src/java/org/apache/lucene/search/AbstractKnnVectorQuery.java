@@ -151,9 +151,10 @@ abstract class AbstractKnnVectorQuery extends Query {
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
     } else {
-      // We stopped the kNN search because it visited too many nodes, so fall back to exact search
-      System.out.println("falling back to exact search ctx ord: " + ctx.ord);
-      return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
+      TopDocs exactResults = exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
+      return new TopDocs(
+        new TotalHits(exactResults.totalHits.value() + results.totalHits.value(), TotalHits.Relation.EQUAL_TO),
+          exactResults.scoreDocs);
     }
   }
 
