@@ -96,8 +96,7 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
       BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
       DocValuesMultiRangeQuery.SortedSetStabbingFixedBuilder builder3 =
-          // new DocValuesMultiRangeQuery.SordedSetStabbingFixedBuilder("docVal", Long.BYTES);
-          new DocValuesMultiRangeQuery.SortedSetStabbingFixedTreeBuilder("docVal", Long.BYTES);
+          new DocValuesMultiRangeQuery.SortedSetStabbingFixedBuilder("docVal", Long.BYTES);
 
       for (int i = 0; i < numRanges; i++) {
         long[] lower = new long[dims];

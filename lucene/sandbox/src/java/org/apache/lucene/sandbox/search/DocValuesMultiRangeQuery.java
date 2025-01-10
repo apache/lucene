@@ -16,16 +16,10 @@
  */
 package org.apache.lucene.sandbox.search;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.TreeSet;
 import org.apache.lucene.document.SortedSetDocValuesField;
-import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.DocValuesSkipper;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -119,94 +113,6 @@ public final class DocValuesMultiRangeQuery {
     SortedSetDocValuesMultiRangeQuery createSortedSetDocValuesMultiRangeQuery() {
       return new SortedSetDocValuesMultiRangeQuery(
           fieldName, clauses, this.bytesPerDim, comparator);
-    }
-  }
-
-  /**
-   * Builder like {@link SortedSetStabbingFixedBuilder} but using log(ranges) lookup per doc value
-   * instead of bitset check
-   */
-  public static class SortedSetStabbingFixedTreeBuilder extends SortedSetStabbingFixedBuilder {
-
-    public SortedSetStabbingFixedTreeBuilder(String fieldName, int bytesPerDim) {
-      super(fieldName, bytesPerDim);
-    }
-
-    @Override
-    SortedSetDocValuesMultiRangeQuery createSortedSetDocValuesMultiRangeQuery() {
-      return new SortedSetDocValuesMultiRangeQuery(
-          fieldName, clauses, this.bytesPerDim, comparator) {
-        @Override
-        public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
-            throws IOException {
-          return new MultiRangeWeight(boost, scoreMode) {
-            @Override
-            public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-              if (context.reader().getFieldInfos().fieldInfo(fieldName) == null) {
-                return null;
-              }
-              SortedSetDocValues values = DocValues.getSortedSet(context.reader(), fieldName);
-
-              return new MultiRangeScorerSupplier(values, context) {
-                @Override
-                public Scorer get(long leadCost) throws IOException {
-                  assert !rangeClauses.isEmpty() : "Builder should prevent it";
-                  TreeSet<OrdRange> ordRanges =
-                      new TreeSet<>((or1, or2) -> (int) (or1.lower - or2.lower));
-                  createOrdRanges(this.values, ordRanges);
-                  if (ordRanges.isEmpty()) {
-                    return empty();
-                  }
-                  long minOrd = ordRanges.getFirst().lower, maxOrd = ordRanges.getLast().upper;
-
-                  DocValuesSkipper skipper = this.context.reader().getDocValuesSkipper(fieldName);
-
-                  if (skipper != null
-                      && (minOrd > skipper.maxValue() || maxOrd < skipper.minValue())) {
-                    return empty();
-                  }
-
-                  TwoPhaseIterator iterator;
-                  SortedSetDocValues docValues = this.values;
-                  int depth = 1;
-                  for (int pow = 1; pow < ordRanges.size(); pow <<= 1, depth += 1)
-                    ;
-                  int finalDepth = depth;
-                  iterator =
-                      new TwoPhaseIterator(docValues) {
-                        // TODO unwrap singleton?
-                        @Override
-                        public boolean matches() throws IOException {
-                          for (int i = 0; i < docValues.docValueCount(); i++) {
-                            long ord = docValues.nextOrd();
-                            if (ord >= minOrd && ord <= maxOrd) {
-                              // TODO reuse instance, lookup increasing
-                              OrdRange lessOrEq = ordRanges.floor(new OrdRange(ord, ord));
-                              if (lessOrEq != null && lessOrEq.upper >= ord) {
-                                assert lessOrEq.lower <= ord;
-                                return true;
-                              }
-                            }
-                          }
-                          return false;
-                        }
-
-                        @Override
-                        public float matchCost() {
-                          return finalDepth; // 2 comparisons
-                        }
-                      };
-                  //                        }
-                  if (skipper != null) {
-                    iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd, true);
-                  }
-                  return new ConstantScoreScorer(score(), scoreMode, iterator);
-                }
-              };
-            }
-          };
-        }
-      };
     }
   }
 }

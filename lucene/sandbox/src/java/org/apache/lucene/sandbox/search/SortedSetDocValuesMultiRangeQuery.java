@@ -286,7 +286,6 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
 
       @Override
       public Scorer get(long leadCost) throws IOException {
-        assert !rangeClauses.isEmpty() : "Builder should prevent it";
         List<OrdRange> ordRanges = new ArrayList<>();
         createOrdRanges(values, ordRanges);
         if (ordRanges.isEmpty()) {
