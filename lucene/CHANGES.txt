@@ -77,6 +77,8 @@ Other
 
 * GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
 
+* GITHUB#14091: Cover all DataType. (Lu Xugang)
+
 ======================= Lucene 10.1.0 =======================
 
 API Changes
