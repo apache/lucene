@@ -42,6 +42,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.Nullable;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 /**
@@ -198,7 +199,7 @@ public class IndexSearcher {
    *
    * @lucene.experimental
    */
-  public IndexSearcher(IndexReader r, Executor executor) {
+  public IndexSearcher(IndexReader r, @Nullable Executor executor) {
     this(r.getContext(), executor);
   }
 
@@ -215,7 +216,7 @@ public class IndexSearcher {
    * @see IndexReader#getContext()
    * @lucene.experimental
    */
-  public IndexSearcher(IndexReaderContext context, Executor executor) {
+  public IndexSearcher(IndexReaderContext context, @Nullable Executor executor) {
     assert context.isTopLevel
         : "IndexSearcher's ReaderContext must be topLevel for reader " + context.reader();
     reader = context.reader();
@@ -580,7 +581,7 @@ public class IndexSearcher {
    * @throws TooManyClauses If a query would exceed {@link IndexSearcher#getMaxClauseCount()}
    *     clauses.
    */
-  public TopDocs searchAfter(ScoreDoc after, Query query, int numHits) throws IOException {
+  public TopDocs searchAfter(@Nullable ScoreDoc after, Query query, int numHits) throws IOException {
     final int limit = Math.max(1, reader.maxDoc());
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(
@@ -713,7 +714,7 @@ public class IndexSearcher {
   }
 
   private TopFieldDocs searchAfter(
-      FieldDoc after, Query query, int numHits, Sort sort, boolean doDocScores) throws IOException {
+      @Nullable FieldDoc after, Query query, int numHits, Sort sort, boolean doDocScores) throws IOException {
     final int limit = Math.max(1, reader.maxDoc());
     if (after != null && after.doc >= limit) {
       throw new IllegalArgumentException(
@@ -1131,6 +1132,7 @@ public class IndexSearcher {
    *
    * @lucene.experimental
    */
+  @Nullable
   public CollectionStatistics collectionStatistics(String field) throws IOException {
     assert field != null;
     long docCount = 0;

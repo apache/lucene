@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
+import org.apache.lucene.util.Nullable;
 
 /**
  * Create a TopScoreDocCollectorManager which uses a shared hit counter to maintain number of hits
@@ -57,7 +58,7 @@ public class TopScoreDocCollectorManager
    */
   @Deprecated
   public TopScoreDocCollectorManager(
-      int numHits, ScoreDoc after, int totalHitsThreshold, boolean supportsConcurrency) {
+      int numHits, @Nullable ScoreDoc after, int totalHitsThreshold, boolean supportsConcurrency) {
     this(numHits, after, totalHitsThreshold);
   }
 
@@ -82,7 +83,7 @@ public class TopScoreDocCollectorManager
    *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
    *     count accurate, but this will also make query processing slower.
    */
-  public TopScoreDocCollectorManager(int numHits, ScoreDoc after, int totalHitsThreshold) {
+  public TopScoreDocCollectorManager(int numHits, @Nullable ScoreDoc after, int totalHitsThreshold) {
     if (totalHitsThreshold < 0) {
       throw new IllegalArgumentException(
           "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);

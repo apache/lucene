@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.apache.lucene.util.Nullable;
 
 /**
  * Create a TopFieldCollectorManager which uses a shared hit counter to maintain number of hits and
@@ -76,7 +77,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
    *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
    *     count accurate, but this will also make query processing slower.
    */
-  public TopFieldCollectorManager(Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
+  public TopFieldCollectorManager(Sort sort, int numHits, @Nullable FieldDoc after, int totalHitsThreshold) {
     if (totalHitsThreshold < 0) {
       throw new IllegalArgumentException(
           "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
