@@ -80,11 +80,14 @@ public abstract class KnnVectorValues {
   }
 
   /** Returns the first indexed vector ordinal (base ordinal) for provided document index.
-   * Document index is the position at which a document occurs in its {@link DocIndexIterator}. For
-   * single valued vector fields, this is the same as ordinal. For multivalued fields, where a single doc
-   * may have multiple vector ordinals, this method should be overridden to provide the right base ordinal.
+   * Document index is the position at which a document occurs in its {@link KnnVectorValues#iterator()}.
    * </p>
-   * Note: Should be overridden for multivalued vectors
+   * Since ordinals are written sequentially, this function returns the number of vectors written before
+   * the first vector for document at provided index. For single valued vector fields,
+   * this is the same as ordinal. For multivalued fields, where a single doc may have multiple ordinals,
+   * this method should be overridden to provide the right base ordinal.
+   * </p>
+   * This method should return the total number of vector ordinals for {@param index} = maxDoc.
    */
   public int docIndexToBaseOrd(int index) {
     return index;
@@ -270,7 +273,7 @@ public abstract class KnnVectorValues {
   }
 
   /** Wraps provided {@link DocIndexIterator} to support multivalued vectors if indexed */
-  public DocIndexIterator multiValueWrapper(DocIndexIterator in) {
+  public DocIndexIterator multiValueWrappedIterator(DocIndexIterator in) {
     return new DocIndexIterator() {
       @Override
       public int docID() {

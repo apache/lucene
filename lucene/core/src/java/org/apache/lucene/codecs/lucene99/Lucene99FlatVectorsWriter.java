@@ -24,10 +24,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsWriter;
@@ -55,6 +52,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
@@ -169,9 +167,13 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    writeMeta(
-        fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldData.docsWithField,
-        createMultiVectorMaps(fieldData.docsWithField.iterator(), fieldData.docIdToVectorCount::get, fieldData.vectors.size()));
+    var multiVectorMaps = createMultiVectorMaps(
+        fieldData.docsWithField.iterator(),
+        fieldData.docIdToVectorCount::get,
+        fieldData.vectors.size(),
+        fieldData.docsWithField.cardinality()
+    );
+    writeMeta(fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldData.docsWithField, multiVectorMaps);
   }
 
   private void writeFloat32Vectors(FieldWriter<?> fieldData) throws IOException {
@@ -240,8 +242,13 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    writeMeta(fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField,
-        createMultiVectorMaps(newDocsWithField.iterator(), fieldData.docIdToVectorCount::get, fieldData.vectors.size()));
+    var multiVectorMaps = createMultiVectorMaps(
+        newDocsWithField.iterator(),
+        fieldData.docIdToVectorCount::get,
+        fieldData.vectors.size(),
+        newDocsWithField.cardinality()
+    );
+    writeMeta(fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField, multiVectorMaps);
   }
 
   private long writeSortedFloat32Vectors(FieldWriter<?> fieldData, int[] ordMap)
@@ -268,29 +275,38 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    // Since we know we will not be searching for additional indexing, we can just write the
+    // Since we know we will not be searching for additional indexing, we can just write
     // the vectors directly to the new segment.
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     // No need to use temporary file as we don't have to re-open for reading
-    DocsWithFieldSet docsWithField =
+    int ordCount;
+    DocsWithOrdCount docsWithOrdCount =
         switch (fieldInfo.getVectorEncoding()) {
-          case BYTE ->
-              writeByteVectorData(
-                  vectorData,
-                  KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-          case FLOAT32 ->
-              writeVectorData(
-                  vectorData,
-                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
-                      fieldInfo, mergeState));
+          case BYTE -> {
+            ByteVectorValues vectorValues = KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+            ordCount = vectorValues.size();
+            yield writeByteVectorData(vectorData, vectorValues);
+          }
+          case FLOAT32 -> {
+            FloatVectorValues vectorValues = KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+            ordCount = vectorValues.size();
+            yield writeVectorData(vectorData, vectorValues);
+          }
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+    var multiVectorMaps = createMultiVectorMaps(
+        docsWithOrdCount.docsWithField().iterator(),
+        docsWithOrdCount.docToOrdCount(),
+        ordCount,
+        docsWithOrdCount.docsWithField().cardinality()
+    );
     writeMeta(
         fieldInfo,
         segmentWriteState.segmentInfo.maxDoc(),
         vectorDataOffset,
         vectorDataLength,
-        docsWithField);
+        docsWithOrdCount.docsWithField(),
+        multiVectorMaps);
   }
 
   @Override
@@ -304,18 +320,19 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField =
+      int ordCount;
+      DocsWithOrdCount docsWithOrdCount =
           switch (fieldInfo.getVectorEncoding()) {
-            case BYTE ->
-                writeByteVectorData(
-                    tempVectorData,
-                    KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(
-                        fieldInfo, mergeState));
-            case FLOAT32 ->
-                writeVectorData(
-                    tempVectorData,
-                    KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
-                        fieldInfo, mergeState));
+            case BYTE -> {
+              ByteVectorValues vectorValues = KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
+              ordCount = vectorValues.size();
+              yield writeByteVectorData(tempVectorData, vectorValues);
+            }
+            case FLOAT32 -> {
+              FloatVectorValues vectorValues = KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+              ordCount = vectorValues.size();
+              yield writeVectorData(tempVectorData, vectorValues);
+            }
           };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
@@ -330,12 +347,18 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
       long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
+      var multiVectorMaps = createMultiVectorMaps(
+          docsWithOrdCount.docsWithField().iterator(),
+          docsWithOrdCount.docToOrdCount(),
+          ordCount,
+          docsWithOrdCount.docsWithField().cardinality());
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
           vectorDataOffset,
           vectorDataLength,
-          docsWithField);
+          docsWithOrdCount.docsWithField(),
+          multiVectorMaps);
       success = true;
       final IndexInput finalVectorDataInput = vectorDataInput;
       final RandomVectorScorerSupplier randomVectorScorerSupplier =
@@ -345,28 +368,42 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                     fieldInfo.getVectorSimilarityFunction(),
                     new OffHeapByteVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
+                        ordCount,
+                        docsWithOrdCount.docsWithField().cardinality(),
                         finalVectorDataInput,
                         fieldInfo.getVectorDimension() * Byte.BYTES,
                         vectorsScorer,
-                        fieldInfo.getVectorSimilarityFunction()));
+                        fieldInfo.getVectorSimilarityFunction(),
+                        ordCount > docsWithOrdCount.docsWithField().cardinality(),
+                        longValues(multiVectorMaps.docOrdFreq),
+                        longValues(multiVectorMaps.ordToDocMap),
+                        longValues(multiVectorMaps.baseOrdMap),
+                        longValues(multiVectorMaps.nextBaseOrdMap))
+                );
             case FLOAT32 ->
                 vectorsScorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
                     new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
                         fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
+                        ordCount,
+                        docsWithOrdCount.docsWithField().cardinality(),
                         finalVectorDataInput,
                         fieldInfo.getVectorDimension() * Float.BYTES,
                         vectorsScorer,
-                        fieldInfo.getVectorSimilarityFunction()));
+                        fieldInfo.getVectorSimilarityFunction(),
+                        ordCount > docsWithOrdCount.docsWithField().cardinality(),
+                        longValues(multiVectorMaps.docOrdFreq),
+                        longValues(multiVectorMaps.ordToDocMap),
+                        longValues(multiVectorMaps.baseOrdMap),
+                        longValues(multiVectorMaps.nextBaseOrdMap))
+                );
           };
       return new FlatCloseableRandomVectorScorerSupplier(
           () -> {
             IOUtils.close(finalVectorDataInput);
             segmentWriteState.directory.deleteFile(tempVectorData.getName());
           },
-          docsWithField.cardinality(),
+          ordCount,
           randomVectorScorerSupplier);
     } finally {
       if (success == false) {
@@ -404,26 +441,51 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         DIRECT_MONOTONIC_BLOCK_SHIFT,
         meta,
         vectorData,
+        multiVectorMaps.docOrdFreq,
         multiVectorMaps.ordToDocMap,
         multiVectorMaps.baseOrdMap,
         multiVectorMaps.nextBaseOrdMap);
   }
 
-  private record MultiVectorMaps(int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {};
+  private static LongValues longValues(int[] arr) {
+    return new LongValues() {
+      @Override
+      public long get(long index) {
+        return arr[(int) index];
+      }
+    };
+  }
 
-  private MultiVectorMaps createMultiVectorMaps(DocIdSetIterator disi, IntToIntFunction vectorsPerDoc, int numValues) throws IOException {
-    int[] ordToDocMap = new int[numValues];
-    int[] baseOrdMap = new int[numValues];
-    int[] nextBaseOrdMap = new int[numValues];
+  private static record MultiVectorMaps(int[] docOrdFreq, int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {
+
+    public static final MultiVectorMaps singleValuedMultiVectorMap = new MultiVectorMaps();
+
+    private MultiVectorMaps() {
+      this(null, null, null, null);
+    }
+  };
+
+  private MultiVectorMaps createMultiVectorMaps(DocIdSetIterator disi,
+                                                IntToIntFunction vectorsPerDoc,
+                                                int ordCount,
+                                                int docCount) throws IOException {
+    // TODO: optimize for single vector values. we can pass null to vectorValues but
+    // need to handle writing metadata differently
+    int[] docOrdFreq = new int[docCount + 1];
+    int[] ordToDocMap = new int[ordCount];
+    int[] baseOrdMap = new int[ordCount];
+    int[] nextBaseOrdMap = new int[ordCount];
 
     int ord = 0;
     int lastDocId = -1;
     int baseOrd = -1;
     int nextBaseOrd = -1;
+    int idx = 0;
     for (int doc = disi.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = disi.nextDoc()) {
       int vectorCount = vectorsPerDoc.apply(doc);
       baseOrd = ord;
       nextBaseOrd = ord + vectorCount;
+      docOrdFreq[idx++] = baseOrd;
       for (int i = 0; i < vectorCount; i++) {
         ordToDocMap[ord] = doc;
         baseOrdMap[ord] = baseOrd;
@@ -431,46 +493,68 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         ord++;
       }
     }
-    assert ord == numValues;
-    return new MultiVectorMaps(ordToDocMap, baseOrdMap, nextBaseOrdMap);
+    assert ord == ordCount;
+    assert idx == docCount;
+    docOrdFreq[idx] = ordCount;
+    return new MultiVectorMaps(docOrdFreq, ordToDocMap, baseOrdMap, nextBaseOrdMap);
   }
+
+  private static record DocsWithOrdCount(DocsWithFieldSet docsWithField, IntToIntFunction docToOrdCount) {};
 
   /**
    * Writes the byte vector values to the output and returns a set of documents that contains
    * vectors.
    */
-  private static DocsWithFieldSet writeByteVectorData(
+  private static DocsWithOrdCount writeByteVectorData(
       IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    IntIntHashMap docToOrdCount = new IntIntHashMap();
     KnnVectorValues.DocIndexIterator iter = byteVectorValues.iterator();
-    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
-      // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue(iter.index());
-      assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
-      output.writeBytes(binaryValue, binaryValue.length);
+    int idx = 0;
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc(), idx++) {
+      int ordCount = byteVectorValues.docIndexToBaseOrd(idx + 1) - byteVectorValues.docIndexToBaseOrd(idx);
+      if (ordCount > 1) {
+        docToOrdCount.put(docV, ordCount);
+      }
+      // write vectors
+      Iterator<byte[]> vectorIt = byteVectorValues.allVectorValues(iter.index(), ordCount);
+      while (vectorIt.hasNext()) {
+        byte[] binaryValue = vectorIt.next();
+        assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
+        output.writeBytes(binaryValue, binaryValue.length);
+      }
       docsWithField.add(docV);
     }
-    return docsWithField;
+    return new DocsWithOrdCount(docsWithField, i -> docToOrdCount.getOrDefault(i, 1));
   }
 
   /**
    * Writes the vector values to the output and returns a set of documents that contains vectors.
    */
-  private static DocsWithFieldSet writeVectorData(
+  private static DocsWithOrdCount writeVectorData(
       IndexOutput output, FloatVectorValues floatVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    IntIntHashMap docToOrdCount = new IntIntHashMap();
     ByteBuffer buffer =
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
     KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
-    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
+    int idx = 0;
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc(), idx++) {
+      int ordCount = floatVectorValues.docIndexToBaseOrd(idx + 1) - floatVectorValues.docIndexToBaseOrd(idx);
+      if (ordCount > 1) {
+        docToOrdCount.put(docV, ordCount);
+      }
       // write vector
-      float[] value = floatVectorValues.vectorValue(iter.index());
-      buffer.asFloatBuffer().put(value);
-      output.writeBytes(buffer.array(), buffer.limit());
+      Iterator<float[]> vectorIt = floatVectorValues.allVectorValues(iter.index(), ordCount);
+      while (vectorIt.hasNext()) {
+        float[] value = vectorIt.next();
+        buffer.asFloatBuffer().put(value);
+        output.writeBytes(buffer.array(), buffer.limit());
+      }
       docsWithField.add(docV);
     }
-    return docsWithField;
+    return new DocsWithOrdCount(docsWithField, i -> docToOrdCount.getOrDefault(i, 1));
   }
 
   @Override

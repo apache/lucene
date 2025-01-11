@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.search.VectorScorer;
@@ -50,6 +51,35 @@ public abstract class ByteVectorValues extends KnnVectorValues {
       result.add(vectorValue(baseOrd + i));
     }
     return result;
+  }
+
+  /** Returns an iterator for multi-vector values, when base ordinal and count are provided.
+   * This is useful when fetching all vector values from {@link KnnVectorValues#iterator()}
+   */
+  public Iterator<byte[]> allVectorValues(int baseOrd, int ordCount) throws IOException {
+    return new Iterator<>() {
+      int ord = baseOrd;
+      int count = ordCount;
+
+      @Override
+      public boolean hasNext() {
+        return count > 0;
+      }
+
+      @Override
+      public byte[] next() {
+        byte[] v = null;
+        try {
+          v = vectorValue(ord);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        } finally {
+          ord++;
+          count--;
+        }
+        return v;
+      }
+    };
   }
 
   @Override

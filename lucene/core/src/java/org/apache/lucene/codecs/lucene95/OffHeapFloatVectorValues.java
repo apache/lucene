@@ -256,7 +256,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
 
     @Override
     public DocIndexIterator iterator() {
-      return multiValueWrapper(createDenseIterator());
+      return multiValueWrappedIterator(createDenseIterator());
     }
 
     @Override
@@ -365,7 +365,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
 
     @Override
     public DocIndexIterator iterator() {
-      return multiValueWrapper(IndexedDISI.asDocIndexIterator(disi));
+      return multiValueWrappedIterator(IndexedDISI.asDocIndexIterator(disi));
     }
 
     @Override

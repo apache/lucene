@@ -14,12 +14,31 @@ public class MultiVectorOrdConfiguration {
       int directMonotonicBlockShift,
       IndexOutput outputMeta,
       IndexOutput vectorData,
+      int[] docOrdFreq,
       int[] docIds,
       int[] baseOrds,
       int[] nextBaseOrds)
     throws IOException {
 
     outputMeta.writeVInt(directMonotonicBlockShift); // block shift
+    outputMeta.writeVInt(docOrdFreq.length); // number of values in docOrdFreq
+
+    /* write docOrdFreq.
+     * docOrdFreq[i] holds the cumulative count of vectors written before the
+     * first vector of document at position i in a DISI over all documents with
+     * vectors for the field. This is used to map document position to its base
+     * ordinal for multivalued vector fields.
+     */
+    long docOrdFreqStart = vectorData.getFilePointer();
+    outputMeta.writeLong(docOrdFreqStart);
+    final DirectMonotonicWriter docOrdFreqWriter =
+        DirectMonotonicWriter.getInstance(outputMeta, vectorData, docOrdFreq.length, directMonotonicBlockShift);
+    for (int freq: docOrdFreq) {
+      docOrdFreqWriter.add(freq);
+    }
+    docOrdFreqWriter.finish();
+    outputMeta.writeLong(vectorData.getFilePointer() - docOrdFreqStart);
+
     final int numValues = docIds.length;
     outputMeta.writeVInt(numValues); // total number of vectors (ordinals)
 
@@ -57,6 +76,12 @@ public class MultiVectorOrdConfiguration {
 
   public static MultiVectorOrdConfiguration fromStoredMeta(IndexInput inputMeta) throws IOException {
     final int blockShift = inputMeta.readVInt();
+
+    final int docOrdFreqCount = inputMeta.readVInt();
+    long docOrdFreqStart = inputMeta.readLong();
+    DirectMonotonicReader.Meta docOrdFreqMeta = DirectMonotonicReader.loadMeta(inputMeta, docOrdFreqCount, blockShift);
+    long docOrdFreqLength = inputMeta.readLong();
+
     final int numValues = inputMeta.readVInt();
 
     // ordToDoc mapping
@@ -72,12 +97,25 @@ public class MultiVectorOrdConfiguration {
     DirectMonotonicReader.Meta nextBaseOrdMeta = DirectMonotonicReader.loadMeta(inputMeta, numValues, blockShift);
     long nextBaseOrdLength = inputMeta.readLong();
 
-    return new MultiVectorOrdConfiguration(numValues,
-        ordToDocStart, ordToDocLength, ordToDocMeta,
-        baseOrdStart, baseOrdLength, baseOrdMeta,
-        nextBaseOrdStart, nextBaseOrdLength, nextBaseOrdMeta);
+    return new MultiVectorOrdConfiguration(
+        docOrdFreqStart,
+        docOrdFreqMeta,
+        docOrdFreqLength,
+        numValues,
+        ordToDocStart,
+        ordToDocMeta,
+        ordToDocLength,
+        baseOrdStart,
+        baseOrdMeta,
+        baseOrdLength,
+        nextBaseOrdStart,
+        nextBaseOrdMeta,
+        nextBaseOrdLength
+    );
   }
 
+  final long docOrdFreqStart, docOrdFreqLength;
+  final DirectMonotonicReader.Meta docOrdFreqMeta;
   final int numValues;
   final long ordToDocStart, ordToDocLength;
   final DirectMonotonicReader.Meta ordToDocMeta;
@@ -86,20 +124,38 @@ public class MultiVectorOrdConfiguration {
   final long nextBaseOrdStart, nextBaseOrdLength;
   final DirectMonotonicReader.Meta nextBaseOrdMeta;
 
-  public MultiVectorOrdConfiguration(
-      int numValues, long ordToDocStart, long ordToDocLength, DirectMonotonicReader.Meta ordToDocMeta,
-      long baseOrdStart, long baseOrdLength, DirectMonotonicReader.Meta baseOrdMeta,
-      long nextBaseOrdStart, long nextBaseOrdLength, DirectMonotonicReader.Meta nextBaseOrdMeta) {
+  public MultiVectorOrdConfiguration(long docOrdFreqStart,
+                                     DirectMonotonicReader.Meta docOrdFreqMeta,
+                                     long docOrdFreqLength,
+                                     int numValues,
+                                     long ordToDocStart,
+                                     DirectMonotonicReader.Meta ordToDocMeta,
+                                     long ordToDocLength,
+                                     long baseOrdStart,
+                                     DirectMonotonicReader.Meta baseOrdMeta,
+                                     long baseOrdLength,
+                                     long nextBaseOrdStart,
+                                     DirectMonotonicReader.Meta nextBaseOrdMeta,
+                                     long nextBaseOrdLength
+  ) {
+    this.docOrdFreqStart = docOrdFreqStart;
+    this.docOrdFreqMeta = docOrdFreqMeta;
+    this.docOrdFreqLength = docOrdFreqLength;
     this.numValues = numValues;
     this.ordToDocStart = ordToDocStart;
-    this.ordToDocLength = ordToDocLength;
     this.ordToDocMeta = ordToDocMeta;
+    this.ordToDocLength = ordToDocLength;
     this.baseOrdStart = baseOrdStart;
-    this.baseOrdLength = baseOrdLength;
     this.baseOrdMeta = baseOrdMeta;
+    this.baseOrdLength = baseOrdLength;
     this.nextBaseOrdStart = nextBaseOrdStart;
-    this.nextBaseOrdLength = nextBaseOrdLength;
     this.nextBaseOrdMeta = nextBaseOrdMeta;
+    this.nextBaseOrdLength = nextBaseOrdLength;
+  }
+
+  public DirectMonotonicReader getDocIndexToBaseOrdReader(IndexInput dataIn) throws IOException {
+    final RandomAccessInput slice = dataIn.randomAccessSlice(docOrdFreqStart, docOrdFreqLength);
+    return DirectMonotonicReader.getInstance(docOrdFreqMeta, slice);
   }
 
   public DirectMonotonicReader getOrdToDocReader(IndexInput dataIn) throws IOException {
