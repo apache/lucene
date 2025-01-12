@@ -52,6 +52,8 @@ Improvements
   (Robert Muir)
 * GITHUB#13984: Add HNSW graph checks and stats to CheckIndex
 
+* GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
+
 Optimizations
 ---------------------
 
@@ -66,9 +68,16 @@ Bug Fixes
 * GITHUB#14109: prefetch may select the wrong memory segment for
   multi-segment slices. (Chris Hegarty)
 
+* GITHUB#14123: SortingCodecReader NPE when segment has no (points, vectors, etc...) (Mike Sokolov)
+
 Other
 ---------------------
-(No changes)
+
+* GITHUB#14081: Fix urls describing why NIOFS is not recommended for Windows (Marcel Yeonghyeon Ko)
+
+* GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
+
+* GITHUB#14091: Cover all DataType. (Lu Xugang)
 
 ======================= Lucene 10.1.0 =======================
 
