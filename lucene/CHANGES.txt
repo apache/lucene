@@ -79,7 +79,7 @@ Other
 
 * GITHUB#14091: Cover all DataType. (Lu Xugang)
 
-* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.2, which transitively upgrades Slf4j 
+* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j 
   from 1.7.36 to 2.0.16. (Michael Froh)
 
 ======================= Lucene 10.1.0 =======================
