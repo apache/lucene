@@ -227,6 +227,31 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
           isMultiValued, docOrdCount, ordToDocMap, baseOrdMap, nextBaseOrdMap);
     }
 
+    public DenseOffHeapVectorValues(
+        int dimension,
+        int ordCount,
+        int docCount,
+        IndexInput slice,
+        int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction vectorSimilarityFunction,
+        MultiVectorOrdConfiguration.MultiVectorMaps multiVectorMaps
+    ) {
+      super(dimension,
+          ordCount,
+          docCount,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          vectorSimilarityFunction,
+          multiVectorMaps.isMultiVector(),
+          longValues(multiVectorMaps.docOrdFreq()),
+          longValues(multiVectorMaps.ordToDocMap()),
+          longValues(multiVectorMaps.baseOrdMap()),
+          longValues(multiVectorMaps.nextBaseOrdMap())
+      );
+    }
+
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
@@ -280,6 +305,15 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+      };
+    }
+
+    private static LongValues longValues(int[] arr) {
+      return new LongValues() {
+        @Override
+        public long get(long index) {
+          return arr[(int) index];
         }
       };
     }

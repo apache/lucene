@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration.MultiVectorMaps;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -167,7 +168,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    var multiVectorMaps = createMultiVectorMaps(
+    var multiVectorMaps = MultiVectorOrdConfiguration.createMultiVectorMaps(
         fieldData.docsWithField.iterator(),
         fieldData.docIdToVectorCount::get,
         fieldData.vectors.size(),
@@ -242,7 +243,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    var multiVectorMaps = createMultiVectorMaps(
+    var multiVectorMaps = MultiVectorOrdConfiguration.createMultiVectorMaps(
         newDocsWithField.iterator(),
         fieldData.docIdToVectorCount::get,
         fieldData.vectors.size(),
@@ -294,7 +295,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           }
         };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-    var multiVectorMaps = createMultiVectorMaps(
+    var multiVectorMaps = MultiVectorOrdConfiguration.createMultiVectorMaps(
         docsWithOrdCount.docsWithField().iterator(),
         docsWithOrdCount.docToOrdCount(),
         ordCount,
@@ -347,7 +348,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
       CodecUtil.retrieveChecksum(vectorDataInput);
       long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-      var multiVectorMaps = createMultiVectorMaps(
+      var multiVectorMaps = MultiVectorOrdConfiguration.createMultiVectorMaps(
           docsWithOrdCount.docsWithField().iterator(),
           docsWithOrdCount.docToOrdCount(),
           ordCount,
@@ -374,11 +375,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                         fieldInfo.getVectorDimension() * Byte.BYTES,
                         vectorsScorer,
                         fieldInfo.getVectorSimilarityFunction(),
-                        ordCount > docsWithOrdCount.docsWithField().cardinality(),
-                        longValues(multiVectorMaps.docOrdFreq),
-                        longValues(multiVectorMaps.ordToDocMap),
-                        longValues(multiVectorMaps.baseOrdMap),
-                        longValues(multiVectorMaps.nextBaseOrdMap))
+                        multiVectorMaps)
                 );
             case FLOAT32 ->
                 vectorsScorer.getRandomVectorScorerSupplier(
@@ -391,11 +388,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
                         fieldInfo.getVectorDimension() * Float.BYTES,
                         vectorsScorer,
                         fieldInfo.getVectorSimilarityFunction(),
-                        ordCount > docsWithOrdCount.docsWithField().cardinality(),
-                        longValues(multiVectorMaps.docOrdFreq),
-                        longValues(multiVectorMaps.ordToDocMap),
-                        longValues(multiVectorMaps.baseOrdMap),
-                        longValues(multiVectorMaps.nextBaseOrdMap))
+                        multiVectorMaps)
                 );
           };
       return new FlatCloseableRandomVectorScorerSupplier(
@@ -441,62 +434,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         DIRECT_MONOTONIC_BLOCK_SHIFT,
         meta,
         vectorData,
-        multiVectorMaps.docOrdFreq,
-        multiVectorMaps.ordToDocMap,
-        multiVectorMaps.baseOrdMap,
-        multiVectorMaps.nextBaseOrdMap);
-  }
-
-  private static LongValues longValues(int[] arr) {
-    return new LongValues() {
-      @Override
-      public long get(long index) {
-        return arr[(int) index];
-      }
-    };
-  }
-
-  private static record MultiVectorMaps(int[] docOrdFreq, int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {
-
-    public static final MultiVectorMaps singleValuedMultiVectorMap = new MultiVectorMaps();
-
-    private MultiVectorMaps() {
-      this(null, null, null, null);
-    }
-  };
-
-  private MultiVectorMaps createMultiVectorMaps(DocIdSetIterator disi,
-                                                IntToIntFunction vectorsPerDoc,
-                                                int ordCount,
-                                                int docCount) throws IOException {
-    // TODO: optimize for single vector values. we can pass null to vectorValues but
-    // need to handle writing metadata differently
-    int[] docOrdFreq = new int[docCount + 1];
-    int[] ordToDocMap = new int[ordCount];
-    int[] baseOrdMap = new int[ordCount];
-    int[] nextBaseOrdMap = new int[ordCount];
-
-    int ord = 0;
-    int lastDocId = -1;
-    int baseOrd = -1;
-    int nextBaseOrd = -1;
-    int idx = 0;
-    for (int doc = disi.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = disi.nextDoc()) {
-      int vectorCount = vectorsPerDoc.apply(doc);
-      baseOrd = ord;
-      nextBaseOrd = ord + vectorCount;
-      docOrdFreq[idx++] = baseOrd;
-      for (int i = 0; i < vectorCount; i++) {
-        ordToDocMap[ord] = doc;
-        baseOrdMap[ord] = baseOrd;
-        nextBaseOrdMap[ord] = nextBaseOrd;
-        ord++;
-      }
-    }
-    assert ord == ordCount;
-    assert idx == docCount;
-    docOrdFreq[idx] = ordCount;
-    return new MultiVectorMaps(docOrdFreq, ordToDocMap, baseOrdMap, nextBaseOrdMap);
+        multiVectorMaps.docOrdFreq(),
+        multiVectorMaps.ordToDocMap(),
+        multiVectorMaps.baseOrdMap(),
+        multiVectorMaps.nextBaseOrdMap());
   }
 
   private static record DocsWithOrdCount(DocsWithFieldSet docsWithField, IntToIntFunction docToOrdCount) {};

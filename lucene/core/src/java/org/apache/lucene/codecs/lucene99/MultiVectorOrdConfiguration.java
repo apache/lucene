@@ -1,8 +1,10 @@
 package org.apache.lucene.codecs.lucene99;
 
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -176,4 +178,53 @@ public class MultiVectorOrdConfiguration {
   public int ordCount() {
     return numValues;
   }
+
+  public static MultiVectorMaps createMultiVectorMaps(DocIdSetIterator disi,
+                                                IntToIntFunction vectorsPerDoc,
+                                                int ordCount,
+                                                int docCount) throws IOException {
+    if (docCount == ordCount) {
+      // single valued vector field
+      return new MultiVectorMaps();
+    }
+    int[] docOrdFreq = new int[docCount + 1];
+    int[] ordToDocMap = new int[ordCount];
+    int[] baseOrdMap = new int[ordCount];
+    int[] nextBaseOrdMap = new int[ordCount];
+
+    int ord = 0;
+    int lastDocId = -1;
+    int baseOrd = -1;
+    int nextBaseOrd = -1;
+    int idx = 0;
+    for (int doc = disi.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = disi.nextDoc()) {
+      int vectorCount = vectorsPerDoc.apply(doc);
+      baseOrd = ord;
+      nextBaseOrd = ord + vectorCount;
+      docOrdFreq[idx++] = baseOrd;
+      for (int i = 0; i < vectorCount; i++) {
+        ordToDocMap[ord] = doc;
+        baseOrdMap[ord] = baseOrd;
+        nextBaseOrdMap[ord] = nextBaseOrd;
+        ord++;
+      }
+    }
+    assert ord == ordCount;
+    assert idx == docCount;
+    docOrdFreq[idx] = ordCount;
+    return new MultiVectorMaps(true, docOrdFreq, ordToDocMap, baseOrdMap, nextBaseOrdMap);
+  }
+
+  /**
+   * MultiVectorMaps collect the metadata required to access ordinals and docIds with
+   * for multivalued vector fields
+   */
+  public static record MultiVectorMaps(boolean isMultiVector, int[] docOrdFreq, int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {
+
+    public static final MultiVectorMaps singleValuedMultiVectorMap = new MultiVectorMaps();
+
+    private MultiVectorMaps() {
+      this(false, null, null, null, null);
+    }
+  };
 }

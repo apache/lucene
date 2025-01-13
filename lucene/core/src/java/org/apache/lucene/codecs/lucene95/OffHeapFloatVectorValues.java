@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration;
+import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration.MultiVectorMaps;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -222,6 +223,31 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
       super(dimension, ordCount, docCount, slice, byteSize, flatVectorsScorer, similarityFunction, isMultiValued, docOrdCount, ordToDocMap, baseOrdMap, nextBaseOrdMap);
     }
 
+    public DenseOffHeapVectorValues(
+        int dimension,
+        int ordCount,
+        int docCount,
+        IndexInput slice,
+        int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction similarityFunction,
+        MultiVectorMaps multiVectorMaps
+    ) {
+      super(dimension,
+          ordCount,
+          docCount,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          multiVectorMaps.isMultiVector(),
+          longValues(multiVectorMaps.docOrdFreq()),
+          longValues(multiVectorMaps.ordToDocMap()),
+          longValues(multiVectorMaps.baseOrdMap()),
+          longValues(multiVectorMaps.nextBaseOrdMap())
+      );
+    }
+
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
@@ -274,6 +300,15 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+      };
+    }
+
+    private static LongValues longValues(int[] arr) {
+      return new LongValues() {
+        @Override
+        public long get(long index) {
+          return arr[(int) index];
         }
       };
     }
