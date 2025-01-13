@@ -207,6 +207,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         fieldEntry.similarityFunction,
         vectorScorer,
         fieldEntry.ordToDoc,
+        fieldEntry.mvOrdConf(),
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
         fieldEntry.vectorDataOffset,
@@ -221,6 +222,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         fieldEntry.similarityFunction,
         vectorScorer,
         fieldEntry.ordToDoc,
+        fieldEntry.mvOrdConf(),
         fieldEntry.vectorEncoding,
         fieldEntry.dimension,
         fieldEntry.vectorDataOffset,
@@ -237,6 +239,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             fieldEntry.similarityFunction,
             vectorScorer,
             fieldEntry.ordToDoc,
+            fieldEntry.mvOrdConf(),
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,
             fieldEntry.vectorDataOffset,
@@ -254,6 +257,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             fieldEntry.similarityFunction,
             vectorScorer,
             fieldEntry.ordToDoc,
+            fieldEntry.mvOrdConf(),
             fieldEntry.vectorEncoding,
             fieldEntry.dimension,
             fieldEntry.vectorDataOffset,
@@ -280,8 +284,10 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       long vectorDataOffset,
       long vectorDataLength,
       int dimension,
-      int size,
+      int docCount,
       OrdToDocDISIReaderConfiguration ordToDoc,
+      int ordCount,
+      MultiVectorOrdConfiguration mvOrdConf,
       FieldInfo info) {
 
     FieldEntry {
@@ -311,13 +317,13 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             case FLOAT32 -> Float.BYTES;
           };
       long vectorBytes = Math.multiplyExact((long) infoVectorDimension, byteSize);
-      long numBytes = Math.multiplyExact(vectorBytes, size);
+      long numBytes = Math.multiplyExact(vectorBytes, ordCount);
       if (numBytes != vectorDataLength) {
         throw new IllegalStateException(
             "Vector data length "
                 + vectorDataLength
                 + " not matching size="
-                + size
+                + ordCount
                 + " * dim="
                 + dimension
                 + " * byteSize="
@@ -333,16 +339,20 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       final var vectorDataOffset = input.readVLong();
       final var vectorDataLength = input.readVLong();
       final var dimension = input.readVInt();
-      final var size = input.readInt();
-      final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+      final var docCount = input.readInt();
+      final var ordToDoc = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, docCount);
+      final var mvOrdConf = MultiVectorOrdConfiguration.fromStoredMeta(input);
+      final var ordCount = mvOrdConf.ordCount();
       return new FieldEntry(
           similarityFunction,
           vectorEncoding,
           vectorDataOffset,
           vectorDataLength,
           dimension,
-          size,
+          docCount,
           ordToDoc,
+          ordCount,
+          mvOrdConf,
           info);
     }
   }

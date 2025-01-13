@@ -116,15 +116,15 @@ public class MultiVectorOrdConfiguration {
     );
   }
 
-  final long docOrdFreqStart, docOrdFreqLength;
-  final DirectMonotonicReader.Meta docOrdFreqMeta;
-  final int numValues;
-  final long ordToDocStart, ordToDocLength;
-  final DirectMonotonicReader.Meta ordToDocMeta;
-  final long baseOrdStart, baseOrdLength;
-  final DirectMonotonicReader.Meta baseOrdMeta;
-  final long nextBaseOrdStart, nextBaseOrdLength;
-  final DirectMonotonicReader.Meta nextBaseOrdMeta;
+  private final long docOrdFreqStart, docOrdFreqLength;
+  private final DirectMonotonicReader.Meta docOrdFreqMeta;
+  private final int numValues;
+  private final long ordToDocStart, ordToDocLength;
+  private final DirectMonotonicReader.Meta ordToDocMeta;
+  private final long baseOrdStart, baseOrdLength;
+  private final DirectMonotonicReader.Meta baseOrdMeta;
+  private final long nextBaseOrdStart, nextBaseOrdLength;
+  private final DirectMonotonicReader.Meta nextBaseOrdMeta;
 
   public MultiVectorOrdConfiguration(long docOrdFreqStart,
                                      DirectMonotonicReader.Meta docOrdFreqMeta,
