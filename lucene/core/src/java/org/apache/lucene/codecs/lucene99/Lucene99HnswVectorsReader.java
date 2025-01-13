@@ -47,6 +47,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.FilteredHnswGraphSearcher;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
@@ -309,7 +310,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       Bits acceptDocs,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
-
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
@@ -318,7 +318,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     if (knnCollector.k() < scorer.maxOrd()) {
-      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+      if (acceptDocs != null) {
+        FilteredHnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+      } else {
+        HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), null);
+      }
     } else {
       // if k is larger than the number of vectors, we can just iterate over all vectors
       // and collect them
