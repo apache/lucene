@@ -105,6 +105,7 @@ public class BitSetIterator extends DocIdSetIterator {
     if (acceptDocs == null
         && offset < bits.length()
         && bits instanceof FixedBitSet fixedBits
+        && offset >= 0
         // no bits are set between `offset` and `doc`
         && fixedBits.nextSetBit(offset) == doc
         // the whole `bitSet` is getting filled

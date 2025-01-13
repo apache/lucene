@@ -217,6 +217,26 @@ public class RoaringDocIdSet extends DocIdSet {
             return doc = docId(i);
           }
         }
+
+        @Override
+        public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
+            throws IOException {
+          if (doc >= upTo) {
+            return;
+          }
+
+          if (acceptDocs != null) {
+            super.intoBitSet(acceptDocs, upTo, bitSet, offset);
+            return;
+          }
+
+          int from = i;
+          advance(upTo);
+          int to = i;
+          for (int i = from; i < to; ++i) {
+            bitSet.set(docId(i) - offset);
+          }
+        }
       };
     }
   }
@@ -308,6 +328,32 @@ public class RoaringDocIdSet extends DocIdSet {
           final int subNext = sub.nextDoc();
           assert subNext != NO_MORE_DOCS;
           return doc = (block << 16) | subNext;
+        }
+      }
+    }
+
+    @Override
+    public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
+        throws IOException {
+      if (acceptDocs != null) {
+        super.intoBitSet(acceptDocs, upTo, bitSet, offset);
+        return;
+      }
+
+      for (; ; ) {
+        int subUpto = upTo - (block << 16);
+        if (subUpto < 0) {
+          break;
+        }
+        int subOffset = offset - (block << 16);
+        sub.intoBitSet(null, subUpto, bitSet, subOffset);
+        if (sub.docID() == NO_MORE_DOCS) {
+          if (firstDocFromNextBlock() == NO_MORE_DOCS) {
+            break;
+          }
+        } else {
+          doc = (block << 16) | sub.docID();
+          break;
         }
       }
     }

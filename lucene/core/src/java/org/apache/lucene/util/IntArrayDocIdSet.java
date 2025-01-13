@@ -96,6 +96,27 @@ final class IntArrayDocIdSet extends DocIdSet {
     }
 
     @Override
+    public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
+        throws IOException {
+      if (doc >= upTo) {
+        return;
+      }
+
+      if (acceptDocs != null) {
+        super.intoBitSet(acceptDocs, upTo, bitSet, offset);
+        return;
+      }
+
+      int from = i - 1;
+      int to = VectorUtil.findNextGEQ(docs, upTo, from, length);
+      for (int i = from; i < to; ++i) {
+        bitSet.set(docs[i] - offset);
+      }
+      doc = docs[to];
+      i = to + 1;
+    }
+
+    @Override
     public long cost() {
       return length;
     }

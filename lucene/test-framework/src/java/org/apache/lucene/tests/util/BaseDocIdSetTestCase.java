@@ -24,6 +24,7 @@ import java.util.Random;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Base test class for {@link DocIdSet}s. */
 public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTestCase {
@@ -195,5 +196,41 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
     dummy.o2 = null;
     long bytes2 = RamUsageTester.ramUsed(dummy);
     return bytes1 - bytes2;
+  }
+
+  public void testIntoBitSet() throws IOException {
+    Random random = random();
+    final int numBits = TestUtil.nextInt(random, 100, 1 << 20);
+    // test various random sets with various load factors
+    for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {
+      final BitSet set = randomSet(numBits, percentSet);
+      final T copy = copyOf(set, numBits);
+      int from = TestUtil.nextInt(random(), 0, numBits - 1);
+      int to = TestUtil.nextInt(random(), from, numBits + 5);
+      FixedBitSet actual = new FixedBitSet(to - from);
+      DocIdSetIterator it1 = copy.iterator();
+      if (it1 == null) {
+        continue;
+      }
+      int fromDoc = it1.advance(from);
+      // No docs to set
+      it1.intoBitSet(null, from, actual, from);
+      assertTrue(actual.scanIsEmpty());
+      assertEquals(fromDoc, it1.docID());
+
+      // Now actually set some bits
+      it1.intoBitSet(null, to, actual, from);
+      FixedBitSet expected = new FixedBitSet(to - from);
+      DocIdSetIterator it2 = copy.iterator();
+      for (int doc = it2.advance(from); doc < to; doc = it2.nextDoc()) {
+        expected.set(doc - from);
+      }
+      assertEquals(expected, actual);
+      // Check if docID() / nextDoc() return the same value after #intoBitSet has been called.
+      assertEquals(it2.docID(), it1.docID());
+      if (it2.docID() != DocIdSetIterator.NO_MORE_DOCS) {
+        assertEquals(it2.nextDoc(), it1.nextDoc());
+      }
+    }
   }
 }
