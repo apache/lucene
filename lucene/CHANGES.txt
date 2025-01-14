@@ -10,6 +10,9 @@ API Changes
 * GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
   optimize loading doc IDs into a bit set. (Adrien Grand)
 
+* GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
+  bit set of matches. (Adrien Grand)
+
 New Features
 ---------------------
 (No changes)
