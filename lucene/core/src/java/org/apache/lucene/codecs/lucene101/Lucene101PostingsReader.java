@@ -53,7 +53,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
@@ -878,16 +877,13 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
-        throws IOException {
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       if (doc >= upTo) {
         return;
       }
 
       // Handle the current doc separately, it may be on the previous docBuffer.
-      if (acceptDocs == null || acceptDocs.get(doc)) {
-        bitSet.set(doc - offset);
-      }
+      bitSet.set(doc - offset);
 
       for (; ; ) {
         if (docBufferUpto == BLOCK_SIZE) {
@@ -898,7 +894,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         int start = docBufferUpto;
         int end = computeBufferEndBoundary(upTo);
         if (end != 0) {
-          bufferIntoBitSet(start, end, acceptDocs, bitSet, offset);
+          bufferIntoBitSet(start, end, bitSet, offset);
           doc = docBuffer[end - 1];
         }
         docBufferUpto = end;
@@ -922,15 +918,12 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
     }
 
-    private void bufferIntoBitSet(
-        int start, int end, Bits acceptDocs, FixedBitSet bitSet, int offset) throws IOException {
-      // acceptDocs#get (if backed by FixedBitSet), bitSet#set and `doc - offset` get
-      // auto-vectorized
+    private void bufferIntoBitSet(int start, int end, FixedBitSet bitSet, int offset)
+        throws IOException {
+      // bitSet#set and `doc - offset` get auto-vectorized
       for (int i = start; i < end; ++i) {
         int doc = docBuffer[i];
-        if (acceptDocs == null || acceptDocs.get(doc)) {
-          bitSet.set(doc - offset);
-        }
+        bitSet.set(doc - offset);
       }
     }
 
