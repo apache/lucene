@@ -181,12 +181,16 @@ public final class ForDeltaUtil {
 
   private final int[] tmp = new int[BLOCK_SIZE];
 
-  /** Return the number of bits per value required to store the given array. */
+  /**
+   * Return the number of bits per value required to store the given array containing strictly
+   * positive numbers.
+   */
   int bitsRequired(int[] ints) {
     int or = 0;
     for (int l : ints) {
       or |= l;
     }
+    // Deltas should be strictly positive since the delta between consecutive doc IDs is at least 1
     assert or != 0;
     return PackedInts.bitsRequired(or);
   }

@@ -444,6 +444,11 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
           s += i;
           spareBitSet.set(s);
         }
+        // Since we use the bit set encoding when it's more storage efficient than storing deltas,
+        // we know that each doc ID uses less than 32 bits, the maximum number of bits required to
+        // store a delta between consecutive doc IDs. So in the end, the bit set cannot have more
+        // than BLOCK_SIZE * Integer.SIZE / Long.SIZE = 64 longs, which fits on a byte.
+        assert numBitSetLongs <= BLOCK_SIZE / 2;
         level0Output.writeByte((byte) -numBitSetLongs);
         for (int i = 0; i < numBitSetLongs; ++i) {
           level0Output.writeLong(spareBitSet.getBits()[i]);

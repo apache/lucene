@@ -599,21 +599,24 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     private void refillFullBlock() throws IOException {
       int bitsPerValue = docIn.readByte();
       if (bitsPerValue > 0) {
+        // block is encoded as 128 packed integers that record the delta between doc IDs
         forDeltaUtil.decodeAndPrefixSum(bitsPerValue, docInUtil, prevDocID, docBuffer);
         encoding = DeltaEncoding.PACKED;
-      } else if (bitsPerValue == 0) {
-        // dense block: 128 one bits
-        docBitSet.set(0, BLOCK_SIZE);
-        docBitSetBase = prevDocID + 1;
-        docCumulativeWordPopCounts[0] = Long.SIZE;
-        docCumulativeWordPopCounts[1] = 2 * Long.SIZE;
-        encoding = DeltaEncoding.UNARY;
       } else {
-        assert level0LastDocID != NO_MORE_DOCS;
         // block is encoded as a bit set
+        assert level0LastDocID != NO_MORE_DOCS;
         docBitSetBase = prevDocID + 1;
-        int numLongs = -bitsPerValue;
-        docIn.readLongs(docBitSet.getBits(), 0, numLongs);
+        int numLongs;
+        if (bitsPerValue == 0) {
+          // 0 is used to record that all 128 docs in the block are consecutive
+          numLongs = BLOCK_SIZE / Long.SIZE; // 2
+          docBitSet.set(0, BLOCK_SIZE);
+        } else {
+          numLongs = -bitsPerValue;
+          docIn.readLongs(docBitSet.getBits(), 0, numLongs);
+        }
+        // Note: we know that BLOCK_SIZE bits are set, so no need to compute the cumulative pop
+        // count at the last index, it will be BLOCK_SIZE.
         // Note: this for loop auto-vectorizes
         for (int i = 0; i < numLongs - 1; ++i) {
           docCumulativeWordPopCounts[i] = Long.bitCount(docBitSet.getBits()[i]);
