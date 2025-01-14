@@ -53,7 +53,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
@@ -967,16 +966,13 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     @Override
-    public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
-        throws IOException {
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       if (doc >= upTo) {
         return;
       }
 
       // Handle the current doc separately, it may be on the previous docBuffer.
-      if (acceptDocs == null || acceptDocs.get(doc)) {
-        bitSet.set(doc - offset);
-      }
+      bitSet.set(doc - offset);
 
       for (; ; ) {
         if (docBufferUpto == BLOCK_SIZE) {
@@ -990,7 +986,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
               int start = docBufferUpto;
               int end = computeBufferEndBoundary(upTo);
               if (end != 0) {
-                bufferIntoBitSet(start, end, acceptDocs, bitSet, offset);
+                bufferIntoBitSet(start, end, bitSet, offset);
                 doc = docBuffer[end - 1];
               }
               docBufferUpto = end;
@@ -1004,51 +1000,28 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
             break;
           case UNARY:
             {
-              if (acceptDocs == null) {
-                int sourceFrom;
-                if (docBufferUpto == 0) {
-                  // start from beginning
-                  sourceFrom = 0;
-                } else {
-                  // start after the current doc
-                  sourceFrom = doc - docBitSetBase + 1;
-                }
-
-                int destFrom = docBitSetBase - offset + sourceFrom;
-
-                assert level0LastDocID != NO_MORE_DOCS;
-                int sourceTo = Math.min(upTo, level0LastDocID + 1) - docBitSetBase;
-
-                if (sourceTo > sourceFrom) {
-                  FixedBitSet.orRange(
-                      docBitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
-                }
-                if (docBitSetBase + sourceTo <= level0LastDocID) {
-                  // We stopped before the end of the current bit set, which means that we're done.
-                  // Set the current doc before returning.
-                  advance(docBitSetBase + sourceTo);
-                  return;
-                }
+              int sourceFrom;
+              if (docBufferUpto == 0) {
+                // start from beginning
+                sourceFrom = 0;
               } else {
-                // default impl, slow-ish
-                long[] bits = docBitSet.getBits();
-                for (int i = 0; i < bits.length; ++i) {
-                  long word = bits[i];
-                  while (word != 0) {
-                    int ntz = Long.numberOfTrailingZeros(word);
-                    int doc = docBitSetBase + ((i << 6) | ntz);
-                    if (doc >= this.doc) {
-                      if (doc >= upTo) {
-                        advance(doc); // this sets docBufferUpto as a side-effect
-                        return;
-                      }
-                      if (acceptDocs == null || acceptDocs.get(doc)) {
-                        bitSet.set(doc - offset);
-                      }
-                    }
-                    word ^= 1L << ntz;
-                  }
-                }
+                // start after the current doc
+                sourceFrom = doc - docBitSetBase + 1;
+              }
+
+              int destFrom = docBitSetBase - offset + sourceFrom;
+
+              assert level0LastDocID != NO_MORE_DOCS;
+              int sourceTo = Math.min(upTo, level0LastDocID + 1) - docBitSetBase;
+
+              if (sourceTo > sourceFrom) {
+                FixedBitSet.orRange(docBitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
+              }
+              if (docBitSetBase + sourceTo <= level0LastDocID) {
+                // We stopped before the end of the current bit set, which means that we're done.
+                // Set the current doc before returning.
+                advance(docBitSetBase + sourceTo);
+                return;
               }
               doc = level0LastDocID;
               docBufferUpto = BLOCK_SIZE;
@@ -1068,15 +1041,12 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
     }
 
-    private void bufferIntoBitSet(
-        int start, int end, Bits acceptDocs, FixedBitSet bitSet, int offset) throws IOException {
-      // acceptDocs#get (if backed by FixedBitSet), bitSet#set and `doc - offset` get
-      // auto-vectorized
+    private void bufferIntoBitSet(int start, int end, FixedBitSet bitSet, int offset)
+        throws IOException {
+      // bitSet#set and `doc - offset` get auto-vectorized
       for (int i = start; i < end; ++i) {
         int doc = docBuffer[i];
-        if (acceptDocs == null || acceptDocs.get(doc)) {
-          bitSet.set(doc - offset);
-        }
+        bitSet.set(doc - offset);
       }
     }
 

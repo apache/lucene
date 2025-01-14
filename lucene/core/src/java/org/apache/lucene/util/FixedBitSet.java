@@ -347,7 +347,7 @@ public final class FixedBitSet extends BitSet {
     } else {
       checkUnpositioned(iter);
       iter.nextDoc();
-      iter.intoBitSet(null, DocIdSetIterator.NO_MORE_DOCS, this, 0);
+      iter.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, this, 0);
     }
   }
 
@@ -396,7 +396,8 @@ public final class FixedBitSet extends BitSet {
     // First, align `destFrom` with a word start, ie. a multiple of Long.SIZE (64)
     if ((destFrom & 0x3F) != 0) {
       int numBitsNeeded = Math.min(-destFrom & 0x3F, length);
-      destBits[destFrom >> 6] |= readNBits(sourceBits, sourceFrom, numBitsNeeded) << destFrom;
+      long bits = readNBits(sourceBits, sourceFrom, numBitsNeeded) << destFrom;
+      destBits[destFrom >> 6] |= bits;
 
       sourceFrom += numBitsNeeded;
       destFrom += numBitsNeeded;
@@ -434,7 +435,74 @@ public final class FixedBitSet extends BitSet {
 
     // Finally handle tail bits
     if (length > 0) {
-      destBits[destFrom >> 6] |= readNBits(sourceBits, sourceFrom, length);
+      long bits = readNBits(sourceBits, sourceFrom, length);
+      destBits[destFrom >> 6] |= bits;
+    }
+  }
+
+  /**
+   * And {@code length} bits starting at {@code sourceFrom} from {@code source} into {@code dest}
+   * starting at {@code destFrom}.
+   */
+  public static void andRange(
+      FixedBitSet source, int sourceFrom, FixedBitSet dest, int destFrom, int length) {
+    assert length >= 0 : length;
+    Objects.checkFromIndexSize(sourceFrom, length, source.length());
+    Objects.checkFromIndexSize(destFrom, length, dest.length());
+
+    if (length == 0) {
+      return;
+    }
+
+    long[] sourceBits = source.getBits();
+    long[] destBits = dest.getBits();
+
+    // First, align `destFrom` with a word start, ie. a multiple of Long.SIZE (64)
+    if ((destFrom & 0x3F) != 0) {
+      int numBitsNeeded = Math.min(-destFrom & 0x3F, length);
+      long bits = readNBits(sourceBits, sourceFrom, numBitsNeeded) << destFrom;
+      bits |= ~(((1L << numBitsNeeded) - 1) << destFrom);
+      destBits[destFrom >> 6] &= bits;
+
+      sourceFrom += numBitsNeeded;
+      destFrom += numBitsNeeded;
+      length -= numBitsNeeded;
+    }
+
+    if (length == 0) {
+      return;
+    }
+
+    assert (destFrom & 0x3F) == 0;
+
+    // Now AND at the word level
+    int numFullWords = length >> 6;
+    int sourceWordFrom = sourceFrom >> 6;
+    int destWordFrom = destFrom >> 6;
+
+    // Note: these two for loops auto-vectorize
+    if ((sourceFrom & 0x3F) == 0) {
+      // sourceFrom and destFrom are both aligned with a long[]
+      for (int i = 0; i < numFullWords; ++i) {
+        destBits[destWordFrom + i] &= sourceBits[sourceWordFrom + i];
+      }
+    } else {
+      for (int i = 0; i < numFullWords; ++i) {
+        destBits[destWordFrom + i] &=
+            (sourceBits[sourceWordFrom + i] >>> sourceFrom)
+                | (sourceBits[sourceWordFrom + i + 1] << -sourceFrom);
+      }
+    }
+
+    sourceFrom += numFullWords << 6;
+    destFrom += numFullWords << 6;
+    length -= numFullWords << 6;
+
+    // Finally handle tail bits
+    if (length > 0) {
+      long bits = readNBits(sourceBits, sourceFrom, length);
+      bits |= (~0L << length);
+      destBits[destFrom >> 6] &= bits;
     }
   }
 
@@ -729,5 +797,19 @@ public final class FixedBitSet extends BitSet {
    */
   public Bits asReadOnlyBits() {
     return new FixedBits(bits, numBits);
+  }
+
+  @Override
+  public void applyMask(FixedBitSet bitSet, int offset) {
+    // Note: Some scorers don't track maxDoc and may thus call this method with an offset that is
+    // beyond bitSet.length()
+    int length = Math.min(bitSet.length(), length() - offset);
+    if (length >= 0) {
+      andRange(this, offset, bitSet, 0, length);
+    }
+    if (length < bitSet.length()
+        && bitSet.nextSetBit(Math.max(0, length)) != DocIdSetIterator.NO_MORE_DOCS) {
+      throw new IllegalArgumentException("Some bits are set beyond the end of live docs");
+    }
   }
 }

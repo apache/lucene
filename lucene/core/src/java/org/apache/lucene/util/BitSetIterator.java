@@ -99,18 +99,13 @@ public class BitSetIterator extends DocIdSetIterator {
   }
 
   @Override
-  public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
-      throws IOException {
-    // TODO: Can we also optimize the case when acceptDocs is not null?
-    if (acceptDocs == null
-        && upTo > doc
-        && offset < bits.length()
-        && bits instanceof FixedBitSet fixedBits) {
-      upTo = Math.min(upTo, fixedBits.length());
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    upTo = Math.min(upTo, bits.length());
+    if (upTo > doc && bits instanceof FixedBitSet fixedBits) {
       FixedBitSet.orRange(fixedBits, doc, bitSet, doc - offset, upTo - doc);
       advance(upTo); // set the current doc
     } else {
-      super.intoBitSet(acceptDocs, upTo, bitSet, offset);
+      super.intoBitSet(upTo, bitSet, offset);
     }
   }
 }

@@ -11,7 +11,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 Improvements
 ---------------------
@@ -41,6 +41,9 @@ API Changes
 * GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
   optimize loading doc IDs into a bit set. (Adrien Grand)
 
+* GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
+  bit set of matches. (Adrien Grand)
+
 New Features
 ---------------------
 (No changes)
@@ -50,6 +53,9 @@ Improvements
 
 * GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
   (Robert Muir)
+* GITHUB#13984: Add HNSW graph checks and stats to CheckIndex
+
+* GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
 
 Optimizations
 ---------------------
@@ -61,11 +67,20 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#14109: prefetch may select the wrong memory segment for
+  multi-segment slices. (Chris Hegarty)
+
+* GITHUB#14123: SortingCodecReader NPE when segment has no (points, vectors, etc...) (Mike Sokolov)
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#14081: Fix urls describing why NIOFS is not recommended for Windows (Marcel Yeonghyeon Ko)
+
+* GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
+
+* GITHUB#14091: Cover all DataType. (Lu Xugang)
 
 ======================= Lucene 10.1.0 =======================
 

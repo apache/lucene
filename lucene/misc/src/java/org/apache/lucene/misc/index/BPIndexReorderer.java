@@ -90,14 +90,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * <p>Note: This is a slow operation that consumes O(maxDoc + numTerms * numThreads) memory.
  */
-public final class BPIndexReorderer {
-
-  /** Exception that is thrown when not enough RAM is available. */
-  public static class NotEnoughRAMException extends RuntimeException {
-    private NotEnoughRAMException(String message) {
-      super(message);
-    }
-  }
+public final class BPIndexReorderer extends AbstractBPReorderer {
 
   /** Block size for terms in the forward index */
   private static final int TERM_IDS_BLOCK_SIZE = 17;
@@ -108,33 +101,14 @@ public final class BPIndexReorderer {
   /** Minimum required document frequency for terms to be considered: 4,096. */
   public static final int DEFAULT_MIN_DOC_FREQ = 4096;
 
-  /**
-   * Minimum size of partitions. The algorithm will stop recursing when reaching partitions below
-   * this number of documents: 32.
-   */
-  public static final int DEFAULT_MIN_PARTITION_SIZE = 32;
-
-  /**
-   * Default maximum number of iterations per recursion level: 20. Higher numbers of iterations
-   * typically don't help significantly.
-   */
-  public static final int DEFAULT_MAX_ITERS = 20;
-
   private int minDocFreq;
   private float maxDocFreq;
-  private int minPartitionSize;
-  private int maxIters;
-  private double ramBudgetMB;
   private Set<String> fields;
 
   /** Constructor. */
   public BPIndexReorderer() {
     setMinDocFreq(DEFAULT_MIN_DOC_FREQ);
     setMaxDocFreq(1f);
-    setMinPartitionSize(DEFAULT_MIN_PARTITION_SIZE);
-    setMaxIters(DEFAULT_MAX_ITERS);
-    // 10% of the available heap size by default
-    setRAMBudgetMB(Runtime.getRuntime().totalMemory() / 1024d / 1024d / 10d);
     setFields(null);
   }
 
@@ -157,36 +131,6 @@ public final class BPIndexReorderer {
       throw new IllegalArgumentException("maxDocFreq must be in (0, 1], got " + maxDocFreq);
     }
     this.maxDocFreq = maxDocFreq;
-  }
-
-  /** Set the minimum partition size, when the algorithm stops recursing, 32 by default. */
-  public void setMinPartitionSize(int minPartitionSize) {
-    if (minPartitionSize < 1) {
-      throw new IllegalArgumentException(
-          "minPartitionSize must be at least 1, got " + minPartitionSize);
-    }
-    this.minPartitionSize = minPartitionSize;
-  }
-
-  /**
-   * Set the maximum number of iterations on each recursion level, 20 by default. Experiments
-   * suggests that values above 20 do not help much. However, values below 20 can be used to trade
-   * effectiveness for faster reordering.
-   */
-  public void setMaxIters(int maxIters) {
-    if (maxIters < 1) {
-      throw new IllegalArgumentException("maxIters must be at least 1, got " + maxIters);
-    }
-    this.maxIters = maxIters;
-  }
-
-  /**
-   * Set the amount of RAM that graph partitioning is allowed to use. More RAM allows running
-   * faster. If not enough RAM is provided, a {@link NotEnoughRAMException} will be thrown. This is
-   * 10% of the total heap size by default.
-   */
-  public void setRAMBudgetMB(double ramBudgetMB) {
-    this.ramBudgetMB = ramBudgetMB;
   }
 
   /**
@@ -830,6 +774,7 @@ public final class BPIndexReorderer {
    * enable integration into {@link BPReorderingMergePolicy}, {@link #reorder(CodecReader,
    * Directory, Executor)} should be preferred in general.
    */
+  @Override
   public Sorter.DocMap computeDocMap(CodecReader reader, Directory tempDir, Executor executor)
       throws IOException {
     if (docRAMRequirements(reader.maxDoc()) >= ramBudgetMB * 1024 * 1024) {
