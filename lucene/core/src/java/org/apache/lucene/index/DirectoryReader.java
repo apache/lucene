@@ -305,7 +305,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
 
   /**
    * Returns <code>true</code> if an index likely exists at the specified directory. Note that if a
-   * corrupt index exists, or if an index in the process of committing
+   * corrupt index exists, or if an index in the process of committing the return value is not reliable.
    *
    * @param directory the directory to check for an index
    * @return <code>true</code> if an index exists; <code>false</code> otherwise
