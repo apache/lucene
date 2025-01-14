@@ -599,13 +599,17 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                     fieldInfo.getVectorSimilarityFunction(),
                     ByteVectorValues.fromBytes(
                         (List<byte[]>) flatFieldVectorsWriter.getVectors(),
-                        fieldInfo.getVectorDimension()));
+                        fieldInfo.getVectorDimension(),
+                        getDocsWithFieldSet(),
+                        flatFieldVectorsWriter.docIdToVectorCount()));
             case FLOAT32 ->
                 scorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
                     FloatVectorValues.fromFloats(
                         (List<float[]>) flatFieldVectorsWriter.getVectors(),
-                        fieldInfo.getVectorDimension()));
+                        fieldInfo.getVectorDimension(),
+                        getDocsWithFieldSet(),
+                        flatFieldVectorsWriter.docIdToVectorCount()));
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -615,12 +619,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public void addValue(int docID, T vectorValue) throws IOException {
-      if (docID == lastDocID) {
-        throw new IllegalArgumentException(
-            "VectorValuesField \""
-                + fieldInfo.name
-                + "\" appears more than once in this document (only one value is allowed per field)");
-      }
+//      if (docID == lastDocID) {
+//        throw new IllegalArgumentException(
+//            "VectorValuesField \""
+//                + fieldInfo.name
+//                + "\" appears more than once in this document (only one value is allowed per field)");
+//      }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       hnswGraphBuilder.addGraphNode(node);
       node++;

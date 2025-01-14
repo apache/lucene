@@ -597,6 +597,21 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
+    public int ordCount() {
+      return vectors.size();
+    }
+
+    @Override
+    public int docCount() {
+      return docsWithField.cardinality();
+    }
+
+    @Override
+    public IntToIntFunction docIdToVectorCount() {
+      return docIdToVectorCount::get;
+    }
+
+    @Override
     public void finish() throws IOException {
       if (finished) {
         return;

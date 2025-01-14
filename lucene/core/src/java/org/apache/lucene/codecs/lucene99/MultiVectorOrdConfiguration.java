@@ -180,12 +180,12 @@ public class MultiVectorOrdConfiguration {
   }
 
   public static MultiVectorMaps createMultiVectorMaps(DocIdSetIterator disi,
-                                                IntToIntFunction vectorsPerDoc,
+                                                IntToIntFunction docIdToVectorCount,
                                                 int ordCount,
                                                 int docCount) throws IOException {
     if (docCount == ordCount) {
       // single valued vector field
-      return new MultiVectorMaps();
+      return new MultiVectorMaps(docCount);
     }
     int[] docOrdFreq = new int[docCount + 1];
     int[] ordToDocMap = new int[ordCount];
@@ -198,7 +198,7 @@ public class MultiVectorOrdConfiguration {
     int nextBaseOrd = -1;
     int idx = 0;
     for (int doc = disi.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = disi.nextDoc()) {
-      int vectorCount = vectorsPerDoc.apply(doc);
+      int vectorCount = docIdToVectorCount.apply(doc);
       baseOrd = ord;
       nextBaseOrd = ord + vectorCount;
       docOrdFreq[idx++] = baseOrd;
@@ -212,19 +212,16 @@ public class MultiVectorOrdConfiguration {
     assert ord == ordCount;
     assert idx == docCount;
     docOrdFreq[idx] = ordCount;
-    return new MultiVectorMaps(true, docOrdFreq, ordToDocMap, baseOrdMap, nextBaseOrdMap);
+    return new MultiVectorMaps(true, docCount, ordCount, docOrdFreq, ordToDocMap, baseOrdMap, nextBaseOrdMap);
   }
 
   /**
    * MultiVectorMaps collect the metadata required to access ordinals and docIds with
    * for multivalued vector fields
    */
-  public static record MultiVectorMaps(boolean isMultiVector, int[] docOrdFreq, int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {
-
-    public static final MultiVectorMaps singleValuedMultiVectorMap = new MultiVectorMaps();
-
-    private MultiVectorMaps() {
-      this(false, null, null, null, null);
+  public static record MultiVectorMaps(boolean isMultiVector, int docCount, int ordCount, int[] docOrdFreq, int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {
+    private MultiVectorMaps(int docCount) {
+      this(false, docCount, docCount, null, null, null, null);
     }
   };
 }
