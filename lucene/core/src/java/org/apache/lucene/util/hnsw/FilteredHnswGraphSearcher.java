@@ -21,21 +21,24 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
- * Searches an HNSW graph to find nearest neighbors to a query vector. This particular implementation is optimized
- * for a filtered search, inspired by the ACORN-1 algorithm. https://arxiv.org/abs/2403.04871
- * However, this implementation is augmented in some ways, mainly:
+ * Searches an HNSW graph to find nearest neighbors to a query vector. This particular
+ * implementation is optimized for a filtered search, inspired by the ACORN-1 algorithm.
+ * https://arxiv.org/abs/2403.04871 However, this implementation is augmented in some ways, mainly:
+ *
  * <ul>
- *   <li>It dynamically determines when the optimized filter step should occur based on some filtered lambda. This is done
- *   per small world</li>
- *   <li>The number of candidates to consider for exploration is increased slightly above the original small world's connection level</li>
- *   <li>The graph searcher keeps exploring until searching is exhausted or the candidate limit is reached. This may go well beyond two hops from the origin small world</li>
+ *   <li>It dynamically determines when the optimized filter step should occur based on some
+ *       filtered lambda. This is done per small world
+ *   <li>The number of candidates to consider for exploration is increased slightly above the
+ *       original small world's connection level
+ *   <li>The graph searcher keeps exploring until searching is exhausted or the candidate limit is
+ *       reached. This may go well beyond two hops from the origin small world
+ * </ul>
  */
 public class FilteredHnswGraphSearcher {
   // How many extra candidates to consider for 2-hop neighbors
@@ -73,12 +76,12 @@ public class FilteredHnswGraphSearcher {
    *     {@code null} if they are all allowed to match.
    */
   public static void search(
-    RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
-    throws IOException {
+      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
+      throws IOException {
     FilteredHnswGraphSearcher graphSearcher =
-      new FilteredHnswGraphSearcher(
-        new NeighborQueue(knnCollector.k(), true),
-        bitSet(acceptOrds, getGraphSize(graph), knnCollector.k()));
+        new FilteredHnswGraphSearcher(
+            new NeighborQueue(knnCollector.k(), true),
+            bitSet(acceptOrds, getGraphSize(graph), knnCollector.k()));
     int ep = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector);
     if (ep != -1) {
       graphSearcher.searchLevel(knnCollector, scorer, 0, new int[] {ep}, graph, acceptOrds);
@@ -92,9 +95,9 @@ public class FilteredHnswGraphSearcher {
     }
     assert percentFiltered >= 0.0f && percentFiltered <= 1.0f;
     int approximateVisitation =
-      (int)
-        (((int) Math.log(Math.sqrt(16)) * (int) Math.log(graphSize) * topk)
-          * (1f / percentFiltered));
+        (int)
+            (((int) Math.log(Math.sqrt(16)) * (int) Math.log(graphSize) * topk)
+                * (1f / percentFiltered));
     if (approximateVisitation < (graphSize >>> 7)) {
       return new SparseFixedBitSet(graphSize);
     } else {
@@ -113,13 +116,13 @@ public class FilteredHnswGraphSearcher {
    * @throws IOException When accessing the vector fails
    */
   private int findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
-    throws IOException {
+      throws IOException {
     int currentEp = graph.entryNode();
     if (currentEp == -1 || graph.numLevels() == 1) {
       return currentEp;
     }
     int size = getGraphSize(graph);
-    prepareScratchState(size);
+    prepareScratchState();
     float currentScore = scorer.score(currentEp);
     collector.incVisitedCount(1);
     boolean foundBetter;
@@ -131,7 +134,7 @@ public class FilteredHnswGraphSearcher {
         foundBetter = false;
         graphSeek(graph, level, currentEp);
         int friendOrd;
-        while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+        while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
           assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
           if (visited.getAndSet(friendOrd)) {
             continue;
@@ -159,17 +162,17 @@ public class FilteredHnswGraphSearcher {
    * last to be popped.
    */
   void searchLevel(
-    KnnCollector results,
-    RandomVectorScorer scorer,
-    int level,
-    final int[] eps,
-    HnswGraph graph,
-    Bits acceptOrds)
-    throws IOException {
+      KnnCollector results,
+      RandomVectorScorer scorer,
+      int level,
+      final int[] eps,
+      HnswGraph graph,
+      Bits acceptOrds)
+      throws IOException {
 
     int size = getGraphSize(graph);
 
-    prepareScratchState(size);
+    prepareScratchState();
 
     for (int ep : eps) {
       if (visited.getAndSet(ep) == false) {
@@ -184,8 +187,6 @@ public class FilteredHnswGraphSearcher {
         }
       }
     }
-
-    int[] neighbors = new int[32];
     IntArrayQueue filteredNeighborQueue = new IntArrayQueue(32);
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
@@ -201,24 +202,22 @@ public class FilteredHnswGraphSearcher {
       // Pre-fetch neighbors into an array
       // This is necessary because we need to call `seek` on each neighbor to consider 2-hop
       // neighbors
-      int neighborCount = graph.consumeCurrentNeighbors(neighbors);
       filteredNeighborQueue.clear();
-
       // We only consider maxConn 1/2-hop neighbors
       int neighborsProcessed = 0;
-      for (int i = 0; i < neighborCount; i++) {
-        int friendOrd = neighbors[i];
+      int friendOrd;
+      while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
           continue;
-        }
-        if (results.earlyTerminated()) {
-          break;
         }
         neighborsProcessed++;
         if (acceptOrds != null && acceptOrds.get(friendOrd) == false) {
           filteredNeighborQueue.add(friendOrd);
           continue;
+        }
+        if (results.earlyTerminated()) {
+          break;
         }
         float friendSimilarity = scorer.score(friendOrd);
         results.incVisitedCount(1);
@@ -229,35 +228,36 @@ public class FilteredHnswGraphSearcher {
           }
         }
       }
-      float percentFiltered = (float) filteredNeighborQueue.count() / neighborCount;
+      float percentFiltered = (float) filteredNeighborQueue.count() / graph.neighborCount();
+      float lambda = 1 - percentFiltered;
       int expandedNeighborCount =
-        (int) Math.min(neighborCount * MAX_TWO_HOP_LIMIT, neighborCount / (1 - percentFiltered));
+          (int) Math.min(graph.neighborCount() * MAX_TWO_HOP_LIMIT, graph.neighborCount() / lambda);
       filteredNeighborQueue.expand(expandedNeighborCount);
       int maxExpandedNeighbors =
-        (int)
-          (Math.log(neighborCount / (1 - percentFiltered))
-            * (neighborCount - filteredNeighborQueue.count()));
+          (int)
+              (Math.log(graph.neighborCount() / lambda)
+                  * (graph.neighborCount() - filteredNeighborQueue.count()));
       int filteredProcessed = filteredNeighborQueue.count();
       // print the percent of neighbors that were filtered
       if (percentFiltered > TWO_STEP_LAMBDA) {
         while (filteredNeighborQueue.isEmpty() == false
-          && neighborsProcessed < expandedNeighborCount) {
+            && neighborsProcessed < expandedNeighborCount) {
           int filteredNeighbor = filteredNeighborQueue.poll();
           // Only walk 2-hop neighbors if filter doesn't match
           graphSeek(graph, level, filteredNeighbor);
           int twoHopFriendOrd;
-          while ((twoHopFriendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS
-            && neighborsProcessed < expandedNeighborCount) {
+          while (neighborsProcessed < expandedNeighborCount
+              && (twoHopFriendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
             assert twoHopFriendOrd < size : "twoHopFriendOrd=" + twoHopFriendOrd + "; size=" + size;
             if (visited.getAndSet(twoHopFriendOrd)) {
               continue;
             }
-            if (results.earlyTerminated()) {
-              break;
-            }
             filteredProcessed++;
             // Only calculate score and consider candidate if filter matches
             if (acceptOrds.get(twoHopFriendOrd)) {
+              if (results.earlyTerminated()) {
+                break;
+              }
               neighborsProcessed++;
               float twoHopSimilarity = scorer.score(twoHopFriendOrd);
               results.incVisitedCount(1);
@@ -276,11 +276,7 @@ public class FilteredHnswGraphSearcher {
     }
   }
 
-  private void prepareScratchState(int capacity) {
-    candidates.clear();
-    if (visited.length() < capacity) {
-      visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
-    }
+  private void prepareScratchState() {
     visited.clear();
   }
 
@@ -292,18 +288,6 @@ public class FilteredHnswGraphSearcher {
    */
   void graphSeek(HnswGraph graph, int level, int targetNode) throws IOException {
     graph.seek(level, targetNode);
-  }
-
-  /**
-   * Get the next neighbor from the graph, you must call {@link #graphSeek(HnswGraph, int, int)}
-   * before calling this method. The default implementation will just call {@link
-   * HnswGraph#nextNeighbor()}
-   *
-   * @return see {@link HnswGraph#nextNeighbor()}
-   * @throws IOException when advance neighbors
-   */
-  int graphNextNeighbor(HnswGraph graph) throws IOException {
-    return graph.nextNeighbor();
   }
 
   private static int getGraphSize(HnswGraph graph) {

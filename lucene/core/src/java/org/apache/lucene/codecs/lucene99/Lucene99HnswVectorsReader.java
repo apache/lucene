@@ -526,6 +526,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
 
     @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
     public int numLevels() throws IOException {
       return numLevels;
     }

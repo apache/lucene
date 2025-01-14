@@ -112,6 +112,11 @@ public abstract class HnswGraph {
    */
   public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
 
+  public int neighborCount() {
+    // TODO impl
+    return 0;
+  }
+
   /** Empty graph value */
   public static HnswGraph EMPTY =
       new HnswGraph() {
