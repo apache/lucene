@@ -214,12 +214,12 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       }
       int fromDoc = it1.advance(from);
       // No docs to set
-      it1.intoBitSet(null, from, actual, from);
+      it1.intoBitSet(from, actual, from);
       assertTrue(actual.scanIsEmpty());
       assertEquals(fromDoc, it1.docID());
 
       // Now actually set some bits
-      it1.intoBitSet(null, to, actual, from);
+      it1.intoBitSet(to, actual, from);
       FixedBitSet expected = new FixedBitSet(to - from);
       DocIdSetIterator it2 = copy.iterator();
       for (int doc = it2.advance(from); doc < to; doc = it2.nextDoc()) {

@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -220,9 +219,7 @@ public abstract class DocIdSetIterator {
    *
    * <pre class="prettyprint">
    * for (int doc = docID(); doc &lt; upTo; doc = nextDoc()) {
-   *   if (acceptDocs == null || acceptDocs.get(doc)) {
-   *     bitSet.set(doc - offset);
-   *   }
+   *   bitSet.set(doc - offset);
    * }
    * </pre>
    *
@@ -235,13 +232,10 @@ public abstract class DocIdSetIterator {
    *
    * @lucene.internal
    */
-  public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
-      throws IOException {
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     assert offset <= docID();
     for (int doc = docID(); doc < upTo; doc = nextDoc()) {
-      if (acceptDocs == null || acceptDocs.get(doc)) {
-        bitSet.set(doc - offset);
-      }
+      bitSet.set(doc - offset);
     }
   }
 }

@@ -96,14 +96,8 @@ final class IntArrayDocIdSet extends DocIdSet {
     }
 
     @Override
-    public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
-        throws IOException {
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       if (doc >= upTo) {
-        return;
-      }
-
-      if (acceptDocs != null) {
-        super.intoBitSet(acceptDocs, upTo, bitSet, offset);
         return;
       }
 

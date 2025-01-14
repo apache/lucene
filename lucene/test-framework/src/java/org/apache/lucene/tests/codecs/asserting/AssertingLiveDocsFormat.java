@@ -24,6 +24,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Just like the default live docs format but with additional asserts. */
 public class AssertingLiveDocsFormat extends LiveDocsFormat {
@@ -86,6 +87,12 @@ public class AssertingLiveDocsFormat extends LiveDocsFormat {
     @Override
     public int length() {
       return in.length();
+    }
+
+    @Override
+    public void applyMask(FixedBitSet bitSet, int offset) {
+      assert offset >= 0;
+      in.applyMask(bitSet, offset);
     }
 
     @Override
