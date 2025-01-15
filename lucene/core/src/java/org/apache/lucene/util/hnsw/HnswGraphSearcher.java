@@ -20,8 +20,8 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import org.apache.lucene.search.HnswKnnCollector;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.HnswKnnCollector;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.knn.EntryPointProvider;
