@@ -236,9 +236,7 @@ final class LatLonPointDistanceQuery extends Query {
 
           @Override
           public void visit(IntsRef ref) {
-            for (int i = 0; i < ref.length; i++) {
-              visit(ref.ints[ref.offset + i]);
-            }
+            adder.add(ref);
           }
 
           @Override
@@ -280,8 +278,9 @@ final class LatLonPointDistanceQuery extends Query {
           @Override
           public void visit(IntsRef ref) {
             for (int i = 0; i < ref.length; i++) {
-              visit(ref.ints[ref.offset + i]);
+              result.clear(ref.ints[ref.offset + i]);
             }
+            cost[0] = -ref.length;
           }
 
           @Override

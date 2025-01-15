@@ -448,9 +448,7 @@ abstract class SpatialQuery extends Query {
 
       @Override
       public void visit(IntsRef ref) {
-        for (int i = 0; i < ref.length; i++) {
-          visit(ref.ints[ref.offset + i]);
-        }
+        adder.add(ref);
       }
 
       @Override
@@ -500,8 +498,9 @@ abstract class SpatialQuery extends Query {
       @Override
       public void visit(IntsRef ref) {
         for (int i = 0; i < ref.length; i++) {
-          visit(ref.ints[ref.offset + i]);
+          result.set(ref.ints[ref.offset + i]);
         }
+        cost[0] += ref.length;
       }
 
       @Override
