@@ -131,7 +131,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
         for (j = 0; j < array.length; ) {
           final int l = TestUtil.nextInt(random(), 1, array.length - j);
           DocIdSetBuilder.BulkAdder adder = null;
-          if (random().nextBoolean()) {
+          if (usually()) {
             for (int k = 0, budget = 0; k < l; ++k) {
               if (budget == 0 || rarely()) {
                 budget = TestUtil.nextInt(random(), 1, l - k + 5);
