@@ -56,6 +56,7 @@ public final class DocIdSetBuilder {
       bitSet.set(doc);
     }
 
+    @Override
     public void add(IntsRef docs) {
       for (int i = 0; i < docs.length; i++) {
         bitSet.set(docs.ints[docs.offset + i]);
