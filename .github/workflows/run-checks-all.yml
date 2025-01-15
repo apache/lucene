@@ -13,7 +13,7 @@ on:
       - 'branch_10x'
 
 env:
-  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+  DEVELOCITY_ACCESS_KEY: ${{ DEVELOCITY_ACCESS_KEY }}
 
 # We split the workflow into two parallel jobs for efficiency:
 # one is running all validation checks without tests,
