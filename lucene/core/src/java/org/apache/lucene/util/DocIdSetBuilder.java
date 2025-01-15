@@ -44,11 +44,7 @@ public final class DocIdSetBuilder {
   public abstract static class BulkAdder {
     public abstract void add(int doc);
 
-    public void add(IntsRef docs) {
-      for (int i = 0; i < docs.length; i++) {
-        add(docs.ints[docs.offset + i]);
-      }
-    }
+    public abstract void add(IntsRef docs);
 
     public void add(DocIdSetIterator iterator) throws IOException {
       int docID;
@@ -68,6 +64,12 @@ public final class DocIdSetBuilder {
     @Override
     public void add(int doc) {
       bitSet.set(doc);
+    }
+
+    public void add(IntsRef docs) {
+      for (int i = 0; i < docs.length; i++) {
+        bitSet.set(docs.ints[docs.offset + i]);
+      }
     }
 
     @Override
