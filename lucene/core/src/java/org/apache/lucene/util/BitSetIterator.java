@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
@@ -95,5 +96,16 @@ public class BitSetIterator extends DocIdSetIterator {
   @Override
   public long cost() {
     return cost;
+  }
+
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    upTo = Math.min(upTo, bits.length());
+    if (upTo > doc && bits instanceof FixedBitSet fixedBits) {
+      FixedBitSet.orRange(fixedBits, doc, bitSet, doc - offset, upTo - doc);
+      advance(upTo); // set the current doc
+    } else {
+      super.intoBitSet(upTo, bitSet, offset);
+    }
   }
 }
