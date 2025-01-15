@@ -20,8 +20,8 @@ package org.apache.lucene.search;
 /**
  * A {@link HnswKnnCollector} that early exits when nearest neighbor queue keeps saturating beyond a
  * 'patience' parameter. This records the rate of collection of new nearest neighbors in the
- * {@code delegate} {@link KnnCollector) queue, at each HNSW node candidate visit. Once it saturates for a number of
- * consecutive node visits (e.g., the patience parameter), this early terminates.
+ * {@code delegate} {@link org.apache.lucene.search.KnnCollector) queue, at each HNSW node candidate visit.
+ * Once it saturates for a number of consecutive node visits (e.g., the patience parameter), this early terminates.
  */
 public class HnswQueueSaturationCollector implements HnswKnnCollector {
 
