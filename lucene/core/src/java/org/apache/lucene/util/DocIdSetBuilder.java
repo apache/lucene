@@ -41,25 +41,15 @@ public final class DocIdSetBuilder {
    *
    * @see DocIdSetBuilder#grow
    */
-  public abstract static sealed class BulkAdder permits FixedBitSetAdder, BufferAdder {
-    public abstract void add(int doc);
+  public sealed interface BulkAdder permits FixedBitSetAdder, BufferAdder {
+    void add(int doc);
 
-    public abstract void add(IntsRef docs);
+    void add(IntsRef docs);
 
-    public void add(DocIdSetIterator iterator) throws IOException {
-      int docID;
-      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        add(docID);
-      }
-    }
+    void add(DocIdSetIterator iterator) throws IOException;
   }
 
-  private static final class FixedBitSetAdder extends BulkAdder {
-    final FixedBitSet bitSet;
-
-    FixedBitSetAdder(FixedBitSet bitSet) {
-      this.bitSet = bitSet;
-    }
+  private record FixedBitSetAdder(FixedBitSet bitSet) implements BulkAdder {
 
     @Override
     public void add(int doc) {
@@ -93,12 +83,7 @@ public final class DocIdSetBuilder {
     }
   }
 
-  private static final class BufferAdder extends BulkAdder {
-    final Buffer buffer;
-
-    BufferAdder(Buffer buffer) {
-      this.buffer = buffer;
-    }
+  private record BufferAdder(Buffer buffer) implements BulkAdder {
 
     @Override
     public void add(int doc) {
@@ -109,6 +94,14 @@ public final class DocIdSetBuilder {
     public void add(IntsRef docs) {
       System.arraycopy(docs.ints, docs.offset, buffer.array, buffer.length, docs.length);
       buffer.length += docs.length;
+    }
+
+    @Override
+    public void add(DocIdSetIterator iterator) throws IOException {
+      int docID;
+      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        add(docID);
+      }
     }
   }
 
