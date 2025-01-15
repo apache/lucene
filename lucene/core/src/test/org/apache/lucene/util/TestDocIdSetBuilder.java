@@ -144,6 +144,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
             IntsRef intsRef = new IntsRef(array, j, l);
             adder = builder.grow(l);
             adder.add(intsRef);
+            j += l;
           }
         }
 
