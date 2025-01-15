@@ -20,8 +20,10 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
+import org.apache.lucene.search.knn.EntryPointProvider;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -52,7 +54,9 @@ public class HnswGraphSearcher {
   }
 
   /**
-   * Searches HNSW graph for the nearest neighbors of a query vector.
+   * Searches the HNSW graph for the nearest neighbors of a query vector. If entry points are
+   * directly provided via the knnCollector, then the search will be initialized at those points.
+   * Otherwise, the search will discover the best entry point per the normal HNSW search algorithm.
    *
    * @param scorer the scorer to compare the query with the nodes
    * @param knnCollector a collector of top knn results to be returned
@@ -67,7 +71,30 @@ public class HnswGraphSearcher {
     HnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
-    search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
+    final int[] entryPoints;
+    if (knnCollector instanceof EntryPointProvider epp) {
+      if (epp.numberOfEntryPoints() <= 0) {
+        throw new IllegalArgumentException("The number of entry points must be > 0");
+      }
+      DocIdSetIterator eps = epp.entryPoints();
+      entryPoints = new int[epp.numberOfEntryPoints()];
+      int idx = 0;
+      while (idx < entryPoints.length) {
+        int entryPointOrdInt = eps.nextDoc();
+        if (entryPointOrdInt == NO_MORE_DOCS) {
+          throw new IllegalArgumentException(
+              "The number of entry points provided is less than the number of entry points requested");
+        }
+        assert entryPointOrdInt < getGraphSize(graph);
+        entryPoints[idx++] = entryPointOrdInt;
+      }
+      // This is an invalid case, but we should check it
+      assert entryPoints.length > 0;
+      // We use provided entry point ordinals to search the complete graph (level 0)
+      graphSearcher.searchLevel(knnCollector, scorer, 0, entryPoints, graph, acceptOrds);
+    } else {
+      search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
+    }
   }
 
   /**
