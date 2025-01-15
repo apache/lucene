@@ -99,7 +99,16 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
 
   @Override
   public TopDocs topDocs() {
-    return delegate.topDocs();
+    TopDocs topDocs;
+    if (patienceFinished && delegate.earlyTerminated() == false) {
+      TopDocs delegateDocs = delegate.topDocs();
+      TotalHits totalHits =
+          new TotalHits(delegateDocs.totalHits.value(), TotalHits.Relation.EQUAL_TO);
+      topDocs = new TopDocs(totalHits, delegateDocs.scoreDocs);
+    } else {
+      topDocs = delegate.topDocs();
+    }
+    return topDocs;
   }
 
   @Override
