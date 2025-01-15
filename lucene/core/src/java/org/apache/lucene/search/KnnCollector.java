@@ -85,4 +85,58 @@ public interface KnnCollector {
    * @return The collected top documents
    */
   TopDocs topDocs();
+
+  /**
+   * KnnCollector.Decorator is the base class for decorators of KnnCollector objects, which extend
+   * the object with new behaviors.
+   *
+   * @lucene.experimental
+   */
+  abstract class Decorator implements KnnCollector {
+    private final KnnCollector collector;
+
+    public Decorator(KnnCollector collector) {
+      this.collector = collector;
+    }
+
+    @Override
+    public boolean earlyTerminated() {
+      return collector.earlyTerminated();
+    }
+
+    @Override
+    public void incVisitedCount(int count) {
+      collector.incVisitedCount(count);
+    }
+
+    @Override
+    public long visitedCount() {
+      return collector.visitedCount();
+    }
+
+    @Override
+    public long visitLimit() {
+      return collector.visitLimit();
+    }
+
+    @Override
+    public int k() {
+      return collector.k();
+    }
+
+    @Override
+    public boolean collect(int docId, float similarity) {
+      return collector.collect(docId, similarity);
+    }
+
+    @Override
+    public float minCompetitiveSimilarity() {
+      return collector.minCompetitiveSimilarity();
+    }
+
+    @Override
+    public TopDocs topDocs() {
+      return collector.topDocs();
+    }
+  }
 }
