@@ -41,7 +41,7 @@ public final class DocIdSetBuilder {
    *
    * @see DocIdSetBuilder#grow
    */
-  public abstract static class BulkAdder {
+  public abstract static sealed class BulkAdder permits FixedBitSetAdder, BufferAdder {
     public abstract void add(int doc);
 
     public abstract void add(IntsRef docs);
@@ -54,7 +54,7 @@ public final class DocIdSetBuilder {
     }
   }
 
-  private static class FixedBitSetAdder extends BulkAdder {
+  private static final class FixedBitSetAdder extends BulkAdder {
     final FixedBitSet bitSet;
 
     FixedBitSetAdder(FixedBitSet bitSet) {
@@ -93,7 +93,7 @@ public final class DocIdSetBuilder {
     }
   }
 
-  private static class BufferAdder extends BulkAdder {
+  private static final class BufferAdder extends BulkAdder {
     final Buffer buffer;
 
     BufferAdder(Buffer buffer) {
