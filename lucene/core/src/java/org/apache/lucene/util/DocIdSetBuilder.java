@@ -106,6 +106,7 @@ public final class DocIdSetBuilder {
     @Override
     public void add(IntsRef docs) {
       System.arraycopy(docs.ints, docs.offset, buffer.array, buffer.length, docs.length);
+      buffer.length += docs.length;
     }
   }
 
