@@ -193,47 +193,18 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  private record DocWithOrd(int docId, int ord) implements Comparable<DocWithOrd> {
-    @Override
-    public int compareTo(DocWithOrd other) {
-      if (this.docId == other.docId && this.ord == other.ord) {
-        return 0;
-      }
-      if (this.docId < other.docId || (this.docId == other.docId && this.ord < other.ord)) {
-        return -1;
-      }
-      return 1;
-    }
-  };
-
   private void writeSortingField(FieldWriter<?> fieldData, int maxDoc, Sorter.DocMap sortMap)
       throws IOException {
-    int numValues = fieldData.vectors.size();
-    // create a mapping of new docIds to old ordinals
-    DocWithOrd[] docWithOrds = new DocWithOrd[numValues];
-    DocIdSetIterator iterator = fieldData.docsWithField.iterator();
-    int oldOrd = 0;
-    for (int doc = iterator.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = iterator.nextDoc()) {
-      int vectorCount = fieldData.docIdToVectorCount.get(doc);
-      for (int i = 0; i < vectorCount; i++) {
-        docWithOrds[oldOrd] = new DocWithOrd(sortMap.oldToNew(doc), oldOrd);
-        oldOrd++;
-      }
-    }
-    // sort by new docIds and create new to old ordinal mapping
-    Arrays.sort(docWithOrds);
-    int[] ordMap = new int[numValues];
+    int ordCount = fieldData.vectors.size();
+    int[] ordMap = new int[ordCount];
     DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
-    for (int i = 0; i < numValues; i++) {
-      ordMap[i] = docWithOrds[i].ord;
-      if (newDocsWithField.bits().get(docWithOrds[i].docId) == false) {
-        newDocsWithField.add(docWithOrds[i].docId);
-      }
-    }
-
-//    final int[] ordMap = new int[fieldData.docsWithField.cardinality()]; // new ord to old ord
-//    DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
-//    mapOldOrdToNewOrd(fieldData.docsWithField, sortMap, null, ordMap, newDocsWithField);
+    remapOrdinals(fieldData.docsWithField,
+        sortMap,
+        fieldData.docIdToVectorCount(),
+        ordCount,
+        null,
+        ordMap,
+        newDocsWithField);
 
     // write vector values
     long vectorDataOffset =

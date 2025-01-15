@@ -54,6 +54,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -200,12 +201,17 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   private void writeSortingField(FieldWriter<?> fieldData, Sorter.DocMap sortMap)
       throws IOException {
-    final int[] ordMap =
-        new int[fieldData.getDocsWithFieldSet().cardinality()]; // new ord to old ord
-    final int[] oldOrdMap =
-        new int[fieldData.getDocsWithFieldSet().cardinality()]; // old ord to new ord
-
-    mapOldOrdToNewOrd(fieldData.getDocsWithFieldSet(), sortMap, oldOrdMap, ordMap, null);
+    final int ordCount = fieldData.ordCount();
+    final int[] ordMap = new int[ordCount]; // new ord to old ord
+    final int[] oldOrdMap = new int[ordCount]; // old ord to new ord
+    remapOrdinals(fieldData.getDocsWithFieldSet(),
+        sortMap,
+        fieldData.getDocIdToVectorCount(),
+        ordCount,
+        oldOrdMap,
+        ordMap,
+        null);
+//    mapOldOrdToNewOrd(fieldData.getDocsWithFieldSet(), sortMap, oldOrdMap, ordMap, null);
     // write graph
     long vectorIndexOffset = vectorIndex.getFilePointer();
     OnHeapHnswGraph graph = fieldData.getGraph();
@@ -365,6 +371,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           }
         }
         KnnVectorValues mergedVectorValues = null;
+        // TODO: fix mergedVectorValues for multivectors.
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE ->
               mergedVectorValues =
@@ -633,6 +640,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     public DocsWithFieldSet getDocsWithFieldSet() {
       return flatFieldVectorsWriter.getDocsWithFieldSet();
+    }
+
+    public int ordCount() {
+      return flatFieldVectorsWriter.ordCount();
+    }
+
+    public IntToIntFunction getDocIdToVectorCount() {
+      return flatFieldVectorsWriter.docIdToVectorCount();
     }
 
     @Override
