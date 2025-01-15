@@ -100,28 +100,15 @@ public class BitSetIterator extends DocIdSetIterator {
 
   @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    upTo = Math.min(upTo, bits.length());
     if (upTo > doc && bits instanceof FixedBitSet fixedBits) {
-      if (upTo > offset + bitSet.length()) {
-        // This `fixedBits` has bits beyond the end of `bitSet`. This is only legal when all bits
-        // beyond the end of the bit set are clear, as the contract of this method only requires to
-        // copy set bits.
-        int outOfBoundsBit = fixedBits.nextSetBit(offset + bitSet.length());
-        if (outOfBoundsBit != NO_MORE_DOCS) {
-          throw new IndexOutOfBoundsException(
-              "Bit "
-                  + outOfBoundsBit
-                  + " is beyond the end of the bit set to feed, offset="
-                  + offset
-                  + ", length="
-                  + bitSet.length());
-        }
-        upTo = offset + bitSet.length();
-      }
-      FixedBitSet.orRange(fixedBits, doc, bitSet, doc - offset, upTo - doc);
-      advance(upTo); // set the current doc
-    } else {
-      super.intoBitSet(upTo, bitSet, offset);
+      int actualUpto = Math.min(upTo, length);
+      // The destination bit set may be shorter than this bit set. This is only legal if all bits
+      // beyond offset + bitSet.length() are clear. If not, the below call to `super.intoBitSet`
+      // will throw an exception.
+      actualUpto = (int) Math.min(actualUpto, offset + (long) bitSet.length());
+      FixedBitSet.orRange(fixedBits, doc, bitSet, doc - offset, actualUpto - doc);
+      advance(actualUpto); // set the current doc
     }
+    super.intoBitSet(upTo, bitSet, offset);
   }
 }
