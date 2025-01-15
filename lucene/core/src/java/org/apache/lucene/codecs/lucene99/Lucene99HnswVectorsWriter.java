@@ -93,7 +93,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
     segmentWriteState = state;
-
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
@@ -294,6 +293,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       @Override
+      public int maxConn() {
+        return graph.maxConn();
+      }
+
+      @Override
       public int entryNode() {
         throw new UnsupportedOperationException("Not supported on a mock graph");
       }
@@ -448,11 +452,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(vectorIndexLength);
     meta.writeVInt(field.getVectorDimension());
     meta.writeInt(count);
-    meta.writeVInt(M);
     // write graph nodes on each level
     if (graph == null) {
+      meta.writeVInt(M);
       meta.writeVInt(0);
     } else {
+      meta.writeVInt(graph.maxConn());
       meta.writeVInt(graph.numLevels());
       long valueCount = 0;
       for (int level = 0; level < graph.numLevels(); level++) {

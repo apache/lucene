@@ -14,28 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.misc.index;
 
-def isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
+import java.io.IOException;
+import java.util.concurrent.Executor;
+import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.store.Directory;
 
-develocity {
-    server = "https://develocity.apache.org"
-    projectId = "lucene"
-
-    buildScan {
-        uploadInBackground = !isCIBuild
-        publishing.onlyIf { it.isAuthenticated() }
-        obfuscation {
-            ipAddresses { addresses -> addresses.collect { address -> "0.0.0.0"} }
-        }
-    }
-}
-
-buildCache {
-    local {
-        enabled = !isCIBuild
-    }
-
-    remote(develocity.buildCache) {
-        enabled = false
-    }
+/** Interface for docid-reordering expected by {@link BPReorderingMergePolicy}. */
+public interface IndexReorderer {
+  /**
+   * Returns a mapping from old to new docids.
+   *
+   * @param reader the reader whose docs are to be reordered
+   * @param tempDir temporary files may be stored here while reordering.
+   * @param executor may be used to parallelize reordering work.
+   */
+  Sorter.DocMap computeDocMap(CodecReader reader, Directory tempDir, Executor executor)
+      throws IOException;
 }
