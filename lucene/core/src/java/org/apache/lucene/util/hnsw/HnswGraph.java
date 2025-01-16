@@ -87,22 +87,6 @@ public abstract class HnswGraph {
   /** Returns graph's entry point on the top level * */
   public abstract int entryNode() throws IOException;
 
-  public int consumeCurrentNeighbors(int[] consumer) {
-    int consumed = 0;
-    while (true) {
-      try {
-        int next = nextNeighbor();
-        if (next == NO_MORE_DOCS) {
-          break;
-        }
-        consumer[consumed++] = next;
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-    return consumed;
-  }
-
   /**
    * Get all nodes on a given level as node 0th ordinals. The nodes are NOT guaranteed to be
    * presented in any particular order.
@@ -112,10 +96,7 @@ public abstract class HnswGraph {
    */
   public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
 
-  public int neighborCount() {
-    // TODO impl
-    return 0;
-  }
+  public abstract int neighborCount();
 
   /** Empty graph value */
   public static HnswGraph EMPTY =
@@ -141,6 +122,11 @@ public abstract class HnswGraph {
 
         @Override
         public int entryNode() {
+          return 0;
+        }
+
+        @Override
+        public int neighborCount() {
           return 0;
         }
 

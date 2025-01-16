@@ -63,6 +63,16 @@ public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
     }
 
     @Override
+    public void incFilteredVisitedCount(int count) {
+      collector.incFilteredVisitedCount(count);
+    }
+
+    @Override
+    public int filteredVisitedCount() {
+      return collector.filteredVisitedCount();
+    }
+
+    @Override
     public long visitedCount() {
       return collector.visitedCount();
     }

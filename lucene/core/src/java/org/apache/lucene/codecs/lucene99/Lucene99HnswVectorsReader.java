@@ -321,7 +321,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       if (acceptDocs != null) {
         FilteredHnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
       } else {
-        HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), null);
+        HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
       }
     } else {
       // if k is larger than the number of vectors, we can just iterate over all vectors

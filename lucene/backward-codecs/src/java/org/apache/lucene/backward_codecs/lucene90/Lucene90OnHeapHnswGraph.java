@@ -189,6 +189,11 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
   }
 
   @Override
+  public int neighborCount() {
+    return cur.size();
+  }
+
+  @Override
   public int numLevels() {
     throw new UnsupportedOperationException();
   }

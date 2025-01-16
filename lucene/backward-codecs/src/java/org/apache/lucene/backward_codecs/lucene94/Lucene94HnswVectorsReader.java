@@ -507,6 +507,11 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
         return new ArrayNodesIterator(size());

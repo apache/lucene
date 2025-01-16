@@ -509,6 +509,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
     public void seek(int level, int targetOrd) throws IOException {
       int targetIndex =
           level == 0

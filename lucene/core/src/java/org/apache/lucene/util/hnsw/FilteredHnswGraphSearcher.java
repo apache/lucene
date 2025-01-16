@@ -34,21 +34,23 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * <ul>
  *   <li>It dynamically determines when the optimized filter step should occur based on some
  *       filtered lambda. This is done per small world
- *   <li>The number of candidates to consider for exploration is increased slightly above the
+ *   <li>The number of candidates to consider for exploration is increased above the
  *       original small world's connection level
  *   <li>The graph searcher keeps exploring until searching is exhausted or the candidate limit is
- *       reached. This may go well beyond two hops from the origin small world
+ *       reached. This may go beyond two hops from the origin small world
  * </ul>
  */
 public class FilteredHnswGraphSearcher {
   // How many extra candidates to consider for 2-hop neighbors
-  private static final float MAX_TWO_HOP_LIMIT = 2.0f;
+  private static final float MAX_CANDIDATE_EXPANSION_FACTOR = 2.0f;
+  // How many more filtered candidates can we explore
+  private static final float MAX_FILTER_EXPLORATION_FACTOR = 3.0f;
   // How many filtered candidates must be found to consider 2-hop neighbors
   private static final float TWO_STEP_LAMBDA = 0.10f;
 
   /**
-   * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
-   * to allocate, so they're cleared and reused across calls.
+   * Scratch data structures that are used in each {@link #searchBaseLevel} call. These can be
+   * expensive to allocate, so they're cleared and reused across calls.
    */
   private final NeighborQueue candidates;
 
@@ -78,13 +80,16 @@ public class FilteredHnswGraphSearcher {
   public static void search(
       RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
+    if (acceptOrds == null) {
+      throw new IllegalArgumentException("acceptOrds must not be null to used filered search");
+    }
     FilteredHnswGraphSearcher graphSearcher =
         new FilteredHnswGraphSearcher(
             new NeighborQueue(knnCollector.k(), true),
             bitSet(acceptOrds, getGraphSize(graph), knnCollector.k()));
     int ep = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector);
     if (ep != -1) {
-      graphSearcher.searchLevel(knnCollector, scorer, 0, new int[] {ep}, graph, acceptOrds);
+      graphSearcher.searchBaseLevel(knnCollector, scorer, ep, graph, acceptOrds);
     }
   }
 
@@ -161,30 +166,23 @@ public class FilteredHnswGraphSearcher {
    * score/comparison value, will be at the top of the heap, while the closest neighbor will be the
    * last to be popped.
    */
-  void searchLevel(
-      KnnCollector results,
-      RandomVectorScorer scorer,
-      int level,
-      final int[] eps,
-      HnswGraph graph,
-      Bits acceptOrds)
+  void searchBaseLevel(
+      KnnCollector results, RandomVectorScorer scorer, int ep, HnswGraph graph, Bits acceptOrds)
       throws IOException {
 
     int size = getGraphSize(graph);
 
     prepareScratchState();
 
-    for (int ep : eps) {
-      if (visited.getAndSet(ep) == false) {
-        if (results.earlyTerminated()) {
-          break;
-        }
-        float score = scorer.score(ep);
-        results.incVisitedCount(1);
-        candidates.add(ep, score);
-        if (acceptOrds == null || acceptOrds.get(ep)) {
-          results.collect(ep, score);
-        }
+    if (visited.getAndSet(ep) == false) {
+      if (results.earlyTerminated()) {
+        return;
+      }
+      float score = scorer.score(ep);
+      results.incVisitedCount(1);
+      candidates.add(ep, score);
+      if (acceptOrds.get(ep)) {
+        results.collect(ep, score);
       }
     }
     IntArrayQueue filteredNeighborQueue = new IntArrayQueue(32);
@@ -198,7 +196,7 @@ public class FilteredHnswGraphSearcher {
         break;
       }
       int topCandidateNode = candidates.pop();
-      graphSeek(graph, level, topCandidateNode);
+      graphSeek(graph, 0, topCandidateNode);
       // Pre-fetch neighbors into an array
       // This is necessary because we need to call `seek` on each neighbor to consider 2-hop
       // neighbors
@@ -212,7 +210,7 @@ public class FilteredHnswGraphSearcher {
           continue;
         }
         neighborsProcessed++;
-        if (acceptOrds != null && acceptOrds.get(friendOrd) == false) {
+        if (acceptOrds.get(friendOrd) == false) {
           filteredNeighborQueue.add(friendOrd);
           continue;
         }
@@ -229,22 +227,27 @@ public class FilteredHnswGraphSearcher {
         }
       }
       float percentFiltered = (float) filteredNeighborQueue.count() / graph.neighborCount();
-      float lambda = 1 - percentFiltered;
-      int expandedNeighborCount =
-          (int) Math.min(graph.neighborCount() * MAX_TWO_HOP_LIMIT, graph.neighborCount() / lambda);
-      filteredNeighborQueue.expand(expandedNeighborCount);
-      int maxExpandedNeighbors =
-          (int)
-              (Math.log(graph.neighborCount() / lambda)
-                  * (graph.neighborCount() - filteredNeighborQueue.count()));
-      int filteredProcessed = filteredNeighborQueue.count();
-      // print the percent of neighbors that were filtered
       if (percentFiltered > TWO_STEP_LAMBDA) {
+        results.incFilteredVisitedCount(filteredNeighborQueue.count());
+        float lambda = 1 - percentFiltered;
+        int maxExpandedFilterNeighbors =
+            (int)
+                Math.min(
+                    graph.neighborCount() * MAX_FILTER_EXPLORATION_FACTOR,
+                    graph.neighborCount() / lambda);
+        int expandedNeighborCount =
+            (int)
+                Math.min(
+                    graph.neighborCount() * MAX_CANDIDATE_EXPANSION_FACTOR,
+                    maxExpandedFilterNeighbors);
+
+        filteredNeighborQueue.expand(expandedNeighborCount);
+        int filteredProcessed = filteredNeighborQueue.count();
         while (filteredNeighborQueue.isEmpty() == false
             && neighborsProcessed < expandedNeighborCount) {
           int filteredNeighbor = filteredNeighborQueue.poll();
           // Only walk 2-hop neighbors if filter doesn't match
-          graphSeek(graph, level, filteredNeighbor);
+          graphSeek(graph, 0, filteredNeighbor);
           int twoHopFriendOrd;
           while (neighborsProcessed < expandedNeighborCount
               && (twoHopFriendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
@@ -267,7 +270,8 @@ public class FilteredHnswGraphSearcher {
                   minAcceptedSimilarity = results.minCompetitiveSimilarity();
                 }
               }
-            } else if (filteredProcessed < maxExpandedNeighbors) {
+            } else if (filteredProcessed < maxExpandedFilterNeighbors) {
+              results.incFilteredVisitedCount(1);
               filteredNeighborQueue.add(twoHopFriendOrd);
             }
           }

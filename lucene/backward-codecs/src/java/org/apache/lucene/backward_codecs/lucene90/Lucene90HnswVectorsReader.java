@@ -469,6 +469,11 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
     public int nextNeighbor() throws IOException {
       if (arcUpTo >= arcCount) {
         return NO_MORE_DOCS;

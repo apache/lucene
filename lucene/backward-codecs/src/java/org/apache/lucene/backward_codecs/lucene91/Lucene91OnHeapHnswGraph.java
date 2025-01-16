@@ -132,6 +132,11 @@ public final class Lucene91OnHeapHnswGraph extends HnswGraph {
   }
 
   @Override
+  public int neighborCount() {
+    return cur.size();
+  }
+
+  @Override
   public int nextNeighbor() {
     if (++upto < cur.size()) {
       return cur.node[upto];
