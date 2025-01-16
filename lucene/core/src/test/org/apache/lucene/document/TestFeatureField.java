@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.document;
 
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -480,7 +481,9 @@ public class TestFeatureField extends LuceneTestCase {
     FeatureField invalid = new FeatureField("features", "pagerank", 1, false);
     doc.add(invalid);
     var exc = expectThrows(Exception.class, () -> writer.addDocument(doc));
-    assertThat(exc.getMessage(), containsString("store term vector"));
+    assertThat(
+        exc.getMessage(),
+        anyOf(containsString("store term vector"), containsString("storeTermVector")));
 
     writer.forceMerge(1);
     DirectoryReader reader = writer.getReader();
