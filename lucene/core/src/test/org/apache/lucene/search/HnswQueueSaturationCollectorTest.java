@@ -56,12 +56,6 @@ public class HnswQueueSaturationCollectorTest extends LuceneTestCase {
       boolean earlyTerminatedSaturation = queueSaturationCollector.earlyTerminated();
       boolean earlyTerminatedDelegate = delegate.earlyTerminated();
       assertTrue(earlyTerminatedSaturation || !earlyTerminatedDelegate);
-      if (earlyTerminatedDelegate) {
-        assertTrue(earlyTerminatedSaturation);
-      }
-      if (!earlyTerminatedSaturation) {
-        assertFalse(earlyTerminatedSaturation);
-      }
     }
   }
 }
