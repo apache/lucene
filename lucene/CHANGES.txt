@@ -62,7 +62,7 @@ Improvements
 * GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
 
 * GITHUB#14138: Implement IntersectVisitor#visit(IntsRef) in  many of the current implementations and add
-  BulkAdder#add(IntRef) method. They should provide better perfromance due to less virtual method calls and
+  BulkAdder#add(IntRef) method. They should provide better performance due to less virtual method calls and
   more efficient bulk processing. (Ignacio Vera)
 
 Optimizations
