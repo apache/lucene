@@ -22,7 +22,6 @@ Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
-* GITHUB#14094: Early terminate when HNSW nearest neighbor queue saturates (Tommaso Teofili)
 
 Bug Fixes
 ---------------------
@@ -76,6 +75,8 @@ Optimizations
 
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
+
+* GITHUB#14094: Early terminate when HNSW nearest neighbor queue saturates (Tommaso Teofili)
 
 Bug Fixes
 ---------------------
