@@ -93,16 +93,15 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
 
   @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    upTo = Math.min(upTo, length);
-    // This doc id set is a bit hacky as it is sometimes OR'ed into a smaller bit set, which only
-    // works because trailing bits are unset.
-    if (upTo - offset > bitSet.length()) {
-      upTo = offset + bitSet.length();
-      assert bits.nextSetBit(upTo - docBase) == NO_MORE_DOCS;
-    }
-    if (upTo > doc) {
+    int actualUpto = Math.min(upTo, length);
+    // The destination bit set may be shorter than this bit set. This is only legal if all bits
+    // beyond offset + bitSet.length() are clear. If not, the below call to `super.intoBitSet` will
+    // throw an exception.
+    actualUpto = (int) Math.min(actualUpto, offset + (long) bitSet.length());
+    if (actualUpto > doc) {
       FixedBitSet.orRange(bits, doc - docBase, bitSet, doc - offset, upTo - doc);
-      advance(upTo); // set the current doc
+      advance(actualUpto); // set the current doc
     }
+    super.intoBitSet(upTo, bitSet, offset);
   }
 }
