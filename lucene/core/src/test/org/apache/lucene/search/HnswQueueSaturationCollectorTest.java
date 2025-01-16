@@ -44,7 +44,22 @@ public class HnswQueueSaturationCollectorTest extends LuceneTestCase {
   }
 
   @Test
-  public void testEarlyExit() {
+  public void testEarlyExpectedExit() {
+    int numDocs = 1000;
+    int k = 10;
+    KnnCollector delegate = new TopKnnCollector(k, numDocs);
+    HnswQueueSaturationCollector queueSaturationCollector =
+        new HnswQueueSaturationCollector(delegate, 0.9, 10);
+    for (int i = 0; i < numDocs; i++) {
+      queueSaturationCollector.collect(i, 1.0f - i * 1e-3f);
+      if (queueSaturationCollector.earlyTerminated()) {
+        assertEquals(20, i);
+      }
+    }
+  }
+
+  @Test
+  public void testDelegateVsSaturateEarlyExit() {
     Random random = random();
     int numDocs = 10000;
     int k = random.nextInt(100);
@@ -56,6 +71,28 @@ public class HnswQueueSaturationCollectorTest extends LuceneTestCase {
       boolean earlyTerminatedSaturation = queueSaturationCollector.earlyTerminated();
       boolean earlyTerminatedDelegate = delegate.earlyTerminated();
       assertTrue(earlyTerminatedSaturation || !earlyTerminatedDelegate);
+    }
+  }
+
+  @Test
+  public void testEarlyExitRelation() {
+    Random random = random();
+    int numDocs = 10000;
+    int k = random.nextInt(100);
+    KnnCollector delegate = new TopKnnCollector(k, numDocs);
+    HnswQueueSaturationCollector queueSaturationCollector =
+        new HnswQueueSaturationCollector(delegate);
+    for (int i = 0; i < random.nextInt(numDocs); i++) {
+      queueSaturationCollector.collect(random.nextInt(numDocs), random.nextFloat(1.0f));
+      if (delegate.earlyTerminated()) {
+        TopDocs topDocs = queueSaturationCollector.topDocs();
+        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
+      }
+      if (queueSaturationCollector.earlyTerminated()) {
+        TopDocs topDocs = queueSaturationCollector.topDocs();
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
+        break;
+      }
     }
   }
 }
