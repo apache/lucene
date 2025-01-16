@@ -23,9 +23,19 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * OptimizedScalarQuantizer is a scalar quantizer that optimizes the quantization intervals for a
- * given vector. This is done by optimizing the quantiles of the vector centered on a provided
- * centroid. The optimization is done by minimizing the quantization loss via coordinate descent.
+ * This is a scalar quantizer that optimizes the quantization intervals for a given vector. This is
+ * done by optimizing the quantiles of the vector centered on a provided centroid. The optimization
+ * is done by minimizing the quantization loss via coordinate descent.
+ *
+ * <p>Local vector quantization parameters was originally proposed with LVQ in <a
+ * href="https://arxiv.org/abs/2304.04759">Similarity search in the blink of an eye with compressed
+ * indices</a> This technique builds on LVQ, but instead of taking the min/max values, a grid search
+ * over the centered vector is done to find the optimal quantization intervals, taking into account
+ * anisotropic loss.
+ *
+ * <p>Anisotropic loss is first discussed in depth by <a
+ * href="https://arxiv.org/abs/1908.10396">Accelerating Large-Scale Inference with Anisotropic
+ * Vector Quantization</a> by Ruiqi Guo, et al.
  *
  * @lucene.experimental
  */
@@ -43,10 +53,20 @@ public class OptimizedScalarQuantizer {
         {-3.611f, 3.611f},
         {-3.922f, 3.922f}
       };
+  // the default lambda value
   private static final float DEFAULT_LAMBDA = 0.1f;
+  // the default optimization iterations allowed
   private static final int DEFAULT_ITERS = 5;
   private final VectorSimilarityFunction similarityFunction;
+  // This determines how much emphasis we place on quantization errors perpendicular to the
+  // embedding
+  // as opposed to parallel to it.
+  // The smaller the value the more we will allow the overall error to increase if it allows us to
+  // reduce error parallel to the vector.
+  // Parallel errors are important for nearest neighbor queries because the closest document vectors
+  // tend to be parallel to the query
   private final float lambda;
+  // the number of iterations to optimize the quantization intervals
   private final int iters;
 
   /**
@@ -319,6 +339,14 @@ public class OptimizedScalarQuantizer {
    * third, and fourth bits are in the second, third, and fourth set of dimensions bits,
    * respectively. This allows for direct bitwise comparisons with the stored index vectors through
    * summing the bitwise results with the relative required bit shifts.
+   *
+   * <p>This bit decomposition for fast bitwise SIMD operations was first proposed in:
+   *
+   * <pre class="prettyprint">
+   *   Gao, Jianyang, and Cheng Long. "RaBitQ: Quantizing High-
+   *   Dimensional Vectors with a Theoretical Error Bound for Approximate Nearest Neighbor Search."
+   *   Proceedings of the ACM on Management of Data 2, no. 3 (2024): 1-27.
+   *   </pre>
    *
    * @param q the query vector, assumed to be half-byte quantized with values between 0 and 15
    * @param quantQueryByte the byte array to store the transposed query vector

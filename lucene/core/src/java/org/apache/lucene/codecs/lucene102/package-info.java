@@ -311,10 +311,11 @@
  * </tr>
  * <tr>
  * <td>{@link org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat Vector values}</td>
- * <td>.vec, .vem, .veq, vex</td>
+ * <td>.vec, .vem, .veq, .vex, .veb, .vemb</td>
  * <td>Holds indexed vectors; <code>.vec</code> files contain the raw vector data,
- * <code>.vem</code> the vector metadata, <code>.veq</code> the quantized vector data, and <code>.vex</code> the
- * hnsw graph data.</td>
+ * <code>.vem</code> the vector metadata, <code>.veq</code> the quantized vector data, <code>.vex</code> the
+ * hnsw graph data, <code>.veb</code>the binary quantized vector data, and
+ * <code>.vemb</code>the binary quantized vector metadata</td>
  * </tr>
  * </table>
  *

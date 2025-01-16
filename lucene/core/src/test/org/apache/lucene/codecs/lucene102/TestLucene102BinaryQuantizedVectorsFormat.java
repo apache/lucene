@@ -29,7 +29,6 @@ import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -47,18 +46,16 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
+  private static final KnnVectorsFormat FORMAT = new Lucene102BinaryQuantizedVectorsFormat();
+
   @Override
   protected Codec getCodec() {
-    return new Lucene101Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene102BinaryQuantizedVectorsFormat();
-      }
-    };
+    return TestUtil.alwaysKnnVectorsFormat(FORMAT);
   }
 
   public void testSearch() throws Exception {
@@ -103,7 +100,8 @@ public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
     String expectedPattern =
         "Lucene102BinaryQuantizedVectorsFormat("
             + "name=Lucene102BinaryQuantizedVectorsFormat, "
-            + "flatVectorScorer=Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()))";
+            + "flatVectorScorer=Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()), "
+            + "rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=DefaultFlatVectorScorer()))";
     var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
     var memSegScorer =
         format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");

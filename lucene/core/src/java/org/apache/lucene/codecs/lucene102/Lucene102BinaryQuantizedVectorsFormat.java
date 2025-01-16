@@ -26,9 +26,12 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
- * Copied from Lucene, replace with Lucene's implementation sometime after Lucene 10 Codec for
- * encoding/decoding binary quantized vectors The binary quantization format used here is a
- * per-vector optimized scalar quantization. Also see {@link
+ * The binary quantization format used here is a per-vector optimized scalar quantization. These
+ * ideas are evolutions of LVQ proposed in <a href="https://arxiv.org/abs/2304.04759">Similarity
+ * search in the blink of an eye with compressed indices</a> by Cecilia Aguerrebere et al. and the
+ * previous work on globally optimized scalar
+ *
+ * <p>The format is stored in two files: Also see {@link
  * org.apache.lucene.util.quantization.OptimizedScalarQuantizer}. Some of key features are:
  *
  * <ul>
@@ -42,8 +45,6 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li>Transforming the half-byte quantized query vectors in such a way that the comparison with
  *       single bit vectors can be done with bit arithmetic.
  * </ul>
- *
- * The format is stored in two files:
  *
  * <h2>.veb (vector data) file</h2>
  *
@@ -130,6 +131,8 @@ public class Lucene102BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
         + NAME
         + ", flatVectorScorer="
         + scorer
+        + ", rawVectorFormat="
+        + rawVectorFormat
         + ")";
   }
 }

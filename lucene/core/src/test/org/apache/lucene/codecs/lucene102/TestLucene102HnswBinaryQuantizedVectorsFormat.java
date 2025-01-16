@@ -26,7 +26,6 @@ import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -40,18 +39,16 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.SameThreadExecutorService;
 
 public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
+  private static final KnnVectorsFormat FORMAT = new Lucene102HnswBinaryQuantizedVectorsFormat();
+
   @Override
   protected Codec getCodec() {
-    return new Lucene101Codec() {
-      @Override
-      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-        return new Lucene102HnswBinaryQuantizedVectorsFormat();
-      }
-    };
+    return TestUtil.alwaysKnnVectorsFormat(FORMAT);
   }
 
   public void testToString() {
@@ -65,7 +62,8 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
     String expectedPattern =
         "Lucene102HnswBinaryQuantizedVectorsFormat(name=Lucene102HnswBinaryQuantizedVectorsFormat, maxConn=10, beamWidth=20,"
             + " flatVectorFormat=Lucene102BinaryQuantizedVectorsFormat(name=Lucene102BinaryQuantizedVectorsFormat,"
-            + " flatVectorScorer=Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=%s())))";
+            + " flatVectorScorer=Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()),"
+            + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=DefaultFlatVectorScorer())))";
 
     var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
     var memSegScorer =
