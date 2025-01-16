@@ -233,4 +233,35 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
       }
     }
   }
+
+  public void testIntoBitSetBoundChecks() throws IOException {
+    final BitSet set = new BitSet();
+    set.set(20);
+    set.set(42);
+    final T copy = copyOf(set, 256);
+    int from = TestUtil.nextInt(random(), 0, 20);
+    int to = TestUtil.nextInt(random(), 43, 256);
+    int offset = TestUtil.nextInt(random(), 0, from);
+    FixedBitSet dest1 = new FixedBitSet(42 - offset + 1);
+    DocIdSetIterator it1 = copy.iterator();
+    it1.advance(from);
+    // This call is legal, since all "set" bits are in the range
+    it1.intoBitSet(to, dest1, offset);
+    for (int i = 0; i < dest1.length(); ++i) {
+      assertEquals(offset + i == 20 || offset + i == 42, dest1.get(i));
+    }
+
+    FixedBitSet dest2 = new FixedBitSet(42 - offset);
+    DocIdSetIterator it2 = copy.iterator();
+    it2.advance(from);
+    // This call is not legal, since there is one bit that is set beyond the end of the target bit
+    // set
+    expectThrows(Throwable.class, () -> it2.intoBitSet(to, dest2, offset));
+
+    FixedBitSet dest3 = new FixedBitSet(42 - offset + 1);
+    DocIdSetIterator it3 = copy.iterator();
+    it3.advance(from);
+    // This call is not legal, since offset is greater than the current doc
+    expectThrows(Throwable.class, () -> it3.intoBitSet(to, dest3, 21));
+  }
 }

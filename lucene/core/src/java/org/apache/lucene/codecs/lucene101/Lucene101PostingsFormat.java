@@ -358,8 +358,17 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
   static final String PAY_CODEC = "Lucene101PostingsWriterPay";
 
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
 
+  /**
+   * Version that started encoding dense blocks as bit sets. Note: the old format is a subset of the
+   * new format, so Lucene101PostingsReader is able to read the old format without checking the
+   * version.
+   */
+  static final int VERSION_DENSE_BLOCKS_AS_BITSETS = 1;
+
+  static final int VERSION_CURRENT = VERSION_DENSE_BLOCKS_AS_BITSETS;
+
+  private final int version;
   private final int minTermBlockSize;
   private final int maxTermBlockSize;
 
@@ -378,7 +387,16 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
    *     Lucene90BlockTreeTermsWriter#Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)
    */
   public Lucene101PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
+    this(minTermBlockSize, maxTermBlockSize, VERSION_CURRENT);
+  }
+
+  /** Expert constructor that allows setting the version. */
+  public Lucene101PostingsFormat(int minTermBlockSize, int maxTermBlockSize, int version) {
     super("Lucene101");
+    if (version < VERSION_START || version > VERSION_CURRENT) {
+      throw new IllegalArgumentException("Version out of range: " + version);
+    }
+    this.version = version;
     Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
     this.minTermBlockSize = minTermBlockSize;
     this.maxTermBlockSize = maxTermBlockSize;
@@ -386,7 +404,7 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene101PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene101PostingsWriter(state, version);
     boolean success = false;
     try {
       FieldsConsumer ret =
