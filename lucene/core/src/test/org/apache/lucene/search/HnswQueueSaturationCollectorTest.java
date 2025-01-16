@@ -79,7 +79,7 @@ public class HnswQueueSaturationCollectorTest extends LuceneTestCase {
     Random random = random();
     int numDocs = 10000;
     int k = random.nextInt(100);
-    KnnCollector delegate = new TopKnnCollector(k, numDocs);
+    KnnCollector delegate = new TopKnnCollector(k, random.nextInt(numDocs));
     HnswQueueSaturationCollector queueSaturationCollector =
         new HnswQueueSaturationCollector(delegate);
     for (int i = 0; i < random.nextInt(numDocs); i++) {
