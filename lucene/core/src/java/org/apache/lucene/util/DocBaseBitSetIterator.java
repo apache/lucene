@@ -99,7 +99,7 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
     // throw an exception.
     actualUpto = (int) Math.min(actualUpto, offset + (long) bitSet.length());
     if (actualUpto > doc) {
-      FixedBitSet.orRange(bits, doc - docBase, bitSet, doc - offset, upTo - doc);
+      FixedBitSet.orRange(bits, doc - docBase, bitSet, doc - offset, actualUpto - doc);
       advance(actualUpto); // set the current doc
     }
     super.intoBitSet(upTo, bitSet, offset);
