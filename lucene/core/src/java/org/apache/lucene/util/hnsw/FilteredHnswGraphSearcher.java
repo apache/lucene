@@ -45,8 +45,8 @@ public class FilteredHnswGraphSearcher {
   private static final float MAX_CANDIDATE_EXPANSION_FACTOR = 2.0f;
   // How many more filtered candidates can we explore
   private static final float MAX_FILTER_EXPLORATION_FACTOR = 3.0f;
-  // How many filtered candidates must be found to consider 2-hop neighbors
-  private static final float TWO_STEP_LAMBDA = 0.10f;
+  // How many filtered candidates must be found to consider N-hop neighbors
+  private static final float EXPANDED_EXPLORATION_LAMBDA = 0.10f;
 
   /**
    * Scratch data structures that are used in each {@link #searchBaseLevel} call. These can be
@@ -81,7 +81,7 @@ public class FilteredHnswGraphSearcher {
       RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
     if (acceptOrds == null) {
-      throw new IllegalArgumentException("acceptOrds must not be null to used filered search");
+      throw new IllegalArgumentException("acceptOrds must not be null to used filtered search");
     }
     FilteredHnswGraphSearcher graphSearcher =
         new FilteredHnswGraphSearcher(
@@ -227,7 +227,7 @@ public class FilteredHnswGraphSearcher {
         }
       }
       float percentFiltered = (float) filteredNeighborQueue.count() / graph.neighborCount();
-      if (percentFiltered > TWO_STEP_LAMBDA) {
+      if (percentFiltered > EXPANDED_EXPLORATION_LAMBDA) {
         results.incFilteredVisitedCount(filteredNeighborQueue.count());
         float lambda = 1 - percentFiltered;
         int maxExpandedFilterNeighbors =
