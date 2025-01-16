@@ -46,7 +46,11 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#14084, GITHUB#13635, GITHUB#13634: Adds new `SeededKnnByteVectorQuery` and `SeededKnnFloatVectorQuery`
+  queries. These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
+  the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
+
 
 Improvements
 ---------------------
@@ -56,6 +60,10 @@ Improvements
 * GITHUB#13984: Add HNSW graph checks and stats to CheckIndex
 
 * GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
+
+* GITHUB#14138: Implement IntersectVisitor#visit(IntsRef) in  many of the current implementations and add
+  BulkAdder#add(IntsRef) method. They should provide better performance due to less virtual method calls and
+  more efficient bulk processing. (Ignacio Vera)
 
 Optimizations
 ---------------------
