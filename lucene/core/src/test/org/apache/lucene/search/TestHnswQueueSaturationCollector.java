@@ -21,13 +21,13 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 /** Tests for {@link HnswQueueSaturationCollector} */
-public class HnswQueueSaturationCollectorTest extends LuceneTestCase {
+public class TestHnswQueueSaturationCollector extends LuceneTestCase {
 
   @Test
   public void testDelegate() {
     Random random = random();
     int numDocs = 100;
-    int k = random.nextInt(10);
+    int k = random.nextInt(1, 10);
     KnnCollector delegate = new TopKnnCollector(k, numDocs);
     HnswQueueSaturationCollector queueSaturationCollector =
         new HnswQueueSaturationCollector(delegate);
@@ -52,8 +52,12 @@ public class HnswQueueSaturationCollectorTest extends LuceneTestCase {
         new HnswQueueSaturationCollector(delegate, 0.9, 10);
     for (int i = 0; i < numDocs; i++) {
       queueSaturationCollector.collect(i, 1.0f - i * 1e-3f);
+      if (i % 10 == 0) {
+        queueSaturationCollector.nextCandidate();
+      }
       if (queueSaturationCollector.earlyTerminated()) {
-        assertEquals(20, i);
+        assertEquals(120, i);
+        break;
       }
     }
   }
@@ -62,12 +66,15 @@ public class HnswQueueSaturationCollectorTest extends LuceneTestCase {
   public void testDelegateVsSaturateEarlyExit() {
     Random random = random();
     int numDocs = 10000;
-    int k = random.nextInt(100);
+    int k = random.nextInt(1, 100);
     KnnCollector delegate = new TopKnnCollector(k, numDocs);
     HnswQueueSaturationCollector queueSaturationCollector =
         new HnswQueueSaturationCollector(delegate);
     for (int i = 0; i < random.nextInt(numDocs); i++) {
       queueSaturationCollector.collect(random.nextInt(numDocs), random.nextFloat(1.0f));
+      if (i % 10 == 0) {
+        queueSaturationCollector.nextCandidate();
+      }
       boolean earlyTerminatedSaturation = queueSaturationCollector.earlyTerminated();
       boolean earlyTerminatedDelegate = delegate.earlyTerminated();
       assertTrue(earlyTerminatedSaturation || !earlyTerminatedDelegate);
@@ -84,6 +91,9 @@ public class HnswQueueSaturationCollectorTest extends LuceneTestCase {
         new HnswQueueSaturationCollector(delegate);
     for (int i = 0; i < random.nextInt(numDocs); i++) {
       queueSaturationCollector.collect(random.nextInt(numDocs), random.nextFloat(1.0f));
+      if (i % 10 == 0) {
+        queueSaturationCollector.nextCandidate();
+      }
       if (delegate.earlyTerminated()) {
         TopDocs topDocs = queueSaturationCollector.topDocs();
         assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());

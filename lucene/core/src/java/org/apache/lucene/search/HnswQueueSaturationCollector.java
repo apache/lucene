@@ -28,14 +28,14 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
   private static final double DEFAULT_SATURATION_THRESHOLD = 0.995d;
 
   private final KnnCollector delegate;
-  private double saturationThreshold;
-  private int patience;
+  private final double saturationThreshold;
+  private final int patience;
   private boolean patienceFinished;
   private int countSaturated;
   private int previousQueueSize;
   private int currentQueueSize;
 
-  public HnswQueueSaturationCollector(
+  HnswQueueSaturationCollector(
       KnnCollector delegate, double saturationThreshold, int patience) {
     this.delegate = delegate;
     this.previousQueueSize = 0;
