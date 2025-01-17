@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-
 import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration;
 import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration.MultiVectorMaps;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -57,8 +56,9 @@ public abstract class ByteVectorValues extends KnnVectorValues {
     return result;
   }
 
-  /** Returns an iterator for multi-vector values, when base ordinal and count are provided.
-   * This is useful when fetching all vector values from {@link KnnVectorValues#iterator()}
+  /**
+   * Returns an iterator for multi-vector values, when base ordinal and count are provided. This is
+   * useful when fetching all vector values from {@link KnnVectorValues#iterator()}
    */
   public Iterator<byte[]> allVectorValues(int baseOrd, int ordCount) throws IOException {
     return new Iterator<>() {
@@ -134,7 +134,11 @@ public abstract class ByteVectorValues extends KnnVectorValues {
    * @param docIdToVectorCount maps docId to number of vectors per document
    * @return a {@link ByteVectorValues} instance
    */
-  public static ByteVectorValues fromBytes(List<byte[]> vectors, int dim, DocsWithFieldSet docsWithFieldSet, IntToIntFunction docIdToVectorCount) {
+  public static ByteVectorValues fromBytes(
+      List<byte[]> vectors,
+      int dim,
+      DocsWithFieldSet docsWithFieldSet,
+      IntToIntFunction docIdToVectorCount) {
     return new ByteVectorValues() {
       int cachedDocCount = -1;
       MultiVectorMaps mvMaps = null;
@@ -142,9 +146,12 @@ public abstract class ByteVectorValues extends KnnVectorValues {
       private void computeMultiVectorMaps() {
         // TODO: optimize using binary search instead of full maps
         try {
-          mvMaps = MultiVectorOrdConfiguration.createMultiVectorMaps(docsWithFieldSet.iterator(), docIdToVectorCount, size(), docCount());
+          mvMaps =
+              MultiVectorOrdConfiguration.createMultiVectorMaps(
+                  docsWithFieldSet.iterator(), docIdToVectorCount, size(), docCount());
         } catch (IOException e) {
-          throw new IllegalStateException("Unexpected IOException on creating FloatVectorValues from provided vectors:" + e);
+          throw new IllegalStateException(
+              "Unexpected IOException on creating FloatVectorValues from provided vectors:" + e);
         }
         cachedDocCount = docCount();
       }

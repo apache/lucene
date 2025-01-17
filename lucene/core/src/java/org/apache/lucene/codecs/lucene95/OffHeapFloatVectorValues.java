@@ -18,7 +18,6 @@
 package org.apache.lucene.codecs.lucene95;
 
 import java.io.IOException;
-
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration;
@@ -218,9 +217,20 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         LongValues docOrdCount,
         LongValues ordToDocMap,
         LongValues baseOrdMap,
-        LongValues nextBaseOrdMap
-        ) {
-      super(dimension, ordCount, docCount, slice, byteSize, flatVectorsScorer, similarityFunction, isMultiValued, docOrdCount, ordToDocMap, baseOrdMap, nextBaseOrdMap);
+        LongValues nextBaseOrdMap) {
+      super(
+          dimension,
+          ordCount,
+          docCount,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          isMultiValued,
+          docOrdCount,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
     }
 
     public DenseOffHeapVectorValues(
@@ -231,9 +241,9 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         int byteSize,
         FlatVectorsScorer flatVectorsScorer,
         VectorSimilarityFunction similarityFunction,
-        MultiVectorMaps multiVectorMaps
-    ) {
-      super(dimension,
+        MultiVectorMaps multiVectorMaps) {
+      super(
+          dimension,
           ordCount,
           docCount,
           slice,
@@ -244,14 +254,24 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
           longValues(multiVectorMaps.docOrdFreq()),
           longValues(multiVectorMaps.ordToDocMap()),
           longValues(multiVectorMaps.baseOrdMap()),
-          longValues(multiVectorMaps.nextBaseOrdMap())
-      );
+          longValues(multiVectorMaps.nextBaseOrdMap()));
     }
 
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-          dimension, ordCount, docCount, slice.clone(), byteSize, flatVectorsScorer, similarityFunction, isMultiValued, docIndexToBaseOrd, ordToDocMap, baseOrdMap, nextBaseOrdMap);
+          dimension,
+          ordCount,
+          docCount,
+          slice.clone(),
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          isMultiValued,
+          docIndexToBaseOrd,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
     }
 
     @Override
@@ -337,8 +357,19 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         LongValues nextBaseOrdMap)
         throws IOException {
 
-      super(dimension, ordCount, configuration.size, slice, byteSize, flatVectorsScorer, similarityFunction,
-          isMultiValued, docIndexToBaseOrd, ordToDocMap, baseOrdMap, nextBaseOrdMap);
+      super(
+          dimension,
+          ordCount,
+          configuration.size,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          isMultiValued,
+          docIndexToBaseOrd,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
       this.configuration = configuration;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
@@ -429,8 +460,19 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         int dimension,
         FlatVectorsScorer flatVectorsScorer,
         VectorSimilarityFunction similarityFunction) {
-      super(dimension, 0, 0, null, 0, flatVectorsScorer, similarityFunction,
-          false, null, null, null, null);
+      super(
+          dimension,
+          0,
+          0,
+          null,
+          0,
+          flatVectorsScorer,
+          similarityFunction,
+          false,
+          null,
+          null,
+          null,
+          null);
     }
 
     @Override

@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
-
 import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration;
 import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration.MultiVectorMaps;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -45,35 +44,36 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    */
   public abstract float[] vectorValue(int ord) throws IOException;
 
-//  /** Returns all vector values indexed for the document corresponding to provided ordinal */
-//  public Iterator<float[]> allVectorValues(int ord) throws IOException {
-//    return new Iterator<>() {
-//      int baseOrd = baseOrd(ord);
-//      int count = vectorCount(ord);
-//
-//      @Override
-//      public boolean hasNext() {
-//        return count > 0;
-//      }
-//
-//      @Override
-//      public float[] next() {
-//        float[] v = null;
-//        try {
-//          v = vectorValue(baseOrd);
-//        } catch (IOException e) {
-//          throw new RuntimeException(e);
-//        } finally {
-//          baseOrd++;
-//          count--;
-//        }
-//        return v;
-//      }
-//    };
-//  }
+  //  /** Returns all vector values indexed for the document corresponding to provided ordinal */
+  //  public Iterator<float[]> allVectorValues(int ord) throws IOException {
+  //    return new Iterator<>() {
+  //      int baseOrd = baseOrd(ord);
+  //      int count = vectorCount(ord);
+  //
+  //      @Override
+  //      public boolean hasNext() {
+  //        return count > 0;
+  //      }
+  //
+  //      @Override
+  //      public float[] next() {
+  //        float[] v = null;
+  //        try {
+  //          v = vectorValue(baseOrd);
+  //        } catch (IOException e) {
+  //          throw new RuntimeException(e);
+  //        } finally {
+  //          baseOrd++;
+  //          count--;
+  //        }
+  //        return v;
+  //      }
+  //    };
+  //  }
 
-  /** Returns an iterator for multi-vector values, when base ordinal and count are provided.
-   * This is useful when fetching all vector values from {@link KnnVectorValues#iterator()}
+  /**
+   * Returns an iterator for multi-vector values, when base ordinal and count are provided. This is
+   * useful when fetching all vector values from {@link KnnVectorValues#iterator()}
    */
   public Iterator<float[]> allVectorValues(int baseOrd, int ordCount) throws IOException {
     return new Iterator<>() {
@@ -150,7 +150,11 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    * @param docIdToVectorCount maps docId to number of vectors per document
    * @return a {@link FloatVectorValues} instance
    */
-  public static FloatVectorValues fromFloats(List<float[]> vectors, int dim, DocsWithFieldSet docsWithFieldSet, IntToIntFunction docIdToVectorCount) {
+  public static FloatVectorValues fromFloats(
+      List<float[]> vectors,
+      int dim,
+      DocsWithFieldSet docsWithFieldSet,
+      IntToIntFunction docIdToVectorCount) {
     return new FloatVectorValues() {
       int cachedDocCount = -1;
       MultiVectorMaps mvMaps = null;
@@ -158,9 +162,12 @@ public abstract class FloatVectorValues extends KnnVectorValues {
       private void computeMultiVectorMaps() {
         // TODO: optimize using binary search instead of full maps
         try {
-          mvMaps = MultiVectorOrdConfiguration.createMultiVectorMaps(docsWithFieldSet.iterator(), docIdToVectorCount, size(), docCount());
+          mvMaps =
+              MultiVectorOrdConfiguration.createMultiVectorMaps(
+                  docsWithFieldSet.iterator(), docIdToVectorCount, size(), docCount());
         } catch (IOException e) {
-          throw new IllegalStateException("Unexpected IOException on creating FloatVectorValues from provided vectors:" + e);
+          throw new IllegalStateException(
+              "Unexpected IOException on creating FloatVectorValues from provided vectors:" + e);
         }
         cachedDocCount = docCount();
       }

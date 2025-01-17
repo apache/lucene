@@ -223,8 +223,19 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
         LongValues ordToDocMap,
         LongValues baseOrdMap,
         LongValues nextBaseOrdMap) {
-      super(dimension, ordCount, docCount, slice, byteSize, flatVectorsScorer, vectorSimilarityFunction,
-          isMultiValued, docOrdCount, ordToDocMap, baseOrdMap, nextBaseOrdMap);
+      super(
+          dimension,
+          ordCount,
+          docCount,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          vectorSimilarityFunction,
+          isMultiValued,
+          docOrdCount,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
     }
 
     public DenseOffHeapVectorValues(
@@ -235,9 +246,9 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
         int byteSize,
         FlatVectorsScorer flatVectorsScorer,
         VectorSimilarityFunction vectorSimilarityFunction,
-        MultiVectorOrdConfiguration.MultiVectorMaps multiVectorMaps
-    ) {
-      super(dimension,
+        MultiVectorOrdConfiguration.MultiVectorMaps multiVectorMaps) {
+      super(
+          dimension,
           ordCount,
           docCount,
           slice,
@@ -248,15 +259,24 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
           longValues(multiVectorMaps.docOrdFreq()),
           longValues(multiVectorMaps.ordToDocMap()),
           longValues(multiVectorMaps.baseOrdMap()),
-          longValues(multiVectorMaps.nextBaseOrdMap())
-      );
+          longValues(multiVectorMaps.nextBaseOrdMap()));
     }
 
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-          dimension, ordCount, docCount, slice.clone(), byteSize, flatVectorsScorer, similarityFunction,
-          isMultiValued, docIndexToBaseOrd, ordToDocMap, baseOrdMap, nextBaseOrdMap);
+          dimension,
+          ordCount,
+          docCount,
+          slice.clone(),
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          isMultiValued,
+          docIndexToBaseOrd,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
     }
 
     @Override
@@ -448,8 +468,19 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
         int dimension,
         FlatVectorsScorer flatVectorsScorer,
         VectorSimilarityFunction vectorSimilarityFunction) {
-      super(dimension, 0, 0, null, 0, flatVectorsScorer, vectorSimilarityFunction,
-          false, null, null, null, null);
+      super(
+          dimension,
+          0,
+          0,
+          null,
+          0,
+          flatVectorsScorer,
+          vectorSimilarityFunction,
+          false,
+          null,
+          null,
+          null,
+          null);
     }
 
     @Override

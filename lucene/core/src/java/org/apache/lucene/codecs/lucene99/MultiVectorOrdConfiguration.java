@@ -1,5 +1,6 @@
 package org.apache.lucene.codecs.lucene99;
 
+import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -7,8 +8,6 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
-
-import java.io.IOException;
 
 public class MultiVectorOrdConfiguration {
 
@@ -20,7 +19,7 @@ public class MultiVectorOrdConfiguration {
       int[] docIds,
       int[] baseOrds,
       int[] nextBaseOrds)
-    throws IOException {
+      throws IOException {
 
     outputMeta.writeVInt(directMonotonicBlockShift); // block shift
     outputMeta.writeVInt(docOrdFreq.length); // number of values in docOrdFreq
@@ -34,8 +33,9 @@ public class MultiVectorOrdConfiguration {
     long docOrdFreqStart = vectorData.getFilePointer();
     outputMeta.writeLong(docOrdFreqStart);
     final DirectMonotonicWriter docOrdFreqWriter =
-        DirectMonotonicWriter.getInstance(outputMeta, vectorData, docOrdFreq.length, directMonotonicBlockShift);
-    for (int freq: docOrdFreq) {
+        DirectMonotonicWriter.getInstance(
+            outputMeta, vectorData, docOrdFreq.length, directMonotonicBlockShift);
+    for (int freq : docOrdFreq) {
       docOrdFreqWriter.add(freq);
     }
     docOrdFreqWriter.finish();
@@ -47,7 +47,9 @@ public class MultiVectorOrdConfiguration {
     // write ordToDoc mapping
     long ordToDocStart = vectorData.getFilePointer();
     outputMeta.writeLong(ordToDocStart);
-    final DirectMonotonicWriter ordToDocWriter = DirectMonotonicWriter.getInstance(outputMeta, vectorData, numValues, directMonotonicBlockShift);
+    final DirectMonotonicWriter ordToDocWriter =
+        DirectMonotonicWriter.getInstance(
+            outputMeta, vectorData, numValues, directMonotonicBlockShift);
     for (int docId : docIds) {
       ordToDocWriter.add(docId);
     }
@@ -57,7 +59,9 @@ public class MultiVectorOrdConfiguration {
     // write ord to baseOrd mapping
     long baseOrdStart = vectorData.getFilePointer();
     outputMeta.writeLong(baseOrdStart);
-    final DirectMonotonicWriter baseOrdWriter = DirectMonotonicWriter.getInstance(outputMeta, vectorData, numValues, directMonotonicBlockShift);
+    final DirectMonotonicWriter baseOrdWriter =
+        DirectMonotonicWriter.getInstance(
+            outputMeta, vectorData, numValues, directMonotonicBlockShift);
     for (int docId : docIds) {
       baseOrdWriter.add(docId);
     }
@@ -68,7 +72,9 @@ public class MultiVectorOrdConfiguration {
     // this is used to compute the number of vectors per baseOrdinal
     long nextBaseOrdStart = vectorData.getFilePointer();
     outputMeta.writeLong(nextBaseOrdStart);
-    final DirectMonotonicWriter nextBaseOrdWriter = DirectMonotonicWriter.getInstance(outputMeta, vectorData, numValues, directMonotonicBlockShift);
+    final DirectMonotonicWriter nextBaseOrdWriter =
+        DirectMonotonicWriter.getInstance(
+            outputMeta, vectorData, numValues, directMonotonicBlockShift);
     for (int docId : docIds) {
       nextBaseOrdWriter.add(docId);
     }
@@ -76,27 +82,32 @@ public class MultiVectorOrdConfiguration {
     outputMeta.writeLong(vectorData.getFilePointer() - nextBaseOrdStart); // baseOrd length
   }
 
-  public static MultiVectorOrdConfiguration fromStoredMeta(IndexInput inputMeta) throws IOException {
+  public static MultiVectorOrdConfiguration fromStoredMeta(IndexInput inputMeta)
+      throws IOException {
     final int blockShift = inputMeta.readVInt();
 
     final int docOrdFreqCount = inputMeta.readVInt();
     long docOrdFreqStart = inputMeta.readLong();
-    DirectMonotonicReader.Meta docOrdFreqMeta = DirectMonotonicReader.loadMeta(inputMeta, docOrdFreqCount, blockShift);
+    DirectMonotonicReader.Meta docOrdFreqMeta =
+        DirectMonotonicReader.loadMeta(inputMeta, docOrdFreqCount, blockShift);
     long docOrdFreqLength = inputMeta.readLong();
 
     final int numValues = inputMeta.readVInt();
 
     // ordToDoc mapping
     long ordToDocStart = inputMeta.readLong();
-    DirectMonotonicReader.Meta ordToDocMeta = DirectMonotonicReader.loadMeta(inputMeta, numValues, blockShift);
+    DirectMonotonicReader.Meta ordToDocMeta =
+        DirectMonotonicReader.loadMeta(inputMeta, numValues, blockShift);
     long ordToDocLength = inputMeta.readLong();
 
     long baseOrdStart = inputMeta.readLong();
-    DirectMonotonicReader.Meta baseOrdMeta = DirectMonotonicReader.loadMeta(inputMeta, numValues, blockShift);
+    DirectMonotonicReader.Meta baseOrdMeta =
+        DirectMonotonicReader.loadMeta(inputMeta, numValues, blockShift);
     long baseOrdLength = inputMeta.readLong();
 
     long nextBaseOrdStart = inputMeta.readLong();
-    DirectMonotonicReader.Meta nextBaseOrdMeta = DirectMonotonicReader.loadMeta(inputMeta, numValues, blockShift);
+    DirectMonotonicReader.Meta nextBaseOrdMeta =
+        DirectMonotonicReader.loadMeta(inputMeta, numValues, blockShift);
     long nextBaseOrdLength = inputMeta.readLong();
 
     return new MultiVectorOrdConfiguration(
@@ -112,8 +123,7 @@ public class MultiVectorOrdConfiguration {
         baseOrdLength,
         nextBaseOrdStart,
         nextBaseOrdMeta,
-        nextBaseOrdLength
-    );
+        nextBaseOrdLength);
   }
 
   private final long docOrdFreqStart, docOrdFreqLength;
@@ -126,20 +136,20 @@ public class MultiVectorOrdConfiguration {
   private final long nextBaseOrdStart, nextBaseOrdLength;
   private final DirectMonotonicReader.Meta nextBaseOrdMeta;
 
-  public MultiVectorOrdConfiguration(long docOrdFreqStart,
-                                     DirectMonotonicReader.Meta docOrdFreqMeta,
-                                     long docOrdFreqLength,
-                                     int numValues,
-                                     long ordToDocStart,
-                                     DirectMonotonicReader.Meta ordToDocMeta,
-                                     long ordToDocLength,
-                                     long baseOrdStart,
-                                     DirectMonotonicReader.Meta baseOrdMeta,
-                                     long baseOrdLength,
-                                     long nextBaseOrdStart,
-                                     DirectMonotonicReader.Meta nextBaseOrdMeta,
-                                     long nextBaseOrdLength
-  ) {
+  public MultiVectorOrdConfiguration(
+      long docOrdFreqStart,
+      DirectMonotonicReader.Meta docOrdFreqMeta,
+      long docOrdFreqLength,
+      int numValues,
+      long ordToDocStart,
+      DirectMonotonicReader.Meta ordToDocMeta,
+      long ordToDocLength,
+      long baseOrdStart,
+      DirectMonotonicReader.Meta baseOrdMeta,
+      long baseOrdLength,
+      long nextBaseOrdStart,
+      DirectMonotonicReader.Meta nextBaseOrdMeta,
+      long nextBaseOrdLength) {
     this.docOrdFreqStart = docOrdFreqStart;
     this.docOrdFreqMeta = docOrdFreqMeta;
     this.docOrdFreqLength = docOrdFreqLength;
@@ -179,10 +189,9 @@ public class MultiVectorOrdConfiguration {
     return numValues;
   }
 
-  public static MultiVectorMaps createMultiVectorMaps(DocIdSetIterator disi,
-                                                IntToIntFunction docIdToVectorCount,
-                                                int ordCount,
-                                                int docCount) throws IOException {
+  public static MultiVectorMaps createMultiVectorMaps(
+      DocIdSetIterator disi, IntToIntFunction docIdToVectorCount, int ordCount, int docCount)
+      throws IOException {
     if (docCount == ordCount) {
       // single valued vector field
       return new MultiVectorMaps(docCount);
@@ -212,16 +221,25 @@ public class MultiVectorOrdConfiguration {
     assert ord == ordCount;
     assert idx == docCount;
     docOrdFreq[idx] = ordCount;
-    return new MultiVectorMaps(true, docCount, ordCount, docOrdFreq, ordToDocMap, baseOrdMap, nextBaseOrdMap);
+    return new MultiVectorMaps(
+        true, docCount, ordCount, docOrdFreq, ordToDocMap, baseOrdMap, nextBaseOrdMap);
   }
 
   /**
-   * MultiVectorMaps collect the metadata required to access ordinals and docIds with
-   * for multivalued vector fields
+   * MultiVectorMaps collect the metadata required to access ordinals and docIds with for
+   * multivalued vector fields
    */
-  public static record MultiVectorMaps(boolean isMultiVector, int docCount, int ordCount, int[] docOrdFreq, int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {
+  public static record MultiVectorMaps(
+      boolean isMultiVector,
+      int docCount,
+      int ordCount,
+      int[] docOrdFreq,
+      int[] ordToDocMap,
+      int[] baseOrdMap,
+      int[] nextBaseOrdMap) {
     public MultiVectorMaps(int docCount) {
       this(false, docCount, docCount, null, null, null, null);
     }
-  };
+  }
+  ;
 }

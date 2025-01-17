@@ -40,10 +40,11 @@ public abstract class KnnVectorValues {
    */
   public abstract int size();
 
-  /** Returns number of documents with vector values.
-   * This can be less than {@link #size()} for multivalued vector fields.
-   * <p>
-   * Note: Should be overridden for multivalued vectors
+  /**
+   * Returns number of documents with vector values. This can be less than {@link #size()} for
+   * multivalued vector fields.
+   *
+   * <p>Note: Should be overridden for multivalued vectors
    */
   public int docCount() {
     return size();
@@ -53,41 +54,44 @@ public abstract class KnnVectorValues {
    * Return the docid of the document indexed with the given vector ordinal. This default
    * implementation returns the argument and is appropriate for dense values implementations where
    * every doc has a single value.
-   * <p>
-   * Note: Should be overridden for multivalued and sparse vectors
+   *
+   * <p>Note: Should be overridden for multivalued and sparse vectors
    */
   public int ordToDoc(int ord) {
     return ord;
   }
 
-  /** Returns ordinal of the first vector value indexed for the document corresponding to
-   * provided ord. This default implementation is an identity function applicable to
-   * single valued vector fields.
-   * <p>
-   * Note: Should be overridden for multivalued vectors
+  /**
+   * Returns ordinal of the first vector value indexed for the document corresponding to provided
+   * ord. This default implementation is an identity function applicable to single valued vector
+   * fields.
+   *
+   * <p>Note: Should be overridden for multivalued vectors
    */
   public int baseOrd(int ord) {
     return ord;
   }
 
-  /** Returns number of vector values indexed for the document associated with given ordinal.
-   * Default implementation for single valued vector fields returns 1.
-   * <p>
-   * Note: Should be overridden for multivalued vectors
+  /**
+   * Returns number of vector values indexed for the document associated with given ordinal. Default
+   * implementation for single valued vector fields returns 1.
+   *
+   * <p>Note: Should be overridden for multivalued vectors
    */
   public int vectorCount(int ord) {
     return 1;
   }
 
-  /** Returns the first indexed vector ordinal (base ordinal) for provided document index.
-   * Document index is the position at which a document occurs in its {@link KnnVectorValues#iterator()}.
-   * <p>
-   * Since ordinals are written sequentially, this function returns the number of vectors written before
-   * the first vector for document at provided index. For single valued vector fields,
-   * this is the same as ordinal. For multivalued fields, where a single doc may have multiple ordinals,
+  /**
+   * Returns the first indexed vector ordinal (base ordinal) for provided document index. Document
+   * index is the position at which a document occurs in its {@link KnnVectorValues#iterator()}.
+   *
+   * <p>Since ordinals are written sequentially, this function returns the number of vectors written
+   * before the first vector for document at provided index. For single valued vector fields, this
+   * is the same as ordinal. For multivalued fields, where a single doc may have multiple ordinals,
    * this method should be overridden to provide the right base ordinal.
-   * <p>
-   * This method should return the total number of vector ordinals for {@param index} = maxDoc.
+   *
+   * <p>This method should return the total number of vector ordinals for {@param index} = maxDoc.
    */
   public int docIndexToBaseOrd(int index) {
     return index;
@@ -227,8 +231,8 @@ public abstract class KnnVectorValues {
 
   /**
    * Creates an iterator from this instance's ordinal-to-docid mapping which must be monotonic
-   * (docid increases when ordinal does).
-   * This default implementation only applies to single valued vector fields.
+   * (docid increases when ordinal does). This default implementation only applies to single valued
+   * vector fields.
    */
   protected DocIndexIterator createSparseIterator() {
     return new DocIndexIterator() {

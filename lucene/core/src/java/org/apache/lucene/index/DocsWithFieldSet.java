@@ -16,14 +16,13 @@
  */
 package org.apache.lucene.index;
 
+import java.io.IOException;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
-
-import java.io.IOException;
 
 /**
  * Accumulator for documents that have a value for a field. This is optimized for the case that all

@@ -46,8 +46,9 @@ public abstract class FlatFieldVectorsWriter<T> extends KnnFieldVectorsWriter<T>
   /** Returns the number of documents with vector values indexed in the field writer */
   public abstract int docCount();
 
-  /** Returns a function that maps docId to the number of vectors indexed for that document.
-   * Default implementation applies to single valued vector fields/
+  /**
+   * Returns a function that maps docId to the number of vectors indexed for that document. Default
+   * implementation applies to single valued vector fields/
    */
   public IntToIntFunction docIdToVectorCount() {
     return x -> 1;
