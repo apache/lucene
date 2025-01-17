@@ -194,6 +194,11 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
   }
 
   @Override
+  public int maxConns() {
+    return maxConn;
+  }
+
+  @Override
   public int numLevels() {
     throw new UnsupportedOperationException();
   }

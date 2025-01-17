@@ -43,6 +43,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
@@ -317,7 +318,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    if (knnCollector.k() < scorer.maxOrd()) {
+    HnswGraph graph = getGraph(fieldEntry);
+    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
+    // Take into account if quantized? E.g. some scorer cost?
+    if (acceptDocs instanceof BitSet bitSet) {
+      int unfilteredVisit = (int) (Math.log(graph.size()) * knnCollector.k());
+      if (unfilteredVisit >= bitSet.cardinality()) {
+        doHnsw = false;
+      }
+    }
+    if (doHnsw) {
       if (acceptDocs != null) {
         FilteredHnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
       } else {
@@ -463,6 +473,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     int arcCount;
     int arcUpTo;
     int arc;
+    private final int maxConn;
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
     // Allocated to be M*2 to track the current neighbors being explored
@@ -480,6 +491,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       this.graphLevelNodeOffsets =
           DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
       this.currentNeighborsBuffer = new int[entry.M * 2];
+      this.maxConn = entry.M;
       graphLevelNodeIndexOffsets = new long[numLevels];
       graphLevelNodeIndexOffsets[0] = 0;
       for (int i = 1; i < numLevels; i++) {
@@ -528,6 +540,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     @Override
     public int neighborCount() {
       return arcCount;
+    }
+
+    @Override
+    public int maxConns() {
+      return maxConn;
     }
 
     @Override

@@ -274,6 +274,11 @@ public class TestHnswUtil extends LuceneTestCase {
     }
 
     @Override
+    public int maxConns() {
+      return UNKNOWN_MAX_CONN;
+    }
+
+    @Override
     public NodesIterator getNodesOnLevel(int level) {
 
       int count = 0;

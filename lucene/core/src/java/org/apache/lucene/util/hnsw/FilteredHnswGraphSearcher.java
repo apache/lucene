@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.hnsw.HnswGraph.UNKNOWN_MAX_CONN;
 
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
@@ -41,10 +42,6 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * </ul>
  */
 public class FilteredHnswGraphSearcher {
-  // How many extra candidates to consider for 2-hop neighbors
-  private static final float MAX_CANDIDATE_EXPANSION_FACTOR = 2.0f;
-  // How many more filtered candidates can we explore
-  private static final float MAX_FILTER_EXPLORATION_FACTOR = 3.0f;
   // How many filtered candidates must be found to consider N-hop neighbors
   private static final float EXPANDED_EXPLORATION_LAMBDA = 0.10f;
 
@@ -54,7 +51,9 @@ public class FilteredHnswGraphSearcher {
    */
   private final NeighborQueue candidates;
 
-  private BitSet visited;
+  private final BitSet visited;
+  private final BitSet explorationVisited;
+  private final HnswGraph graph;
 
   /**
    * Creates a new graph searcher.
@@ -62,9 +61,12 @@ public class FilteredHnswGraphSearcher {
    * @param candidates max heap that will track the candidate nodes to explore
    * @param visited bit set that will track nodes that have already been visited
    */
-  private FilteredHnswGraphSearcher(NeighborQueue candidates, BitSet visited) {
+  private FilteredHnswGraphSearcher(
+      NeighborQueue candidates, BitSet explorationVisited, BitSet visited, HnswGraph graph) {
     this.candidates = candidates;
     this.visited = visited;
+    this.explorationVisited = explorationVisited;
+    this.graph = graph;
   }
 
   /**
@@ -83,30 +85,39 @@ public class FilteredHnswGraphSearcher {
     if (acceptOrds == null) {
       throw new IllegalArgumentException("acceptOrds must not be null to used filtered search");
     }
+    int filterSize = 1;
+    if (acceptOrds instanceof BitSet bitSet) {
+      filterSize = bitSet.cardinality();
+    }
     FilteredHnswGraphSearcher graphSearcher =
         new FilteredHnswGraphSearcher(
             new NeighborQueue(knnCollector.k(), true),
-            bitSet(acceptOrds, getGraphSize(graph), knnCollector.k()));
-    int ep = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector);
+            bitSet(filterSize, getGraphSize(graph), graph.maxConns(), knnCollector.k()),
+            new SparseFixedBitSet(getGraphSize(graph)),
+            graph);
+    int ep = graphSearcher.findBestEntryPoint(scorer, knnCollector);
+    int maxExplorationMultiplier = Math.min(graph.size() / filterSize, 8);
     if (ep != -1) {
-      graphSearcher.searchBaseLevel(knnCollector, scorer, ep, graph, acceptOrds);
+      graphSearcher.searchBaseLevel(knnCollector, scorer, ep, maxExplorationMultiplier, acceptOrds);
     }
   }
 
-  private static BitSet bitSet(Bits acceptOrds, int graphSize, int topk) {
-    float percentFiltered = 0.0f;
-    if (acceptOrds instanceof BitSet bitSet) {
-      percentFiltered = (float) bitSet.cardinality() / graphSize;
-    }
-    assert percentFiltered >= 0.0f && percentFiltered <= 1.0f;
-    int approximateVisitation =
-        (int)
-            (((int) Math.log(Math.sqrt(16)) * (int) Math.log(graphSize) * topk)
-                * (1f / percentFiltered));
-    if (approximateVisitation < (graphSize >>> 7)) {
-      return new SparseFixedBitSet(graphSize);
+  private static BitSet bitSet(int filterSize, int graphSize, int graphMaxConns, int topk) {
+    float percentFiltered = (float) filterSize / graphSize;
+    assert percentFiltered > 0.0f && percentFiltered < 1.0f;
+    int totalOps =
+        graphMaxConns != UNKNOWN_MAX_CONN
+            ? (int) Math.log(Math.sqrt(graphMaxConns)) * (int) Math.log(graphSize) * topk
+            : (int) Math.log(graphSize) * topk;
+    int approximateVisitation = (int) (totalOps / percentFiltered);
+    return bitSet(approximateVisitation, graphSize);
+  }
+
+  private static BitSet bitSet(int expectedBits, int totalBits) {
+    if (expectedBits < (totalBits >>> 7)) {
+      return new SparseFixedBitSet(totalBits);
     } else {
-      return new FixedBitSet(graphSize);
+      return new FixedBitSet(totalBits);
     }
   }
 
@@ -114,13 +125,12 @@ public class FilteredHnswGraphSearcher {
    * Function to find the best entry point from which to search the zeroth graph layer.
    *
    * @param scorer the scorer to compare the query with the nodes
-   * @param graph the HNSWGraph
    * @param collector the knn result collector
    * @return the best entry point, `-1` indicates graph entry node not set, or visitation limit
    *     exceeded
    * @throws IOException When accessing the vector fails
    */
-  private int findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
+  private int findBestEntryPoint(RandomVectorScorer scorer, KnnCollector collector)
       throws IOException {
     int currentEp = graph.entryNode();
     if (currentEp == -1 || graph.numLevels() == 1) {
@@ -167,7 +177,11 @@ public class FilteredHnswGraphSearcher {
    * last to be popped.
    */
   void searchBaseLevel(
-      KnnCollector results, RandomVectorScorer scorer, int ep, HnswGraph graph, Bits acceptOrds)
+      KnnCollector results,
+      RandomVectorScorer scorer,
+      int ep,
+      int maxExplorationMultiplier,
+      Bits acceptOrds)
       throws IOException {
 
     int size = getGraphSize(graph);
@@ -185,7 +199,9 @@ public class FilteredHnswGraphSearcher {
         results.collect(ep, score);
       }
     }
-    IntArrayQueue filteredNeighborQueue = new IntArrayQueue(32);
+    // Collect the vectors to score and potentially add as candidates
+    IntArrayQueue toScore = new IntArrayQueue(graph.maxConns() * maxExplorationMultiplier);
+    IntArrayQueue toExplore = new IntArrayQueue(graph.maxConns() * maxExplorationMultiplier);
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = results.minCompetitiveSimilarity();
@@ -196,84 +212,58 @@ public class FilteredHnswGraphSearcher {
         break;
       }
       int topCandidateNode = candidates.pop();
-      graphSeek(graph, 0, topCandidateNode);
       // Pre-fetch neighbors into an array
       // This is necessary because we need to call `seek` on each neighbor to consider 2-hop
       // neighbors
-      filteredNeighborQueue.clear();
-      // We only consider maxConn 1/2-hop neighbors
-      int neighborsProcessed = 0;
+      graph.seek(0, topCandidateNode);
+      int neighborCount = graph.neighborCount();
+      toScore.clear();
+      toExplore.clear();
       int friendOrd;
-      while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
+      while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS && toScore.isFull() == false) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.getAndSet(friendOrd)) {
+        if (visited.get(friendOrd) || explorationVisited.getAndSet(friendOrd)) {
           continue;
         }
-        neighborsProcessed++;
-        if (acceptOrds.get(friendOrd) == false) {
-          filteredNeighborQueue.add(friendOrd);
-          continue;
+        if (acceptOrds.get(friendOrd)) {
+          toScore.add(friendOrd);
+        } else {
+          toExplore.add(friendOrd);
         }
-        if (results.earlyTerminated()) {
-          break;
-        }
-        float friendSimilarity = scorer.score(friendOrd);
-        results.incVisitedCount(1);
-        if (friendSimilarity > minAcceptedSimilarity) {
-          candidates.add(friendOrd, friendSimilarity);
-          if (results.collect(friendOrd, friendSimilarity)) {
-            minAcceptedSimilarity = results.minCompetitiveSimilarity();
+      }
+      // adjust to locally number of filtered candidates to explore
+      float filteredAmount = toExplore.count() / (float) neighborCount;
+      int maxToScoreCount =
+          (int) (neighborCount * Math.min(maxExplorationMultiplier, 1f / (1f - filteredAmount)));
+      // There is enough filtered, or we don't have enough candidates to score and explore
+      if (toScore.count() < maxToScoreCount && filteredAmount > EXPANDED_EXPLORATION_LAMBDA) {
+        // Now we need to explore the neighbors of the neighbors
+        int exploreFriend;
+        while ((exploreFriend = toExplore.poll()) != NO_MORE_DOCS
+            && toScore.count() < maxToScoreCount) {
+          graphSeek(graph, 0, exploreFriend);
+          int friendOfAFriendOrd;
+          while ((friendOfAFriendOrd = graph.nextNeighbor()) != NO_MORE_DOCS
+              && toScore.count() < maxToScoreCount) {
+            if (visited.get(friendOfAFriendOrd)
+                || explorationVisited.getAndSet(friendOfAFriendOrd)) {
+              continue;
+            }
+            if (acceptOrds.get(friendOfAFriendOrd)) {
+              toScore.add(friendOfAFriendOrd);
+            }
           }
         }
       }
-      float percentFiltered = (float) filteredNeighborQueue.count() / graph.neighborCount();
-      if (percentFiltered > EXPANDED_EXPLORATION_LAMBDA) {
-        results.incFilteredVisitedCount(filteredNeighborQueue.count());
-        float lambda = 1 - percentFiltered;
-        int maxExpandedFilterNeighbors =
-            (int)
-                Math.min(
-                    graph.neighborCount() * MAX_FILTER_EXPLORATION_FACTOR,
-                    graph.neighborCount() / lambda);
-        int expandedNeighborCount =
-            (int)
-                Math.min(
-                    graph.neighborCount() * MAX_CANDIDATE_EXPANSION_FACTOR,
-                    maxExpandedFilterNeighbors);
-
-        filteredNeighborQueue.expand(expandedNeighborCount);
-        int filteredProcessed = filteredNeighborQueue.count();
-        while (filteredNeighborQueue.isEmpty() == false
-            && neighborsProcessed < expandedNeighborCount) {
-          int filteredNeighbor = filteredNeighborQueue.poll();
-          // Only walk 2-hop neighbors if filter doesn't match
-          graphSeek(graph, 0, filteredNeighbor);
-          int twoHopFriendOrd;
-          while (neighborsProcessed < expandedNeighborCount
-              && (twoHopFriendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
-            assert twoHopFriendOrd < size : "twoHopFriendOrd=" + twoHopFriendOrd + "; size=" + size;
-            if (visited.getAndSet(twoHopFriendOrd)) {
-              continue;
-            }
-            filteredProcessed++;
-            // Only calculate score and consider candidate if filter matches
-            if (acceptOrds.get(twoHopFriendOrd)) {
-              if (results.earlyTerminated()) {
-                break;
-              }
-              neighborsProcessed++;
-              float twoHopSimilarity = scorer.score(twoHopFriendOrd);
-              results.incVisitedCount(1);
-              if (twoHopSimilarity > minAcceptedSimilarity) {
-                candidates.add(twoHopFriendOrd, twoHopSimilarity);
-                if (results.collect(twoHopFriendOrd, twoHopSimilarity)) {
-                  minAcceptedSimilarity = results.minCompetitiveSimilarity();
-                }
-              }
-            } else if (filteredProcessed < maxExpandedFilterNeighbors) {
-              results.incFilteredVisitedCount(1);
-              filteredNeighborQueue.add(twoHopFriendOrd);
-            }
+      // Score the vectors and add them to the candidate list
+      int toScoreOrd;
+      while ((toScoreOrd = toScore.poll()) != NO_MORE_DOCS) {
+        float friendSimilarity = scorer.score(toScoreOrd);
+        results.incVisitedCount(1);
+        if (friendSimilarity > minAcceptedSimilarity) {
+          candidates.add(toScoreOrd, friendSimilarity);
+          if (results.collect(toScoreOrd, friendSimilarity)) {
+            minAcceptedSimilarity = results.minCompetitiveSimilarity();
           }
         }
       }
@@ -282,6 +272,7 @@ public class FilteredHnswGraphSearcher {
 
   private void prepareScratchState() {
     visited.clear();
+    explorationVisited.clear();
   }
 
   /**
@@ -320,17 +311,21 @@ public class FilteredHnswGraphSearcher {
     }
 
     void add(int node) {
+      assert isFull() == false;
       if (size == nodes.length) {
         expand(size * 2);
       }
       nodes[size++] = node;
     }
 
-    boolean isEmpty() {
-      return upto == size;
+    boolean isFull() {
+      return size == nodes.length;
     }
 
     int poll() {
+      if (upto == size) {
+        return NO_MORE_DOCS;
+      }
       return nodes[upto++];
     }
 

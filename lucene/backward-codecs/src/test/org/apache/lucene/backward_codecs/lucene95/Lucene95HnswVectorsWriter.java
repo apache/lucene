@@ -372,6 +372,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       @Override
+      public int maxConns() {
+        return M;
+      }
+
+      @Override
       public NodesIterator getNodesOnLevel(int level) {
         if (level == 0) {
           return graph.getNodesOnLevel(0);

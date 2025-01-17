@@ -169,6 +169,11 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   }
 
   @Override
+  public int maxConns() {
+    return nsize - 1;
+  }
+
+  @Override
   public int nextNeighbor() {
     if (++upto < cur.size()) {
       return cur.nodes()[upto];

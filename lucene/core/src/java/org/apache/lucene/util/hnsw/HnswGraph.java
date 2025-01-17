@@ -51,6 +51,7 @@ import org.apache.lucene.internal.hppc.IntCursor;
  * exclude deleted documents.
  */
 public abstract class HnswGraph {
+  public static final int UNKNOWN_MAX_CONN = -1;
 
   /** Sole constructor */
   protected HnswGraph() {}
@@ -98,6 +99,8 @@ public abstract class HnswGraph {
 
   public abstract int neighborCount();
 
+  public abstract int maxConns();
+
   /** Empty graph value */
   public static HnswGraph EMPTY =
       new HnswGraph() {
@@ -128,6 +131,11 @@ public abstract class HnswGraph {
         @Override
         public int neighborCount() {
           return 0;
+        }
+
+        @Override
+        public int maxConns() {
+          return UNKNOWN_MAX_CONN;
         }
 
         @Override
