@@ -42,7 +42,7 @@ public abstract class KnnVectorValues {
 
   /** Returns number of documents with vector values.
    * This can be less than {@link #size()} for multivalued vector fields.
-   * </p>
+   * <p>
    * Note: Should be overridden for multivalued vectors
    */
   public int docCount() {
@@ -53,7 +53,7 @@ public abstract class KnnVectorValues {
    * Return the docid of the document indexed with the given vector ordinal. This default
    * implementation returns the argument and is appropriate for dense values implementations where
    * every doc has a single value.
-   * </p>
+   * <p>
    * Note: Should be overridden for multivalued and sparse vectors
    */
   public int ordToDoc(int ord) {
@@ -63,7 +63,7 @@ public abstract class KnnVectorValues {
   /** Returns ordinal of the first vector value indexed for the document corresponding to
    * provided ord. This default implementation is an identity function applicable to
    * single valued vector fields.
-   * </p>
+   * <p>
    * Note: Should be overridden for multivalued vectors
    */
   public int baseOrd(int ord) {
@@ -72,7 +72,7 @@ public abstract class KnnVectorValues {
 
   /** Returns number of vector values indexed for the document associated with given ordinal.
    * Default implementation for single valued vector fields returns 1.
-   * </p>
+   * <p>
    * Note: Should be overridden for multivalued vectors
    */
   public int vectorCount(int ord) {
@@ -81,12 +81,12 @@ public abstract class KnnVectorValues {
 
   /** Returns the first indexed vector ordinal (base ordinal) for provided document index.
    * Document index is the position at which a document occurs in its {@link KnnVectorValues#iterator()}.
-   * </p>
+   * <p>
    * Since ordinals are written sequentially, this function returns the number of vectors written before
    * the first vector for document at provided index. For single valued vector fields,
    * this is the same as ordinal. For multivalued fields, where a single doc may have multiple ordinals,
    * this method should be overridden to provide the right base ordinal.
-   * </p>
+   * <p>
    * This method should return the total number of vector ordinals for {@param index} = maxDoc.
    */
   public int docIndexToBaseOrd(int index) {

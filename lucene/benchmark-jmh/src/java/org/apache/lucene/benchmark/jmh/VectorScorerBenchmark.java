@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
@@ -98,7 +99,14 @@ public class VectorScorerBenchmark {
   static KnnVectorValues vectorValues(
       int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-        dims, size, in.slice("test", 0, in.length()), dims, new ThrowingFlatVectorScorer(), sim);
+        dims,
+        size,
+        size,
+        in.slice("test", 0, in.length()),
+        dims,
+        new ThrowingFlatVectorScorer(),
+        sim,
+        new MultiVectorOrdConfiguration.MultiVectorMaps(size));
   }
 
   static final class ThrowingFlatVectorScorer implements FlatVectorsScorer {

@@ -220,7 +220,7 @@ public class MultiVectorOrdConfiguration {
    * for multivalued vector fields
    */
   public static record MultiVectorMaps(boolean isMultiVector, int docCount, int ordCount, int[] docOrdFreq, int[] ordToDocMap, int[] baseOrdMap, int[] nextBaseOrdMap) {
-    private MultiVectorMaps(int docCount) {
+    public MultiVectorMaps(int docCount) {
       this(false, docCount, docCount, null, null, null, null);
     }
   };

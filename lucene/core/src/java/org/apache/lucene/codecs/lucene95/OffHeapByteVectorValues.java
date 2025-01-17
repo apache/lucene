@@ -310,6 +310,9 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
     }
 
     private static LongValues longValues(int[] arr) {
+      if (arr == null) {
+        return null;
+      }
       return new LongValues() {
         @Override
         public long get(long index) {

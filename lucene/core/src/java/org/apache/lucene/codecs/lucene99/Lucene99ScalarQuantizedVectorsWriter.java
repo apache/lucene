@@ -58,6 +58,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
@@ -778,6 +779,21 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       this.infoStream = infoStream;
       this.compress = compress;
       this.flatFieldVectorsWriter = Objects.requireNonNull(indexWriter);
+    }
+
+    @Override
+    public int ordCount() {
+      return flatFieldVectorsWriter.ordCount();
+    }
+
+    @Override
+    public int docCount() {
+      return flatFieldVectorsWriter.docCount();
+    }
+
+    @Override
+    public IntToIntFunction docIdToVectorCount() {
+      return flatFieldVectorsWriter.docIdToVectorCount();
     }
 
     @Override
