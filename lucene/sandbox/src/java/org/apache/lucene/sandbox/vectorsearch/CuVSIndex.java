@@ -21,6 +21,9 @@ import com.nvidia.cuvs.CagraIndex;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * This class holds references to the actual CuVS Index (Cagra, Brute force, etc.)
+ */
 public class CuVSIndex {
   private final CagraIndex cagraIndex;
   private final BruteForceIndex bruteforceIndex;

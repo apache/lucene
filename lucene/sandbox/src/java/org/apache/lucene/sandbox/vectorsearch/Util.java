@@ -25,6 +25,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.apache.commons.lang3.SerializationUtils;
 
+/**
+ * Some Utils used in CuVS integration
+ */
 public class Util {
 
   public static ByteArrayOutputStream getZipEntryBAOS(

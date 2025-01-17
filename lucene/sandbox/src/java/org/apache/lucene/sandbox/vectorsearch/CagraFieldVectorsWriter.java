@@ -22,6 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 
+/**
+ * CuVS based fields writer
+ */
 public class CagraFieldVectorsWriter extends KnnFieldVectorsWriter<float[]> {
 
   public final String fieldName;

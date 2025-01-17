@@ -42,6 +42,9 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.SuppressForbidden;
 
+/**
+ * KnnVectorsWriter for CuVS, responsible for merge and flush of vectors into GPU
+ */
 public class CuVSVectorsWriter extends KnnVectorsWriter {
 
   // protected Logger log = Logger.getLogger(getClass().getName());
@@ -60,6 +63,9 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
   private MergeStrategy mergeStrategy;
   private CuVSResources resources;
 
+  /**
+   * Merge strategy used for CuVS
+   */
   public enum MergeStrategy {
     TRIVIAL_MERGE,
     NON_TRIVIAL_MERGE
@@ -365,6 +371,9 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
     }
   }
 
+  /**
+   * OutputStream for writing into an IndexOutput
+   */
   public class SegmentOutputStream extends OutputStream {
 
     IndexOutput out;

@@ -23,6 +23,9 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 
+/**
+ * KnnCollector for CuVS
+ */
 public class PerLeafCuVSKnnCollector implements KnnCollector {
 
   public List<ScoreDoc> scoreDocs;
