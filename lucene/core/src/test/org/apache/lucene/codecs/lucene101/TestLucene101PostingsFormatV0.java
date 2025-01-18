@@ -14,28 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.lucene101;
 
-def isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
+import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
-develocity {
-    server = "https://develocity.apache.org"
-    projectId = "lucene"
+public class TestLucene101PostingsFormatV0 extends BasePostingsFormatTestCase {
 
-    buildScan {
-        uploadInBackground = !isCIBuild
-        publishing.onlyIf { it.isAuthenticated() }
-        obfuscation {
-            ipAddresses { addresses -> addresses.collect { address -> "0.0.0.0"} }
-        }
-    }
-}
-
-buildCache {
-    local {
-        enabled = !isCIBuild
-    }
-
-    remote(develocity.buildCache) {
-        enabled = false
-    }
+  @Override
+  protected Codec getCodec() {
+    return TestUtil.alwaysPostingsFormat(
+        new Lucene101PostingsFormat(
+            Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
+            Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE,
+            Lucene101PostingsFormat.VERSION_START));
+  }
 }

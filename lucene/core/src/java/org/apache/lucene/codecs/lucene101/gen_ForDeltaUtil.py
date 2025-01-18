@@ -63,23 +63,6 @@ public final class ForDeltaUtil {
   private static final int TWO_BLOCK_SIZE_FOURTHS = BLOCK_SIZE / 2;
   private static final int THREE_BLOCK_SIZE_FOURTHS = 3 * BLOCK_SIZE / 4;
 
-  // IDENTITY_PLUS_ONE[i] == i+1
-  private static final int[] IDENTITY_PLUS_ONE = new int[ForUtil.BLOCK_SIZE];
-
-  static {
-    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
-      IDENTITY_PLUS_ONE[i] = i + 1;
-    }
-  }
-
-  private static void prefixSumOfOnes(int[] arr, int base) {
-    System.arraycopy(IDENTITY_PLUS_ONE, 0, arr, 0, ForUtil.BLOCK_SIZE);
-    // This loop gets auto-vectorized
-    for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
-      arr[i] += base;
-    }
-  }
-
   private static void prefixSum8(int[] arr, int base) {
     // When the number of bits per value is 4 or less, we can sum up all values in a block without
     // risking overflowing an 8-bits integer. This allows computing the prefix sum by summing up 4
@@ -224,44 +207,33 @@ public final class ForDeltaUtil {
 
   private final int[] tmp = new int[BLOCK_SIZE];
 
+  /** Return the number of bits per value required to store the given array containing strictly positive numbers. */
+  int bitsRequired(int[] ints) {
+    int or = 0;
+    for (int l : ints) {
+      or |= l;
+    }
+    // Deltas should be strictly positive since the delta between consecutive doc IDs is at least 1
+    assert or != 0;
+    return PackedInts.bitsRequired(or);
+  }
+
   /**
    * Encode deltas of a strictly monotonically increasing sequence of integers. The provided {@code
    * ints} are expected to be deltas between consecutive values.
    */
-  void encodeDeltas(int[] ints, DataOutput out) throws IOException {
-    if (ints[0] == 1 && PForUtil.allEqual(ints)) { // happens with very dense postings
-      out.writeByte((byte) 0);
+  void encodeDeltas(int bitsPerValue, int[] ints, DataOutput out) throws IOException {
+    final int primitiveSize;
+    if (bitsPerValue <= 3) {
+      primitiveSize = 8;
+      collapse8(ints);
+    } else if (bitsPerValue <= 10) {
+      primitiveSize = 16;
+      collapse16(ints);
     } else {
-      int or = 0;
-      for (int l : ints) {
-        or |= l;
-      }
-      assert or != 0;
-      final int bitsPerValue = PackedInts.bitsRequired(or);
-      out.writeByte((byte) bitsPerValue);
-
-      final int primitiveSize;
-      if (bitsPerValue <= 3) {
-        primitiveSize = 8;
-        collapse8(ints);
-      } else if (bitsPerValue <= 10) {
-        primitiveSize = 16;
-        collapse16(ints);
-      } else {
-        primitiveSize = 32;
-      }
-      encode(ints, bitsPerValue, primitiveSize, out, tmp);
+      primitiveSize = 32;
     }
-  }
-
-  /** Decode deltas, compute the prefix sum and add {@code base} to all decoded ints. */
-  void decodeAndPrefixSum(PostingDecodingUtil pdu, int base, int[] ints) throws IOException {
-    final int bitsPerValue = Byte.toUnsignedInt(pdu.in.readByte());
-    if (bitsPerValue == 0) {
-      prefixSumOfOnes(ints, base);
-    } else {
-      decodeAndPrefixSum(bitsPerValue, pdu, base, ints);
-    }
+    encode(ints, bitsPerValue, primitiveSize, out, tmp);
   }
 
 """
@@ -361,6 +333,9 @@ if __name__ == '__main__':
     f.write('      prefixSum%d(ints, base);\n' %primitive_size)
     f.write('      break;\n')
   f.write('    default:\n')
+  f.write('        if (bitsPerValue < 1 || bitsPerValue > Integer.SIZE) {\n')
+  f.write('          throw new IllegalStateException("Illegal number of bits per value: " + bitsPerValue);\n')
+  f.write('        }\n')
   f.write('      decodeSlow(bitsPerValue, pdu, tmp, ints);\n')
   f.write('      prefixSum32(ints, base);\n')
   f.write('      break;\n')

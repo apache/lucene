@@ -52,6 +52,9 @@ configure(project(":lucene:benchmark")) {
       dst = file("${dataDir}/${name}")
     }
 
+    // TODO: dataset gone. https://github.com/apache/lucene/issues/13647
+    onlyIf { false }
+
     outputs.file ext.dst
 
     src ext.src
@@ -72,6 +75,9 @@ configure(project(":lucene:benchmark")) {
       intermediate = file("${dataDir}/${name}.zst")
       dst = file("${dataDir}/${name}")
     }
+
+    // TODO: dataset gone. https://github.com/apache/lucene/issues/13647
+    onlyIf { false }
 
     outputs.file ext.dst
 
@@ -99,6 +105,9 @@ configure(project(":lucene:benchmark")) {
 
     outputs.file ext.dst
 
+    // TODO: dataset gone. https://github.com/apache/lucene/issues/13647
+    onlyIf { false }
+
     src ext.src
     dest ext.intermediate
     overwrite false
@@ -117,6 +126,9 @@ configure(project(":lucene:benchmark")) {
       intermediate = file("${dataDir}/${name}.bz2")
       dst = file("${dataDir}/${name}")
     }
+
+    // TODO: dataset gone. https://github.com/apache/lucene/issues/13647
+    onlyIf { false }
 
     outputs.dir ext.dst
 
