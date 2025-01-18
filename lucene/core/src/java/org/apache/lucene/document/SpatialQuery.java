@@ -677,7 +677,7 @@ abstract class SpatialQuery extends Query {
         for (int i = 0; i < ref.length; i++) {
           result.clear(ref.ints[ref.offset + i]);
         }
-        cost[0] -= ref.length;
+        cost[0] = Math.max(0, cost[0] - ref.length);
       }
 
       @Override
