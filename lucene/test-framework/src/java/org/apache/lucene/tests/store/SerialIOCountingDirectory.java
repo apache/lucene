@@ -194,7 +194,7 @@ public class SerialIOCountingDirectory extends FilterDirectory {
     public IndexInput slice(
         String sliceDescription, long offset, long length, ReadAdvice readAdvice)
         throws IOException {
-      if (offset < 0 || offset + length > sliceLength) {
+      if ((length | offset) < 0 || length > sliceLength - offset) {
         throw new IllegalArgumentException();
       }
       IndexInput clone = in.clone();

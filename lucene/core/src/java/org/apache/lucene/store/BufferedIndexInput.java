@@ -401,7 +401,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
               ? base.toString()
               : (base.toString() + " [slice=" + sliceDescription + "]"),
           BufferedIndexInput.BUFFER_SIZE);
-      if (offset < 0 || length < 0 || offset + length > base.length()) {
+      if ((length | offset) < 0 || length > base.length() - offset) {
         throw new IllegalArgumentException(
             "slice() " + sliceDescription + " out of bounds: " + base);
       }
