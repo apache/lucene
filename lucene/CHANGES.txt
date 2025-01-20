@@ -41,9 +41,16 @@ API Changes
 * GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
   optimize loading doc IDs into a bit set. (Adrien Grand)
 
+* GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
+  bit set of matches. (Adrien Grand)
+
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#14084, GITHUB#13635, GITHUB#13634: Adds new `SeededKnnByteVectorQuery` and `SeededKnnFloatVectorQuery`
+  queries. These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
+  the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
+
 
 Improvements
 ---------------------
@@ -51,6 +58,12 @@ Improvements
 * GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
   (Robert Muir)
 * GITHUB#13984: Add HNSW graph checks and stats to CheckIndex
+
+* GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
+
+* GITHUB#14138: Implement IntersectVisitor#visit(IntsRef) in  many of the current implementations and add
+  BulkAdder#add(IntsRef) method. They should provide better performance due to less virtual method calls and
+  more efficient bulk processing. (Ignacio Vera)
 
 Optimizations
 ---------------------
@@ -60,15 +73,25 @@ Optimizations
 * GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
   conjunctions. (Adrien Grand)
 
+* GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 
 * GITHUB#14109: prefetch may select the wrong memory segment for
   multi-segment slices. (Chris Hegarty)
 
+* GITHUB#14123: SortingCodecReader NPE when segment has no (points, vectors, etc...) (Mike Sokolov)
+
 Other
 ---------------------
-(No changes)
+
+* GITHUB#14081: Fix urls describing why NIOFS is not recommended for Windows (Marcel Yeonghyeon Ko)
+
+* GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
+
+* GITHUB#14091: Cover all DataType. (Lu Xugang)
 
 ======================= Lucene 10.1.0 =======================
 
