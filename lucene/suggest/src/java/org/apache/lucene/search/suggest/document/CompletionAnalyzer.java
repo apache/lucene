@@ -20,6 +20,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.AnalyzerWrapper;
 import org.apache.lucene.analysis.TokenStreamToAutomaton;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
+import org.apache.lucene.util.CloseableThreadLocal;
 
 /**
  * Wraps an {@link org.apache.lucene.analysis.Analyzer} to provide additional completion-only tuning
@@ -65,6 +66,9 @@ public final class CompletionAnalyzer extends AnalyzerWrapper {
    * <p>Defaults to <code>-1</code> (no limit)
    */
   private final int maxGraphExpansions;
+
+  private CloseableThreadLocal<TokenStreamComponents> wrappedComponents =
+      new CloseableThreadLocal<>();
 
   /**
    * Wraps an analyzer to convert its output token stream to an automaton
@@ -113,6 +117,25 @@ public final class CompletionAnalyzer extends AnalyzerWrapper {
   }
 
   /**
+   * Creates CompletionAnalyzer with the given analyzer, preserving token separation, position
+   * increments, and using the {@link
+   * org.apache.lucene.analysis.AnalyzerWrapper.WrappingReuseStrategy} reuse strategy
+   */
+  public CompletionAnalyzer(
+      Analyzer analyzer,
+      boolean preserveSep,
+      boolean preservePositionIncrements,
+      ReuseStrategy fallbackStrategy) {
+    super(new WrappingReuseStrategy(fallbackStrategy));
+    // häckidy-hick-hack, because we cannot call super() with a reference to "this":
+    ((WrappingReuseStrategy) getReuseStrategy()).setUp(this, analyzer, wrappedComponents);
+    this.analyzer = analyzer;
+    this.preserveSep = preserveSep;
+    this.preservePositionIncrements = preservePositionIncrements;
+    this.maxGraphExpansions = ConcatenateGraphFilter.DEFAULT_MAX_GRAPH_EXPANSIONS;
+  }
+
+  /**
    * Calls {@link #CompletionAnalyzer(org.apache.lucene.analysis.Analyzer, boolean, boolean, int)}
    * preserving token separation and position increments
    */
@@ -146,8 +169,15 @@ public final class CompletionAnalyzer extends AnalyzerWrapper {
   }
 
   @Override
+  public void close() {
+    super.close();
+    wrappedComponents.close();
+  }
+
+  @Override
   protected TokenStreamComponents wrapComponents(
       String fieldName, TokenStreamComponents components) {
+    wrappedComponents.set(components);
     CompletionTokenStream tokenStream =
         new CompletionTokenStream(
             components.getTokenStream(),

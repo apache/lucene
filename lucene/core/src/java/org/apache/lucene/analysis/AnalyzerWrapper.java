@@ -18,6 +18,7 @@ package org.apache.lucene.analysis;
 
 import java.io.Reader;
 import org.apache.lucene.util.AttributeFactory;
+import org.apache.lucene.util.CloseableThreadLocal;
 
 /**
  * Extension to {@link Analyzer} suitable for Analyzers which wrap other Analyzers.
@@ -150,5 +151,58 @@ public abstract class AnalyzerWrapper extends Analyzer {
   @Override
   protected final AttributeFactory attributeFactory(String fieldName) {
     return getWrappedAnalyzer(fieldName).attributeFactory(fieldName);
+  }
+
+  /**
+   * A {@link org.apache.lucene.analysis.Analyzer.ReuseStrategy} that checks the wrapped analyzer's
+   * strategy for reusability. If the wrapped analyzer's strategy returns null, components need to
+   * be re-created. During components creation, this analyzer must store the wrapped analyzer's
+   * components in {@code wrappedComponents} local thread variable.
+   */
+  public static final class WrappingReuseStrategy extends ReuseStrategy {
+    private AnalyzerWrapper wrapper;
+    private Analyzer wrappedAnalyzer;
+    private CloseableThreadLocal<TokenStreamComponents> wrappedComponents;
+    private final ReuseStrategy fallbackStrategy;
+
+    public WrappingReuseStrategy(ReuseStrategy fallbackStrategy) {
+      this.fallbackStrategy = fallbackStrategy;
+    }
+
+    public void setUp(
+        AnalyzerWrapper wrapper,
+        Analyzer wrappedAnalyzer,
+        CloseableThreadLocal<TokenStreamComponents> wrappedComponents) {
+      this.wrapper = wrapper;
+      this.wrappedAnalyzer = wrappedAnalyzer;
+      this.wrappedComponents = wrappedComponents;
+    }
+
+    @Override
+    public TokenStreamComponents getReusableComponents(Analyzer analyzer, String fieldName) {
+      if (analyzer == wrapper) {
+        if (wrappedAnalyzer.getReuseStrategy().getReusableComponents(wrappedAnalyzer, fieldName)
+            == null) {
+          return null;
+        } else {
+          return (TokenStreamComponents) getStoredValue(analyzer);
+        }
+      } else {
+        return fallbackStrategy.getReusableComponents(analyzer, fieldName);
+      }
+    }
+
+    @Override
+    public void setReusableComponents(
+        Analyzer analyzer, String fieldName, TokenStreamComponents components) {
+      if (analyzer == wrapper) {
+        setStoredValue(analyzer, components);
+        wrappedAnalyzer
+            .getReuseStrategy()
+            .setReusableComponents(wrappedAnalyzer, fieldName, wrappedComponents.get());
+      } else {
+        fallbackStrategy.setReusableComponents(analyzer, fieldName, components);
+      }
+    }
   }
 }
