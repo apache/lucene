@@ -351,8 +351,8 @@ public class TestBpVectorReorderer extends LuceneTestCase {
 
       // compute the expected ordering
       Sorter.DocMap expected =
-              reorderer.computeValueMap(
-                      FloatVectorValues.fromFloats(vectors, 2), VectorSimilarityFunction.EUCLIDEAN, null);
+          reorderer.computeValueMap(
+              FloatVectorValues.fromFloats(vectors, 2), VectorSimilarityFunction.EUCLIDEAN, null);
 
       int threadCount = random().nextInt(4) + 1;
       threadCount = 1;
@@ -374,7 +374,8 @@ public class TestBpVectorReorderer extends LuceneTestCase {
         StoredFields storedFields = reader.storedFields();
         KnnVectorValues.DocIndexIterator it = values.iterator();
         while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          int oldDocId = storedIdToDocId[Integer.parseInt(storedFields.document(it.docID()).get("id"))];
+          int oldDocId =
+              storedIdToDocId[Integer.parseInt(storedFields.document(it.docID()).get("id"))];
           assertEquals(expected.oldToNew(oldDocId), newId);
           float[] expectedVector = vectors.get(expected.newToOld(it.docID()));
           float[] actualVector = values.vectorValue(it.index());
