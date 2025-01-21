@@ -14,28 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.knn;
 
-def isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
+import org.apache.lucene.search.DocIdSetIterator;
 
-develocity {
-    server = "https://develocity.apache.org"
-    projectId = "lucene"
+/** Provides entry points for the kNN search */
+public interface EntryPointProvider {
+  /** Iterator of valid entry points for the kNN search */
+  DocIdSetIterator entryPoints();
 
-    buildScan {
-        uploadInBackground = !isCIBuild
-        publishing.onlyIf { it.isAuthenticated() }
-        obfuscation {
-            ipAddresses { addresses -> addresses.collect { address -> "0.0.0.0"} }
-        }
-    }
-}
-
-buildCache {
-    local {
-        enabled = !isCIBuild
-    }
-
-    remote(develocity.buildCache) {
-        enabled = false
-    }
+  /** Number of valid entry points for the kNN search */
+  int numberOfEntryPoints();
 }

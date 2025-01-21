@@ -99,20 +99,16 @@ public class BitSetIterator extends DocIdSetIterator {
   }
 
   @Override
-  public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
-      throws IOException {
-    // TODO: Can we also optimize the case when acceptDocs is not null?
-    if (acceptDocs == null
-        && offset < bits.length()
-        && bits instanceof FixedBitSet fixedBits
-        // no bits are set between `offset` and `doc`
-        && fixedBits.nextSetBit(offset) == doc
-        // the whole `bitSet` is getting filled
-        && (upTo - offset == bitSet.length())) {
-      bitSet.orRange(fixedBits, offset);
-      advance(upTo); // set the current doc
-    } else {
-      super.intoBitSet(acceptDocs, upTo, bitSet, offset);
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    if (upTo > doc && bits instanceof FixedBitSet fixedBits) {
+      int actualUpto = Math.min(upTo, length);
+      // The destination bit set may be shorter than this bit set. This is only legal if all bits
+      // beyond offset + bitSet.length() are clear. If not, the below call to `super.intoBitSet`
+      // will throw an exception.
+      actualUpto = (int) Math.min(actualUpto, offset + (long) bitSet.length());
+      FixedBitSet.orRange(fixedBits, doc, bitSet, doc - offset, actualUpto - doc);
+      advance(actualUpto); // set the current doc
     }
+    super.intoBitSet(upTo, bitSet, offset);
   }
 }

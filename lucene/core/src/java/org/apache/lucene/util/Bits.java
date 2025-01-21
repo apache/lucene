@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import org.apache.lucene.search.DocIdSetIterator;
+
 /**
  * Interface for Bitset-like structures.
  *
@@ -33,6 +35,32 @@ public interface Bits {
 
   /** Returns the number of bits in this set */
   int length();
+
+  /**
+   * Apply this {@code Bits} instance to the given {@link FixedBitSet}, which starts at the given
+   * {@code offset}.
+   *
+   * <p>This should behave the same way as the default implementation, which does the following:
+   *
+   * <pre class="prettyprint">
+   * for (int i = bitSet.nextSetBit(0);
+   *     i != DocIdSetIterator.NO_MORE_DOCS;
+   *     i = i + 1 >= bitSet.length() ? DocIdSetIterator.NO_MORE_DOCS : bitSet.nextSetBit(i + 1)) {
+   *   if (get(offset + i) == false) {
+   *     bitSet.clear(i);
+   *   }
+   * }
+   * </pre>
+   */
+  default void applyMask(FixedBitSet bitSet, int offset) {
+    for (int i = bitSet.nextSetBit(0);
+        i != DocIdSetIterator.NO_MORE_DOCS;
+        i = i + 1 >= bitSet.length() ? DocIdSetIterator.NO_MORE_DOCS : bitSet.nextSetBit(i + 1)) {
+      if (get(offset + i) == false) {
+        bitSet.clear(i);
+      }
+    }
+  }
 
   Bits[] EMPTY_ARRAY = new Bits[0];
 

@@ -771,6 +771,12 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
             slice.slice("slice3sub", 1, len / 2);
           });
 
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> {
+            i.slice("slice4", Long.MAX_VALUE - 1, 10);
+          });
+
       i.close();
     }
   }
