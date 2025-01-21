@@ -2276,6 +2276,72 @@ public class IndexWriter
   }
 
   /**
+   * Just like {@link #forceMergeDeletes()},The only difference is that merging can be enforced
+   * based on the name of the segment
+   */
+  public void forceMergeBySegmentNames(boolean doWait, String[] segmentNames) throws IOException {
+    ensureOpen();
+
+    flush(true, true);
+
+    if (infoStream.isEnabled("IW")) {
+      infoStream.message("IW", "forceMergeDeletes: index now " + segString());
+    }
+
+    final MergePolicy mergePolicy = config.getMergePolicy();
+    final CachingMergeContext cachingMergeContext = new CachingMergeContext(this);
+    MergePolicy.MergeSpecification spec;
+    boolean newMergesFound = false;
+    synchronized (this) {
+      spec = mergePolicy.findMergesBySegmentNames(segmentInfos, cachingMergeContext, segmentNames);
+      newMergesFound = spec != null;
+      if (newMergesFound) {
+        final int numMerges = spec.merges.size();
+        for (int i = 0; i < numMerges; i++) registerMerge(spec.merges.get(i));
+      }
+    }
+
+    mergeScheduler.merge(mergeSource, MergeTrigger.EXPLICIT);
+
+    if (spec != null && doWait) {
+      final int numMerges = spec.merges.size();
+      synchronized (this) {
+        boolean running = true;
+        while (running) {
+
+          if (tragedy.get() != null) {
+            throw new IllegalStateException(
+                "this writer hit an unrecoverable error; cannot complete forceMergeDeletes",
+                tragedy.get());
+          }
+
+          // Check each merge that MergePolicy asked us to
+          // do, to see if any of them are still running and
+          // if any of them have hit an exception.
+          running = false;
+          for (int i = 0; i < numMerges; i++) {
+            final MergePolicy.OneMerge merge = spec.merges.get(i);
+            if (pendingMerges.contains(merge) || runningMerges.contains(merge)) {
+              running = true;
+            }
+            Throwable t = merge.getException();
+            if (t != null) {
+              throw new IOException("background merge hit exception: " + merge.segString(), t);
+            }
+          }
+
+          // If any of our merges are still running, wait:
+          if (running) doWait();
+        }
+      }
+    }
+
+    // NOTE: in the ConcurrentMergeScheduler case, when
+    // doWait is false, we can return immediately while
+    // background threads accomplish the merging
+  }
+
+  /**
    * Forces merging of all segments that have deleted documents. The actual merges to be executed
    * are determined by the {@link MergePolicy}. For example, the default {@link TieredMergePolicy}
    * will only pick a segment if the percentage of deleted docs is over 10%.

@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -675,6 +676,45 @@ public abstract class MergePolicy {
    */
   public abstract MergeSpecification findForcedDeletesMerges(
       SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException;
+
+  /**
+   * Finds the specified segment based on its name
+   *
+   * @param segmentInfos the total set of segments in the index
+   * @param mergeContext the MergeContext to find the merges on
+   * @param segmentNames specified segment names
+   */
+  public MergeSpecification findMergesBySegmentNames(
+      SegmentInfos segmentInfos, MergeContext mergeContext, String[] segmentNames)
+      throws IOException {
+    final Set<SegmentCommitInfo> merging = mergeContext.getMergingSegments();
+
+    boolean haveWork = false;
+    for (SegmentCommitInfo info : segmentInfos) {
+      if (!merging.contains(info)) {
+        haveWork = true;
+        break;
+      }
+    }
+    if (haveWork == false) {
+      return null;
+    }
+    List<SegmentCommitInfo> candidate = new ArrayList<>();
+    for (SegmentCommitInfo segmentInfo : segmentInfos) {
+      if (Arrays.stream(segmentNames)
+          .anyMatch(segmentName -> segmentInfo.info.name.equals(segmentName))) {
+        candidate.add(segmentInfo);
+      }
+    }
+
+    if (candidate.size() == 0) {
+      return null;
+    }
+    MergeSpecification spec = new MergeSpecification();
+    OneMerge merge = new OneMerge(candidate);
+    spec.add(merge);
+    return spec;
+  }
 
   /**
    * Identifies merges that we want to execute (synchronously) on commit. By default, this will

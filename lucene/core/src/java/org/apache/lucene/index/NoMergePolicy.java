@@ -65,6 +65,13 @@ public final class NoMergePolicy extends MergePolicy {
   }
 
   @Override
+  public MergeSpecification findMergesBySegmentNames(
+      SegmentInfos segmentInfos, MergeContext mergeContext, String[] segmentNames)
+      throws IOException {
+    return null;
+  }
+
+  @Override
   public MergeSpecification findFullFlushMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext) {
     return null;

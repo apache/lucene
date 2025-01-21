@@ -69,6 +69,13 @@ public class FilterMergePolicy extends MergePolicy implements Unwrappable<MergeP
   }
 
   @Override
+  public MergeSpecification findMergesBySegmentNames(
+      SegmentInfos segmentInfos, MergeContext mergeContext, String[] segmentNames)
+      throws IOException {
+    return in.findMergesBySegmentNames(segmentInfos, mergeContext, segmentNames);
+  }
+
+  @Override
   public MergeSpecification findFullFlushMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException {

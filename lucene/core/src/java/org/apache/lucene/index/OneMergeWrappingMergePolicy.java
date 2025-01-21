@@ -66,6 +66,13 @@ public class OneMergeWrappingMergePolicy extends FilterMergePolicy {
   }
 
   @Override
+  public MergeSpecification findMergesBySegmentNames(
+      SegmentInfos segmentInfos, MergeContext mergeContext, String[] segmentNames)
+      throws IOException {
+    return wrapSpec(in.findMergesBySegmentNames(segmentInfos, mergeContext, segmentNames));
+  }
+
+  @Override
   public MergeSpecification findFullFlushMerges(
       MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)
       throws IOException {
