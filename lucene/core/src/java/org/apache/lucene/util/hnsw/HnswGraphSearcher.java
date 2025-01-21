@@ -91,7 +91,7 @@ public class HnswGraphSearcher {
       // This is an invalid case, but we should check it
       assert entryPoints.length > 0;
       // We use provided entry point ordinals to search the complete graph (level 0)
-      graphSearcher.searchLevel(knnCollector, scorer, 0, entryPoints, graph, acceptOrds);
+      graphSearcher.searchLevel(knnCollector, scorer, 0, entryPoints, graph, acceptOrds, -1);
     } else {
       search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
     }
@@ -129,7 +129,7 @@ public class HnswGraphSearcher {
       throws IOException {
     int ep = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector);
     if (ep != -1) {
-      graphSearcher.searchLevel(knnCollector, scorer, 0, new int[] {ep}, graph, acceptOrds);
+      graphSearcher.searchLevel(knnCollector, scorer, 0, new int[] {ep}, graph, acceptOrds, -1);
     }
   }
 
@@ -152,7 +152,7 @@ public class HnswGraphSearcher {
       throws IOException {
     HnswGraphBuilder.GraphBuilderKnnCollector results =
         new HnswGraphBuilder.GraphBuilderKnnCollector(topK);
-    searchLevel(results, scorer, level, eps, graph, null);
+    searchLevel(results, scorer, level, eps, graph, null, -1);
     return results;
   }
 
@@ -218,12 +218,23 @@ public class HnswGraphSearcher {
       int level,
       final int[] eps,
       HnswGraph graph,
-      Bits acceptOrds)
+      Bits acceptOrds,
+      int bridge)
       throws IOException {
 
     int size = getGraphSize(graph);
 
     prepareScratchState(size);
+
+    if (bridge >= 0) {
+      // if we are searching for a connection, make sure we don't choose
+      // and already existing neighbour for directed graphs.
+      graphSeek(graph, level, bridge);
+      int nbr;
+      while ((nbr = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
+        visited.set(nbr);
+      }
+    }
 
     for (int ep : eps) {
       if (visited.getAndSet(ep) == false) {

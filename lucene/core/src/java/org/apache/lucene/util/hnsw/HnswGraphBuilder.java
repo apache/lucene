@@ -252,7 +252,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       GraphBuilderKnnCollector candidates = entryCandidates;
       for (int level = curMaxLevel; level > nodeLevel; level--) {
         candidates.clear();
-        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
+        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null, -1);
         eps[0] = candidates.popNode();
       }
 
@@ -263,7 +263,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       for (int i = scratchPerLevel.length - 1; i >= 0; i--) {
         int level = i + lowestUnsetLevel;
         candidates.clear();
-        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
+        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null, -1);
         eps = candidates.popUntilNearestKNodes();
         scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
         popToScratch(candidates, scratchPerLevel[i]);
@@ -466,7 +466,7 @@ public class HnswGraphBuilder implements HnswBuilder {
           RandomVectorScorer scorer = scorerSupplier.scorer(c.start());
           // find the closest node in the largest component to the lowest-numbered node in this
           // component that has room to make a connection
-          graphSearcher.searchLevel(beam, scorer, level, eps, hnsw, notFullyConnected);
+          graphSearcher.searchLevel(beam, scorer, level, eps, hnsw, notFullyConnected, c.start());
           boolean linked = false;
           while (beam.size() > 0) {
             int c0node = beam.popNode();
