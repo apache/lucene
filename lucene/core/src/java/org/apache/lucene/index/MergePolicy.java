@@ -17,13 +17,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -675,6 +670,37 @@ public abstract class MergePolicy {
    */
   public abstract MergeSpecification findForcedDeletesMerges(
       SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException;
+
+
+  public MergeSpecification findMergesBySegmentNames(
+          SegmentInfos segmentInfos, MergeContext mergeContext, String[] segmentNames) throws IOException{
+    final Set<SegmentCommitInfo> merging = mergeContext.getMergingSegments();
+
+    boolean haveWork = false;
+    for(SegmentCommitInfo info : segmentInfos) {
+      if (!merging.contains(info)) {
+        haveWork = true;
+        break;
+      }
+    }
+    if (haveWork == false) {
+      return null;
+    }
+    List<SegmentCommitInfo> candidate = new ArrayList<>();
+    for (SegmentCommitInfo segmentInfo : segmentInfos) {
+      if(Arrays.stream(segmentNames).anyMatch(segmentName -> segmentInfo.info.name.equals(segmentName))){
+        candidate.add(segmentInfo);
+      }
+    }
+
+    if(candidate.size() == 0) {
+      return null;
+    }
+    MergeSpecification spec = new MergeSpecification();
+    OneMerge merge = new OneMerge(candidate);
+    spec.add(merge);
+    return spec;
+  }
 
   /**
    * Identifies merges that we want to execute (synchronously) on commit. By default, this will
