@@ -194,7 +194,7 @@ public final class Lucene90OnHeapHnswGraph extends HnswGraph {
   }
 
   @Override
-  public int maxConns() {
+  public int maxConn() {
     return maxConn;
   }
 

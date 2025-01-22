@@ -69,6 +69,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       return lead.docID();
     }
 
+    // This scorer is only used for conjunctions of FILTER clauses, so we set a simple scorer that
+    // always returns a score of zero.
+    collector.setScorer(new SimpleScorable());
     List<DocIdSetIterator> otherIterators = this.others;
     DocIdSetIterator collectorIterator = collector.competitiveIterator();
     if (collectorIterator != null) {
@@ -102,7 +105,11 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     assert clauseWindowMatches.scanIsEmpty();
 
     int offset = lead.docID();
-    lead.intoBitSet(acceptDocs, max, windowMatches, offset);
+    lead.intoBitSet(max, windowMatches, offset);
+    if (acceptDocs != null) {
+      // Apply live docs.
+      acceptDocs.applyMask(windowMatches, offset);
+    }
 
     int upTo = 0;
     for (;
@@ -113,9 +120,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       if (other.docID() < offset) {
         other.advance(offset);
       }
-      // No need to apply acceptDocs on other clauses since we already applied live docs on the
-      // leading clause.
-      other.intoBitSet(null, max, clauseWindowMatches, offset);
+      other.intoBitSet(max, clauseWindowMatches, offset);
       windowMatches.and(clauseWindowMatches);
       clauseWindowMatches.clear();
     }

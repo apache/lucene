@@ -62,7 +62,7 @@ public class FilteredHnswGraphSearcher {
    */
   private FilteredHnswGraphSearcher(
       NeighborQueue candidates, BitSet explorationVisited, BitSet visited, HnswGraph graph) {
-    assert graph.maxConns() > 0 : "graph must have known max connections";
+    assert graph.maxConn() > 0 : "graph must have known max connections";
     this.candidates = candidates;
     this.visited = visited;
     this.explorationVisited = explorationVisited;
@@ -197,8 +197,8 @@ public class FilteredHnswGraphSearcher {
       }
     }
     // Collect the vectors to score and potentially add as candidates
-    IntArrayQueue toScore = new IntArrayQueue(graph.maxConns() * maxExplorationMultiplier);
-    IntArrayQueue toExplore = new IntArrayQueue(graph.maxConns() * maxExplorationMultiplier);
+    IntArrayQueue toScore = new IntArrayQueue(graph.maxConn() * maxExplorationMultiplier);
+    IntArrayQueue toExplore = new IntArrayQueue(graph.maxConn() * maxExplorationMultiplier);
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = results.minCompetitiveSimilarity();

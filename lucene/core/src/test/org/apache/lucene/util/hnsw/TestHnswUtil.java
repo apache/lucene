@@ -274,7 +274,7 @@ public class TestHnswUtil extends LuceneTestCase {
     }
 
     @Override
-    public int maxConns() {
+    public int maxConn() {
       return UNKNOWN_MAX_CONN;
     }
 

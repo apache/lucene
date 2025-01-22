@@ -372,7 +372,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       @Override
-      public int maxConns() {
+      public int maxConn() {
         return M;
       }
 

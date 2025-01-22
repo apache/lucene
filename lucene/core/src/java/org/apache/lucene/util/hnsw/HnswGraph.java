@@ -85,6 +85,9 @@ public abstract class HnswGraph {
   /** Returns the number of levels of the graph */
   public abstract int numLevels() throws IOException;
 
+  /** returns M, the maximum number of connections for a node. */
+  public abstract int maxConn();
+
   /** Returns graph's entry point on the top level * */
   public abstract int entryNode() throws IOException;
 
@@ -98,8 +101,6 @@ public abstract class HnswGraph {
   public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
 
   public abstract int neighborCount();
-
-  public abstract int maxConns();
 
   /** Empty graph value */
   public static HnswGraph EMPTY =
@@ -134,7 +135,7 @@ public abstract class HnswGraph {
         }
 
         @Override
-        public int maxConns() {
+        public int maxConn() {
           return UNKNOWN_MAX_CONN;
         }
 
