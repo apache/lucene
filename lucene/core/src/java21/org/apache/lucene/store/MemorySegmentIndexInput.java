@@ -597,7 +597,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
    */
   @Override
   public final MemorySegmentIndexInput slice(String sliceDescription, long offset, long length) {
-    if (offset < 0 || length < 0 || offset + length > this.length) {
+    if ((length | offset) < 0 || length > this.length - offset) {
       throw new IllegalArgumentException(
           "slice() "
               + sliceDescription

@@ -318,10 +318,7 @@ public class TestBpVectorReorderer extends LuceneTestCase {
 
   public void testIndexReorderDense() throws Exception {
     List<float[]> vectors = shuffleVectors(randomLinearVectors());
-    // compute the expected ordering
-    Sorter.DocMap expected =
-        reorderer.computeValueMap(
-            FloatVectorValues.fromFloats(vectors, 2), VectorSimilarityFunction.EUCLIDEAN, null);
+
     Path tmpdir = createTempDir();
     try (Directory dir = newFSDirectory(tmpdir)) {
       // create an index with a single leaf
@@ -335,6 +332,28 @@ public class TestBpVectorReorderer extends LuceneTestCase {
         }
         writer.forceMerge(1);
       }
+
+      // The docId of the documents might have changed due to merging. Compute a mapping from
+      // the stored id to the current docId and repopulate the vector list.
+      int[] storedIdToDocId = new int[vectors.size()];
+      vectors.clear();
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader leafReader = getOnlyLeafReader(reader);
+        FloatVectorValues values = leafReader.getFloatVectorValues("f");
+        StoredFields storedFields = reader.storedFields();
+        KnnVectorValues.DocIndexIterator it = values.iterator();
+        while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          int storedId = Integer.parseInt(storedFields.document(it.docID()).get("id"));
+          vectors.add(values.vectorValue(it.index()).clone());
+          storedIdToDocId[storedId] = it.docID();
+        }
+      }
+
+      // compute the expected ordering
+      Sorter.DocMap expected =
+          reorderer.computeValueMap(
+              FloatVectorValues.fromFloats(vectors, 2), VectorSimilarityFunction.EUCLIDEAN, null);
+
       int threadCount = random().nextInt(4) + 1;
       threadCount = 1;
       // reorder using the index reordering tool
@@ -355,12 +374,13 @@ public class TestBpVectorReorderer extends LuceneTestCase {
         StoredFields storedFields = reader.storedFields();
         KnnVectorValues.DocIndexIterator it = values.iterator();
         while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-          int storedId = Integer.parseInt(storedFields.document(it.docID()).get("id"));
-          assertEquals(expected.oldToNew(storedId), newId);
+          int oldDocId =
+              storedIdToDocId[Integer.parseInt(storedFields.document(it.docID()).get("id"))];
+          assertEquals(expected.oldToNew(oldDocId), newId);
           float[] expectedVector = vectors.get(expected.newToOld(it.docID()));
           float[] actualVector = values.vectorValue(it.index());
           assertArrayEquals(
-              "values differ at index " + storedId + "->" + newId + " docid=" + it.docID(),
+              "values differ at index " + oldDocId + "->" + newId + " docid=" + it.docID(),
               expectedVector,
               actualVector,
               0);

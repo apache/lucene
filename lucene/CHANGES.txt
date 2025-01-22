@@ -86,6 +86,9 @@ Bug Fixes
 
 * GITHUB#14123: SortingCodecReader NPE when segment has no (points, vectors, etc...) (Mike Sokolov)
 
+* GITHUB#14126: Avoid overflow in index input slices invariant checks
+  (Chris Hegarty)
+
 Other
 ---------------------
 
