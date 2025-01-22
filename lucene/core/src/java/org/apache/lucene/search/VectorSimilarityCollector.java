@@ -18,16 +18,18 @@ package org.apache.lucene.search;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.search.knn.HnswSearchStrategy;
 
 /**
  * Perform a similarity-based graph search.
  *
  * @lucene.experimental
  */
-class VectorSimilarityCollector extends AbstractKnnCollector {
+class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSearchStrategy {
   private final float traversalSimilarity, resultSimilarity;
   private float maxSimilarity;
   private final List<ScoreDoc> scoreDocList;
+  private final float filterHeuristicThreshold;
 
   /**
    * Perform a similarity-based graph search. The graph is traversed till better scoring nodes are
@@ -40,6 +42,25 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
    */
   public VectorSimilarityCollector(
       float traversalSimilarity, float resultSimilarity, long visitLimit) {
+    this(traversalSimilarity, resultSimilarity, visitLimit, 0.0f);
+  }
+
+  /**
+   * Perform a similarity-based graph search. The graph is traversed till better scoring nodes are
+   *
+   * @param traversalSimilarity (lower) similarity score for graph traversal.
+   * @param resultSimilarity (higher) similarity score for result collection.
+   * @param visitLimit limit on number of nodes to visit.
+   * @param filterHeuristicThreshold the threshold of vectors passing a pre-filter determining if
+   *     optimized filtered search should be executed. 1f means always execute the optimized
+   *     filtered search, 0f means never execute it. All values in between are a trade-off between
+   *     the two.
+   */
+  public VectorSimilarityCollector(
+      float traversalSimilarity,
+      float resultSimilarity,
+      long visitLimit,
+      float filterHeuristicThreshold) {
     super(1, visitLimit);
     if (traversalSimilarity > resultSimilarity) {
       throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
@@ -48,6 +69,7 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
     this.resultSimilarity = resultSimilarity;
     this.maxSimilarity = Float.NEGATIVE_INFINITY;
     this.scoreDocList = new ArrayList<>();
+    this.filterHeuristicThreshold = filterHeuristicThreshold;
   }
 
   @Override
@@ -79,5 +101,10 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
   @Override
   public int numCollected() {
     return scoreDocList.size();
+  }
+
+  @Override
+  public boolean shouldExecuteOptimizedFilteredSearch(float filterRatio) {
+    return filterRatio < filterHeuristicThreshold;
   }
 }

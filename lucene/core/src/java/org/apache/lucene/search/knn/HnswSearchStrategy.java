@@ -16,17 +16,18 @@
  */
 package org.apache.lucene.search.knn;
 
-import org.apache.lucene.search.DocIdSetIterator;
-
 /**
- * Provides entry points for the kNN search
+ * Provides configuration for HNSW search strategy
  *
  * @lucene.experimental
  */
-public interface EntryPointProvider {
-  /** Iterator of valid entry points for the kNN search */
-  DocIdSetIterator entryPoints();
+public interface HnswSearchStrategy {
 
-  /** Number of valid entry points for the kNN search */
-  int numberOfEntryPoints();
+  /**
+   * Whether specialized search heuristics should be used when executing a filtered HNSW search.
+   *
+   * @param filterRatio the percentage of vector ordinals that pass the filter
+   * @return true if specialized search heuristics should be used
+   */
+  boolean shouldExecuteOptimizedFilteredSearch(float filterRatio);
 }

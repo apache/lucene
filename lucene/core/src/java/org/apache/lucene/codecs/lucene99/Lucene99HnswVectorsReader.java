@@ -315,7 +315,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
-    final KnnCollector collector =
+    final OrdinalTranslatedKnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     HnswGraph graph = getGraph(fieldEntry);
@@ -338,7 +338,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           // shouldn't proceed
           && filteredDocCount > 0
           // Only proceed if the filtered count is less than half of the total vectors
-          && (float) filteredDocCount / graph.size() < 0.5f) {
+          && collector.shouldExecuteOptimizedFilteredSearch(
+              (float) filteredDocCount / graph.size())) {
         FilteredHnswGraphSearcher.search(
             scorer, collector, getGraph(fieldEntry), filteredDocCount, acceptedOrds);
       } else {

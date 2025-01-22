@@ -93,7 +93,7 @@ public interface KnnCollector {
    * @lucene.experimental
    */
   abstract class Decorator implements KnnCollector {
-    private final KnnCollector collector;
+    protected final KnnCollector collector;
 
     public Decorator(KnnCollector collector) {
       this.collector = collector;

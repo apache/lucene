@@ -17,6 +17,7 @@
 
 package org.apache.lucene.search;
 
+import org.apache.lucene.search.knn.HnswSearchStrategy;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -25,17 +26,35 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public class TopKnnCollector extends AbstractKnnCollector {
+public class TopKnnCollector extends AbstractKnnCollector implements HnswSearchStrategy {
 
   protected final NeighborQueue queue;
+  private final float filterHeuristicThreshold;
 
   /**
+   * Create a new TopKnnCollector.
+   *
    * @param k the number of neighbors to collect
    * @param visitLimit how many vector nodes the results are allowed to visit
    */
   public TopKnnCollector(int k, int visitLimit) {
+    this(k, visitLimit, 0.0f);
+  }
+
+  /**
+   * Create a new TopKnnCollector.
+   *
+   * @param k the number of neighbors to collect
+   * @param visitLimit how many vector nodes the results are allowed to visit
+   * @param filterHeuristicThreshold the threshold of vectors passing a pre-filter determining if
+   *     optimized filtered search should be executed. 1f means always execute the optimized
+   *     filtered search, 0f means never execute it. All values in between are a trade-off between
+   *     the two.
+   */
+  public TopKnnCollector(int k, int visitLimit, float filterHeuristicThreshold) {
     super(k, visitLimit);
     this.queue = new NeighborQueue(k, false);
+    this.filterHeuristicThreshold = filterHeuristicThreshold;
   }
 
   @Override
@@ -71,5 +90,10 @@ public class TopKnnCollector extends AbstractKnnCollector {
   @Override
   public String toString() {
     return "TopKnnCollector[k=" + k() + ", size=" + queue.size() + "]";
+  }
+
+  @Override
+  public boolean shouldExecuteOptimizedFilteredSearch(float filterRatio) {
+    return filterRatio < filterHeuristicThreshold;
   }
 }
