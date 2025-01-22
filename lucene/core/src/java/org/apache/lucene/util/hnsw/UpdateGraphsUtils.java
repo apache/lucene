@@ -21,14 +21,10 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.LongHeap;
-import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * Utility class for updating a big graph with smaller graphs. This is used during merging of
@@ -136,107 +132,5 @@ public class UpdateGraphsUtils {
 
   private static int decodeValue2(long encoded) {
     return (int) (encoded & 0xFFFFFFFFL);
-  }
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  public static Set<Integer> findExpandedCandidates(
-      HnswGraph graph, List<Integer> candidates0, int k) throws IOException {
-    int graphSize = graph.maxNodeId() + 1;
-    Map<Integer, Integer> wds = new HashMap<>();
-    int wMaxDist = -1;
-    int wMaxNode = -1;
-
-    List<Integer>[] cs = new ArrayList[candidates0.size()];
-    Map<Integer, Integer>[] ds = new HashMap[cs.length];
-    int[] curIdxs = new int[cs.length];
-    BitSet[] visited = new BitSet[cs.length];
-    int[] prevDistances = new int[cs.length];
-
-    for (int i = 0; i < cs.length; i++) {
-      cs[i] = new ArrayList<>(k);
-      ds[i] = new HashMap<>();
-      visited[i] = new SparseFixedBitSet(graphSize);
-      cs[i].add(candidates0.get(i));
-      ds[i].put(candidates0.get(i), 0);
-      visited[i].getAndSet(candidates0.get(i));
-    }
-    boolean candidatesExist = true;
-    while (candidatesExist) {
-      candidatesExist = false;
-      for (int i = 0; i < cs.length; i++) {
-        if (curIdxs[i] == cs[i].size()) {
-          continue;
-        }
-        candidatesExist = true;
-        int node = cs[i].get(curIdxs[i]);
-        int distance = ds[i].get(node);
-        assert distance >= prevDistances[i];
-        prevDistances[i] = distance;
-
-        graph.seek(0, node);
-        int v;
-        while ((v = graph.nextNeighbor()) != NO_MORE_DOCS) {
-          if (visited[i].getAndSet(v)) continue;
-          if (wds.size() < k || lowerDistance(v, ds, cs, curIdxs) <= wMaxDist) {
-            cs[i].add(v);
-            ds[i].put(v, distance + 1);
-            int vUpperDist = upperDistance(v, ds);
-            if (wds.size() < k && v != wMaxNode) {
-              wds.put(v, vUpperDist);
-              if (vUpperDist > wMaxDist) {
-                wMaxDist = vUpperDist;
-                wMaxNode = v;
-              }
-            } else if ((v == wMaxNode) || (vUpperDist < wMaxDist)) {
-              wds.remove(wMaxNode); // remove node with max distance
-              wds.put(v, vUpperDist);
-              wMaxDist = vUpperDist;
-              wMaxNode = v;
-              // find new max Node
-              for (Map.Entry<Integer, Integer> entry : wds.entrySet()) {
-                if (entry.getValue() > wMaxDist) {
-                  wMaxDist = entry.getValue();
-                  wMaxNode = entry.getKey();
-                }
-              }
-            }
-          }
-        }
-        curIdxs[i]++;
-      }
-    }
-    Set<Integer> results = new HashSet<>();
-    results.addAll(wds.keySet());
-    results.addAll(candidates0);
-    return results;
-  }
-
-  private static int lowerDistance(
-      int v, Map<Integer, Integer>[] ds, List<Integer>[] cs, int[] curIdxs) {
-    int dist = 0;
-    for (int i = 0; i < ds.length; i++) {
-      Integer dV = ds[i].get(v);
-      if (dV != null) {
-        dist += dV;
-      } else {
-        int idx = curIdxs[i] < cs[i].size() ? curIdxs[i] : cs[i].size() - 1;
-        int curNode = cs[i].get(idx);
-        dist += (ds[i].get(curNode) + 1);
-      }
-    }
-    return dist;
-  }
-
-  private static int upperDistance(int v, Map<Integer, Integer>[] ds) {
-    int dist = 0;
-    for (Map<Integer, Integer> d : ds) {
-      Integer dV = d.get(v);
-      if (dV != null) {
-        dist += dV;
-      } else {
-        dist += 1_000_000;
-      }
-    }
-    return dist;
   }
 }

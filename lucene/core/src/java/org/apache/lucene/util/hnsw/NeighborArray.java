@@ -135,8 +135,8 @@ public class NeighborArray {
     if (size == sortedNodeSize) {
       return;
     }
-    Integer[] indices = new Integer[size];
-    for (int i = 0; i < size; i++) {
+    Integer[] indices = new Integer[nodes.length];
+    for (int i = 0; i < nodes.length; i++) {
       indices[i] = i;
     }
     if (scoresDescOrder) {
@@ -146,7 +146,7 @@ public class NeighborArray {
     }
     int[] tempNodes = nodes.clone();
     float[] tempScores = scores.clone();
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < indices.length; i++) {
       nodes[i] = tempNodes[indices[i]];
       scores[i] = tempScores[indices[i]];
     }
