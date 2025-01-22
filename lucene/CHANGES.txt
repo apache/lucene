@@ -51,6 +51,8 @@ New Features
   queries. These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
+* GITHUB#14160: Adds new filtered HNSW search heuristic based on ACORN-1 algorithm. This improves runtime of filtered HNSW
+  searches as much as 5x. (Ben Chaplin, Ben Trent)
 
 Improvements
 ---------------------
