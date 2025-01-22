@@ -34,10 +34,8 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * <ul>
  *   <li>It dynamically determines when the optimized filter step should occur based on some
  *       filtered lambda. This is done per small world
- *   <li>The number of candidates to consider for exploration is increased above the original small
- *       world's connection level
- *   <li>The graph searcher keeps exploring until searching is exhausted or the candidate limit is
- *       reached. This may go beyond two hops from the origin small world
+ *   <li>The graph searcher doesn't always explore all the extended neighborhood and the number of
+ *       additional candidates is predicated on the original candidate's filtered percentage.
  * </ul>
  */
 public class FilteredHnswGraphSearcher {
