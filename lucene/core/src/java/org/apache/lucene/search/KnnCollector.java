@@ -41,10 +41,6 @@ public interface KnnCollector {
    */
   void incVisitedCount(int count);
 
-  void incFilteredVisitedCount(int count);
-
-  int filteredVisitedCount();
-
   /**
    * @return the current visited vector count
    */

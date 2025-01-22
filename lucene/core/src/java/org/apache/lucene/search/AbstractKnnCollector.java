@@ -45,16 +45,6 @@ public abstract class AbstractKnnCollector implements KnnCollector {
   }
 
   @Override
-  public final void incFilteredVisitedCount(int count) {
-    this.filterVisitedCount += count;
-  }
-
-  @Override
-  public final int filteredVisitedCount() {
-    return (int) filterVisitedCount;
-  }
-
-  @Override
   public final long visitedCount() {
     return visitedCount;
   }

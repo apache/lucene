@@ -92,16 +92,6 @@ public final class MultiLeafKnnCollector implements KnnCollector {
   }
 
   @Override
-  public void incFilteredVisitedCount(int count) {
-    subCollector.incFilteredVisitedCount(count);
-  }
-
-  @Override
-  public int filteredVisitedCount() {
-    return subCollector.filteredVisitedCount();
-  }
-
-  @Override
   public boolean earlyTerminated() {
     return subCollector.earlyTerminated();
   }

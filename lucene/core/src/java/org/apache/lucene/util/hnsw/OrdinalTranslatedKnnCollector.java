@@ -35,16 +35,6 @@ public final class OrdinalTranslatedKnnCollector implements KnnCollector {
   }
 
   @Override
-  public void incFilteredVisitedCount(int count) {
-    in.incFilteredVisitedCount(count);
-  }
-
-  @Override
-  public int filteredVisitedCount() {
-    return in.filteredVisitedCount();
-  }
-
-  @Override
   public boolean earlyTerminated() {
     return in.earlyTerminated();
   }

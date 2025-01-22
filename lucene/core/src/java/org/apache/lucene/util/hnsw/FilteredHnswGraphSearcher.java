@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.hnsw.HnswGraph.UNKNOWN_MAX_CONN;
 
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
@@ -81,7 +80,11 @@ public class FilteredHnswGraphSearcher {
    *     {@code null} if they are all allowed to match.
    */
   public static void search(
-      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, int filterSize, Bits acceptOrds)
+      RandomVectorScorer scorer,
+      KnnCollector knnCollector,
+      HnswGraph graph,
+      int filterSize,
+      Bits acceptOrds)
       throws IOException {
     if (acceptOrds == null) {
       throw new IllegalArgumentException("acceptOrds must not be null to used filtered search");

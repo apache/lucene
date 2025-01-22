@@ -579,16 +579,6 @@ public class HnswGraphBuilder implements HnswBuilder {
     }
 
     @Override
-    public void incFilteredVisitedCount(int count) {
-      throw new IllegalArgumentException();
-    }
-
-    @Override
-    public int filteredVisitedCount() {
-      throw new IllegalArgumentException();
-    }
-
-    @Override
     public long visitedCount() {
       return visitedCount;
     }
