@@ -275,7 +275,7 @@ public class HnswGraphBuilder implements HnswBuilder {
         candidates.clear();
         if (level == 0 && candidates0 != null && candidates0.size() > 0) {
           Set<Integer> candidatesExpanded =
-              UpdateGraphsUtils.findExpandedCandidates(hnsw, candidates0, efConst);
+              UpdateGraphsUtils.findExpandedCandidates(hnsw, candidates0, beamCandidates.k);
           scratchPerLevel[i] = new NeighborArray(candidatesExpanded.size(), false);
           for (int cand : candidatesExpanded) {
             float sim = scorer.score(cand);

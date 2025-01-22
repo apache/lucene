@@ -142,15 +142,15 @@ public class UpdateGraphsUtils {
   public static Set<Integer> findExpandedCandidates(
       HnswGraph graph, List<Integer> candidates0, int k) throws IOException {
     int graphSize = graph.maxNodeId() + 1;
-
-    int ajdk = k * candidates0.size();
-    int candReachedNum = 0;
-    LongHeap wds = new LongHeap(ajdk);
+    Map<Integer, Integer> wds = new HashMap<>();
     int wMaxDist = -1;
+    int wMaxNode = -1;
+
     List<Integer>[] cs = new ArrayList[candidates0.size()];
     Map<Integer, Integer>[] ds = new HashMap[cs.length];
     int[] curIdxs = new int[cs.length];
     BitSet[] visited = new BitSet[cs.length];
+    int[] prevDistances = new int[cs.length];
 
     for (int i = 0; i < cs.length; i++) {
       cs[i] = new ArrayList<>(k);
@@ -160,49 +160,53 @@ public class UpdateGraphsUtils {
       ds[i].put(candidates0.get(i), 0);
       visited[i].getAndSet(candidates0.get(i));
     }
-    boolean continueSearch = true;
-    while (continueSearch) {
-      continueSearch = false;
+    boolean candidatesExist = true;
+    while (candidatesExist) {
+      candidatesExist = false;
       for (int i = 0; i < cs.length; i++) {
         if (curIdxs[i] == cs[i].size()) {
           continue;
         }
-        continueSearch = true;
+        candidatesExist = true;
         int node = cs[i].get(curIdxs[i]);
         int distance = ds[i].get(node);
+        assert distance >= prevDistances[i];
+        prevDistances[i] = distance;
+
         graph.seek(0, node);
         int v;
         while ((v = graph.nextNeighbor()) != NO_MORE_DOCS) {
           if (visited[i].getAndSet(v)) continue;
-          if (wds.size() < ajdk || lowerDistance(v, ds, cs, curIdxs) <= wMaxDist) {
+          if (wds.size() < k || lowerDistance(v, ds, cs, curIdxs) <= wMaxDist) {
             cs[i].add(v);
             ds[i].put(v, distance + 1);
             int vUpperDist = upperDistance(v, ds);
-            if (vUpperDist < 1_000_000) {
-              candReachedNum++;
-              if (candReachedNum == k) {
-                continueSearch = false;
-                break;
+            if (wds.size() < k && v != wMaxNode) {
+              wds.put(v, vUpperDist);
+              if (vUpperDist > wMaxDist) {
+                wMaxDist = vUpperDist;
+                wMaxNode = v;
+              }
+            } else if ((v == wMaxNode) || (vUpperDist < wMaxDist)) {
+              wds.remove(wMaxNode); // remove node with max distance
+              wds.put(v, vUpperDist);
+              wMaxDist = vUpperDist;
+              wMaxNode = v;
+              // find new max Node
+              for (Map.Entry<Integer, Integer> entry : wds.entrySet()) {
+                if (entry.getValue() > wMaxDist) {
+                  wMaxDist = entry.getValue();
+                  wMaxNode = entry.getKey();
+                }
               }
             }
-            if (wds.insertWithOverflow(encode(vUpperDist, v))) {
-              wMaxDist = decodeValue1(wds.top());
-            }
           }
-        }
-        if (continueSearch == false) {
-          break;
         }
         curIdxs[i]++;
       }
     }
     Set<Integer> results = new HashSet<>();
-    for (int i = wds.size(); i > 0; i--) {
-      long el = wds.pop();
-      if (i <= k) {
-        results.add(decodeValue2(el));
-      }
-    }
+    results.addAll(wds.keySet());
     results.addAll(candidates0);
     return results;
   }
