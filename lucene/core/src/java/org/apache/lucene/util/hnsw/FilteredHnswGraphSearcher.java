@@ -63,6 +63,7 @@ public class FilteredHnswGraphSearcher {
    */
   private FilteredHnswGraphSearcher(
       NeighborQueue candidates, BitSet explorationVisited, BitSet visited, HnswGraph graph) {
+    assert graph.maxConns() > 0 : "graph must have known max connections";
     this.candidates = candidates;
     this.visited = visited;
     this.explorationVisited = explorationVisited;
@@ -80,19 +81,15 @@ public class FilteredHnswGraphSearcher {
    *     {@code null} if they are all allowed to match.
    */
   public static void search(
-      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
+      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, int filterSize, Bits acceptOrds)
       throws IOException {
     if (acceptOrds == null) {
       throw new IllegalArgumentException("acceptOrds must not be null to used filtered search");
     }
-    int filterSize = 1;
-    if (acceptOrds instanceof BitSet bitSet) {
-      filterSize = bitSet.cardinality();
-    }
     FilteredHnswGraphSearcher graphSearcher =
         new FilteredHnswGraphSearcher(
             new NeighborQueue(knnCollector.k(), true),
-            bitSet(filterSize, getGraphSize(graph), graph.maxConns(), knnCollector.k()),
+            bitSet(filterSize, getGraphSize(graph), knnCollector.k()),
             new SparseFixedBitSet(getGraphSize(graph)),
             graph);
     int ep = graphSearcher.findBestEntryPoint(scorer, knnCollector);
@@ -102,13 +99,10 @@ public class FilteredHnswGraphSearcher {
     }
   }
 
-  private static BitSet bitSet(int filterSize, int graphSize, int graphMaxConns, int topk) {
+  private static BitSet bitSet(long filterSize, int graphSize, int topk) {
     float percentFiltered = (float) filterSize / graphSize;
     assert percentFiltered > 0.0f && percentFiltered < 1.0f;
-    int totalOps =
-        graphMaxConns != UNKNOWN_MAX_CONN
-            ? (int) Math.log(Math.sqrt(graphMaxConns)) * (int) Math.log(graphSize) * topk
-            : (int) Math.log(graphSize) * topk;
+    double totalOps = Math.log(graphSize) * topk;
     int approximateVisitation = (int) (totalOps / percentFiltered);
     return bitSet(approximateVisitation, graphSize);
   }

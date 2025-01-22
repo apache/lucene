@@ -321,15 +321,23 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     HnswGraph graph = getGraph(fieldEntry);
     boolean doHnsw = knnCollector.k() < scorer.maxOrd();
     // Take into account if quantized? E.g. some scorer cost?
+    int filteredDocCount = 0;
+    int unfilteredVisit = (int) (Math.log(graph.size()) * knnCollector.k());
     if (acceptDocs instanceof BitSet bitSet) {
-      int unfilteredVisit = (int) (Math.log(graph.size()) * knnCollector.k());
-      if (unfilteredVisit >= bitSet.cardinality()) {
+      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph size as that
+      // is illogical
+      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
+      if (unfilteredVisit >= filteredDocCount) {
         doHnsw = false;
       }
     }
     if (doHnsw) {
-      if (acceptDocs != null) {
-        FilteredHnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+      if (acceptDocs != null
+        // The known filtered count is also required, if some unknown bitset is provided, we shouldn't proceed
+        && filteredDocCount > 0
+        // Only proceed if the filtered count is less than half of the total vectors
+        && (float)filteredDocCount / graph.size() < 0.5f) {
+        FilteredHnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), filteredDocCount, acceptedOrds);
       } else {
         HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
       }
