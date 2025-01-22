@@ -169,14 +169,9 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       for (int v : nsU) {
         // if u's neighbour v is in the join set, or already added to gL (v < u),
         // then we add v's neighbours from gL to the candidate list
-        if (j.contains(v) || v < u) {
+        if (v < u || j.contains(v)) {
           int newv = ordMapS[v];
-          // if new ordinal of v > new ordinal of node, then it doesn't exist in gL yet,
-          // so we don't add it to the candidate list
-          if (newv < newu) {
-            w.add(newv);
-          }
-
+          w.add(newv);
           NeighborArray nsVArray = hnsw.getNeighbors(0, newv);
           int[] nsV = nsVArray.nodes();
           int nsVSize = nsVArray.size();
