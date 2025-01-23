@@ -17,16 +17,14 @@
 
 package org.apache.lucene.analysis;
 
-import static org.apache.lucene.analysis.Analyzer.GLOBAL_REUSE_STRATEGY;
+import static org.apache.lucene.analysis.Analyzer.PER_FIELD_REUSE_STRATEGY;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.analysis.Analyzer.ReuseStrategy;
 import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
-import org.apache.lucene.analysis.AnalyzerWrapper.WrappingReuseStrategy;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.CloseableThreadLocal;
 
 public class TestAnalyzerWrapper extends LuceneTestCase {
 
@@ -68,10 +66,10 @@ public class TestAnalyzerWrapper extends LuceneTestCase {
   }
 
   /**
-   * Test that {@link AnalyzerWrapper.WrappingReuseStrategy} consults the wrapped analyzer's reuse
+   * Test that {@link AnalyzerWrapper.UnwrappingReuseStrategy} consults the wrapped analyzer's reuse
    * strategy if components can be reused or need to be updated.
    */
-  public void testWrappingReuseStrategy() {
+  public void testUnwrappingReuseStrategy() {
     AtomicBoolean reuse = new AtomicBoolean(true);
 
     final ReuseStrategy wrappedAnalyzerStrategy =
@@ -99,11 +97,8 @@ public class TestAnalyzerWrapper extends LuceneTestCase {
           }
         };
 
-    final WrappingReuseStrategy wrapperAnalyzerStrategy =
-        new AnalyzerWrapper.WrappingReuseStrategy(GLOBAL_REUSE_STRATEGY);
-    CloseableThreadLocal<TokenStreamComponents> wrappedComponents = new CloseableThreadLocal<>();
     AnalyzerWrapper wrapperAnalyzer =
-        new AnalyzerWrapper(wrapperAnalyzerStrategy) {
+        new AnalyzerWrapper(PER_FIELD_REUSE_STRATEGY) {
           @Override
           protected Analyzer getWrappedAnalyzer(String fieldName) {
             return wrappedAnalyzer;
@@ -112,12 +107,10 @@ public class TestAnalyzerWrapper extends LuceneTestCase {
           @Override
           protected TokenStreamComponents wrapComponents(
               String fieldName, TokenStreamComponents components) {
-            wrappedComponents.set(components);
             return new TokenStreamComponents(
                 components.getSource(), new LowerCaseFilter(components.getTokenStream()));
           }
         };
-    wrapperAnalyzerStrategy.setUp(wrapperAnalyzer, wrappedAnalyzer, wrappedComponents);
 
     TokenStream ts = wrapperAnalyzer.tokenStream("", "text");
     TokenStream ts2 = wrapperAnalyzer.tokenStream("", "text");

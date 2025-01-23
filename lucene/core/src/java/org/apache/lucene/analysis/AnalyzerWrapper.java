@@ -17,8 +17,9 @@
 package org.apache.lucene.analysis;
 
 import java.io.Reader;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.lucene.util.AttributeFactory;
-import org.apache.lucene.util.CloseableThreadLocal;
 
 /**
  * Extension to {@link Analyzer} suitable for Analyzers which wrap other Analyzers.
@@ -42,6 +43,7 @@ import org.apache.lucene.util.CloseableThreadLocal;
  * @since 4.0.0
  */
 public abstract class AnalyzerWrapper extends Analyzer {
+  final Map<String, TokenStreamComponents> wrappedComponentsPerField = new HashMap<>();
 
   /**
    * Creates a new AnalyzerWrapper with the given reuse strategy.
@@ -54,7 +56,10 @@ public abstract class AnalyzerWrapper extends Analyzer {
    * @see #getReuseStrategy()
    */
   protected AnalyzerWrapper(ReuseStrategy reuseStrategy) {
-    super(reuseStrategy);
+    super(
+        reuseStrategy instanceof DelegatingAnalyzerWrapper.DelegatingReuseStrategy
+            ? reuseStrategy
+            : new UnwrappingReuseStrategy(reuseStrategy));
   }
 
   /**
@@ -118,7 +123,10 @@ public abstract class AnalyzerWrapper extends Analyzer {
 
   @Override
   protected final TokenStreamComponents createComponents(String fieldName) {
-    return wrapComponents(fieldName, getWrappedAnalyzer(fieldName).createComponents(fieldName));
+    TokenStreamComponents wrappedComponents =
+        getWrappedAnalyzer(fieldName).createComponents(fieldName);
+    wrappedComponentsPerField.put(fieldName, wrappedComponents);
+    return wrapComponents(fieldName, wrappedComponents);
   }
 
   @Override
@@ -153,55 +161,44 @@ public abstract class AnalyzerWrapper extends Analyzer {
     return getWrappedAnalyzer(fieldName).attributeFactory(fieldName);
   }
 
+  public TokenStreamComponents getWrappedComponents(String fieldName) {
+    return wrappedComponentsPerField.get(fieldName);
+  }
+
   /**
    * A {@link org.apache.lucene.analysis.Analyzer.ReuseStrategy} that checks the wrapped analyzer's
    * strategy for reusability. If the wrapped analyzer's strategy returns null, components need to
-   * be re-created. During components creation, this analyzer must store the wrapped analyzer's
-   * components in {@code wrappedComponents} local thread variable.
+   * be re-created.
    */
-  public static final class WrappingReuseStrategy extends ReuseStrategy {
-    private AnalyzerWrapper wrapper;
-    private Analyzer wrappedAnalyzer;
-    private CloseableThreadLocal<TokenStreamComponents> wrappedComponents;
-    private final ReuseStrategy fallbackStrategy;
+  public static final class UnwrappingReuseStrategy extends ReuseStrategy {
+    private final ReuseStrategy reuseStrategy;
 
-    public WrappingReuseStrategy(ReuseStrategy fallbackStrategy) {
-      this.fallbackStrategy = fallbackStrategy;
-    }
-
-    public void setUp(
-        AnalyzerWrapper wrapper,
-        Analyzer wrappedAnalyzer,
-        CloseableThreadLocal<TokenStreamComponents> wrappedComponents) {
-      this.wrapper = wrapper;
-      this.wrappedAnalyzer = wrappedAnalyzer;
-      this.wrappedComponents = wrappedComponents;
+    public UnwrappingReuseStrategy(ReuseStrategy reuseStrategy) {
+      this.reuseStrategy = reuseStrategy;
     }
 
     @Override
     public TokenStreamComponents getReusableComponents(Analyzer analyzer, String fieldName) {
-      if (analyzer == wrapper) {
+      if (analyzer instanceof AnalyzerWrapper wrapper) {
+        final Analyzer wrappedAnalyzer = wrapper.getWrappedAnalyzer(fieldName);
         if (wrappedAnalyzer.getReuseStrategy().getReusableComponents(wrappedAnalyzer, fieldName)
             == null) {
           return null;
-        } else {
-          return (TokenStreamComponents) getStoredValue(analyzer);
         }
-      } else {
-        return fallbackStrategy.getReusableComponents(analyzer, fieldName);
       }
+      return reuseStrategy.getReusableComponents(analyzer, fieldName);
     }
 
     @Override
     public void setReusableComponents(
         Analyzer analyzer, String fieldName, TokenStreamComponents components) {
-      if (analyzer == wrapper) {
-        setStoredValue(analyzer, components);
+      reuseStrategy.setReusableComponents(analyzer, fieldName, components);
+      if (analyzer instanceof AnalyzerWrapper wrapper) {
+        final Analyzer wrappedAnalyzer = wrapper.getWrappedAnalyzer(fieldName);
         wrappedAnalyzer
             .getReuseStrategy()
-            .setReusableComponents(wrappedAnalyzer, fieldName, wrappedComponents.get());
-      } else {
-        fallbackStrategy.setReusableComponents(analyzer, fieldName, components);
+            .setReusableComponents(
+                wrappedAnalyzer, fieldName, wrapper.getWrappedComponents(fieldName));
       }
     }
   }
