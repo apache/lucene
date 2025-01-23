@@ -2,7 +2,7 @@
 antlr = "4.11.1"
 asm = "9.6"
 assertj = "3.21.0"
-commons-codec = "1.13"
+commons-codec = "1.17.2"
 commons-compress = "1.19"
 ecj = "3.36.0"
 errorprone = "2.18.0"
