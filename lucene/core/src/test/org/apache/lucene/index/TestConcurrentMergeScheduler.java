@@ -375,7 +375,6 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     TieredMergePolicy tmp = new TieredMergePolicy();
     iwc.setMergePolicy(tmp);
-    tmp.setMaxMergeAtOnce(2);
     tmp.setSegmentsPerTier(2);
 
     IndexWriter w = new IndexWriter(dir, iwc);
