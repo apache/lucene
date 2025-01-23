@@ -22,6 +22,7 @@ allprojects {
 
   // Repositories to fetch dependencies from.
   repositories {
+    mavenLocal()
     mavenCentral()
   }
 

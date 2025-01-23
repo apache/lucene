@@ -20,6 +20,9 @@ module org.apache.lucene.sandbox {
   requires org.apache.lucene.core;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.facet;
+  requires java.logging;
+  requires com.nvidia.cuvs;
+  requires org.apache.commons.lang3;
 
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.idversion;
@@ -34,7 +37,12 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.facet.iterators;
   exports org.apache.lucene.sandbox.facet.cutters;
   exports org.apache.lucene.sandbox.facet.labels;
+  exports org.apache.lucene.sandbox.vectorsearch;
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;
+  // provides org.apache.lucene.codecs.KnnVectorsFormat with
+  //    org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat;
+  provides org.apache.lucene.codecs.Codec with
+      org.apache.lucene.sandbox.vectorsearch.CuVSCodec;
 }
