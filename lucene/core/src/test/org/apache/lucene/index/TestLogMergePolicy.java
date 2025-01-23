@@ -50,8 +50,13 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
   @Override
   protected void assertMerge(MergePolicy policy, MergeSpecification merge) throws IOException {
     LogMergePolicy lmp = (LogMergePolicy) policy;
+    MergeContext mockMergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
     for (OneMerge oneMerge : merge.merges) {
-      assertTrue(oneMerge.segments.size() <= lmp.getMergeFactor());
+      long mergeSize = 0;
+      for (SegmentCommitInfo info : oneMerge.segments) {
+        mergeSize += lmp.size(info, mockMergeContext);
+      }
+      assertTrue(mergeSize < lmp.minMergeSize || oneMerge.segments.size() <= lmp.getMergeFactor());
     }
   }
 
