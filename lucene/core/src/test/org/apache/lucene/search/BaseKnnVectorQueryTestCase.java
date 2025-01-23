@@ -482,6 +482,43 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   /** Tests with random vectors, number of documents, etc. Uses RandomIndexWriter. */
+  public void testRandomConsistency() throws IOException {
+    int numDocs = atLeast(500);
+    int dimension = atLeast(5);
+    int numIters = atLeast(10);
+    boolean everyDocHasAVector = random().nextBoolean();
+    try (Directory d = newDirectoryForTest()) {
+      RandomIndexWriter w = new RandomIndexWriter(random(), d);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        if (everyDocHasAVector || random().nextInt(10) != 2) {
+          doc.add(getKnnVectorField("field", randomVector(dimension)));
+        }
+        w.addDocument(doc);
+      }
+      w.close();
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader);
+        // first get the initial set of docs, and we expect all future queries to be exactly the
+        // same
+        int k = random().nextInt(80) + 1;
+        AbstractKnnVectorQuery query = getKnnVectorQuery("field", randomVector(dimension), k);
+        int n = random().nextInt(100) + 1;
+        TopDocs expectedResults = searcher.search(query, n);
+        for (int i = 0; i < numIters; i++) {
+          TopDocs results = searcher.search(query, n);
+          assertEquals(expectedResults.totalHits.value(), results.totalHits.value());
+          assertEquals(expectedResults.scoreDocs.length, results.scoreDocs.length);
+          for (int j = 0; j < results.scoreDocs.length; j++) {
+            assertEquals(expectedResults.scoreDocs[j].doc, results.scoreDocs[j].doc);
+            assertEquals(expectedResults.scoreDocs[j].score, results.scoreDocs[j].score, EPSILON);
+          }
+        }
+      }
+    }
+  }
+
+  /** Tests with random vectors, number of documents, etc. Uses RandomIndexWriter. */
   public void testRandom() throws IOException {
     int numDocs = atLeast(100);
     int dimension = atLeast(5);
