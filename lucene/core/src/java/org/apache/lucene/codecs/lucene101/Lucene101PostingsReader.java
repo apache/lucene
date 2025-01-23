@@ -958,10 +958,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
             int next = docBitSet.nextSetBit(target - docBitSetBase);
             assert next != NO_MORE_DOCS;
             this.doc = docBitSetBase + next;
-            int wordIndex = next >> 6;
-            // Take the cumulative pop count for the given word, and subtract bits on the left of
-            // the current doc.
             if (!needsDocsOnly) {
+              int wordIndex = next >> 6;
+              // Take the cumulative pop count for the given word, and subtract bits on the left of
+              // the current doc.
               docBufferUpto =
                   1
                       + docCumulativeWordPopCounts[wordIndex]
