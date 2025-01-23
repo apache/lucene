@@ -25,8 +25,7 @@ import org.apache.lucene.search.KnnCollector;
  *
  * @lucene.experimental
  */
-class SeededKnnCollector extends KnnCollector.Decorator
-    implements EntryPointProvider, HnswSearchStrategyProvider {
+class SeededKnnCollector extends KnnCollector.Decorator implements EntryPointProvider {
   private final DocIdSetIterator entryPoints;
   private final int numberOfEntryPoints;
 
@@ -45,13 +44,5 @@ class SeededKnnCollector extends KnnCollector.Decorator
   @Override
   public int numberOfEntryPoints() {
     return numberOfEntryPoints;
-  }
-
-  @Override
-  public HnswSearchStrategy getHnswSearchStrategy() {
-    if (collector instanceof HnswSearchStrategyProvider provider) {
-      return provider.getHnswSearchStrategy();
-    }
-    return HnswSearchStrategy.DEFAULT;
   }
 }
