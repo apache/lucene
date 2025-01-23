@@ -967,7 +967,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
                       + docCumulativeWordPopCounts[wordIndex]
                       - Long.bitCount(docBitSet.getBits()[wordIndex] >>> next);
             } else {
-              docBufferUpto = 1;
+              docBufferUpto = 1; // Just make it not 0
             }
           }
           break;
