@@ -65,6 +65,10 @@ Improvements
   BulkAdder#add(IntsRef) method. They should provide better performance due to less virtual method calls and
   more efficient bulk processing. (Ignacio Vera)
 
+* GITHUB#14166: Log(ByteSize|Doc)MergePolicy now allow merging more than
+  mergeFactor segments together when the merge is below the min merge size.
+  (Adrien Grand)
+
 Optimizations
 ---------------------
 
