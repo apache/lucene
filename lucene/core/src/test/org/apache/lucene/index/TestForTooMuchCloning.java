@@ -36,7 +36,7 @@ public class TestForTooMuchCloning extends LuceneTestCase {
   public void test() throws Exception {
     final MockDirectoryWrapper dir = newMockDirectory();
     final TieredMergePolicy tmp = new TieredMergePolicy();
-    tmp.setMaxMergeAtOnce(2);
+    tmp.setSegmentsPerTier(2);
     final RandomIndexWriter w =
         new RandomIndexWriter(
             random(),

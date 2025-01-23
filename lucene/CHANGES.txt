@@ -9,6 +9,8 @@ API Changes
 ---------------------
 * GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
+* GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -16,7 +18,7 @@ New Features
 Improvements
 ---------------------
 
-* GITHUB#266: TieredMergePolicy's maxMergeAtOnce default value was changed from 10 to 30. (Adrien Grand)
+(No changes)
 
 Optimizations
 ---------------------
