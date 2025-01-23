@@ -52,9 +52,7 @@ public class FilteredHnswGraphSearcher {
   private final BitSet explorationVisited;
   private final HnswGraph graph;
 
-  /**
-   * Creates a new graph searcher.
-   */
+  /** Creates a new graph searcher. */
   private FilteredHnswGraphSearcher(
       NeighborQueue candidates, BitSet explorationVisited, BitSet visited, HnswGraph graph) {
     assert graph.maxConn() > 0 : "graph must have known max connections";

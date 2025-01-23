@@ -28,8 +28,7 @@ import org.apache.lucene.util.hnsw.FloatHeap;
  *
  * @lucene.experimental
  */
-public final class MultiLeafKnnCollector extends KnnCollector.Decorator
-    implements HnswSearchStrategyProvider {
+public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
 
   // greediness of globally non-competitive search: (0,1]
   private static final float DEFAULT_GREEDINESS = 0.9f;
@@ -136,13 +135,5 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator
   @Override
   public String toString() {
     return "MultiLeafKnnCollector[subCollector=" + subCollector + "]";
-  }
-
-  @Override
-  public HnswSearchStrategy getHnswSearchStrategy() {
-    if (collector instanceof HnswSearchStrategyProvider provider) {
-      return provider.getHnswSearchStrategy();
-    }
-    return HnswSearchStrategy.DEFAULT;
   }
 }

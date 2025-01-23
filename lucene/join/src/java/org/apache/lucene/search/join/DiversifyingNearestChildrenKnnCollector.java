@@ -22,8 +22,6 @@ import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.search.knn.HnswSearchStrategy;
-import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 
@@ -31,12 +29,10 @@ import org.apache.lucene.util.BitSet;
  * This collects the nearest children vectors. Diversifying the results over the provided parent
  * filter. This means the nearest children vectors are returned, but only one per parent
  */
-class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
-    implements HnswSearchStrategyProvider {
+class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
 
   private final BitSet parentBitSet;
   private final NodeIdCachingHeap heap;
-  private final HnswSearchStrategy strategy;
 
   /**
    * Create a new object for joining nearest child kNN documents with a parent bitset
@@ -46,24 +42,9 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
    * @param parentBitSet The leaf parent bitset
    */
   public DiversifyingNearestChildrenKnnCollector(int k, int visitLimit, BitSet parentBitSet) {
-    this(k, visitLimit, parentBitSet, HnswSearchStrategy.DEFAULT);
-  }
-
-  /**
-   * Create a new object for joining nearest child kNN documents with a parent bitset
-   *
-   * @param k The number of joined parent documents to collect
-   * @param visitLimit how many child vectors can be visited
-   * @param parentBitSet The leaf parent bitset
-   * @param strategy the HNSW search strategy to use, the underlying format is free to ignore this
-   *     strategy hint.
-   */
-  public DiversifyingNearestChildrenKnnCollector(
-      int k, int visitLimit, BitSet parentBitSet, HnswSearchStrategy strategy) {
     super(k, visitLimit);
     this.parentBitSet = parentBitSet;
     this.heap = new NodeIdCachingHeap(k);
-    this.strategy = strategy;
   }
 
   /**
@@ -117,11 +98,6 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
   @Override
   public int numCollected() {
     return heap.size();
-  }
-
-  @Override
-  public HnswSearchStrategy getHnswSearchStrategy() {
-    return strategy;
   }
 
   /**

@@ -48,8 +48,10 @@ import org.apache.lucene.util.Bits;
  *   <li>Otherwise run a kNN search subject to the filter
  *   <li>If the kNN search visits too many vectors without completing, stop and run an exact search
  * </ul>
+ *
+ * @lucene.experimental
  */
-abstract class AbstractKnnVectorQuery extends Query {
+public abstract class AbstractKnnVectorQuery extends Query {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 

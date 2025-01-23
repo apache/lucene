@@ -17,8 +17,6 @@
 
 package org.apache.lucene.search;
 
-import org.apache.lucene.search.knn.HnswSearchStrategy;
-import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -27,33 +25,17 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public class TopKnnCollector extends AbstractKnnCollector implements HnswSearchStrategyProvider {
+public class TopKnnCollector extends AbstractKnnCollector {
 
   protected final NeighborQueue queue;
-  protected HnswSearchStrategy strategy;
 
   /**
-   * Create a new TopKnnCollector.
-   *
    * @param k the number of neighbors to collect
    * @param visitLimit how many vector nodes the results are allowed to visit
    */
   public TopKnnCollector(int k, int visitLimit) {
-    this(k, visitLimit, HnswSearchStrategy.DEFAULT);
-  }
-
-  /**
-   * Create a new TopKnnCollector.
-   *
-   * @param k the number of neighbors to collect
-   * @param visitLimit how many vector nodes the results are allowed to visit
-   * @param searchStrategy the HNSW search strategy to use, the underlying format is free to ignore
-   *     this strategy hint.
-   */
-  public TopKnnCollector(int k, int visitLimit, HnswSearchStrategy searchStrategy) {
     super(k, visitLimit);
     this.queue = new NeighborQueue(k, false);
-    this.strategy = searchStrategy;
   }
 
   @Override
@@ -89,10 +71,5 @@ public class TopKnnCollector extends AbstractKnnCollector implements HnswSearchS
   @Override
   public String toString() {
     return "TopKnnCollector[k=" + k() + ", size=" + queue.size() + "]";
-  }
-
-  @Override
-  public HnswSearchStrategy getHnswSearchStrategy() {
-    return strategy;
   }
 }

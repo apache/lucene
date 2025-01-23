@@ -18,19 +18,16 @@ package org.apache.lucene.search;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.search.knn.HnswSearchStrategy;
-import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 
 /**
  * Perform a similarity-based graph search.
  *
  * @lucene.experimental
  */
-class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSearchStrategyProvider {
+class VectorSimilarityCollector extends AbstractKnnCollector {
   private final float traversalSimilarity, resultSimilarity;
   private float maxSimilarity;
   private final List<ScoreDoc> scoreDocList;
-  private final HnswSearchStrategy strategy;
 
   /**
    * Perform a similarity-based graph search. The graph is traversed till better scoring nodes are
@@ -43,23 +40,6 @@ class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSear
    */
   public VectorSimilarityCollector(
       float traversalSimilarity, float resultSimilarity, long visitLimit) {
-    this(traversalSimilarity, resultSimilarity, visitLimit, HnswSearchStrategy.DEFAULT);
-  }
-
-  /**
-   * Perform a similarity-based graph search. The graph is traversed till better scoring nodes are
-   *
-   * @param traversalSimilarity (lower) similarity score for graph traversal.
-   * @param resultSimilarity (higher) similarity score for result collection.
-   * @param visitLimit limit on number of nodes to visit.
-   * @param searchStrategy the HNSW search strategy to use, the underlying format is free to ignore
-   *     this strategy hint.
-   */
-  public VectorSimilarityCollector(
-      float traversalSimilarity,
-      float resultSimilarity,
-      long visitLimit,
-      HnswSearchStrategy searchStrategy) {
     super(1, visitLimit);
     if (traversalSimilarity > resultSimilarity) {
       throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
@@ -68,7 +48,6 @@ class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSear
     this.resultSimilarity = resultSimilarity;
     this.maxSimilarity = Float.NEGATIVE_INFINITY;
     this.scoreDocList = new ArrayList<>();
-    this.strategy = searchStrategy;
   }
 
   @Override
@@ -100,10 +79,5 @@ class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSear
   @Override
   public int numCollected() {
     return scoreDocList.size();
-  }
-
-  @Override
-  public HnswSearchStrategy getHnswSearchStrategy() {
-    return strategy;
   }
 }

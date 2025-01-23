@@ -20,14 +20,11 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.search.knn.HnswSearchStrategy;
-import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 
 /**
  * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId
  */
-public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
-    implements HnswSearchStrategyProvider {
+public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator {
 
   private final IntToIntFunction vectorOrdinalToDocId;
 
@@ -52,13 +49,5 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
                 ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
                 : TotalHits.Relation.EQUAL_TO),
         td.scoreDocs);
-  }
-
-  @Override
-  public HnswSearchStrategy getHnswSearchStrategy() {
-    if (collector instanceof HnswSearchStrategyProvider provider) {
-      return provider.getHnswSearchStrategy();
-    }
-    return HnswSearchStrategy.DEFAULT;
   }
 }
