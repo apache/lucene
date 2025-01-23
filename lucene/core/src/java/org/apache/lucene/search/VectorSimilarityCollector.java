@@ -19,17 +19,18 @@ package org.apache.lucene.search;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.search.knn.HnswSearchStrategy;
+import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 
 /**
  * Perform a similarity-based graph search.
  *
  * @lucene.experimental
  */
-class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSearchStrategy {
+class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSearchStrategyProvider {
   private final float traversalSimilarity, resultSimilarity;
   private float maxSimilarity;
   private final List<ScoreDoc> scoreDocList;
-  private final float filterHeuristicThreshold;
+  private final HnswSearchStrategy strategy;
 
   /**
    * Perform a similarity-based graph search. The graph is traversed till better scoring nodes are
@@ -42,7 +43,7 @@ class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSear
    */
   public VectorSimilarityCollector(
       float traversalSimilarity, float resultSimilarity, long visitLimit) {
-    this(traversalSimilarity, resultSimilarity, visitLimit, 0.0f);
+    this(traversalSimilarity, resultSimilarity, visitLimit, HnswSearchStrategy.DEFAULT);
   }
 
   /**
@@ -51,16 +52,14 @@ class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSear
    * @param traversalSimilarity (lower) similarity score for graph traversal.
    * @param resultSimilarity (higher) similarity score for result collection.
    * @param visitLimit limit on number of nodes to visit.
-   * @param filterHeuristicThreshold the threshold of vectors passing a pre-filter determining if
-   *     optimized filtered search should be executed. 1f means always execute the optimized
-   *     filtered search, 0f means never execute it. All values in between are a trade-off between
-   *     the two.
+   * @param searchStrategy the HNSW search strategy to use, the underlying format is free to ignore
+   *     this strategy hint.
    */
   public VectorSimilarityCollector(
       float traversalSimilarity,
       float resultSimilarity,
       long visitLimit,
-      float filterHeuristicThreshold) {
+      HnswSearchStrategy searchStrategy) {
     super(1, visitLimit);
     if (traversalSimilarity > resultSimilarity) {
       throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
@@ -69,7 +68,7 @@ class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSear
     this.resultSimilarity = resultSimilarity;
     this.maxSimilarity = Float.NEGATIVE_INFINITY;
     this.scoreDocList = new ArrayList<>();
-    this.filterHeuristicThreshold = filterHeuristicThreshold;
+    this.strategy = searchStrategy;
   }
 
   @Override
@@ -104,7 +103,7 @@ class VectorSimilarityCollector extends AbstractKnnCollector implements HnswSear
   }
 
   @Override
-  public boolean shouldExecuteOptimizedFilteredSearch(float filterRatio) {
-    return filterRatio < filterHeuristicThreshold;
+  public HnswSearchStrategy getHnswSearchStrategy() {
+    return strategy;
   }
 }

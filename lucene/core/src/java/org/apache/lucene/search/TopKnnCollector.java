@@ -18,6 +18,7 @@
 package org.apache.lucene.search;
 
 import org.apache.lucene.search.knn.HnswSearchStrategy;
+import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 import org.apache.lucene.util.hnsw.NeighborQueue;
 
 /**
@@ -26,10 +27,10 @@ import org.apache.lucene.util.hnsw.NeighborQueue;
  *
  * @lucene.experimental
  */
-public class TopKnnCollector extends AbstractKnnCollector implements HnswSearchStrategy {
+public class TopKnnCollector extends AbstractKnnCollector implements HnswSearchStrategyProvider {
 
   protected final NeighborQueue queue;
-  private final float filterHeuristicThreshold;
+  protected HnswSearchStrategy strategy;
 
   /**
    * Create a new TopKnnCollector.
@@ -38,7 +39,7 @@ public class TopKnnCollector extends AbstractKnnCollector implements HnswSearchS
    * @param visitLimit how many vector nodes the results are allowed to visit
    */
   public TopKnnCollector(int k, int visitLimit) {
-    this(k, visitLimit, 0.0f);
+    this(k, visitLimit, HnswSearchStrategy.DEFAULT);
   }
 
   /**
@@ -46,15 +47,13 @@ public class TopKnnCollector extends AbstractKnnCollector implements HnswSearchS
    *
    * @param k the number of neighbors to collect
    * @param visitLimit how many vector nodes the results are allowed to visit
-   * @param filterHeuristicThreshold the threshold of vectors passing a pre-filter determining if
-   *     optimized filtered search should be executed. 1f means always execute the optimized
-   *     filtered search, 0f means never execute it. All values in between are a trade-off between
-   *     the two.
+   * @param searchStrategy the HNSW search strategy to use, the underlying format is free to ignore
+   *     this strategy hint.
    */
-  public TopKnnCollector(int k, int visitLimit, float filterHeuristicThreshold) {
+  public TopKnnCollector(int k, int visitLimit, HnswSearchStrategy searchStrategy) {
     super(k, visitLimit);
     this.queue = new NeighborQueue(k, false);
-    this.filterHeuristicThreshold = filterHeuristicThreshold;
+    this.strategy = searchStrategy;
   }
 
   @Override
@@ -93,7 +92,7 @@ public class TopKnnCollector extends AbstractKnnCollector implements HnswSearchS
   }
 
   @Override
-  public boolean shouldExecuteOptimizedFilteredSearch(float filterRatio) {
-    return filterRatio < filterHeuristicThreshold;
+  public HnswSearchStrategy getHnswSearchStrategy() {
+    return strategy;
   }
 }

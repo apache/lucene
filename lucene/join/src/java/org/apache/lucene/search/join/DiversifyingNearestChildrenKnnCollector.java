@@ -23,6 +23,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.knn.HnswSearchStrategy;
+import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 
@@ -31,11 +32,11 @@ import org.apache.lucene.util.BitSet;
  * filter. This means the nearest children vectors are returned, but only one per parent
  */
 class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
-    implements HnswSearchStrategy {
+    implements HnswSearchStrategyProvider {
 
   private final BitSet parentBitSet;
   private final NodeIdCachingHeap heap;
-  private final float filterHeuristicThreshold;
+  private final HnswSearchStrategy strategy;
 
   /**
    * Create a new object for joining nearest child kNN documents with a parent bitset
@@ -45,7 +46,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
    * @param parentBitSet The leaf parent bitset
    */
   public DiversifyingNearestChildrenKnnCollector(int k, int visitLimit, BitSet parentBitSet) {
-    this(k, visitLimit, parentBitSet, 0f);
+    this(k, visitLimit, parentBitSet, HnswSearchStrategy.DEFAULT);
   }
 
   /**
@@ -54,17 +55,15 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
    * @param k The number of joined parent documents to collect
    * @param visitLimit how many child vectors can be visited
    * @param parentBitSet The leaf parent bitset
-   * @param filterHeuristicThreshold the threshold of vectors passing a pre-filter determining if
-   *     optimized filtered search should be executed. 1f means always execute the optimized
-   *     filtered search, 0f means never execute it. All values in between are a trade-off between
-   *     the two.
+   * @param strategy the HNSW search strategy to use, the underlying format is free to ignore this
+   *     strategy hint.
    */
   public DiversifyingNearestChildrenKnnCollector(
-      int k, int visitLimit, BitSet parentBitSet, float filterHeuristicThreshold) {
+      int k, int visitLimit, BitSet parentBitSet, HnswSearchStrategy strategy) {
     super(k, visitLimit);
     this.parentBitSet = parentBitSet;
     this.heap = new NodeIdCachingHeap(k);
-    this.filterHeuristicThreshold = filterHeuristicThreshold;
+    this.strategy = strategy;
   }
 
   /**
@@ -121,8 +120,8 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
   }
 
   @Override
-  public boolean shouldExecuteOptimizedFilteredSearch(float filterRatio) {
-    return filterRatio < filterHeuristicThreshold;
+  public HnswSearchStrategy getHnswSearchStrategy() {
+    return strategy;
   }
 
   /**

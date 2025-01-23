@@ -21,12 +21,13 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.knn.HnswSearchStrategy;
+import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 
 /**
  * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId
  */
 public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
-    implements HnswSearchStrategy {
+    implements HnswSearchStrategyProvider {
 
   private final IntToIntFunction vectorOrdinalToDocId;
 
@@ -54,8 +55,10 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
   }
 
   @Override
-  public boolean shouldExecuteOptimizedFilteredSearch(float filterRatio) {
-    return collector instanceof HnswSearchStrategy strategy
-        && strategy.shouldExecuteOptimizedFilteredSearch(filterRatio);
+  public HnswSearchStrategy getHnswSearchStrategy() {
+    if (collector instanceof HnswSearchStrategyProvider provider) {
+      return provider.getHnswSearchStrategy();
+    }
+    return HnswSearchStrategy.DEFAULT;
   }
 }

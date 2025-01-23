@@ -26,7 +26,7 @@ import org.apache.lucene.search.KnnCollector;
  * @lucene.experimental
  */
 class SeededKnnCollector extends KnnCollector.Decorator
-    implements EntryPointProvider, HnswSearchStrategy {
+    implements EntryPointProvider, HnswSearchStrategyProvider {
   private final DocIdSetIterator entryPoints;
   private final int numberOfEntryPoints;
 
@@ -48,10 +48,10 @@ class SeededKnnCollector extends KnnCollector.Decorator
   }
 
   @Override
-  public boolean shouldExecuteOptimizedFilteredSearch(float filterRatio) {
-    if (collector instanceof HnswSearchStrategy strategy) {
-      return strategy.shouldExecuteOptimizedFilteredSearch(filterRatio);
+  public HnswSearchStrategy getHnswSearchStrategy() {
+    if (collector instanceof HnswSearchStrategyProvider provider) {
+      return provider.getHnswSearchStrategy();
     }
-    return false;
+    return HnswSearchStrategy.DEFAULT;
   }
 }

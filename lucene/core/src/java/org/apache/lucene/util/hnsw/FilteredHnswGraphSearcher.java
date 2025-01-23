@@ -54,9 +54,6 @@ public class FilteredHnswGraphSearcher {
 
   /**
    * Creates a new graph searcher.
-   *
-   * @param candidates max heap that will track the candidate nodes to explore
-   * @param visited bit set that will track nodes that have already been visited
    */
   private FilteredHnswGraphSearcher(
       NeighborQueue candidates, BitSet explorationVisited, BitSet visited, HnswGraph graph) {
@@ -74,6 +71,7 @@ public class FilteredHnswGraphSearcher {
    * @param knnCollector a collector of top knn results to be returned
    * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
    *     graph.
+   * @param filterSize the number of vectors that pass the accepted ords filter
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
    */
@@ -195,8 +193,8 @@ public class FilteredHnswGraphSearcher {
       }
     }
     // Collect the vectors to score and potentially add as candidates
-    IntArrayQueue toScore = new IntArrayQueue(graph.maxConn() * maxExplorationMultiplier);
-    IntArrayQueue toExplore = new IntArrayQueue(graph.maxConn() * maxExplorationMultiplier);
+    IntArrayQueue toScore = new IntArrayQueue(graph.maxConn() * 2 * maxExplorationMultiplier);
+    IntArrayQueue toExplore = new IntArrayQueue(graph.maxConn() * 2 * maxExplorationMultiplier);
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = results.minCompetitiveSimilarity();
