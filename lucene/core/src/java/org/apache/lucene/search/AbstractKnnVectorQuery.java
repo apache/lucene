@@ -48,8 +48,10 @@ import org.apache.lucene.util.Bits;
  *   <li>Otherwise run a kNN search subject to the filter
  *   <li>If the kNN search visits too many vectors without completing, stop and run an exact search
  * </ul>
+ *
+ * @lucene.experimental
  */
-abstract class AbstractKnnVectorQuery extends Query {
+public abstract class AbstractKnnVectorQuery extends Query {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
@@ -146,12 +148,15 @@ abstract class AbstractKnnVectorQuery extends Query {
     // Perform the approximate kNN search
     // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, timeLimitingKnnCollectorManager);
-    if (results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
+    if ((results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
+            // We know that there are more than `k` available docs, if we didn't even get `k`
+            // something weird
+            // happened, and we need to drop to exact search
+            && results.scoreDocs.length >= k)
         // Return partial results only when timeout is met
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
     } else {
-      // We stopped the kNN search because it visited too many nodes, so fall back to exact search
       return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
     }
   }

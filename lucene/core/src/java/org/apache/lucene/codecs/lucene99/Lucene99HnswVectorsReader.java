@@ -37,16 +37,20 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.knn.HnswSearchStrategy;
+import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.FilteredHnswGraphSearcher;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
@@ -309,16 +313,44 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       Bits acceptDocs,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
-
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
-    final KnnCollector collector =
+    final OrdinalTranslatedKnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    HnswSearchStrategy searchStrategy = HnswSearchStrategy.DEFAULT;
+    if (knnCollector instanceof HnswSearchStrategyProvider provider) {
+      searchStrategy = provider.getHnswSearchStrategy();
+    }
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    if (knnCollector.k() < scorer.maxOrd()) {
-      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+    HnswGraph graph = getGraph(fieldEntry);
+    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
+    // Take into account if quantized? E.g. some scorer cost?
+    int filteredDocCount = 0;
+    int unfilteredVisit = (int) (Math.log(graph.size()) * knnCollector.k());
+    if (acceptDocs instanceof BitSet bitSet) {
+      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+      // size as that
+      // is illogical
+      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
+      if (unfilteredVisit >= filteredDocCount) {
+        doHnsw = false;
+      }
+    }
+    if (doHnsw) {
+      if (acceptDocs != null
+          // The known filtered count is also required, if some unknown bitset is provided, we
+          // shouldn't proceed
+          && filteredDocCount > 0
+          // Only proceed if the filtered count is less than half of the total vectors
+          && searchStrategy.shouldExecuteOptimizedFilteredSearch(
+              (float) filteredDocCount / graph.size())) {
+        FilteredHnswGraphSearcher.search(
+            scorer, collector, getGraph(fieldEntry), filteredDocCount, acceptedOrds);
+      } else {
+        HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+      }
     } else {
       // if k is larger than the number of vectors, we can just iterate over all vectors
       // and collect them
@@ -459,6 +491,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     int arcCount;
     int arcUpTo;
     int arc;
+    private final int maxConn;
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
     // Allocated to be M*2 to track the current neighbors being explored
@@ -476,6 +509,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       this.graphLevelNodeOffsets =
           DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
       this.currentNeighborsBuffer = new int[entry.M * 2];
+      this.maxConn = entry.M;
       graphLevelNodeIndexOffsets = new long[numLevels];
       graphLevelNodeIndexOffsets[0] = 0;
       for (int i = 1; i < numLevels; i++) {
@@ -523,13 +557,18 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
 
     @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
     public int numLevels() throws IOException {
       return numLevels;
     }
 
     @Override
     public int maxConn() {
-      return currentNeighborsBuffer.length >> 1;
+      return maxConn;
     }
 
     @Override

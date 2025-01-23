@@ -345,6 +345,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       @Override
+      public int neighborCount() {
+        throw new UnsupportedOperationException("Not supported on a mock graph");
+      }
+
+      @Override
       public NodesIterator getNodesOnLevel(int level) {
         if (level == 0) {
           return graph.getNodesOnLevel(0);

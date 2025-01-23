@@ -24,6 +24,7 @@ package org.apache.lucene.search;
 public abstract class AbstractKnnCollector implements KnnCollector {
 
   protected long visitedCount;
+  protected long filterVisitedCount;
   private final long visitLimit;
   private final int k;
 

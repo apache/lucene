@@ -16,17 +16,15 @@
  */
 package org.apache.lucene.search.knn;
 
-import org.apache.lucene.search.DocIdSetIterator;
-
 /**
- * Provides entry points for the kNN search
+ * Provides a strategy for executing HNSW search.
  *
  * @lucene.experimental
  */
-public interface EntryPointProvider {
-  /** Iterator of valid entry points for the kNN search */
-  DocIdSetIterator entryPoints();
+public interface HnswSearchStrategyProvider {
 
-  /** Number of valid entry points for the kNN search */
-  int numberOfEntryPoints();
+  /**
+   * @return the HNSW search strategy to use
+   */
+  HnswSearchStrategy getHnswSearchStrategy();
 }
