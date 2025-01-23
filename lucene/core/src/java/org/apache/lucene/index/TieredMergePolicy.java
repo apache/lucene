@@ -449,7 +449,7 @@ public class TieredMergePolicy extends MergePolicy {
         mergeContext,
         mergingBytes >= maxMergedSegmentBytes);
   }
-  
+
   private MergeSpecification doFindMerges(
       List<SegmentSizeAndDocs> sortedEligibleInfos,
       final long maxMergedSegmentBytes,

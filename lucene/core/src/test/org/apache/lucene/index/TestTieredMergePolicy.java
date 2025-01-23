@@ -968,7 +968,8 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       assertEquals(15, oneMerge.segments.size());
     }
 
-    // Segments are below the floor segment size. We get one merge that merges the 50 segments together.
+    // Segments are below the floor segment size. We get one merge that merges the 50 segments
+    // together.
     mergePolicy.setFloorSegmentMB(60);
     mergeSpec = mergePolicy.findMerges(MergeTrigger.FULL_FLUSH, infos, mergeContext);
     assertNotNull(mergeSpec);
