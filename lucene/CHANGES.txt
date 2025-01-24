@@ -47,8 +47,8 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#14084, GITHUB#13635, GITHUB#13634: Adds new `SeededKnnByteVectorQuery` and `SeededKnnFloatVectorQuery`
-  queries. These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
+* GITHUB#14084, GITHUB#13635, GITHUB#13634, GITHUB#14170: Adds new `SeededKnnVectorQuery` query.
+  These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
 
