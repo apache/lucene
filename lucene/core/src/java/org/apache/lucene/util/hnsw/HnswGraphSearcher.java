@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.knn.EntryPointProvider;
@@ -33,7 +32,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
  * search algorithm, see {@link HnswGraph}.
  */
-public class HnswGraphSearcher {
+public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   /**
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
    * to allocate, so they're cleared and reused across calls.
@@ -68,33 +67,13 @@ public class HnswGraphSearcher {
   public static void search(
       RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
-    HnswGraphSearcher graphSearcher =
+    AbstractHnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
-    final int[] entryPoints;
-    if (knnCollector instanceof EntryPointProvider epp) {
-      if (epp.numberOfEntryPoints() <= 0) {
-        throw new IllegalArgumentException("The number of entry points must be > 0");
-      }
-      DocIdSetIterator eps = epp.entryPoints();
-      entryPoints = new int[epp.numberOfEntryPoints()];
-      int idx = 0;
-      while (idx < entryPoints.length) {
-        int entryPointOrdInt = eps.nextDoc();
-        if (entryPointOrdInt == NO_MORE_DOCS) {
-          throw new IllegalArgumentException(
-              "The number of entry points provided is less than the number of entry points requested");
-        }
-        assert entryPointOrdInt < getGraphSize(graph);
-        entryPoints[idx++] = entryPointOrdInt;
-      }
-      // This is an invalid case, but we should check it
-      assert entryPoints.length > 0;
-      // We use provided entry point ordinals to search the complete graph (level 0)
-      graphSearcher.searchLevel(knnCollector, scorer, 0, entryPoints, graph, acceptOrds);
-    } else {
-      search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
+    if (knnCollector instanceof EntryPointProvider epp && epp.numberOfEntryPoints() > 0) {
+      graphSearcher = SeededHnswGraphSearcher.fromEntryPointProvider(graphSearcher, epp, graph);
     }
+    graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
   }
 
   /**
@@ -116,21 +95,8 @@ public class HnswGraphSearcher {
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
             new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));
-    search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
+    graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
     return knnCollector;
-  }
-
-  private static void search(
-      RandomVectorScorer scorer,
-      KnnCollector knnCollector,
-      HnswGraph graph,
-      HnswGraphSearcher graphSearcher,
-      Bits acceptOrds)
-      throws IOException {
-    int ep = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector);
-    if (ep != -1) {
-      graphSearcher.searchLevel(knnCollector, scorer, 0, new int[] {ep}, graph, acceptOrds);
-    }
   }
 
   /**
@@ -166,11 +132,12 @@ public class HnswGraphSearcher {
    *     exceeded
    * @throws IOException When accessing the vector fails
    */
-  private int findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
+  @Override
+  int[] findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
       throws IOException {
     int currentEp = graph.entryNode();
     if (currentEp == -1 || graph.numLevels() == 1) {
-      return currentEp;
+      return new int[] {currentEp};
     }
     int size = getGraphSize(graph);
     prepareScratchState(size);
@@ -191,7 +158,7 @@ public class HnswGraphSearcher {
             continue;
           }
           if (collector.earlyTerminated()) {
-            return -1;
+            return new int[] {UNK_EP};
           }
           float friendSimilarity = scorer.score(friendOrd);
           collector.incVisitedCount(1);
@@ -203,7 +170,7 @@ public class HnswGraphSearcher {
         }
       }
     }
-    return collector.earlyTerminated() ? -1 : currentEp;
+    return collector.earlyTerminated() ? new int[] {UNK_EP} : new int[] {currentEp};
   }
 
   /**
@@ -212,6 +179,7 @@ public class HnswGraphSearcher {
    * score/comparison value, will be at the top of the heap, while the closest neighbor will be the
    * last to be popped.
    */
+  @Override
   void searchLevel(
       KnnCollector results,
       RandomVectorScorer scorer,

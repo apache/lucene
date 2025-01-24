@@ -25,8 +25,6 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -37,13 +35,16 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   private static final Query MATCH_NONE = new MatchNoDocsQuery();
 
   @Override
-  KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new SeededKnnFloatVectorQuery(field, query, k, queryFilter, MATCH_NONE);
+  AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
+    KnnFloatVectorQuery knnQuery = new KnnFloatVectorQuery(field, query, k);
+    return SeededKnnVectorQuery.fromFloatQuery(knnQuery, MATCH_NONE);
   }
 
   @Override
   AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, vec, k, query, MATCH_NONE);
+    KnnFloatVectorQuery knnQuery =
+        new TestKnnFloatVectorQuery.ThrowingKnnVectorQuery(field, vec, k, query);
+    return SeededKnnVectorQuery.fromFloatQuery(knnQuery, MATCH_NONE);
   }
 
   @Override
@@ -101,8 +102,10 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           // All documents as seeds
           Query seed1 = new MatchAllDocsQuery();
           Query filter = random().nextBoolean() ? null : new MatchAllDocsQuery();
+          KnnFloatVectorQuery knnFloatVectorQuery =
+              new KnnFloatVectorQuery("field", randomVector(dimension), k, filter);
           AbstractKnnVectorQuery query =
-              new SeededKnnFloatVectorQuery("field", randomVector(dimension), k, filter, seed1);
+              SeededKnnVectorQuery.fromFloatQuery(knnFloatVectorQuery, seed1);
           TopDocs results = searcher.search(query, n);
           int expected = Math.min(Math.min(n, k), numDocsWithVector);
 
@@ -117,7 +120,7 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
           // Restrictive seed query -- 6 documents
           Query seed2 = IntPoint.newRangeQuery("tag", 1, 6);
-          query = new SeededKnnFloatVectorQuery("field", randomVector(dimension), k, null, seed2);
+          query = SeededKnnVectorQuery.fromFloatQuery(knnFloatVectorQuery, seed2);
           results = searcher.search(query, n);
           expected = Math.min(Math.min(n, k), reader.numDocs());
           assertEquals(expected, results.scoreDocs.length);
@@ -131,7 +134,7 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
           // No seed documents -- falls back on full approx search
           Query seed3 = new MatchNoDocsQuery();
-          query = new SeededKnnFloatVectorQuery("field", randomVector(dimension), k, null, seed3);
+          query = SeededKnnVectorQuery.fromFloatQuery(knnFloatVectorQuery, seed3);
           results = searcher.search(query, n);
           expected = Math.min(Math.min(n, k), reader.numDocs());
           assertEquals(expected, results.scoreDocs.length);
@@ -144,48 +147,6 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
           }
         }
       }
-    }
-  }
-
-  private static class ThrowingKnnVectorQuery extends SeededKnnFloatVectorQuery {
-
-    private ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter, Query seed) {
-      super(field, target, k, filter, seed);
-    }
-
-    private ThrowingKnnVectorQuery(
-        String field, float[] target, int k, Query filter, Weight seedWeight) {
-      super(field, target, k, filter, seedWeight);
-    }
-
-    @Override
-    // This is test only and we need to overwrite the inner rewrite to throw
-    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-      if (seedWeight != null) {
-        return super.rewrite(indexSearcher);
-      }
-      BooleanQuery.Builder booleanSeedQueryBuilder =
-          new BooleanQuery.Builder()
-              .add(seed, BooleanClause.Occur.MUST)
-              .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER);
-      if (filter != null) {
-        booleanSeedQueryBuilder.add(filter, BooleanClause.Occur.FILTER);
-      }
-      Query seedRewritten = indexSearcher.rewrite(booleanSeedQueryBuilder.build());
-      Weight seedWeight = indexSearcher.createWeight(seedRewritten, ScoreMode.TOP_SCORES, 1f);
-      return new ThrowingKnnVectorQuery(field, target, k, filter, seedWeight)
-          .rewrite(indexSearcher);
-    }
-
-    @Override
-    protected TopDocs exactSearch(
-        LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {
-      throw new UnsupportedOperationException("exact search is not supported");
-    }
-
-    @Override
-    public String toString(String field) {
-      return null;
     }
   }
 }
