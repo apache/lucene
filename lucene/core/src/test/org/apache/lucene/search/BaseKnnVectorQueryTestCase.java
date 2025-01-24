@@ -1123,7 +1123,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
-  private static class CountingQueryTimeout implements QueryTimeout {
+  static class CountingQueryTimeout implements QueryTimeout {
     private int remaining;
 
     public CountingQueryTimeout(int count) {

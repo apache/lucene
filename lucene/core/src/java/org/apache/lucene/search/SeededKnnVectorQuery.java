@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
@@ -92,6 +93,12 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     if (seedWeight != null) {
       return super.rewrite(indexSearcher);
     }
+    SeededKnnVectorQuery rewritten =
+        new SeededKnnVectorQuery(delegate, seed, createSeedWeight(indexSearcher));
+    return rewritten.rewrite(indexSearcher);
+  }
+
+  Weight createSeedWeight(IndexSearcher indexSearcher) throws IOException {
     BooleanQuery.Builder booleanSeedQueryBuilder =
         new BooleanQuery.Builder()
             .add(seed, BooleanClause.Occur.MUST)
@@ -100,9 +107,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
       booleanSeedQueryBuilder.add(filter, BooleanClause.Occur.FILTER);
     }
     Query seedRewritten = indexSearcher.rewrite(booleanSeedQueryBuilder.build());
-    Weight seedWeight = indexSearcher.createWeight(seedRewritten, ScoreMode.TOP_SCORES, 1f);
-    SeededKnnVectorQuery rewritten = new SeededKnnVectorQuery(delegate, seed, seedWeight);
-    return rewritten.rewrite(indexSearcher);
+    return indexSearcher.createWeight(seedRewritten, ScoreMode.TOP_SCORES, 1f);
   }
 
   @Override
@@ -261,7 +266,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   class SeededCollectorManager implements KnnCollectorManager {
-    private final KnnCollectorManager knnCollectorManager;
+    final KnnCollectorManager knnCollectorManager;
 
     SeededCollectorManager(KnnCollectorManager knnCollectorManager) {
       this.knnCollectorManager = knnCollectorManager;
@@ -289,25 +294,30 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
         }
         leafCollector.finish();
       }
-      KnnCollector delegateCollector = knnCollectorManager.newCollector(k, ctx);
+      KnnCollector delegateCollector = knnCollectorManager.newCollector(visitLimit, ctx);
       TopDocs seedTopDocs = seedCollector.topDocs();
       VectorScorer scorer =
           delegate.createVectorScorer(ctx, leafReader.getFieldInfos().fieldInfo(field));
-      DocIdSetIterator vectorIterator = scorer.iterator();
-      if (seedTopDocs.totalHits.value() == 0
-          || vectorIterator instanceof KnnVectorValues.DocIndexIterator == false) {
+      if (seedTopDocs.totalHits.value() == 0 || scorer == null) {
         return delegateCollector;
       }
-      DocIdSetIterator seedDocs =
-          new MappedDISI(
-              (KnnVectorValues.DocIndexIterator) vectorIterator, new TopDocsDISI(seedTopDocs));
-      return new SeededKnnCollector(delegateCollector, seedDocs, seedTopDocs.scoreDocs.length);
+      DocIdSetIterator vectorIterator = scorer.iterator();
+      // Handle sparse
+      if (vectorIterator instanceof IndexedDISI indexedDISI) {
+        vectorIterator = IndexedDISI.asDocIndexIterator(indexedDISI);
+      }
+      // Most underlying iterators are indexed, so we can map the seed docs to the vector docs
+      if (vectorIterator instanceof KnnVectorValues.DocIndexIterator indexIterator) {
+        DocIdSetIterator seedDocs = new MappedDISI(indexIterator, new TopDocsDISI(seedTopDocs));
+        return new SeededKnnCollector(delegateCollector, seedDocs, seedTopDocs.scoreDocs.length);
+      }
+      return delegateCollector;
     }
   }
 
   static class SeededKnnCollector extends KnnCollector.Decorator implements EntryPointProvider {
-    private final DocIdSetIterator entryPoints;
-    private final int numberOfEntryPoints;
+    final DocIdSetIterator entryPoints;
+    final int numberOfEntryPoints;
 
     SeededKnnCollector(
         KnnCollector collector, DocIdSetIterator entryPoints, int numberOfEntryPoints) {
