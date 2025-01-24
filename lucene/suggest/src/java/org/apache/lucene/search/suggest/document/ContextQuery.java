@@ -17,8 +17,10 @@
 package org.apache.lucene.search.suggest.document;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
 import org.apache.lucene.internal.hppc.IntHashSet;
@@ -230,7 +232,7 @@ public class ContextQuery extends CompletionQuery implements Accountable {
     if (matchAllContexts || contexts.size() == 0) {
       return Operations.concatenate(matchAllAutomaton, sep);
     } else {
-      Automaton contextsAutomaton = null;
+      List<Automaton> automataList = new ArrayList<>();
       for (Map.Entry<IntsRef, ContextMetaData> entry : contexts.entrySet()) {
         final ContextMetaData contextMetaData = entry.getValue();
         final IntsRef ref = entry.getKey();
@@ -239,12 +241,9 @@ public class ContextQuery extends CompletionQuery implements Accountable {
           contextAutomaton = Operations.concatenate(contextAutomaton, matchAllAutomaton);
         }
         contextAutomaton = Operations.concatenate(contextAutomaton, sep);
-        if (contextsAutomaton == null) {
-          contextsAutomaton = contextAutomaton;
-        } else {
-          contextsAutomaton = Operations.union(contextsAutomaton, contextAutomaton);
-        }
+        automataList.add(contextAutomaton);
       }
+      Automaton contextsAutomaton = Operations.union(automataList);
       return contextsAutomaton;
     }
   }
