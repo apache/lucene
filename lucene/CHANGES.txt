@@ -76,6 +76,8 @@ Optimizations
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
 
+* GITHUB#14094: Early terminate when HNSW nearest neighbor queue saturates (Tommaso Teofili)
+
 Bug Fixes
 ---------------------
 

@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.HnswKnnCollector;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.knn.EntryPointProvider;
@@ -271,6 +272,9 @@ public class HnswGraphSearcher {
             }
           }
         }
+      }
+      if (results instanceof HnswKnnCollector hnswKnnCollector) {
+        hnswKnnCollector.nextCandidate();
       }
     }
   }
