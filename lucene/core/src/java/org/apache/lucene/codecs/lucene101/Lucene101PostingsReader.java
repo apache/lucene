@@ -388,6 +388,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     final boolean needsOffsetsOrPayloads;
     final boolean needsImpacts;
     final boolean needsDocsAndFreqsOnly;
+
     private long freqFP; // offset of the freq block
 
     private int position; // current position
