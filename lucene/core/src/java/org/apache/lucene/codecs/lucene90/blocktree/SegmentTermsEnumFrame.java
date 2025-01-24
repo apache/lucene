@@ -302,6 +302,68 @@ final class SegmentTermsEnumFrame {
     */
   }
 
+  // Only rewind, don't force reload block.
+  // Reset readers' position, don't read, decompress.
+  // Current term greater than target, reduce endCount.
+  void rewindWithoutReload() {
+    // Set nextEnt to 0, to prevent force load.
+    nextEnt = 0;
+    suffixesReader.setPosition(0);
+    suffixLengthsReader.setPosition(0);
+    statsReader.setPosition(0);
+    bytesReader.setPosition(0);
+
+    // TODO: Since we only rewind without reload for first floor(currentFrame.fp ==
+    // currentFrame.fpOrig)
+    // So no need to set floorDataReader again?
+    //    if (isFloor) {
+    //      floorDataReader.setPosition(rewindPos);
+    //      numFollowFloorBlocks = floorDataReader.readVInt();
+    //      assert numFollowFloorBlocks > 0;
+    //      nextFloorLabel = floorDataReader.readByte() & 0xff;
+    //    }
+
+    metaDataUpto = 0;
+
+    statsSingletonRunLength = 0;
+    state.termBlockOrd = 0;
+    lastSubFP = -1;
+    //    state.termBlockOrd = 0;
+    /*
+    //System.out.println("rewind");
+    // Keeps the block loaded, but rewinds its state:
+    if (nextEnt > 0 || fp != fpOrig) {
+    if (DEBUG) {
+    System.out.println("      rewind frame ord=" + ord + " fpOrig=" + fpOrig + " fp=" + fp + " hasTerms?=" + hasTerms + " isFloor?=" + isFloor + " nextEnt=" + nextEnt + " prefixLen=" + prefix);
+    }
+    if (fp != fpOrig) {
+    fp = fpOrig;
+    nextEnt = -1;
+    } else {
+    nextEnt = 0;
+    }
+    hasTerms = hasTermsOrig;
+    if (isFloor) {
+    floorDataReader.rewind();
+    numFollowFloorBlocks = floorDataReader.readVInt();
+    nextFloorLabel = floorDataReader.readByte() & 0xff;
+    }
+    assert suffixBytes != null;
+    suffixesReader.rewind();
+    assert statBytes != null;
+    statsReader.rewind();
+    metaDataUpto = 0;
+    state.termBlockOrd = 0;
+    // TODO: skip this if !hasTerms?  Then postings
+    // impl wouldn't have to write useless 0 byte
+    postingsReader.resetTermsBlock(fieldInfo, state);
+    lastSubFP = -1;
+    } else if (DEBUG) {
+    System.out.println("      skip rewind fp=" + fp + " fpOrig=" + fpOrig + " nextEnt=" + nextEnt + " ord=" + ord);
+    }
+    */
+  }
+
   // Decodes next entry; returns true if it's a sub-block
   public boolean next() throws IOException {
     if (isLeafBlock) {
@@ -870,5 +932,36 @@ final class SegmentTermsEnumFrame {
     ste.term.setLength(termLength);
     ste.term.grow(termLength);
     System.arraycopy(suffixBytes, startBytePos, ste.term.bytes(), prefixLength, suffixLength);
+  }
+
+  // Used for debugging.
+  @Override
+  public String toString() {
+    return "fp: "
+        + fp
+        + ", fpOrig: "
+        + fpOrig
+        + ", fpEnd: "
+        + fpEnd
+        + ", lastSubFP: "
+        + lastSubFP
+        + ", entCount: "
+        + entCount
+        + ", nextEnt: "
+        + nextEnt
+        + ", isLeafBlock: "
+        + isLeafBlock
+        + ", isFloor: "
+        + isFloor
+        + ", isLastInFloor: "
+        + isLastInFloor
+        + ", nextFloorLabel: "
+        + nextFloorLabel
+        + ", suffixesPos: "
+        + suffixesReader.getPosition()
+        + ", suffixLengthsPos: "
+        + suffixLengthsReader.getPosition()
+        + ", floorDataPos: "
+        + floorDataReader.getPosition();
   }
 }
