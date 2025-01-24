@@ -965,9 +965,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
                       + docCumulativeWordPopCounts[wordIndex]
                       - Long.bitCount(docBitSet.getBits()[wordIndex] >>> next);
             } else {
-              // DocBufferUpTo can only be 0 or 1 when only docs needed and block is UNARY encoded.
-              // 0 means the block has not been iterated
-              // 1 means the block has been iterated.
+              // When only docs needed and block is UNARY encoded, we do not need to maintain
+              // docBufferUpTo to record the iteration position in the block.
+              // docBufferUpTo == 0 means the block has not been iterated.
+              // docBufferUpTo != 0 means the block has been iterated.
               docBufferUpto = 1;
             }
           }
