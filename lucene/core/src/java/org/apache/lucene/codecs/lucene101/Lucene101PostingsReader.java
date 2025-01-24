@@ -345,7 +345,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     private int prevDocID; // last doc ID of the previous block
 
     private int docBufferSize;
-    private int docBufferUpto; // only makes sense for packed encoding
+    private int docBufferUpto;
 
     private IndexInput docIn;
     private PostingDecodingUtil docInUtil;
@@ -388,8 +388,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     final boolean needsOffsetsOrPayloads;
     final boolean needsImpacts;
     final boolean needsDocsAndFreqsOnly;
-    final boolean needsDocsOnly;
-
     private long freqFP; // offset of the freq block
 
     private int position; // current position
@@ -444,7 +442,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       needsOffsetsOrPayloads = needsOffsets || needsPayloads;
       this.needsImpacts = needsImpacts;
       needsDocsAndFreqsOnly = needsPos == false && needsImpacts == false;
-      needsDocsOnly = needsDocsAndFreqsOnly && needsFreq == false;
 
       if (needsFreq == false) {
         Arrays.fill(freqBuffer, 1);
@@ -617,7 +614,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           numLongs = -bitsPerValue;
           docIn.readLongs(docBitSet.getBits(), 0, numLongs);
         }
-        if (!needsDocsOnly) {
+        if (needsFreq) {
           // Note: we know that BLOCK_SIZE bits are set, so no need to compute the cumulative pop
           // count at the last index, it will be BLOCK_SIZE.
           // Note: this for loop auto-vectorizes
@@ -958,7 +955,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
             int next = docBitSet.nextSetBit(target - docBitSetBase);
             assert next != NO_MORE_DOCS;
             this.doc = docBitSetBase + next;
-            if (!needsDocsOnly) {
+            if (needsFreq) {
               int wordIndex = next >> 6;
               // Take the cumulative pop count for the given word, and subtract bits on the left of
               // the current doc.
@@ -967,7 +964,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
                       + docCumulativeWordPopCounts[wordIndex]
                       - Long.bitCount(docBitSet.getBits()[wordIndex] >>> next);
             } else {
-              docBufferUpto = 1; // Just make it not 0
+              // docBufferUpTo can only be 0 or 1 When only docs needed and block is UNARY encoded.
+              // 0 means the block has not been iterated
+              // 1 means the block has been iterated.
+              docBufferUpto = 1;
             }
           }
           break;
