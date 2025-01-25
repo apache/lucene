@@ -424,15 +424,17 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
       long numSkipBytes = level0Output.size();
       // Now we need to decide whether to encode block deltas as packed integers (FOR) or unary
       // codes (bit set). FOR makes #nextDoc() a bit faster while the bit set approach makes
-      // #advance() sometimes faster and #intoBitSet() much faster. Since the trade-off is not
-      // obvious, we make the decision purely based on storage efficiency, using the approach that
-      // requires fewer bits to encode the block.
+      // #advance() usually faster and #intoBitSet() much faster. In the end, we make the decision
+      // based on storage requirements, picking the bit set approach whenever it's more
+      // storage-efficient than the next number of bits per value (which effectively slightly biases
+      // towards the bit set approach).
       int bitsPerValue = forDeltaUtil.bitsRequired(docDeltaBuffer);
       int sum = Math.toIntExact(Arrays.stream(docDeltaBuffer).sum());
       int numBitSetLongs = FixedBitSet.bits2words(sum);
+      int numBitsNextBitsPerValue = Math.min(Integer.SIZE, bitsPerValue + 1) * BLOCK_SIZE;
       if (sum == BLOCK_SIZE) {
         level0Output.writeByte((byte) 0);
-      } else if (version < VERSION_DENSE_BLOCKS_AS_BITSETS || bitsPerValue * BLOCK_SIZE < sum) {
+      } else if (version < VERSION_DENSE_BLOCKS_AS_BITSETS || numBitsNextBitsPerValue <= sum) {
         level0Output.writeByte((byte) bitsPerValue);
         forDeltaUtil.encodeDeltas(bitsPerValue, docDeltaBuffer, level0Output);
       } else {
@@ -444,10 +446,9 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
           s += i;
           spareBitSet.set(s);
         }
-        // Since we use the bit set encoding when it's more storage efficient than storing deltas,
-        // we know that each doc ID uses less than 32 bits, the maximum number of bits required to
-        // store a delta between consecutive doc IDs. So in the end, the bit set cannot have more
-        // than BLOCK_SIZE * Integer.SIZE / Long.SIZE = 64 longs, which fits on a byte.
+        // We never use the bit set encoding when it requires more than Integer.SIZE=32 bits per
+        // value. So the bit set cannot have more than BLOCK_SIZE * Integer.SIZE / Long.SIZE = 64
+        // longs, which fits on a byte.
         assert numBitSetLongs <= BLOCK_SIZE / 2;
         level0Output.writeByte((byte) -numBitSetLongs);
         for (int i = 0; i < numBitSetLongs; ++i) {
