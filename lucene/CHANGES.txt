@@ -33,6 +33,10 @@ Improvements
   BulkAdder#add(IntsRef) method. They should provide better performance due to less virtual method calls and
   more efficient bulk processing. (Ignacio Vera)
 
+* GITHUB#14107, GITHUB#14124, GITHUB#14103: Optimize DirectIOIndexInput; add
+  individual and bulk data retrieval overloads; avoid double buffering with
+  slices. (Chris Hegarty)
+
 Optimizations
 ---------------------
 
