@@ -194,7 +194,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         fieldData.fieldInfo,
         vectorIndexOffset,
         vectorIndexLength,
-        fieldData.getDocsWithFieldSet().cardinality(),
+        fieldData.ordCount(),
         graph,
         graphLevelNodeOffsets);
   }
@@ -224,7 +224,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         fieldData.fieldInfo,
         vectorIndexOffset,
         vectorIndexLength,
-        fieldData.getDocsWithFieldSet().cardinality(),
+        fieldData.ordCount(),
         mockGraph,
         graphLevelNodeOffsets);
   }
