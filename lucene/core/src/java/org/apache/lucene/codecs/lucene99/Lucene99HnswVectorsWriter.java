@@ -608,7 +608,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                     ByteVectorValues.fromBytes(
                         (List<byte[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension(),
-                        getDocsWithFieldSet(),
+                        flatFieldVectorsWriter.getDocsWithFieldSet(),
                         flatFieldVectorsWriter.docIdToVectorCount()));
             case FLOAT32 ->
                 scorer.getRandomVectorScorerSupplier(
@@ -616,7 +616,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                     FloatVectorValues.fromFloats(
                         (List<float[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension(),
-                        getDocsWithFieldSet(),
+                        flatFieldVectorsWriter.getDocsWithFieldSet(),
                         flatFieldVectorsWriter.docIdToVectorCount()));
           };
       hnswGraphBuilder =

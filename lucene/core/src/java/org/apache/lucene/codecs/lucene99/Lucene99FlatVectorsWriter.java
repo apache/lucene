@@ -554,10 +554,12 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
             "Out of order doc ids: last=" + lastDocID + ", next=" + docID);
       }
       T copy = copyValue(vectorValue);
-      if (docsWithField.bits().get(docID) == false) {
+      if (docID > lastDocID) {
+        // new document
         docsWithField.add(docID);
         docIdToVectorCount.put(docID, 1);
       } else {
+        // new vector for same document
         docIdToVectorCount.put(docID, docIdToVectorCount.get(docID) + 1);
       }
       vectors.add(copy);

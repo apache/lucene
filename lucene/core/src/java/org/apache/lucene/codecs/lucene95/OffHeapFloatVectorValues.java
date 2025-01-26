@@ -160,10 +160,10 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
     if (mvOrdConfiguration != null) {
       isMultiValued = mvOrdConfiguration.ordCount() > docCount;
-      docIndexToBaseOrd = mvOrdConfiguration.getDocIndexToBaseOrdReader(bytesSlice);
-      ordToDocMap = mvOrdConfiguration.getOrdToDocReader(bytesSlice);
-      baseOrdMap = mvOrdConfiguration.getBaseOrdReader(bytesSlice);
-      nextBaseOrdMap = mvOrdConfiguration.getNextBaseOrdReader(bytesSlice);
+      docIndexToBaseOrd = mvOrdConfiguration.getDocIndexToBaseOrdReader(vectorData);
+      ordToDocMap = mvOrdConfiguration.getOrdToDocReader(vectorData);
+      baseOrdMap = mvOrdConfiguration.getBaseOrdReader(vectorData);
+      nextBaseOrdMap = mvOrdConfiguration.getNextBaseOrdReader(vectorData);
       ordCount = mvOrdConfiguration.ordCount();
     }
     int byteSize = dimension * Float.BYTES;
