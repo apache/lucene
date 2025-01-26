@@ -20,6 +20,7 @@ public class MultiVectorOrdConfiguration {
       int[] baseOrds,
       int[] nextBaseOrds)
       throws IOException {
+    System.out.println("writing multi-vector ord configuration");
 
     outputMeta.writeVInt(directMonotonicBlockShift); // block shift
     outputMeta.writeVInt(docOrdFreq.length); // number of values in docOrdFreq
@@ -84,6 +85,7 @@ public class MultiVectorOrdConfiguration {
 
   public static MultiVectorOrdConfiguration fromStoredMeta(IndexInput inputMeta)
       throws IOException {
+    System.out.println("reading multi-vector ord configuration");
     final int blockShift = inputMeta.readVInt();
 
     final int docOrdFreqCount = inputMeta.readVInt();
