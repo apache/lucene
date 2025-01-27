@@ -48,7 +48,10 @@ public class CuVSIndex {
     this.vectors = Objects.requireNonNull(vectors);
     this.fieldName = Objects.requireNonNull(fieldName);
     this.segmentName = Objects.requireNonNull(segmentName);
-    this.maxDocs = Objects.requireNonNull(maxDocs);
+    if (maxDocs < 0) {
+      throw new IllegalArgumentException("negative maxDocs:" +maxDocs);
+    }
+    this.maxDocs = maxDocs;
   }
 
   public CagraIndex getCagraIndex() {
