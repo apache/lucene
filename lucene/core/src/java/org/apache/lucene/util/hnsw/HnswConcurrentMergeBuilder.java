@@ -90,9 +90,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
-    finish();
-    frozen = true;
-    return workers[0].getCompletedGraph();
+    return getCompletedGraph();
   }
 
   @Override
@@ -199,6 +197,13 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       }
       super.addGraphNode(node);
     }
+
+    @Override
+    public OnHeapHnswGraph getCompletedGraph() throws IOException {
+      // Finish is called separately, in the main thread
+      return getGraph();
+    }
+
   }
 
   /**

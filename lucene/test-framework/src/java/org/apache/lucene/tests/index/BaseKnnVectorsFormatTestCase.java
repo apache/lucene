@@ -129,7 +129,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     // suppress this test from base class: merges for knn graphs are not stable due to connected
     // components
     // logic
-    return false;
+    return true;
   }
 
   private int getVectorsMaxDimensions(String fieldName) {
