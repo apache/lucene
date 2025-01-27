@@ -48,6 +48,8 @@ Optimizations
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
 
+# GITHUB#14169: Optimize ContextQuery with big number of contexts. (Mayya Sharipova)
+
 Bug Fixes
 ---------------------
 
