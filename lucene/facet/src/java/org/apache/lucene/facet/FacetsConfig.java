@@ -155,6 +155,9 @@ public class FacetsConfig {
     DimConfig dimConfig = fieldTypes.get(dimName);
     if (dimConfig == null) {
       dimConfig = getDefaultDimConfig();
+      // Let's put even default field configs into the map,
+      // so that getDimConfigs returns config for all fields we saw during indexing
+      fieldTypes.put(dimName, dimConfig);
     }
     return dimConfig;
   }
