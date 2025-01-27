@@ -45,6 +45,7 @@ import org.apache.lucene.sandbox.facet.recorders.FacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.MultiFacetsRecorder;
 import org.apache.lucene.sandbox.facet.recorders.Reducer;
+import org.apache.lucene.sandbox.facet.utils.ComparableUtils;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;

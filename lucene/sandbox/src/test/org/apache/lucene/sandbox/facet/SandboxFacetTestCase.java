@@ -32,6 +32,7 @@ import org.apache.lucene.sandbox.facet.iterators.TopnOrdinalIterator;
 import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
 import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
+import org.apache.lucene.sandbox.facet.utils.ComparableUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public abstract class SandboxFacetTestCase extends LuceneTestCase {
