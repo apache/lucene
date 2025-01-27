@@ -33,12 +33,14 @@ final class DocIdsWriter {
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
   private static final byte DELTA_BPV_16 = (byte) 16;
-  private static final byte BPV_24 = (byte) 24;
+  private static final byte BPV_24 = (byte) -24;
   private static final byte BPV_32 = (byte) 32;
   // These signs are legacy, should no longer be used in the writing side.
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
+  private static final byte LEGACY_BPV_24 = (byte) 24;
 
   private final int[] scratch;
+  private int[] scratch2;
   private final LongsRef scratchLongs = new LongsRef();
 
   /**
@@ -115,30 +117,24 @@ final class DocIdsWriter {
       if (max <= 0xFFFFFF) {
         out.writeByte(BPV_24);
         // write them the same way we are reading them.
-        int i;
-        for (i = 0; i < count - 7; i += 8) {
-          int doc1 = docIds[start + i];
-          int doc2 = docIds[start + i + 1];
-          int doc3 = docIds[start + i + 2];
-          int doc4 = docIds[start + i + 3];
-          int doc5 = docIds[start + i + 4];
-          int doc6 = docIds[start + i + 5];
-          int doc7 = docIds[start + i + 6];
-          int doc8 = docIds[start + i + 7];
-          long l1 = (doc1 & 0xffffffL) << 40 | (doc2 & 0xffffffL) << 16 | ((doc3 >>> 8) & 0xffffL);
-          long l2 =
-              (doc3 & 0xffL) << 56
-                  | (doc4 & 0xffffffL) << 32
-                  | (doc5 & 0xffffffL) << 8
-                  | ((doc6 >> 16) & 0xffL);
-          long l3 = (doc6 & 0xffffL) << 48 | (doc7 & 0xffffffL) << 24 | (doc8 & 0xffffffL);
-          out.writeLong(l1);
-          out.writeLong(l2);
-          out.writeLong(l3);
+        final int quarterLen = count >>> 2;
+        final int quarterLen3 = quarterLen * 3;
+        for (int i = 0; i < quarterLen3; ++i) {
+          scratch[i] = docIds[start + i] << 8;
         }
-        for (; i < count; ++i) {
-          out.writeShort((short) (docIds[start + i] >>> 8));
-          out.writeByte((byte) docIds[start + i]);
+        for (int i = 0; i < quarterLen; i++) {
+          final int longIdx = start + i + quarterLen3;
+          scratch[i] |= docIds[longIdx] >>> 16;
+          scratch[i + quarterLen] |= (docIds[longIdx] >>> 8) & 0xFF;
+          scratch[i + quarterLen * 2] |= docIds[longIdx] & 0xFF;
+        }
+        for (int i = 0; i < quarterLen3; ++i) {
+          out.writeInt(scratch[i]);
+        }
+
+        final int remainder = count & 0x3;
+        for (int i = 0; i < remainder; i++) {
+          out.writeInt(docIds[quarterLen * 4 + i]);
         }
       } else {
         out.writeByte(BPV_32);
@@ -204,6 +200,9 @@ final class DocIdsWriter {
       case LEGACY_DELTA_VINT:
         readLegacyDeltaVInts(in, count, docIDs);
         break;
+      case LEGACY_BPV_24:
+        readLegacyInts24(in, count, docIDs);
+        break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
     }
@@ -262,7 +261,26 @@ final class DocIdsWriter {
     }
   }
 
-  private static void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
+  private void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
+    final int quarterLen = count >>> 2;
+    final int quarterLen3 = quarterLen * 3;
+    in.readInts(scratch, 0, quarterLen3);
+    for (int i = 0; i < quarterLen3; ++i) {
+      docIDs[i] = scratch[i] >>> 8;
+    }
+    for (int i = 0; i < quarterLen; i++) {
+      docIDs[i + quarterLen3] =
+          ((scratch[i] & 0xFF) << 16)
+              | ((scratch[i + quarterLen] & 0xFF) << 8)
+              | (scratch[i + quarterLen * 2] & 0xFF);
+    }
+    int remainder = count & 0x3;
+    if (remainder > 0) {
+      in.readInts(docIDs, quarterLen << 2, remainder);
+    }
+  }
+
+  private static void readLegacyInts24(IndexInput in, int count, int[] docIDs) throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
       long l1 = in.readLong();
@@ -304,6 +322,9 @@ final class DocIdsWriter {
         break;
       case BPV_24:
         readInts24(in, count, visitor);
+        break;
+      case LEGACY_BPV_24:
+        readLegacyInts24(in, count, visitor);
         break;
       case BPV_32:
         readInts32(in, count, visitor);
@@ -348,7 +369,17 @@ final class DocIdsWriter {
     visitor.visit(scratchIntsRef);
   }
 
-  private static void readInts24(IndexInput in, int count, IntersectVisitor visitor)
+  private void readInts24(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+    if (scratch2 == null) {
+      scratch2 = new int[scratch.length];
+    }
+    readInts24(in, count, scratch2);
+    scratchIntsRef.ints = scratch2;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
+  }
+
+  private static void readLegacyInts24(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
