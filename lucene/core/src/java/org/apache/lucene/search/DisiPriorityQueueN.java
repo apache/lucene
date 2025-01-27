@@ -94,7 +94,7 @@ final class DisiPriorityQueueN extends DisiPriorityQueue {
     if (w.doc == list.doc) {
       list = prepend(w, list);
       final int left = leftNode(i);
-      final int right = left + 1;
+      final int right = rightNode(left);
       if (right < size) {
         list = topList(list, heap, size, left);
         list = topList(list, heap, size, right);
