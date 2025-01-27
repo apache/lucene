@@ -756,7 +756,7 @@ public abstract class MergePolicy {
 
   /**
    * Return the byte size of the provided {@link SegmentCommitInfo}, prorated by percentage of
-   * non-deleted documents is set.
+   * non-deleted documents.
    */
   protected long size(SegmentCommitInfo info, MergeContext mergeContext) throws IOException {
     long byteSize = info.sizeInBytes();
@@ -838,7 +838,7 @@ public abstract class MergePolicy {
   }
 
   /**
-   * Returns true if the segment represented by the given CodecReader should be keep even if it's
+   * Returns true if the segment represented by the given CodecReader should be kept even if it's
    * fully deleted. This is useful for testing of for instance if the merge policy implements
    * retention policies for soft deletes.
    */

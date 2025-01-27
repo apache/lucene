@@ -56,7 +56,9 @@ public class TestForDeltaUtil extends LuceneTestCase {
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           source[j] = values[i * ForUtil.BLOCK_SIZE + j];
         }
-        forDeltaUtil.encodeDeltas(source, out);
+        int bitsPerValue = forDeltaUtil.bitsRequired(source);
+        out.writeByte((byte) bitsPerValue);
+        forDeltaUtil.encodeDeltas(bitsPerValue, source, out);
       }
       endPointer = out.getFilePointer();
       out.close();
@@ -71,7 +73,8 @@ public class TestForDeltaUtil extends LuceneTestCase {
       for (int i = 0; i < iterations; ++i) {
         int base = 0;
         final int[] restored = new int[ForUtil.BLOCK_SIZE];
-        forDeltaUtil.decodeAndPrefixSum(pdu, base, restored);
+        int bitsPerValue = pdu.in.readByte();
+        forDeltaUtil.decodeAndPrefixSum(bitsPerValue, pdu, base, restored);
         final int[] expected = new int[ForUtil.BLOCK_SIZE];
         for (int j = 0; j < ForUtil.BLOCK_SIZE; ++j) {
           expected[j] = values[i * ForUtil.BLOCK_SIZE + j];

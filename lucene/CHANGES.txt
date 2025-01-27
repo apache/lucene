@@ -11,7 +11,7 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 Improvements
 ---------------------
@@ -21,11 +21,14 @@ Improvements
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
+* GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
 
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
+
+* GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
 Other
 ---------------------
@@ -35,28 +38,67 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
+  optimize loading doc IDs into a bit set. (Adrien Grand)
+
+* GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
+  bit set of matches. (Adrien Grand)
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#14084, GITHUB#13635, GITHUB#13634: Adds new `SeededKnnByteVectorQuery` and `SeededKnnFloatVectorQuery`
+  queries. These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
+  the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
+
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
+  (Robert Muir)
+* GITHUB#13984: Add HNSW graph checks and stats to CheckIndex
+
+* GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
+
+* GITHUB#14138: Implement IntersectVisitor#visit(IntsRef) in  many of the current implementations and add
+  BulkAdder#add(IntsRef) method. They should provide better performance due to less virtual method calls and
+  more efficient bulk processing. (Ignacio Vera)
+
+* GITHUB#14107, GITHUB#14124, GITHUB#14103: Optimize DirectIOIndexInput; add
+  individual and bulk data retrieval overloads; avoid double buffering with
+  slices. (Chris Hegarty)
 
 Optimizations
 ---------------------
 
 * GITHUB#14052: Speed up DisjunctionDISIApproximation#advance. (Adrien Grand)
 
+* GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
+  conjunctions. (Adrien Grand)
+
+* GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#14109: prefetch may select the wrong memory segment for
+  multi-segment slices. (Chris Hegarty)
+
+* GITHUB#14123: SortingCodecReader NPE when segment has no (points, vectors, etc...) (Mike Sokolov)
+
+* GITHUB#14126: Avoid overflow in index input slices invariant checks
+  (Chris Hegarty)
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#14081: Fix urls describing why NIOFS is not recommended for Windows (Marcel Yeonghyeon Ko)
+
+* GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
+
+* GITHUB#14091: Cover all DataType. (Lu Xugang)
 
 ======================= Lucene 10.1.0 =======================
 
@@ -174,6 +216,9 @@ Bug Fixes
 * GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
   and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
 * GITHUB#13819: Prevent flattening of ordered and unordered interval sources (Jim Ferenczi)
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 Build
 ---------------------
@@ -183,16 +228,6 @@ Build
 Other
 ---------------------
 * GITHUB#13982: Remove duplicate test code. (Lu Xugang)
-
-======================== Lucene 10.0.1 =======================
-
-Bug Fixes
----------------------
-
-* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
-  their corresponding ordinals. (Paul King)
-
-* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 ======================= Lucene 10.0.0 =======================
 

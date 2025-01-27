@@ -124,7 +124,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   private final int minimumNumberShouldMatch;
   private final List<BooleanClause> clauses; // used for toString() and getClauses()
-  private final Map<Occur, Collection<Query>> clauseSets; // used for equals/hashcode
+  // WARNING: Do not let clauseSets escape from this class as it breaks immutability:
+  private final Map<Occur, Collection<Query>> clauseSets; // used for equals/hashCode
 
   private BooleanQuery(int minimumNumberShouldMatch, BooleanClause[] clauses) {
     this.minimumNumberShouldMatch = minimumNumberShouldMatch;
@@ -153,7 +154,9 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   /** Return the collection of queries for the given {@link Occur}. */
   public Collection<Query> getClauses(Occur occur) {
-    return clauseSets.get(occur);
+    // turn this immutable here, because we need to preserve the correct collection types for
+    // equals/hashCode!
+    return Collections.unmodifiableCollection(clauseSets.get(occur));
   }
 
   /**

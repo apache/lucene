@@ -93,7 +93,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
     segmentWriteState = state;
-
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99HnswVectorsFormat.META_EXTENSION);
@@ -294,6 +293,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       }
 
       @Override
+      public int maxConn() {
+        return graph.maxConn();
+      }
+
+      @Override
       public int entryNode() {
         throw new UnsupportedOperationException("Not supported on a mock graph");
       }
@@ -404,6 +408,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     // write vectors' neighbours on each level into the vectorIndex file
     int countOnLevel0 = graph.size();
     int[][] offsets = new int[graph.numLevels()][];
+    int[] scratch = new int[graph.maxConn() * 2];
     for (int level = 0; level < graph.numLevels(); level++) {
       int[] sortedNodes = NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
       offsets[level] = new int[sortedNodes.length];
@@ -413,18 +418,26 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         int size = neighbors.size();
         // Write size in VInt as the neighbors list is typically small
         long offsetStart = vectorIndex.getFilePointer();
-        vectorIndex.writeVInt(size);
-        // Destructively modify; it's ok we are discarding it after this
         int[] nnodes = neighbors.nodes();
         Arrays.sort(nnodes, 0, size);
         // Now that we have sorted, do delta encoding to minimize the required bits to store the
         // information
-        for (int i = size - 1; i > 0; --i) {
-          assert nnodes[i] < countOnLevel0 : "node too large: " + nnodes[i] + ">=" + countOnLevel0;
-          nnodes[i] -= nnodes[i - 1];
+        int actualSize = 0;
+        if (size > 0) {
+          scratch[0] = nnodes[0];
+          actualSize = 1;
         }
-        for (int i = 0; i < size; i++) {
-          vectorIndex.writeVInt(nnodes[i]);
+        for (int i = 1; i < size; i++) {
+          assert nnodes[i] < countOnLevel0 : "node too large: " + nnodes[i] + ">=" + countOnLevel0;
+          if (nnodes[i - 1] == nnodes[i]) {
+            continue;
+          }
+          scratch[actualSize++] = nnodes[i] - nnodes[i - 1];
+        }
+        // Write the size after duplicates are removed
+        vectorIndex.writeVInt(actualSize);
+        for (int i = 0; i < actualSize; i++) {
+          vectorIndex.writeVInt(scratch[i]);
         }
         offsets[level][nodeOffsetId++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offsetStart);
@@ -448,11 +461,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     meta.writeVLong(vectorIndexLength);
     meta.writeVInt(field.getVectorDimension());
     meta.writeInt(count);
-    meta.writeVInt(M);
     // write graph nodes on each level
     if (graph == null) {
+      meta.writeVInt(M);
       meta.writeVInt(0);
     } else {
+      meta.writeVInt(graph.maxConn());
       meta.writeVInt(graph.numLevels());
       long valueCount = 0;
       for (int level = 0; level < graph.numLevels(); level++) {
