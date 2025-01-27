@@ -22,7 +22,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.knn.EntryPointProvider;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -35,14 +34,13 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
   private final AbstractHnswGraphSearcher delegate;
   private final int[] seedOrds;
 
-  static SeededHnswGraphSearcher fromEntryPointProvider(
-      AbstractHnswGraphSearcher delegate, EntryPointProvider epp, HnswGraph graph)
+  static SeededHnswGraphSearcher fromEntryPoints(
+      AbstractHnswGraphSearcher delegate, int numEps, DocIdSetIterator eps, HnswGraph graph)
       throws IOException {
-    if (epp.numberOfEntryPoints() <= 0) {
+    if (numEps <= 0) {
       throw new IllegalArgumentException("The number of entry points must be > 0");
     }
-    DocIdSetIterator eps = epp.entryPoints();
-    int[] entryPoints = new int[epp.numberOfEntryPoints()];
+    int[] entryPoints = new int[numEps];
     int idx = 0;
     while (idx < entryPoints.length) {
       int entryPointOrdInt = eps.nextDoc();
@@ -53,8 +51,6 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
       assert entryPointOrdInt < graph.size();
       entryPoints[idx++] = entryPointOrdInt;
     }
-    // This is an invalid case, but we should check it
-    assert entryPoints.length > 0;
     return new SeededHnswGraphSearcher(delegate, entryPoints);
   }
 

@@ -25,7 +25,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
-import org.apache.lucene.search.knn.EntryPointProvider;
+import org.apache.lucene.search.knn.HnswKnnCollector;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.Bits;
 
@@ -315,7 +315,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     }
   }
 
-  static class SeededKnnCollector extends KnnCollector.Decorator implements EntryPointProvider {
+  static class SeededKnnCollector extends HnswKnnCollector {
     final DocIdSetIterator entryPoints;
     final int numberOfEntryPoints;
 

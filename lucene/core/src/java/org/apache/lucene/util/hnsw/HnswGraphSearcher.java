@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
-import org.apache.lucene.search.knn.EntryPointProvider;
+import org.apache.lucene.search.knn.HnswKnnCollector;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -53,25 +53,43 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   }
 
   /**
+   * Searches the HNSW graph for the nearest neighbors of a query vector. See {@link
+   * #search(RandomVectorScorer, HnswKnnCollector, HnswGraph, Bits)}
+   */
+  public static void search(
+      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
+      throws IOException {
+    search(
+        scorer,
+        knnCollector instanceof HnswKnnCollector
+            ? (HnswKnnCollector) knnCollector
+            : new HnswKnnCollector(knnCollector),
+        graph,
+        acceptOrds);
+  }
+
+  /**
    * Searches the HNSW graph for the nearest neighbors of a query vector. If entry points are
    * directly provided via the knnCollector, then the search will be initialized at those points.
    * Otherwise, the search will discover the best entry point per the normal HNSW search algorithm.
    *
    * @param scorer the scorer to compare the query with the nodes
-   * @param knnCollector a collector of top knn results to be returned
+   * @param knnCollector a hnsw knn collector of top knn results to be returned
    * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
    *     graph.
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
    *     {@code null} if they are all allowed to match.
    */
   public static void search(
-      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
+      RandomVectorScorer scorer, HnswKnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
     AbstractHnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
-    if (knnCollector instanceof EntryPointProvider epp && epp.numberOfEntryPoints() > 0) {
-      graphSearcher = SeededHnswGraphSearcher.fromEntryPointProvider(graphSearcher, epp, graph);
+    if (knnCollector.numberOfEntryPoints() > 0) {
+      graphSearcher =
+          SeededHnswGraphSearcher.fromEntryPoints(
+              graphSearcher, knnCollector.numberOfEntryPoints(), knnCollector.entryPoints(), graph);
     }
     graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
   }

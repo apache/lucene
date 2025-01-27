@@ -17,17 +17,15 @@
 
 package org.apache.lucene.util.hnsw;
 
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.search.knn.EntryPointProvider;
+import org.apache.lucene.search.knn.HnswKnnCollector;
 
 /**
  * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId
  */
-public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
-    implements EntryPointProvider {
+public final class OrdinalTranslatedKnnCollector extends HnswKnnCollector {
 
   private final IntToIntFunction vectorOrdinalToDocId;
 
@@ -52,21 +50,5 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
                 ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
                 : TotalHits.Relation.EQUAL_TO),
         td.scoreDocs);
-  }
-
-  @Override
-  public DocIdSetIterator entryPoints() {
-    if (collector instanceof EntryPointProvider epp) {
-      return epp.entryPoints();
-    }
-    return DocIdSetIterator.empty();
-  }
-
-  @Override
-  public int numberOfEntryPoints() {
-    if (collector instanceof EntryPointProvider epp) {
-      return epp.numberOfEntryPoints();
-    }
-    return 0;
   }
 }
