@@ -20,10 +20,11 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.MultiVectorKnnCollectorManager;
 
-/** Adapts {@link KnnByteVectorQuery} to run on multivalued vector fields.
+/**
+ * Adapts {@link KnnByteVectorQuery} to run on multivalued vector fields.
  *
- * <p>Uses {@link MultiVectorKnnCollectorManager} to collect docs based on the
- * best score from all its vectors.
+ * <p>Uses {@link MultiVectorKnnCollectorManager} to collect docs based on the best score from all
+ * its vectors.
  */
 public class KnnByteMultiVectorQuery extends KnnByteVectorQuery {
 

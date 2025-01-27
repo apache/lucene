@@ -20,15 +20,17 @@ import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.MultiVectorKnnCollectorManager;
 
-/** Adapts {@link KnnFloatVectorQuery} to run on multivalued vector fields.
+/**
+ * Adapts {@link KnnFloatVectorQuery} to run on multivalued vector fields.
  *
- * <p>Uses {@link MultiVectorKnnCollectorManager} to collect docs based on the
- * best score from all its vectors.
+ * <p>Uses {@link MultiVectorKnnCollectorManager} to collect docs based on the best score from all
+ * its vectors.
  */
 public class KnnFloatMultiVectorQuery extends KnnFloatVectorQuery {
 
   // TODO: we could update KnnFloatVectorQuery to always use MultiVectorKnnCollectorManager
-  //  creating a separate class for now to not impact existing query path (and make future extensions simple).
+  //  creating a separate class for now to not impact existing query path (and make future
+  // extensions simple).
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the

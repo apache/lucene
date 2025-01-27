@@ -44,32 +44,32 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    */
   public abstract float[] vectorValue(int ord) throws IOException;
 
-    /** Returns all vector values indexed for the document corresponding to provided ordinal */
-    public Iterator<float[]> allVectorValues(int ord) throws IOException {
-      return new Iterator<>() {
-        int baseOrd = baseOrd(ord);
-        int count = vectorCount(ord);
+  /** Returns all vector values indexed for the document corresponding to provided ordinal */
+  public Iterator<float[]> allVectorValues(int ord) throws IOException {
+    return new Iterator<>() {
+      int baseOrd = baseOrd(ord);
+      int count = vectorCount(ord);
 
-        @Override
-        public boolean hasNext() {
-          return count > 0;
-        }
+      @Override
+      public boolean hasNext() {
+        return count > 0;
+      }
 
-        @Override
-        public float[] next() {
-          float[] v = null;
-          try {
-            v = vectorValue(baseOrd);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          } finally {
-            baseOrd++;
-            count--;
-          }
-          return v;
+      @Override
+      public float[] next() {
+        float[] v = null;
+        try {
+          v = vectorValue(baseOrd);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        } finally {
+          baseOrd++;
+          count--;
         }
-      };
-    }
+        return v;
+      }
+    };
+  }
 
   /**
    * Returns an iterator for multi-vector values, when base ordinal and count are provided. This is

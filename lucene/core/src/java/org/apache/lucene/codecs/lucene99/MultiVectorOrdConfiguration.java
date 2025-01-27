@@ -194,11 +194,11 @@ public class MultiVectorOrdConfiguration {
   public static MultiVectorMaps createMultiVectorMaps(
       DocIdSetIterator disi, IntToIntFunction docIdToVectorCount, int ordCount, int docCount)
       throws IOException {
-//    TODO: enable only after metadata format handles single-vector optimization
-//    if (docCount == ordCount) {
-//      // single valued vector field
-//      return new MultiVectorMaps(docCount);
-//    }
+    //    TODO: enable only after metadata format handles single-vector optimization
+    //    if (docCount == ordCount) {
+    //      // single valued vector field
+    //      return new MultiVectorMaps(docCount);
+    //    }
     int[] docOrdFreq = new int[docCount + 1];
     int[] ordToDocMap = new int[ordCount];
     int[] baseOrdMap = new int[ordCount];
