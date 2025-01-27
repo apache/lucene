@@ -184,6 +184,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       int[] new2OldOrd,
       DocsWithFieldSet newDocsWithField)
       throws IOException {
+    // TODO: a similar function exists in IncrementalHnswGraphMerger#getNewOrdMapping
+    //       maybe we can do a further refactoring
     remapOrdinals(
         oldDocIds,
         sortMap,
@@ -192,41 +194,6 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         old2NewOrd,
         new2OldOrd,
         newDocsWithField);
-    //    // TODO: a similar function exists in IncrementalHnswGraphMerger#getNewOrdMapping
-    //    //       maybe we can do a further refactoring
-    //    Objects.requireNonNull(oldDocIds);
-    //    Objects.requireNonNull(sortMap);
-    //    assert (old2NewOrd != null || new2OldOrd != null || newDocsWithField != null);
-    //    assert (old2NewOrd == null || old2NewOrd.length == oldDocIds.cardinality());
-    //    assert (new2OldOrd == null || new2OldOrd.length == oldDocIds.cardinality());
-    //    IntIntHashMap newIdToOldOrd = new IntIntHashMap();
-    //    DocIdSetIterator iterator = oldDocIds.iterator();
-    //    int[] newDocIds = new int[oldDocIds.cardinality()];
-    //    int oldOrd = 0;
-    //    for (int oldDocId = iterator.nextDoc();
-    //        oldDocId != DocIdSetIterator.NO_MORE_DOCS;
-    //        oldDocId = iterator.nextDoc()) {
-    //      int newId = sortMap.oldToNew(oldDocId);
-    //      newIdToOldOrd.put(newId, oldOrd);
-    //      newDocIds[oldOrd] = newId;
-    //      oldOrd++;
-    //    }
-    //
-    //    Arrays.sort(newDocIds);
-    //    int newOrd = 0;
-    //    for (int newDocId : newDocIds) {
-    //      int currOldOrd = newIdToOldOrd.get(newDocId);
-    //      if (old2NewOrd != null) {
-    //        old2NewOrd[currOldOrd] = newOrd;
-    //      }
-    //      if (new2OldOrd != null) {
-    //        new2OldOrd[newOrd] = currOldOrd;
-    //      }
-    //      if (newDocsWithField != null) {
-    //        newDocsWithField.add(newDocId);
-    //      }
-    //      newOrd++;
-    //    }
   }
 
   public static record DocWithOrd(int docId, int ord) implements Comparable<DocWithOrd> {

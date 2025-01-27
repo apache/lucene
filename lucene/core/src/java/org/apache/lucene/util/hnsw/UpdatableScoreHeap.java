@@ -177,26 +177,6 @@ public class UpdatableScoreHeap {
     return i;
   }
 
-  //  private int downHeapWithoutCacheUpdate(int i) {
-  //    DocScore node = heapNodes[i];
-  //    int j = i << 1; // find smaller child
-  //    int k = j + 1;
-  //    if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
-  //      j = k;
-  //    }
-  //    while (j <= size && heapNodes[j].compareTo(node) < 0) {
-  //      heapNodes[i] = heapNodes[j];
-  //      i = j;
-  //      j = i << 1;
-  //      k = j + 1;
-  //      if (k <= size && heapNodes[k].compareTo(heapNodes[j]) < 0) {
-  //        j = k;
-  //      }
-  //    }
-  //    heapNodes[i] = node; // install saved value
-  //    return i;
-  //  }
-
   /** Keeps track of docId and score. */
   private record DocScore(int doc, float score) implements Comparable<DocScore> {
 

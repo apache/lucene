@@ -542,13 +542,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       if (finished) {
         throw new IllegalStateException("already finished, cannot add more values");
       }
-      //      if (docID == lastDocID) {
-      //        throw new IllegalArgumentException(
-      //            "VectorValuesField \""
-      //                + fieldInfo.name
-      //                + "\" appears more than once in this document (only one value is allowed per
-      // field)");
-      //      }
       if (docID < lastDocID) {
         throw new IllegalArgumentException(
             "Out of order doc ids: last=" + lastDocID + ", next=" + docID);

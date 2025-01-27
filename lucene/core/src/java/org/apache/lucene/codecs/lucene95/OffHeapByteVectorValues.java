@@ -166,11 +166,13 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
 
     if (mvOrdConfiguration != null) {
       isMultiValued = mvOrdConfiguration.ordCount() > docCount;
+      ordCount = mvOrdConfiguration.ordCount();
       docIndexToBaseOrd = mvOrdConfiguration.getDocIndexToBaseOrdReader(bytesSlice);
       ordToDocMap = mvOrdConfiguration.getOrdToDocReader(bytesSlice);
+      // TODO: maybe we can baseOrdMap/nextBaseOrdMap by doing binary search on docIndexToBaseOrd
+      //  or only load them on demand?
       baseOrdMap = mvOrdConfiguration.getBaseOrdReader(bytesSlice);
       nextBaseOrdMap = mvOrdConfiguration.getNextBaseOrdReader(bytesSlice);
-      ordCount = mvOrdConfiguration.ordCount();
     }
 
     if (configuration.isDense()) {

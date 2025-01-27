@@ -627,13 +627,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public void addValue(int docID, T vectorValue) throws IOException {
-      //      if (docID == lastDocID) {
-      //        throw new IllegalArgumentException(
-      //            "VectorValuesField \""
-      //                + fieldInfo.name
-      //                + "\" appears more than once in this document (only one value is allowed per
-      // field)");
-      //      }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       hnswGraphBuilder.addGraphNode(node);
       node++;

@@ -160,11 +160,13 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
     if (mvOrdConfiguration != null) {
       isMultiValued = mvOrdConfiguration.ordCount() > docCount;
+      ordCount = mvOrdConfiguration.ordCount();
       docIndexToBaseOrd = mvOrdConfiguration.getDocIndexToBaseOrdReader(vectorData);
       ordToDocMap = mvOrdConfiguration.getOrdToDocReader(vectorData);
+      // TODO: maybe we can baseOrdMap/nextBaseOrdMap by doing binary search on docIndexToBaseOrd
+      //  or only load them on demand?
       baseOrdMap = mvOrdConfiguration.getBaseOrdReader(vectorData);
       nextBaseOrdMap = mvOrdConfiguration.getNextBaseOrdReader(vectorData);
-      ordCount = mvOrdConfiguration.ordCount();
     }
     int byteSize = dimension * Float.BYTES;
     if (configuration.docsWithFieldOffset == -1) {
