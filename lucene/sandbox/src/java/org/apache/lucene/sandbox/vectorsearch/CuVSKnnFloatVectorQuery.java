@@ -24,9 +24,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.Bits;
 
-/**
- * Query for CuVS
- */
+/** Query for CuVS */
 public class CuVSKnnFloatVectorQuery extends KnnFloatVectorQuery {
 
   private final int iTopK;

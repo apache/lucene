@@ -15,7 +15,5 @@
  * limitations under the License.
  */
 
-/**
- * CuVS based fast vector search
- */
+/** CuVS based fast vector search */
 package org.apache.lucene.sandbox.vectorsearch;

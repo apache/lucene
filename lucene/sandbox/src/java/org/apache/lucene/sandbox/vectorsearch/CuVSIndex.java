@@ -21,9 +21,7 @@ import com.nvidia.cuvs.CagraIndex;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * This class holds references to the actual CuVS Index (Cagra, Brute force, etc.)
- */
+/** This class holds references to the actual CuVS Index (Cagra, Brute force, etc.) */
 public class CuVSIndex {
   private final CagraIndex cagraIndex;
   private final BruteForceIndex bruteforceIndex;
@@ -49,7 +47,7 @@ public class CuVSIndex {
     this.fieldName = Objects.requireNonNull(fieldName);
     this.segmentName = Objects.requireNonNull(segmentName);
     if (maxDocs < 0) {
-      throw new IllegalArgumentException("negative maxDocs:" +maxDocs);
+      throw new IllegalArgumentException("negative maxDocs:" + maxDocs);
     }
     this.maxDocs = maxDocs;
   }

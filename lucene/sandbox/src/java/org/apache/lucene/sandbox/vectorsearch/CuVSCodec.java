@@ -24,9 +24,7 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene101.Lucene101Codec;
 import org.apache.lucene.sandbox.vectorsearch.CuVSVectorsWriter.MergeStrategy;
 
-/**
- * CuVS based codec for GPU based vector search
- */
+/** CuVS based codec for GPU based vector search */
 public class CuVSCodec extends FilterCodec {
 
   public CuVSCodec() {

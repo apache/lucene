@@ -20,9 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import org.apache.lucene.store.IndexInput;
 
-/**
- * InputStream semantics for reading from an IndexInput
- */
+/** InputStream semantics for reading from an IndexInput */
 public class SegmentInputStream extends InputStream {
 
   /** */

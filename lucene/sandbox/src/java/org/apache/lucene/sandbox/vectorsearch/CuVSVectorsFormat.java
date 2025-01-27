@@ -24,9 +24,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.sandbox.vectorsearch.CuVSVectorsWriter.MergeStrategy;
 
-/**
- * CuVS based KnnVectorsFormat for GPU acceleration
- */
+/** CuVS based KnnVectorsFormat for GPU acceleration */
 public class CuVSVectorsFormat extends KnnVectorsFormat {
 
   public static final String VECTOR_DATA_CODEC_NAME = "Lucene99CagraVectorsFormatData";
