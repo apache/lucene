@@ -145,6 +145,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             "org.apache.lucene.queries",
             "org.apache.lucene.queryparser",
             "org.apache.lucene.replicator",
+            "org.apache.lucene.s3directory",
             "org.apache.lucene.sandbox",
             "org.apache.lucene.spatial3d",
             "org.apache.lucene.spatial_extras",
