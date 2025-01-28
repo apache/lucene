@@ -92,9 +92,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
-    finish();
-    frozen = true;
-    return workers[0].getCompletedGraph();
+    return getCompletedGraph();
   }
 
   @Override
