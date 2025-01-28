@@ -192,6 +192,11 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     return entryNode.get().node;
   }
 
+  @Override
+  public int maxConn() {
+    return nsize - 1;
+  }
+
   /**
    * Try to set the entry node if the graph does not have one
    *

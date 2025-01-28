@@ -1338,6 +1338,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     @Override
+    public int maxConn() throws IOException {
+      return delegate.maxConn();
+    }
+
+    @Override
     public NodesIterator getNodesOnLevel(int level) throws IOException {
       return delegate.getNodesOnLevel(level);
     }

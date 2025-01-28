@@ -527,6 +527,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
 
     @Override
+    public int maxConn() {
+      return currentNeighborsBuffer.length >> 1;
+    }
+
+    @Override
     public int entryNode() throws IOException {
       return entryNode;
     }
