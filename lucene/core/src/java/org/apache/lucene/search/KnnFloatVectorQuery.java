@@ -84,7 +84,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
+    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, null, context);
     LeafReader reader = context.reader();
     FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
     if (floatVectorValues == null) {

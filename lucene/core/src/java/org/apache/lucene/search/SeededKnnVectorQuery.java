@@ -25,8 +25,8 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
-import org.apache.lucene.search.knn.HnswKnnCollector;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -273,7 +273,9 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     }
 
     @Override
-    public KnnCollector newCollector(int visitLimit, LeafReaderContext ctx) throws IOException {
+    public KnnCollector newCollector(
+        int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx)
+        throws IOException {
       TopScoreDocCollector seedCollector =
           new TopScoreDocCollectorManager(k, null, Integer.MAX_VALUE).newCollector();
       final LeafReader leafReader = ctx.reader();
@@ -294,7 +296,8 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
         }
         leafCollector.finish();
       }
-      KnnCollector delegateCollector = knnCollectorManager.newCollector(visitLimit, ctx);
+      KnnCollector delegateCollector =
+          knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx);
       TopDocs seedTopDocs = seedCollector.topDocs();
       VectorScorer scorer =
           delegate.createVectorScorer(ctx, leafReader.getFieldInfos().fieldInfo(field));
@@ -309,31 +312,10 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
       // Most underlying iterators are indexed, so we can map the seed docs to the vector docs
       if (vectorIterator instanceof KnnVectorValues.DocIndexIterator indexIterator) {
         DocIdSetIterator seedDocs = new MappedDISI(indexIterator, new TopDocsDISI(seedTopDocs));
-        return new SeededKnnCollector(delegateCollector, seedDocs, seedTopDocs.scoreDocs.length);
+        return knnCollectorManager.newCollector(
+            visitLimit, new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length), ctx);
       }
       return delegateCollector;
-    }
-  }
-
-  static class SeededKnnCollector extends HnswKnnCollector {
-    final DocIdSetIterator entryPoints;
-    final int numberOfEntryPoints;
-
-    SeededKnnCollector(
-        KnnCollector collector, DocIdSetIterator entryPoints, int numberOfEntryPoints) {
-      super(collector);
-      this.entryPoints = entryPoints;
-      this.numberOfEntryPoints = numberOfEntryPoints;
-    }
-
-    @Override
-    public DocIdSetIterator entryPoints() {
-      return entryPoints;
-    }
-
-    @Override
-    public int numberOfEntryPoints() {
-      return numberOfEntryPoints;
     }
   }
 }

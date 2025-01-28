@@ -22,7 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
-import org.apache.lucene.search.knn.HnswKnnCollector;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -53,22 +53,6 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   }
 
   /**
-   * Searches the HNSW graph for the nearest neighbors of a query vector. See {@link
-   * #search(RandomVectorScorer, HnswKnnCollector, HnswGraph, Bits)}
-   */
-  public static void search(
-      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
-      throws IOException {
-    search(
-        scorer,
-        knnCollector instanceof HnswKnnCollector
-            ? (HnswKnnCollector) knnCollector
-            : new HnswKnnCollector(knnCollector),
-        graph,
-        acceptOrds);
-  }
-
-  /**
    * Searches the HNSW graph for the nearest neighbors of a query vector. If entry points are
    * directly provided via the knnCollector, then the search will be initialized at those points.
    * Otherwise, the search will discover the best entry point per the normal HNSW search algorithm.
@@ -81,15 +65,16 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
    *     {@code null} if they are all allowed to match.
    */
   public static void search(
-      RandomVectorScorer scorer, HnswKnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
+      RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
     AbstractHnswGraphSearcher graphSearcher =
         new HnswGraphSearcher(
             new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
-    if (knnCollector.numberOfEntryPoints() > 0) {
+    if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded
+        && seeded.numberOfEntryPoints() > 0) {
       graphSearcher =
           SeededHnswGraphSearcher.fromEntryPoints(
-              graphSearcher, knnCollector.numberOfEntryPoints(), knnCollector.entryPoints(), graph);
+              graphSearcher, seeded.numberOfEntryPoints(), seeded.entryPoints(), graph);
     }
     graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
   }
@@ -109,7 +94,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   public static KnnCollector search(
       RandomVectorScorer scorer, int topK, OnHeapHnswGraph graph, Bits acceptOrds, int visitedLimit)
       throws IOException {
-    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
+    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit, null);
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
             new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));

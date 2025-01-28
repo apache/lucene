@@ -31,6 +31,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
@@ -182,11 +183,19 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
           // Restrictive seed query -- 6 documents
           Query seed2 = IntPoint.newRangeQuery("tag", 1, 6);
+          int seedCount =
+              searcher.count(
+                  new BooleanQuery.Builder()
+                      .add(seed2, BooleanClause.Occur.MUST)
+                      .add(new FieldExistsQuery("field"), BooleanClause.Occur.MUST)
+                      .build());
           byteVectorQuery =
               new KnnByteVectorQuery("field", floatToBytes(randomVector(dimension)), k, null);
-          query = new AssertingSeededKnnVectorQuery(byteVectorQuery, seed2, null, seedCalls);
+          query =
+              new AssertingSeededKnnVectorQuery(
+                  byteVectorQuery, seed2, null, seedCount > 0 ? seedCalls : null);
           results = searcher.search(query, n);
-          assertEquals(seedCalls.get(), 2);
+          assertEquals(seedCalls.get(), seedCount > 0 ? 2 : 1);
           expected = Math.min(Math.min(n, k), reader.numDocs());
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
@@ -256,41 +265,58 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       }
 
       @Override
-      public KnnCollector newCollector(int numVisisted, LeafReaderContext context)
+      public KnnCollector newCollector(
+          int numVisisted, KnnSearchStrategy searchStrategy, LeafReaderContext context)
           throws IOException {
-        KnnCollector knnCollector = knnCollectorManager.newCollector(numVisisted, context);
-        if (knnCollector instanceof SeededKnnCollector seededKnnCollector) {
-          if (seedCalls == null) {
-            fail("Expected non-seeded collector");
+        KnnCollector knnCollector =
+            knnCollectorManager.newCollector(numVisisted, searchStrategy, context);
+        if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded) {
+          if (seedCalls == null && seeded.numberOfEntryPoints() > 0) {
+            fail("Expected non-seeded collector but received: " + knnCollector);
           }
-          return new AssertingKnnCollector(seededKnnCollector);
+          return new AssertingKnnCollector(knnCollector);
         }
         if (seedCalls != null) {
-          fail("Expected seeded collector");
+          fail("Expected seeded collector but received: " + knnCollector);
         }
         return knnCollector;
       }
     }
 
-    class AssertingKnnCollector extends SeededKnnCollector {
-      private final SeededKnnCollector seeded;
-
-      public AssertingKnnCollector(SeededKnnCollector collector) {
-        super(collector, collector.entryPoints, collector.numberOfEntryPoints());
-        this.seeded = collector;
+    class AssertingKnnCollector extends KnnCollector.Decorator {
+      public AssertingKnnCollector(KnnCollector collector) {
+        super(collector);
       }
 
       @Override
-      public DocIdSetIterator entryPoints() {
-        DocIdSetIterator iterator = seeded.entryPoints();
-        assert iterator.cost() > 0;
-        seedCalls.incrementAndGet();
-        return iterator;
+      public KnnSearchStrategy getSearchStrategy() {
+        KnnSearchStrategy searchStrategy = collector.getSearchStrategy();
+        if (searchStrategy instanceof KnnSearchStrategy.Seeded seeded) {
+          return new AssertingSeededStrategy(seeded);
+        }
+        return searchStrategy;
       }
 
-      @Override
-      public int numberOfEntryPoints() {
-        return seeded.numberOfEntryPoints();
+      class AssertingSeededStrategy extends KnnSearchStrategy.Seeded {
+        private final KnnSearchStrategy.Seeded seeded;
+
+        public AssertingSeededStrategy(KnnSearchStrategy.Seeded seeded) {
+          super(seeded.entryPoints(), seeded.numberOfEntryPoints());
+          this.seeded = seeded;
+        }
+
+        @Override
+        public int numberOfEntryPoints() {
+          return seeded.numberOfEntryPoints();
+        }
+
+        @Override
+        public DocIdSetIterator entryPoints() {
+          DocIdSetIterator iterator = seeded.entryPoints();
+          assert iterator.cost() > 0;
+          seedCalls.incrementAndGet();
+          return iterator;
+        }
       }
     }
   }

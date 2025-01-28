@@ -20,12 +20,11 @@ package org.apache.lucene.util.hnsw;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.search.knn.HnswKnnCollector;
 
 /**
  * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId
  */
-public final class OrdinalTranslatedKnnCollector extends HnswKnnCollector {
+public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator {
 
   private final IntToIntFunction vectorOrdinalToDocId;
 

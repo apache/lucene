@@ -170,11 +170,17 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
           // Restrictive seed query -- 6 documents
           Query seed2 = IntPoint.newRangeQuery("tag", 1, 6);
+          int seedCount =
+              searcher.count(
+                  new BooleanQuery.Builder()
+                      .add(seed2, BooleanClause.Occur.MUST)
+                      .add(new FieldExistsQuery("field"), BooleanClause.Occur.MUST)
+                      .build());
           query =
               new TestSeededKnnByteVectorQuery.AssertingSeededKnnVectorQuery(
-                  knnFloatVectorQuery, seed2, null, seedCalls);
+                  knnFloatVectorQuery, seed2, null, seedCount > 0 ? seedCalls : null);
           results = searcher.search(query, n);
-          assertEquals(seedCalls.get(), 2);
+          assertEquals(seedCalls.get(), seedCount > 0 ? 2 : 1);
           expected = Math.min(Math.min(n, k), reader.numDocs());
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
