@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.tests.index;
 
-import static org.apache.lucene.tests.util.LuceneTestCase.VERBOSE;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -193,9 +191,6 @@ public class RandomCodec extends AssertingCodec {
       // Safety:
       assert previousMappings.size() < 10000 : "test went insane";
     }
-    if (VERBOSE) {
-      System.out.println("RandomPostingsFormat: " + name + " -> " + codec);
-    }
     return codec;
   }
 
@@ -208,9 +203,6 @@ public class RandomCodec extends AssertingCodec {
       // Safety:
       assert previousDVMappings.size() < 10000 : "test went insane";
     }
-    if (VERBOSE) {
-      System.out.println("RandomDocValuesFormat: " + name + " -> " + codec);
-    }
     return codec;
   }
 
@@ -222,9 +214,6 @@ public class RandomCodec extends AssertingCodec {
       previousKnnMappings.put(name, format);
       // Safety:
       assert previousKnnMappings.size() < 10000 : "test went insane";
-    }
-    if (VERBOSE) {
-      System.out.println("RandomKnnFormat: " + name + " -> " + format);
     }
     return format;
   }
