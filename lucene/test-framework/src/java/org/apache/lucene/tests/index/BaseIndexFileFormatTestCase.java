@@ -275,6 +275,9 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setUseCompoundFile(false)
             .setMergePolicy(mp);
+    if (VERBOSE) {
+      cfg.setInfoStream(System.out);
+    }
     IndexWriter w = new IndexWriter(dir, cfg);
     final int numDocs = atLeast(500);
     for (int i = 0; i < numDocs; ++i) {
