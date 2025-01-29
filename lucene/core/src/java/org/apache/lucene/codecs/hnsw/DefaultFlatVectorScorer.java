@@ -113,7 +113,7 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(vector, vectors1.vectorValue(ord));
+          return similarityFunction.compare(vector, vectors1.vectorValue(node));
         }
       };
     }
@@ -133,14 +133,12 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   private static final class FloatScoringSupplier implements RandomVectorScorerSupplier {
     private final FloatVectorValues vectors;
     private final FloatVectorValues vectors1;
-    private final FloatVectorValues vectors2;
     private final VectorSimilarityFunction similarityFunction;
 
     private FloatScoringSupplier(
         FloatVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
       this.vectors = vectors;
       vectors1 = vectors.copy();
-      vectors2 = vectors.copy();
       this.similarityFunction = similarityFunction;
     }
 
@@ -151,7 +149,7 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectors) {
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(vectors1.vectorValue(ord), vectors2.vectorValue(node));
+          return similarityFunction.compare(vector, vectors1.vectorValue(node));
         }
 
         @Override
