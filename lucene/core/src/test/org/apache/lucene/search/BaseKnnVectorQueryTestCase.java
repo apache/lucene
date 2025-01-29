@@ -24,6 +24,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
@@ -41,7 +42,9 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
@@ -61,6 +64,7 @@ import org.apache.lucene.util.FixedBitSet;
 
 /** Test cases for AbstractKnnVectorQuery objects. */
 abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
+  static final float EPSILON = 0.001f;
 
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
@@ -478,6 +482,62 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertEquals(8, results.scoreDocs.length);
         assertIdMatches(reader, "id10", results.scoreDocs[0]);
         assertIdMatches(reader, "id6", results.scoreDocs[7]);
+      }
+    }
+  }
+
+  /** Tests with random vectors, number of documents, etc. Uses RandomIndexWriter. */
+  public void testRandomConsistencySingleThreaded() throws IOException {
+    assertRandomConsistency(false);
+  }
+
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/14180")
+  public void testRandomConsistencyMultiThreaded() throws IOException {
+    assertRandomConsistency(true);
+  }
+
+  private void assertRandomConsistency(boolean multiThreaded) throws IOException {
+    int numDocs = 100;
+    int dimension = 4;
+    int numIters = 10;
+    boolean everyDocHasAVector = random().nextBoolean();
+    Random r = random();
+    try (Directory d = newDirectoryForTest()) {
+      // To ensure consistency between seeded runs, remove some randomness
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setMergeScheduler(new SerialMergeScheduler());
+      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+      iwc.setMaxBufferedDocs(numDocs);
+      iwc.setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+      try (IndexWriter w = new IndexWriter(d, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          if (everyDocHasAVector || random().nextInt(10) != 2) {
+            doc.add(getKnnVectorField("field", randomVector(dimension)));
+          }
+          w.addDocument(doc);
+          if (r.nextBoolean() && i % 50 == 0) {
+            w.flush();
+          }
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader, true, true, multiThreaded);
+        // first get the initial set of docs, and we expect all future queries to be exactly the
+        // same
+        int k = random().nextInt(80) + 1;
+        AbstractKnnVectorQuery query = getKnnVectorQuery("field", randomVector(dimension), k);
+        int n = random().nextInt(100) + 1;
+        TopDocs expectedResults = searcher.search(query, n);
+        for (int i = 0; i < numIters; i++) {
+          TopDocs results = searcher.search(query, n);
+          assertEquals(expectedResults.totalHits.value(), results.totalHits.value());
+          assertEquals(expectedResults.scoreDocs.length, results.scoreDocs.length);
+          for (int j = 0; j < results.scoreDocs.length; j++) {
+            assertEquals(expectedResults.scoreDocs[j].doc, results.scoreDocs[j].doc);
+            assertEquals(expectedResults.scoreDocs[j].score, results.scoreDocs[j].score, EPSILON);
+          }
+        }
       }
     }
   }
