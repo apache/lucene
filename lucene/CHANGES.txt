@@ -68,6 +68,9 @@ Other
 
 * GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
 
+* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j
+  from 1.7.36 to 2.0.16. (Michael Froh)
+
 ======================= Lucene 10.1.0 =======================
 
 API Changes
