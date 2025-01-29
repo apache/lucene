@@ -14,26 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
 
-package org.apache.lucene.analysis.opennlp.tools;
+import java.io.IOException;
+import org.apache.lucene.util.Bits;
 
-import opennlp.tools.postag.POSModel;
-import opennlp.tools.postag.POSTagFormat;
-import opennlp.tools.postag.POSTagger;
-import opennlp.tools.postag.POSTaggerME;
+/** Bulk iterator over a {@link DocIdSetIterator}. */
+public abstract class DocIdSetBulkIterator {
 
-/**
- * Supply OpenNLP Parts-Of-Speech Tagging tool Requires binary models from OpenNLP project on
- * SourceForge.
- */
-public class NLPPOSTaggerOp {
-  private final POSTagger tagger;
+  /** Sole constructor, invoked by sub-classes. */
+  protected DocIdSetBulkIterator() {}
 
-  public NLPPOSTaggerOp(POSModel model) {
-    tagger = new POSTaggerME(model, POSTagFormat.PENN);
-  }
-
-  public synchronized String[] getPOSTags(String[] words) {
-    return tagger.tag(words);
-  }
+  /**
+   * Iterate over documents contained in this iterator and call {@link LeafCollector#collect} on
+   * them.
+   */
+  public abstract void iterate(LeafCollector collector, Bits acceptDocs, int min, int max)
+      throws IOException;
 }
