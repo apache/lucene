@@ -27,7 +27,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /** Methods to deal with a CuVS composite file inside a segment */
-public class CuVSSegmentFile implements AutoCloseable {
+/*package-private*/ class CuVSSegmentFile implements AutoCloseable {
   private final ZipOutputStream zos;
 
   private Set<String> filesAdded = new HashSet<String>();

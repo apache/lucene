@@ -52,7 +52,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 
 /** KnnVectorsReader instance associated with CuVS format */
-public class CuVSVectorsReader extends KnnVectorsReader {
+/*package-private*/ class CuVSVectorsReader extends KnnVectorsReader {
 
   // protected Logger log = Logger.getLogger(getClass().getName());
 

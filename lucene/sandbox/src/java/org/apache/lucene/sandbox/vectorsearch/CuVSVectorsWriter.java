@@ -43,7 +43,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.SuppressForbidden;
 
 /** KnnVectorsWriter for CuVS, responsible for merge and flush of vectors into GPU */
-public class CuVSVectorsWriter extends KnnVectorsWriter {
+/*package-private*/ class CuVSVectorsWriter extends KnnVectorsWriter {
 
   // protected Logger log = Logger.getLogger(getClass().getName());
 

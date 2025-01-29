@@ -21,7 +21,7 @@ import java.io.InputStream;
 import org.apache.lucene.store.IndexInput;
 
 /** InputStream semantics for reading from an IndexInput */
-public class SegmentInputStream extends InputStream {
+/*package-private*/ class SegmentInputStream extends InputStream {
 
   /** */
   private final IndexInput indexInput;
