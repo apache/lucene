@@ -26,6 +26,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 
 /** A bit vector scorer for scoring byte vectors. */
 public class FlatBitVectorsScorer implements FlatVectorsScorer {
@@ -58,7 +59,7 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     throw new IllegalArgumentException("vectorValues must be an instance of ByteVectorValues");
   }
 
-  static class BitRandomVectorScorer implements RandomVectorScorer {
+  static class BitRandomVectorScorer implements UpdateableRandomVectorScorer {
     private final ByteVectorValues vectorValues;
     private final int bitDimensions;
     private final byte[] query;
@@ -78,6 +79,11 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     @Override
     public int maxOrd() {
       return vectorValues.size();
+    }
+
+    @Override
+    public void setScoringOrdinal(int node) throws IOException {
+      System.arraycopy(vectorValues.vectorValue(node), 0, query, 0, query.length);
     }
 
     @Override
@@ -103,7 +109,7 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer(int ord) throws IOException {
       byte[] query = vectorValues1.vectorValue(ord);
       return new BitRandomVectorScorer(vectorValues2, query);
     }

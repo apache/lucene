@@ -57,6 +57,7 @@ import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
 /**
@@ -561,6 +562,8 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private int lastDocID = -1;
     private int node = 0;
     private final FlatFieldVectorsWriter<T> flatFieldVectorsWriter;
+    private final RandomVectorScorerSupplier scorerSupplier;
+    private UpdateableRandomVectorScorer scorer;
 
     @SuppressWarnings("unchecked")
     static FieldWriter<?> create(
@@ -601,7 +604,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         InfoStream infoStream)
         throws IOException {
       this.fieldInfo = fieldInfo;
-      RandomVectorScorerSupplier scorerSupplier =
+      scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE ->
                 scorer.getRandomVectorScorerSupplier(
@@ -631,7 +634,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
-      hnswGraphBuilder.addGraphNode(node);
+      if (scorer == null) {
+        scorer = scorerSupplier.scorer(node);
+      } else {
+        scorer.setScoringOrdinal(node);
+      }
+      hnswGraphBuilder.addGraphNode(node, scorer);
       node++;
       lastDocID = docID;
     }

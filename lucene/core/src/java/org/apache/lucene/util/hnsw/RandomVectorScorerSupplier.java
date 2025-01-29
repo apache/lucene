@@ -22,13 +22,13 @@ import java.io.IOException;
 /** A supplier that creates {@link RandomVectorScorer} from an ordinal. */
 public interface RandomVectorScorerSupplier {
   /**
-   * This creates a {@link RandomVectorScorer} for scoring random nodes in batches against the given
-   * ordinal.
+   * This creates a {@link UpdateableRandomVectorScorer} for scoring random nodes in batches against
+   * the given ordinal. Optionally allowing the ordinal to be updated.
    *
    * @param ord the ordinal of the node to compare
-   * @return a new {@link RandomVectorScorer}
+   * @return a new {@link UpdateableRandomVectorScorer}
    */
-  RandomVectorScorer scorer(int ord) throws IOException;
+  UpdateableRandomVectorScorer scorer(int ord) throws IOException;
 
   /**
    * Make a copy of the supplier, which will copy the underlying vectorValues so the copy is safe to

@@ -142,6 +142,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
     private final BitSet initializedNodes;
     private int batchSize = DEFAULT_BATCH_SIZE;
+    private UpdateableRandomVectorScorer scorer;
 
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
@@ -191,11 +192,24 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     }
 
     @Override
+    public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
+      if (initializedNodes != null && initializedNodes.get(node)) {
+        return;
+      }
+      super.addGraphNode(node, scorer);
+    }
+
+    @Override
     public void addGraphNode(int node) throws IOException {
       if (initializedNodes != null && initializedNodes.get(node)) {
         return;
       }
-      super.addGraphNode(node);
+      if (scorer == null) {
+        scorer = scorerSupplier.scorer(node);
+      } else {
+        scorer.setScoringOrdinal(node);
+      }
+      addGraphNode(node, scorer);
     }
   }
 
