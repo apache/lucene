@@ -24,14 +24,13 @@ import java.util.logging.Logger;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
 /**
  * Wraps <a href="https://github.com/facebookresearch/faiss">Faiss</a> to create and search vector
- * indexes. This class is mainly for backwards compatibility with older versions of Java (<22), use
- * underlying format directly after upgrade.
+ * indexes. This class is mainly for backwards compatibility with older versions of Java (&lt;22),
+ * use underlying format directly after upgrade.
  *
  * @lucene.experimental
  */
@@ -63,9 +62,9 @@ public class FaissKnnVectorsFormatProvider extends KnnVectorsFormat {
         @SuppressWarnings("unused")
         ClassNotFoundException e) {
 
-      delegate = new Lucene99HnswVectorsFormat();
+      delegate = null;
       Logger.getLogger(getClass().getName())
-          .warning("FaissKnnVectorsFormat class missing, falling back to " + delegate);
+          .warning("FaissKnnVectorsFormat class missing, this object is unusable!");
 
     } catch (NoSuchMethodException | IllegalAccessException e) {
       throw new LinkageError("FaissKnnVectorsFormat is missing correctly typed constructor", e);
