@@ -54,7 +54,8 @@ public final class ExtractJdkApis {
   private static final String PATTERN_VECTOR_VM_INTERNALS = "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
   
   static final Map<Integer,List<String>> CLASSFILE_PATTERNS = Map.of(
-      21, List.of(PATTERN_PANAMA_FOREIGN, PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR)
+      21, List.of(PATTERN_PANAMA_FOREIGN, PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR),
+      22, List.of(PATTERN_PANAMA_FOREIGN)
   );
   
   public static void main(String... args) throws IOException {
