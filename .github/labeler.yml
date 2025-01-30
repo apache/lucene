@@ -44,25 +44,26 @@ module:core/store:
       - any-glob-to-any-file: ['lucene/core/src/java/org/apache/lucene/store/**', 'lucene/core/src/test/org/apache/lucene/store/**']
 
 module:core/other:
-  - changed-files:
-      - any-glob-to-any-file: ['lucene/core/**']
-      - all-globs-to-all-files:
-            - '!lucene/core/src/java/org/apache/lucene/codecs/**'
-            - '!lucene/core/src/test/org/apache/lucene/codecs/**'
-            - '!lucene/core/src/java/org/apache/lucene/util/fst/**'
-            - '!lucene/core/src/test/org/apache/lucene/util/fst/**'
-            - '!lucene/core/src/java/org/apache/lucene/util/hnsw/**'
-            - '!lucene/core/src/test/org/apache/lucene/util/hnsw/**'
-            - '!lucene/core/src/java/org/apache/lucene/index/**'
-            - '!lucene/core/src/test/org/apache/lucene/index/**'
-            - '!lucene/core/src/java/org/apache/lucene/search/**'
-            - '!lucene/core/src/test/org/apache/lucene/search/**'
-            - '!lucene/core/src/java/org/apache/lucene/store/**'
-            - '!lucene/core/src/test/org/apache/lucene/store/**'
+  - all:
+      - changed-files:
+          - any-glob-to-any-file: ['lucene/core/**']
+          - all-globs-to-all-files:
+              - '!lucene/core/src/java/org/apache/lucene/codecs/**'
+              - '!lucene/core/src/test/org/apache/lucene/codecs/**'
+              - '!lucene/core/src/java/org/apache/lucene/util/fst/**'
+              - '!lucene/core/src/test/org/apache/lucene/util/fst/**'
+              - '!lucene/core/src/java/org/apache/lucene/util/hnsw/**'
+              - '!lucene/core/src/test/org/apache/lucene/util/hnsw/**'
+              - '!lucene/core/src/java/org/apache/lucene/index/**'
+              - '!lucene/core/src/test/org/apache/lucene/index/**'
+              - '!lucene/core/src/java/org/apache/lucene/search/**'
+              - '!lucene/core/src/test/org/apache/lucene/search/**'
+              - '!lucene/core/src/java/org/apache/lucene/store/**'
+              - '!lucene/core/src/test/org/apache/lucene/store/**'
 
 module:demo:
-    - changed-files:
-        - any-glob-to-any-file: 'lucene/demo/**'
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/demo/**'
 
 module:expressions:
   - changed-files:
@@ -77,8 +78,8 @@ module:grouping:
       - any-glob-to-any-file: 'lucene/grouping/**'
 
 module:highlighter:
-    - changed-files:
-        - any-glob-to-any-file: 'lucene/highlighter/**'
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/highlighter/**'
 
 module:join:
   - changed-files:
@@ -113,21 +114,17 @@ module:sandbox:
       - any-glob-to-any-file: 'lucene/sandbox/**'
 
 module:spatial:
-    - changed-files:
-        - any-glob-to-any-file: ['lucene/spatial-test-fixtures/**']
+  - changed-files:
+      - any-glob-to-any-file: ['lucene/spatial-extras/**', 'lucene/spatial-test-fixtures/**']
 
 module:spatial3d:
   - changed-files:
       - any-glob-to-any-file: 'lucene/spatial3d/**'
 
-module:spatial-extras:
-  - changed-files:
-      - any-glob-to-any-file: 'lucene/spatial-extras/**'
-
 module:suggest:
-    - changed-files:
-        - any-glob-to-any-file: 'lucene/suggest/**'
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/suggest/**'
 
 module:test-framework:
-    - changed-files:
-        - any-glob-to-any-file: 'lucene/test-framework/**'
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/test-framework/**'
