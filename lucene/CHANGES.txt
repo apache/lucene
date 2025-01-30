@@ -30,6 +30,10 @@ Bug Fixes
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
+
 Other
 ---------------------
 (No changes)
@@ -102,7 +106,7 @@ Other
 
 * GITHUB#14091: Cover all DataType. (Lu Xugang)
 
-* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j 
+* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j
   from 1.7.36 to 2.0.16. (Michael Froh)
 
 ======================= Lucene 10.1.0 =======================
@@ -601,7 +605,7 @@ Improvements
 
 * GITHUB#13285: Early terminate graph searches of AbstractVectorSimilarityQuery to follow timeout set from
   IndexSearcher#setTimeout(QueryTimeout). (Kaival Parikh)
-  
+
 * GITHUB#13633: Add ability to read/write knn vector values to a MemoryIndex. (Ben Trent)
 
 * GITHUB#12627: patch HNSW graphs to improve reachability of all nodes from entry points
@@ -1518,7 +1522,7 @@ New Features
   closed while queries are running can no longer crash the JVM. To disable this feature,
   pass the following sysprop on Java command line:
   "-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false" (Uwe Schindler)
-  
+
 * GITHUB#12252 Add function queries for computing similarity scores between knn vectors. (Elia Porciani, Alessandro Benedetti)
 
 Improvements
@@ -2197,7 +2201,7 @@ New Features
 * LUCENE-10385: Implement Weight#count on IndexSortSortedNumericDocValuesRangeQuery
   to speed up computing the number of hits when possible. (Lu Xugang, Luca Cavanna, Adrien Grand)
 
-* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory` 
+* LUCENE-10422: Monitor Improvements: `Monitor` can use a custom `Directory`
   implementation. `Monitor` can be created with a readonly `QueryIndex` in order to
   have readonly `Monitor` instances. (Niko Usai)
 
@@ -2256,7 +2260,7 @@ Optimizations
   term of each block as a dictionary when compressing suffixes of the other 63
   terms of the block. (Adrien Grand)
 
-* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader. 
+* LUCENE-10411: Add nearest neighbors vectors support to ExitableDirectoryReader.
   (Zach Chen, Adrien Grand, Julie Tibshirani, Tomoko Uchida)
 
 * LUCENE-10542: FieldSource exists implementations can avoid value retrieval (Kevin Risden)
@@ -2421,7 +2425,7 @@ New Features
   points are indexed.
   (Quentin Pradet, Adrien Grand)
 
-* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all 
+* LUCENE-10263: Added Weight#count to NormsFieldExistsQuery to speed up the query if all
   documents have the field.. (Alan Woodward)
 
 * LUCENE-10248: Add SpanishPluralStemFilter, for precise stemming of Spanish plurals.
@@ -2447,14 +2451,14 @@ New Features
 
 * LUCENE-10403: Add ArrayUtil#grow(T[]). (Greg Miller)
 
-* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss, 
+* LUCENE-10414: Add fn:fuzzyTerm interval function to flexible query parser (Dawid Weiss,
   Alan Woodward)
-  
+
 * LUCENE-10378: Implement Weight#count for PointRangeQuery to provide a faster way to calculate
   the number of matching range docs when each doc has at-most one point and the points are 1-dimensional.
   (Gautam Worah, Ignacio Vera, Adrien Grand)
 
-* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)     
+* LUCENE-10415: FunctionScoreQuery and IndexOrDocValuesQuery delegate Weight#count. (Ignacio Vera)
 
 * LUCENE-10382: Add support for filtering in KnnVectorQuery. This allows for finding the
   nearest k documents that also match a query. (Julie Tibshirani, Joel Bernstein)
@@ -2471,10 +2475,10 @@ Improvements
 
 * LUCENE-10238: Upgrade icu4j dependency to 70.1. (Dawid Weiss)
 
-* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the 
+* LUCENE-9820: Extract BKD tree interface and move intersecting logic to the
   PointValues abstract class. (Ignacio Vera, Adrien Grand)
-  
-* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree 
+
+* LUCENE-10262: Lift up restrictions for navigating PointValues#PointTree
   added in LUCENE-9820 (Ignacio Vera)
 
 * LUCENE-9538: Detect polygon self-intersections in the Tessellator. (Ignacio Vera)
@@ -2589,8 +2593,8 @@ Bug Fixes
 
 * LUCENE-10407: Containing intervals could sometimes yield incorrect matches when wrapped
   in a disjunction. (Alan Woodward, Dawid Weiss)
-  
-* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored 
+
+* LUCENE-10405: When using the MemoryIndex, binary and Sorted doc values are stored
    as BytesRef instead of BytesRefHash so they don't have a limit on size. (Ignacio Vera)
 
 * LUCENE-10428: Queries with a misbehaving score function may no longer cause
@@ -2622,7 +2626,7 @@ Other
 
 * LUCENE-10413: Make Ukrainian default stop words list available as a public getter. (Alan Woodward)
 
-* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon 
+* LUCENE-10437: Polygon tessellator throws a more informative error message when the provided polygon
   does not contain enough no-collinear points. (Ignacio Vera)
 
 ======================= Lucene 9.0.0 =======================
@@ -2741,7 +2745,7 @@ API Changes
   only applicable for fields that are indexed with doc values only. (Mayya Sharipova,
   Adrien Grand, Simon Willnauer)
 
-* LUCENE-9047: Directory API is now little endian. (Ignacio Vera, Adrien Grand)  
+* LUCENE-9047: Directory API is now little endian. (Ignacio Vera, Adrien Grand)
 
 * LUCENE-9948: No longer require the user to specify whether-or-not a field is multi-valued in
   LongValueFacetCounts (detect automatically based on what is indexed). (Greg Miller)
@@ -2954,7 +2958,7 @@ Improvements
   (David Smiley)
 
 * LUCENE-10062: Switch taxonomy faceting to use numeric doc values for storing ordinals instead of binary doc values
-  with its own custom encoding. (Greg Miller) 
+  with its own custom encoding. (Greg Miller)
 
 Bug fixes
 ---------------------
@@ -3077,10 +3081,10 @@ Other
 * LUCENE-9822: Add assertion to PFOR exception encoding, documenting the BLOCK_SIZE assumption. (Greg Miller)
 
 * LUCENE-9883: Turn on ecj missingEnumCaseDespiteDefault setting. (Zach Chen)
- 
-* LUCENE-9705: Make new versions of all index formats for the Lucene90 codec and move 
-  the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)  
-  
+
+* LUCENE-9705: Make new versions of all index formats for the Lucene90 codec and move
+  the existing ones to the backwards codecs. (Julie Tibshirani, Ignacio Vera)
+
 * LUCENE-9907: Remove dependency on PackedInts#getReader() from the current codecs and move the
   method to backwards codec. (Ignacio Vera)
 
