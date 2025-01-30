@@ -91,7 +91,7 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
     // Build the PQ:
     assert lastIdx >= -1 && lastIdx < wrappers.length - 1;
     int pqLen = wrappers.length - lastIdx - 1;
-    leadIterators = new DisiPriorityQueue(pqLen);
+    leadIterators = DisiPriorityQueue.ofMaxSize(pqLen);
     leadIterators.addAll(wrappers, lastIdx + 1, pqLen);
 
     // Build the non-PQ list:
