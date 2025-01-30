@@ -77,7 +77,8 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
 public class IndexSearcher {
 
   static int maxClauseCount = 1024;
-  private static QueryCache DEFAULT_QUERY_CACHE;
+  // Caching is disabled by default.
+  private static QueryCache DEFAULT_QUERY_CACHE = null;
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
   private QueryTimeout queryTimeout = null;
   // partialResult may be set on one of the threads of the executor. It may be correct to not make
@@ -85,13 +86,6 @@ public class IndexSearcher {
   // that guarantees that writes become visible on the main thread, but making the variable volatile
   // shouldn't hurt either.
   private volatile boolean partialResult = false;
-
-  static {
-    final int maxCachedQueries = 1000;
-    // min of 32MB or 5% of the heap size
-    final long maxRamBytesUsed = Math.min(1L << 25, Runtime.getRuntime().maxMemory() / 20);
-    DEFAULT_QUERY_CACHE = new LRUQueryCache(maxCachedQueries, maxRamBytesUsed);
-  }
 
   /**
    * By default, we count hits accurately up to 1000. This makes sure that we don't spend most time
