@@ -402,8 +402,7 @@ public class HnswGraphBuilder implements HnswBuilder {
    * @param neighbors the neighbors selected so far
    * @return whether the candidate is diverse given the existing neighbors
    */
-  private boolean diversityCheck(
-      float score, NeighborArray neighbors, RandomVectorScorer scorer)
+  private boolean diversityCheck(float score, NeighborArray neighbors, RandomVectorScorer scorer)
       throws IOException {
     for (int i = 0; i < neighbors.size(); i++) {
       float neighborSimilarity = scorer.score(neighbors.nodes()[i]);

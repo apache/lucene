@@ -34,7 +34,6 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    assert vectorValues instanceof ByteVectorValues;
     if (vectorValues instanceof ByteVectorValues byteVectorValues) {
       return new BitRandomVectorScorerSupplier(byteVectorValues);
     }
@@ -52,7 +51,6 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
-    assert vectorValues instanceof ByteVectorValues;
     if (vectorValues instanceof ByteVectorValues byteVectorValues) {
       return new BitRandomVectorScorer(byteVectorValues, target);
     }
@@ -65,7 +63,8 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     private final byte[] query;
 
     BitRandomVectorScorer(ByteVectorValues vectorValues, byte[] query) {
-      this.query = query;
+      this.query = new byte[query.length];
+      System.arraycopy(query, 0, this.query, 0, query.length);
       this.bitDimensions = vectorValues.dimension() * Byte.SIZE;
       this.vectorValues = vectorValues;
     }
@@ -100,23 +99,21 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
   static class BitRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
     protected final ByteVectorValues vectorValues;
     protected final ByteVectorValues vectorValues1;
-    protected final ByteVectorValues vectorValues2;
 
     public BitRandomVectorScorerSupplier(ByteVectorValues vectorValues) throws IOException {
       this.vectorValues = vectorValues;
       this.vectorValues1 = vectorValues.copy();
-      this.vectorValues2 = vectorValues.copy();
     }
 
     @Override
     public UpdateableRandomVectorScorer scorer(int ord) throws IOException {
       byte[] query = vectorValues1.vectorValue(ord);
-      return new BitRandomVectorScorer(vectorValues2, query);
+      return new BitRandomVectorScorer(vectorValues1, query);
     }
 
     @Override
     public RandomVectorScorerSupplier copy() throws IOException {
-      return new BitRandomVectorScorerSupplier(vectorValues.copy());
+      return new BitRandomVectorScorerSupplier(vectorValues);
     }
   }
 
