@@ -21,6 +21,7 @@ import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
+import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -30,6 +31,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.LongBuffer;
 import java.util.Locale;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
@@ -38,11 +40,12 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 
 public final class LibFaissC {
+  public static final String LIBRARY_NAME = "faiss_c";
   public static final String LIBRARY_VERSION = "1.9.0";
 
   static {
     try {
-      System.loadLibrary("faiss_c");
+      System.loadLibrary(LIBRARY_NAME);
     } catch (UnsatisfiedLinkError e) {
       throw new RuntimeException(
           "Shared library not found, build the Faiss C_API from https://github.com/facebookresearch/faiss/blob/main/c_api/INSTALL.md "
@@ -106,16 +109,15 @@ public final class LibFaissC {
   private static final MethodHandle INDEX_TRAIN =
       getMethodHandle("faiss_Index_train", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS);
 
-  private static final MethodHandle INDEX_ADD =
-      getMethodHandle("faiss_Index_add", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS);
+  private static final MethodHandle INDEX_ADD_WITH_IDS =
+      getMethodHandle("faiss_Index_add_with_ids", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS);
 
-  public record Index(MemorySegment indexPointer, int[] ordToDoc) {}
-
-  public static Index createIndex(
+  public static MemorySegment createIndex(
       String description,
       String indexParams,
       VectorSimilarityFunction function,
-      FloatVectorValues floatVectorValues) {
+      FloatVectorValues floatVectorValues)
+      throws IOException {
 
     try (Arena temp = Arena.ofConfined()) {
       int size = floatVectorValues.size();
@@ -126,7 +128,7 @@ public final class LibFaissC {
           switch (function) {
             case DOT_PRODUCT -> 0;
             case EUCLIDEAN -> 1;
-            default -> throw new UnsupportedOperationException("metric type not supported");
+            default -> throw new UnsupportedOperationException("Metric type not supported");
           };
 
       // Create an index
@@ -148,24 +150,25 @@ public final class LibFaissC {
       MemorySegment docs = temp.allocate(JAVA_FLOAT, (long) size * dimension);
       FloatBuffer docsBuffer = docs.asByteBuffer().order(ByteOrder.nativeOrder()).asFloatBuffer();
 
-      int[] ordToDoc = new int[size];
+      // Allocate ids in native memory
+      MemorySegment ids = temp.allocate(JAVA_LONG, size);
+      LongBuffer idsBuffer = ids.asByteBuffer().order(ByteOrder.nativeOrder()).asLongBuffer();
+
       KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
       for (int i = 0; i < size; i++) {
-        ordToDoc[i] = iterator.nextDoc();
-        docsBuffer.put(floatVectorValues.vectorValue(iterator.index()));
+        idsBuffer.put(iterator.nextDoc());
+        docsBuffer.put(floatVectorValues.vectorValue(i));
       }
 
       // Train index
-      if ((int) INDEX_IS_TRAINED.invokeExact(indexPointer) == 0) {
+      if (callAndGetInt(INDEX_IS_TRAINED, indexPointer) == 0) {
         callAndHandleError(INDEX_TRAIN, indexPointer, size, docs);
       }
 
       // Add docs to index
-      callAndHandleError(INDEX_ADD, indexPointer, size, docs);
+      callAndHandleError(INDEX_ADD_WITH_IDS, indexPointer, size, docs, ids);
 
-      return new Index(indexPointer, ordToDoc);
-    } catch (Throwable t) {
-      throw new RuntimeException(t);
+      return indexPointer;
     }
   }
 
@@ -194,11 +197,7 @@ public final class LibFaissC {
           "faiss_Index_search", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_INT, ADDRESS, ADDRESS);
 
   public static void indexSearch(
-      MemorySegment indexPointer,
-      int[] ordToDoc,
-      float[] query,
-      KnnCollector knnCollector,
-      Bits acceptDocs) {
+      MemorySegment indexPointer, float[] query, KnnCollector knnCollector, Bits acceptDocs) {
     try (Arena temp = Arena.ofConfined()) {
       // Allocate queries in native memory
       MemorySegment queries = temp.allocate(JAVA_FLOAT, query.length);
@@ -222,13 +221,9 @@ public final class LibFaissC {
 
       // Record hits
       for (int i = 0; i < k; i++) {
-        int ord = (int) ids[i];
-        if (ord < 0) {
-          break;
-        }
+        int doc = (int) ids[i];
 
         // TODO: This is like a post-filter, include at runtime?
-        int doc = ordToDoc[ord];
         if (acceptDocs == null || acceptDocs.get(doc)) {
           knnCollector.collect(doc, distances[i]);
         }
@@ -238,6 +233,14 @@ public final class LibFaissC {
 
   private static final MethodHandle GET_LAST_ERROR =
       getMethodHandle("faiss_get_last_error", ADDRESS);
+
+  private static int callAndGetInt(MethodHandle handle, Object... args) {
+    try {
+      return (int) handle.invokeWithArguments(args);
+    } catch (Throwable e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   private static String callAndGetString(MethodHandle handle, Object... args) {
     try {
@@ -249,18 +252,14 @@ public final class LibFaissC {
   }
 
   private static void callAndHandleError(MethodHandle handle, Object... args) {
-    try {
-      int returnCode = (int) handle.invokeWithArguments(args);
-      if (returnCode < 0) {
-        String error = callAndGetString(GET_LAST_ERROR);
-        throw new FaissException(error);
-      }
-    } catch (Throwable t) {
-      throw new RuntimeException(t);
+    int returnCode = callAndGetInt(handle, args);
+    if (returnCode < 0) {
+      String error = callAndGetString(GET_LAST_ERROR);
+      throw new FaissException(error);
     }
   }
 
-  public static class FaissException extends Exception {
+  public static class FaissException extends RuntimeException {
     public FaissException(String message) {
       super(message);
     }

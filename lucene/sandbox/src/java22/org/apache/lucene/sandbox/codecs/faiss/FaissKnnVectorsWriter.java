@@ -89,7 +89,11 @@ public final class FaissKnnVectorsWriter extends BufferingKnnVectorsWriter {
   @SuppressWarnings("unchecked")
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     return switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> throw new UnsupportedOperationException("Byte vectors not supported");
+      case BYTE ->
+          // TODO: Support using SQ8 quantization, see
+          // https://github.com/opensearch-project/k-NN/pull/2425
+          throw new UnsupportedOperationException("Byte vectors not supported");
+
       case FLOAT32 ->
           new KnnFieldVectorsWriter<float[]>() {
             private final KnnFieldVectorsWriter<float[]> rawWriter =
@@ -128,29 +132,17 @@ public final class FaissKnnVectorsWriter extends BufferingKnnVectorsWriter {
     int number = fieldInfo.number;
     meta.writeInt(number);
 
-    VectorSimilarityFunction function = fieldInfo.getVectorSimilarityFunction();
-    int size = floatVectorValues.size();
-
     // TODO: Non FS-based approach?
     Path tempFile = Files.createTempFile(NAME, fieldInfo.name);
-    int[] ordToDoc;
 
     // Write index to temp file and deallocate from memory
     try (Arena temp = Arena.ofConfined()) {
-      LibFaissC.Index result = createIndex(description, indexParams, function, floatVectorValues);
-      MemorySegment localIndex =
-          result
-              .indexPointer()
+      VectorSimilarityFunction function = fieldInfo.getVectorSimilarityFunction();
+      MemorySegment indexPointer =
+          createIndex(description, indexParams, function, floatVectorValues)
               // Assign index to explicit scope for timely cleanup
               .reinterpret(temp, LibFaissC::freeIndex);
-      indexWrite(localIndex, tempFile.toString());
-      ordToDoc = result.ordToDoc();
-    }
-
-    // Write ordinal map
-    meta.writeInt(size);
-    for (int doc : ordToDoc) {
-      meta.writeInt(doc);
+      indexWrite(indexPointer, tempFile.toString());
     }
 
     // Copy temp file to index
@@ -169,6 +161,8 @@ public final class FaissKnnVectorsWriter extends BufferingKnnVectorsWriter {
 
   @Override
   protected void writeField(FieldInfo fieldInfo, ByteVectorValues byteVectorValues, int maxDoc) {
+    // TODO: Support using SQ8 quantization, see
+    // https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
   }
 
@@ -181,7 +175,7 @@ public final class FaissKnnVectorsWriter extends BufferingKnnVectorsWriter {
   @Override
   public void finish() throws IOException {
     if (finished) {
-      throw new IllegalStateException("already finished");
+      throw new IllegalStateException("Already finished");
     }
     finished = true;
 

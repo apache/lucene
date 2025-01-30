@@ -39,8 +39,9 @@ public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
   private final String indexParams;
   private final KnnVectorsFormat rawVectorsFormat;
 
+  @SuppressWarnings("unused")
   public FaissKnnVectorsFormat() {
-    this("HNSW32", "efConstruction=200");
+    this("IDMap,HNSW32", "efConstruction=200");
   }
 
   public FaissKnnVectorsFormat(String description, String indexParams) {

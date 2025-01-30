@@ -51,7 +51,7 @@ import org.apache.lucene.util.IOUtils;
 public final class FaissKnnVectorsReader extends KnnVectorsReader {
   private final KnnVectorsReader rawVectorsReader;
   private final IndexInput meta, data;
-  private final Map<String, LibFaissC.Index> indexMap;
+  private final Map<String, MemorySegment> indexMap;
   private final Arena arena;
 
   public FaissKnnVectorsReader(SegmentReadState state, KnnVectorsReader rawVectorsReader)
@@ -79,7 +79,7 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
               VERSION_CURRENT,
               state.context.withReadAdvice(ReadAdvice.RANDOM));
 
-      Map.Entry<String, LibFaissC.Index> entry;
+      Map.Entry<String, MemorySegment> entry;
       while ((entry = parseNextField(state)) != null) {
         this.indexMap.put(entry.getKey(), entry.getValue());
       }
@@ -110,7 +110,7 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
     return input;
   }
 
-  private Map.Entry<String, LibFaissC.Index> parseNextField(SegmentReadState state)
+  private Map.Entry<String, MemorySegment> parseNextField(SegmentReadState state)
       throws IOException {
     int fieldNumber = meta.readInt();
     if (fieldNumber == -1) {
@@ -119,13 +119,7 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
 
     FieldInfo fieldInfo = state.fieldInfos.fieldInfo(fieldNumber);
     if (fieldInfo == null) {
-      throw new IllegalStateException("invalid field");
-    }
-
-    int size = meta.readInt();
-    int[] ordToDoc = new int[size];
-    for (int i = 0; i < size; i++) {
-      ordToDoc[i] = meta.readInt();
+      throw new IllegalStateException("Invalid field");
     }
 
     long dataOffset = meta.readLong();
@@ -150,7 +144,7 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
     // Cleanup
     Files.delete(tempFile);
 
-    return Map.entry(fieldInfo.name, new LibFaissC.Index(indexPointer, ordToDoc));
+    return Map.entry(fieldInfo.name, indexPointer);
   }
 
   @Override
@@ -167,19 +161,23 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) {
+    // TODO: Support using SQ8 quantization, see
+    // https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
   }
 
   @Override
   public void search(String field, float[] vector, KnnCollector knnCollector, Bits acceptDocs) {
-    LibFaissC.Index entry = indexMap.get(field);
+    MemorySegment entry = indexMap.get(field);
     if (entry != null) {
-      indexSearch(entry.indexPointer(), entry.ordToDoc(), vector, knnCollector, acceptDocs);
+      indexSearch(entry, vector, knnCollector, acceptDocs);
     }
   }
 
   @Override
   public void search(String field, byte[] vector, KnnCollector knnCollector, Bits acceptDocs) {
+    // TODO: Support using SQ8 quantization, see
+    // https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
   }
 
