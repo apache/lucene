@@ -636,7 +636,10 @@ public abstract class LogMergePolicy extends MergePolicy {
           mergeDocs += segmentDocs;
         }
 
-        if (end - start >= mergeFactor && mergeSize < minMergeSize && anyMerging == false) {
+        if (end - start >= mergeFactor
+            && minMergeSize < maxMergeSize
+            && mergeSize < minMergeSize
+            && anyMerging == false) {
           // If the merge has mergeFactor segments but is still smaller than the min merged segment
           // size, keep packing candidate segments.
           while (end < 1 + upto) {
