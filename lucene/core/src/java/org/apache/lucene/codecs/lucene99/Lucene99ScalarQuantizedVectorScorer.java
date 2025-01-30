@@ -306,27 +306,30 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
     private final VectorSimilarityFunction vectorSimilarityFunction;
     private final QuantizedByteVectorValues values;
-    private final QuantizedByteVectorValues values1;
+    private final QuantizedByteVectorValues targetVectors;
 
     public ScalarQuantizedRandomVectorScorerSupplier(
         QuantizedByteVectorValues values, VectorSimilarityFunction vectorSimilarityFunction)
         throws IOException {
       this.values = values;
-      this.values1 = values.copy();
+      this.targetVectors = values.copy();
       this.vectorSimilarityFunction = vectorSimilarityFunction;
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(int ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
       byte[] vectorValue = new byte[values.dimension()];
-      System.arraycopy(values1.vectorValue(ord), 0, vectorValue, 0, vectorValue.length);
-      float offsetCorrection = values1.getScoreCorrectionConstant(ord);
+      float offsetCorrection = 0;
+      if (ord != null) {
+        System.arraycopy(targetVectors.vectorValue(ord), 0, vectorValue, 0, vectorValue.length);
+        offsetCorrection = targetVectors.getScoreCorrectionConstant(ord);
+      }
       return fromVectorSimilarity(
           vectorValue,
           offsetCorrection,
           vectorSimilarityFunction,
           values.getScalarQuantizer().getConstantMultiplier(),
-          values1);
+          targetVectors);
     }
 
     @Override

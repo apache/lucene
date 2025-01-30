@@ -507,7 +507,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(int ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
       return supplier.scorer(ord);
     }
 

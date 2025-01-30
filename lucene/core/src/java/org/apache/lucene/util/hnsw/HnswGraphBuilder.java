@@ -191,13 +191,9 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "addVectors [" + minOrd + " " + maxOrd + ")");
     }
-    UpdateableRandomVectorScorer scorer = null;
+    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer(null);
     for (int node = minOrd; node < maxOrd; node++) {
-      if (scorer == null) {
-        scorer = scorerSupplier.scorer(node);
-      } else {
-        scorer.setScoringOrdinal(node);
-      }
+      scorer.setScoringOrdinal(node);
       addGraphNode(node, scorer);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
@@ -466,7 +462,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       // while linking
       GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(2);
       int[] eps = new int[1];
-      UpdateableRandomVectorScorer scorer = null;
+      UpdateableRandomVectorScorer scorer = scorerSupplier.scorer(null);
       for (Component c : components) {
         if (c != c0) {
           if (c.start() == NO_MORE_DOCS) {
@@ -478,11 +474,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
           beam.clear();
           eps[0] = c0.start();
-          if (scorer == null) {
-            scorer = scorerSupplier.scorer(c.start());
-          } else {
-            scorer.setScoringOrdinal(c.start());
-          }
+          scorer.setScoringOrdinal(c.start());
           // find the closest node in the largest component to the lowest-numbered node in this
           // component that has room to make a connection
           graphSearcher.searchLevel(beam, scorer, level, eps, hnsw, notFullyConnected);

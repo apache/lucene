@@ -63,8 +63,7 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     private final byte[] query;
 
     BitRandomVectorScorer(ByteVectorValues vectorValues, byte[] query) {
-      this.query = new byte[query.length];
-      System.arraycopy(query, 0, this.query, 0, query.length);
+      this.query = query;
       this.bitDimensions = vectorValues.dimension() * Byte.SIZE;
       this.vectorValues = vectorValues;
     }
@@ -98,17 +97,21 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
 
   static class BitRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
     protected final ByteVectorValues vectorValues;
-    protected final ByteVectorValues vectorValues1;
+    protected final ByteVectorValues targetVectors;
 
     public BitRandomVectorScorerSupplier(ByteVectorValues vectorValues) throws IOException {
       this.vectorValues = vectorValues;
-      this.vectorValues1 = vectorValues.copy();
+      this.targetVectors = vectorValues.copy();
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(int ord) throws IOException {
-      byte[] query = vectorValues1.vectorValue(ord);
-      return new BitRandomVectorScorer(vectorValues1, query);
+    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
+      byte[] query = new byte[vectorValues.dimension()];
+      if (ord == null) {
+        return new BitRandomVectorScorer(vectorValues, query);
+      }
+      System.arraycopy(targetVectors.vectorValue(ord), 0, query, 0, query.length);
+      return new BitRandomVectorScorer(targetVectors, query);
     }
 
     @Override

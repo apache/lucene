@@ -25,10 +25,11 @@ public interface RandomVectorScorerSupplier {
    * This creates a {@link UpdateableRandomVectorScorer} for scoring random nodes in batches against
    * the given ordinal. Optionally allowing the ordinal to be updated.
    *
-   * @param ord the ordinal of the node to compare
+   * @param ord the ordinal of the node to compare. If null, the {@link
+   *     UpdateableRandomVectorScorer} needs to be initialized with a valid ordinal before scoring.
    * @return a new {@link UpdateableRandomVectorScorer}
    */
-  UpdateableRandomVectorScorer scorer(int ord) throws IOException;
+  UpdateableRandomVectorScorer scorer(Integer ord) throws IOException;
 
   /**
    * Make a copy of the supplier, which will copy the underlying vectorValues so the copy is safe to

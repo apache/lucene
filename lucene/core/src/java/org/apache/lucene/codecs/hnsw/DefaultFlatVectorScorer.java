@@ -90,30 +90,32 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   /** RandomVectorScorerSupplier for bytes vector */
   private static final class ByteScoringSupplier implements RandomVectorScorerSupplier {
     private final ByteVectorValues vectors;
-    private final ByteVectorValues vectors1;
+    private final ByteVectorValues targetVectors;
     private final VectorSimilarityFunction similarityFunction;
 
     private ByteScoringSupplier(
         ByteVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
       this.vectors = vectors;
-      vectors1 = vectors.copy();
+      targetVectors = vectors.copy();
       this.similarityFunction = similarityFunction;
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(int ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
       byte[] vector = new byte[vectors.dimension()];
-      System.arraycopy(vectors1.vectorValue(ord), 0, vector, 0, vector.length);
+      if (ord != null) {
+        System.arraycopy(targetVectors.vectorValue(ord), 0, vector, 0, vector.length);
+      }
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectors) {
 
         @Override
         public void setScoringOrdinal(int node) throws IOException {
-          System.arraycopy(vectors1.vectorValue(node), 0, vector, 0, vector.length);
+          System.arraycopy(targetVectors.vectorValue(node), 0, vector, 0, vector.length);
         }
 
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(vector, vectors1.vectorValue(node));
+          return similarityFunction.compare(vector, targetVectors.vectorValue(node));
         }
       };
     }
@@ -132,29 +134,31 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
   /** RandomVectorScorerSupplier for Float vector */
   private static final class FloatScoringSupplier implements RandomVectorScorerSupplier {
     private final FloatVectorValues vectors;
-    private final FloatVectorValues vectors1;
+    private final FloatVectorValues targetVectors;
     private final VectorSimilarityFunction similarityFunction;
 
     private FloatScoringSupplier(
         FloatVectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
       this.vectors = vectors;
-      vectors1 = vectors.copy();
+      targetVectors = vectors.copy();
       this.similarityFunction = similarityFunction;
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(int ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
       float[] vector = new float[vectors.dimension()];
-      System.arraycopy(vectors1.vectorValue(ord), 0, vector, 0, vector.length);
+      if (ord != null) {
+        System.arraycopy(targetVectors.vectorValue(ord), 0, vector, 0, vector.length);
+      }
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectors) {
         @Override
         public float score(int node) throws IOException {
-          return similarityFunction.compare(vector, vectors1.vectorValue(node));
+          return similarityFunction.compare(vector, targetVectors.vectorValue(node));
         }
 
         @Override
         public void setScoringOrdinal(int node) throws IOException {
-          System.arraycopy(vectors1.vectorValue(node), 0, vector, 0, vector.length);
+          System.arraycopy(targetVectors.vectorValue(node), 0, vector, 0, vector.length);
         }
       };
     }

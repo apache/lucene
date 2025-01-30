@@ -110,10 +110,12 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
+    public UpdateableRandomVectorScorer scorer(Integer ord) {
+      if (ord != null) {
+        checkOrdinal(ord);
+      }
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-        private int queryOrd = ord;
+        private int queryOrd = ord == null ? 0 : ord;
 
         @Override
         public float score(int node) throws IOException {
@@ -144,10 +146,12 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
+    public UpdateableRandomVectorScorer scorer(Integer ord) {
+      if (ord != null) {
+        checkOrdinal(ord);
+      }
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-        private int queryOrd = ord;
+        private int queryOrd = ord == null ? 0 : ord;
 
         @Override
         public float score(int node) throws IOException {
@@ -179,10 +183,12 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
+    public UpdateableRandomVectorScorer scorer(Integer ord) {
+      if (ord != null) {
+        checkOrdinal(ord);
+      }
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-        private int queryOrd = ord;
+        private int queryOrd = ord == null ? 0 : ord;
 
         @Override
         public float score(int node) throws IOException {
@@ -214,10 +220,12 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
+    public UpdateableRandomVectorScorer scorer(Integer ord) {
+      if (ord != null) {
+        checkOrdinal(ord);
+      }
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-        private int queryOrd = ord;
+        private int queryOrd = ord == null ? 0 : ord;
 
         @Override
         public float score(int node) throws IOException {
