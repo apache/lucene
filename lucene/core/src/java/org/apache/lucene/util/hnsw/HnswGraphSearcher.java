@@ -74,7 +74,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         && seeded.numberOfEntryPoints() > 0) {
       graphSearcher =
           SeededHnswGraphSearcher.fromEntryPoints(
-              graphSearcher, seeded.numberOfEntryPoints(), seeded.entryPoints(), graph);
+              graphSearcher, seeded.numberOfEntryPoints(), seeded.entryPoints(), graph.size());
     }
     graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
   }

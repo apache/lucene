@@ -45,7 +45,7 @@ public interface KnnSearchStrategy {
     /**
      * Iterator of valid entry points for the kNN search
      *
-     * @return DocIdSetIterator of entry points, default is empty iterator
+     * @return DocIdSetIterator of entry points
      */
     public DocIdSetIterator entryPoints() {
       return entryPoints;
@@ -54,7 +54,7 @@ public interface KnnSearchStrategy {
     /**
      * Number of valid entry points for the kNN search
      *
-     * @return number of entry points, default is 0
+     * @return number of entry points
      */
     public int numberOfEntryPoints() {
       return numberOfEntryPoints;

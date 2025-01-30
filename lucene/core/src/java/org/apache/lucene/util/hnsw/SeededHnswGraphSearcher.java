@@ -35,7 +35,7 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
   private final int[] seedOrds;
 
   static SeededHnswGraphSearcher fromEntryPoints(
-      AbstractHnswGraphSearcher delegate, int numEps, DocIdSetIterator eps, HnswGraph graph)
+      AbstractHnswGraphSearcher delegate, int numEps, DocIdSetIterator eps, int graphSize)
       throws IOException {
     if (numEps <= 0) {
       throw new IllegalArgumentException("The number of entry points must be > 0");
@@ -48,7 +48,7 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
         throw new IllegalArgumentException(
             "The number of entry points provided is less than the number of entry points requested");
       }
-      assert entryPointOrdInt < graph.size();
+      assert entryPointOrdInt < graphSize;
       entryPoints[idx++] = entryPointOrdInt;
     }
     return new SeededHnswGraphSearcher(delegate, entryPoints);

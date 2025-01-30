@@ -51,8 +51,8 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
    *
    * @param k The number of joined parent documents to collect
    * @param visitLimit how many child vectors can be visited
-   * @param parentBitSet The leaf parent bitset
    * @param searchStrategy The search strategy to use
+   * @param parentBitSet The leaf parent bitset
    */
   public DiversifyingNearestChildrenKnnCollector(
       int k, int visitLimit, KnnSearchStrategy searchStrategy, BitSet parentBitSet) {

@@ -71,8 +71,8 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
 
   SeededKnnVectorQuery(AbstractKnnVectorQuery knnQuery, Query seed, Weight seedWeight) {
     super(knnQuery.field, knnQuery.k, knnQuery.filter);
-    this.seed = Objects.requireNonNull(seed);
     this.delegate = knnQuery;
+    this.seed = Objects.requireNonNull(seed);
     this.seedWeight = seedWeight;
   }
 
