@@ -23,7 +23,7 @@ package org.apache.lucene.search.knn;
  */
 public record HnswSearchStrategy(float filterRatioLimit) {
 
-  public static final HnswSearchStrategy DEFAULT = new HnswSearchStrategy(0.0f);
+  public static final HnswSearchStrategy DEFAULT = new HnswSearchStrategy(1.0f);
 
   /**
    * Create a new HnswSearchStrategy.
