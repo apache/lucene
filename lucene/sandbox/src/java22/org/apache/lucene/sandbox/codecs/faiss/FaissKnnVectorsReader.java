@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -49,12 +50,12 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
 public final class FaissKnnVectorsReader extends KnnVectorsReader {
-  private final KnnVectorsReader rawVectorsReader;
+  private final FlatVectorsReader rawVectorsReader;
   private final IndexInput meta, data;
   private final Map<String, MemorySegment> indexMap;
   private final Arena arena;
 
-  public FaissKnnVectorsReader(SegmentReadState state, KnnVectorsReader rawVectorsReader)
+  public FaissKnnVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
       throws IOException {
     this.rawVectorsReader = rawVectorsReader;
     this.indexMap = new HashMap<>();

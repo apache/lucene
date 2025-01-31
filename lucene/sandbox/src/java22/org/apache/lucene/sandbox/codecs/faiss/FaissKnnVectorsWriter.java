@@ -26,15 +26,19 @@ import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.createIndex;
 import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.indexWrite;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.apache.lucene.codecs.BufferingKnnVectorsWriter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
-import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
@@ -42,25 +46,30 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 
-public final class FaissKnnVectorsWriter extends BufferingKnnVectorsWriter {
+public final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   private final String description, indexParams;
-  private final KnnVectorsWriter rawVectorsWriter;
+  private final FlatVectorsWriter rawVectorsWriter;
   private final IndexOutput meta, data;
+  private final Map<FieldInfo, FlatFieldVectorsWriter<?>> rawFields;
   private boolean finished;
 
   public FaissKnnVectorsWriter(
       String description,
       String indexParams,
       SegmentWriteState state,
-      KnnVectorsWriter rawVectorsWriter)
+      FlatVectorsWriter rawVectorsWriter)
       throws IOException {
+
     this.description = description;
     this.indexParams = indexParams;
     this.rawVectorsWriter = rawVectorsWriter;
+    this.rawFields = new HashMap<>();
     this.finished = false;
 
     boolean failure = true;
@@ -86,48 +95,59 @@ public final class FaissKnnVectorsWriter extends BufferingKnnVectorsWriter {
   }
 
   @Override
-  @SuppressWarnings("unchecked")
-  public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    return switch (fieldInfo.getVectorEncoding()) {
+  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    rawVectorsWriter.mergeOneField(fieldInfo, mergeState);
+    switch (fieldInfo.getVectorEncoding()) {
       case BYTE ->
           // TODO: Support using SQ8 quantization, see
           // https://github.com/opensearch-project/k-NN/pull/2425
           throw new UnsupportedOperationException("Byte vectors not supported");
-
-      case FLOAT32 ->
-          new KnnFieldVectorsWriter<float[]>() {
-            private final KnnFieldVectorsWriter<float[]> rawWriter =
-                (KnnFieldVectorsWriter<float[]>) rawVectorsWriter.addField(fieldInfo);
-            private final KnnFieldVectorsWriter<float[]> writer =
-                (KnnFieldVectorsWriter<float[]>) FaissKnnVectorsWriter.super.addField(fieldInfo);
-
-            @Override
-            public long ramBytesUsed() {
-              return rawWriter.ramBytesUsed() + writer.ramBytesUsed();
-            }
-
-            @Override
-            public void addValue(int i, float[] floats) throws IOException {
-              rawWriter.addValue(i, floats);
-              writer.addValue(i, floats);
-            }
-
-            @Override
-            public float[] copyValue(float[] floats) {
-              return floats.clone();
-            }
-          };
-    };
+      case FLOAT32 -> {
+        FloatVectorValues merged =
+            KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+        writeFloatField(fieldInfo, merged, doc -> doc);
+      }
+    }
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    rawVectorsWriter.mergeOneField(fieldInfo, mergeState);
-    super.mergeOneField(fieldInfo, mergeState);
+  public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
+    FlatFieldVectorsWriter<?> rawFieldVectorsWriter = rawVectorsWriter.addField(fieldInfo);
+    rawFields.put(fieldInfo, rawFieldVectorsWriter);
+    return rawFieldVectorsWriter;
   }
 
   @Override
-  protected void writeField(FieldInfo fieldInfo, FloatVectorValues floatVectorValues, int maxDoc)
+  public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+    rawVectorsWriter.flush(maxDoc, sortMap);
+    for (Map.Entry<FieldInfo, FlatFieldVectorsWriter<?>> entry : rawFields.entrySet()) {
+      FieldInfo fieldInfo = entry.getKey();
+      switch (fieldInfo.getVectorEncoding()) {
+        case BYTE ->
+            // TODO: Support using SQ8 quantization, see
+            // https://github.com/opensearch-project/k-NN/pull/2425
+            throw new UnsupportedOperationException("Byte vectors not supported");
+
+        case FLOAT32 -> {
+          @SuppressWarnings("unchecked")
+          FlatFieldVectorsWriter<float[]> rawWriter =
+              (FlatFieldVectorsWriter<float[]>) entry.getValue();
+
+          List<float[]> vectors = rawWriter.getVectors();
+          int dimension = fieldInfo.getVectorDimension();
+          DocIdSet docIdSet = rawWriter.getDocsWithFieldSet();
+
+          writeFloatField(
+              fieldInfo,
+              new BufferedFloatVectorValues(vectors, dimension, docIdSet),
+              (sortMap != null) ? sortMap::oldToNew : doc -> doc);
+        }
+      }
+    }
+  }
+
+  private void writeFloatField(
+      FieldInfo fieldInfo, FloatVectorValues floatVectorValues, IntToIntFunction oldToNewDocId)
       throws IOException {
     int number = fieldInfo.number;
     meta.writeInt(number);
@@ -139,7 +159,7 @@ public final class FaissKnnVectorsWriter extends BufferingKnnVectorsWriter {
     try (Arena temp = Arena.ofConfined()) {
       VectorSimilarityFunction function = fieldInfo.getVectorSimilarityFunction();
       MemorySegment indexPointer =
-          createIndex(description, indexParams, function, floatVectorValues)
+          createIndex(description, indexParams, function, floatVectorValues, oldToNewDocId)
               // Assign index to explicit scope for timely cleanup
               .reinterpret(temp, LibFaissC::freeIndex);
       indexWrite(indexPointer, tempFile.toString());
@@ -157,19 +177,6 @@ public final class FaissKnnVectorsWriter extends BufferingKnnVectorsWriter {
 
     meta.writeLong(dataOffset);
     meta.writeLong(dataLength);
-  }
-
-  @Override
-  protected void writeField(FieldInfo fieldInfo, ByteVectorValues byteVectorValues, int maxDoc) {
-    // TODO: Support using SQ8 quantization, see
-    // https://github.com/opensearch-project/k-NN/pull/2425
-    throw new UnsupportedOperationException("Byte vectors not supported");
-  }
-
-  @Override
-  public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
-    rawVectorsWriter.flush(maxDoc, sortMap);
-    super.flush(maxDoc, sortMap);
   }
 
   @Override
@@ -193,6 +200,53 @@ public final class FaissKnnVectorsWriter extends BufferingKnnVectorsWriter {
     }
     if (data != null) {
       data.close();
+    }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    // TODO: How to estimate Faiss usage?
+    return rawVectorsWriter.ramBytesUsed();
+  }
+
+  private static class BufferedFloatVectorValues extends FloatVectorValues {
+    private final List<float[]> floats;
+    private final int dimension;
+    private final DocIdSet docIdSet;
+
+    public BufferedFloatVectorValues(List<float[]> floats, int dimension, DocIdSet docIdSet) {
+      this.floats = floats;
+      this.dimension = dimension;
+      this.docIdSet = docIdSet;
+    }
+
+    @Override
+    public float[] vectorValue(int ord) {
+      return floats.get(ord);
+    }
+
+    @Override
+    public int dimension() {
+      return dimension;
+    }
+
+    @Override
+    public int size() {
+      return floats.size();
+    }
+
+    @Override
+    public FloatVectorValues copy() {
+      return new BufferedFloatVectorValues(floats, dimension, docIdSet);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      try {
+        return fromDISI(docIdSet.iterator());
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
     }
   }
 }

@@ -38,6 +38,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 public final class LibFaissC {
   public static final String LIBRARY_NAME = "faiss_c";
@@ -116,7 +117,8 @@ public final class LibFaissC {
       String description,
       String indexParams,
       VectorSimilarityFunction function,
-      FloatVectorValues floatVectorValues)
+      FloatVectorValues floatVectorValues,
+      IntToIntFunction oldToNewDocId)
       throws IOException {
 
     try (Arena temp = Arena.ofConfined()) {
@@ -156,7 +158,7 @@ public final class LibFaissC {
 
       KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
       for (int i = 0; i < size; i++) {
-        idsBuffer.put(iterator.nextDoc());
+        idsBuffer.put(oldToNewDocId.apply(iterator.nextDoc()));
         docsBuffer.put(floatVectorValues.vectorValue(i));
       }
 

@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -37,7 +38,7 @@ public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
 
   private final String description;
   private final String indexParams;
-  private final KnnVectorsFormat rawVectorsFormat;
+  private final FlatVectorsFormat rawVectorsFormat;
 
   @SuppressWarnings("unused")
   public FaissKnnVectorsFormat() {
