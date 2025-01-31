@@ -126,7 +126,7 @@ public final class QueryAutoStopWordAnalyzer extends AnalyzerWrapper {
   public QueryAutoStopWordAnalyzer(
       Analyzer delegate, IndexReader indexReader, Collection<String> fields, int maxDocFreq)
       throws IOException {
-    super(PER_FIELD_REUSE_STRATEGY);
+    super(delegate.getReuseStrategy());
     this.delegate = delegate;
 
     for (String field : fields) {

@@ -17,8 +17,7 @@
 package org.apache.lucene.analysis;
 
 import java.io.Reader;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.function.Consumer;
 import org.apache.lucene.util.AttributeFactory;
 
 /**
@@ -43,8 +42,6 @@ import org.apache.lucene.util.AttributeFactory;
  * @since 4.0.0
  */
 public abstract class AnalyzerWrapper extends Analyzer {
-  final Map<String, TokenStreamComponents> wrappedComponentsPerField = new HashMap<>();
-
   /**
    * Creates a new AnalyzerWrapper with the given reuse strategy.
    *
@@ -125,8 +122,8 @@ public abstract class AnalyzerWrapper extends Analyzer {
   protected final TokenStreamComponents createComponents(String fieldName) {
     TokenStreamComponents wrappedComponents =
         getWrappedAnalyzer(fieldName).createComponents(fieldName);
-    wrappedComponentsPerField.put(fieldName, wrappedComponents);
-    return wrapComponents(fieldName, wrappedComponents);
+    TokenStreamComponents wrapperComponents = wrapComponents(fieldName, wrappedComponents);
+    return new TokenStreamComponentsWrapper(wrapperComponents, wrappedComponents);
   }
 
   @Override
@@ -161,10 +158,6 @@ public abstract class AnalyzerWrapper extends Analyzer {
     return getWrappedAnalyzer(fieldName).attributeFactory(fieldName);
   }
 
-  public TokenStreamComponents getWrappedComponents(String fieldName) {
-    return wrappedComponentsPerField.get(fieldName);
-  }
-
   /**
    * A {@link org.apache.lucene.analysis.Analyzer.ReuseStrategy} that checks the wrapped analyzer's
    * strategy for reusability. If the wrapped analyzer's strategy returns null, components need to
@@ -193,13 +186,49 @@ public abstract class AnalyzerWrapper extends Analyzer {
     public void setReusableComponents(
         Analyzer analyzer, String fieldName, TokenStreamComponents components) {
       reuseStrategy.setReusableComponents(analyzer, fieldName, components);
-      if (analyzer instanceof AnalyzerWrapper wrapper) {
+      if (analyzer instanceof AnalyzerWrapper wrapper
+          && components instanceof TokenStreamComponentsWrapper wrapperComponents) {
         final Analyzer wrappedAnalyzer = wrapper.getWrappedAnalyzer(fieldName);
         wrappedAnalyzer
             .getReuseStrategy()
             .setReusableComponents(
-                wrappedAnalyzer, fieldName, wrapper.getWrappedComponents(fieldName));
+                wrappedAnalyzer, fieldName, wrapperComponents.getWrappedComponents());
       }
+    }
+  }
+
+  /**
+   * A {@link Analyzer.TokenStreamComponents} that decorates the wrapper with access to the wrapped
+   * components.
+   */
+  public static final class TokenStreamComponentsWrapper extends TokenStreamComponents {
+    private final TokenStreamComponents wrapped;
+    private final TokenStreamComponents wrapper;
+
+    public TokenStreamComponentsWrapper(
+        TokenStreamComponents wrapper, TokenStreamComponents wrapped) {
+      super(wrapper.getSource(), wrapper.getTokenStream());
+      this.wrapper = wrapper;
+      this.wrapped = wrapped;
+    }
+
+    public TokenStreamComponents getWrappedComponents() {
+      return wrapped;
+    }
+
+    @Override
+    protected void setReader(final Reader reader) {
+      wrapper.setReader(reader);
+    }
+
+    @Override
+    public TokenStream getTokenStream() {
+      return wrapper.getTokenStream();
+    }
+
+    @Override
+    public Consumer<Reader> getSource() {
+      return wrapper.getSource();
     }
   }
 }
