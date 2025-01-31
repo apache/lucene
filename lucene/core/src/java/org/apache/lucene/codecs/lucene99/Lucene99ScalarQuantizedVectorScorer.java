@@ -317,13 +317,9 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer() throws IOException {
       byte[] vectorValue = new byte[values.dimension()];
       float offsetCorrection = 0;
-      if (ord != null) {
-        System.arraycopy(targetVectors.vectorValue(ord), 0, vectorValue, 0, vectorValue.length);
-        offsetCorrection = targetVectors.getScoreCorrectionConstant(ord);
-      }
       return fromVectorSimilarity(
           vectorValue,
           offsetCorrection,

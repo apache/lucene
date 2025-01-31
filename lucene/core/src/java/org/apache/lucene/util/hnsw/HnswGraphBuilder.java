@@ -191,7 +191,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(HNSW_COMPONENT, "addVectors [" + minOrd + " " + maxOrd + ")");
     }
-    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer(null);
+    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     for (int node = minOrd; node < maxOrd; node++) {
       scorer.setScoringOrdinal(node);
       addGraphNode(node, scorer);
@@ -298,7 +298,8 @@ public class HnswGraphBuilder implements HnswBuilder {
        to the newly introduced levels (repeating step 2,3 for new levels) and again try to
        promote the node to entry node.
     */
-    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer(node);
+    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
+    scorer.setScoringOrdinal(node);
     addGraphNode(node, scorer);
   }
 
@@ -462,7 +463,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       // while linking
       GraphBuilderKnnCollector beam = new GraphBuilderKnnCollector(2);
       int[] eps = new int[1];
-      UpdateableRandomVectorScorer scorer = scorerSupplier.scorer(null);
+      UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
       for (Component c : components) {
         if (c != c0) {
           if (c.start() == NO_MORE_DOCS) {

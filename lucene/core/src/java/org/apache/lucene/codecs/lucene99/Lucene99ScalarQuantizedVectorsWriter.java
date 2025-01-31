@@ -1128,8 +1128,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
-      return supplier.scorer(ord);
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      return supplier.scorer();
     }
 
     @Override

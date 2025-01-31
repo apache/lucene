@@ -562,7 +562,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     private int lastDocID = -1;
     private int node = 0;
     private final FlatFieldVectorsWriter<T> flatFieldVectorsWriter;
-    private final RandomVectorScorerSupplier scorerSupplier;
     private UpdateableRandomVectorScorer scorer;
 
     @SuppressWarnings("unchecked")
@@ -604,7 +603,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         InfoStream infoStream)
         throws IOException {
       this.fieldInfo = fieldInfo;
-      scorerSupplier =
+      RandomVectorScorerSupplier scorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE ->
                 scorer.getRandomVectorScorerSupplier(
@@ -619,6 +618,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                         (List<float[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension()));
           };
+      this.scorer = scorerSupplier.scorer();
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
       hnswGraphBuilder.setInfoStream(infoStream);
@@ -634,11 +634,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 + "\" appears more than once in this document (only one value is allowed per field)");
       }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
-      if (scorer == null) {
-        scorer = scorerSupplier.scorer(node);
-      } else {
-        scorer.setScoringOrdinal(node);
-      }
+      scorer.setScoringOrdinal(node);
       hnswGraphBuilder.addGraphNode(node, scorer);
       node++;
       lastDocID = docID;

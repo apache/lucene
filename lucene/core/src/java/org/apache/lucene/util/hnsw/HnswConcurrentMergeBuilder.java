@@ -142,7 +142,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
     private final BitSet initializedNodes;
     private int batchSize = DEFAULT_BATCH_SIZE;
-    private UpdateableRandomVectorScorer scorer;
+    private final UpdateableRandomVectorScorer scorer;
 
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
@@ -163,6 +163,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
+      this.scorer = scorerSupplier.scorer();
     }
 
     /**
@@ -204,11 +205,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       if (initializedNodes != null && initializedNodes.get(node)) {
         return;
       }
-      if (scorer == null) {
-        scorer = scorerSupplier.scorer(node);
-      } else {
-        scorer.setScoringOrdinal(node);
-      }
+      scorer.setScoringOrdinal(node);
       addGraphNode(node, scorer);
     }
   }

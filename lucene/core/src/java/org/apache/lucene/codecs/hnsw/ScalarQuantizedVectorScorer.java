@@ -148,14 +148,11 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer() throws IOException {
       final QuantizedByteVectorValues vectorsCopy = values.copy();
       byte[] queryVector = new byte[values.dimension()];
-      if (ord != null) {
-        System.arraycopy(values.vectorValue(ord), 0, queryVector, 0, queryVector.length);
-      }
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectorsCopy) {
-        float queryOffset = ord != null ? values.getScoreCorrectionConstant(ord) : 0;
+        float queryOffset = 0;
 
         @Override
         public void setScoringOrdinal(int node) throws IOException {

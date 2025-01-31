@@ -101,11 +101,8 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer() throws IOException {
       byte[] vector = new byte[vectors.dimension()];
-      if (ord != null) {
-        System.arraycopy(targetVectors.vectorValue(ord), 0, vector, 0, vector.length);
-      }
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectors) {
 
         @Override
@@ -145,11 +142,8 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer() throws IOException {
       float[] vector = new float[vectors.dimension()];
-      if (ord != null) {
-        System.arraycopy(targetVectors.vectorValue(ord), 0, vector, 0, vector.length);
-      }
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectors) {
         @Override
         public float score(int node) throws IOException {

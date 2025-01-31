@@ -110,12 +110,9 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) {
-      if (ord != null) {
-        checkOrdinal(ord);
-      }
+    public UpdateableRandomVectorScorer scorer() {
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-        private int queryOrd = ord == null ? 0 : ord;
+        private int queryOrd = 0;
 
         @Override
         public float score(int node) throws IOException {
@@ -146,12 +143,9 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) {
-      if (ord != null) {
-        checkOrdinal(ord);
-      }
+    public UpdateableRandomVectorScorer scorer() {
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-        private int queryOrd = ord == null ? 0 : ord;
+        private int queryOrd = 0;
 
         @Override
         public float score(int node) throws IOException {
@@ -183,12 +177,9 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) {
-      if (ord != null) {
-        checkOrdinal(ord);
-      }
+    public UpdateableRandomVectorScorer scorer() {
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-        private int queryOrd = ord == null ? 0 : ord;
+        private int queryOrd = 0;
 
         @Override
         public float score(int node) throws IOException {
@@ -220,12 +211,9 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) {
-      if (ord != null) {
-        checkOrdinal(ord);
-      }
+    public UpdateableRandomVectorScorer scorer() {
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
-        private int queryOrd = ord == null ? 0 : ord;
+        private int queryOrd = 0;
 
         @Override
         public float score(int node) throws IOException {

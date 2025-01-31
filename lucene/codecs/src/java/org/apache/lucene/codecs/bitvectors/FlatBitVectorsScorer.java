@@ -105,13 +105,9 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public UpdateableRandomVectorScorer scorer(Integer ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer() throws IOException {
       byte[] query = new byte[vectorValues.dimension()];
-      if (ord == null) {
-        return new BitRandomVectorScorer(vectorValues, query);
-      }
-      System.arraycopy(targetVectors.vectorValue(ord), 0, query, 0, query.length);
-      return new BitRandomVectorScorer(targetVectors, query);
+      return new BitRandomVectorScorer(vectorValues, query);
     }
 
     @Override
