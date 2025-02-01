@@ -66,8 +66,8 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
     this.fieldName = fieldName;
     this.bytesPerDim = bytesPerDim;
     ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>(clauses);
-    sortedClauses.sort((r,s)-> comparator.compare(r.lower.bytes,r.lower.offset,
-            s.lower.bytes,s.lower.offset));
+    sortedClauses.sort(
+        (r, s) -> comparator.compare(r.lower.bytes, r.lower.offset, s.lower.bytes, s.lower.offset));
     this.rangeClauses = sortedClauses;
   }
 
@@ -129,7 +129,8 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
       if (lowerOrd <= upperOrd) { // otherwise ignore
         if (previous != null) {
           if (previous.upper >= lowerOrd - 1) { // adjacent or overlap
-            previous.upper = Math.max(upperOrd, previous.upper); // update one. which was yield. danger
+            previous.upper =
+                Math.max(upperOrd, previous.upper); // update one. which was yield. danger
             continue;
           }
         }
