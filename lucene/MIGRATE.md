@@ -17,6 +17,13 @@
 
 # Apache Lucene Migration Guide
 
+## Migration from Lucene 10.x to Lucene 11.0
+
+### TieredMergePolicy#setMaxMergeAtOnce removed
+
+This parameter has no replacement, TieredMergePolicy no longer bounds the
+number of segments that may be merged together.
+
 ## Migration from Lucene 9.x to Lucene 10.0
 
 ### DataInput#readVLong() may now read negative vlongs
