@@ -39,39 +39,10 @@ import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
-import org.apache.lucene.util.PriorityQueue;
 
 /** A union multiple ranges over SortedSetDocValuesField */
 class SortedSetDocValuesMultiRangeQuery extends Query {
-
-  private static final class Edge {
-    private final DocValuesMultiRangeQuery.Range range;
-    private final boolean point;
-    private final boolean upper;
-
-    private static Edge createPoint(DocValuesMultiRangeQuery.Range r) {
-      return new Edge(r);
-    }
-
-    BytesRef getValue() {
-      return upper ? range.upper : range.lower;
-    }
-
-    private Edge(DocValuesMultiRangeQuery.Range range, boolean upper) {
-      this.range = range;
-      this.upper = upper;
-      this.point = false;
-    }
-
-    /** expecting Arrays.equals(lower.bytes,upper.bytes) i.e. point */
-    private Edge(DocValuesMultiRangeQuery.Range range) {
-      this.range = range;
-      this.upper = false;
-      this.point = true;
-    }
-  }
 
   protected static final class OrdRange {
     final long lower;
@@ -94,71 +65,10 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
       ArrayUtil.ByteArrayComparator comparator) {
     this.fieldName = fieldName;
     this.bytesPerDim = bytesPerDim;
-    this.rangeClauses = resolveOverlaps(clauses, comparator);
-  }
-
-  /** Merges overlapping ranges. */
-  private static List<DocValuesMultiRangeQuery.Range> resolveOverlaps(
-      List<DocValuesMultiRangeQuery.Range> clauses, ArrayUtil.ByteArrayComparator comparator) {
-    ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>();
-    PriorityQueue<Edge> heap =
-        new PriorityQueue<>(clauses.size() * 2) {
-          @Override
-          protected boolean lessThan(Edge a, Edge b) {
-            return cmp(comparator, a.getValue(), b.getValue()) < 0;
-          }
-        };
-    for (DocValuesMultiRangeQuery.Range r : clauses) {
-      int cmp = cmp(comparator, r.lower, r.upper);
-      if (cmp == 0) {
-        heap.add(Edge.createPoint(r));
-      } else {
-        if (cmp < 0) {
-          heap.add(new Edge(r, false));
-          heap.add(new Edge(r, true));
-        } // else drop reverse ranges
-      }
-    }
-    int totalEdges = heap.size();
-    int depth = 0;
-    Edge started = null;
-    for (int i = 0; i < totalEdges; i++) {
-      Edge smallest = heap.pop();
-      if (depth == 0 && smallest.point) {
-        if (i < totalEdges - 1 && heap.top().point) { // repeating same points
-          if (cmp(comparator, smallest.getValue(), heap.top().getValue()) == 0) {
-            continue;
-          }
-        }
-        sortedClauses.add(smallest.range);
-      }
-      if (!smallest.point) {
-        if (!smallest.upper) {
-          depth++;
-          if (depth == 1) { // just started
-            started = smallest;
-          }
-        } else {
-          depth--;
-          if (depth == 0) {
-            sortedClauses.add(
-                started.range == smallest.range // no overlap case, the most often
-                    ? smallest.range
-                    : new DocValuesMultiRangeQuery.Range(started.getValue(), smallest.getValue()));
-            started = null;
-          }
-        }
-      }
-    }
-    return sortedClauses;
-  }
-
-  private static int cmp(ArrayUtil.ByteArrayComparator comparator, BytesRef a, BytesRef b) {
-    if (a == b) {
-      return 0;
-    } else {
-      return comparator.compare(a.bytes, a.offset, b.bytes, b.offset);
-    }
+    ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>(clauses);
+    sortedClauses.sort((r,s)-> comparator.compare(r.lower.bytes,r.lower.offset,
+            s.lower.bytes,s.lower.offset));
+    this.rangeClauses = sortedClauses;
   }
 
   @Override
@@ -218,8 +128,8 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
       }
       if (lowerOrd <= upperOrd) { // otherwise ignore
         if (previous != null) {
-          if (previous.upper >= lowerOrd - 1) { // adjacent
-            previous.upper = upperOrd; // update one. which was yield. danger
+          if (previous.upper >= lowerOrd - 1) { // adjacent or overlap
+            previous.upper = Math.max(upperOrd, previous.upper); // update one. which was yield. danger
             continue;
           }
         }

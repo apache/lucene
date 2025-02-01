@@ -113,9 +113,9 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       Query query1 = builder1.build();
       Query query2 = builder2.build();
       Query query3 = builder3.build();
-      TopDocs result1 = searcher.search(query1, 10, Sort.INDEXORDER);
-      TopDocs result2 = searcher.search(query2, 10, Sort.INDEXORDER);
-      TopDocs result3 = searcher.search(query3, 10, Sort.INDEXORDER);
+      TopDocs result1 = searcher.search(query1, 100, Sort.INDEXORDER);
+      TopDocs result2 = searcher.search(query2, 100, Sort.INDEXORDER);
+      TopDocs result3 = searcher.search(query3, 100, Sort.INDEXORDER);
       assertEquals(result2.totalHits, result1.totalHits);
       assertEquals(result2.totalHits, result3.totalHits);
       assertEquals(result2.scoreDocs.length, result1.scoreDocs.length);
