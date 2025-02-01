@@ -84,7 +84,7 @@ public class TieredMergePolicy extends MergePolicy {
 
   private long maxMergedSegmentBytes = 5 * 1024 * 1024 * 1024L;
 
-  private long floorSegmentBytes = 2 * 1024 * 1024L;
+  private long floorSegmentBytes = 16 * 1024 * 1024L;
   private double segsPerTier = 10.0;
   private double forceMergeDeletesPctAllowed = 10.0;
   private double deletesPctAllowed = 20.0;
