@@ -45,4 +45,6 @@ module org.apache.lucene.sandbox {
   //    org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat;
   provides org.apache.lucene.codecs.Codec with
       org.apache.lucene.sandbox.vectorsearch.CuVSCodec;
+  provides com.nvidia.cuvs.spi.CuVSServiceProvider with
+      org.apache.lucene.sandbox.vectorsearch.FilterCuVSServiceProvider;
 }
