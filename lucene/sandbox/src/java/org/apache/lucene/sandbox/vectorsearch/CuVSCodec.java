@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.sandbox.vectorsearch;
 
-import com.nvidia.cuvs.LibraryNotFoundException;
+import com.nvidia.cuvs.LibraryException;
 import java.util.logging.Logger;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
@@ -37,7 +37,7 @@ public class CuVSCodec extends FilterCodec {
     try {
       format = new CuVSVectorsFormat(1, 128, 64, MergeStrategy.NON_TRIVIAL_MERGE);
       setKnnFormat(format);
-    } catch (LibraryNotFoundException ex) {
+    } catch (LibraryException ex) {
       Logger log = Logger.getLogger(CuVSCodec.class.getName());
       log.severe("Couldn't load native library, possible classloader issue. " + ex.getMessage());
     }

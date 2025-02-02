@@ -160,7 +160,7 @@ import org.apache.lucene.util.IOUtils;
           {
             cagraIndexes.put(
                 segmentField,
-                new CagraIndex.Builder(resources)
+                CagraIndex.newBuilder(resources)
                     .from(new ByteArrayInputStream(baos.toByteArray()))
                     .build());
             break;
@@ -169,17 +169,17 @@ import org.apache.lucene.util.IOUtils;
           {
             bruteforceIndexes.put(
                 segmentField,
-                new BruteForceIndex.Builder(resources)
+                BruteForceIndex.newBuilder(resources)
                     .from(new ByteArrayInputStream(baos.toByteArray()))
                     .build());
             break;
           }
         case "hnsw":
           {
-            HnswIndexParams indexParams = new HnswIndexParams.Builder(resources).build();
+            HnswIndexParams indexParams = new HnswIndexParams.Builder().build();
             hnswIndexes.put(
                 segmentField,
-                new HnswIndex.Builder(resources)
+                HnswIndex.newBuilder(resources)
                     .from(new ByteArrayInputStream(baos.toByteArray()))
                     .withIndexParams(indexParams)
                     .build());

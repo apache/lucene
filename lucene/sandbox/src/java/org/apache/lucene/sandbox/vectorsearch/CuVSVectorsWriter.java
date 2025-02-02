@@ -23,9 +23,10 @@ import com.nvidia.cuvs.CagraIndexParams;
 import com.nvidia.cuvs.CagraIndexParams.CagraGraphBuildAlgo;
 import com.nvidia.cuvs.CuVSResources;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,11 +56,11 @@ import org.apache.lucene.util.SuppressForbidden;
   private CagraIndex cagraIndex;
   private CagraIndex cagraIndexForHnsw;
 
-  private int cuvsWriterThreads;
-  private int intGraphDegree;
-  private int graphDegree;
-  private MergeStrategy mergeStrategy;
-  private CuVSResources resources;
+  private final int cuvsWriterThreads;
+  private final int intGraphDegree;
+  private final int graphDegree;
+  private final MergeStrategy mergeStrategy;
+  private final CuVSResources resources;
 
   /** Merge strategy used for CuVS */
   public enum MergeStrategy {
@@ -113,7 +114,7 @@ import org.apache.lucene.util.SuppressForbidden;
   @SuppressForbidden(reason = "A temporary java.util.File is needed for Cagra's serialization")
   private byte[] createCagraIndex(float[][] vectors, List<Integer> mapping) throws Throwable {
     CagraIndexParams indexParams =
-        new CagraIndexParams.Builder(resources)
+        new CagraIndexParams.Builder()
             .withNumWriterThreads(cuvsWriterThreads)
             .withIntermediateGraphDegree(intGraphDegree)
             .withGraphDegree(graphDegree)
@@ -122,13 +123,13 @@ import org.apache.lucene.util.SuppressForbidden;
 
     // log.info("Indexing started: " + System.currentTimeMillis());
     cagraIndex =
-        new CagraIndex.Builder(resources).withDataset(vectors).withIndexParams(indexParams).build();
+        CagraIndex.newBuilder(resources).withDataset(vectors).withIndexParams(indexParams).build();
     // log.info("Indexing done: " + System.currentTimeMillis() + "ms, documents: " +
     // vectors.length);
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    File tmpFile =
-        File.createTempFile(
+    Path tmpFile =
+        Files.createTempFile(
             "tmpindex", "cag"); // TODO: Should we make this a file with random names?
     cagraIndex.serialize(baos, tmpFile);
     return baos.toByteArray();
@@ -143,7 +144,7 @@ import org.apache.lucene.util.SuppressForbidden;
 
     // log.info("Indexing started: " + System.currentTimeMillis());
     BruteForceIndex index =
-        new BruteForceIndex.Builder(resources)
+        BruteForceIndex.newBuilder(resources)
             .withIndexParams(indexParams)
             .withDataset(vectors)
             .build();
@@ -157,7 +158,7 @@ import org.apache.lucene.util.SuppressForbidden;
   @SuppressForbidden(reason = "A temporary java.util.File is needed for HNSW's serialization")
   private byte[] createHnswIndex(float[][] vectors) throws Throwable {
     CagraIndexParams indexParams =
-        new CagraIndexParams.Builder(resources)
+        new CagraIndexParams.Builder()
             .withNumWriterThreads(cuvsWriterThreads)
             .withIntermediateGraphDegree(intGraphDegree)
             .withGraphDegree(graphDegree)
@@ -166,12 +167,12 @@ import org.apache.lucene.util.SuppressForbidden;
 
     // log.info("Indexing started: " + System.currentTimeMillis());
     cagraIndexForHnsw =
-        new CagraIndex.Builder(resources).withDataset(vectors).withIndexParams(indexParams).build();
+        CagraIndex.newBuilder(resources).withDataset(vectors).withIndexParams(indexParams).build();
     // log.info("Indexing done: " + System.currentTimeMillis() + "ms, documents: " +
     // vectors.length);
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    File tmpFile = File.createTempFile("tmpindex", "hnsw");
+    Path tmpFile = Files.createTempFile("tmpindex", "hnsw");
     cagraIndexForHnsw.serializeToHNSW(baos, tmpFile);
     return baos.toByteArray();
   }

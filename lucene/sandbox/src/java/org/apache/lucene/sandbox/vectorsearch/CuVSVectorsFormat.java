@@ -17,7 +17,7 @@
 package org.apache.lucene.sandbox.vectorsearch;
 
 import com.nvidia.cuvs.CuVSResources;
-import com.nvidia.cuvs.LibraryNotFoundException;
+import com.nvidia.cuvs.LibraryException;
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
@@ -44,7 +44,7 @@ import org.apache.lucene.sandbox.vectorsearch.CuVSVectorsWriter.MergeStrategy;
     this.intGraphDegree = 128;
     this.graphDegree = 64;
     try {
-      resources = new CuVSResources();
+      resources = CuVSResources.create();
     } catch (Throwable e) {
       throw new RuntimeException(e);
     }
@@ -52,15 +52,15 @@ import org.apache.lucene.sandbox.vectorsearch.CuVSVectorsWriter.MergeStrategy;
 
   public CuVSVectorsFormat(
       int cuvsWriterThreads, int intGraphDegree, int graphDegree, MergeStrategy mergeStrategy)
-      throws LibraryNotFoundException {
+      throws LibraryException {
     super("CuVSVectorsFormat");
     this.mergeStrategy = mergeStrategy;
     this.cuvsWriterThreads = cuvsWriterThreads;
     this.intGraphDegree = intGraphDegree;
     this.graphDegree = graphDegree;
     try {
-      resources = new CuVSResources();
-    } catch (LibraryNotFoundException ex) {
+      resources = CuVSResources.create();
+    } catch (LibraryException ex) {
       throw ex;
     } catch (Throwable e) {
       throw new RuntimeException(e);
