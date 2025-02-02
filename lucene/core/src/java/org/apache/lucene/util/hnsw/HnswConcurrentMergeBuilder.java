@@ -49,7 +49,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       TaskExecutor taskExecutor,
       int numWorker,
       RandomVectorScorerSupplier scorerSupplier,
-      int M,
       int beamWidth,
       OnHeapHnswGraph hnsw,
       BitSet initializedNodes)
@@ -62,7 +61,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
       workers[i] =
           new ConcurrentMergeWorker(
               scorerSupplier.copy(),
-              M,
               beamWidth,
               HnswGraphBuilder.randSeed,
               hnsw,
@@ -92,9 +90,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
-    finish();
-    frozen = true;
-    return workers[0].getCompletedGraph();
+    return getCompletedGraph();
   }
 
   @Override
@@ -149,7 +145,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
-        int M,
         int beamWidth,
         long seed,
         OnHeapHnswGraph hnsw,
@@ -159,7 +154,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         throws IOException {
       super(
           scorerSupplier,
-          M,
           beamWidth,
           seed,
           hnsw,

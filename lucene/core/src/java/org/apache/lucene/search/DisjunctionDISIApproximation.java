@@ -21,7 +21,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -92,7 +91,7 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
     // Build the PQ:
     assert lastIdx >= -1 && lastIdx < wrappers.length - 1;
     int pqLen = wrappers.length - lastIdx - 1;
-    leadIterators = new DisiPriorityQueue(pqLen);
+    leadIterators = DisiPriorityQueue.ofMaxSize(pqLen);
     leadIterators.addAll(wrappers, lastIdx + 1, pqLen);
 
     // Build the non-PQ list:
@@ -150,17 +149,16 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
   }
 
   @Override
-  public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
-      throws IOException {
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     while (leadTop.doc < upTo) {
-      leadTop.approximation.intoBitSet(acceptDocs, upTo, bitSet, offset);
+      leadTop.approximation.intoBitSet(upTo, bitSet, offset);
       leadTop.doc = leadTop.approximation.docID();
       leadTop = leadIterators.updateTop();
     }
 
     minOtherDoc = Integer.MAX_VALUE;
     for (DisiWrapper w : otherIterators) {
-      w.approximation.intoBitSet(acceptDocs, upTo, bitSet, offset);
+      w.approximation.intoBitSet(upTo, bitSet, offset);
       w.doc = w.approximation.docID();
       minOtherDoc = Math.min(minOtherDoc, w.doc);
     }
