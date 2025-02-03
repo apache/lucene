@@ -14,26 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
 
-/**
- * Test module for global integration tests of all {@code org.apache.lucene.analysis}
- * packages/modules.
- */
-@SuppressWarnings({"requires-automatic"})
-module org.apache.lucene.analysis.tests {
-  requires java.xml;
-  requires org.apache.lucene.core;
-  requires org.apache.lucene.analysis.common;
-  requires org.apache.lucene.analysis.icu;
-  requires org.apache.lucene.analysis.kuromoji;
-  requires org.apache.lucene.analysis.morfologik;
-  requires org.apache.lucene.analysis.nori;
-  requires org.apache.lucene.analysis.opennlp;
-  requires org.apache.lucene.analysis.phonetic;
-  requires org.apache.lucene.analysis.smartcn;
-  requires org.apache.lucene.analysis.stempel;
-  requires org.apache.lucene.test_framework;
-  requires org.apache.commons.codec;
+import java.io.IOException;
+import org.apache.lucene.util.Bits;
 
-  exports org.apache.lucene.analysis.tests;
+/** Bulk iterator over a {@link DocIdSetIterator}. */
+public abstract class DocIdSetBulkIterator {
+
+  /** Sole constructor, invoked by sub-classes. */
+  protected DocIdSetBulkIterator() {}
+
+  /**
+   * Iterate over documents contained in this iterator and call {@link LeafCollector#collect} on
+   * them.
+   */
+  public abstract void iterate(LeafCollector collector, Bits acceptDocs, int min, int max)
+      throws IOException;
 }
