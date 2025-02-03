@@ -75,7 +75,7 @@ Improvements
   mergeFactor segments together when the merge is below the min merge size.
   (Adrien Grand)
 
-* GITHUB#????: Added support for RegExp to handle case insensitive matching
+* GITHUB#14192: Added support for RegExp to handle case insensitive matching
   across the full set of Unicode characters  
 
 Optimizations
