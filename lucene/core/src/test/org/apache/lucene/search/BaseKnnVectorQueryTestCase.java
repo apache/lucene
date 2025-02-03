@@ -489,14 +489,13 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     assertRandomConsistency(false);
   }
 
-  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/14180")
   public void testRandomConsistencyMultiThreaded() throws IOException {
     assertRandomConsistency(true);
   }
 
   private void assertRandomConsistency(boolean multiThreaded) throws IOException {
-    int numDocs = 100;
-    int dimension = 4;
+    int numDocs = 10000;
+    int dimension = 1024;
     int numIters = 10;
     boolean everyDocHasAVector = random().nextBoolean();
     Random r = random();

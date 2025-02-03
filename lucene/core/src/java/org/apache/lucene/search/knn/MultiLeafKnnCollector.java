@@ -43,6 +43,7 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
   private final float[] updatesScratch;
   // interval to synchronize the local and global queues, as a number of visited vectors
   private final int interval;
+  private final boolean frozen;
   private boolean kResultsCollected = false;
   private float cachedGlobalMinSim = Float.NEGATIVE_INFINITY;
   private final AbstractKnnCollector subCollector;
@@ -75,7 +76,8 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
       float greediness,
       int interval,
       BlockingFloatHeap globalSimilarityQueue,
-      AbstractKnnCollector subCollector) {
+      AbstractKnnCollector subCollector,
+      boolean frozen) {
     super(subCollector);
     if (greediness < 0 || greediness > 1) {
       throw new IllegalArgumentException("greediness must be in [0,1]");
@@ -89,6 +91,24 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
     this.nonCompetitiveQueue = new FloatHeap(Math.max(1, Math.round((1 - greediness) * k)));
     this.updatesQueue = new FloatHeap(k);
     this.updatesScratch = new float[k];
+    this.frozen = frozen;
+  }
+
+  public MultiLeafKnnCollector(
+      int k,
+      BlockingFloatHeap globalSimilarityQueue,
+      AbstractKnnCollector subCollector,
+      boolean frozen) {
+    this(k, DEFAULT_GREEDINESS, DEFAULT_INTERVAL, globalSimilarityQueue, subCollector, frozen);
+  }
+
+  public MultiLeafKnnCollector(
+      int k,
+      float greediness,
+      int interval,
+      BlockingFloatHeap globalSimilarityQueue,
+      AbstractKnnCollector subCollector) {
+    this(k, greediness, interval, globalSimilarityQueue, subCollector, false);
   }
 
   @Override
@@ -102,7 +122,7 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
     updatesQueue.offer(similarity);
     boolean globalSimUpdated = nonCompetitiveQueue.offer(similarity);
 
-    if (kResultsCollected) {
+    if (kResultsCollected && frozen == false) {
       // as we've collected k results, we can start do periodic updates with the global queue
       if (firstKResultsCollected || (subCollector.visitedCount() & interval) == 0) {
         // BlockingFloatHeap#offer requires input to be sorted in ascending order, so we can't

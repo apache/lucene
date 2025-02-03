@@ -19,11 +19,7 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
@@ -88,11 +84,29 @@ abstract class AbstractKnnVectorQuery extends Query {
             getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = reader.leaves();
+
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
-    for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
+
+    TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
+    if (leafReaderContexts.size() > 1) {
+      LeafReaderContext topContext = leafReaderContexts.getFirst();
+      perLeafResults[0] = searchLeaf(topContext, filterWeight, knnCollectorManager);
+
+      for (LeafReaderContext context : leafReaderContexts.subList(1, leafReaderContexts.size())) {
+        tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
+      }
+      System.arraycopy(
+          taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new),
+          0,
+          perLeafResults,
+          1,
+          tasks.size());
+    } else {
+      for (LeafReaderContext context : leafReaderContexts) {
+        tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
+      }
+      perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
     }
-    TopDocs[] perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
 
     // Merge sort the results
     TopDocs topK = mergeLeafResults(perLeafResults);

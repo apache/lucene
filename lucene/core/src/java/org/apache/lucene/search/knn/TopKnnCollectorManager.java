@@ -35,10 +35,16 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
   private final int k;
   // the global score queue used to track the top scores collected across all leaves
   private final BlockingFloatHeap globalScoreQueue;
+  private final LeafReaderContext first;
 
   public TopKnnCollectorManager(int k, IndexSearcher indexSearcher) {
     boolean isMultiSegments = indexSearcher.getIndexReader().leaves().size() > 1;
     this.k = k;
+    this.first =
+        indexSearcher.getLeafContexts() != null
+                && indexSearcher.getLeafContexts().isEmpty() == false
+            ? indexSearcher.getLeafContexts().getFirst()
+            : null;
     this.globalScoreQueue = isMultiSegments ? new BlockingFloatHeap(k) : null;
   }
 
@@ -50,10 +56,15 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
    */
   @Override
   public KnnCollector newCollector(int visitedLimit, LeafReaderContext context) throws IOException {
-    if (globalScoreQueue == null) {
+    if (globalScoreQueue == null || context == null) {
       return new TopKnnCollector(k, visitedLimit);
     } else {
-      return new MultiLeafKnnCollector(k, globalScoreQueue, new TopKnnCollector(k, visitedLimit));
+      if (context == first) {
+        return new MultiLeafKnnCollector(k, globalScoreQueue, new TopKnnCollector(k, visitedLimit));
+      } else {
+        return new MultiLeafKnnCollector(
+            k, globalScoreQueue, new TopKnnCollector(k, visitedLimit), true);
+      }
     }
   }
 }
