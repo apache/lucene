@@ -144,7 +144,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
         break;
       }
       int topCandidateNode = candidates.pop();
-      graph.seek(0, topCandidateNode);
+      graph.seek(level, topCandidateNode);
       int neighborCount = graph.neighborCount();
       toScore.clear();
       toExplore.clear();
@@ -170,7 +170,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
         int exploreFriend;
         while ((exploreFriend = toExplore.poll()) != NO_MORE_DOCS
             && toScore.count() < maxToScoreCount) {
-          graphSeek(graph, 0, exploreFriend);
+          graphSeek(graph, level, exploreFriend);
           int friendOfAFriendOrd;
           while ((friendOfAFriendOrd = graph.nextNeighbor()) != NO_MORE_DOCS
               && toScore.count() < maxToScoreCount) {
