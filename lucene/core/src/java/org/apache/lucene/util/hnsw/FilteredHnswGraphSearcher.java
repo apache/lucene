@@ -151,7 +151,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
       int friendOrd;
       while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS && toScore.isFull() == false) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-        if (visited.get(friendOrd)) {
+        if (visited.getAndSet(friendOrd)) {
           continue;
         }
         if (acceptOrds.get(friendOrd)) {
