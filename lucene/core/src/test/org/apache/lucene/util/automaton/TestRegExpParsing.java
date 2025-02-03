@@ -114,6 +114,33 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  public void testCaseInsensitiveCharUnicode() {
+    RegExp re = new RegExp("Ж", RegExp.NONE, RegExp.UNICODE_CASE_INSENSITIVE);
+    assertEquals("\\Ж", re.toString());
+    assertEquals("REGEXP_CHAR char=Ж\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+
+    Automaton expected = Operations.union(Automata.makeChar('Ж'), Automata.makeChar('ж'));
+    assertSameLanguage(expected, actual);
+  }
+
+  public void testCaseInsensitiveCharUnicodeSigma() {
+    RegExp re = new RegExp("σ", RegExp.NONE, RegExp.UNICODE_CASE_INSENSITIVE);
+    assertEquals("\\σ", re.toString());
+    assertEquals("REGEXP_CHAR char=σ\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+
+    Automaton expected =
+        Operations.union(
+            Operations.union(Automata.makeChar('Σ'), Automata.makeChar('σ')),
+            Automata.makeChar('ς'));
+    assertSameLanguage(expected, actual);
+  }
+
   public void testNegatedChar() {
     RegExp re = new RegExp("[^c]");
     // TODO: would be nice to emit negated class rather than this

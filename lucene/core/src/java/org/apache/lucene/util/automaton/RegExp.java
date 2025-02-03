@@ -29,6 +29,8 @@
 
 package org.apache.lucene.util.automaton;
 
+import static java.util.Map.entry;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -424,6 +426,46 @@ public class RegExp {
   /** Allows case insensitive matching of ASCII characters. */
   public static final int ASCII_CASE_INSENSITIVE = 0x0100;
 
+  /**
+   * Allows case-insensitive matching of most Unicode characters.
+   *
+   * <p>In general the attempt is to reach parity with {@link java.util.regex.Pattern}
+   * Pattern.CASE_INSENSITIVE and Pattern.UNICODE_CASE flags when doing a case-insensitive match.
+   * This means characters like those representing the Greek symbol sigma (Σ, σ, ς) will all match
+   * one another
+   *
+   * <p>Some Unicode characters are difficult to correctly decode casing. In some cases Java's
+   * String class correctly handles decoding these but Java's {@link java.util.regex.Pattern} class
+   * does not. Again to keep parity and for performance reasons we are maintaining consistency with
+   * {@link java.util.regex.Pattern}. There are three known special classes of these characters we
+   * term unstable:
+   *
+   * <ul>
+   *   <li>1. the set of characters whose casing matches across multiple characters such as the
+   *       Greek sigma character mentioned above (Σ, σ, ς); we support these; notably some of these
+   *       characters fall into the ASCII range and so will behave differently when this flag is
+   *       enabled
+   *   <li>2. the set of characters that are neither in an upper nor lower case stable state and can
+   *       be both uppercased and lowercased from their current code point such as ǅ which when
+   *       uppercased produces Ǆ and when lowercased produces ǆ; we support these
+   *   <li>3. the set of characters that transition into or out of the Basic Multilingual Plane
+   *       (BMP). For performance reasons we ignore characters that transition for now, which is
+   *       consistent with {@link java.util.regex.Pattern}
+   * </ul>
+   *
+   * <p>Sometimes these classes of character will overlap; if a character is in both class 3 and any
+   * other case listed above it is ignored for the characters that transition; this is consistent
+   * with {@link java.util.regex.Pattern}. For instance: this character ῼ will match it's lowercase
+   * form ῳ in the BMP but not it's uppercase form outside the BMP: ΩΙ
+   *
+   * <p>These are the set of known characters that transition in or out of the BMP when cased such
+   * as ﬗ (code point: 64279 with 2 bytes) which when uppercased produces ՄԽ (code points: 1348 1341
+   * with 4 bytes) and are therefore ignored: 223, 304, 329, 496, 912, 944, 1415, 7830-7834, 8016,
+   * 8018, 8020, 8022, 8064-8111, 8114-8116, 8118, 8119, 8124, 8130-8132, 8134, 8135, 8140, 8146,
+   * 8147, 8150, 8151, 8162-8164, 8166-8180, 8182, 8183, 8188, 64256-64262, 64275-64279
+   */
+  public static final int UNICODE_CASE_INSENSITIVE = 0x0200;
+
   // -----  Deprecated flags ( > 0xffff )  ------
 
   /**
@@ -435,6 +477,160 @@ public class RegExp {
    * @deprecated This method will be removed in Lucene 11
    */
   @Deprecated public static final int DEPRECATED_COMPLEMENT = 0x10000;
+
+  /**
+   * See {@link #UNICODE_CASE_INSENSITIVE} for more details on the set of known unstable alternative
+   * casings
+   */
+  static final Map<Integer, int[]> unstableUnicodeCharacters =
+      Map.ofEntries(
+          // these are the set of characters whose casing matches across multiple characters
+          entry(181, new int[] {924, 956}),
+          entry(924, new int[] {181, 956}),
+          entry(956, new int[] {181, 924}),
+          entry(304, new int[] {105, 73, 305}),
+          entry(105, new int[] {304, 73, 305}),
+          entry(73, new int[] {304, 105, 305}),
+          entry(305, new int[] {304, 105, 73}),
+          entry(383, new int[] {83, 115}),
+          entry(83, new int[] {383, 115}),
+          entry(115, new int[] {383, 83}),
+          entry(837, new int[] {921, 953, 8126}),
+          entry(921, new int[] {837, 953, 8126}),
+          entry(953, new int[] {837, 921, 8126}),
+          entry(8126, new int[] {837, 921, 953}),
+          entry(962, new int[] {931, 963}),
+          entry(931, new int[] {962, 963}),
+          entry(963, new int[] {962, 931}),
+          entry(976, new int[] {914, 946}),
+          entry(914, new int[] {976, 946}),
+          entry(946, new int[] {976, 914}),
+          entry(977, new int[] {920, 952, 1012}),
+          entry(920, new int[] {977, 952, 1012}),
+          entry(952, new int[] {977, 920, 1012}),
+          entry(1012, new int[] {977, 920, 952}),
+          entry(981, new int[] {934, 966}),
+          entry(934, new int[] {981, 966}),
+          entry(966, new int[] {981, 934}),
+          entry(982, new int[] {928, 960}),
+          entry(928, new int[] {982, 960}),
+          entry(960, new int[] {982, 928}),
+          entry(1008, new int[] {922, 954}),
+          entry(922, new int[] {1008, 954}),
+          entry(954, new int[] {1008, 922}),
+          entry(1009, new int[] {929, 961}),
+          entry(929, new int[] {1009, 961}),
+          entry(961, new int[] {1009, 929}),
+          entry(1013, new int[] {917, 949}),
+          entry(917, new int[] {1013, 949}),
+          entry(949, new int[] {1013, 917}),
+          entry(7296, new int[] {1042, 1074}),
+          entry(1042, new int[] {7296, 1074}),
+          entry(1074, new int[] {7296, 1042}),
+          entry(7297, new int[] {1044, 1076}),
+          entry(1044, new int[] {7297, 1076}),
+          entry(1076, new int[] {7297, 1044}),
+          entry(7298, new int[] {1054, 1086}),
+          entry(1054, new int[] {7298, 1086}),
+          entry(1086, new int[] {7298, 1054}),
+          entry(7299, new int[] {1057, 1089}),
+          entry(1057, new int[] {7299, 1089}),
+          entry(1089, new int[] {7299, 1057}),
+          entry(7300, new int[] {1058, 1090, 7301}),
+          entry(1058, new int[] {7300, 1090, 7301}),
+          entry(1090, new int[] {7300, 1058, 7301}),
+          entry(7301, new int[] {7300, 1058, 1090}),
+          entry(7302, new int[] {1066, 1098}),
+          entry(1066, new int[] {7302, 1098}),
+          entry(1098, new int[] {7302, 1066}),
+          entry(7303, new int[] {1122, 1123}),
+          entry(1122, new int[] {7303, 1123}),
+          entry(1123, new int[] {7303, 1122}),
+          entry(7304, new int[] {42570, 42571}),
+          entry(42570, new int[] {7304, 42571}),
+          entry(42571, new int[] {7304, 42570}),
+          entry(7835, new int[] {7776, 7777}),
+          entry(7776, new int[] {7835, 7777}),
+          entry(7777, new int[] {7835, 7776}),
+          entry(8486, new int[] {969, 937}),
+          entry(969, new int[] {8486, 937}),
+          entry(937, new int[] {8486, 969}),
+          entry(8490, new int[] {107, 75}),
+          entry(107, new int[] {8490, 75}),
+          entry(75, new int[] {8490, 107}),
+          entry(8491, new int[] {229, 197}),
+          entry(229, new int[] {8491, 197}),
+          entry(197, new int[] {8491, 229}),
+
+          // these are the set of characters that have both an upper and lower case representation
+          // {@link java.lang.Character#isUpperCase} and {@link java.lang.Character#isLowerCase}
+          // will fail for these characters which is why they must be enumerated here
+          entry(453, new int[] {454, 452}),
+          entry(454, new int[] {453, 452}),
+          entry(452, new int[] {453, 454}),
+          entry(456, new int[] {457, 455}),
+          entry(457, new int[] {456, 455}),
+          entry(455, new int[] {456, 457}),
+          entry(459, new int[] {460, 458}),
+          entry(460, new int[] {459, 458}),
+          entry(458, new int[] {459, 460}),
+          entry(498, new int[] {499, 497}),
+          entry(499, new int[] {498, 497}),
+          entry(497, new int[] {498, 499}),
+          entry(8072, new int[] {8064}),
+          entry(8064, new int[] {8072}),
+          entry(8073, new int[] {8065}),
+          entry(8065, new int[] {8073}),
+          entry(8074, new int[] {8066}),
+          entry(8066, new int[] {8074}),
+          entry(8075, new int[] {8067}),
+          entry(8067, new int[] {8075}),
+          entry(8076, new int[] {8068}),
+          entry(8068, new int[] {8076}),
+          entry(8077, new int[] {8069}),
+          entry(8069, new int[] {8077}),
+          entry(8078, new int[] {8070}),
+          entry(8070, new int[] {8078}),
+          entry(8079, new int[] {8071}),
+          entry(8071, new int[] {8079}),
+          entry(8088, new int[] {8080}),
+          entry(8080, new int[] {8088}),
+          entry(8089, new int[] {8081}),
+          entry(8081, new int[] {8089}),
+          entry(8090, new int[] {8082}),
+          entry(8082, new int[] {8090}),
+          entry(8091, new int[] {8083}),
+          entry(8083, new int[] {8091}),
+          entry(8092, new int[] {8084}),
+          entry(8084, new int[] {8092}),
+          entry(8093, new int[] {8085}),
+          entry(8085, new int[] {8093}),
+          entry(8094, new int[] {8086}),
+          entry(8086, new int[] {8094}),
+          entry(8095, new int[] {8087}),
+          entry(8087, new int[] {8095}),
+          entry(8104, new int[] {8096}),
+          entry(8096, new int[] {8104}),
+          entry(8105, new int[] {8097}),
+          entry(8097, new int[] {8105}),
+          entry(8106, new int[] {8098}),
+          entry(8098, new int[] {8106}),
+          entry(8107, new int[] {8099}),
+          entry(8099, new int[] {8107}),
+          entry(8108, new int[] {8100}),
+          entry(8100, new int[] {8108}),
+          entry(8109, new int[] {8101}),
+          entry(8101, new int[] {8109}),
+          entry(8110, new int[] {8102}),
+          entry(8102, new int[] {8110}),
+          entry(8111, new int[] {8103}),
+          entry(8103, new int[] {8111}),
+          entry(8124, new int[] {8115}),
+          entry(8115, new int[] {8124}),
+          entry(8140, new int[] {8131}),
+          entry(8131, new int[] {8140}),
+          entry(8188, new int[] {8179}),
+          entry(8179, new int[] {8188}));
 
   // Immutable parsed state
   /** The type of expression */
@@ -597,6 +793,10 @@ public class RegExp {
       throws IllegalArgumentException {
     List<Automaton> list;
     Automaton a = null;
+    // these insensitive flags are checked multiple times together and independently
+    // so pulling these up and checking each separately here
+    boolean isAsciiInsensitive = check(ASCII_CASE_INSENSITIVE);
+    boolean isUnicodeInsensitive = check(UNICODE_CASE_INSENSITIVE);
     switch (kind) {
       case REGEXP_PRE_CLASS:
         RegExp expanded = expandPredefined();
@@ -647,8 +847,8 @@ public class RegExp {
         a = Operations.complement(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
         break;
       case REGEXP_CHAR:
-        if (check(ASCII_CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveChar(c);
+        if (isAsciiInsensitive || isUnicodeInsensitive) {
+          a = toCaseInsensitiveChar(c, isAsciiInsensitive, isUnicodeInsensitive);
         } else {
           a = Automata.makeChar(c);
         }
@@ -663,8 +863,8 @@ public class RegExp {
         a = Automata.makeEmpty();
         break;
       case REGEXP_STRING:
-        if (check(ASCII_CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveString();
+        if (isAsciiInsensitive || isUnicodeInsensitive) {
+          a = toCaseInsensitiveString(isAsciiInsensitive, isUnicodeInsensitive);
         } else {
           a = Automata.makeString(s);
         }
@@ -696,17 +896,52 @@ public class RegExp {
     return a;
   }
 
-  private Automaton toCaseInsensitiveChar(int codepoint) {
-    Automaton case1 = Automata.makeChar(codepoint);
-    // For now we only work with ASCII characters
-    if (codepoint > 128) {
-      return case1;
+  /**
+   * This function handles both ASCII and the remainder of the Unicode spec for generating
+   * case-insensitive alternatives. Specifically for Unicode some special handling is required
+   * particularly to ensure behavior is at parity with other regex engines like {@link
+   * java.util.regex.Pattern}
+   *
+   * <p>See the {@link #UNICODE_CASE_INSENSITIVE} flag for details on the set of known unstable
+   * alternative casings within the Unicode spec.
+   *
+   * @param codepoint the Character code point to encode as an Automaton
+   * @return the set of Automaton that represent the original code point and it's variants
+   */
+  private Automaton toCaseInsensitiveChar(
+      int codepoint, boolean isAsciiInsensitive, boolean isUnicodeInsensitive) {
+    Automaton result;
+    if (isAsciiInsensitive || isUnicodeInsensitive) {
+      if (isUnicodeInsensitive) {
+        int[] altCodepoints = unstableUnicodeCharacters.get(codepoint);
+        if (altCodepoints != null) {
+          List<Automaton> altAutomaton = new ArrayList<>(altCodepoints.length);
+          for (int i = 0; i < altCodepoints.length; i++) {
+            altAutomaton.add(Automata.makeChar(altCodepoints[i]));
+          }
+          altAutomaton.add(Automata.makeChar(codepoint));
+          result = Operations.union(altAutomaton);
+        } else {
+          result = generateSimpleCaseInsensitiveAutomaton(codepoint);
+        }
+      } else if (codepoint <= 128) {
+        result = generateSimpleCaseInsensitiveAutomaton(codepoint);
+      } else {
+        result = Automata.makeChar(codepoint);
+      }
+    } else {
+      result = Automata.makeChar(codepoint);
     }
+    return result;
+  }
+
+  private Automaton generateSimpleCaseInsensitiveAutomaton(int codepoint) {
+    Automaton result;
+    Automaton case1 = Automata.makeChar(codepoint);
     int altCase =
         Character.isLowerCase(codepoint)
             ? Character.toUpperCase(codepoint)
             : Character.toLowerCase(codepoint);
-    Automaton result;
     if (altCase != codepoint) {
       result = Operations.union(case1, Automata.makeChar(altCase));
     } else {
@@ -715,12 +950,13 @@ public class RegExp {
     return result;
   }
 
-  private Automaton toCaseInsensitiveString() {
+  private Automaton toCaseInsensitiveString(
+      boolean isAsciiInsensitive, boolean isUnicodeInsensitive) {
     List<Automaton> list = new ArrayList<>();
 
     Iterator<Integer> iter = s.codePoints().iterator();
     while (iter.hasNext()) {
-      list.add(toCaseInsensitiveChar(iter.next()));
+      list.add(toCaseInsensitiveChar(iter.next(), isAsciiInsensitive, isUnicodeInsensitive));
     }
     return Operations.concatenate(list);
   }
