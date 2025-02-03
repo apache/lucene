@@ -35,8 +35,7 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
   private int previousQueueSize;
   private int currentQueueSize;
 
-  HnswQueueSaturationCollector(
-      KnnCollector delegate, double saturationThreshold, int patience) {
+  HnswQueueSaturationCollector(KnnCollector delegate, double saturationThreshold, int patience) {
     this.delegate = delegate;
     this.previousQueueSize = 0;
     this.currentQueueSize = 0;
