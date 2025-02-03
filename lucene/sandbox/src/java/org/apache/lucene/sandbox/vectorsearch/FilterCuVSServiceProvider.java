@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.vectorsearch;
 import com.nvidia.cuvs.spi.CuVSProvider;
 import com.nvidia.cuvs.spi.CuVSServiceProvider;
 
+/** A provider that creates instances of FilterCuVSProvider. */
 public class FilterCuVSServiceProvider extends CuVSServiceProvider {
   @Override
   public CuVSProvider get(CuVSProvider builtinProvider) {

@@ -23,7 +23,7 @@ import com.nvidia.cuvs.HnswIndex;
 import com.nvidia.cuvs.spi.CuVSProvider;
 import java.nio.file.Path;
 
-public class FilterCuVSProvider implements CuVSProvider {
+/*package-private*/ class FilterCuVSProvider implements CuVSProvider {
 
   private final CuVSProvider delegate;
 

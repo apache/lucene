@@ -18,6 +18,7 @@ package org.apache.lucene.sandbox.vectorsearch;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
@@ -37,9 +38,9 @@ import org.apache.lucene.index.FieldInfo;
 
   @Override
   public long ramBytesUsed() {
-    return fieldName.getBytes(Charset.forName("UTF-8")).length
+    return fieldName.getBytes(StandardCharsets.UTF_8).length
         + Integer.BYTES
-        + (vectors.size() * fieldVectorDimension * Float.BYTES);
+        + ((long) vectors.size() * fieldVectorDimension * Float.BYTES);
   }
 
   @Override

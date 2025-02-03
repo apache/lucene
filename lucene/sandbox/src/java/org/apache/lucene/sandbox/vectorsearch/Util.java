@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import org.apache.commons.lang3.SerializationUtils;
 
 /** Some Utils used in CuVS integration */
 /*package-private*/ class Util {

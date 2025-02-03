@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
@@ -141,18 +140,18 @@ import org.apache.lucene.util.IOUtils;
       switch (extension) {
         case "meta":
           {
-            maxDocs = (Map<String, Integer>) SerializationUtils.deserialize(baos.toByteArray());
+            maxDocs = SerializationUtils.deserialize(baos.toByteArray());
             break;
           }
         case "vec":
           {
             vectors.put(
-                segmentField, (List<float[]>) SerializationUtils.deserialize(baos.toByteArray()));
+                segmentField, SerializationUtils.deserialize(baos.toByteArray()));
             break;
           }
         case "map":
           {
-            List<Integer> map = (List<Integer>) SerializationUtils.deserialize(baos.toByteArray());
+            List<Integer> map = SerializationUtils.deserialize(baos.toByteArray());
             mappings.put(segmentField, map);
             break;
           }

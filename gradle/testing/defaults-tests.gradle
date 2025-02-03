@@ -143,7 +143,7 @@ allprojects {
               ':lucene:codecs',
               ":lucene:distribution.tests",
               ":lucene:test-framework"
-      ] ? 'ALL-UNNAMED' : 'org.apache.lucene.core,com.nvidia.cuvs')
+      ] ? 'ALL-UNNAMED' : 'org.apache.lucene.core,com.nvidia.cuvs') // TODO: make this sandbox only
 
       def loggingConfigFile = layout.projectDirectory.file("${resources}/logging.properties")
       def tempDir = layout.projectDirectory.dir(testsTmpDir.toString())

@@ -22,7 +22,6 @@ module org.apache.lucene.sandbox {
   requires org.apache.lucene.facet;
   requires java.logging;
   requires com.nvidia.cuvs;
-  requires org.apache.commons.lang3;
 
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.idversion;
@@ -41,10 +40,10 @@ module org.apache.lucene.sandbox {
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;
-  // provides org.apache.lucene.codecs.KnnVectorsFormat with
-  //    org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat;
-  provides org.apache.lucene.codecs.Codec with
-      org.apache.lucene.sandbox.vectorsearch.CuVSCodec;
+   provides org.apache.lucene.codecs.KnnVectorsFormat with
+      org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat;
+//  provides org.apache.lucene.codecs.Codec with
+//      org.apache.lucene.sandbox.vectorsearch.CuVSCodec;
   provides com.nvidia.cuvs.spi.CuVSServiceProvider with
       org.apache.lucene.sandbox.vectorsearch.FilterCuVSServiceProvider;
 }
