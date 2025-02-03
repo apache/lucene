@@ -51,7 +51,7 @@ import org.apache.lucene.util.Bits;
  *
  * @lucene.experimental
  */
-public abstract class AbstractKnnVectorQuery extends Query {
+abstract class AbstractKnnVectorQuery extends Query {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 

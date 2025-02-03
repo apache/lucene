@@ -38,62 +38,53 @@ import org.apache.lucene.util.SparseFixedBitSet;
  *       additional candidates is predicated on the original candidate's filtered percentage.
  * </ul>
  */
-public class FilteredHnswGraphSearcher {
+public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
+  // The maximum percentage of filtered docs before using this filtered strategy becomes less
+  // effective than regular HNSW search
+  static final float MAX_FILTER_THRESHOLD = 0.60f;
+
   // How many filtered candidates must be found to consider N-hop neighbors
   private static final float EXPANDED_EXPLORATION_LAMBDA = 0.10f;
 
-  /**
-   * Scratch data structures that are used in each {@link #searchBaseLevel} call. These can be
-   * expensive to allocate, so they're cleared and reused across calls.
-   */
-  private final NeighborQueue candidates;
-
-  private final BitSet visited;
   private final BitSet explorationVisited;
-  private final HnswGraph graph;
+  private final int maxExplorationMultiplier;
 
   /** Creates a new graph searcher. */
   private FilteredHnswGraphSearcher(
-      NeighborQueue candidates, BitSet explorationVisited, BitSet visited, HnswGraph graph) {
+      NeighborQueue candidates,
+      BitSet explorationVisited,
+      BitSet visited,
+      int filterSize,
+      HnswGraph graph) {
+    super(candidates, visited);
     assert graph.maxConn() > 0 : "graph must have known max connections";
-    this.candidates = candidates;
-    this.visited = visited;
     this.explorationVisited = explorationVisited;
-    this.graph = graph;
+    this.maxExplorationMultiplier = Math.min(graph.size() / filterSize, 8);
   }
 
   /**
-   * Searches HNSW graph for the nearest neighbors of a query vector.
+   * Creates a new filtered graph searcher.
    *
-   * @param scorer the scorer to compare the query with the nodes
-   * @param knnCollector a collector of top knn results to be returned
-   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
-   *     graph.
+   * @param k the number of nearest neighbors to find
+   * @param graph the graph to search
    * @param filterSize the number of vectors that pass the accepted ords filter
-   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
-   *     {@code null} if they are all allowed to match.
+   * @param acceptOrds the accepted ords filter
+   * @return a new graph searcher optimized for filtered search
    */
-  public static void search(
-      RandomVectorScorer scorer,
-      KnnCollector knnCollector,
-      HnswGraph graph,
-      int filterSize,
-      Bits acceptOrds)
-      throws IOException {
+  public static FilteredHnswGraphSearcher create(
+      int k, HnswGraph graph, int filterSize, Bits acceptOrds) {
     if (acceptOrds == null) {
       throw new IllegalArgumentException("acceptOrds must not be null to used filtered search");
     }
-    FilteredHnswGraphSearcher graphSearcher =
-        new FilteredHnswGraphSearcher(
-            new NeighborQueue(knnCollector.k(), true),
-            bitSet(filterSize, getGraphSize(graph), knnCollector.k()),
-            new SparseFixedBitSet(getGraphSize(graph)),
-            graph);
-    int ep = graphSearcher.findBestEntryPoint(scorer, knnCollector);
-    int maxExplorationMultiplier = Math.min(graph.size() / filterSize, 8);
-    if (ep != -1) {
-      graphSearcher.searchBaseLevel(knnCollector, scorer, ep, maxExplorationMultiplier, acceptOrds);
+    if (filterSize <= 0 || filterSize >= getGraphSize(graph)) {
+      throw new IllegalArgumentException("filterSize must be > 0 and < graph size");
     }
+    return new FilteredHnswGraphSearcher(
+        new NeighborQueue(k, true),
+        bitSet(filterSize, getGraphSize(graph), k),
+        new SparseFixedBitSet(getGraphSize(graph)),
+        filterSize,
+        graph);
   }
 
   private static BitSet bitSet(long filterSize, int graphSize, int topk) {
@@ -112,82 +103,32 @@ public class FilteredHnswGraphSearcher {
     }
   }
 
-  /**
-   * Function to find the best entry point from which to search the zeroth graph layer.
-   *
-   * @param scorer the scorer to compare the query with the nodes
-   * @param collector the knn result collector
-   * @return the best entry point, `-1` indicates graph entry node not set, or visitation limit
-   *     exceeded
-   * @throws IOException When accessing the vector fails
-   */
-  private int findBestEntryPoint(RandomVectorScorer scorer, KnnCollector collector)
-      throws IOException {
-    int currentEp = graph.entryNode();
-    if (currentEp == -1 || graph.numLevels() == 1) {
-      return currentEp;
-    }
-    int size = getGraphSize(graph);
-    prepareScratchState();
-    float currentScore = scorer.score(currentEp);
-    collector.incVisitedCount(1);
-    boolean foundBetter;
-    for (int level = graph.numLevels() - 1; level >= 1; level--) {
-      foundBetter = true;
-      visited.set(currentEp);
-      // Keep searching the given level until we stop finding a better candidate entry point
-      while (foundBetter) {
-        foundBetter = false;
-        graphSeek(graph, level, currentEp);
-        int friendOrd;
-        while ((friendOrd = graph.nextNeighbor()) != NO_MORE_DOCS) {
-          assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
-          if (visited.getAndSet(friendOrd)) {
-            continue;
-          }
-          if (collector.earlyTerminated()) {
-            return -1;
-          }
-          float friendSimilarity = scorer.score(friendOrd);
-          collector.incVisitedCount(1);
-          if (friendSimilarity > currentScore) {
-            currentScore = friendSimilarity;
-            currentEp = friendOrd;
-            foundBetter = true;
-          }
-        }
-      }
-    }
-    return collector.earlyTerminated() ? -1 : currentEp;
-  }
-
-  /**
-   * Add the closest neighbors found to a priority queue (heap). These are returned in REVERSE
-   * proximity order -- the most distant neighbor of the topK found, i.e. the one with the lowest
-   * score/comparison value, will be at the top of the heap, while the closest neighbor will be the
-   * last to be popped.
-   */
-  void searchBaseLevel(
+  @Override
+  void searchLevel(
       KnnCollector results,
       RandomVectorScorer scorer,
-      int ep,
-      int maxExplorationMultiplier,
+      int level,
+      final int[] eps,
+      HnswGraph graph,
       Bits acceptOrds)
       throws IOException {
+    assert level == 0 : "Filtered search only works on the base level";
 
     int size = getGraphSize(graph);
 
     prepareScratchState();
 
-    if (visited.getAndSet(ep) == false) {
-      if (results.earlyTerminated()) {
-        return;
-      }
-      float score = scorer.score(ep);
-      results.incVisitedCount(1);
-      candidates.add(ep, score);
-      if (acceptOrds.get(ep)) {
-        results.collect(ep, score);
+    for (int ep : eps) {
+      if (visited.getAndSet(ep) == false) {
+        if (results.earlyTerminated()) {
+          return;
+        }
+        float score = scorer.score(ep);
+        results.incVisitedCount(1);
+        candidates.add(ep, score);
+        if (acceptOrds.get(ep)) {
+          results.collect(ep, score);
+        }
       }
     }
     // Collect the vectors to score and potentially add as candidates
@@ -203,9 +144,6 @@ public class FilteredHnswGraphSearcher {
         break;
       }
       int topCandidateNode = candidates.pop();
-      // Pre-fetch neighbors into an array
-      // This is necessary because we need to call `seek` on each neighbor to consider 2-hop
-      // neighbors
       graph.seek(0, topCandidateNode);
       int neighborCount = graph.neighborCount();
       toScore.clear();
@@ -262,22 +200,9 @@ public class FilteredHnswGraphSearcher {
   }
 
   private void prepareScratchState() {
+    candidates.clear();
     visited.clear();
     explorationVisited.clear();
-  }
-
-  /**
-   * Seek a specific node in the given graph. The default implementation will just call {@link
-   * HnswGraph#seek(int, int)}
-   *
-   * @throws IOException when seeking the graph
-   */
-  void graphSeek(HnswGraph graph, int level, int targetNode) throws IOException {
-    graph.seek(level, targetNode);
-  }
-
-  private static int getGraphSize(HnswGraph graph) {
-    return graph.maxNodeId() + 1;
   }
 
   private static class IntArrayQueue {

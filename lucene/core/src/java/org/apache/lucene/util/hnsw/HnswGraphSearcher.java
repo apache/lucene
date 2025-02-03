@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.apache.lucene.util.hnsw.FilteredHnswGraphSearcher.MAX_FILTER_THRESHOLD;
 
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
@@ -37,9 +38,9 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
    * to allocate, so they're cleared and reused across calls.
    */
-  private final NeighborQueue candidates;
+  protected final NeighborQueue candidates;
 
-  private BitSet visited;
+  protected BitSet visited;
 
   /**
    * Creates a new graph searcher.
@@ -53,9 +54,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   }
 
   /**
-   * Searches the HNSW graph for the nearest neighbors of a query vector. If entry points are
-   * directly provided via the knnCollector, then the search will be initialized at those points.
-   * Otherwise, the search will discover the best entry point per the normal HNSW search algorithm.
+   * See {@link HnswGraphSearcher#search(RandomVectorScorer, KnnCollector, HnswGraph, Bits, int)}
    *
    * @param scorer the scorer to compare the query with the nodes
    * @param knnCollector a hnsw knn collector of top knn results to be returned
@@ -67,14 +66,60 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   public static void search(
       RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
-    AbstractHnswGraphSearcher graphSearcher =
-        new HnswGraphSearcher(
-            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
+    int filteredDocCount = 0;
+    if (acceptOrds instanceof BitSet bitSet) {
+      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+      // size as that is illogical
+      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
+    }
+    search(scorer, knnCollector, graph, acceptOrds, filteredDocCount);
+  }
+
+  /**
+   * Searches the HNSW graph for the nearest neighbors of a query vector. If entry points are
+   * directly provided via the knnCollector, then the search will be initialized at those points.
+   * Otherwise, the search will discover the best entry point per the normal HNSW search algorithm.
+   *
+   * @param scorer the scorer to compare the query with the nodes
+   * @param knnCollector a hnsw knn collector of top knn results to be returned
+   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
+   *     graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @param filteredDocCount the number of docs that pass the filter
+   */
+  public static void search(
+      RandomVectorScorer scorer,
+      KnnCollector knnCollector,
+      HnswGraph graph,
+      Bits acceptOrds,
+      int filteredDocCount)
+      throws IOException {
+    assert filteredDocCount >= 0 && filteredDocCount <= graph.size();
+    final AbstractHnswGraphSearcher innerSearcher;
+    // First, check if we should use a filtered searcher
+    if (acceptOrds != null
+        // We can only use filtered search if we know the maxConn
+        && graph.maxConn() != HnswGraph.UNKNOWN_MAX_CONN
+        && filteredDocCount > 0
+        && (float) filteredDocCount / graph.size() < MAX_FILTER_THRESHOLD) {
+      innerSearcher =
+          FilteredHnswGraphSearcher.create(knnCollector.k(), graph, filteredDocCount, acceptOrds);
+    } else {
+      innerSearcher =
+          new HnswGraphSearcher(
+              new NeighborQueue(knnCollector.k(), true),
+              new SparseFixedBitSet(getGraphSize(graph)));
+    }
+    // Then, check if we the search strategy is seeded
+    final AbstractHnswGraphSearcher graphSearcher;
     if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded
         && seeded.numberOfEntryPoints() > 0) {
       graphSearcher =
           SeededHnswGraphSearcher.fromEntryPoints(
-              graphSearcher, seeded.numberOfEntryPoints(), seeded.entryPoints(), graph.size());
+              innerSearcher, seeded.numberOfEntryPoints(), seeded.entryPoints(), graph.size());
+    } else {
+      graphSearcher = innerSearcher;
     }
     graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
   }
@@ -276,7 +321,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     return graph.nextNeighbor();
   }
 
-  private static int getGraphSize(HnswGraph graph) {
+  static int getGraphSize(HnswGraph graph) {
     return graph.maxNodeId() + 1;
   }
 

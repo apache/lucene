@@ -26,7 +26,6 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 public abstract class AbstractKnnCollector implements KnnCollector {
 
   protected long visitedCount;
-  protected long filterVisitedCount;
   private final long visitLimit;
   private final KnnSearchStrategy searchStrategy;
   private final int k;

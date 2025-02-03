@@ -37,8 +37,6 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.knn.HnswSearchStrategy;
-import org.apache.lucene.search.knn.HnswSearchStrategyProvider;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IOContext;
@@ -50,7 +48,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hnsw.FilteredHnswGraphSearcher;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
@@ -319,10 +316,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final RandomVectorScorer scorer = scorerSupplier.get();
     final OrdinalTranslatedKnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    HnswSearchStrategy searchStrategy = HnswSearchStrategy.DEFAULT;
-    if (knnCollector instanceof HnswSearchStrategyProvider provider) {
-      searchStrategy = provider.getHnswSearchStrategy();
-    }
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     HnswGraph graph = getGraph(fieldEntry);
     boolean doHnsw = knnCollector.k() < scorer.maxOrd();
@@ -331,26 +324,15 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     int unfilteredVisit = (int) (Math.log(graph.size()) * knnCollector.k());
     if (acceptDocs instanceof BitSet bitSet) {
       // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
-      // size as that
-      // is illogical
+      // size as that is illogical
       filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
       if (unfilteredVisit >= filteredDocCount) {
         doHnsw = false;
       }
     }
     if (doHnsw) {
-      if (acceptDocs != null
-          // The known filtered count is also required, if some unknown bitset is provided, we
-          // shouldn't proceed
-          && filteredDocCount > 0
-          // Only proceed if the filtered count is less than half of the total vectors
-          && searchStrategy.shouldExecuteOptimizedFilteredSearch(
-              (float) filteredDocCount / graph.size())) {
-        FilteredHnswGraphSearcher.search(
-            scorer, collector, getGraph(fieldEntry), filteredDocCount, acceptedOrds);
-      } else {
-        HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
-      }
+      HnswGraphSearcher.search(
+          scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
     } else {
       // if k is larger than the number of vectors, we can just iterate over all vectors
       // and collect them

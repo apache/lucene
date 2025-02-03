@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.util.Bits;
 
-
 /** Bulk iterator over a {@link DocIdSetIterator}. */
 public abstract class DocIdSetBulkIterator {
 
