@@ -22,6 +22,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.search.knn.MultiLeafKnnCollector;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.hnsw.BlockingFloatHeap;
@@ -59,18 +60,22 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
    * @param context the leaf reader context
    */
   @Override
-  public KnnCollector newCollector(int visitedLimit, LeafReaderContext context) throws IOException {
+  public KnnCollector newCollector(
+      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+      throws IOException {
     BitSet parentBitSet = parentsFilter.getBitSet(context);
     if (parentBitSet == null) {
       return null;
     }
     if (globalScoreQueue == null) {
-      return new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet);
+      return new DiversifyingNearestChildrenKnnCollector(
+          k, visitedLimit, searchStrategy, parentBitSet);
     } else {
       return new MultiLeafKnnCollector(
           k,
           globalScoreQueue,
-          new DiversifyingNearestChildrenKnnCollector(k, visitedLimit, parentBitSet));
+          new DiversifyingNearestChildrenKnnCollector(
+              k, visitedLimit, searchStrategy, parentBitSet));
     }
   }
 }

@@ -243,13 +243,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     nodesByLevel.add(null);
 
     int maxOrd = graph.size();
+    int[] scratch = new int[graph.maxConn() * 2];
     NodesIterator nodesOnLevel0 = graph.getNodesOnLevel(0);
     levelNodeOffsets[0] = new int[nodesOnLevel0.size()];
     while (nodesOnLevel0.hasNext()) {
       int node = nodesOnLevel0.nextInt();
       NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
       long offset = vectorIndex.getFilePointer();
-      reconstructAndWriteNeighbours(neighbors, oldToNewMap, maxOrd);
+      reconstructAndWriteNeighbours(neighbors, oldToNewMap, scratch, maxOrd);
       levelNodeOffsets[0][node] = Math.toIntExact(vectorIndex.getFilePointer() - offset);
     }
 
@@ -266,7 +267,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       for (int node : newNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
         long offset = vectorIndex.getFilePointer();
-        reconstructAndWriteNeighbours(neighbors, oldToNewMap, maxOrd);
+        reconstructAndWriteNeighbours(neighbors, oldToNewMap, scratch, maxOrd);
         levelNodeOffsets[level][nodeOffsetIndex++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offset);
       }
@@ -318,25 +319,33 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
     };
   }
 
-  private void reconstructAndWriteNeighbours(NeighborArray neighbors, int[] oldToNewMap, int maxOrd)
-      throws IOException {
+  private void reconstructAndWriteNeighbours(
+      NeighborArray neighbors, int[] oldToNewMap, int[] scratch, int maxOrd) throws IOException {
     int size = neighbors.size();
-    vectorIndex.writeVInt(size);
-
     // Destructively modify; it's ok we are discarding it after this
     int[] nnodes = neighbors.nodes();
     for (int i = 0; i < size; i++) {
       nnodes[i] = oldToNewMap[nnodes[i]];
     }
     Arrays.sort(nnodes, 0, size);
+    int actualSize = 0;
+    if (size > 0) {
+      scratch[0] = nnodes[0];
+      actualSize = 1;
+    }
     // Now that we have sorted, do delta encoding to minimize the required bits to store the
     // information
-    for (int i = size - 1; i > 0; --i) {
+    for (int i = 1; i < size; i++) {
       assert nnodes[i] < maxOrd : "node too large: " + nnodes[i] + ">=" + maxOrd;
-      nnodes[i] -= nnodes[i - 1];
+      if (nnodes[i - 1] == nnodes[i]) {
+        continue;
+      }
+      scratch[actualSize++] = nnodes[i] - nnodes[i - 1];
     }
-    for (int i = 0; i < size; i++) {
-      vectorIndex.writeVInt(nnodes[i]);
+    // Write the size after duplicates are removed
+    vectorIndex.writeVInt(actualSize);
+    for (int i = 0; i < actualSize; i++) {
+      vectorIndex.writeVInt(scratch[i]);
     }
   }
 

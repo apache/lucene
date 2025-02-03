@@ -9,6 +9,8 @@ API Changes
 ---------------------
 * GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
+* GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -16,7 +18,7 @@ New Features
 Improvements
 ---------------------
 
-* GITHUB#266: TieredMergePolicy's maxMergeAtOnce default value was changed from 10 to 30. (Adrien Grand)
+(No changes)
 
 Optimizations
 ---------------------
@@ -47,8 +49,8 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#14084, GITHUB#13635, GITHUB#13634: Adds new `SeededKnnByteVectorQuery` and `SeededKnnFloatVectorQuery`
-  queries. These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
+* GITHUB#14084, GITHUB#13635, GITHUB#13634, GITHUB#14170: Adds new `SeededKnnVectorQuery` query.
+  These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
 * GITHUB#14160: Adds new filtered HNSW search heuristic based on ACORN-1 algorithm. This improves runtime of filtered HNSW
@@ -67,6 +69,14 @@ Improvements
   BulkAdder#add(IntsRef) method. They should provide better performance due to less virtual method calls and
   more efficient bulk processing. (Ignacio Vera)
 
+* GITHUB#14107, GITHUB#14124, GITHUB#14103: Optimize DirectIOIndexInput; add
+  individual and bulk data retrieval overloads; avoid double buffering with
+  slices. (Chris Hegarty)
+
+* GITHUB#14166: Log(ByteSize|Doc)MergePolicy now allow merging more than
+  mergeFactor segments together when the merge is below the min merge size.
+  (Adrien Grand)
+
 Optimizations
 ---------------------
 
@@ -77,6 +87,8 @@ Optimizations
 
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
+
+# GITHUB#14169: Optimize ContextQuery with big number of contexts. (Mayya Sharipova)
 
 Bug Fixes
 ---------------------
@@ -97,6 +109,9 @@ Other
 * GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
 
 * GITHUB#14091: Cover all DataType. (Lu Xugang)
+
+* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j 
+  from 1.7.36 to 2.0.16. (Michael Froh)
 
 ======================= Lucene 10.1.0 =======================
 
