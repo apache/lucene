@@ -37,6 +37,10 @@ Improvements
   individual and bulk data retrieval overloads; avoid double buffering with
   slices. (Chris Hegarty)
 
+* GITHUB#14166: Log(ByteSize|Doc)MergePolicy now allow merging more than
+  mergeFactor segments together when the merge is below the min merge size.
+  (Adrien Grand)
+
 Optimizations
 ---------------------
 

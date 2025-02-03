@@ -170,8 +170,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     DisiWrapper top = essentialQueue.top();
     assert top.doc < max;
-    if (top.doc < filter.doc) {
+    while (top.doc < filter.doc) {
       top.doc = top.approximation.advance(filter.doc);
+      top = essentialQueue.updateTop();
     }
 
     // Only score an inner window, after that we'll check if the min competitive score has increased
