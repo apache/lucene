@@ -88,6 +88,8 @@ Optimizations
 
 # GITHUB#14169: Optimize ContextQuery with big number of contexts. (Mayya Sharipova)
 
+* GITHUB#14094: Early terminate when HNSW nearest neighbor queue saturates (Tommaso Teofili)
+
 Bug Fixes
 ---------------------
 
