@@ -19,7 +19,6 @@ package org.apache.lucene.search.knn;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
@@ -52,13 +51,15 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
    * @param context the leaf reader context
    */
   @Override
-  public KnnCollector newCollector(int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context) throws IOException {
+  public KnnCollector newCollector(
+      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+      throws IOException {
     if (globalScoreQueue == null) {
       return new TopKnnCollector(k, visitedLimit, searchStrategy);
     } else {
       if (freeze.getAndSet(false)) {
         return new MultiLeafKnnCollector(
-                k, globalScoreQueue, new TopKnnCollector(k, visitedLimit, searchStrategy), false);
+            k, globalScoreQueue, new TopKnnCollector(k, visitedLimit, searchStrategy), false);
       } else {
         return new MultiLeafKnnCollector(
             k, globalScoreQueue, new TopKnnCollector(k, visitedLimit, searchStrategy), true);
