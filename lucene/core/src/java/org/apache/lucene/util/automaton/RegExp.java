@@ -697,22 +697,19 @@ public class RegExp {
   }
 
   private Automaton toCaseInsensitiveChar(int codepoint) {
-    Automaton case1 = Automata.makeChar(codepoint);
     // For now we only work with ASCII characters
     if (codepoint > 128) {
-      return case1;
+      return Automata.makeChar(codepoint);
     }
     int altCase =
         Character.isLowerCase(codepoint)
             ? Character.toUpperCase(codepoint)
             : Character.toLowerCase(codepoint);
-    Automaton result;
     if (altCase != codepoint) {
-      result = Operations.union(case1, Automata.makeChar(altCase));
+      return Automata.makeCharSet(new int[] {codepoint, altCase});
     } else {
-      result = case1;
+      return Automata.makeChar(codepoint);
     }
-    return result;
   }
 
   private Automaton toCaseInsensitiveString() {

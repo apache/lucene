@@ -32,6 +32,7 @@ package org.apache.lucene.util.automaton;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Objects;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.StringHelper;
@@ -136,6 +137,23 @@ public final class Automata {
     int s2 = a.createState();
     a.setAccept(s2, true);
     a.addTransition(s1, s2, min, max);
+    a.finishState();
+    return a;
+  }
+
+  /** Returns a new minimal automaton that accepts any of the provided codepoints */
+  public static Automaton makeCharSet(int[] codepoints) {
+    Objects.requireNonNull(codepoints);
+    if (codepoints.length == 0) {
+      return makeEmpty();
+    }
+    Automaton a = new Automaton();
+    int s1 = a.createState();
+    int s2 = a.createState();
+    a.setAccept(s2, true);
+    for (int codepoint : codepoints) {
+      a.addTransition(s1, s2, codepoint, codepoint);
+    }
     a.finishState();
     return a;
   }
