@@ -38,11 +38,12 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 public final class LibFaissC {
   public static final String LIBRARY_NAME = "faiss_c";
-  public static final String LIBRARY_VERSION = "1.9.0";
+  public static final String LIBRARY_VERSION = "1.10.0";
 
   static {
     try {
@@ -94,6 +95,20 @@ public final class LibFaissC {
     callAndHandleError(FREE_PARAMETER_SPACE, parameterSpacePointer);
   }
 
+  private static final MethodHandle FREE_ID_SELECTOR_BITMAP =
+      getMethodHandle("faiss_IDSelectorBitmap_free", JAVA_INT, ADDRESS);
+
+  private static void freeIDSelectorBitmap(MemorySegment idSelectorBitmapPointer) {
+    callAndHandleError(FREE_ID_SELECTOR_BITMAP, idSelectorBitmapPointer);
+  }
+
+  private static final MethodHandle FREE_SEARCH_PARAMETERS =
+      getMethodHandle("faiss_SearchParameters_free", JAVA_INT, ADDRESS);
+
+  private static void freeSearchParameters(MemorySegment searchParametersPointer) {
+    callAndHandleError(FREE_SEARCH_PARAMETERS, searchParametersPointer);
+  }
+
   private static final MethodHandle INDEX_FACTORY =
       getMethodHandle("faiss_index_factory", JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, JAVA_INT);
 
@@ -103,6 +118,13 @@ public final class LibFaissC {
   private static final MethodHandle SET_INDEX_PARAMETERS =
       getMethodHandle(
           "faiss_ParameterSpace_set_index_parameters", JAVA_INT, ADDRESS, ADDRESS, ADDRESS);
+
+  // TODO: Requires https://github.com/facebookresearch/faiss/pull/4158
+  private static final MethodHandle ID_SELECTOR_BITMAP_NEW =
+      getMethodHandle("faiss_IDSelectorBitmap_new", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS);
+
+  private static final MethodHandle SEARCH_PARAMETERS_NEW =
+      getMethodHandle("faiss_SearchParameters_new", JAVA_INT, ADDRESS, ADDRESS);
 
   private static final MethodHandle INDEX_IS_TRAINED =
       getMethodHandle("faiss_Index_is_trained", JAVA_INT, ADDRESS);
@@ -141,7 +163,11 @@ public final class LibFaissC {
       // Set index params
       callAndHandleError(PARAMETER_SPACE_NEW, pointer);
       MemorySegment parameterSpacePointer =
-          pointer.get(ADDRESS, 0).reinterpret(temp, LibFaissC::freeParameterSpace);
+          pointer
+              .get(ADDRESS, 0)
+              // Ensure timely cleanup
+              .reinterpret(temp, LibFaissC::freeParameterSpace);
+
       callAndHandleError(
           SET_INDEX_PARAMETERS,
           parameterSpacePointer,
@@ -196,11 +222,31 @@ public final class LibFaissC {
 
   private static final MethodHandle INDEX_SEARCH =
       getMethodHandle(
-          "faiss_Index_search", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_INT, ADDRESS, ADDRESS);
+          "faiss_Index_search", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS);
+
+  private static final MethodHandle INDEX_SEARCH_WITH_PARAMS =
+      getMethodHandle(
+          "faiss_Index_search_with_params",
+          JAVA_INT,
+          ADDRESS,
+          JAVA_LONG,
+          ADDRESS,
+          JAVA_LONG,
+          ADDRESS,
+          ADDRESS,
+          ADDRESS);
 
   public static void indexSearch(
       MemorySegment indexPointer, float[] query, KnnCollector knnCollector, Bits acceptDocs) {
     try (Arena temp = Arena.ofConfined()) {
+      FixedBitSet fixedBitSet =
+          switch (acceptDocs) {
+            case null -> null;
+            case FixedBitSet bitSet -> bitSet;
+            // TODO: Add optimized case for SparseFixedBitSet
+            case Bits bits -> FixedBitSet.copyOf(bits);
+          };
+
       // Allocate queries in native memory
       MemorySegment queries = temp.allocate(JAVA_FLOAT, query.length);
       queries.asByteBuffer().order(ByteOrder.nativeOrder()).asFloatBuffer().put(query);
@@ -211,7 +257,44 @@ public final class LibFaissC {
       MemorySegment idsPointer = temp.allocate(JAVA_LONG, k);
 
       MemorySegment localIndex = indexPointer.reinterpret(temp, null);
-      callAndHandleError(INDEX_SEARCH, localIndex, 1, queries, k, distancesPointer, idsPointer);
+      if (fixedBitSet == null) {
+        // Search without runtime filters
+        callAndHandleError(INDEX_SEARCH, localIndex, 1, queries, k, distancesPointer, idsPointer);
+      } else {
+        MemorySegment pointer = temp.allocate(ADDRESS);
+
+        long[] bits = fixedBitSet.getBits();
+        MemorySegment nativeBits = temp.allocate(JAVA_LONG, bits.length);
+
+        // Use LITTLE_ENDIAN to convert long[] -> uint8_t*
+        nativeBits.asByteBuffer().order(ByteOrder.LITTLE_ENDIAN).asLongBuffer().put(bits);
+
+        callAndHandleError(ID_SELECTOR_BITMAP_NEW, pointer, fixedBitSet.length(), nativeBits);
+        MemorySegment idSelectorBitmapPointer =
+            pointer
+                .get(ADDRESS, 0)
+                // Ensure timely cleanup
+                .reinterpret(temp, LibFaissC::freeIDSelectorBitmap);
+
+        callAndHandleError(SEARCH_PARAMETERS_NEW, pointer, idSelectorBitmapPointer);
+        MemorySegment searchParametersPointer =
+            pointer
+                .get(ADDRESS, 0)
+                // Ensure timely cleanup
+                .reinterpret(temp, LibFaissC::freeSearchParameters);
+
+        // Search with runtime filters
+        // TODO: Requires https://github.com/facebookresearch/faiss/pull/4167
+        callAndHandleError(
+            INDEX_SEARCH_WITH_PARAMS,
+            localIndex,
+            1,
+            queries,
+            k,
+            searchParametersPointer,
+            distancesPointer,
+            idsPointer);
+      }
 
       // Retrieve scores
       float[] distances = new float[k];
@@ -223,12 +306,7 @@ public final class LibFaissC {
 
       // Record hits
       for (int i = 0; i < k; i++) {
-        int doc = (int) ids[i];
-
-        // TODO: This is like a post-filter, include at runtime?
-        if (acceptDocs == null || acceptDocs.get(doc)) {
-          knnCollector.collect(doc, distances[i]);
-        }
+        knnCollector.collect((int) ids[i], distances[i]);
       }
     }
   }
