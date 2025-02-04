@@ -18,6 +18,8 @@
 package org.apache.lucene.search.knn;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
@@ -35,16 +37,11 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
   private final int k;
   // the global score queue used to track the top scores collected across all leaves
   private final BlockingFloatHeap globalScoreQueue;
-  private final LeafReaderContext first;
+  private final AtomicBoolean freeze = new AtomicBoolean(true);
 
   public TopKnnCollectorManager(int k, IndexSearcher indexSearcher) {
     boolean isMultiSegments = indexSearcher.getIndexReader().leaves().size() > 1;
     this.k = k;
-    this.first =
-        indexSearcher.getLeafContexts() != null
-                && indexSearcher.getLeafContexts().isEmpty() == false
-            ? indexSearcher.getLeafContexts().getFirst()
-            : null;
     this.globalScoreQueue = isMultiSegments ? new BlockingFloatHeap(k) : null;
   }
 
@@ -56,11 +53,12 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
    */
   @Override
   public KnnCollector newCollector(int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context) throws IOException {
-    if (globalScoreQueue == null || context == null) {
+    if (globalScoreQueue == null) {
       return new TopKnnCollector(k, visitedLimit, searchStrategy);
     } else {
-      if (context == first) {
-        return new MultiLeafKnnCollector(k, globalScoreQueue, new TopKnnCollector(k, visitedLimit));
+      if (freeze.getAndSet(false)) {
+        return new MultiLeafKnnCollector(
+                k, globalScoreQueue, new TopKnnCollector(k, visitedLimit, searchStrategy), false);
       } else {
         return new MultiLeafKnnCollector(
             k, globalScoreQueue, new TopKnnCollector(k, visitedLimit, searchStrategy), true);
