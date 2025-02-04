@@ -93,11 +93,31 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     TopDocs[] perLeafResults = new TopDocs[leafReaderContexts.size()];
     if (leafReaderContexts.size() > 1) {
-      LeafReaderContext topContext = leafReaderContexts.getFirst();
+      int idx = 0;
+      int maxIdx = 0;
+      int max = 0;
+      for (LeafReaderContext leafReaderContext : leafReaderContexts) {
+        try (LeafReader leafReader = leafReaderContext.reader()) {
+          int numDocs = leafReader.numDocs();
+          if (numDocs > max) {
+            max = numDocs;
+            maxIdx = idx;
+          }
+          idx++;
+        }
+      }
+
+      LeafReaderContext topContext = leafReaderContexts.get(maxIdx);
       perLeafResults[0] = searchLeaf(topContext, filterWeight, knnCollectorManager);
 
-      for (LeafReaderContext context : leafReaderContexts.subList(1, leafReaderContexts.size())) {
+      int loop = 0;
+      for (LeafReaderContext context : leafReaderContexts) {
+        if (loop == maxIdx) {
+          loop++;
+          continue;
+        }
         tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
+        loop++;
       }
       System.arraycopy(
           taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new),
