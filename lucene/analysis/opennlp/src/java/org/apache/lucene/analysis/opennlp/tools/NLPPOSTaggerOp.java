@@ -30,7 +30,11 @@ public class NLPPOSTaggerOp {
   private final POSTagger tagger;
 
   public NLPPOSTaggerOp(POSModel model) {
-    tagger = new POSTaggerME(model, POSTagFormat.PENN);
+    this(model, POSTagFormat.CUSTOM);
+  }
+
+  public NLPPOSTaggerOp(POSModel model, POSTagFormat format) {
+    tagger = new POSTaggerME(model, format);
   }
 
   public synchronized String[] getPOSTags(String[] words) {
