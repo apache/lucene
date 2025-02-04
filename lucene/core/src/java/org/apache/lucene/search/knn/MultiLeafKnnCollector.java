@@ -92,6 +92,9 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
     this.updatesQueue = new FloatHeap(k);
     this.updatesScratch = new float[k];
     this.frozen = frozen;
+    if (frozen) {
+      cachedGlobalMinSim = globalSimilarityQueue.peek();
+    }
   }
 
   public MultiLeafKnnCollector(
