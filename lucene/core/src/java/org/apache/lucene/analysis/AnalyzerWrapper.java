@@ -187,6 +187,7 @@ public abstract class AnalyzerWrapper extends Analyzer {
       reuseStrategy.setReusableComponents(analyzer, fieldName, components);
 
       if (analyzer instanceof AnalyzerWrapper wrapper) {
+        assert components instanceof TokenStreamComponentsWrapper;
         final TokenStreamComponentsWrapper wrapperComponents =
             (TokenStreamComponentsWrapper) components;
         final Analyzer wrappedAnalyzer = wrapper.getWrappedAnalyzer(fieldName);
