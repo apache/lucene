@@ -1288,7 +1288,7 @@ public class RegExp {
       ends.add((int) ' ');
       next();
     } else if (peek("S")) {
-      // non-whitespace: [^ \t\n\r]
+      // non-whitespace: [^\t-\n\r ]
       starts.add(Character.MIN_CODE_POINT);
       ends.add('\t' - 1);
       starts.add('\n' + 1);
