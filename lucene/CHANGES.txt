@@ -9,6 +9,8 @@ API Changes
 ---------------------
 * GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
+* GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -16,7 +18,7 @@ New Features
 Improvements
 ---------------------
 
-* GITHUB#266: TieredMergePolicy's maxMergeAtOnce default value was changed from 10 to 30. (Adrien Grand)
+(No changes)
 
 Optimizations
 ---------------------
@@ -47,8 +49,8 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#14084, GITHUB#13635, GITHUB#13634: Adds new `SeededKnnByteVectorQuery` and `SeededKnnFloatVectorQuery`
-  queries. These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
+* GITHUB#14084, GITHUB#13635, GITHUB#13634, GITHUB#14170: Adds new `SeededKnnVectorQuery` query.
+  These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
 
@@ -68,6 +70,10 @@ Improvements
 * GITHUB#14107, GITHUB#14124, GITHUB#14103: Optimize DirectIOIndexInput; add
   individual and bulk data retrieval overloads; avoid double buffering with
   slices. (Chris Hegarty)
+
+* GITHUB#14166: Log(ByteSize|Doc)MergePolicy now allow merging more than
+  mergeFactor segments together when the merge is below the min merge size.
+  (Adrien Grand)
 
 * GITHUB#14154: Add UnwrappingReuseStrategy for AnalyzerWrapper that consults
   the wrapped analyzer's strategy to decide if components can be reused or need
