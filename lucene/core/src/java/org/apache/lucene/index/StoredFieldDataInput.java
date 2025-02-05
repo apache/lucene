@@ -1,5 +1,6 @@
 package org.apache.lucene.index;
 
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.DataInput;
 
 import java.util.Objects;
@@ -12,6 +13,10 @@ public class StoredFieldDataInput {
     public StoredFieldDataInput(DataInput in, int length) {
         this.in = Objects.requireNonNull(in);
         this.length = length;
+    }
+
+    public StoredFieldDataInput(ByteArrayDataInput byteArrayDataInput) {
+        this(byteArrayDataInput, byteArrayDataInput.length());
     }
 
     public DataInput getDataInput() {

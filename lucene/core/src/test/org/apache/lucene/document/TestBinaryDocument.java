@@ -78,7 +78,7 @@ public class TestBinaryDocument extends LuceneTestCase {
     FieldType ft = new FieldType();
     ft.setStored(true);
     byte[] byteArray = binaryValStored.getBytes(StandardCharsets.UTF_8);
-    StoredFieldDataInput storedFieldDataInput = new StoredFieldDataInput(new ByteArrayDataInput(byteArray), byteArray.length);
+    StoredFieldDataInput storedFieldDataInput = new StoredFieldDataInput(new ByteArrayDataInput(byteArray));
     StoredField binaryFldStored =
             new StoredField("binaryStored", storedFieldDataInput);
     Field stringFldStored = new Field("stringStored", binaryValStored, ft);
