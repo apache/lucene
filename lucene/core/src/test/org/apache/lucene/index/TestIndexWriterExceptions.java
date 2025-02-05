@@ -49,13 +49,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
-import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.lucene.store.ByteBuffersDirectory;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FilterDirectory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.*;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -1762,6 +1756,35 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
           iw.addDocument(doc);
           fail("didn't get expected exception");
         });
+
+    assertNull(iw.getTragicException());
+    iw.close();
+    // make sure we see our good doc
+    DirectoryReader r = DirectoryReader.open(dir);
+    assertEquals(1, r.numDocs());
+    r.close();
+    dir.close();
+  }
+
+  /** test a null bytesref value doesn't abort the entire segment */
+  public void testNullStoredDataInputField() throws Exception {
+    Directory dir = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(analyzer));
+    // add good document
+    Document doc = new Document();
+    iw.addDocument(doc);
+
+    expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              // set to null value
+              StoredFieldDataInput v = null;
+              Field theField = new StoredField("foo", v);
+              doc.add(theField);
+              iw.addDocument(doc);
+              fail("didn't get expected exception");
+            });
 
     assertNull(iw.getTragicException());
     iw.close();

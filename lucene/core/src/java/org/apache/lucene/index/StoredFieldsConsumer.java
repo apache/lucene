@@ -79,6 +79,9 @@ class StoredFieldsConsumer {
       case BINARY:
         writer.writeField(info, value.getBinaryValue());
         break;
+      case DATA_INPUT:
+        writer.writeField(info, value.getDataInputValue().getDataInput(), value.getDataInputValue().getLength());
+        break;
       case STRING:
         writer.writeField(info, value.getStringValue());
         break;
