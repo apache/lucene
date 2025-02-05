@@ -51,22 +51,22 @@ public class TestCuVS extends LuceneTestCase {
 
   protected static Logger log = Logger.getLogger(TestCuVS.class.getName());
 
-  private static IndexSearcher searcher;
-  private static IndexReader reader;
-  private static Directory directory;
+  static final Codec codec = TestUtil.alwaysKnnVectorsFormat(new CuVSVectorsFormat());
+  static IndexSearcher searcher;
+  static IndexReader reader;
+  static Directory directory;
 
-  public static int DATASET_SIZE_LIMIT = 1000;
-  public static int DIMENSIONS_LIMIT = 2048;
-  public static int NUM_QUERIES_LIMIT = 10;
-  public static int TOP_K_LIMIT = 64; // TODO This fails beyond 64
+  static int DATASET_SIZE_LIMIT = 1000;
+  static int DIMENSIONS_LIMIT = 2048;
+  static int NUM_QUERIES_LIMIT = 10;
+  static int TOP_K_LIMIT = 64; // TODO This fails beyond 64
 
-  public static float[][] dataset = null;
+  public static float[][] dataset;
 
   @BeforeClass
   public static void beforeClass() throws Exception {
+    assumeTrue("cuvs not supported", CuVSVectorsFormat.supported());
     directory = newDirectory();
-
-    Codec codec = TestUtil.alwaysKnnVectorsFormat(new CuVSVectorsFormat());
 
     RandomIndexWriter writer =
         new RandomIndexWriter(
