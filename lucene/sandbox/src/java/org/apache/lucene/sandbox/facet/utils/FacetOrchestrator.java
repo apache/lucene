@@ -25,7 +25,6 @@ public final class FacetOrchestrator {
         return new FacetOrchestrator();
     }
 
-
     public FacetOrchestrator addBuilder(FacetBuilder request) {
         facetBuilders.add(request);
         return this;
