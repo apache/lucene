@@ -1247,7 +1247,7 @@ public class RegExp {
     // not sure why we bother optimizing nodes, same automaton...
     // definitely saves time vs fixing toString()-based tests.
     if (starts.size() == 1) {
-      if (starts.get(0) == ends.get(0)) {
+      if (starts.get(0).intValue() == ends.get(0).intValue()) {
         return makeChar(flags, starts.get(0));
       } else {
         return makeCharRange(flags, starts.get(0), ends.get(0));
