@@ -29,36 +29,36 @@ import java.util.Objects;
 
 /*package-private*/ class SerializationUtils {
 
-    static byte[] serialize(final Serializable obj) {
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream(64 * 1024);
-        serialize(obj, baos);
-        return baos.toByteArray();
-    }
+  static byte[] serialize(final Serializable obj) {
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream(64 * 1024);
+    serialize(obj, baos);
+    return baos.toByteArray();
+  }
 
-    static void serialize(final Serializable obj, final OutputStream outputStream) {
-        Objects.requireNonNull(outputStream);
-        try (ObjectOutputStream out = new ObjectOutputStream(outputStream)) {
-            out.writeObject(obj);
-        } catch (final IOException ex) {
-            throw new UncheckedIOException(ex);
-        }
+  static void serialize(final Serializable obj, final OutputStream outputStream) {
+    Objects.requireNonNull(outputStream);
+    try (ObjectOutputStream out = new ObjectOutputStream(outputStream)) {
+      out.writeObject(obj);
+    } catch (final IOException ex) {
+      throw new UncheckedIOException(ex);
     }
+  }
 
-    static <T> T deserialize(final byte[] objectData) {
-        Objects.requireNonNull(objectData);
-        return deserialize(new ByteArrayInputStream(objectData));
-    }
+  static <T> T deserialize(final byte[] objectData) {
+    Objects.requireNonNull(objectData);
+    return deserialize(new ByteArrayInputStream(objectData));
+  }
 
-    static <T> T deserialize(final InputStream inputStream) {
-        Objects.requireNonNull(inputStream);
-        try (ObjectInputStream in = new ObjectInputStream(inputStream)) {
-            @SuppressWarnings("unchecked")
-            final T obj = (T) in.readObject();
-            return obj;
-        } catch (IOException ex) {
-            throw new UncheckedIOException(ex);
-        } catch (ClassNotFoundException ex) {
-            throw new AssertionError(ex);
-        }
+  static <T> T deserialize(final InputStream inputStream) {
+    Objects.requireNonNull(inputStream);
+    try (ObjectInputStream in = new ObjectInputStream(inputStream)) {
+      @SuppressWarnings("unchecked")
+      final T obj = (T) in.readObject();
+      return obj;
+    } catch (IOException ex) {
+      throw new UncheckedIOException(ex);
+    } catch (ClassNotFoundException ex) {
+      throw new AssertionError(ex);
     }
+  }
 }
