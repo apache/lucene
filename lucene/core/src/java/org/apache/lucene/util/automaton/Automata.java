@@ -143,16 +143,25 @@ public final class Automata {
 
   /** Returns a new minimal automaton that accepts any of the provided codepoints */
   public static Automaton makeCharSet(int[] codepoints) {
-    Objects.requireNonNull(codepoints);
-    if (codepoints.length == 0) {
+    return makeCharClass(codepoints, codepoints);
+  }
+
+  /** Returns a new minimal automaton that accepts any of the codepoint ranges */
+  public static Automaton makeCharClass(int[] starts, int[] ends) {
+    Objects.requireNonNull(starts);
+    Objects.requireNonNull(ends);
+    if (starts.length != ends.length) {
+      throw new IllegalArgumentException("starts must match ends");
+    }
+    if (starts.length == 0) {
       return makeEmpty();
     }
     Automaton a = new Automaton();
     int s1 = a.createState();
     int s2 = a.createState();
     a.setAccept(s2, true);
-    for (int codepoint : codepoints) {
-      a.addTransition(s1, s2, codepoint, codepoint);
+    for (int i = 0; i < starts.length; i++) {
+      a.addTransition(s1, s2, starts[i], ends[i]);
     }
     a.finishState();
     return a;

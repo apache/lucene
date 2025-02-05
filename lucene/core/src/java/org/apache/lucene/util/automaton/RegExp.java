@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Regular Expression extension to <code>Automaton</code>.
@@ -374,6 +375,8 @@ public class RegExp {
     REGEXP_CHAR,
     /** A Character range */
     REGEXP_CHAR_RANGE,
+    /** A Character class (list of ranges) */
+    REGEXP_CHAR_CLASS,
     /** Any Character allowed */
     REGEXP_ANYCHAR,
     /** An empty expression */
@@ -386,8 +389,6 @@ public class RegExp {
     REGEXP_AUTOMATON,
     /** An Interval expression */
     REGEXP_INTERVAL,
-    /** An expression for a pre-defined class e.g. \w */
-    REGEXP_PRE_CLASS,
     /**
      * The complement of an expression.
      *
@@ -453,7 +454,7 @@ public class RegExp {
   public final int min, max, digits;
 
   /** Extents for range type expressions */
-  public final int from, to;
+  public final int from[], to[];
 
   // Parser variables
   private final String originalString;
@@ -528,8 +529,8 @@ public class RegExp {
       int min,
       int max,
       int digits,
-      int from,
-      int to) {
+      int from[],
+      int to[]) {
     this.originalString = null;
     this.kind = kind;
     this.flags = flags;
@@ -546,17 +547,17 @@ public class RegExp {
 
   // Simplified construction of container nodes
   static RegExp newContainerNode(int flags, Kind kind, RegExp exp1, RegExp exp2) {
-    return new RegExp(flags, kind, exp1, exp2, null, 0, 0, 0, 0, 0, 0);
+    return new RegExp(flags, kind, exp1, exp2, null, 0, 0, 0, 0, null, null);
   }
 
   // Simplified construction of repeating nodes
   static RegExp newRepeatingNode(int flags, Kind kind, RegExp exp, int min, int max) {
-    return new RegExp(flags, kind, exp, null, null, 0, min, max, 0, 0, 0);
+    return new RegExp(flags, kind, exp, null, null, 0, min, max, 0, null, null);
   }
 
   // Simplified construction of leaf nodes
   static RegExp newLeafNode(
-      int flags, Kind kind, String s, int c, int min, int max, int digits, int from, int to) {
+      int flags, Kind kind, String s, int c, int min, int max, int digits, int from[], int to[]) {
     return new RegExp(flags, kind, null, null, s, c, min, max, digits, from, to);
   }
 
@@ -598,10 +599,6 @@ public class RegExp {
     List<Automaton> list;
     Automaton a = null;
     switch (kind) {
-      case REGEXP_PRE_CLASS:
-        RegExp expanded = expandPredefined();
-        a = expanded.toAutomaton(automata, automaton_provider);
-        break;
       case REGEXP_UNION:
         list = new ArrayList<>();
         findLeaves(exp1, Kind.REGEXP_UNION, list, automata, automaton_provider);
@@ -648,13 +645,16 @@ public class RegExp {
         break;
       case REGEXP_CHAR:
         if (check(ASCII_CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveChar(c);
+          a = Automata.makeCharSet(toCaseInsensitiveChar(c));
         } else {
           a = Automata.makeChar(c);
         }
         break;
       case REGEXP_CHAR_RANGE:
-        a = Automata.makeCharRange(from, to);
+        a = Automata.makeCharRange(from[0], to[0]);
+        break;
+      case REGEXP_CHAR_CLASS:
+        a = Automata.makeCharClass(from, to);
         break;
       case REGEXP_ANYCHAR:
         a = Automata.makeAnyChar();
@@ -696,19 +696,19 @@ public class RegExp {
     return a;
   }
 
-  private Automaton toCaseInsensitiveChar(int codepoint) {
+  private int[] toCaseInsensitiveChar(int codepoint) {
     // For now we only work with ASCII characters
     if (codepoint > 128) {
-      return Automata.makeChar(codepoint);
+      return new int[] {codepoint};
     }
     int altCase =
         Character.isLowerCase(codepoint)
             ? Character.toUpperCase(codepoint)
             : Character.toLowerCase(codepoint);
     if (altCase != codepoint) {
-      return Automata.makeCharSet(new int[] {codepoint, altCase});
+      return new int[] {codepoint, altCase};
     } else {
-      return Automata.makeChar(codepoint);
+      return new int[] {codepoint};
     }
   }
 
@@ -717,7 +717,8 @@ public class RegExp {
 
     Iterator<Integer> iter = s.codePoints().iterator();
     while (iter.hasNext()) {
-      list.add(toCaseInsensitiveChar(iter.next()));
+      int points[] = toCaseInsensitiveChar(iter.next());
+      list.add(Automata.makeCharSet(points));
     }
     return Operations.concatenate(list);
   }
@@ -799,7 +800,19 @@ public class RegExp {
         b.append("\\").appendCodePoint(c);
         break;
       case REGEXP_CHAR_RANGE:
-        b.append("[\\").appendCodePoint(from).append("-\\").appendCodePoint(to).append("]");
+        b.append("[\\").appendCodePoint(from[0]).append("-\\").appendCodePoint(to[0]).append("]");
+        break;
+      case REGEXP_CHAR_CLASS:
+        b.append("[");
+        for (int i = 0; i < from.length; i++) {
+          if (from[i] == to[i]) {
+            b.append("\\").appendCodePoint(from[i]);
+          } else {
+            b.append("\\").appendCodePoint(from[i]);
+            b.append("-\\").appendCodePoint(to[i]);
+          }
+        }
+        b.append("]");
         break;
       case REGEXP_ANYCHAR:
         b.append(".");
@@ -825,13 +838,10 @@ public class RegExp {
         if (digits > 0) for (int i = s2.length(); i < digits; i++) b.append('0');
         b.append(s2).append(">");
         break;
-      case REGEXP_PRE_CLASS:
-        b.append("\\").appendCodePoint(from);
-        break;
     }
   }
 
-  /** Like to string, but more verbose (shows the higherchy more clearly). */
+  /** Like to string, but more verbose (shows the hierarchy more clearly). */
   public String toStringTree() {
     StringBuilder b = new StringBuilder();
     toStringTree(b, "");
@@ -885,20 +895,22 @@ public class RegExp {
         b.appendCodePoint(c);
         b.append('\n');
         break;
-      case REGEXP_PRE_CLASS:
-        b.append(indent);
-        b.append(kind);
-        b.append(" class=\\");
-        b.appendCodePoint(from);
-        b.append('\n');
-        break;
       case REGEXP_CHAR_RANGE:
         b.append(indent);
         b.append(kind);
         b.append(" from=");
-        b.appendCodePoint(from);
+        b.appendCodePoint(from[0]);
         b.append(" to=");
-        b.appendCodePoint(to);
+        b.appendCodePoint(to[0]);
+        b.append('\n');
+        break;
+      case REGEXP_CHAR_CLASS:
+        b.append(indent);
+        b.append(kind);
+        b.append(" starts=");
+        b.append(new IntsRef(from, 0, from.length));
+        b.append(" ends=");
+        b.append(new IntsRef(to, 0, to.length));
         b.append('\n');
         break;
       case REGEXP_ANYCHAR:
@@ -969,9 +981,9 @@ public class RegExp {
       case REGEXP_ANYSTRING:
       case REGEXP_CHAR:
       case REGEXP_CHAR_RANGE:
+      case REGEXP_CHAR_CLASS:
       case REGEXP_EMPTY:
       case REGEXP_INTERVAL:
-      case REGEXP_PRE_CLASS:
       case REGEXP_STRING:
       default:
     }
@@ -1047,14 +1059,25 @@ public class RegExp {
   }
 
   static RegExp makeChar(int flags, int c) {
-    return newLeafNode(flags, Kind.REGEXP_CHAR, null, c, 0, 0, 0, 0, 0);
+    return newLeafNode(flags, Kind.REGEXP_CHAR, null, c, 0, 0, 0, null, null);
   }
 
   static RegExp makeCharRange(int flags, int from, int to) {
     if (from > to)
       throw new IllegalArgumentException(
           "invalid range: from (" + from + ") cannot be > to (" + to + ")");
-    return newLeafNode(flags, Kind.REGEXP_CHAR_RANGE, null, 0, 0, 0, 0, from, to);
+    return newLeafNode(
+        flags, Kind.REGEXP_CHAR_RANGE, null, 0, 0, 0, 0, new int[] {from}, new int[] {to});
+  }
+
+  static RegExp makeCharClass(int flags, int from[], int to[]) {
+    for (int i = 0; i < from.length; i++) {
+      if (from[i] > to[i]) {
+        throw new IllegalArgumentException(
+            "invalid range: from (" + from[i] + ") cannot be > to (" + to[i] + ")");
+      }
+    }
+    return newLeafNode(flags, Kind.REGEXP_CHAR_CLASS, null, 0, 0, 0, 0, from, to);
   }
 
   static RegExp makeAnyChar(int flags) {
@@ -1066,7 +1089,7 @@ public class RegExp {
   }
 
   static RegExp makeString(int flags, String s) {
-    return newLeafNode(flags, Kind.REGEXP_STRING, s, 0, 0, 0, 0, 0, 0);
+    return newLeafNode(flags, Kind.REGEXP_STRING, s, 0, 0, 0, 0, null, null);
   }
 
   static RegExp makeAnyString(int flags) {
@@ -1074,11 +1097,11 @@ public class RegExp {
   }
 
   static RegExp makeAutomaton(int flags, String s) {
-    return newLeafNode(flags, Kind.REGEXP_AUTOMATON, s, 0, 0, 0, 0, 0, 0);
+    return newLeafNode(flags, Kind.REGEXP_AUTOMATON, s, 0, 0, 0, 0, null, null);
   }
 
   static RegExp makeInterval(int flags, int min, int max, int digits) {
-    return newLeafNode(flags, Kind.REGEXP_INTERVAL, null, 0, min, max, digits, 0, 0);
+    return newLeafNode(flags, Kind.REGEXP_INTERVAL, null, 0, min, max, digits, null, null);
   }
 
   private boolean peek(String s) {
@@ -1192,60 +1215,132 @@ public class RegExp {
   }
 
   final RegExp parseCharClasses() throws IllegalArgumentException {
-    RegExp e = parseCharClass();
-    while (more() && !peek("]")) e = makeUnion(flags, e, parseCharClass());
-    return e;
-  }
+    var starts = new ArrayList<Integer>();
+    var ends = new ArrayList<Integer>();
 
-  final RegExp parseCharClass() throws IllegalArgumentException {
-    RegExp predefinedExp = matchPredefinedCharacterClass();
-    if (predefinedExp != null) {
-      return predefinedExp;
+    do {
+      // look for escape
+      if (match('\\')) {
+        expandPreDefined(starts, ends);
+      } else {
+        // parse a character
+        int c = parseCharExp();
+
+        if (match('-')) {
+          // range from c-d
+          starts.add(c);
+          ends.add(parseCharExp());
+        } else if (check(ASCII_CASE_INSENSITIVE)) {
+          // single case-insensitive character
+          for (int form : toCaseInsensitiveChar(c)) {
+            starts.add(form);
+            ends.add(form);
+          }
+        } else {
+          // single character
+          starts.add(c);
+          ends.add(c);
+        }
+      }
+    } while (more() && !peek("]"));
+
+    // not sure why we bother optimizing nodes, same automaton...
+    // definitely saves time vs fixing toString()-based tests.
+    if (starts.size() == 1) {
+      if (starts.get(0) == ends.get(0)) {
+        return makeChar(flags, starts.get(0));
+      } else {
+        return makeCharRange(flags, starts.get(0), ends.get(0));
+      }
+    } else {
+      return makeCharClass(
+          flags,
+          starts.stream().mapToInt(Integer::intValue).toArray(),
+          ends.stream().mapToInt(Integer::intValue).toArray());
     }
-
-    int c = parseCharExp();
-    if (match('-')) return makeCharRange(flags, c, parseCharExp());
-    else return makeChar(flags, c);
   }
 
-  RegExp expandPredefined() {
-    // See https://docs.oracle.com/javase/tutorial/essential/regex/pre_char_classes.html
-    switch (from) {
-      case 'd':
-        return new RegExp("[0-9]"); // digit
-      case 'D':
-        return new RegExp("[^0-9]"); // non-digit
-      case 's':
-        return new RegExp("[ \t\n\r]"); // whitespace
-      case 'S':
-        return new RegExp("[^\\s]"); // non-whitespace
-      case 'w':
-        return new RegExp("[a-zA-Z_0-9]"); // word
-      case 'W':
-        return new RegExp("[^\\w]"); // non-word
-      default:
-        throw new IllegalArgumentException("invalid character class " + from);
+  void expandPreDefined(List<Integer> starts, List<Integer> ends) {
+    if (peek("\\")) {
+      // escape
+      starts.add((int) '\\');
+      ends.add((int) '\\');
+      next();
+    } else if (peek("d")) {
+      // digit: [0-9]
+      starts.add((int) '0');
+      ends.add((int) '9');
+      next();
+    } else if (peek("D")) {
+      // non-digit: [^0-9]
+      starts.add(Character.MIN_CODE_POINT);
+      ends.add('0' - 1);
+      starts.add('9' + 1);
+      ends.add(Character.MAX_CODE_POINT);
+      next();
+    } else if (peek("s")) {
+      // whitespace: [\t-\n\r ]
+      starts.add((int) '\t');
+      ends.add((int) '\n');
+      starts.add((int) '\r');
+      ends.add((int) '\r');
+      starts.add((int) ' ');
+      ends.add((int) ' ');
+      next();
+    } else if (peek("S")) {
+      // non-whitespace: [^ \t\n\r]
+      starts.add(Character.MIN_CODE_POINT);
+      ends.add('\t' - 1);
+      starts.add('\n' + 1);
+      ends.add('\r' - 1);
+      starts.add('\r' + 1);
+      ends.add(' ' - 1);
+      starts.add(' ' + 1);
+      ends.add(Character.MAX_CODE_POINT);
+      next();
+    } else if (peek("w")) {
+      // word: [0-9A-Z_a-z]
+      starts.add((int) '0');
+      ends.add((int) '9');
+      starts.add((int) 'A');
+      ends.add((int) 'Z');
+      starts.add((int) '_');
+      ends.add((int) '_');
+      starts.add((int) 'a');
+      ends.add((int) 'z');
+      next();
+    } else if (peek("W")) {
+      // non-word: [^0-9A-Z_a-z]
+      starts.add(Character.MIN_CODE_POINT);
+      ends.add('0' - 1);
+      starts.add('9' + 1);
+      ends.add('A' - 1);
+      starts.add('Z' + 1);
+      ends.add('_' - 1);
+      starts.add('_' + 1);
+      ends.add('a' - 1);
+      starts.add('z' + 1);
+      ends.add(Character.MAX_CODE_POINT);
+      next();
+    } else if (peek("abcefghijklmnopqrtuvxyz") || peek("ABCEFGHIJKLMNOPQRTUVXYZ")) {
+      // From https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#bs
+      // "It is an error to use a backslash prior to any alphabetic character that does not denote
+      // an escaped
+      // construct;"
+      throw new IllegalArgumentException("invalid character class \\" + next());
     }
   }
 
   final RegExp matchPredefinedCharacterClass() {
     // See https://docs.oracle.com/javase/tutorial/essential/regex/pre_char_classes.html
-    if (match('\\')) {
-      if (peek("dDwWsS")) {
-        return newLeafNode(flags, Kind.REGEXP_PRE_CLASS, null, 0, 0, 0, 0, next(), 0);
-      }
-
-      if (peek("\\")) {
-        return makeChar(flags, next());
-      }
-
-      // From https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#bs
-      // "It is an error to use a backslash prior to any alphabetic character that does not denote
-      // an escaped
-      // construct;"
-      if (peek("abcefghijklmnopqrtuvxyz") || peek("ABCEFGHIJKLMNOPQRTUVXYZ")) {
-        throw new IllegalArgumentException("invalid character class \\" + next());
-      }
+    if (match('\\') && peek("\\ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")) {
+      var starts = new ArrayList<Integer>();
+      var ends = new ArrayList<Integer>();
+      expandPreDefined(starts, ends);
+      return makeCharClass(
+          flags,
+          starts.stream().mapToInt(Integer::intValue).toArray(),
+          ends.stream().mapToInt(Integer::intValue).toArray());
     }
 
     return null;
