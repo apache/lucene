@@ -387,7 +387,7 @@ public abstract class Analyzer implements Closeable {
      *
      * @param reader a reader to reset the source component
      */
-    void setReader(final Reader reader) {
+    private void setReader(final Reader reader) {
       source.accept(reader);
     }
 
