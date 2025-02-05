@@ -41,25 +41,21 @@ import org.apache.lucene.util.SparseFixedBitSet;
 public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
   // The maximum percentage of filtered docs before using this filtered strategy becomes less
   // effective than regular HNSW search
-  static final float MAX_FILTER_THRESHOLD = 0.60f;
+  static final float MAX_FILTER_THRESHOLD = 1.0f;
 
   // How many filtered candidates must be found to consider N-hop neighbors
   private static final float EXPANDED_EXPLORATION_LAMBDA = 0.10f;
 
-  private final BitSet explorationVisited;
   private final int maxExplorationMultiplier;
+  private final int minToScore;
 
   /** Creates a new graph searcher. */
   private FilteredHnswGraphSearcher(
-      NeighborQueue candidates,
-      BitSet explorationVisited,
-      BitSet visited,
-      int filterSize,
-      HnswGraph graph) {
+      NeighborQueue candidates, BitSet visited, int filterSize, HnswGraph graph) {
     super(candidates, visited);
     assert graph.maxConn() > 0 : "graph must have known max connections";
-    this.explorationVisited = explorationVisited;
-    this.maxExplorationMultiplier = Math.min(graph.size() / filterSize, 8);
+    this.maxExplorationMultiplier = Math.min(graph.size() / filterSize, graph.maxConn() / 2);
+    this.minToScore = Math.max(graph.maxConn() / 4, 1);
   }
 
   /**
@@ -80,11 +76,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
       throw new IllegalArgumentException("filterSize must be > 0 and < graph size");
     }
     return new FilteredHnswGraphSearcher(
-        new NeighborQueue(k, true),
-        bitSet(filterSize, getGraphSize(graph), k),
-        new SparseFixedBitSet(getGraphSize(graph)),
-        filterSize,
-        graph);
+        new NeighborQueue(k, true), bitSet(filterSize, getGraphSize(graph), k), filterSize, graph);
   }
 
   private static BitSet bitSet(long filterSize, int graphSize, int topk) {
@@ -164,22 +156,33 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
       float filteredAmount = toExplore.count() / (float) neighborCount;
       int maxToScoreCount =
           (int) (neighborCount * Math.min(maxExplorationMultiplier, 1f / (1f - filteredAmount)));
+      int maxAdditionalToExploreCount = toExplore.capacity() - 1;
       // There is enough filtered, or we don't have enough candidates to score and explore
-      if (toScore.count() < maxToScoreCount && filteredAmount > EXPANDED_EXPLORATION_LAMBDA) {
+      int totalExplored = toScore.count() + toExplore.count();
+      if (toScore.count() < maxToScoreCount
+          && filteredAmount > EXPANDED_EXPLORATION_LAMBDA
+          && totalExplored < maxAdditionalToExploreCount) {
         // Now we need to explore the neighbors of the neighbors
         int exploreFriend;
         while ((exploreFriend = toExplore.poll()) != NO_MORE_DOCS
+            // only explore initial additional neighborhood
+            && totalExplored < maxAdditionalToExploreCount
             && toScore.count() < maxToScoreCount) {
           graphSeek(graph, level, exploreFriend);
           int friendOfAFriendOrd;
           while ((friendOfAFriendOrd = graph.nextNeighbor()) != NO_MORE_DOCS
               && toScore.count() < maxToScoreCount) {
-            if (visited.get(friendOfAFriendOrd)
-                || explorationVisited.getAndSet(friendOfAFriendOrd)) {
+            if (visited.getAndSet(friendOfAFriendOrd)) {
               continue;
             }
+            totalExplored++;
             if (acceptOrds.get(friendOfAFriendOrd)) {
               toScore.add(friendOfAFriendOrd);
+              // If we have YET to find a minimum of number candidates, we will continue to explore
+              // until our max
+            } else if (totalExplored < maxAdditionalToExploreCount
+                && toScore.count() < minToScore) {
+              toExplore.add(friendOfAFriendOrd);
             }
           }
         }
@@ -202,7 +205,6 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
   private void prepareScratchState() {
     candidates.clear();
     visited.clear();
-    explorationVisited.clear();
   }
 
   private static class IntArrayQueue {
@@ -214,22 +216,17 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
       nodes = new int[capacity];
     }
 
+    int capacity() {
+      return nodes.length;
+    }
+
     int count() {
       return size - upto;
     }
 
-    void expand(int capacity) {
-      if (nodes.length < capacity) {
-        int[] newNodes = new int[capacity];
-        System.arraycopy(nodes, 0, newNodes, 0, size);
-        nodes = newNodes;
-      }
-    }
-
     void add(int node) {
-      assert isFull() == false;
-      if (size == nodes.length) {
-        expand(size * 2);
+      if (isFull()) {
+        throw new UnsupportedOperationException("Initial capacity should remain unchanged");
       }
       nodes[size++] = node;
     }

@@ -509,6 +509,12 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
       assert targetIndex >= 0
           : "seek level=" + level + " target=" + targetOrd + " not found: " + targetIndex;
+      if (targetIndex < 0) {
+        arc = -1;
+        arcUpTo = 0;
+        arcCount = 0;
+        return;
+      }
       // unsafe; no bounds checking
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();
