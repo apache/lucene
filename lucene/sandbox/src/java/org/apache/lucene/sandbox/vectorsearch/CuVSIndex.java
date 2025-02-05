@@ -18,38 +18,40 @@ package org.apache.lucene.sandbox.vectorsearch;
 
 import com.nvidia.cuvs.BruteForceIndex;
 import com.nvidia.cuvs.CagraIndex;
-import java.util.List;
+import com.nvidia.cuvs.HnswIndex;
 import java.util.Objects;
 
 /** This class holds references to the actual CuVS Index (Cagra, Brute force, etc.) */
-/*package-private*/ class CuVSIndex {
+public class CuVSIndex {
   private final CagraIndex cagraIndex;
   private final BruteForceIndex bruteforceIndex;
-  private final List<Integer> mapping;
-  private final List<float[]> vectors;
-  private final int maxDocs;
+  private final HnswIndex hnswIndex;
 
-  private final String fieldName;
-  private final String segmentName;
+  private int maxDocs;
+  private String fieldName;
+  private String segmentName;
 
   public CuVSIndex(
       String segmentName,
       String fieldName,
       CagraIndex cagraIndex,
-      List<Integer> mapping,
-      List<float[]> vectors,
       int maxDocs,
       BruteForceIndex bruteforceIndex) {
     this.cagraIndex = Objects.requireNonNull(cagraIndex);
     this.bruteforceIndex = Objects.requireNonNull(bruteforceIndex);
-    this.mapping = Objects.requireNonNull(mapping);
-    this.vectors = Objects.requireNonNull(vectors);
     this.fieldName = Objects.requireNonNull(fieldName);
     this.segmentName = Objects.requireNonNull(segmentName);
     if (maxDocs < 0) {
       throw new IllegalArgumentException("negative maxDocs:" + maxDocs);
     }
     this.maxDocs = maxDocs;
+    this.hnswIndex = null; // TODO:
+  }
+
+  public CuVSIndex(CagraIndex cagraIndex, BruteForceIndex bruteforceIndex, HnswIndex hnswIndex) {
+    this.cagraIndex = cagraIndex;
+    this.bruteforceIndex = bruteforceIndex;
+    this.hnswIndex = hnswIndex;
   }
 
   public CagraIndex getCagraIndex() {
@@ -60,16 +62,12 @@ import java.util.Objects;
     return bruteforceIndex;
   }
 
-  public List<Integer> getMapping() {
-    return mapping;
+  public HnswIndex getHNSWIndex() {
+    return hnswIndex;
   }
 
   public String getFieldName() {
     return fieldName;
-  }
-
-  public List<float[]> getVectors() {
-    return vectors;
   }
 
   public String getSegmentName() {

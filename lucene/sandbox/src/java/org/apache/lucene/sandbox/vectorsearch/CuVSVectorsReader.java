@@ -16,6 +16,13 @@
  */
 package org.apache.lucene.sandbox.vectorsearch;
 
+import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_INDEX_CODEC_NAME;
+import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_INDEX_EXT;
+import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_META_CODEC_EXT;
+import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_META_CODEC_NAME;
+import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.VERSION_CURRENT;
+import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.VERSION_START;
+
 import com.nvidia.cuvs.BruteForceIndex;
 import com.nvidia.cuvs.BruteForceQuery;
 import com.nvidia.cuvs.CagraIndex;
@@ -24,207 +31,252 @@ import com.nvidia.cuvs.CagraSearchParams;
 import com.nvidia.cuvs.CuVSResources;
 import com.nvidia.cuvs.HnswIndex;
 import com.nvidia.cuvs.HnswIndexParams;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.StackWalker.StackFrame;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.logging.Logger;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.TopKnnCollector;
+import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 /** KnnVectorsReader instance associated with CuVS format */
-/*package-private*/ class CuVSVectorsReader extends KnnVectorsReader {
+public class CuVSVectorsReader extends KnnVectorsReader {
 
-  // protected Logger log = Logger.getLogger(getClass().getName());
+  @SuppressWarnings("unused")
+  private static final Logger log = Logger.getLogger(CuVSVectorsReader.class.getName());
 
-  IndexInput vectorDataReader = null;
-  public String fileName = null;
-  public byte[] indexFileBytes;
-  public int[] docIds;
-  public float[] vectors;
-  public SegmentReadState segmentState = null;
-  public int indexFilePayloadSize = 0;
-  public long initialFilePointerLoc = 0;
-  public SegmentInputStream segmentInputStream;
+  private final CuVSResources resources;
+  private final FlatVectorsReader flatVectorsReader; // for reading the raw vectors
+  private final FieldInfos fieldInfos;
+  private final IntObjectHashMap<FieldEntry> fields;
+  private final IntObjectHashMap<CuVSIndex> cuvsIndices;
+  private final IndexInput cuvsIndexInput;
 
-  // Field to List of Indexes
-  public Map<String, List<CuVSIndex>> cuvsIndexes;
-
-  private CuVSResources resources;
-
-  public CuVSVectorsReader(SegmentReadState state, CuVSResources resources) throws Throwable {
-
-    segmentState = state;
+  public CuVSVectorsReader(
+      SegmentReadState state, CuVSResources resources, FlatVectorsReader flatReader)
+      throws IOException {
     this.resources = resources;
+    this.flatVectorsReader = flatReader;
+    this.fieldInfos = state.fieldInfos;
+    this.fields = new IntObjectHashMap<>();
 
-    fileName =
+    String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, CuVSVectorsFormat.VECTOR_DATA_EXTENSION);
-
-    vectorDataReader = segmentState.directory.openInput(fileName, segmentState.context);
-    CodecUtil.readIndexHeader(vectorDataReader);
-
-    initialFilePointerLoc = vectorDataReader.getFilePointer();
-    indexFilePayloadSize =
-        (int) vectorDataReader.length()
-            - (int) initialFilePointerLoc; // vectorMetaReader.readInt();
-    segmentInputStream =
-        new SegmentInputStream(vectorDataReader, indexFilePayloadSize, initialFilePointerLoc);
-    // log.info("payloadSize: " + indexFilePayloadSize);
-    // log.info("initialFilePointerLoc: " + initialFilePointerLoc);
-
-    List<StackFrame> stackTrace = StackWalker.getInstance().walk(this::getStackTrace);
-
-    boolean isMergeCase = false;
-    for (StackFrame s : stackTrace) {
-      if (s.toString().startsWith("org.apache.lucene.index.IndexWriter.merge")) {
-        isMergeCase = true;
-        // log.info("Reader opening on merge call");
-        break;
+            state.segmentInfo.name, state.segmentSuffix, CUVS_META_CODEC_EXT);
+    boolean success = false;
+    int versionMeta = -1;
+    try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
+      Throwable priorException = null;
+      try {
+        versionMeta =
+            CodecUtil.checkIndexHeader(
+                meta,
+                CUVS_META_CODEC_NAME,
+                VERSION_START,
+                VERSION_CURRENT,
+                state.segmentInfo.getId(),
+                state.segmentSuffix);
+        readFields(meta);
+      } catch (Throwable exception) {
+        priorException = exception;
+      } finally {
+        CodecUtil.checkFooter(meta, priorException);
+      }
+      var ioContext = state.context.withReadAdvice(ReadAdvice.SEQUENTIAL);
+      cuvsIndexInput = openCuVSInput(state, versionMeta, ioContext);
+      cuvsIndices = loadCuVSIndices();
+      success = true;
+    } finally {
+      if (success == false) {
+        IOUtils.closeWhileHandlingException(this);
       }
     }
-
-    /*log.info(
-        "Source of this segment "
-            + segmentState.segmentSuffix
-            + " is "
-            + segmentState.segmentInfo.getDiagnostics().get(IndexWriter.SOURCE));
-    log.info("Loading for " + segmentState.segmentInfo.name + ", mergeCase? " + isMergeCase);
-    log.info("Not the merge case, hence loading for " + segmentState.segmentInfo.name);*/
-    this.cuvsIndexes = loadCuVSIndex(getIndexInputStream(), isMergeCase);
   }
 
-  @SuppressWarnings({"unchecked"})
-  private Map<String, List<CuVSIndex>> loadCuVSIndex(ZipInputStream zis, boolean isMergeCase)
-      throws Throwable {
-    Map<String, List<CuVSIndex>> ret = new HashMap<String, List<CuVSIndex>>();
-    Map<String, CagraIndex> cagraIndexes = new HashMap<String, CagraIndex>();
-    Map<String, BruteForceIndex> bruteforceIndexes = new HashMap<String, BruteForceIndex>();
-    Map<String, HnswIndex> hnswIndexes = new HashMap<String, HnswIndex>();
-    Map<String, List<Integer>> mappings = new HashMap<String, List<Integer>>();
-    Map<String, List<float[]>> vectors = new HashMap<String, List<float[]>>();
-
-    Map<String, Integer> maxDocs = null; // map of segment, maxDocs
-    ZipEntry ze;
-    while ((ze = zis.getNextEntry()) != null) {
-      String entry = ze.getName();
-
-      String segmentField = entry.split("\\.")[0];
-      String extension = entry.split("\\.")[1];
-
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      byte[] buffer = new byte[1024];
-      int len = 0;
-      while ((len = zis.read(buffer)) != -1) {
-        baos.write(buffer, 0, len);
-      }
-
-      switch (extension) {
-        case "meta":
-          {
-            maxDocs = SerializationUtils.deserialize(baos.toByteArray());
-            break;
-          }
-        case "vec":
-          {
-            vectors.put(segmentField, SerializationUtils.deserialize(baos.toByteArray()));
-            break;
-          }
-        case "map":
-          {
-            List<Integer> map = SerializationUtils.deserialize(baos.toByteArray());
-            mappings.put(segmentField, map);
-            break;
-          }
-        case "cag":
-          {
-            cagraIndexes.put(
-                segmentField,
-                CagraIndex.newBuilder(resources)
-                    .from(new ByteArrayInputStream(baos.toByteArray()))
-                    .build());
-            break;
-          }
-        case "bf":
-          {
-            bruteforceIndexes.put(
-                segmentField,
-                BruteForceIndex.newBuilder(resources)
-                    .from(new ByteArrayInputStream(baos.toByteArray()))
-                    .build());
-            break;
-          }
-        case "hnsw":
-          {
-            HnswIndexParams indexParams = new HnswIndexParams.Builder().build();
-            hnswIndexes.put(
-                segmentField,
-                HnswIndex.newBuilder(resources)
-                    .from(new ByteArrayInputStream(baos.toByteArray()))
-                    .withIndexParams(indexParams)
-                    .build());
-            break;
-          }
+  private static IndexInput openCuVSInput(
+      SegmentReadState state, int versionMeta, IOContext context) throws IOException {
+    String fileName =
+        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, CUVS_INDEX_EXT);
+    IndexInput in = state.directory.openInput(fileName, context);
+    boolean success = false;
+    try {
+      int versionVectorData =
+          CodecUtil.checkIndexHeader(
+              in,
+              CUVS_INDEX_CODEC_NAME,
+              VERSION_START,
+              VERSION_CURRENT,
+              state.segmentInfo.getId(),
+              state.segmentSuffix);
+      checkVersion(versionMeta, versionVectorData, in);
+      CodecUtil.retrieveChecksum(in);
+      success = true;
+      return in;
+    } finally {
+      if (success == false) {
+        IOUtils.closeWhileHandlingException(in);
       }
     }
+  }
 
-    /*log.info("Loading cuvsIndexes from segment: " + segmentState.segmentInfo.name);
-    log.info("Diagnostics for this segment: " + segmentState.segmentInfo.getDiagnostics());
-    log.info("Loading map of cagraIndexes: " + cagraIndexes);
-    log.info("Loading vectors: " + vectors);
-    log.info("Loading mapping: " + mappings);*/
-
-    for (String segmentField : cagraIndexes.keySet()) {
-      // log.info("Loading segmentField: " + segmentField);
-      String segment = segmentField.split("/")[0];
-      String field = segmentField.split("/")[1];
-      CuVSIndex cuvsIndex =
-          new CuVSIndex(
-              segment,
-              field,
-              cagraIndexes.get(segmentField),
-              mappings.get(segmentField),
-              vectors.get(segmentField),
-              maxDocs.get(segment),
-              bruteforceIndexes.get(segmentField));
-      List<CuVSIndex> listOfIndexes =
-          ret.containsKey(field) ? ret.get(field) : new ArrayList<CuVSIndex>();
-      listOfIndexes.add(cuvsIndex);
-      ret.put(field, listOfIndexes);
+  private void validateFieldEntry(FieldInfo info, FieldEntry fieldEntry) {
+    int dimension = info.getVectorDimension();
+    if (dimension != fieldEntry.dims()) {
+      throw new IllegalStateException(
+          "Inconsistent vector dimension for field=\""
+              + info.name
+              + "\"; "
+              + dimension
+              + " != "
+              + fieldEntry.dims());
     }
-    return ret;
   }
 
-  public List<StackFrame> getStackTrace(Stream<StackFrame> stackFrameStream) {
-    return stackFrameStream.collect(Collectors.toList());
+  private void readFields(ChecksumIndexInput meta) throws IOException {
+    for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
+      FieldInfo info = fieldInfos.fieldInfo(fieldNumber);
+      if (info == null) {
+        throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
+      }
+      FieldEntry fieldEntry = readField(meta, info);
+      validateFieldEntry(info, fieldEntry);
+      fields.put(info.number, fieldEntry);
+    }
   }
 
-  public ZipInputStream getIndexInputStream() throws IOException {
-    segmentInputStream.reset();
-    return new ZipInputStream(segmentInputStream);
+  // List of vector similarity functions. This list is defined here, in order
+  // to avoid an undesirable dependency on the declaration and order of values
+  // in VectorSimilarityFunction. The list values and order must be identical
+  // to that of {@link o.a.l.c.l.Lucene94FieldInfosFormat#SIMILARITY_FUNCTIONS}.
+  static final List<VectorSimilarityFunction> SIMILARITY_FUNCTIONS =
+      List.of(
+          VectorSimilarityFunction.EUCLIDEAN,
+          VectorSimilarityFunction.DOT_PRODUCT,
+          VectorSimilarityFunction.COSINE,
+          VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT);
+
+  static VectorSimilarityFunction readSimilarityFunction(DataInput input) throws IOException {
+    int i = input.readInt();
+    if (i < 0 || i >= SIMILARITY_FUNCTIONS.size()) {
+      throw new IllegalArgumentException("invalid distance function: " + i);
+    }
+    return SIMILARITY_FUNCTIONS.get(i);
+  }
+
+  static VectorEncoding readVectorEncoding(DataInput input) throws IOException {
+    int encodingId = input.readInt();
+    if (encodingId < 0 || encodingId >= VectorEncoding.values().length) {
+      throw new CorruptIndexException("Invalid vector encoding id: " + encodingId, input);
+    }
+    return VectorEncoding.values()[encodingId];
+  }
+
+  private FieldEntry readField(IndexInput input, FieldInfo info) throws IOException {
+    VectorEncoding vectorEncoding = readVectorEncoding(input);
+    VectorSimilarityFunction similarityFunction = readSimilarityFunction(input);
+    if (similarityFunction != info.getVectorSimilarityFunction()) {
+      throw new IllegalStateException(
+          "Inconsistent vector similarity function for field=\""
+              + info.name
+              + "\"; "
+              + similarityFunction
+              + " != "
+              + info.getVectorSimilarityFunction());
+    }
+    return FieldEntry.readEntry(input, vectorEncoding, info.getVectorSimilarityFunction());
+  }
+
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    if (fieldEntry.vectorEncoding != expectedEncoding) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fieldEntry.vectorEncoding
+              + " expected: "
+              + expectedEncoding);
+    }
+    return fieldEntry;
+  }
+
+  private IntObjectHashMap<CuVSIndex> loadCuVSIndices() throws IOException {
+    var indices = new IntObjectHashMap<CuVSIndex>();
+    for (var e : fields) {
+      var fieldEntry = e.value;
+      int fieldNumber = e.key;
+      var cuvsIndex = loadCuVSIndex(fieldEntry);
+      indices.put(fieldNumber, cuvsIndex);
+    }
+    return indices;
+  }
+
+  private CuVSIndex loadCuVSIndex(FieldEntry fieldEntry) throws IOException {
+    CagraIndex cagraIndex = null;
+    BruteForceIndex bruteForceIndex = null;
+    HnswIndex hnswIndex = null;
+
+    try {
+      long len = fieldEntry.cagraIndexLength();
+      if (len > 0) {
+        long off = fieldEntry.cagraIndexOffset();
+        try (var slice = cuvsIndexInput.slice("cagra index", off, len);
+            var in = new IndexInputInputStream(slice)) {
+          cagraIndex = CagraIndex.newBuilder(resources).from(in).build();
+        }
+      }
+
+      len = fieldEntry.bruteForceIndexLength();
+      if (len > 0) {
+        long off = fieldEntry.bruteForceIndexOffset();
+        try (var slice = cuvsIndexInput.slice("bf index", off, len);
+            var in = new IndexInputInputStream(slice)) {
+          bruteForceIndex = BruteForceIndex.newBuilder(resources).from(in).build();
+        }
+      }
+
+      len = fieldEntry.hnswIndexLength();
+      if (len > 0) {
+        long off = fieldEntry.hnswIndexOffset();
+        try (var slice = cuvsIndexInput.slice("hnsw index", off, len);
+            var in = new IndexInputInputStream(slice)) {
+          var params = new HnswIndexParams.Builder().build();
+          hnswIndex = HnswIndex.newBuilder(resources).withIndexParams(params).from(in).build();
+        }
+      }
+    } catch (Throwable t) {
+      handleThrowable(t);
+    }
+    return new CuVSIndex(cagraIndex, bruteForceIndex, hnswIndex);
   }
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(vectorDataReader);
+    IOUtils.close(flatVectorsReader, cuvsIndexInput);
   }
 
   @Override
@@ -234,106 +286,189 @@ import org.apache.lucene.util.IOUtils;
 
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    return new FloatVectorValues() {
-
-      @Override
-      public int size() {
-        return cuvsIndexes.get(field).get(0).getVectors().size();
-      }
-
-      @Override
-      public int dimension() {
-        return cuvsIndexes.get(field).get(0).getVectors().get(0).length;
-      }
-
-      @Override
-      public float[] vectorValue(int pos) throws IOException {
-        return cuvsIndexes.get(field).get(0).getVectors().get(pos);
-      }
-
-      @Override
-      public FloatVectorValues copy() throws IOException {
-        return null;
-      }
-    };
+    return flatVectorsReader.getFloatVectorValues(field);
   }
 
   @Override
-  public ByteVectorValues getByteVectorValues(String field) throws IOException {
-    throw new UnsupportedOperationException();
+  public ByteVectorValues getByteVectorValues(String field) {
+    throw new UnsupportedOperationException("byte vectors not supported");
   }
+
+  /** Native float to float function */
+  public interface FloatToFloatFunction {
+    float apply(float v);
+  }
+
+  static long[] bitsToLongArray(Bits bits) {
+    if (bits instanceof FixedBitSet fixedBitSet) {
+      return fixedBitSet.getBits();
+    } else {
+      return FixedBitSet.copyOf(bits).getBits();
+    }
+  }
+
+  static FloatToFloatFunction getScoreNormalizationFunc(VectorSimilarityFunction sim) {
+    // TODO: check for different similarities
+    return score -> (1f / (1f + score));
+  }
+
+  // This is a hack - replace with cuVS bugId/filter support
+  static final int FILTER_OVER_SAMPLE = 10;
 
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    PerLeafCuVSKnnCollector cuvsCollector =
-        knnCollector instanceof PerLeafCuVSKnnCollector
-            ? ((PerLeafCuVSKnnCollector) knnCollector)
-            : new PerLeafCuVSKnnCollector(knnCollector.k(), knnCollector.k(), 1);
-    TopKnnCollector defaultCollector =
-        knnCollector instanceof TopKnnCollector ? ((TopKnnCollector) knnCollector) : null;
+    var fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
+    if (fieldEntry.count() == 0 || knnCollector.k() == 0) {
+      return;
+    }
 
-    int prevDocCount = 0;
+    var fieldNumber = fieldInfos.fieldInfo(field).number;
+    // log.info("fieldNumber=" + fieldNumber + ", fieldEntry.count()=" + fieldEntry.count());
 
-    // log.debug("Will try to search all the indexes for segment "+segmentState.segmentInfo.name+",
-    // field "+field+": "+cuvsIndexes);
-    for (CuVSIndex cuvsIndex : cuvsIndexes.get(field)) {
+    CuVSIndex cuvsIndex = cuvsIndices.get(fieldNumber);
+    if (cuvsIndex == null) {
+      throw new IllegalStateException("not index found for field:" + field);
+    }
+
+    int collectorTopK = knnCollector.k();
+    if (acceptDocs != null) {
+      collectorTopK = knnCollector.k() * FILTER_OVER_SAMPLE;
+    }
+    final int topK = Math.min(collectorTopK, fieldEntry.count());
+
+    Map<Integer, Float> result;
+    if (knnCollector.k() <= 1024 && cuvsIndex.getCagraIndex() != null) {
+      // log.info("searching cagra index");
+      CagraSearchParams searchParams =
+          new CagraSearchParams.Builder(resources)
+              .withItopkSize(topK) // TODO: params
+              .withSearchWidth(1)
+              .build();
+
+      var query =
+          new CagraQuery.Builder()
+              .withTopK(topK)
+              .withSearchParams(searchParams)
+              .withMapping(null)
+              .withQueryVectors(new float[][] {target})
+              .build();
+
+      CagraIndex cagraIndex = cuvsIndex.getCagraIndex();
+      List<Map<Integer, Float>> searchResult = null;
       try {
-        Map<Integer, Float> result = new HashMap<Integer, Float>();
-        if (cuvsCollector.k() <= 1024) {
-          CagraSearchParams searchParams =
-              new CagraSearchParams.Builder(resources)
-                  .withItopkSize(cuvsCollector.iTopK)
-                  .withSearchWidth(cuvsCollector.searchWidth)
-                  .build();
-
-          CagraQuery query =
-              new CagraQuery.Builder()
-                  .withTopK(cuvsCollector.k())
-                  .withSearchParams(searchParams)
-                  .withMapping(cuvsIndex.getMapping())
-                  .withQueryVectors(new float[][] {target})
-                  .build();
-
-          CagraIndex cagraIndex = cuvsIndex.getCagraIndex();
-          assert (cagraIndex != null);
-          // log.info("k is " + cuvsCollector.k());
-          result =
-              cagraIndex
-                  .search(query)
-                  .getResults()
-                  .get(0); // List expected to have only one entry because of single query "target".
-          // log.info("INTERMEDIATE RESULT FROM CUVS: " + result + ", prevDocCount=" +
-          // prevDocCount);
-        } else {
-          BruteForceQuery bruteforceQuery =
-              new BruteForceQuery.Builder()
-                  .withQueryVectors(new float[][] {target})
-                  .withPrefilter(((FixedBitSet) acceptDocs).getBits())
-                  .withTopK(cuvsCollector.k())
-                  .build();
-
-          BruteForceIndex bruteforceIndex = cuvsIndex.getBruteforceIndex();
-          result = bruteforceIndex.search(bruteforceQuery).getResults().get(0);
-        }
-
-        for (Entry<Integer, Float> kv : result.entrySet()) {
-          if (defaultCollector != null) {
-            defaultCollector.collect(prevDocCount + kv.getKey(), kv.getValue());
-          }
-          cuvsCollector.collect(prevDocCount + kv.getKey(), kv.getValue());
-        }
-
-      } catch (Throwable e) {
-        throw new RuntimeException(e);
+        searchResult = cagraIndex.search(query).getResults();
+      } catch (Throwable t) {
+        handleThrowable(t);
       }
-      prevDocCount += cuvsIndex.getMaxDocs();
+      // List expected to have only one entry because of single query "target".
+      assert searchResult.size() == 1;
+      result = searchResult.getFirst();
+    } else {
+      BruteForceIndex bruteforceIndex = cuvsIndex.getBruteforceIndex();
+      assert bruteforceIndex != null;
+      // log.info("searching brute index, with actual topK=" + topK);
+      var queryBuilder =
+          new BruteForceQuery.Builder().withQueryVectors(new float[][] {target}).withTopK(topK);
+      BruteForceQuery query = queryBuilder.build();
+
+      List<Map<Integer, Float>> searchResult = null;
+      try {
+        searchResult = bruteforceIndex.search(query).getResults();
+      } catch (Throwable t) {
+        handleThrowable(t);
+      }
+      assert searchResult.size() == 1;
+      result = searchResult.getFirst();
+    }
+    assert result != null;
+
+    final var rawValues = flatVectorsReader.getFloatVectorValues(field);
+    final Bits acceptedOrds = rawValues.getAcceptOrds(acceptDocs);
+    final var ordToDocFunction = (IntToIntFunction) rawValues::ordToDoc;
+    final var scoreCorrectionFunction = getScoreNormalizationFunc(fieldEntry.similarityFunction);
+
+    for (var entry : result.entrySet()) {
+      int ord = entry.getKey();
+      float score = entry.getValue();
+      if (acceptedOrds == null || acceptedOrds.get(ord)) {
+        if (knnCollector.earlyTerminated()) {
+          break;
+        }
+        assert ord >= 0 : "unexpected ord: " + ord;
+        int doc = ordToDocFunction.apply(ord);
+        float correctedScore = scoreCorrectionFunction.apply(score);
+        knnCollector.incVisitedCount(1);
+        knnCollector.collect(doc, correctedScore);
+      }
     }
   }
 
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    throw new UnsupportedOperationException();
+    throw new UnsupportedOperationException("byte vectors not supported");
+  }
+
+  record FieldEntry(
+      VectorEncoding vectorEncoding,
+      VectorSimilarityFunction similarityFunction,
+      int dims,
+      int count,
+      long cagraIndexOffset,
+      long cagraIndexLength,
+      long bruteForceIndexOffset,
+      long bruteForceIndexLength,
+      long hnswIndexOffset,
+      long hnswIndexLength) {
+
+    static FieldEntry readEntry(
+        IndexInput input,
+        VectorEncoding vectorEncoding,
+        VectorSimilarityFunction similarityFunction)
+        throws IOException {
+      var dims = input.readInt();
+      var count = input.readInt();
+      var cagraIndexOffset = input.readVLong();
+      var cagraIndexLength = input.readVLong();
+      var bruteForceIndexOffset = input.readVLong();
+      var bruteForceIndexLength = input.readVLong();
+      var hnswIndexOffset = input.readVLong();
+      var hnswIndexLength = input.readVLong();
+      return new FieldEntry(
+          vectorEncoding,
+          similarityFunction,
+          dims,
+          count,
+          cagraIndexOffset,
+          cagraIndexLength,
+          bruteForceIndexOffset,
+          bruteForceIndexLength,
+          hnswIndexOffset,
+          hnswIndexLength);
+    }
+  }
+
+  static void checkVersion(int versionMeta, int versionVectorData, IndexInput in)
+      throws CorruptIndexException {
+    if (versionMeta != versionVectorData) {
+      throw new CorruptIndexException(
+          "Format versions mismatch: meta="
+              + versionMeta
+              + ", "
+              + CUVS_META_CODEC_NAME
+              + "="
+              + versionVectorData,
+          in);
+    }
+  }
+
+  static void handleThrowable(Throwable t) throws IOException {
+    switch (t) {
+      case IOException ioe -> throw ioe;
+      case Error error -> throw error;
+      case RuntimeException re -> throw re;
+      case null, default -> throw new RuntimeException("UNEXPECTED: exception type", t);
+    }
   }
 }

@@ -21,6 +21,9 @@ import com.nvidia.cuvs.LibraryException;
 import java.io.IOException;
 import java.util.logging.Logger;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.sandbox.vectorsearch.CuVSVectorsWriter.MergeStrategy;
@@ -30,15 +33,28 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
 
   private static final Logger LOG = Logger.getLogger(CuVSVectorsFormat.class.getName());
 
-  public static final String VECTOR_DATA_CODEC_NAME = "Lucene99CagraVectorsFormatData";
-  public static final String VECTOR_DATA_EXTENSION = "cag";
-  public static final String META_EXTENSION = "cagmf";
-  public static final int VERSION_CURRENT = 0;
+  // TODO: fix Lucene version in name, to the final targeted release, if any
+  static final String CUVS_META_CODEC_NAME = "Lucene102CuVSVectorsFormatMeta";
+  static final String CUVS_META_CODEC_EXT = "vemc"; // ""cagmf";
+  static final String CUVS_INDEX_CODEC_NAME = "Lucene102CuVSVectorsFormatIndex";
+  static final String CUVS_INDEX_EXT = "vcag";
+
+  static final int VERSION_START = 0;
+  static final int VERSION_CURRENT = VERSION_START;
+
   public static final int DEFAULT_WRITER_THREADS = 1;
   public static final int DEFAULT_INTERMEDIATE_GRAPH_DEGREE = 128;
   public static final int DEFAULT_GRAPH_DEGREE = 64;
 
+  // The minimum number of vectors in the dataset required before
+  // we attempt to build a Cagra index
+  static final int MIN_CAGRA_INDEX_SIZE = 2;
+
   static CuVSResources resources = cuVSResourcesOrNull();
+
+  /** The format for storing, reading, and merging raw vectors on disk. */
+  private static final FlatVectorsFormat flatVectorsFormat =
+      new Lucene99FlatVectorsFormat(DefaultFlatVectorScorer.INSTANCE);
 
   final int maxDimensions = 4096;
   final int cuvsWriterThreads;
@@ -69,7 +85,7 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
       resources = CuVSResources.create();
       return resources;
     } catch (UnsupportedOperationException uoe) {
-      LOG.warning("cuvs is not supported on this platform or java version");
+      LOG.warning("cuvs is not supported on this platform or java version: " + uoe.getMessage());
     } catch (Throwable t) {
       if (t instanceof ExceptionInInitializerError ex) {
         t = ex.getCause();
@@ -93,18 +109,22 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
   @Override
   public CuVSVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     checkSupported();
+    var flatWriter = flatVectorsFormat.fieldsWriter(state);
     return new CuVSVectorsWriter(
-        state, cuvsWriterThreads, intGraphDegree, graphDegree, mergeStrategy, resources);
+        state,
+        cuvsWriterThreads,
+        intGraphDegree,
+        graphDegree,
+        mergeStrategy,
+        resources,
+        flatWriter);
   }
 
   @Override
   public CuVSVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     checkSupported();
-    try {
-      return new CuVSVectorsReader(state, resources);
-    } catch (Throwable e) {
-      throw new RuntimeException(e);
-    }
+    var flatReader = flatVectorsFormat.fieldsReader(state);
+    return new CuVSVectorsReader(state, resources, flatReader);
   }
 
   @Override
