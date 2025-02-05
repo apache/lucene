@@ -25,6 +25,8 @@ if (!propertyOrDefault("validation.errorprone", isCIBuild).asBoolean()) {
   skipReason = "skipped on builds not running inside CI environments, pass -Pvalidation.errorprone=true to enable"
 }
 
+skipReason = "failing in CI builds with NoSuchMethodError due to use of internal compiler APIs"
+
 if (skipReason) {
   configure(rootProject) {
     task errorProneSkipped() {
