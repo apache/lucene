@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.sandbox.vectorsearch;
 
+import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
+
 import com.nvidia.cuvs.BruteForceIndex;
 import com.nvidia.cuvs.BruteForceIndexParams;
 import com.nvidia.cuvs.CagraIndex;
@@ -44,6 +46,8 @@ import org.apache.lucene.util.SuppressForbidden;
 
 /** KnnVectorsWriter for CuVS, responsible for merge and flush of vectors into GPU */
 /*package-private*/ class CuVSVectorsWriter extends KnnVectorsWriter {
+
+  private static final long SHALLOW_RAM_BYTES_USED = shallowSizeOfInstance(CuVSVectorsWriter.class);
 
   // protected Logger log = Logger.getLogger(getClass().getName());
 
@@ -88,11 +92,6 @@ import org.apache.lucene.util.SuppressForbidden;
             this.segmentWriteState.segmentInfo.name,
             this.segmentWriteState.segmentSuffix,
             CuVSVectorsFormat.VECTOR_DATA_EXTENSION);
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return 0;
   }
 
   @Override
@@ -365,6 +364,15 @@ import org.apache.lucene.util.SuppressForbidden;
       this.mergeOutputStream = null;
       this.mergedIndexFile = null;
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long total = SHALLOW_RAM_BYTES_USED;
+    for (var field : fieldVectorWriters) {
+      total += field.ramBytesUsed();
+    }
+    return total;
   }
 
   /** OutputStream for writing into an IndexOutput */
