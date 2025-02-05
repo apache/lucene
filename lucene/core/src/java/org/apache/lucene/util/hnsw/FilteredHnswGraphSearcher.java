@@ -46,7 +46,9 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
   // How many filtered candidates must be found to consider N-hop neighbors
   private static final float EXPANDED_EXPLORATION_LAMBDA = 0.10f;
 
+  // How many extra neighbors to explore, used as a multiple to the candidates neighbor count
   private final int maxExplorationMultiplier;
+  // The minimal number of candidates to attempt to grab if none are found even after two hops
   private final int minToScore;
 
   /** Creates a new graph searcher. */
