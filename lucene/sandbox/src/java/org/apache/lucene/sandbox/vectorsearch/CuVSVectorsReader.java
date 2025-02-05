@@ -145,8 +145,7 @@ import org.apache.lucene.util.IOUtils;
           }
         case "vec":
           {
-            vectors.put(
-                segmentField, SerializationUtils.deserialize(baos.toByteArray()));
+            vectors.put(segmentField, SerializationUtils.deserialize(baos.toByteArray()));
             break;
           }
         case "map":

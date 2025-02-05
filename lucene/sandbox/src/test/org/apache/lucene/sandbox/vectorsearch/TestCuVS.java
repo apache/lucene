@@ -66,7 +66,7 @@ public class TestCuVS extends LuceneTestCase {
   public static void beforeClass() throws Exception {
     directory = newDirectory();
 
-    Codec codec = new CuVSCodec();
+    Codec codec = TestUtil.alwaysKnnVectorsFormat(new CuVSVectorsFormat());
 
     RandomIndexWriter writer =
         new RandomIndexWriter(
@@ -105,8 +105,8 @@ public class TestCuVS extends LuceneTestCase {
 
   @AfterClass
   public static void afterClass() throws Exception {
-    reader.close();
-    directory.close();
+    if (reader != null) reader.close();
+    if (directory != null) directory.close();
     searcher = null;
     reader = null;
     directory = null;

@@ -17,7 +17,6 @@
 package org.apache.lucene.sandbox.vectorsearch;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;

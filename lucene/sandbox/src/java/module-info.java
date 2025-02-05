@@ -40,10 +40,8 @@ module org.apache.lucene.sandbox {
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;
-   provides org.apache.lucene.codecs.KnnVectorsFormat with
+  provides org.apache.lucene.codecs.KnnVectorsFormat with
       org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat;
-//  provides org.apache.lucene.codecs.Codec with
-//      org.apache.lucene.sandbox.vectorsearch.CuVSCodec;
   provides com.nvidia.cuvs.spi.CuVSServiceProvider with
       org.apache.lucene.sandbox.vectorsearch.FilterCuVSServiceProvider;
 }
