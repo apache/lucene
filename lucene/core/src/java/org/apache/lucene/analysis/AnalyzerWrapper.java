@@ -17,7 +17,6 @@
 package org.apache.lucene.analysis;
 
 import java.io.Reader;
-import java.util.function.Consumer;
 import org.apache.lucene.util.AttributeFactory;
 
 /**
@@ -186,8 +185,10 @@ public abstract class AnalyzerWrapper extends Analyzer {
     public void setReusableComponents(
         Analyzer analyzer, String fieldName, TokenStreamComponents components) {
       reuseStrategy.setReusableComponents(analyzer, fieldName, components);
-      if (analyzer instanceof AnalyzerWrapper wrapper
-          && components instanceof TokenStreamComponentsWrapper wrapperComponents) {
+
+      if (analyzer instanceof AnalyzerWrapper wrapper) {
+        final TokenStreamComponentsWrapper wrapperComponents =
+            (TokenStreamComponentsWrapper) components;
         final Analyzer wrappedAnalyzer = wrapper.getWrappedAnalyzer(fieldName);
         wrappedAnalyzer
             .getReuseStrategy()
@@ -201,34 +202,16 @@ public abstract class AnalyzerWrapper extends Analyzer {
    * A {@link Analyzer.TokenStreamComponents} that decorates the wrapper with access to the wrapped
    * components.
    */
-  public static final class TokenStreamComponentsWrapper extends TokenStreamComponents {
+  static final class TokenStreamComponentsWrapper extends TokenStreamComponents {
     private final TokenStreamComponents wrapped;
-    private final TokenStreamComponents wrapper;
 
-    public TokenStreamComponentsWrapper(
-        TokenStreamComponents wrapper, TokenStreamComponents wrapped) {
+    TokenStreamComponentsWrapper(TokenStreamComponents wrapper, TokenStreamComponents wrapped) {
       super(wrapper.getSource(), wrapper.getTokenStream());
-      this.wrapper = wrapper;
       this.wrapped = wrapped;
     }
 
-    public TokenStreamComponents getWrappedComponents() {
+    TokenStreamComponents getWrappedComponents() {
       return wrapped;
-    }
-
-    @Override
-    protected void setReader(final Reader reader) {
-      wrapper.setReader(reader);
-    }
-
-    @Override
-    public TokenStream getTokenStream() {
-      return wrapper.getTokenStream();
-    }
-
-    @Override
-    public Consumer<Reader> getSource() {
-      return wrapper.getSource();
     }
   }
 }
