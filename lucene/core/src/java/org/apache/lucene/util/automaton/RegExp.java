@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
@@ -958,7 +959,7 @@ public class RegExp {
       if (sb.length() > 1) {
         sb.append(' ');
       }
-      sb.append(String.format("U+%04X", codepoint));
+      sb.append(String.format(Locale.ROOT, "U+%04X", codepoint));
     }
     sb.append(']');
     return sb;
@@ -1084,6 +1085,14 @@ public class RegExp {
   }
 
   static RegExp makeCharClass(int flags, int from[], int to[]) {
+    if (from.length != to.length) {
+      throw new IllegalStateException(
+          String.format(
+              Locale.ROOT,
+              "invalid class: from.length (%d) != to.length (%d)",
+              from.length,
+              to.length));
+    }
     for (int i = 0; i < from.length; i++) {
       if (from[i] > to[i]) {
         throw new IllegalArgumentException(
@@ -1228,8 +1237,8 @@ public class RegExp {
   }
 
   final RegExp parseCharClasses() throws IllegalArgumentException {
-    var starts = new ArrayList<Integer>();
-    var ends = new ArrayList<Integer>();
+    ArrayList<Integer> starts = new ArrayList<>();
+    ArrayList<Integer> ends = new ArrayList<>();
 
     do {
       // look for escape
