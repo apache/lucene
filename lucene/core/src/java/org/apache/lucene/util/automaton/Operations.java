@@ -149,7 +149,7 @@ public final class Operations {
 
     result.finishState();
 
-    return result;
+    return removeDeadStates(result);
   }
 
   /**
