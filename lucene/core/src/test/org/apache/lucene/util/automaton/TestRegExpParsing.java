@@ -78,6 +78,20 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  // individual characters (only) inside a class are treated as case insensitive.
+  public void testCaseInsensitiveClassChar() {
+    RegExp re = new RegExp("[c]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0063 U+0043] ends=[U+0063 U+0043]\n", re.toStringTree());
+  }
+
+  // ranges aren't treated as case-insensitive, but maybe ok with charclass
+  // instead of adding range, expand it: iterate each codepoint, adding its alternatives
+  public void testCaseInsensitiveClassRange() {
+    RegExp re = new RegExp("[c-d]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    assertEquals("REGEXP_CHAR_RANGE from=c to=d\n", re.toStringTree());
+  }
+
   public void testCaseInsensitiveCharUpper() {
     RegExp re = new RegExp("C", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
     assertEquals("\\C", re.toString());
