@@ -58,8 +58,8 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
-import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
@@ -1128,8 +1128,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      return supplier.scorer(ord);
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      return supplier.scorer();
     }
 
     @Override
