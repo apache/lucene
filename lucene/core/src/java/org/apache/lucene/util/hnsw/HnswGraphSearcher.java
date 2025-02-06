@@ -18,7 +18,6 @@
 package org.apache.lucene.util.hnsw;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.hnsw.FilteredHnswGraphSearcher.MAX_FILTER_THRESHOLD;
 
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
@@ -96,13 +95,22 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       int filteredDocCount)
       throws IOException {
     assert filteredDocCount >= 0 && filteredDocCount <= graph.size();
+    KnnSearchStrategy.Hnsw hnswStrategy;
+    if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Hnsw hnsw) {
+      hnswStrategy = hnsw;
+    } else if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded
+        && seeded.originalStrategy() instanceof KnnSearchStrategy.Hnsw hnsw) {
+      hnswStrategy = hnsw;
+    } else {
+      hnswStrategy = KnnSearchStrategy.Hnsw.DEFAULT;
+    }
     final AbstractHnswGraphSearcher innerSearcher;
     // First, check if we should use a filtered searcher
     if (acceptOrds != null
         // We can only use filtered search if we know the maxConn
         && graph.maxConn() != HnswGraph.UNKNOWN_MAX_CONN
         && filteredDocCount > 0
-        && (float) filteredDocCount / graph.size() < MAX_FILTER_THRESHOLD) {
+        && hnswStrategy.useFilteredSearch((float) filteredDocCount / graph.size())) {
       innerSearcher =
           FilteredHnswGraphSearcher.create(knnCollector.k(), graph, filteredDocCount, acceptOrds);
     } else {

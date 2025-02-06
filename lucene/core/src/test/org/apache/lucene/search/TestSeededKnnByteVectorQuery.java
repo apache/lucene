@@ -301,7 +301,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
         private final KnnSearchStrategy.Seeded seeded;
 
         public AssertingSeededStrategy(KnnSearchStrategy.Seeded seeded) {
-          super(seeded.entryPoints(), seeded.numberOfEntryPoints());
+          super(seeded.entryPoints(), seeded.numberOfEntryPoints(), seeded.originalStrategy());
           this.seeded = seeded;
         }
 

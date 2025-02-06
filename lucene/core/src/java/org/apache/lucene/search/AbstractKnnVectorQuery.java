@@ -32,6 +32,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
@@ -58,14 +59,16 @@ abstract class AbstractKnnVectorQuery extends Query {
   protected final String field;
   protected final int k;
   protected final Query filter;
+  protected final KnnSearchStrategy searchStrategy;
 
-  public AbstractKnnVectorQuery(String field, int k, Query filter) {
+  AbstractKnnVectorQuery(String field, int k, Query filter, KnnSearchStrategy searchStrategy) {
     this.field = Objects.requireNonNull(field, "field");
     this.k = k;
     if (k < 1) {
       throw new IllegalArgumentException("k must be at least 1, got: " + k);
     }
     this.filter = filter;
+    this.searchStrategy = searchStrategy;
   }
 
   @Override
@@ -307,7 +310,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     AbstractKnnVectorQuery that = (AbstractKnnVectorQuery) o;
-    return k == that.k && Objects.equals(field, that.field) && Objects.equals(filter, that.filter);
+    return k == that.k
+        && Objects.equals(field, that.field)
+        && Objects.equals(filter, that.filter)
+        && Objects.equals(searchStrategy, that.searchStrategy);
   }
 
   @Override
