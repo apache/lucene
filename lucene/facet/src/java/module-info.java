@@ -20,6 +20,7 @@ module org.apache.lucene.facet {
   requires org.apache.lucene.core;
 
   exports org.apache.lucene.facet;
+  exports org.apache.lucene.facet.histogram;
   exports org.apache.lucene.facet.range;
   exports org.apache.lucene.facet.sortedset;
   exports org.apache.lucene.facet.taxonomy;
