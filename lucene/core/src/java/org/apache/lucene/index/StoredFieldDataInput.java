@@ -20,6 +20,11 @@ import java.util.Objects;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.DataInput;
 
+/**
+ * A fixed size DataInput which includes the length of the input. For use as a StoredField.
+ *
+ * @lucene.experimental
+ */
 public class StoredFieldDataInput {
 
   private final DataInput in;
