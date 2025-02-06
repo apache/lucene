@@ -112,7 +112,7 @@ public class BKDCodecBenchmark {
   public void readInts16ForUtil(Blackhole bh) throws IOException {
     for (int i = 0; i <= 100; i++) {
       int count = count(i);
-      decodeForUtil24(outputInts, tmpInts, in, count);
+      decodeForUtil16(outputInts, tmpInts, in, count);
       bh.consume(outputInts);
       setupInvocation();
     }
