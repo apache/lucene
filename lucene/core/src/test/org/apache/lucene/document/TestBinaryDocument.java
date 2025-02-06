@@ -78,9 +78,9 @@ public class TestBinaryDocument extends LuceneTestCase {
     FieldType ft = new FieldType();
     ft.setStored(true);
     byte[] byteArray = binaryValStored.getBytes(StandardCharsets.UTF_8);
-    StoredFieldDataInput storedFieldDataInput = new StoredFieldDataInput(new ByteArrayDataInput(byteArray));
-    StoredField binaryFldStored =
-            new StoredField("binaryStored", storedFieldDataInput);
+    StoredFieldDataInput storedFieldDataInput =
+        new StoredFieldDataInput(new ByteArrayDataInput(byteArray));
+    StoredField binaryFldStored = new StoredField("binaryStored", storedFieldDataInput);
     Field stringFldStored = new Field("stringStored", binaryValStored, ft);
 
     Document doc = new Document();
@@ -106,7 +106,7 @@ public class TestBinaryDocument extends LuceneTestCase {
     BytesRef bytes = docFromReader.getBinaryValue("binaryStored");
     assertNotNull(bytes);
     String binaryFldStoredTest =
-            new String(bytes.bytes, bytes.offset, bytes.length, StandardCharsets.UTF_8);
+        new String(bytes.bytes, bytes.offset, bytes.length, StandardCharsets.UTF_8);
     assertTrue(binaryFldStoredTest.equals(binaryValStored));
 
     /** fetch the string field and compare its content with the original one */

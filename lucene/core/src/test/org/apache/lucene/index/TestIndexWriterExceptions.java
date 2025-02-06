@@ -1782,15 +1782,15 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     iw.addDocument(doc);
 
     expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              // set to null value
-              StoredFieldDataInput v = null;
-              Field theField = new StoredField("foo", v);
-              doc.add(theField);
-              iw.addDocument(doc);
-              fail("didn't get expected exception");
-            });
+        IllegalArgumentException.class,
+        () -> {
+          // set to null value
+          StoredFieldDataInput v = null;
+          Field theField = new StoredField("foo", v);
+          doc.add(theField);
+          iw.addDocument(doc);
+          fail("didn't get expected exception");
+        });
 
     assertNull(iw.getTragicException());
     iw.close();
