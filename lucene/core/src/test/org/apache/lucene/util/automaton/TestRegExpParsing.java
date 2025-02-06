@@ -17,8 +17,6 @@
 package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -136,6 +134,22 @@ public class TestRegExpParsing extends LuceneTestCase {
         Operations.union(
             Automata.makeCharRange(0, 'b'), Automata.makeCharRange('d', Integer.MAX_VALUE));
     assertSameLanguage(expected, actual);
+  }
+
+  public void testNegatedClass() {
+    RegExp re = new RegExp("[^c-da]");
+    assertEquals(
+        String.join(
+            "\n",
+            "REGEXP_INTERSECTION",
+            "  REGEXP_ANYCHAR",
+            "  REGEXP_COMPLEMENT",
+            "    REGEXP_CHAR_CLASS starts=[U+0063 U+0061] ends=[U+0064 U+0061]\n"),
+        re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+    assertEquals(2, actual.getNumStates());
   }
 
   public void testCharRange() {
