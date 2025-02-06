@@ -148,8 +148,7 @@ public final class Operations {
     }
 
     result.finishState();
-
-    return result;
+    return Operations.removeDeadStates(result);
   }
 
   /**
