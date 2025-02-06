@@ -37,7 +37,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.lucene.internal.hppc.BitMixer;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntHashSet;
@@ -969,7 +968,7 @@ public final class Operations {
   private static BitSet getLiveStatesToAccept(Automaton a) {
     Automaton.Builder builder = new Automaton.Builder();
 
-    // NOTE: not quite the same thing as what SpecialOperations.reverse does:
+    // NOTE: not quite the same thing as what reverse() does:
     Transition t = new Transition();
     int numStates = a.getNumStates();
     for (int s = 0; s < numStates; s++) {
@@ -1177,7 +1176,7 @@ public final class Operations {
    */
   public static BytesRef getCommonSuffixBytesRef(Automaton a) {
     // reverse the language of the automaton, then reverse its common prefix.
-    Automaton r = removeDeadStates(reverse(a));
+    Automaton r = reverse(a);
     BytesRef ref = getCommonPrefixBytesRef(r);
     reverseBytes(ref);
     return ref;
@@ -1195,12 +1194,6 @@ public final class Operations {
 
   /** Returns an automaton accepting the reverse language. */
   public static Automaton reverse(Automaton a) {
-    return reverse(a, null);
-  }
-
-  /** Reverses the automaton, returning the new initial states. */
-  public static Automaton reverse(Automaton a, Set<Integer> initialStates) {
-
     if (Operations.isEmpty(a)) {
       return new Automaton();
     }
@@ -1236,15 +1229,12 @@ public final class Operations {
     BitSet acceptStates = a.getAcceptStates();
     while (s < numStates && (s = acceptStates.nextSetBit(s)) != -1) {
       result.addEpsilon(0, s + 1);
-      if (initialStates != null) {
-        initialStates.add(s + 1);
-      }
       s++;
     }
 
     result.finishState();
 
-    return result;
+    return removeDeadStates(result);
   }
 
   /**
