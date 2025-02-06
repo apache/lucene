@@ -667,11 +667,14 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testRemoveDeadStates() throws Exception {
-    Automaton a =
-        Operations.concatenate(Arrays.asList(Automata.makeString("x"), Automata.makeString("y")));
-    assertEquals(4, a.getNumStates());
+    Automaton a = new Automaton();
+    int s1 = a.createState();
+    a.createState(); // create dead state
+    a.setAccept(s1, true);
+    a.finishState();
+    assertEquals(2, a.getNumStates());
     a = Operations.removeDeadStates(a);
-    assertEquals(3, a.getNumStates());
+    assertEquals(1, a.getNumStates());
   }
 
   public void testRemoveDeadStatesEmpty1() throws Exception {
@@ -1681,5 +1684,41 @@ public class TestAutomaton extends LuceneTestCase {
           a = Operations.reverse(a);
           Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
         });
+  }
+
+  public void testMakeCharSetEmpty() {
+    Automaton expected = Automata.makeEmpty();
+    Automaton actual = Automata.makeCharSet(new int[] {});
+    assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
+    assertTrue(actual.isDeterministic());
+    assertEquals(0, actual.getNumStates());
+    assertEquals(0, actual.getNumTransitions());
+  }
+
+  public void testMakeCharSetOne() {
+    Automaton expected = Automata.makeChar('a');
+    Automaton actual = Automata.makeCharSet(new int[] {'a'});
+    assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
+    assertTrue(actual.isDeterministic());
+    assertEquals(2, actual.getNumStates());
+    assertEquals(1, actual.getNumTransitions());
+  }
+
+  public void testMakeCharSetTwo() {
+    Automaton expected = Operations.union(Automata.makeChar('a'), Automata.makeChar('A'));
+    Automaton actual = Automata.makeCharSet(new int[] {'a', 'A'});
+    assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
+    assertTrue(actual.isDeterministic());
+    assertEquals(2, actual.getNumStates());
+    assertEquals(2, actual.getNumTransitions());
+  }
+
+  public void testMakeCharSetDups() {
+    Automaton expected = Automata.makeChar('a');
+    Automaton actual = Automata.makeCharSet(new int[] {'a', 'a', 'a'});
+    assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
+    assertTrue(actual.isDeterministic());
+    assertEquals(2, actual.getNumStates());
+    assertEquals(1, actual.getNumTransitions());
   }
 }
