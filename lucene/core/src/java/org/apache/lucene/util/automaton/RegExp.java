@@ -766,10 +766,9 @@ public class RegExp {
    * @return the set of Automaton that represent the original code point and it's variants
    */
   private int[] toCaseInsensitiveChar(int codepoint) {
-    int[] result;
     int[] altCodepoints = caseFolding.fold(codepoint);
     if (altCodepoints != null) {
-      result = altCodepoints;
+      return altCodepoints;
     } else {
       int altCase =
           Character.isLowerCase(codepoint)
@@ -781,7 +780,6 @@ public class RegExp {
         return new int[] {codepoint};
       }
     }
-    return result;
   }
 
   private Automaton toCaseInsensitiveString() {
