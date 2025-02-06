@@ -53,7 +53,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
@@ -296,12 +295,37 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
   final class BlockPostingsEnum extends ImpactsEnum {
 
+    private enum DeltaEncoding {
+      /**
+       * Deltas between consecutive docs are stored as packed integers, ie. the block is encoded
+       * using Frame Of Reference (FOR).
+       */
+      PACKED,
+      /**
+       * Deltas between consecutive docs are stored using unary coding, ie. {@code delta-1} zero
+       * bits followed by a one bit, ie. the block is encoded as an offset plus a bit set.
+       */
+      UNARY
+    }
+
     private ForDeltaUtil forDeltaUtil;
     private PForUtil pforUtil;
 
+    /* Variables that store the content of a block and the current position within this block */
+    /* Shared variables */
+    private DeltaEncoding encoding;
+    private int doc; // doc we last read
+
+    /* Variables when the block is stored as packed deltas (Frame Of Reference) */
     private final int[] docBuffer = new int[BLOCK_SIZE];
 
-    private int doc; // doc we last read
+    /* Variables when the block is stored as a bit set */
+    // Since we use a bit set when it's more storage-efficient, the bit set cannot have more than
+    // BLOCK_SIZE*32 bits, which is the maximum possible storage requirement with FOR.
+    private final FixedBitSet docBitSet = new FixedBitSet(BLOCK_SIZE * Integer.SIZE);
+    private int docBitSetBase;
+    // Reuse docBuffer for cumulative pop counts of the words of the bit set.
+    private final int[] docCumulativeWordPopCounts = docBuffer;
 
     // level 0 skip data
     private int level0LastDocID;
@@ -573,7 +597,41 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     private void refillFullBlock() throws IOException {
-      forDeltaUtil.decodeAndPrefixSum(docInUtil, prevDocID, docBuffer);
+      int bitsPerValue = docIn.readByte();
+      if (bitsPerValue > 0) {
+        // block is encoded as 128 packed integers that record the delta between doc IDs
+        forDeltaUtil.decodeAndPrefixSum(bitsPerValue, docInUtil, prevDocID, docBuffer);
+        encoding = DeltaEncoding.PACKED;
+      } else {
+        // block is encoded as a bit set
+        assert level0LastDocID != NO_MORE_DOCS;
+        docBitSetBase = prevDocID + 1;
+        int numLongs;
+        if (bitsPerValue == 0) {
+          // 0 is used to record that all 128 docs in the block are consecutive
+          numLongs = BLOCK_SIZE / Long.SIZE; // 2
+          docBitSet.set(0, BLOCK_SIZE);
+        } else {
+          numLongs = -bitsPerValue;
+          docIn.readLongs(docBitSet.getBits(), 0, numLongs);
+        }
+        if (needsFreq) {
+          // Note: we know that BLOCK_SIZE bits are set, so no need to compute the cumulative pop
+          // count at the last index, it will be BLOCK_SIZE.
+          // Note: this for loop auto-vectorizes
+          for (int i = 0; i < numLongs - 1; ++i) {
+            docCumulativeWordPopCounts[i] = Long.bitCount(docBitSet.getBits()[i]);
+          }
+          for (int i = 1; i < numLongs - 1; ++i) {
+            docCumulativeWordPopCounts[i] += docCumulativeWordPopCounts[i - 1];
+          }
+          docCumulativeWordPopCounts[numLongs - 1] = BLOCK_SIZE;
+          assert docCumulativeWordPopCounts[numLongs - 2]
+                  + Long.bitCount(docBitSet.getBits()[numLongs - 1])
+              == BLOCK_SIZE;
+        }
+        encoding = DeltaEncoding.UNARY;
+      }
       if (indexHasFreq) {
         if (needsFreq) {
           freqFP = docIn.getFilePointer();
@@ -608,6 +666,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       prevDocID = docBuffer[BLOCK_SIZE - 1];
       docBufferUpto = 0;
       posDocBufferUpto = 0;
+      encoding = DeltaEncoding.PACKED;
       assert docBuffer[docBufferSize] == NO_MORE_DOCS;
     }
 
@@ -669,7 +728,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     private void doMoveToNextLevel0Block() throws IOException {
-      assert docBufferUpto == BLOCK_SIZE;
+      assert doc == level0LastDocID;
       if (posIn != null) {
         if (level0PosEndFP >= posIn.getFilePointer()) {
           posIn.seek(level0PosEndFP);
@@ -728,9 +787,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       if (needsDocsAndFreqsOnly && docCountLeft >= BLOCK_SIZE) {
         // Optimize the common path for exhaustive evaluation
         long level0NumBytes = docIn.readVLong();
-        docIn.skipBytes(level0NumBytes);
+        long level0End = docIn.getFilePointer() + level0NumBytes;
+        level0LastDocID += readVInt15(docIn);
+        docIn.seek(level0End);
         refillFullBlock();
-        level0LastDocID = docBuffer[BLOCK_SIZE - 1];
       } else {
         doMoveToNextLevel0Block();
       }
@@ -828,16 +888,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     public void advanceShallow(int target) throws IOException {
       if (target > level0LastDocID) { // advance level 0 skip data
         doAdvanceShallow(target);
-
-        // If we are on the last doc ID of a block and we are advancing on the doc ID just beyond
-        // this block, then we decode the block. This may not be necessary, but this helps avoid
-        // having to check whether we are in a block that is not decoded yet in #nextDoc().
-        if (docBufferUpto == BLOCK_SIZE && target == doc + 1) {
-          refillDocs();
-          needsRefilling = false;
-        } else {
-          needsRefilling = true;
-        }
+        needsRefilling = true;
       }
     }
 
@@ -854,11 +905,28 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (docBufferUpto == BLOCK_SIZE) {
-        moveToNextLevel0Block();
+      if (doc == level0LastDocID || needsRefilling) {
+        if (needsRefilling) {
+          refillDocs();
+          needsRefilling = false;
+        } else {
+          moveToNextLevel0Block();
+        }
       }
 
-      return this.doc = docBuffer[docBufferUpto++];
+      switch (encoding) {
+        case PACKED:
+          doc = docBuffer[docBufferUpto];
+          break;
+        case UNARY:
+          int next = docBitSet.nextSetBit(doc - docBitSetBase + 1);
+          assert next != NO_MORE_DOCS;
+          doc = docBitSetBase + next;
+          break;
+      }
+
+      ++docBufferUpto;
+      return this.doc;
     }
 
     @Override
@@ -871,43 +939,103 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         needsRefilling = false;
       }
 
-      int next = VectorUtil.findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
-      this.doc = docBuffer[next];
-      docBufferUpto = next + 1;
+      switch (encoding) {
+        case PACKED:
+          {
+            int next = VectorUtil.findNextGEQ(docBuffer, target, docBufferUpto, docBufferSize);
+            this.doc = docBuffer[next];
+            docBufferUpto = next + 1;
+          }
+          break;
+        case UNARY:
+          {
+            int next = docBitSet.nextSetBit(target - docBitSetBase);
+            assert next != NO_MORE_DOCS;
+            this.doc = docBitSetBase + next;
+            if (needsFreq) {
+              int wordIndex = next >> 6;
+              // Take the cumulative pop count for the given word, and subtract bits on the left of
+              // the current doc.
+              docBufferUpto =
+                  1
+                      + docCumulativeWordPopCounts[wordIndex]
+                      - Long.bitCount(docBitSet.getBits()[wordIndex] >>> next);
+            } else {
+              // When only docs needed and block is UNARY encoded, we do not need to maintain
+              // docBufferUpTo to record the iteration position in the block.
+              // docBufferUpTo == 0 means the block has not been iterated.
+              // docBufferUpTo != 0 means the block has been iterated.
+              docBufferUpto = 1;
+            }
+          }
+          break;
+      }
+
       return doc;
     }
 
     @Override
-    public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
-        throws IOException {
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       if (doc >= upTo) {
         return;
       }
 
       // Handle the current doc separately, it may be on the previous docBuffer.
-      if (acceptDocs == null || acceptDocs.get(doc)) {
-        bitSet.set(doc - offset);
-      }
+      bitSet.set(doc - offset);
 
       for (; ; ) {
-        if (docBufferUpto == BLOCK_SIZE) {
+        if (doc == level0LastDocID) {
           // refill
           moveToNextLevel0Block();
         }
 
-        int start = docBufferUpto;
-        int end = computeBufferEndBoundary(upTo);
-        if (end != 0) {
-          bufferIntoBitSet(start, end, acceptDocs, bitSet, offset);
-          doc = docBuffer[end - 1];
-        }
-        docBufferUpto = end;
+        switch (encoding) {
+          case PACKED:
+            {
+              int start = docBufferUpto;
+              int end = computeBufferEndBoundary(upTo);
+              if (end != 0) {
+                bufferIntoBitSet(start, end, bitSet, offset);
+                doc = docBuffer[end - 1];
+              }
+              docBufferUpto = end;
+              if (end != BLOCK_SIZE) {
+                // Either the block is a tail block, or the block did not fully match, we're done.
+                nextDoc();
+                assert doc >= upTo;
+                return;
+              }
+            }
+            break;
+          case UNARY:
+            {
+              int sourceFrom;
+              if (docBufferUpto == 0) {
+                // start from beginning
+                sourceFrom = 0;
+              } else {
+                // start after the current doc
+                sourceFrom = doc - docBitSetBase + 1;
+              }
 
-        if (end != BLOCK_SIZE) {
-          // Either the block is a tail block, or the block did not fully match, we're done.
-          nextDoc();
-          assert doc >= upTo;
-          break;
+              int destFrom = docBitSetBase - offset + sourceFrom;
+
+              assert level0LastDocID != NO_MORE_DOCS;
+              int sourceTo = Math.min(upTo, level0LastDocID + 1) - docBitSetBase;
+
+              if (sourceTo > sourceFrom) {
+                FixedBitSet.orRange(docBitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
+              }
+              if (docBitSetBase + sourceTo <= level0LastDocID) {
+                // We stopped before the end of the current bit set, which means that we're done.
+                // Set the current doc before returning.
+                advance(docBitSetBase + sourceTo);
+                return;
+              }
+              doc = level0LastDocID;
+              docBufferUpto = BLOCK_SIZE;
+            }
+            break;
         }
       }
     }
@@ -922,15 +1050,12 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
     }
 
-    private void bufferIntoBitSet(
-        int start, int end, Bits acceptDocs, FixedBitSet bitSet, int offset) throws IOException {
-      // acceptDocs#get (if backed by FixedBitSet), bitSet#set and `doc - offset` get
-      // auto-vectorized
+    private void bufferIntoBitSet(int start, int end, FixedBitSet bitSet, int offset)
+        throws IOException {
+      // bitSet#set and `doc - offset` get auto-vectorized
       for (int i = start; i < end; ++i) {
         int doc = docBuffer[i];
-        if (acceptDocs == null || acceptDocs.get(doc)) {
-          bitSet.set(doc - offset);
-        }
+        bitSet.set(doc - offset);
       }
     }
 

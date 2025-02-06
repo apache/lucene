@@ -1118,10 +1118,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final LongValues indexAddresses;
     final RandomAccessInput indexBytes;
     final BytesRef term;
+    final BytesRef blockBuffer;
+    final ByteArrayDataInput blockInput;
     long ord = -1;
-
-    BytesRef blockBuffer = null;
-    ByteArrayDataInput blockInput = null;
     long currentCompressedBlockStart = -1;
     long currentCompressedBlockEnd = -1;
 
@@ -1145,6 +1144,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       // add 7 padding bytes can help decompression run faster.
       int bufferSize = entry.maxBlockLength + entry.maxTermLength + LZ4_DECOMPRESSOR_PADDING;
       blockBuffer = new BytesRef(new byte[bufferSize], 0, bufferSize);
+      blockInput = new ByteArrayDataInput();
     }
 
     @Override
@@ -1320,8 +1320,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
 
         // Reset the buffer.
-        blockInput =
-            new ByteArrayDataInput(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
+        blockInput.reset(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
       }
     }
 

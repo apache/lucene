@@ -164,37 +164,6 @@ final class BooleanScorer extends BulkScorer {
     return cost;
   }
 
-  private void scoreDisiWrapperIntoBitSet(DisiWrapper w, Bits acceptDocs, int min, int max)
-      throws IOException {
-    boolean needsScores = BooleanScorer.this.needsScores;
-    FixedBitSet matching = BooleanScorer.this.matching;
-    Bucket[] buckets = BooleanScorer.this.buckets;
-
-    DocIdSetIterator it = w.iterator;
-    Scorable scorer = w.scorable;
-    int doc = w.doc;
-    if (doc < min) {
-      doc = it.advance(min);
-    }
-    if (buckets == null) {
-      it.intoBitSet(acceptDocs, max, matching, doc & ~MASK);
-    } else {
-      for (; doc < max; doc = it.nextDoc()) {
-        if (acceptDocs == null || acceptDocs.get(doc)) {
-          final int i = doc & MASK;
-          matching.set(i);
-          final Bucket bucket = buckets[i];
-          bucket.freq++;
-          if (needsScores) {
-            bucket.score += scorer.score();
-          }
-        }
-      }
-    }
-
-    w.doc = it.docID();
-  }
-
   private void scoreWindowIntoBitSetAndReplay(
       LeafCollector collector,
       Bits acceptDocs,
@@ -207,7 +176,35 @@ final class BooleanScorer extends BulkScorer {
     for (int i = 0; i < numScorers; ++i) {
       final DisiWrapper w = scorers[i];
       assert w.doc < max;
-      scoreDisiWrapperIntoBitSet(w, acceptDocs, min, max);
+
+      DocIdSetIterator it = w.iterator;
+      int doc = w.doc;
+      if (doc < min) {
+        doc = it.advance(min);
+      }
+      if (buckets == null) {
+        // This doesn't apply live docs, so we'll need to apply them later
+        it.intoBitSet(max, matching, base);
+      } else {
+        for (; doc < max; doc = it.nextDoc()) {
+          if (acceptDocs == null || acceptDocs.get(doc)) {
+            final int d = doc & MASK;
+            matching.set(d);
+            final Bucket bucket = buckets[d];
+            bucket.freq++;
+            if (needsScores) {
+              bucket.score += w.scorable.score();
+            }
+          }
+        }
+      }
+
+      w.doc = it.docID();
+    }
+
+    if (buckets == null && acceptDocs != null) {
+      // In this case, live docs have not been applied yet.
+      acceptDocs.applyMask(matching, base);
     }
 
     docIdStreamView.base = base;

@@ -486,7 +486,7 @@ final class DocumentsWriter implements Closeable, Accountable {
          * flush 'B' starts and freezes all deletes occurred since 'A' has
          * started. if 'B' finishes before 'A' we need to wait until 'A' is done
          * otherwise the deletes frozen by 'B' are not applied to 'A' and we
-         * might miss to deletes documents in 'A'.
+         * might miss to delete documents in 'A'.
          */
         try {
           assert assertTicketQueueModification(flushingDWPT.deleteQueue);

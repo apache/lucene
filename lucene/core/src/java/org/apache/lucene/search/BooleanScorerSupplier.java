@@ -304,9 +304,9 @@ final class BooleanScorerSupplier extends ScorerSupplier {
   BulkScorer filteredOptionalBulkScorer() throws IOException {
     if (subs.get(Occur.MUST).isEmpty() == false
         || subs.get(Occur.FILTER).isEmpty()
-        || scoreMode != ScoreMode.TOP_SCORES
+        || (scoreMode.needsScores() && scoreMode != ScoreMode.TOP_SCORES)
         || subs.get(Occur.SHOULD).size() <= 1
-        || minShouldMatch > 1) {
+        || minShouldMatch != 1) {
       return null;
     }
     long cost = cost();
@@ -318,13 +318,28 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
       filters.add(ss.get(cost));
     }
-    Scorer filterScorer;
-    if (filters.size() == 1) {
-      filterScorer = filters.iterator().next();
+    if (scoreMode == ScoreMode.TOP_SCORES) {
+      Scorer filterScorer;
+      if (filters.size() == 1) {
+        filterScorer = filters.iterator().next();
+      } else {
+        filterScorer = new ConjunctionScorer(filters, Collections.emptySet());
+      }
+      return new MaxScoreBulkScorer(maxDoc, optionalScorers, filterScorer);
     } else {
-      filterScorer = new ConjunctionScorer(filters, Collections.emptySet());
+      // In the beginning of this method, we exited early if the score mode is not either TOP_SCORES
+      // or a score mode that doesn't need scores.
+      assert scoreMode.needsScores() == false;
+      filters.add(new DisjunctionSumScorer(optionalScorers, scoreMode, cost));
+
+      if (filters.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)
+          && maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
+          && cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
+        return new DenseConjunctionBulkScorer(filters.stream().map(Scorer::iterator).toList());
+      }
+
+      return new DefaultBulkScorer(new ConjunctionScorer(filters, Collections.emptyList()));
     }
-    return new MaxScoreBulkScorer(maxDoc, optionalScorers, filterScorer);
   }
 
   // Return a BulkScorer for the required clauses only
@@ -378,7 +393,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         && requiredScoring.size() + requiredNoScoring.size() >= 2
         && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)
         && requiredNoScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
-      return new ConjunctionBulkScorer(requiredScoring, requiredNoScoring);
+      if (requiredScoring.isEmpty()
+          && maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
+          && leadCost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
+        return new DenseConjunctionBulkScorer(
+            requiredNoScoring.stream().map(Scorer::iterator).toList());
+      } else {
+        return new ConjunctionBulkScorer(requiredScoring, requiredNoScoring);
+      }
     }
     if (scoreMode == ScoreMode.TOP_SCORES && requiredScoring.size() > 1) {
       requiredScoring = Collections.singletonList(new BlockMaxConjunctionScorer(requiredScoring));

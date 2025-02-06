@@ -47,7 +47,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  private final float[] target;
+  protected final float[] target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -84,7 +84,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
+    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, null, context);
     LeafReader reader = context.reader();
     FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
     if (floatVectorValues == null) {

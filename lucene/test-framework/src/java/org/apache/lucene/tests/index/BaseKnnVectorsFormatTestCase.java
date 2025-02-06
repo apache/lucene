@@ -124,6 +124,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  @Override
+  protected boolean mergeIsStable() {
+    // suppress this test from base class: merges for knn graphs are not stable due to connected
+    // components
+    // logic
+    return false;
+  }
+
   private int getVectorsMaxDimensions(String fieldName) {
     return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
   }

@@ -16,16 +16,16 @@
  */
 package org.apache.lucene.codecs.lucene101;
 
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.*;
 import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.DOC_CODEC;
 import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.LEVEL1_MASK;
 import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.META_CODEC;
 import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.PAY_CODEC;
 import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.POS_CODEC;
 import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.TERMS_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.VERSION_CURRENT;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import org.apache.lucene.codecs.BlockTermState;
@@ -46,12 +46,15 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 
 /** Writer for {@link Lucene101PostingsFormat}. */
 public class Lucene101PostingsWriter extends PushPostingsWriterBase {
 
   static final IntBlockTermState EMPTY_STATE = new IntBlockTermState();
+
+  private final int version;
 
   IndexOutput metaOut;
   IndexOutput docOut;
@@ -124,8 +127,22 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
    */
   private final ByteBuffersDataOutput level1Output = ByteBuffersDataOutput.newResettableInstance();
 
-  /** Sole constructor. */
+  /**
+   * Reusable FixedBitSet, for dense blocks that are more efficiently stored by storing them as a
+   * bit set than as packed deltas.
+   */
+  // Since we use a bit set when it's more storage-efficient, the bit set cannot have more than
+  // BLOCK_SIZE*32 bits, which is the maximum possible storage requirement with FOR.
+  private final FixedBitSet spareBitSet = new FixedBitSet(BLOCK_SIZE * Integer.SIZE);
+
+  /** Sole public constructor. */
   public Lucene101PostingsWriter(SegmentWriteState state) throws IOException {
+    this(state, Lucene101PostingsFormat.VERSION_CURRENT);
+  }
+
+  /** Constructor that takes a version. */
+  Lucene101PostingsWriter(SegmentWriteState state, int version) throws IOException {
+    this.version = version;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.META_EXTENSION);
@@ -139,9 +156,9 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
     try {
       docOut = state.directory.createOutput(docFileName, state.context);
       CodecUtil.writeIndexHeader(
-          metaOut, META_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
+          metaOut, META_CODEC, version, state.segmentInfo.getId(), state.segmentSuffix);
       CodecUtil.writeIndexHeader(
-          docOut, DOC_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
+          docOut, DOC_CODEC, version, state.segmentInfo.getId(), state.segmentSuffix);
       forDeltaUtil = new ForDeltaUtil();
       pforUtil = new PForUtil();
       if (state.fieldInfos.hasProx()) {
@@ -151,7 +168,7 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
                 state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.POS_EXTENSION);
         posOut = state.directory.createOutput(posFileName, state.context);
         CodecUtil.writeIndexHeader(
-            posOut, POS_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
+            posOut, POS_CODEC, version, state.segmentInfo.getId(), state.segmentSuffix);
 
         if (state.fieldInfos.hasPayloads()) {
           payloadBytes = new byte[128];
@@ -177,7 +194,7 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
                   Lucene101PostingsFormat.PAY_EXTENSION);
           payOut = state.directory.createOutput(payFileName, state.context);
           CodecUtil.writeIndexHeader(
-              payOut, PAY_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
+              payOut, PAY_CODEC, version, state.segmentInfo.getId(), state.segmentSuffix);
         }
       } else {
         posDeltaBuffer = null;
@@ -207,7 +224,7 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
   @Override
   public void init(IndexOutput termsOut, SegmentWriteState state) throws IOException {
     CodecUtil.writeIndexHeader(
-        termsOut, TERMS_CODEC, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
+        termsOut, TERMS_CODEC, version, state.segmentInfo.getId(), state.segmentSuffix);
     termsOut.writeVInt(BLOCK_SIZE);
   }
 
@@ -405,7 +422,40 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
         }
       }
       long numSkipBytes = level0Output.size();
-      forDeltaUtil.encodeDeltas(docDeltaBuffer, level0Output);
+      // Now we need to decide whether to encode block deltas as packed integers (FOR) or unary
+      // codes (bit set). FOR makes #nextDoc() a bit faster while the bit set approach makes
+      // #advance() usually faster and #intoBitSet() much faster. In the end, we make the decision
+      // based on storage requirements, picking the bit set approach whenever it's more
+      // storage-efficient than the next number of bits per value (which effectively slightly biases
+      // towards the bit set approach).
+      int bitsPerValue = forDeltaUtil.bitsRequired(docDeltaBuffer);
+      int sum = Math.toIntExact(Arrays.stream(docDeltaBuffer).sum());
+      int numBitSetLongs = FixedBitSet.bits2words(sum);
+      int numBitsNextBitsPerValue = Math.min(Integer.SIZE, bitsPerValue + 1) * BLOCK_SIZE;
+      if (sum == BLOCK_SIZE) {
+        level0Output.writeByte((byte) 0);
+      } else if (version < VERSION_DENSE_BLOCKS_AS_BITSETS || numBitsNextBitsPerValue <= sum) {
+        level0Output.writeByte((byte) bitsPerValue);
+        forDeltaUtil.encodeDeltas(bitsPerValue, docDeltaBuffer, level0Output);
+      } else {
+        // Storing doc deltas is more efficient using unary coding (ie. storing doc IDs as a bit
+        // set)
+        spareBitSet.clear(0, numBitSetLongs << 6);
+        int s = -1;
+        for (int i : docDeltaBuffer) {
+          s += i;
+          spareBitSet.set(s);
+        }
+        // We never use the bit set encoding when it requires more than Integer.SIZE=32 bits per
+        // value. So the bit set cannot have more than BLOCK_SIZE * Integer.SIZE / Long.SIZE = 64
+        // longs, which fits on a byte.
+        assert numBitSetLongs <= BLOCK_SIZE / 2;
+        level0Output.writeByte((byte) -numBitSetLongs);
+        for (int i = 0; i < numBitSetLongs; ++i) {
+          level0Output.writeLong(spareBitSet.getBits()[i]);
+        }
+      }
+
       if (writeFreqs) {
         pforUtil.encode(freqBuffer, level0Output);
       }
