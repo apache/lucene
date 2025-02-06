@@ -30,19 +30,23 @@ public class StoredFieldDataInput {
   private final DataInput in;
   private final int length;
 
+  /** Creates a StoredFieldDataInput from the provided data input and length */
   public StoredFieldDataInput(DataInput in, int length) {
     this.in = Objects.requireNonNull(in);
     this.length = length;
   }
 
+  /** Creates a StoredFieldDataInput from a ByteArrayDataInput */
   public StoredFieldDataInput(ByteArrayDataInput byteArrayDataInput) {
     this(byteArrayDataInput, byteArrayDataInput.length());
   }
 
+  /** Returns the data input */
   public DataInput getDataInput() {
     return in;
   }
 
+  /** Returns the length of the data input */
   public int getLength() {
     return length;
   }
