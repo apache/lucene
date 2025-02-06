@@ -192,7 +192,8 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharClassNonDigit() {
     RegExp re = new RegExp("[\\D]");
-    assertEquals("REGEXP_CHAR_CLASS starts=[0 3a] ends=[2f 10ffff]\n", re.toStringTree());
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0000 U+003A] ends=[U+002F U+10FFFF]\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -207,7 +208,9 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharClassWhitespace() {
     RegExp re = new RegExp("[\\s]");
-    assertEquals("REGEXP_CHAR_CLASS starts=[9 d 20] ends=[a d 20]\n", re.toStringTree());
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0009 U+000D U+0020] ends=[U+000A U+000D U+0020]\n",
+        re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -221,7 +224,9 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharClassNonWhitespace() {
     RegExp re = new RegExp("[\\S]");
-    assertEquals("REGEXP_CHAR_CLASS starts=[0 b e 21] ends=[8 c 1f 10ffff]\n", re.toStringTree());
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0000 U+000B U+000E U+0021] ends=[U+0008 U+000C U+001F U+10FFFF]\n",
+        re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -245,7 +250,9 @@ public class TestRegExpParsing extends LuceneTestCase {
   public void testCharClassWord() {
     RegExp re = new RegExp("[\\w]");
     assertEquals("[\\0-\\9\\A-\\Z\\_\\a-\\z]", re.toString());
-    assertEquals("REGEXP_CHAR_CLASS starts=[30 41 5f 61] ends=[39 5a 5f 7a]\n", re.toStringTree());
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0030 U+0041 U+005F U+0061] ends=[U+0039 U+005A U+005F U+007A]\n",
+        re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -260,7 +267,8 @@ public class TestRegExpParsing extends LuceneTestCase {
   public void testCharClassNonWord() {
     RegExp re = new RegExp("[\\W]");
     assertEquals(
-        "REGEXP_CHAR_CLASS starts=[0 3a 5b 60 7b] ends=[2f 40 5e 60 10ffff]\n", re.toStringTree());
+        "REGEXP_CHAR_CLASS starts=[U+0000 U+003A U+005B U+0060 U+007B] ends=[U+002F U+0040 U+005E U+0060 U+10FFFF]\n",
+        re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());

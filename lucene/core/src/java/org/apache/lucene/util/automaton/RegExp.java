@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
-import org.apache.lucene.util.IntsRef;
 
 /**
  * Regular Expression extension to <code>Automaton</code>.
@@ -908,9 +907,9 @@ public class RegExp {
         b.append(indent);
         b.append(kind);
         b.append(" starts=");
-        b.append(new IntsRef(from, 0, from.length));
+        b.append(toHexString(from));
         b.append(" ends=");
-        b.append(new IntsRef(to, 0, to.length));
+        b.append(toHexString(to));
         b.append('\n');
         break;
       case REGEXP_ANYCHAR:
@@ -949,6 +948,20 @@ public class RegExp {
         b.append('\n');
         break;
     }
+  }
+
+  /** prints like <code>[U+002A U+FD72 U+1FFFF]</code> */
+  private StringBuilder toHexString(int[] range) {
+    StringBuilder sb = new StringBuilder();
+    sb.append('[');
+    for (int codepoint : range) {
+      if (sb.length() > 1) {
+        sb.append(' ');
+      }
+      sb.append(String.format("U+%04X", codepoint));
+    }
+    sb.append(']');
+    return sb;
   }
 
   /** Returns set of automaton identifiers that occur in this regular expression. */
