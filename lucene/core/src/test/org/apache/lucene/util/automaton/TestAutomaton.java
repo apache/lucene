@@ -667,8 +667,12 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testRemoveDeadStates() throws Exception {
-    Automaton a =
-        Operations.concatenate(Arrays.asList(Automata.makeString("x"), Automata.makeString("y")));
+    Automaton a = new Automaton();
+    a.createState();
+    a.copy(Automata.makeString("xy"));
+    a.addEpsilon(0, 1); // State 1 is dead, nothing leads to it.
+    a.finishState();
+
     assertEquals(4, a.getNumStates());
     a = Operations.removeDeadStates(a);
     assertEquals(3, a.getNumStates());
