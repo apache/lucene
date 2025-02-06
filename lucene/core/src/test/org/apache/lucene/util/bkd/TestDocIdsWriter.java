@@ -123,14 +123,15 @@ public class TestDocIdsWriter extends LuceneTestCase {
     }
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
-      docIdsWriter.readInts(in, ints.length, read);
+      docIdsWriter.readInts(
+          BKDReader.VECTORIZATION_PROVIDER.newBKDDecodingUtil(in), ints.length, read);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
       docIdsWriter.readInts(
-          in,
+          BKDReader.VECTORIZATION_PROVIDER.newBKDDecodingUtil(in),
           ints.length,
           new IntersectVisitor() {
             int i = 0;
@@ -149,7 +150,8 @@ public class TestDocIdsWriter extends LuceneTestCase {
             public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               throw new UnsupportedOperationException();
             }
-          });
+          },
+          new int[ints.length]);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }

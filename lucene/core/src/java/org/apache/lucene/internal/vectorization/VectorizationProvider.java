@@ -220,7 +220,7 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene101.Lucene101PostingsReader",
           "org.apache.lucene.codecs.lucene101.PostingIndexInput",
-          "org.apache.lucene.util.bkd.DocIdsWriter");
+          "org.apache.lucene.util.bkd.BKDReader");
 
   private static void ensureCaller() {
     final boolean validCaller =

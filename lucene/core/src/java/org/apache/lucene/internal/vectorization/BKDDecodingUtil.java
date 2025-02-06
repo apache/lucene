@@ -5,7 +5,7 @@ import org.apache.lucene.store.IndexInput;
 
 public class BKDDecodingUtil {
 
-  protected final IndexInput in;
+  public final IndexInput in;
 
   /** Sole constructor, called by sub-classes. */
   protected BKDDecodingUtil(IndexInput in) {

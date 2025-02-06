@@ -19,7 +19,7 @@ package org.apache.lucene.util.bkd;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
+import org.apache.lucene.internal.vectorization.BKDDecodingUtil;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
@@ -30,15 +30,14 @@ import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LongsRef;
 
 final class DocIdsWriter {
-
-  static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
   private static final byte DELTA_BPV_16 = (byte) 16;
-  private static final byte BPV_24 = (byte) 24;
+  private static final byte BPV_24 = (byte) -24;
   private static final byte BPV_32 = (byte) 32;
   // These signs are legacy, should no longer be used in the writing side.
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
+  private static final byte LEGACY_BPV_24 = (byte) 24;
 
   private final int[] scratch;
 
@@ -180,26 +179,29 @@ final class DocIdsWriter {
   }
 
   /** Read {@code count} integers into {@code docIDs}. */
-  void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
-    final int bpv = in.readByte();
+  void readInts(BKDDecodingUtil bdu, int count, int[] docIDs) throws IOException {
+    final int bpv = bdu.in.readByte();
     switch (bpv) {
       case CONTINUOUS_IDS:
-        readContinuousIds(in, count, docIDs);
+        readContinuousIds(bdu.in, count, docIDs);
         break;
       case BITSET_IDS:
-        readBitSet(in, count, docIDs);
+        readBitSet(bdu.in, count, docIDs);
         break;
       case DELTA_BPV_16:
-        readDelta16(in, count, docIDs);
+        readDelta16(bdu, count, docIDs);
         break;
       case BPV_24:
-        readInts24(in, count, docIDs);
+        readInts24(bdu, count, docIDs);
         break;
       case BPV_32:
-        readInts32(in, count, docIDs);
+        readInts32(bdu.in, count, docIDs);
         break;
       case LEGACY_DELTA_VINT:
-        readLegacyDeltaVInts(in, count, docIDs);
+        readLegacyDeltaVInts(bdu.in, count, docIDs);
+        break;
+      case LEGACY_BPV_24:
+        readInts24Legacy(bdu.in, count, docIDs);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
@@ -245,22 +247,32 @@ final class DocIdsWriter {
     assert pos == count : "pos: " + pos + ", count: " + count;
   }
 
-  private static void readDelta16(IndexInput in, int count, int[] docIDs) throws IOException {
-    final int min = in.readVInt();
-    final int halfLen = count >>> 1;
-    in.readInts(docIDs, 0, halfLen);
-    for (int i = 0; i < halfLen; ++i) {
-      int l = docIDs[i];
-      docIDs[i] = (l >>> 16) + min;
-      docIDs[halfLen + i] = (l & 0xFFFF) + min;
-    }
-    if ((count & 1) == 1) {
-      docIDs[count - 1] = Short.toUnsignedInt(in.readShort()) + min;
-    }
+  private static void readDelta16(BKDDecodingUtil bdu, int count, int[] docIDs) throws IOException {
+    bdu.decodeDelta16(docIDs, count);
   }
 
-  private void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
-    VECTORIZATION_PROVIDER.newBKDDecodingUtil(in).decode24(docIDs, scratch, count);
+  private void readInts24(BKDDecodingUtil bdu, int count, int[] docIDs) throws IOException {
+    bdu.decode24(docIDs, scratch, count);
+  }
+
+  private void readInts24Legacy(IndexInput in, int count, int[] docIDs) throws IOException {
+    int i;
+    for (i = 0; i < count - 7; i += 8) {
+      long l1 = in.readLong();
+      long l2 = in.readLong();
+      long l3 = in.readLong();
+      docIDs[i] = (int) (l1 >>> 40);
+      docIDs[i + 1] = (int) (l1 >>> 16) & 0xffffff;
+      docIDs[i + 2] = (int) (((l1 & 0xffff) << 8) | (l2 >>> 56));
+      docIDs[i + 3] = (int) (l2 >>> 32) & 0xffffff;
+      docIDs[i + 4] = (int) (l2 >>> 8) & 0xffffff;
+      docIDs[i + 5] = (int) (((l2 & 0xff) << 16) | (l3 >>> 48));
+      docIDs[i + 6] = (int) (l3 >>> 24) & 0xffffff;
+      docIDs[i + 7] = (int) l3 & 0xffffff;
+    }
+    for (; i < count; ++i) {
+      docIDs[i] = (Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte());
+    }
   }
 
   private static void readInts32(IndexInput in, int count, int[] docIDs) throws IOException {
@@ -271,26 +283,30 @@ final class DocIdsWriter {
    * Read {@code count} integers and feed the result directly to {@link
    * IntersectVisitor#visit(int)}.
    */
-  void readInts(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
-    final int bpv = in.readByte();
+  void readInts(BKDDecodingUtil bdu, int count, IntersectVisitor visitor, int[] buffer)
+      throws IOException {
+    final int bpv = bdu.in.readByte();
     switch (bpv) {
       case CONTINUOUS_IDS:
-        readContinuousIds(in, count, visitor);
+        readContinuousIds(bdu.in, count, visitor);
         break;
       case BITSET_IDS:
-        readBitSet(in, count, visitor);
+        readBitSet(bdu.in, count, visitor);
         break;
       case DELTA_BPV_16:
-        readDelta16(in, count, visitor);
+        readDelta16(bdu, count, visitor);
         break;
       case BPV_24:
-        readInts24(in, count, visitor);
+        readInts24(bdu, count, visitor, buffer);
         break;
       case BPV_32:
-        readInts32(in, count, visitor);
+        readInts32(bdu.in, count, visitor);
         break;
       case LEGACY_DELTA_VINT:
-        readLegacyDeltaVInts(in, count, visitor);
+        readLegacyDeltaVInts(bdu.in, count, visitor);
+        break;
+      case LEGACY_BPV_24:
+        readInts24Legacy(bdu.in, count, visitor);
         break;
       default:
         throw new IOException("Unsupported number of bits per value: " + bpv);
@@ -322,15 +338,25 @@ final class DocIdsWriter {
     }
   }
 
-  private void readDelta16(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
-    readDelta16(in, count, scratch);
+  private void readDelta16(BKDDecodingUtil bdu, int count, IntersectVisitor visitor)
+      throws IOException {
+    readDelta16(bdu, count, scratch);
     scratchIntsRef.ints = scratch;
     scratchIntsRef.length = count;
     visitor.visit(scratchIntsRef);
   }
 
-  private void readInts24(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
-    readInts24(in, count, scratch);
+  private void readInts24(BKDDecodingUtil bdu, int count, IntersectVisitor visitor, int[] buffer)
+      throws IOException {
+    readInts24(bdu, count, buffer);
+    scratchIntsRef.ints = buffer;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
+  }
+
+  private void readInts24Legacy(IndexInput in, int count, IntersectVisitor visitor)
+      throws IOException {
+    readInts24Legacy(in, count, scratch);
     scratchIntsRef.ints = scratch;
     scratchIntsRef.length = count;
     visitor.visit(scratchIntsRef);

@@ -32,8 +32,8 @@ import org.openjdk.jmh.infra.Blackhole;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 3)
-@Measurement(iterations = 5, time = 3)
+@Warmup(iterations = 2, time = 1)
+@Measurement(iterations = 2, time = 1)
 @Fork(
     value = 1,
     jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
@@ -41,7 +41,6 @@ public class BKDCodecBenchmark {
 
   private Directory dir;
   private IndexInput in;
-
   private int[] tmpInts;
   private int[] outputInts;
 
