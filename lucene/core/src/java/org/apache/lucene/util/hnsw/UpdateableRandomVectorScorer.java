@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
@@ -22,45 +21,23 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.util.Bits;
 
 /**
- * A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. This
- * class isn't thread-safe and should be used by a single thread.
+ * Just like a {@link RandomVectorScorer} but allows the scoring ordinal to be changed. Useful
+ * during indexing operations
+ *
+ * @lucene.internal
  */
-public interface RandomVectorScorer {
+public interface UpdateableRandomVectorScorer extends RandomVectorScorer {
   /**
-   * Returns the score between the query and the provided node.
+   * Changes the scoring ordinal to the given node. If the same scorer object is being used
+   * continually, this can be used to avoid creating a new scorer for each node.
    *
-   * @param node a random node in the graph
-   * @return the computed score
+   * @param node the node to score against
+   * @throws IOException if an exception occurs initializing the scorer for the given node
    */
-  float score(int node) throws IOException;
-
-  /**
-   * @return the maximum possible ordinal for this scorer
-   */
-  int maxOrd();
-
-  /**
-   * Translates vector ordinal to the correct document ID. By default, this is an identity function.
-   *
-   * @param ord the vector ordinal
-   * @return the document Id for that vector ordinal
-   */
-  default int ordToDoc(int ord) {
-    return ord;
-  }
-
-  /**
-   * Returns the {@link Bits} representing live documents. By default, this is an identity function.
-   *
-   * @param acceptDocs the accept docs
-   * @return the accept docs
-   */
-  default Bits getAcceptOrds(Bits acceptDocs) {
-    return acceptDocs;
-  }
+  void setScoringOrdinal(int node) throws IOException;
 
   /** Creates a default scorer for random access vectors. */
-  abstract class AbstractRandomVectorScorer implements RandomVectorScorer {
+  abstract class AbstractUpdateableRandomVectorScorer implements UpdateableRandomVectorScorer {
     private final KnnVectorValues values;
 
     /**
@@ -68,7 +45,7 @@ public interface RandomVectorScorer {
      *
      * @param values the vector values
      */
-    public AbstractRandomVectorScorer(KnnVectorValues values) {
+    public AbstractUpdateableRandomVectorScorer(KnnVectorValues values) {
       this.values = values;
     }
 
