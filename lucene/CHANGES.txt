@@ -80,7 +80,11 @@ Optimizations
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
 
-# GITHUB#14169: Optimize ContextQuery with big number of contexts. (Mayya Sharipova)
+* GITHUB#14169: Optimize ContextQuery with big number of contexts. (Mayya Sharipova)
+
+* GITHUB#14181: Add updateable random scorer interface for knn vector index building. This allows
+  for fewer objects to be created during indexing and simplifies internally used iterfaces.
+  (Ben Trent)
 
 Bug Fixes
 ---------------------
