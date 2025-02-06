@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.util.automaton;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.io.IOException;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -49,15 +47,13 @@ public class TestRegExp extends LuceneTestCase {
     r = new RegExp("A");
     assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
 
-    r = new RegExp("A", RegExp.ALL, RegExp.UNICODE_CASE_INSENSITIVE);
+    r = new RegExp("A", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
 
     r = new RegExp("A", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
 
-    r =
-        new RegExp(
-            "A", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.UNICODE_CASE_INSENSITIVE);
+    r = new RegExp("A", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("a"));
 
     // class 1 Unicode characters behaves appropriately with different flags
@@ -69,75 +65,45 @@ public class TestRegExp extends LuceneTestCase {
     assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
     r = new RegExp("Σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE);
-    assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
-    assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
     r = new RegExp("σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE);
-    assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
+    assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
-    r = new RegExp("Σ", RegExp.ALL, RegExp.UNICODE_CASE_INSENSITIVE);
+    r = new RegExp("Σ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
-    r = new RegExp("σ", RegExp.ALL, RegExp.UNICODE_CASE_INSENSITIVE);
+    r = new RegExp("σ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
-    r =
-        new RegExp(
-            "Σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.UNICODE_CASE_INSENSITIVE);
+    r = new RegExp("Σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("σ"));
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
-    r =
-        new RegExp(
-            "σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.UNICODE_CASE_INSENSITIVE);
+    r = new RegExp("σ", RegExp.ALL, RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ς"));
 
     // class 2 Unicode characters behaves appropriately with different flags
-    r = new RegExp("ῼ", RegExp.ALL, RegExp.UNICODE_CASE_INSENSITIVE);
+    r = new RegExp("ῼ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertTrue(new CharacterRunAutomaton(r.toAutomaton()).run("ῳ"));
 
-    r = new RegExp("ῼ", RegExp.ALL, RegExp.UNICODE_CASE_INSENSITIVE);
+    r = new RegExp("ῼ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertFalse(
         new CharacterRunAutomaton(r.toAutomaton()).run("ῼ".toUpperCase(Locale.ROOT))); // "ΩΙ"
 
     // class 3 Unicode characters behaves appropriately with different flags
-    r = new RegExp("ﬗ", RegExp.ALL, RegExp.UNICODE_CASE_INSENSITIVE);
-    assertFalse(
-        new CharacterRunAutomaton(r.toAutomaton()).run("ﬗ".toUpperCase(Locale.ROOT))); // "ՄԽ"
-  }
+    r = new RegExp("ﬗ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
+    assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("ﬗ".toUpperCase(Locale.ROOT)));
 
-  public void testUnicodeInsensitiveMatchPatternParity() {
-    // this ensures that if the Pattern class behavior were to change with a change to the Unicode
-    // spec then we would pick it up
-    // except new characters that were introduced (which would be a manual process; see tooling
-    // comments below)
-    for (Map.Entry<Integer, int[]> entry : RegExp.unstableUnicodeCharacters.entrySet()) {
-      int codePoint = entry.getKey();
-      int[] caseInsensititiveAlternatives = entry.getValue();
-      String pattern = new String(Character.toChars(codePoint));
-      Pattern javaRegex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-      RegExp r = new RegExp(pattern, RegExp.ALL, RegExp.UNICODE_CASE_INSENSITIVE);
-      CharacterRunAutomaton cra = new CharacterRunAutomaton(r.toAutomaton());
-      for (int i = 0; i < caseInsensititiveAlternatives.length; i++) {
-
-        int alt = caseInsensititiveAlternatives[i];
-        String altString = new String(Character.toChars(alt));
-
-        assertTrue(javaRegex.matcher(altString).matches());
-        assertTrue(cra.run(altString));
-      }
-    }
-
-    // tooling code to validate manually to discover new characters that fall into the "unstable"
-    // set of Unicode characters
-    // variations of these can be used to discover the various classes themselves
-    // generateClass1();
-    // generateClass2();
-    // generateClass3();
+    r = new RegExp(new String(Character.toChars(0x1C8A)), RegExp.ALL, RegExp.CASE_INSENSITIVE);
+    assertTrue(
+        new CharacterRunAutomaton(r.toAutomaton()).run(new String(Character.toChars(0x1C89))));
   }
 
   public void testRandomUnicodeInsensitiveMatchPatternParity() {
+    HexFormat hexFormat = HexFormat.of().withUpperCase();
     int maxIters = 1000;
     List<Integer> reservedCharacters =
         Set.of(
@@ -159,202 +125,45 @@ public class TestRegExp extends LuceneTestCase {
       String altString = new String(Character.toChars(nextCode2));
 
       Pattern javaRegex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-      RegExp r = new RegExp(pattern, RegExp.ALL, RegExp.UNICODE_CASE_INSENSITIVE);
+      RegExp r = new RegExp(pattern, RegExp.ALL, RegExp.CASE_INSENSITIVE);
       CharacterRunAutomaton cra = new CharacterRunAutomaton(r.toAutomaton());
-      assertEquals(
-          "Pattern and RegExp disagree on pattern: " + nextCode1 + " :text: " + nextCode2,
-          javaRegex.matcher(altString).matches(),
-          cra.run(altString));
-    }
-  }
 
-  public static void generateClass1() {
-    // the set of alternate matching case-insensitive characters that match with other characters
-    // that do not
-    // directly go from toLowerCase or toUpperCase
-    Map<Integer, List<Integer>> alts = new HashMap<>();
-    for (int codePoint = 0; codePoint < Character.MAX_CODE_POINT + 1; codePoint++) {
-      int nextCodePoint;
-      boolean isLower = Character.isLowerCase(codePoint);
-      if (isLower == false) {
-        boolean isUpper = Character.isUpperCase(codePoint);
-        if (isUpper == false) {
-          continue;
-        } else {
-          nextCodePoint = Character.toLowerCase(codePoint);
-        }
-      } else {
-        nextCodePoint = Character.toUpperCase(codePoint);
-      }
-
-      List<Integer> altArray = new ArrayList<>();
-      altArray.add(codePoint);
-      altArray.add(nextCodePoint);
-
-      while (codePoint != nextCodePoint) {
-        if (Character.isLowerCase(nextCodePoint)) {
-          nextCodePoint = Character.toUpperCase(nextCodePoint);
-        } else {
-          nextCodePoint = Character.toLowerCase(nextCodePoint);
-        }
-        if (altArray.contains(nextCodePoint)) {
-          break;
-        } else {
-          altArray.add(nextCodePoint);
-        }
-      }
-
-      if (altArray.size() > 2) {
-        alts.put(codePoint, altArray);
-      }
-    }
-
-    // some combinations spider so we compress/combine them further
-    for (int codePoint : new ArrayList<>(alts.keySet())) {
-      if (alts.containsKey(codePoint)) {
-        List<Integer> altsArray = alts.get(codePoint);
-        for (int alt : new ArrayList<>(altsArray)) {
-          if (alt == codePoint) {
-            continue;
-          }
-          // for each alternative if we were to make it the key did we discover it earlier
-          // if so we need to combine it's spidered alternatives with the original code point and
-          // get rid of
-          // this entry
-          for (Map.Entry<Integer, List<Integer>> entry : new HashSet<>(alts.entrySet())) {
-            if (entry.getKey() != codePoint && alts.containsKey(entry.getKey())) {
-              if (entry.getValue().contains(alt)) {
-                int hiddenCodePoint = entry.getKey();
-                alts.get(codePoint).add(hiddenCodePoint);
-                alts.remove(hiddenCodePoint);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    for (int codePoint : alts.keySet().stream().sorted().toList()) {
-      List<Integer> allItems = new ArrayList<>();
-      allItems.addAll(alts.get(codePoint));
-
-      if (allItems.size() > 2) {
-        for (int i = 0; i < allItems.size(); i++) {
-          List<Integer> combined = new ArrayList<>();
-          combined.addAll(allItems.subList(0, i));
-          combined.addAll(allItems.subList(i + 1, allItems.size()));
-
-          String combinedString = combined.toString();
-          combinedString = combinedString.substring(1, combinedString.length() - 1);
-
-          System.out.println("entry(" + allItems.get(i) + ", new int[] {" + combinedString + "}),");
-        }
+      // Pattern doesn't respect the Unicode spec so some things will not match
+      if (javaRegex.matcher(altString).matches()) {
+        // ... but if they do match then we must agree
+        assertTrue(
+            "Pattern and RegExp disagree on pattern: "
+                + hexFormat.toHexDigits(nextCode1, 4)
+                + " :text: "
+                + hexFormat.toHexDigits(nextCode2, 4),
+            cra.run(altString));
       }
     }
   }
 
-  public static void generateClass2() {
-    // the set of alternate matching case-insensitive characters that match with
-    // both an uppercase and a lowercase representation that is different from itself
-    for (int codePoint = 0; codePoint < Character.MAX_CODE_POINT + 1; codePoint++) {
-      if (!new String(Character.toChars(codePoint))
-              .toLowerCase(Locale.ROOT)
-              .equals(new String(Character.toChars(codePoint)))
-          && !new String(Character.toChars(codePoint))
-              .toUpperCase(Locale.ROOT)
-              .equals(new String(Character.toChars(codePoint)))) {
-        String l =
-            Arrays.toString(
-                new String(Character.toChars(codePoint))
-                    .toLowerCase(Locale.ROOT)
-                    .codePoints()
-                    .toArray());
-        String u =
-            Arrays.toString(
-                new String(Character.toChars(codePoint))
-                    .toUpperCase(Locale.ROOT)
-                    .codePoints()
-                    .toArray());
-        System.out.println(
-            "entry("
-                + codePoint
-                + ", new int[] {"
-                + l.substring(1, l.length() - 1)
-                + ", "
-                + u.substring(1, u.length() - 1)
-                + "}),");
-        System.out.println(
-            "entry("
-                + l.substring(1, l.length() - 1)
-                + ", new int[] {"
-                + codePoint
-                + ", "
-                + u.substring(1, u.length() - 1)
-                + "}),");
-        System.out.println(
-            "entry("
-                + u.substring(1, u.length() - 1)
-                + ", new int[] {"
-                + codePoint
-                + ", "
-                + l.substring(1, l.length() - 1)
-                + "}),");
-      }
-    }
-  }
+  public void testUnicodeInsensitiveMatchPatternParity() throws IOException {
+    // this ensures that if the Pattern class behavior were to change with a change to the Unicode
+    // spec then we would pick it up and may help indicate in the future if we don't notice
+    // that the spec has changed if Pattern picks up some change from the spec first
+    for (Map.Entry<Integer, int[]> entry : CaseFolding.loadMapping().entrySet()) {
+      int codePoint = entry.getKey();
+      int[] caseInsensitiveAlternatives = entry.getValue();
+      String pattern = new String(Character.toChars(codePoint));
+      Pattern javaRegex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+      RegExp r = new RegExp(pattern, RegExp.ALL, RegExp.CASE_INSENSITIVE);
+      CharacterRunAutomaton cra = new CharacterRunAutomaton(r.toAutomaton());
+      for (int i = 0; i < caseInsensitiveAlternatives.length; i++) {
 
-  public static void generateClass3() {
-    // the set of alternate non-matching case-insensitive characters that String.toUppercase
-    // supports as in the Unicode spec has an upper or lower case character for, but
-    // it transitions the BMP, and therefore we don't match the two characters
-    int lastCodePoint = -2;
-    int inRun = -1;
-    for (int codePoint = 0; codePoint < Character.MAX_CODE_POINT + 1; codePoint++) {
-      String someChar = new String(Character.toChars(codePoint));
+        int alt = caseInsensitiveAlternatives[i];
+        String altString = new String(Character.toChars(alt));
 
-      // class 3
-      // String's support casing across the BMP transition, whereas Characters do not
-      if (!someChar
-              .toUpperCase(Locale.ROOT)
-              .equals(new String(Character.toChars(Character.toUpperCase(codePoint))))
-          || !someChar
-              .toLowerCase(Locale.ROOT)
-              .equals(new String(Character.toChars(Character.toLowerCase(codePoint))))) {
-        // System.out.println("class 3 cp: " + codePoint + " :: " + someChar + " :: " +
-        // someChar.toUpperCase(Locale.ROOT) + " :: " + someChar.toLowerCase(Locale.ROOT));
-        if (codePoint - 1 == lastCodePoint && inRun <= 0) {
-          // start a run
-          inRun = 1;
-          System.out.print(lastCodePoint);
-        } else if (codePoint - 1 != lastCodePoint && inRun == 1) {
-          inRun = 0;
-          System.out.print(", " + lastCodePoint + ", ");
-        } else if (codePoint - 1 != lastCodePoint && inRun > 1) {
-          inRun = 0;
-          System.out.print("-" + lastCodePoint + ", ");
-        } else if (inRun <= 0 && lastCodePoint != -2) {
-          System.out.print(lastCodePoint + ", ");
-        } else if (inRun == -1) {
-          // skip the first one (we output from the second one onward)
-        } else {
-          inRun++;
-        }
-
-        lastCodePoint = codePoint;
-      }
-
-      if (codePoint == Character.MAX_CODE_POINT) {
-        if (inRun == 1) {
-          System.out.print(", " + lastCodePoint);
-        } else if (inRun > 1) {
-          System.out.print("-" + lastCodePoint);
-        } else {
-          System.out.print(lastCodePoint);
+        // Pattern doesn't respect the Unicode spec so some things will not match
+        if (javaRegex.matcher(altString).matches()) {
+          // ... but if they do match then we must agree
+          assertTrue(cra.run(altString));
         }
       }
     }
-
-    System.out.println();
   }
 
   // LUCENE-6046
@@ -560,7 +369,7 @@ public class TestRegExp extends LuceneTestCase {
         "Java regex " + regexPattern + " did not match doc value " + docValue, matcher.matches());
 
     int matchFlags =
-        caseSensitiveQuery ? 0 : RegExp.ASCII_CASE_INSENSITIVE | RegExp.UNICODE_CASE_INSENSITIVE;
+        caseSensitiveQuery ? 0 : RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE;
     RegExp regex = new RegExp(regexPattern, RegExp.ALL, matchFlags);
     Automaton automaton =
         Operations.determinize(regex.toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);

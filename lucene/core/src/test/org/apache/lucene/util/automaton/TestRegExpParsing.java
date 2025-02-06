@@ -74,8 +74,22 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
 
-    Automaton expected = Operations.union(Automata.makeChar('c'), Automata.makeChar('C'));
+    Automaton expected = Automata.makeCharSet(new int[] {'c', 'C'});
     assertSameLanguage(expected, actual);
+  }
+
+  // individual characters (only) inside a class are treated as case insensitive.
+  public void testCaseInsensitiveClassChar() {
+    RegExp re = new RegExp("[c]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0043 U+0063] ends=[U+0043 U+0063]\n", re.toStringTree());
+  }
+
+  // ranges aren't treated as case-insensitive, but maybe ok with charclass
+  // instead of adding range, expand it: iterate each codepoint, adding its alternatives
+  public void testCaseInsensitiveClassRange() {
+    RegExp re = new RegExp("[c-d]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
+    assertEquals("REGEXP_CHAR_RANGE from=c to=d\n", re.toStringTree());
   }
 
   public void testCaseInsensitiveCharUpper() {
@@ -86,7 +100,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
 
-    Automaton expected = Operations.union(Automata.makeChar('c'), Automata.makeChar('C'));
+    Automaton expected = Automata.makeCharSet(new int[] {'c', 'C'});
     assertSameLanguage(expected, actual);
   }
 
@@ -110,34 +124,31 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
 
-    Automaton expected = Automata.makeChar('Ж');
+    Automaton expected = Automata.makeCharSet(new int[] {'Ж', 'ж'});
     assertSameLanguage(expected, actual);
   }
 
   public void testCaseInsensitiveCharUnicode() {
-    RegExp re = new RegExp("Ж", RegExp.NONE, RegExp.UNICODE_CASE_INSENSITIVE);
+    RegExp re = new RegExp("Ж", RegExp.NONE, RegExp.CASE_INSENSITIVE);
     assertEquals("\\Ж", re.toString());
     assertEquals("REGEXP_CHAR char=Ж\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
 
-    Automaton expected = Operations.union(Automata.makeChar('Ж'), Automata.makeChar('ж'));
+    Automaton expected = Automata.makeCharSet(new int[] {'Ж', 'ж'});
     assertSameLanguage(expected, actual);
   }
 
   public void testCaseInsensitiveCharUnicodeSigma() {
-    RegExp re = new RegExp("σ", RegExp.NONE, RegExp.UNICODE_CASE_INSENSITIVE);
+    RegExp re = new RegExp("σ", RegExp.NONE, RegExp.CASE_INSENSITIVE);
     assertEquals("\\σ", re.toString());
     assertEquals("REGEXP_CHAR char=σ\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
 
-    Automaton expected =
-        Operations.union(
-            Operations.union(Automata.makeChar('Σ'), Automata.makeChar('σ')),
-            Automata.makeChar('ς'));
+    Automaton expected = Automata.makeCharSet(new int[] {'Σ', 'σ', 'ς'});
     assertSameLanguage(expected, actual);
   }
 
@@ -161,6 +172,22 @@ public class TestRegExpParsing extends LuceneTestCase {
         Operations.union(
             Automata.makeCharRange(0, 'b'), Automata.makeCharRange('d', Integer.MAX_VALUE));
     assertSameLanguage(expected, actual);
+  }
+
+  public void testNegatedClass() {
+    RegExp re = new RegExp("[^c-da]");
+    assertEquals(
+        String.join(
+            "\n",
+            "REGEXP_INTERSECTION",
+            "  REGEXP_ANYCHAR",
+            "  REGEXP_COMPLEMENT",
+            "    REGEXP_CHAR_CLASS starts=[U+0063 U+0061] ends=[U+0064 U+0061]\n"),
+        re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+    assertEquals(2, actual.getNumStates());
   }
 
   public void testCharRange() {
@@ -207,8 +234,8 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharClassDigit() {
     RegExp re = new RegExp("[\\d]");
-    assertEquals("\\d", re.toString());
-    assertEquals("REGEXP_PRE_CLASS class=\\d\n", re.toStringTree());
+    assertEquals("[\\0-\\9]", re.toString());
+    assertEquals("REGEXP_CHAR_RANGE from=0 to=9\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -219,8 +246,8 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharClassNonDigit() {
     RegExp re = new RegExp("[\\D]");
-    assertEquals("\\D", re.toString());
-    assertEquals("REGEXP_PRE_CLASS class=\\D\n", re.toStringTree());
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0000 U+003A] ends=[U+002F U+10FFFF]\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -235,8 +262,9 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharClassWhitespace() {
     RegExp re = new RegExp("[\\s]");
-    assertEquals("\\s", re.toString());
-    assertEquals("REGEXP_PRE_CLASS class=\\s\n", re.toStringTree());
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0009 U+000D U+0020] ends=[U+000A U+000D U+0020]\n",
+        re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -250,8 +278,9 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharClassNonWhitespace() {
     RegExp re = new RegExp("[\\S]");
-    assertEquals("\\S", re.toString());
-    assertEquals("REGEXP_PRE_CLASS class=\\S\n", re.toStringTree());
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0000 U+000B U+000E U+0021] ends=[U+0008 U+000C U+001F U+10FFFF]\n",
+        re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -274,8 +303,10 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharClassWord() {
     RegExp re = new RegExp("[\\w]");
-    assertEquals("\\w", re.toString());
-    assertEquals("REGEXP_PRE_CLASS class=\\w\n", re.toStringTree());
+    assertEquals("[\\0-\\9\\A-\\Z\\_\\a-\\z]", re.toString());
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0030 U+0041 U+005F U+0061] ends=[U+0039 U+005A U+005F U+007A]\n",
+        re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -289,8 +320,9 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharClassNonWord() {
     RegExp re = new RegExp("[\\W]");
-    assertEquals("\\W", re.toString());
-    assertEquals("REGEXP_PRE_CLASS class=\\W\n", re.toStringTree());
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0000 U+003A U+005B U+0060 U+007B] ends=[U+002F U+0040 U+005E U+0060 U+10FFFF]\n",
+        re.toStringTree());
 
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
@@ -309,6 +341,17 @@ public class TestRegExpParsing extends LuceneTestCase {
         Operations.minus(
             expected, Automata.makeChar('_'), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertSameLanguage(expected, actual);
+  }
+
+  // char class with a couple of ranges, predefined,and individual chars
+  public void testJumboCharClass() {
+    RegExp re = new RegExp("[0-5a\\sbc-d]");
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0030 U+0061 U+0009 U+000D U+0020 U+0062 U+0063] ends=[U+0035 U+0061 U+000A U+000D U+0020 U+0062 U+0064]\n",
+        re.toStringTree());
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+    assertEquals(2, actual.getNumStates());
   }
 
   public void testTruncatedCharClass() {

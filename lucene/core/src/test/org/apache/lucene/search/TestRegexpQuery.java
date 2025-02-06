@@ -79,7 +79,7 @@ public class TestRegexpQuery extends LuceneTestCase {
         new RegexpQuery(
             newTerm(regex),
             RegExp.ALL,
-            RegExp.ASCII_CASE_INSENSITIVE | RegExp.UNICODE_CASE_INSENSITIVE,
+            RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE,
             RegexpQuery.DEFAULT_PROVIDER,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
