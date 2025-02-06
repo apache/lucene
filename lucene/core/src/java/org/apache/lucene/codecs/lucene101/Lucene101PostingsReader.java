@@ -888,16 +888,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     public void advanceShallow(int target) throws IOException {
       if (target > level0LastDocID) { // advance level 0 skip data
         doAdvanceShallow(target);
-
-        // If we are on the last doc ID of a block and we are advancing on the doc ID just beyond
-        // this block, then we decode the block. This may not be necessary, but this helps avoid
-        // having to check whether we are in a block that is not decoded yet in #nextDoc().
-        if (docBufferUpto == BLOCK_SIZE && target == doc + 1) {
-          refillDocs();
-          needsRefilling = false;
-        } else {
-          needsRefilling = true;
-        }
+        needsRefilling = true;
       }
     }
 
@@ -914,8 +905,13 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (doc == level0LastDocID) {
-        moveToNextLevel0Block();
+      if (doc == level0LastDocID || needsRefilling) {
+        if (needsRefilling) {
+          refillDocs();
+          needsRefilling = false;
+        } else {
+          moveToNextLevel0Block();
+        }
       }
 
       switch (encoding) {
