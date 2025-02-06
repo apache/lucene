@@ -285,9 +285,9 @@ public class AutomatonTestUtil {
     // combine them in random ways
     switch (random.nextInt(4)) {
       case 0:
-        return Operations.concatenate(a1, a2);
+        return Operations.concatenate(List.of(a1, a2));
       case 1:
-        return Operations.union(a1, a2);
+        return Operations.union(List.of(a1, a2));
       case 2:
         return Operations.intersection(a1, a2);
       default:
