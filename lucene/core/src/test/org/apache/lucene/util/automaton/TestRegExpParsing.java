@@ -17,6 +17,8 @@
 package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -287,6 +289,17 @@ public class TestRegExpParsing extends LuceneTestCase {
         Operations.minus(
             expected, Automata.makeChar('_'), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertSameLanguage(expected, actual);
+  }
+
+  // char class with a couple of ranges, predefined,and individual chars
+  public void testJumboCharClass() {
+    RegExp re = new RegExp("[0-5a\\sbc-d]");
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0030 U+0061 U+0009 U+000D U+0020 U+0062 U+0063] ends=[U+0035 U+0061 U+000A U+000D U+0020 U+0062 U+0064]\n",
+        re.toStringTree());
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+    assertEquals(2, actual.getNumStates());
   }
 
   public void testTruncatedCharClass() {
