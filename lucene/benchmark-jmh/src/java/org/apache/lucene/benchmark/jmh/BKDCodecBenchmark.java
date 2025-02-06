@@ -1,10 +1,15 @@
 package org.apache.lucene.benchmark.jmh;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
-import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -17,7 +22,6 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -25,24 +29,14 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.IntBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
-
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 @Warmup(iterations = 3, time = 3)
 @Measurement(iterations = 5, time = 3)
-@Fork(value = 1, jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+@Fork(
+    value = 1,
+    jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
 public class BKDCodecBenchmark {
 
   private Directory dir;
@@ -88,7 +82,8 @@ public class BKDCodecBenchmark {
     }
   }
 
-  private static void decode24Legacy(int[] outputInts, int[] tmpInts, IndexInput input, int count) throws IOException {
+  private static void decode24Legacy(int[] outputInts, int[] tmpInts, IndexInput input, int count)
+      throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
       long l1 = input.readLong();
@@ -104,7 +99,8 @@ public class BKDCodecBenchmark {
       outputInts[i + 7] = (int) l3 & 0xffffff;
     }
     for (; i < count; ++i) {
-      outputInts[i] = (Short.toUnsignedInt(input.readShort()) << 8) | Byte.toUnsignedInt(input.readByte());
+      outputInts[i] =
+          (Short.toUnsignedInt(input.readShort()) << 8) | Byte.toUnsignedInt(input.readByte());
     }
   }
 
@@ -118,7 +114,8 @@ public class BKDCodecBenchmark {
     }
   }
 
-  private static void decodeForUtil16(int[] outputInts, int[] tmpInts, IndexInput in, int count) throws IOException{
+  private static void decodeForUtil16(int[] outputInts, int[] tmpInts, IndexInput in, int count)
+      throws IOException {
     final int min = in.readVInt();
     final int halfLen = count >>> 1;
     in.readInts(outputInts, 0, halfLen);
@@ -142,7 +139,8 @@ public class BKDCodecBenchmark {
     }
   }
 
-  private static void decodeForUtil24(int[] outputInts, int[] tmpInts, IndexInput in, int count) throws IOException{
+  private static void decodeForUtil24(int[] outputInts, int[] tmpInts, IndexInput in, int count)
+      throws IOException {
     final int quarterLen = count >> 2;
     final int quarterLen3 = quarterLen * 3;
     in.readInts(tmpInts, 0, quarterLen3);
@@ -171,7 +169,8 @@ public class BKDCodecBenchmark {
     }
   }
 
-  private static void decodeVector16(int[] outputInts, int[] tmpInts, IndexInput in, int count) throws IOException{
+  private static void decodeVector16(int[] outputInts, int[] tmpInts, IndexInput in, int count)
+      throws IOException {
     final int min = in.readVInt();
     final int halfLen = count >>> 1;
     in.readInts(outputInts, 0, halfLen);
@@ -180,14 +179,16 @@ public class BKDCodecBenchmark {
     for (; i < upperBound; i += PREFERRED_INT_SPECIES.length()) {
       IntVector vector = IntVector.fromArray(PREFERRED_INT_SPECIES, outputInts, i);
       vector
-          .lanewise(VectorOperators.LSHR, 16).lanewise(VectorOperators.ADD, min)
+          .lanewise(VectorOperators.LSHR, 16)
+          .lanewise(VectorOperators.ADD, min)
           .intoArray(outputInts, i);
       vector
-          .lanewise(VectorOperators.AND, 0xFFFF).lanewise(VectorOperators.ADD, min)
+          .lanewise(VectorOperators.AND, 0xFFFF)
+          .lanewise(VectorOperators.ADD, min)
           .intoArray(outputInts, i + halfLen);
     }
 
-    for (;i < halfLen; ++i) {
+    for (; i < halfLen; ++i) {
       int l = outputInts[i];
       outputInts[i] = (l >>> 16) + min;
       outputInts[halfLen + i] = (l & 0xFFFF) + min;
@@ -198,7 +199,8 @@ public class BKDCodecBenchmark {
   }
 
   static final VectorSpecies<Integer> PREFERRED_INT_SPECIES =
-      VectorSpecies.of(int.class, VectorShape.forBitSize(VectorShape.preferredShape().vectorBitSize()));
+      VectorSpecies.of(
+          int.class, VectorShape.forBitSize(VectorShape.preferredShape().vectorBitSize()));
 
   @Benchmark
   public void readInts24Vector(Blackhole bh) throws IOException {
@@ -209,13 +211,14 @@ public class BKDCodecBenchmark {
       setupInvocation();
     }
   }
-  
+
   private static int count(int iter) {
     // to make benchmark more realistic
     return iter % 10 == 0 ? 511 : 512;
   }
 
-  private static void decodeVector24(int[] outputInts, int[] tmpInts, IndexInput in, int count) throws IOException {
+  private static void decodeVector24(int[] outputInts, int[] tmpInts, IndexInput in, int count)
+      throws IOException {
     final int quarterLen = count >> 2;
     final int halfLen = quarterLen << 1;
     final int quarterLen3 = quarterLen * 3;
@@ -223,7 +226,9 @@ public class BKDCodecBenchmark {
     int upperBound = PREFERRED_INT_SPECIES.loopBound(quarterLen3);
     int i = 0;
     for (; i < upperBound; i += PREFERRED_INT_SPECIES.length()) {
-      IntVector.fromArray(PREFERRED_INT_SPECIES, tmpInts, i).lanewise(VectorOperators.LSHR, 8).intoArray(outputInts, i);
+      IntVector.fromArray(PREFERRED_INT_SPECIES, tmpInts, i)
+          .lanewise(VectorOperators.LSHR, 8)
+          .intoArray(outputInts, i);
     }
     for (; i < quarterLen3; ++i) {
       outputInts[i] = tmpInts[i] >>> 8;
@@ -232,9 +237,18 @@ public class BKDCodecBenchmark {
     i = 0;
     int upperBound2 = PREFERRED_INT_SPECIES.loopBound(quarterLen);
     for (; i < upperBound2; i += PREFERRED_INT_SPECIES.length()) {
-      IntVector.fromArray(PREFERRED_INT_SPECIES, tmpInts, i).lanewise(VectorOperators.AND, 0xFF).lanewise(VectorOperators.LSHL, 16)
-          .lanewise(VectorOperators.OR, IntVector.fromArray(PREFERRED_INT_SPECIES, tmpInts, i + quarterLen).lanewise(VectorOperators.AND, 0xFF).lanewise(VectorOperators.LSHL, 8))
-          .lanewise(VectorOperators.OR, IntVector.fromArray(PREFERRED_INT_SPECIES, tmpInts, i + halfLen).lanewise(VectorOperators.AND, 0xFF))
+      IntVector.fromArray(PREFERRED_INT_SPECIES, tmpInts, i)
+          .lanewise(VectorOperators.AND, 0xFF)
+          .lanewise(VectorOperators.LSHL, 16)
+          .lanewise(
+              VectorOperators.OR,
+              IntVector.fromArray(PREFERRED_INT_SPECIES, tmpInts, i + quarterLen)
+                  .lanewise(VectorOperators.AND, 0xFF)
+                  .lanewise(VectorOperators.LSHL, 8))
+          .lanewise(
+              VectorOperators.OR,
+              IntVector.fromArray(PREFERRED_INT_SPECIES, tmpInts, i + halfLen)
+                  .lanewise(VectorOperators.AND, 0xFF))
           .intoArray(outputInts, quarterLen3 + i);
     }
     for (; i < quarterLen; i++) {
@@ -270,8 +284,8 @@ public class BKDCodecBenchmark {
       in.seek(0);
       decodeVector16(outputInts2, tmpInts, in, 512);
       if (Arrays.equals(outputInts, outputInts2) == false) {
-        throw new RuntimeException("expect: " + Arrays.toString(outputInts)
-            + ", got: " + Arrays.toString(outputInts2));
+        throw new RuntimeException(
+            "expect: " + Arrays.toString(outputInts) + ", got: " + Arrays.toString(outputInts2));
       }
 
       in.seek(0);
@@ -279,8 +293,8 @@ public class BKDCodecBenchmark {
       in.seek(0);
       decodeVector24(outputInts2, tmpInts, in, 512);
       if (Arrays.equals(outputInts, outputInts2) == false) {
-        throw new RuntimeException("expect: " + Arrays.toString(outputInts)
-            + ", got: " + Arrays.toString(outputInts2));
+        throw new RuntimeException(
+            "expect: " + Arrays.toString(outputInts) + ", got: " + Arrays.toString(outputInts2));
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

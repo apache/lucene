@@ -44,4 +44,9 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) {
     return new PostingDecodingUtil(input);
   }
+
+  @Override
+  public BKDDecodingUtil newBKDDecodingUtil(IndexInput input) {
+    return new BKDDecodingUtil(input);
+  }
 }

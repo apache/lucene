@@ -125,6 +125,9 @@ public abstract class VectorizationProvider {
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
 
+  /** Create a new {@link BKDDecodingUtil} for the given {@link IndexInput}.. */
+  public abstract BKDDecodingUtil newBKDDecodingUtil(IndexInput input);
+
   // *** Lookup mechanism: ***
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
@@ -216,7 +219,8 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene101.Lucene101PostingsReader",
-          "org.apache.lucene.codecs.lucene101.PostingIndexInput");
+          "org.apache.lucene.codecs.lucene101.PostingIndexInput",
+          "org.apache.lucene.util.bkd.DocIdsWriter");
 
   private static void ensureCaller() {
     final boolean validCaller =
