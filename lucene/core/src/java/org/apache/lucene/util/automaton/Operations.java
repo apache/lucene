@@ -81,6 +81,7 @@ public final class Operations {
    * Returns an automaton that accepts the concatenation of the languages of the given automata.
    *
    * <p>Complexity: linear in total number of states.
+   *
    * @param list List of automata to be joined
    */
   public static Automaton concatenate(List<Automaton> list) {
@@ -490,6 +491,7 @@ public final class Operations {
    * Returns an automaton that accepts the union of the languages of the given automata.
    *
    * <p>Complexity: linear in number of states.
+   *
    * @param list List of automata to be unioned.
    */
   public static Automaton union(Collection<Automaton> list) {
