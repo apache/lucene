@@ -1075,7 +1075,7 @@ public final class Operations {
 
     // Shrink for simplicity.
     acceptStatesWithNoTransition =
-        Arrays.copyOf(acceptStatesWithNoTransition, numAcceptStatesWithNoTransition);
+        ArrayUtil.copyOfSubArray(acceptStatesWithNoTransition, 0, numAcceptStatesWithNoTransition);
 
     // Now copy states, preserving accept states.
     Automaton result = new Automaton();
