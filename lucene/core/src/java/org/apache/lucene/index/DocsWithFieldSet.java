@@ -16,9 +16,11 @@
  */
 package org.apache.lucene.index;
 
+import java.io.IOException;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -74,5 +76,23 @@ public final class DocsWithFieldSet extends DocIdSet {
   /** Return the number of documents of this set. */
   public int cardinality() {
     return cardinality;
+  }
+
+  @Override
+  public Bits bits() throws IOException {
+    return new Bits() {
+      @Override
+      public boolean get(int index) {
+        if (set == null) {
+          return index < cardinality;
+        }
+        return set.get(index);
+      }
+
+      @Override
+      public int length() {
+        return cardinality;
+      }
+    };
   }
 }

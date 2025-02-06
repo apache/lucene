@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 /**
  * Vectors' writer for a field
@@ -38,6 +39,20 @@ public abstract class FlatFieldVectorsWriter<T> extends KnnFieldVectorsWriter<T>
    * @return the docsWithFieldSet for the field writer
    */
   public abstract DocsWithFieldSet getDocsWithFieldSet();
+
+  /** Returns number of vectors in the field writer */
+  public abstract int ordCount();
+
+  /** Returns the number of documents with vector values indexed in the field writer */
+  public abstract int docCount();
+
+  /**
+   * Returns a function that maps docId to the number of vectors indexed for that document. Default
+   * implementation applies to single valued vector fields/
+   */
+  public IntToIntFunction docIdToVectorCount() {
+    return x -> 1;
+  }
 
   /**
    * indicates that this writer is done and no new vectors are allowed to be added

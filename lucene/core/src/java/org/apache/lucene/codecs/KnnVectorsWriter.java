@@ -34,11 +34,11 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOFunction;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 /** Writes vectors to an index. */
 public abstract class KnnVectorsWriter implements Accountable, Closeable {
@@ -168,7 +168,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
   /**
    * Given old doc ids and an id mapping, maps old ordinal to new ordinal. Note: this method return
-   * nothing and output are written to parameters
+   * nothing and output are written to parameters. This method uses default values for single valued
+   * vector fields. For multivalued vectors, directly call {@link KnnVectorsWriter#remapOrdinals}
    *
    * @param oldDocIds the old or current document ordinals. Must not be null.
    * @param sortMap the document sorting map for how to make the new ordinals. Must not be null.
@@ -185,38 +186,87 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       throws IOException {
     // TODO: a similar function exists in IncrementalHnswGraphMerger#getNewOrdMapping
     //       maybe we can do a further refactoring
+    remapOrdinals(
+        oldDocIds,
+        sortMap,
+        x -> 1,
+        oldDocIds.cardinality(),
+        old2NewOrd,
+        new2OldOrd,
+        newDocsWithField);
+  }
+
+  public static record DocWithOrd(int docId, int ord) implements Comparable<DocWithOrd> {
+    @Override
+    public int compareTo(DocWithOrd other) {
+      if (this.docId == other.docId && this.ord == other.ord) {
+        return 0;
+      }
+      if (this.docId < other.docId || (this.docId == other.docId && this.ord < other.ord)) {
+        return -1;
+      }
+      return 1;
+    }
+  }
+  ;
+
+  /**
+   * Remap ordinals based on the document order defined by provided sortMap
+   *
+   * @param oldDocIds the old or current document ordinals. Must not be null.
+   * @param sortMap the document sorting map for how to make the new ordinals. Must not be null.
+   * @param docIdToVectorCount maps old docId to number of vectors for that document
+   * @param ordCount total number of vector values
+   * @param old2NewOrd int[] maps old ordinal to new ordinal
+   * @param new2OldOrd int[] maps new ordinal to old ordinal
+   * @param newDocsWithField ordered set with new docIds
+   */
+  public static void remapOrdinals(
+      DocsWithFieldSet oldDocIds,
+      Sorter.DocMap sortMap,
+      IntToIntFunction docIdToVectorCount,
+      int ordCount,
+      int[] old2NewOrd,
+      int[] new2OldOrd,
+      DocsWithFieldSet newDocsWithField)
+      throws IOException {
     Objects.requireNonNull(oldDocIds);
     Objects.requireNonNull(sortMap);
+    Objects.requireNonNull(docIdToVectorCount);
     assert (old2NewOrd != null || new2OldOrd != null || newDocsWithField != null);
-    assert (old2NewOrd == null || old2NewOrd.length == oldDocIds.cardinality());
-    assert (new2OldOrd == null || new2OldOrd.length == oldDocIds.cardinality());
-    IntIntHashMap newIdToOldOrd = new IntIntHashMap();
+    assert (old2NewOrd == null || old2NewOrd.length == ordCount);
+    assert (new2OldOrd == null || new2OldOrd.length == ordCount);
+
+    DocWithOrd[] docWithOrds = new DocWithOrd[ordCount];
     DocIdSetIterator iterator = oldDocIds.iterator();
-    int[] newDocIds = new int[oldDocIds.cardinality()];
-    int oldOrd = 0;
-    for (int oldDocId = iterator.nextDoc();
-        oldDocId != DocIdSetIterator.NO_MORE_DOCS;
-        oldDocId = iterator.nextDoc()) {
-      int newId = sortMap.oldToNew(oldDocId);
-      newIdToOldOrd.put(newId, oldOrd);
-      newDocIds[oldOrd] = newId;
-      oldOrd++;
+    int ord = 0;
+    for (int doc = iterator.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = iterator.nextDoc()) {
+      int vectorCount = docIdToVectorCount.apply(doc);
+      for (int i = 0; i < vectorCount; i++) {
+        docWithOrds[ord] = new DocWithOrd(sortMap.oldToNew(doc), ord);
+        ord++;
+      }
     }
 
-    Arrays.sort(newDocIds);
-    int newOrd = 0;
-    for (int newDocId : newDocIds) {
-      int currOldOrd = newIdToOldOrd.get(newDocId);
-      if (old2NewOrd != null) {
-        old2NewOrd[currOldOrd] = newOrd;
-      }
+    // sort by new docIds and create new to old ordinal mapping
+    Arrays.sort(docWithOrds);
+
+    // store ordinal remapping and new docId ordering
+    for (int newOrd = 0; newOrd < ordCount; newOrd++) {
+      int oldOrd = docWithOrds[newOrd].ord;
       if (new2OldOrd != null) {
-        new2OldOrd[newOrd] = currOldOrd;
+        new2OldOrd[newOrd] = oldOrd;
+      }
+      if (old2NewOrd != null) {
+        old2NewOrd[oldOrd] = newOrd;
       }
       if (newDocsWithField != null) {
-        newDocsWithField.add(newDocId);
+        if (newDocsWithField.bits().get(docWithOrds[newOrd].docId) == false) {
+          newDocsWithField.add(docWithOrds[newOrd].docId);
+        }
       }
-      newOrd++;
     }
   }
 

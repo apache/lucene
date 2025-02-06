@@ -54,6 +54,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphMerger;
 import org.apache.lucene.util.hnsw.IncrementalHnswGraphMerger;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -193,19 +194,25 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         fieldData.fieldInfo,
         vectorIndexOffset,
         vectorIndexLength,
-        fieldData.getDocsWithFieldSet().cardinality(),
+        fieldData.ordCount(),
         graph,
         graphLevelNodeOffsets);
   }
 
   private void writeSortingField(FieldWriter<?> fieldData, Sorter.DocMap sortMap)
       throws IOException {
-    final int[] ordMap =
-        new int[fieldData.getDocsWithFieldSet().cardinality()]; // new ord to old ord
-    final int[] oldOrdMap =
-        new int[fieldData.getDocsWithFieldSet().cardinality()]; // old ord to new ord
-
-    mapOldOrdToNewOrd(fieldData.getDocsWithFieldSet(), sortMap, oldOrdMap, ordMap, null);
+    final int ordCount = fieldData.ordCount();
+    final int[] ordMap = new int[ordCount]; // new ord to old ord
+    final int[] oldOrdMap = new int[ordCount]; // old ord to new ord
+    remapOrdinals(
+        fieldData.getDocsWithFieldSet(),
+        sortMap,
+        fieldData.getDocIdToVectorCount(),
+        ordCount,
+        oldOrdMap,
+        ordMap,
+        null);
+    //    mapOldOrdToNewOrd(fieldData.getDocsWithFieldSet(), sortMap, oldOrdMap, ordMap, null);
     // write graph
     long vectorIndexOffset = vectorIndex.getFilePointer();
     OnHeapHnswGraph graph = fieldData.getGraph();
@@ -217,7 +224,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         fieldData.fieldInfo,
         vectorIndexOffset,
         vectorIndexLength,
-        fieldData.getDocsWithFieldSet().cardinality(),
+        fieldData.ordCount(),
         mockGraph,
         graphLevelNodeOffsets);
   }
@@ -374,6 +381,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           }
         }
         KnnVectorValues mergedVectorValues = null;
+        // TODO: fix mergedVectorValues for multivectors.
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE ->
               mergedVectorValues =
@@ -608,13 +616,17 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                     fieldInfo.getVectorSimilarityFunction(),
                     ByteVectorValues.fromBytes(
                         (List<byte[]>) flatFieldVectorsWriter.getVectors(),
-                        fieldInfo.getVectorDimension()));
+                        fieldInfo.getVectorDimension(),
+                        flatFieldVectorsWriter.getDocsWithFieldSet(),
+                        flatFieldVectorsWriter.docIdToVectorCount()));
             case FLOAT32 ->
                 scorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
                     FloatVectorValues.fromFloats(
                         (List<float[]>) flatFieldVectorsWriter.getVectors(),
-                        fieldInfo.getVectorDimension()));
+                        fieldInfo.getVectorDimension(),
+                        flatFieldVectorsWriter.getDocsWithFieldSet(),
+                        flatFieldVectorsWriter.docIdToVectorCount()));
           };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
@@ -624,12 +636,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public void addValue(int docID, T vectorValue) throws IOException {
-      if (docID == lastDocID) {
-        throw new IllegalArgumentException(
-            "VectorValuesField \""
-                + fieldInfo.name
-                + "\" appears more than once in this document (only one value is allowed per field)");
-      }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       hnswGraphBuilder.addGraphNode(node);
       node++;
@@ -638,6 +644,14 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
     public DocsWithFieldSet getDocsWithFieldSet() {
       return flatFieldVectorsWriter.getDocsWithFieldSet();
+    }
+
+    public int ordCount() {
+      return flatFieldVectorsWriter.ordCount();
+    }
+
+    public IntToIntFunction getDocIdToVectorCount() {
+      return flatFieldVectorsWriter.docIdToVectorCount();
     }
 
     @Override

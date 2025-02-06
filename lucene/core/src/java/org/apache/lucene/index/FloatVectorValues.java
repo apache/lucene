@@ -17,9 +17,13 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration;
+import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration.MultiVectorMaps;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
@@ -39,6 +43,63 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    * @return the vector value
    */
   public abstract float[] vectorValue(int ord) throws IOException;
+
+  /** Returns all vector values indexed for the document corresponding to provided ordinal */
+  public Iterator<float[]> allVectorValues(int ord) throws IOException {
+    return new Iterator<>() {
+      int baseOrd = baseOrd(ord);
+      int count = vectorCount(ord);
+
+      @Override
+      public boolean hasNext() {
+        return count > 0;
+      }
+
+      @Override
+      public float[] next() {
+        float[] v = null;
+        try {
+          v = vectorValue(baseOrd);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        } finally {
+          baseOrd++;
+          count--;
+        }
+        return v;
+      }
+    };
+  }
+
+  /**
+   * Returns an iterator for multi-vector values, when base ordinal and count are provided. This is
+   * useful when fetching all vector values from {@link KnnVectorValues#iterator()}
+   */
+  public Iterator<float[]> allVectorValues(int baseOrd, int ordCount) throws IOException {
+    return new Iterator<>() {
+      int ord = baseOrd;
+      int count = ordCount;
+
+      @Override
+      public boolean hasNext() {
+        return count > 0;
+      }
+
+      @Override
+      public float[] next() {
+        float[] v = null;
+        try {
+          v = vectorValue(ord);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        } finally {
+          ord++;
+          count--;
+        }
+        return v;
+      }
+    };
+  }
 
   @Override
   public abstract FloatVectorValues copy() throws IOException;
@@ -85,10 +146,32 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    *
    * @param vectors the list of float arrays
    * @param dim the dimension of the vectors
+   * @param docsWithFieldSet the set of all docIds for provided vectors
+   * @param docIdToVectorCount maps docId to number of vectors per document
    * @return a {@link FloatVectorValues} instance
    */
-  public static FloatVectorValues fromFloats(List<float[]> vectors, int dim) {
+  public static FloatVectorValues fromFloats(
+      List<float[]> vectors,
+      int dim,
+      DocsWithFieldSet docsWithFieldSet,
+      IntToIntFunction docIdToVectorCount) {
     return new FloatVectorValues() {
+      int cachedDocCount = -1;
+      MultiVectorMaps mvMaps = null;
+
+      private void computeMultiVectorMaps() {
+        // TODO: optimize using binary search instead of full maps
+        try {
+          mvMaps =
+              MultiVectorOrdConfiguration.createMultiVectorMaps(
+                  docsWithFieldSet.iterator(), docIdToVectorCount, size(), docCount());
+        } catch (IOException e) {
+          throw new IllegalStateException(
+              "Unexpected IOException on creating FloatVectorValues from provided vectors:" + e);
+        }
+        cachedDocCount = docCount();
+      }
+
       @Override
       public int size() {
         return vectors.size();
@@ -105,13 +188,59 @@ public abstract class FloatVectorValues extends KnnVectorValues {
       }
 
       @Override
+      public int docCount() {
+        return docsWithFieldSet.cardinality();
+      }
+
+      @Override
+      public int ordToDoc(int ord) {
+        if (docCount() == size()) {
+          return ord;
+        }
+        if (cachedDocCount != docCount()) {
+          computeMultiVectorMaps();
+        }
+        return mvMaps.ordToDocMap()[ord];
+      }
+
+      @Override
+      public int baseOrd(int ord) {
+        if (docCount() == size()) {
+          return ord;
+        }
+        if (cachedDocCount != docCount()) {
+          computeMultiVectorMaps();
+        }
+        return mvMaps.baseOrdMap()[ord];
+      }
+
+      @Override
+      public int vectorCount(int ord) {
+        if (docCount() == size()) {
+          return 1;
+        }
+        return docIdToVectorCount.apply(ord);
+      }
+
+      @Override
+      public int docIndexToBaseOrd(int index) {
+        if (docCount() == size()) {
+          return index;
+        }
+        if (cachedDocCount != docCount()) {
+          computeMultiVectorMaps();
+        }
+        return mvMaps.docOrdFreq()[index];
+      }
+
+      @Override
       public FloatVectorValues copy() {
         return this;
       }
 
       @Override
       public DocIndexIterator iterator() {
-        return createDenseIterator();
+        return multiValueWrappedIterator(createDenseIterator());
       }
     };
   }

@@ -17,9 +17,14 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration;
+import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration.MultiVectorMaps;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 /**
  * This class provides access to per-document floating point vector values indexed as {@link
@@ -39,6 +44,47 @@ public abstract class ByteVectorValues extends KnnVectorValues {
    * @return the vector value
    */
   public abstract byte[] vectorValue(int ord) throws IOException;
+
+  /** Returns all vector values indexed for the document corresponding to provided ordinal */
+  public List<byte[]> allVectorValues(int ord) throws IOException {
+    int baseOrd = baseOrd(ord);
+    int count = vectorCount(ord);
+    List<byte[]> result = new ArrayList<byte[]>(count);
+    for (int i = 0; i < count; i++) {
+      result.add(vectorValue(baseOrd + i));
+    }
+    return result;
+  }
+
+  /**
+   * Returns an iterator for multi-vector values, when base ordinal and count are provided. This is
+   * useful when fetching all vector values from {@link KnnVectorValues#iterator()}
+   */
+  public Iterator<byte[]> allVectorValues(int baseOrd, int ordCount) throws IOException {
+    return new Iterator<>() {
+      int ord = baseOrd;
+      int count = ordCount;
+
+      @Override
+      public boolean hasNext() {
+        return count > 0;
+      }
+
+      @Override
+      public byte[] next() {
+        byte[] v = null;
+        try {
+          v = vectorValue(ord);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        } finally {
+          ord++;
+          count--;
+        }
+        return v;
+      }
+    };
+  }
 
   @Override
   public abstract ByteVectorValues copy() throws IOException;
@@ -84,10 +130,32 @@ public abstract class ByteVectorValues extends KnnVectorValues {
    *
    * @param vectors the list of byte arrays
    * @param dim the dimension of the vectors
-   * @return a {@link ByteVectorValues} instancec
+   * @param docsWithFieldSet the set of all docIds for provided vectors
+   * @param docIdToVectorCount maps docId to number of vectors per document
+   * @return a {@link ByteVectorValues} instance
    */
-  public static ByteVectorValues fromBytes(List<byte[]> vectors, int dim) {
+  public static ByteVectorValues fromBytes(
+      List<byte[]> vectors,
+      int dim,
+      DocsWithFieldSet docsWithFieldSet,
+      IntToIntFunction docIdToVectorCount) {
     return new ByteVectorValues() {
+      int cachedDocCount = -1;
+      MultiVectorMaps mvMaps = null;
+
+      private void computeMultiVectorMaps() {
+        // TODO: optimize using binary search instead of full maps
+        try {
+          mvMaps =
+              MultiVectorOrdConfiguration.createMultiVectorMaps(
+                  docsWithFieldSet.iterator(), docIdToVectorCount, size(), docCount());
+        } catch (IOException e) {
+          throw new IllegalStateException(
+              "Unexpected IOException on creating FloatVectorValues from provided vectors:" + e);
+        }
+        cachedDocCount = docCount();
+      }
+
       @Override
       public int size() {
         return vectors.size();
@@ -104,13 +172,59 @@ public abstract class ByteVectorValues extends KnnVectorValues {
       }
 
       @Override
+      public int docCount() {
+        return docsWithFieldSet.cardinality();
+      }
+
+      @Override
+      public int ordToDoc(int ord) {
+        if (docCount() == size()) {
+          return ord;
+        }
+        if (cachedDocCount != docCount()) {
+          computeMultiVectorMaps();
+        }
+        return mvMaps.ordToDocMap()[ord];
+      }
+
+      @Override
+      public int baseOrd(int ord) {
+        if (docCount() == size()) {
+          return ord;
+        }
+        if (cachedDocCount != docCount()) {
+          computeMultiVectorMaps();
+        }
+        return mvMaps.baseOrdMap()[ord];
+      }
+
+      @Override
+      public int vectorCount(int ord) {
+        if (docCount() == size()) {
+          return 1;
+        }
+        return docIdToVectorCount.apply(ord);
+      }
+
+      @Override
+      public int docIndexToBaseOrd(int index) {
+        if (docCount() == size()) {
+          return index;
+        }
+        if (cachedDocCount != docCount()) {
+          computeMultiVectorMaps();
+        }
+        return mvMaps.docOrdFreq()[index];
+      }
+
+      @Override
       public ByteVectorValues copy() {
         return this;
       }
 
       @Override
       public DocIndexIterator iterator() {
-        return createDenseIterator();
+        return multiValueWrappedIterator(createDenseIterator());
       }
     };
   }

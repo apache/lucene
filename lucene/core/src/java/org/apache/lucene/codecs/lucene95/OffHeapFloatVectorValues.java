@@ -20,6 +20,8 @@ package org.apache.lucene.codecs.lucene95;
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration;
+import org.apache.lucene.codecs.lucene99.MultiVectorOrdConfiguration.MultiVectorMaps;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -28,6 +30,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
@@ -35,7 +38,8 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 public abstract class OffHeapFloatVectorValues extends FloatVectorValues implements HasIndexSlice {
 
   protected final int dimension;
-  protected final int size;
+  protected final int ordCount;
+  protected final int docCount;
   protected final IndexInput slice;
   protected final int byteSize;
   protected int lastOrd = -1;
@@ -43,20 +47,38 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
   protected final VectorSimilarityFunction similarityFunction;
   protected final FlatVectorsScorer flatVectorsScorer;
 
+  protected final boolean isMultiValued;
+  protected final LongValues docIndexToBaseOrd;
+  protected final LongValues ordToDocMap;
+  protected final LongValues baseOrdMap;
+  protected final LongValues nextBaseOrdMap;
+
   OffHeapFloatVectorValues(
       int dimension,
-      int size,
+      int ordCount,
+      int docCount,
       IndexInput slice,
       int byteSize,
       FlatVectorsScorer flatVectorsScorer,
-      VectorSimilarityFunction similarityFunction) {
+      VectorSimilarityFunction similarityFunction,
+      boolean isMultiValued,
+      LongValues docIndexToBaseOrd,
+      LongValues ordToDocMap,
+      LongValues baseOrdMap,
+      LongValues nextBaseOrdMap) {
     this.dimension = dimension;
-    this.size = size;
+    this.ordCount = ordCount;
+    this.docCount = docCount;
     this.slice = slice;
     this.byteSize = byteSize;
     this.similarityFunction = similarityFunction;
     this.flatVectorsScorer = flatVectorsScorer;
     value = new float[dimension];
+    this.isMultiValued = isMultiValued;
+    this.docIndexToBaseOrd = docIndexToBaseOrd;
+    this.ordToDocMap = ordToDocMap;
+    this.baseOrdMap = baseOrdMap;
+    this.nextBaseOrdMap = nextBaseOrdMap;
   }
 
   @Override
@@ -66,7 +88,12 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
 
   @Override
   public int size() {
-    return size;
+    return ordCount;
+  }
+
+  @Override
+  public int docCount() {
+    return docCount;
   }
 
   @Override
@@ -85,10 +112,35 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     return value;
   }
 
+  @Override
+  public int baseOrd(int ord) {
+    if (isMultiValued == true) {
+      return (int) baseOrdMap.get(ord);
+    }
+    return super.baseOrd(ord);
+  }
+
+  @Override
+  public int vectorCount(int ord) {
+    if (isMultiValued == true) {
+      return (int) nextBaseOrdMap.get(ord) - baseOrd(ord);
+    }
+    return super.vectorCount(ord);
+  }
+
+  @Override
+  public int docIndexToBaseOrd(int index) {
+    if (isMultiValued == true) {
+      return (int) docIndexToBaseOrd.get(index);
+    }
+    return super.docIndexToBaseOrd(index);
+  }
+
   public static OffHeapFloatVectorValues load(
       VectorSimilarityFunction vectorSimilarityFunction,
       FlatVectorsScorer flatVectorsScorer,
       OrdToDocDISIReaderConfiguration configuration,
+      MultiVectorOrdConfiguration mvOrdConfiguration,
       VectorEncoding vectorEncoding,
       int dimension,
       long vectorDataOffset,
@@ -98,25 +150,54 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     if (configuration.docsWithFieldOffset == -2 || vectorEncoding != VectorEncoding.FLOAT32) {
       return new EmptyOffHeapVectorValues(dimension, flatVectorsScorer, vectorSimilarityFunction);
     }
+    boolean isMultiValued = false;
+    LongValues docIndexToBaseOrd = null;
+    LongValues ordToDocMap = null;
+    LongValues baseOrdMap = null;
+    LongValues nextBaseOrdMap = null;
+    int docCount = configuration.size;
+    int ordCount = docCount;
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
+    if (mvOrdConfiguration != null) {
+      isMultiValued = mvOrdConfiguration.ordCount() > docCount;
+      ordCount = mvOrdConfiguration.ordCount();
+      docIndexToBaseOrd = mvOrdConfiguration.getDocIndexToBaseOrdReader(vectorData);
+      ordToDocMap = mvOrdConfiguration.getOrdToDocReader(vectorData);
+      // TODO: maybe we can baseOrdMap/nextBaseOrdMap by doing binary search on docIndexToBaseOrd
+      //  or only load them on demand?
+      baseOrdMap = mvOrdConfiguration.getBaseOrdReader(vectorData);
+      nextBaseOrdMap = mvOrdConfiguration.getNextBaseOrdReader(vectorData);
+    }
     int byteSize = dimension * Float.BYTES;
     if (configuration.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(
           dimension,
-          configuration.size,
+          ordCount,
+          docCount,
           bytesSlice,
           byteSize,
           flatVectorsScorer,
-          vectorSimilarityFunction);
+          vectorSimilarityFunction,
+          isMultiValued,
+          docIndexToBaseOrd,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
     } else {
       return new SparseOffHeapVectorValues(
+          ordCount,
           configuration,
           vectorData,
           bytesSlice,
           dimension,
           byteSize,
           flatVectorsScorer,
-          vectorSimilarityFunction);
+          vectorSimilarityFunction,
+          isMultiValued,
+          docIndexToBaseOrd,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
     }
   }
 
@@ -128,33 +209,102 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
 
     public DenseOffHeapVectorValues(
         int dimension,
-        int size,
+        int ordCount,
+        int docCount,
         IndexInput slice,
         int byteSize,
         FlatVectorsScorer flatVectorsScorer,
-        VectorSimilarityFunction similarityFunction) {
-      super(dimension, size, slice, byteSize, flatVectorsScorer, similarityFunction);
+        VectorSimilarityFunction similarityFunction,
+        boolean isMultiValued,
+        LongValues docOrdCount,
+        LongValues ordToDocMap,
+        LongValues baseOrdMap,
+        LongValues nextBaseOrdMap) {
+      super(
+          dimension,
+          ordCount,
+          docCount,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          isMultiValued,
+          docOrdCount,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
+    }
+
+    public DenseOffHeapVectorValues(
+        int dimension,
+        int ordCount,
+        int docCount,
+        IndexInput slice,
+        int byteSize,
+        FlatVectorsScorer flatVectorsScorer,
+        VectorSimilarityFunction similarityFunction,
+        MultiVectorMaps multiVectorMaps) {
+      super(
+          dimension,
+          ordCount,
+          docCount,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          multiVectorMaps.isMultiVector(),
+          longValues(multiVectorMaps.docOrdFreq()),
+          longValues(multiVectorMaps.ordToDocMap()),
+          longValues(multiVectorMaps.baseOrdMap()),
+          longValues(multiVectorMaps.nextBaseOrdMap()));
     }
 
     @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
-          dimension, size, slice.clone(), byteSize, flatVectorsScorer, similarityFunction);
+          dimension,
+          ordCount,
+          docCount,
+          slice.clone(),
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          isMultiValued,
+          docIndexToBaseOrd,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
     }
 
     @Override
     public int ordToDoc(int ord) {
+      if (isMultiValued == true) {
+        return (int) ordToDocMap.get(ord);
+      }
       return ord;
     }
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
-      return acceptDocs;
+      return new Bits() {
+        @Override
+        public boolean get(int index) {
+          if (acceptDocs == null) {
+            return index >= 0 && index < size();
+          }
+          return acceptDocs.get(ordToDoc(index));
+        }
+
+        @Override
+        public int length() {
+          return size();
+        }
+      };
     }
 
     @Override
     public DocIndexIterator iterator() {
-      return createDenseIterator();
+      return multiValueWrappedIterator(createDenseIterator());
     }
 
     @Override
@@ -166,12 +316,21 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return randomVectorScorer.score(iterator.docID());
+          return randomVectorScorer.score(iterator.index());
         }
 
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+      };
+    }
+
+    private static LongValues longValues(int[] arr) {
+      return new LongValues() {
+        @Override
+        public long get(long index) {
+          return arr[(int) index];
         }
       };
     }
@@ -185,16 +344,34 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     private final OrdToDocDISIReaderConfiguration configuration;
 
     public SparseOffHeapVectorValues(
+        int ordCount,
         OrdToDocDISIReaderConfiguration configuration,
         IndexInput dataIn,
         IndexInput slice,
         int dimension,
         int byteSize,
         FlatVectorsScorer flatVectorsScorer,
-        VectorSimilarityFunction similarityFunction)
+        VectorSimilarityFunction similarityFunction,
+        boolean isMultiValued,
+        LongValues docIndexToBaseOrd,
+        LongValues ordToDocMap,
+        LongValues baseOrdMap,
+        LongValues nextBaseOrdMap)
         throws IOException {
 
-      super(dimension, configuration.size, slice, byteSize, flatVectorsScorer, similarityFunction);
+      super(
+          dimension,
+          ordCount,
+          configuration.size,
+          slice,
+          byteSize,
+          flatVectorsScorer,
+          similarityFunction,
+          isMultiValued,
+          docIndexToBaseOrd,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
       this.configuration = configuration;
       final RandomAccessInput addressesData =
           dataIn.randomAccessSlice(configuration.addressesOffset, configuration.addressesLength);
@@ -213,41 +390,50 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     @Override
     public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
+          size(),
           configuration,
           dataIn,
           slice.clone(),
           dimension,
           byteSize,
           flatVectorsScorer,
-          similarityFunction);
+          similarityFunction,
+          isMultiValued,
+          docIndexToBaseOrd,
+          ordToDocMap,
+          baseOrdMap,
+          nextBaseOrdMap);
     }
 
     @Override
     public int ordToDoc(int ord) {
+      if (isMultiValued == true) {
+        return (int) ordToDocMap.get(ord);
+      }
       return (int) ordToDoc.get(ord);
     }
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
-      if (acceptDocs == null) {
-        return null;
-      }
       return new Bits() {
         @Override
         public boolean get(int index) {
+          if (acceptDocs == null) {
+            return index >= 0 && index < size();
+          }
           return acceptDocs.get(ordToDoc(index));
         }
 
         @Override
         public int length() {
-          return size;
+          return size();
         }
       };
     }
 
     @Override
     public DocIndexIterator iterator() {
-      return IndexedDISI.asDocIndexIterator(disi);
+      return multiValueWrappedIterator(IndexedDISI.asDocIndexIterator(disi));
     }
 
     @Override
@@ -276,7 +462,19 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         int dimension,
         FlatVectorsScorer flatVectorsScorer,
         VectorSimilarityFunction similarityFunction) {
-      super(dimension, 0, null, 0, flatVectorsScorer, similarityFunction);
+      super(
+          dimension,
+          0,
+          0,
+          null,
+          0,
+          flatVectorsScorer,
+          similarityFunction,
+          false,
+          null,
+          null,
+          null,
+          null);
     }
 
     @Override
@@ -306,7 +504,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
-      return null;
+      return new Bits.MatchNoBits(0);
     }
 
     @Override
