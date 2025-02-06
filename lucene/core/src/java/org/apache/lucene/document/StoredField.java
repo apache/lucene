@@ -19,7 +19,6 @@ package org.apache.lucene.document;
 import org.apache.lucene.index.IndexReader; // javadocs
 import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.search.IndexSearcher; // javadocs
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -109,9 +108,6 @@ public class StoredField extends Field {
 
   /**
    * Create a stored-only field with the given data input value.
-   *
-   * <p>NOTE: the provided BytesRef is not copied so be sure not to change it until you're done with
-   * this field.
    *
    * @param name field name
    * @param value BytesRef pointing to binary content (not copied)

@@ -19,7 +19,6 @@ package org.apache.lucene.document;
 import java.util.Objects;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.StoredFieldDataInput;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.BytesRef;
 
 /**
