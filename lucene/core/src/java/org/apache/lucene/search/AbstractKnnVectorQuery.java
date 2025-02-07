@@ -49,8 +49,6 @@ import org.apache.lucene.util.Bits;
  *   <li>Otherwise run a kNN search subject to the filter
  *   <li>If the kNN search visits too many vectors without completing, stop and run an exact search
  * </ul>
- *
- * @lucene.experimental
  */
 abstract class AbstractKnnVectorQuery extends Query {
 
@@ -160,6 +158,7 @@ abstract class AbstractKnnVectorQuery extends Query {
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
     } else {
+      // We stopped the kNN search because it visited too many nodes, so fall back to exact search
       return exactSearch(ctx, new BitSetIterator(acceptDocs, cost), queryTimeout);
     }
   }

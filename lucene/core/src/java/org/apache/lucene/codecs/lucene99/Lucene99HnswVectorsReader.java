@@ -314,13 +314,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
-    final OrdinalTranslatedKnnCollector collector =
+    final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     HnswGraph graph = getGraph(fieldEntry);
     boolean doHnsw = knnCollector.k() < scorer.maxOrd();
     // Take into account if quantized? E.g. some scorer cost?
     int filteredDocCount = 0;
+    // The approximate number of vectors that would be visited if we did not filter
     int unfilteredVisit = (int) (Math.log(graph.size()) * knnCollector.k());
     if (acceptDocs instanceof BitSet bitSet) {
       // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
@@ -509,12 +510,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
       assert targetIndex >= 0
           : "seek level=" + level + " target=" + targetOrd + " not found: " + targetIndex;
-      if (targetIndex < 0) {
-        arc = -1;
-        arcUpTo = 0;
-        arcCount = 0;
-        return;
-      }
       // unsafe; no bounds checking
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();
