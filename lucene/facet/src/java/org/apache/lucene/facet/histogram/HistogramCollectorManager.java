@@ -42,21 +42,42 @@ import org.apache.lucene.search.CollectorManager;
 public final class HistogramCollectorManager
     implements CollectorManager<HistogramCollector, LongIntHashMap> {
 
+  private static final int DEFAULT_MAX_BUCKETS = 1024;
+
   private final String field;
   private final long interval;
+  private final int maxBuckets;
 
-  /** Sole constructor. */
+  /**
+   * Compute a histogram of the distribution of the values of the given {@code field} according to
+   * the given {@code interval}. This configures a maximum number of buckets equal to the default of
+   * 1024.
+   */
   public HistogramCollectorManager(String field, long interval) {
+    this(field, interval, DEFAULT_MAX_BUCKETS);
+  }
+
+  /**
+   * Expert constructor.
+   *
+   * @param maxBuckets Max allowed number of buckets. Note that this is checked at runtime and on a
+   *     best-effort basis.
+   */
+  public HistogramCollectorManager(String field, long interval, int maxBuckets) {
     this.field = Objects.requireNonNull(field);
-    this.interval = interval;
     if (interval < 2) {
       throw new IllegalArgumentException("interval must be at least 2, got: " + interval);
     }
+    this.interval = interval;
+    if (maxBuckets < 1) {
+      throw new IllegalArgumentException("maxBuckets must be at least 1, got: " + maxBuckets);
+    }
+    this.maxBuckets = maxBuckets;
   }
 
   @Override
   public HistogramCollector newCollector() throws IOException {
-    return new HistogramCollector(field, interval);
+    return new HistogramCollector(field, interval, maxBuckets);
   }
 
   @Override

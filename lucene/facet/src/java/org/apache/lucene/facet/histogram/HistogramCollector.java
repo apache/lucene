@@ -35,11 +35,13 @@ final class HistogramCollector implements Collector {
 
   private final String field;
   private final long interval;
+  private final int maxBuckets;
   private final LongIntHashMap counts;
 
-  HistogramCollector(String field, long interval) {
+  HistogramCollector(String field, long interval, int maxBuckets) {
     this.field = field;
     this.interval = interval;
+    this.maxBuckets = maxBuckets;
     this.counts = new LongIntHashMap();
   }
 
@@ -58,7 +60,7 @@ final class HistogramCollector implements Collector {
     SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues singleton = DocValues.unwrapSingleton(values);
     if (singleton == null) {
-      return new HistogramNaiveLeafCollector(values, interval, counts);
+      return new HistogramNaiveLeafCollector(values, interval, maxBuckets, counts);
     } else {
       DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
       if (skipper != null) {
@@ -67,10 +69,10 @@ final class HistogramCollector implements Collector {
         if (leafMaxQuotient - leafMinQuotient <= 1024) {
           // Only use the optimized implementation if there is a small number of unique quotients,
           // so that we can count them using a dense array instead of a hash table.
-          return new HistogramLeafCollector(singleton, skipper, interval, counts);
+          return new HistogramLeafCollector(singleton, skipper, interval, maxBuckets, counts);
         }
       }
-      return new HistogramNaiveSingleValuedLeafCollector(singleton, interval, counts);
+      return new HistogramNaiveSingleValuedLeafCollector(singleton, interval, maxBuckets, counts);
     }
   }
 
@@ -91,12 +93,14 @@ final class HistogramCollector implements Collector {
 
     private final SortedNumericDocValues values;
     private final long interval;
+    private final int maxBuckets;
     private final LongIntHashMap counts;
 
     HistogramNaiveLeafCollector(
-        SortedNumericDocValues values, long interval, LongIntHashMap counts) {
+        SortedNumericDocValues values, long interval, int maxBuckets, LongIntHashMap counts) {
       this.values = values;
       this.interval = interval;
+      this.maxBuckets = maxBuckets;
       this.counts = counts;
     }
 
@@ -115,6 +119,7 @@ final class HistogramCollector implements Collector {
           // counts as opposed to value counts.
           if (quotient != prevQuotient) {
             counts.addTo(quotient, 1);
+            checkMaxBuckets(counts.size(), maxBuckets);
             prevQuotient = quotient;
           }
         }
@@ -130,12 +135,14 @@ final class HistogramCollector implements Collector {
 
     private final NumericDocValues values;
     private final long interval;
+    private final int maxBuckets;
     private final LongIntHashMap counts;
 
     HistogramNaiveSingleValuedLeafCollector(
-        NumericDocValues values, long interval, LongIntHashMap counts) {
+        NumericDocValues values, long interval, int maxBuckets, LongIntHashMap counts) {
       this.values = values;
       this.interval = interval;
+      this.maxBuckets = maxBuckets;
       this.counts = counts;
     }
 
@@ -148,6 +155,7 @@ final class HistogramCollector implements Collector {
         final long value = values.longValue();
         final long quotient = Math.floorDiv(value, interval);
         counts.addTo(quotient, 1);
+        checkMaxBuckets(counts.size(), maxBuckets);
       }
     }
   }
@@ -161,6 +169,7 @@ final class HistogramCollector implements Collector {
     private final NumericDocValues values;
     private final DocValuesSkipper skipper;
     private final long interval;
+    private final int maxBuckets;
     private final int[] counts;
     private final long leafMinQuotient;
     private final LongIntHashMap collectorCounts;
@@ -180,10 +189,12 @@ final class HistogramCollector implements Collector {
         NumericDocValues values,
         DocValuesSkipper skipper,
         long interval,
+        int maxBuckets,
         LongIntHashMap collectorCounts) {
       this.values = values;
       this.skipper = skipper;
       this.interval = interval;
+      this.maxBuckets = maxBuckets;
       this.collectorCounts = collectorCounts;
 
       leafMinQuotient = Math.floorDiv(skipper.minValue(), interval);
@@ -247,6 +258,17 @@ final class HistogramCollector implements Collector {
       for (int i = 0; i < counts.length; ++i) {
         collectorCounts.addTo(leafMinQuotient + i, counts[i]);
       }
+      checkMaxBuckets(collectorCounts.size(), maxBuckets);
+    }
+  }
+
+  private static void checkMaxBuckets(int size, int maxBuckets) {
+    if (size > maxBuckets) {
+      throw new IllegalStateException(
+          "Collected "
+              + size
+              + " buckets, which is more than the configured max number of buckets: "
+              + maxBuckets);
     }
   }
 }
