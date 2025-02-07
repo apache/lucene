@@ -595,6 +595,12 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         case BINARY:
           consumer.writeField(field, value.getBinaryValue());
           break;
+        case DATA_INPUT:
+          consumer.writeField(
+              field,
+              value.getDataInputValue().getDataInput(),
+              value.getDataInputValue().getLength());
+          break;
         case STRING:
           consumer.writeField(field, value.getStringValue());
           break;
