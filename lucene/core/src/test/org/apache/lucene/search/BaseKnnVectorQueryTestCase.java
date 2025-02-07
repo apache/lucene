@@ -640,7 +640,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           }
 
           // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
-          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
+          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 6);
           expectThrows(
               UnsupportedOperationException.class,
               () ->
