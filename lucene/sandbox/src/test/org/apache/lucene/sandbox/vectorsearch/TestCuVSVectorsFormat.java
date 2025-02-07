@@ -14,21 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.vectorsearch;
 
-apply plugin: 'java-library'
+import java.util.List;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.index.VectorEncoding;
+import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.junit.BeforeClass;
 
-description = 'Various third party contributions and new ideas'
+public class TestCuVSVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
-repositories {
-  mavenLocal()
-}
+  @BeforeClass
+  public static void beforeClass() {
+    assumeTrue("cuvs is not supported", CuVSVectorsFormat.supported());
+  }
 
+  @Override
+  protected Codec getCodec() {
+    return TestUtil.alwaysKnnVectorsFormat(new CuVSVectorsFormat());
+  }
 
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
-  moduleImplementation deps.commons.lang3
-  moduleImplementation deps.cuvs
+  @Override
+  protected List<VectorEncoding> supportedVectorEncodings() {
+    return List.of(VectorEncoding.FLOAT32);
+  }
 }
