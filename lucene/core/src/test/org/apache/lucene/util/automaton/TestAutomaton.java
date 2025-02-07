@@ -86,12 +86,14 @@ public class TestAutomaton extends LuceneTestCase {
     Automaton a1 = Automata.makeString("foobar");
     Automaton a2 =
         Operations.removeDeadStates(
-            Operations.concatenate(Automata.makeString("foo"), Automata.makeString("bar")));
+            Operations.concatenate(
+                List.of(Automata.makeString("foo"), Automata.makeString("bar"))));
     assertTrue(AutomatonTestUtil.sameLanguage(a1, a2));
   }
 
   public void testCommonPrefixString() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeString("foobar"), Automata.makeAnyString());
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeString("foobar"), Automata.makeAnyString()));
     assertEquals("foobar", Operations.getCommonPrefix(a));
   }
 
@@ -114,31 +116,36 @@ public class TestAutomaton extends LuceneTestCase {
   public void testAlternatives() throws Exception {
     Automaton a = Automata.makeChar('a');
     Automaton c = Automata.makeChar('c');
-    assertEquals("", Operations.getCommonPrefix(Operations.union(a, c)));
+    assertEquals("", Operations.getCommonPrefix(Operations.union(List.of(a, c))));
   }
 
   public void testCommonPrefixLeadingWildcard() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeAnyChar(), Automata.makeString("boo"));
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeAnyChar(), Automata.makeString("boo")));
     assertEquals("", Operations.getCommonPrefix(a));
   }
 
   public void testCommonPrefixTrailingWildcard() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeString("boo"), Automata.makeAnyChar());
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeString("boo"), Automata.makeAnyChar()));
     assertEquals("boo", Operations.getCommonPrefix(a));
   }
 
   public void testCommonPrefixLeadingKleenStar() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo"));
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeAnyString(), Automata.makeString("boo")));
     assertEquals("", Operations.getCommonPrefix(a));
   }
 
   public void testCommonPrefixTrailingKleenStar() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeString("boo"), Automata.makeAnyString());
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeString("boo"), Automata.makeAnyString()));
     assertEquals("boo", Operations.getCommonPrefix(a));
   }
 
   public void testCommonPrefixDeadStates() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo"));
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeAnyString(), Automata.makeString("boo")));
     // reverse it twice, to create some dead states
     // TODO: is it possible to fix reverse() to not create dead states?!
     Automaton withDeadStates = Operations.reverse(Operations.reverse(a));
@@ -152,7 +159,8 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testCommonPrefixRemoveDeadStates() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo"));
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeAnyString(), Automata.makeString("boo")));
     // reverse it twice, to create some dead states
     // TODO: is it possible to fix reverse() to not create dead states?!
     Automaton withDeadStates = Operations.reverse(Operations.reverse(a));
@@ -201,12 +209,14 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testCommonPrefixUnicode() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeString("boo😂😂😂"), Automata.makeAnyChar());
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeString("boo😂😂😂"), Automata.makeAnyChar()));
     assertEquals("boo😂😂😂", Operations.getCommonPrefix(a));
   }
 
   public void testConcatenate1() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeString("m"), Automata.makeAnyString());
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeString("m"), Automata.makeAnyString()));
     assertTrue(Operations.run(a, "m"));
     assertTrue(Operations.run(a, "me"));
     assertTrue(Operations.run(a, "me too"));
@@ -373,23 +383,26 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testCommonSuffixTrailingWildcard() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeString("boo"), Automata.makeAnyChar());
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeString("boo"), Automata.makeAnyChar()));
     assertEquals(newBytesRef(), Operations.getCommonSuffixBytesRef(a));
   }
 
   public void testCommonSuffixLeadingKleenStar() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo"));
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeAnyString(), Automata.makeString("boo")));
     assertEquals(newBytesRef("boo"), Operations.getCommonSuffixBytesRef(a));
   }
 
   public void testCommonSuffixTrailingKleenStar() throws Exception {
-    Automaton a = Operations.concatenate(Automata.makeString("boo"), Automata.makeAnyString());
+    Automaton a =
+        Operations.concatenate(List.of(Automata.makeString("boo"), Automata.makeAnyString()));
     assertEquals(newBytesRef(), Operations.getCommonSuffixBytesRef(a));
   }
 
   public void testCommonSuffixUnicode() throws Exception {
     Automaton a =
-        Operations.concatenate(Automata.makeAnyString(), Automata.makeString("boo😂😂😂"));
+        Operations.concatenate(List.of(Automata.makeAnyString(), Automata.makeString("boo😂😂😂")));
     Automaton binary = new UTF32ToUTF8().convert(a);
     assertEquals(newBytesRef("boo😂😂😂"), Operations.getCommonSuffixBytesRef(binary));
   }
@@ -702,10 +715,10 @@ public class TestAutomaton extends LuceneTestCase {
 
   public void testConcatEmpty() throws Exception {
     // If you concat empty automaton to anything the result should still be empty:
-    Automaton a = Operations.concatenate(Automata.makeEmpty(), Automata.makeString("foo"));
+    Automaton a = Operations.concatenate(List.of(Automata.makeEmpty(), Automata.makeString("foo")));
     assertEquals(new HashSet<IntsRef>(), TestOperations.getFiniteStrings(a));
 
-    a = Operations.concatenate(Automata.makeString("foo"), Automata.makeEmpty());
+    a = Operations.concatenate(List.of(Automata.makeString("foo"), Automata.makeEmpty()));
     assertEquals(new HashSet<IntsRef>(), TestOperations.getFiniteStrings(a));
   }
 
@@ -778,12 +791,12 @@ public class TestAutomaton extends LuceneTestCase {
         if (VERBOSE) {
           System.out.println("  randomNoOp: concat empty string");
         }
-        return Operations.concatenate(a, Automata.makeEmptyString());
+        return Operations.concatenate(List.of(a, Automata.makeEmptyString()));
       case 5:
         if (VERBOSE) {
           System.out.println("  randomNoOp: union empty automaton");
         }
-        return Operations.union(a, Automata.makeEmpty());
+        return Operations.union(List.of(a, Automata.makeEmpty()));
       case 6:
         if (VERBOSE) {
           System.out.println("  randomNoOp: do nothing!");
@@ -881,9 +894,9 @@ public class TestAutomaton extends LuceneTestCase {
             }
             terms = newTerms;
             boolean wasDeterministic = a.isDeterministic();
-            a = Operations.concatenate(Automata.makeString(prefix.utf8ToString()), a);
+            a = Operations.concatenate(List.of(Automata.makeString(prefix.utf8ToString()), a));
             if (wasDeterministic) {
-              assertTrue(a.isDeterministic());
+              assertEquals(wasDeterministic, a.isDeterministic());
             }
           }
           break;
@@ -903,7 +916,7 @@ public class TestAutomaton extends LuceneTestCase {
               newTerms.add(newTerm.toBytesRef());
             }
             terms = newTerms;
-            a = Operations.concatenate(a, Automata.makeString(suffix.utf8ToString()));
+            a = Operations.concatenate(List.of(a, Automata.makeString(suffix.utf8ToString())));
           }
           break;
 
@@ -941,7 +954,7 @@ public class TestAutomaton extends LuceneTestCase {
             }
             terms.addAll(newTerms);
             Automaton newA = unionTerms(newTerms);
-            a = Operations.union(a, newA);
+            a = Operations.union(List.of(a, newA));
           }
           break;
 
@@ -1114,7 +1127,7 @@ public class TestAutomaton extends LuceneTestCase {
               System.out.println(
                   "  op=union interval min=" + min + " max=" + max + " digits=" + digits);
             }
-            a = Operations.union(a, Automata.makeDecimalInterval(min, max, digits));
+            a = Operations.union(List.of(a, Automata.makeDecimalInterval(min, max, digits)));
             StringBuilder b = new StringBuilder();
             for (int i = 0; i < digits; i++) {
               b.append('0');
@@ -1143,7 +1156,7 @@ public class TestAutomaton extends LuceneTestCase {
           if (VERBOSE) {
             System.out.println("  op=add the empty string");
           }
-          a = Operations.union(a, Automata.makeEmptyString());
+          a = Operations.union(List.of(a, Automata.makeEmptyString()));
           terms.add(newBytesRef());
           break;
 
@@ -1170,7 +1183,7 @@ public class TestAutomaton extends LuceneTestCase {
               if (VERBOSE) {
                 System.out.println("  do suffix");
               }
-              a = Operations.concatenate(a, randomNoOp(a2));
+              a = Operations.concatenate(List.of(a, randomNoOp(a2)));
               BytesRefBuilder newTerm = new BytesRefBuilder();
               for (BytesRef term : terms) {
                 for (BytesRef suffix : addTerms) {
@@ -1184,7 +1197,7 @@ public class TestAutomaton extends LuceneTestCase {
               if (VERBOSE) {
                 System.out.println("  do prefix");
               }
-              a = Operations.concatenate(randomNoOp(a2), a);
+              a = Operations.concatenate(List.of(randomNoOp(a2), a));
               BytesRefBuilder newTerm = new BytesRefBuilder();
               for (BytesRef term : terms) {
                 for (BytesRef prefix : addTerms) {
@@ -1707,7 +1720,7 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testMakeCharSetTwo() {
-    Automaton expected = Operations.union(Automata.makeChar('a'), Automata.makeChar('A'));
+    Automaton expected = Operations.union(List.of(Automata.makeChar('a'), Automata.makeChar('A')));
     Automaton actual = Automata.makeCharSet(new int[] {'a', 'A'});
     assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
     assertTrue(actual.isDeterministic());
