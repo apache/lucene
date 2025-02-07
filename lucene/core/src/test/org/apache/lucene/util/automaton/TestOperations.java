@@ -374,6 +374,54 @@ public class TestOperations extends LuceneTestCase {
             Operations.determinize(Operations.repeat(aOrAb), Integer.MAX_VALUE)));
   }
 
+  public void testMergeAcceptStatesWithNoTransition() {
+    Automaton emptyLanguage = Automata.makeEmpty();
+    assertSame(emptyLanguage, Operations.mergeAcceptStatesWithNoTransition(emptyLanguage));
+
+    Automaton a = Automata.makeString("a");
+    assertSame(a, Operations.mergeAcceptStatesWithNoTransition(a));
+
+    // All accept states get combined
+    Automaton aOrC = new Automaton();
+    aOrC.createState();
+    aOrC.createState();
+    aOrC.createState();
+    aOrC.addTransition(0, 1, 'a');
+    aOrC.setAccept(1, true);
+    aOrC.addTransition(0, 2, 'c');
+    aOrC.setAccept(2, true);
+    Automaton aOrCSingleAcceptState = Operations.mergeAcceptStatesWithNoTransition(aOrC);
+    assertEquals(1, aOrCSingleAcceptState.getAcceptStates().cardinality());
+    assertTrue(AutomatonTestUtil.sameLanguage(aOrC, aOrCSingleAcceptState));
+
+    // Two accept states get combined, but not the 3rd one since it has an outgoing transition
+    Automaton aOrCOrXStar = new Automaton();
+    aOrCOrXStar.createState();
+    aOrCOrXStar.createState();
+    aOrCOrXStar.createState();
+    aOrCOrXStar.createState();
+    aOrCOrXStar.addTransition(0, 1, 'a');
+    aOrCOrXStar.setAccept(1, true);
+    aOrCOrXStar.addTransition(0, 2, 'c');
+    aOrCOrXStar.setAccept(2, true);
+    aOrCOrXStar.addTransition(0, 3, 'x');
+    aOrCOrXStar.addTransition(3, 3, 'x');
+    aOrCOrXStar.setAccept(3, true);
+    Automaton aOrCOrXStarSingleAcceptState =
+        Operations.mergeAcceptStatesWithNoTransition(aOrCOrXStar);
+    assertEquals(2, aOrCOrXStarSingleAcceptState.getAcceptStates().cardinality());
+    assertTrue(AutomatonTestUtil.sameLanguage(aOrCOrXStar, aOrCOrXStarSingleAcceptState));
+
+    int iters = atLeast(100);
+    for (int iter = 0; iter < iters; iter++) {
+      // sameLangage requires a deterministic automaton
+      Automaton expected =
+          Operations.determinize(AutomatonTestUtil.randomAutomaton(random()), Integer.MAX_VALUE);
+      Automaton actual = Operations.mergeAcceptStatesWithNoTransition(expected);
+      assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
+    }
+  }
+
   public void testDuelRepeat() {
     final int iters = atLeast(1_000);
     for (int iter = 0; iter < iters; ++iter) {
