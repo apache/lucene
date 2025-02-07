@@ -165,7 +165,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           }
           float friendSimilarity = scorer.score(friendOrd);
           collector.incVisitedCount(1);
-          if (currentScore < friendSimilarity) {
+          if (friendSimilarity > currentScore) {
             currentScore = friendSimilarity;
             currentEp = friendOrd;
             foundBetter = true;
@@ -216,7 +216,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
-      if (topCandidateSimilarity < minAcceptedSimilarity) {
+      if (minAcceptedSimilarity > topCandidateSimilarity) {
         break;
       }
 
@@ -234,7 +234,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         }
         float friendSimilarity = scorer.score(friendOrd);
         results.incVisitedCount(1);
-        if (minAcceptedSimilarity < friendSimilarity) {
+        if (friendSimilarity > minAcceptedSimilarity) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             if (results.collect(friendOrd, friendSimilarity)) {
