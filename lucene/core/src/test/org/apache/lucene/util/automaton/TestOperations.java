@@ -406,6 +406,15 @@ public class TestOperations extends LuceneTestCase {
         Operations.mergeAcceptStatesWithNoTransition(aOrCOrXStar);
     assertEquals(2, aOrCOrXStarSingleAcceptState.getAcceptStates().cardinality());
     assertTrue(AutomatonTestUtil.sameLanguage(aOrCOrXStar, aOrCOrXStarSingleAcceptState));
+
+    int iters = atLeast(100);
+    for (int iter = 0; iter < iters; iter++) {
+      // sameLangage requires a deterministic automaton
+      Automaton expected =
+          Operations.determinize(AutomatonTestUtil.randomAutomaton(random()), Integer.MAX_VALUE);
+      Automaton actual = Operations.mergeAcceptStatesWithNoTransition(expected);
+      assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
+    }
   }
 
   public void testDuelRepeat() {

@@ -1052,7 +1052,12 @@ public final class Operations {
     return result;
   }
 
-  /** Merge all accept states that don't have outgoing transitions to a single shared state. */
+  /**
+   * Merge all accept states that don't have outgoing transitions to a single shared state. This is
+   * a subset of minimization that is much cheaper. This helper is useful because operations like
+   * concatenation need to connect accept states of an automaton with the start state of the next
+   * one, so having fewer accept states makes the produced automata simpler.
+   */
   static Automaton mergeAcceptStatesWithNoTransition(Automaton a) {
     int numStates = a.getNumStates();
 
