@@ -70,7 +70,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   SeededKnnVectorQuery(AbstractKnnVectorQuery knnQuery, Query seed, Weight seedWeight) {
-    super(knnQuery.field, knnQuery.k, knnQuery.filter);
+    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
     this.delegate = knnQuery;
     this.seed = Objects.requireNonNull(seed);
     this.seedWeight = seedWeight;
@@ -315,7 +315,9 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
         DocIdSetIterator seedDocs =
             new MappedDISI(indexIterator, new TopDocsDISI(seedTopDocs, ctx));
         return knnCollectorManager.newCollector(
-            visitLimit, new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length), ctx);
+            visitLimit,
+            new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length, searchStrategy),
+            ctx);
       }
       return delegateCollector;
     }

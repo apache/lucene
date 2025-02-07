@@ -25,6 +25,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
 
@@ -112,7 +113,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
-      super(field, target, k, filter);
+      super(field, target, k, filter, new KnnSearchStrategy.Hnsw(0));
     }
 
     @Override
