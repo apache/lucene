@@ -55,4 +55,3 @@ def trainModel(String command, String lang, String data, String model, List extr
   }
 }
 
-tasks.register('regenerate') { dependsOn 'trainTestModels' }
