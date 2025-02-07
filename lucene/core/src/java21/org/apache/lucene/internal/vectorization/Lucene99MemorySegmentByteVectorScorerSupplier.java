@@ -25,8 +25,8 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
-import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 
 /** A score supplier of vectors whose element size is byte. */
 public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
@@ -110,14 +110,22 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
+    public UpdateableRandomVectorScorer scorer() {
+      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
+        private int queryOrd = 0;
+
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
-          float raw = PanamaVectorUtilSupport.cosine(getFirstSegment(ord), getSecondSegment(node));
+          float raw =
+              PanamaVectorUtilSupport.cosine(getFirstSegment(queryOrd), getSecondSegment(node));
           return (1 + raw) / 2;
+        }
+
+        @Override
+        public void setScoringOrdinal(int node) {
+          checkOrdinal(node);
+          queryOrd = node;
         }
       };
     }
@@ -135,16 +143,23 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
+    public UpdateableRandomVectorScorer scorer() {
+      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
+        private int queryOrd = 0;
+
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
           // divide by 2 * 2^14 (maximum absolute value of product of 2 signed bytes) * len
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(ord), getSecondSegment(node));
+              PanamaVectorUtilSupport.dotProduct(getFirstSegment(queryOrd), getSecondSegment(node));
           return 0.5f + raw / (float) (values.dimension() * (1 << 15));
+        }
+
+        @Override
+        public void setScoringOrdinal(int node) {
+          checkOrdinal(node);
+          queryOrd = node;
         }
       };
     }
@@ -162,15 +177,23 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
+    public UpdateableRandomVectorScorer scorer() {
+      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
+        private int queryOrd = 0;
+
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.squareDistance(getFirstSegment(ord), getSecondSegment(node));
+              PanamaVectorUtilSupport.squareDistance(
+                  getFirstSegment(queryOrd), getSecondSegment(node));
           return 1 / (1f + raw);
+        }
+
+        @Override
+        public void setScoringOrdinal(int node) {
+          checkOrdinal(node);
+          queryOrd = node;
         }
       };
     }
@@ -188,18 +211,25 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) {
-      checkOrdinal(ord);
-      return new RandomVectorScorer.AbstractRandomVectorScorer(values) {
+    public UpdateableRandomVectorScorer scorer() {
+      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
+        private int queryOrd = 0;
+
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw =
-              PanamaVectorUtilSupport.dotProduct(getFirstSegment(ord), getSecondSegment(node));
+              PanamaVectorUtilSupport.dotProduct(getFirstSegment(queryOrd), getSecondSegment(node));
           if (raw < 0) {
             return 1 / (1 + -1 * raw);
           }
           return raw + 1;
+        }
+
+        @Override
+        public void setScoringOrdinal(int node) {
+          checkOrdinal(node);
+          queryOrd = node;
         }
       };
     }

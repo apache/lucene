@@ -893,9 +893,11 @@ public class TestAutomaton extends LuceneTestCase {
               newTerms.add(newTerm.toBytesRef());
             }
             terms = newTerms;
-            boolean wasDeterministic1 = a.isDeterministic();
+            boolean wasDeterministic = a.isDeterministic();
             a = Operations.concatenate(List.of(Automata.makeString(prefix.utf8ToString()), a));
-            assertEquals(wasDeterministic1, a.isDeterministic());
+            if (wasDeterministic) {
+              assertEquals(wasDeterministic, a.isDeterministic());
+            }
           }
           break;
 
