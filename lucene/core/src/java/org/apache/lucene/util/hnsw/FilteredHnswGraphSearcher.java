@@ -39,16 +39,11 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * </ul>
  */
 public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
-  // The maximum percentage of filtered docs before using this filtered strategy becomes less
-  // effective than regular HNSW search
-  static final float MAX_FILTER_THRESHOLD = 1.0f;
-
   // How many filtered candidates must be found to consider N-hop neighbors
   private static final float EXPANDED_EXPLORATION_LAMBDA = 0.10f;
 
   // How many extra neighbors to explore, used as a multiple to the candidates neighbor count
   private final int maxExplorationMultiplier;
-  // The minimal number of candidates to attempt to grab if none are found even after two hops
   private final int minToScore;
 
   /** Creates a new graph searcher. */
@@ -56,8 +51,15 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
       NeighborQueue candidates, BitSet visited, int filterSize, HnswGraph graph) {
     super(candidates, visited);
     assert graph.maxConn() > 0 : "graph must have known max connections";
-    this.maxExplorationMultiplier = Math.min(graph.size() / filterSize, graph.maxConn() / 2);
-    this.minToScore = Math.max(graph.maxConn() / 4, 1);
+    float filterRatio = filterSize / (float) graph.size();
+    this.maxExplorationMultiplier =
+        (int) Math.round(Math.min(1 / filterRatio, graph.maxConn() / 2.0));
+    // As the filter gets exceptionally restrictive, we must spread out the exploration
+    this.minToScore =
+        (int)
+            Math.round(
+                Math.min(
+                    Math.max(0, 1.0 / filterRatio - (2.0 * graph.maxConn())), graph.maxConn()));
   }
 
   /**
@@ -134,7 +136,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
-      if (topCandidateSimilarity < minAcceptedSimilarity) {
+      if (minAcceptedSimilarity > topCandidateSimilarity) {
         break;
       }
       int topCandidateNode = candidates.pop();
@@ -161,9 +163,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
       int maxAdditionalToExploreCount = toExplore.capacity() - 1;
       // There is enough filtered, or we don't have enough candidates to score and explore
       int totalExplored = toScore.count() + toExplore.count();
-      if (toScore.count() < maxToScoreCount
-          && filteredAmount > EXPANDED_EXPLORATION_LAMBDA
-          && totalExplored < maxAdditionalToExploreCount) {
+      if (toScore.count() < maxToScoreCount && filteredAmount > EXPANDED_EXPLORATION_LAMBDA) {
         // Now we need to explore the neighbors of the neighbors
         int exploreFriend;
         while ((exploreFriend = toExplore.poll()) != NO_MORE_DOCS
