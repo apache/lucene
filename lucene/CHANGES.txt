@@ -113,6 +113,8 @@ Bug Fixes
 * GITHUB#14126: Avoid overflow in index input slices invariant checks
   (Chris Hegarty)
 
+* GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
+
 Other
 ---------------------
 
