@@ -13,6 +13,9 @@ API Changes
 * GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
   bit set of matches. (Adrien Grand)
 
+* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and 
+  concatenate(Automaton,Automaton) in favor of the methods taking List.  (Robert Muir)
+
 New Features
 ---------------------
 
