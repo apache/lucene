@@ -46,6 +46,9 @@ API Changes
 * GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
   bit set of matches. (Adrien Grand)
 
+* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and 
+  concatenate(Automaton,Automaton) in favor of the methods taking List.  (Robert Muir)
+
 New Features
 ---------------------
 
@@ -95,6 +98,9 @@ Optimizations
 * GITHUB#14181: Add updateable random scorer interface for knn vector index building. This allows
   for fewer objects to be created during indexing and simplifies internally used iterfaces.
   (Ben Trent)
+
+* GITHUB#14193: Add Automata.makeCharSet() and makeCharClass() that return minimal DFA
+  for lists of characters and ranges. Use them in RegExp parser.  (Robert Muir)
 
 Bug Fixes
 ---------------------

@@ -65,8 +65,8 @@ public class TestOperations extends LuceneTestCase {
 
   /** Test concatenation with empty language returns empty */
   public void testEmptyLanguageConcatenate() {
-    Automaton a = Automata.makeString("a");
-    Automaton concat = Operations.concatenate(a, Automata.makeEmpty());
+    Automaton concat =
+        Operations.concatenate(List.of(Automata.makeString("a"), Automata.makeEmpty()));
     assertTrue(Operations.isEmpty(concat));
   }
 
@@ -111,9 +111,10 @@ public class TestOperations extends LuceneTestCase {
     Automaton singleton = Automata.makeString("");
     Automaton expandedSingleton = singleton;
     // an NFA (two transitions for 't' from initial state)
-    Automaton nfa = Operations.union(Automata.makeString("this"), Automata.makeString("three"));
-    Automaton concat1 = Operations.concatenate(expandedSingleton, nfa);
-    Automaton concat2 = Operations.concatenate(singleton, nfa);
+    Automaton nfa =
+        Operations.union(List.of(Automata.makeString("this"), Automata.makeString("three")));
+    Automaton concat1 = Operations.concatenate(List.of(expandedSingleton, nfa));
+    Automaton concat2 = Operations.concatenate(List.of(singleton, nfa));
     assertFalse(concat2.isDeterministic());
     assertTrue(
         AutomatonTestUtil.sameLanguage(
@@ -167,7 +168,7 @@ public class TestOperations extends LuceneTestCase {
     TestUtil.randomFixedLengthUnicodeString(random(), chars, 0, chars.length);
     String bigString2 = new String(chars);
     Automaton a =
-        Operations.union(Automata.makeString(bigString1), Automata.makeString(bigString2));
+        Operations.union(List.of(Automata.makeString(bigString1), Automata.makeString(bigString2)));
     IllegalArgumentException exc =
         expectThrows(IllegalArgumentException.class, () -> AutomatonTestUtil.isFinite(a));
     assertTrue(exc.getMessage().contains("input automaton is too large"));
@@ -185,27 +186,31 @@ public class TestOperations extends LuceneTestCase {
     Automaton tricky =
         Operations.repeat(
             Operations.union(
-                Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
-                Automata.makeCharRange(101, Character.MAX_CODE_POINT)));
+                List.of(
+                    Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
+                    Automata.makeCharRange(101, Character.MAX_CODE_POINT))));
     assertTrue(Operations.isTotal(tricky));
     // not total, but close
     Automaton tricky2 =
         Operations.repeat(
             Operations.union(
-                Automata.makeCharRange(Character.MIN_CODE_POINT + 1, 100),
-                Automata.makeCharRange(101, Character.MAX_CODE_POINT)));
+                List.of(
+                    Automata.makeCharRange(Character.MIN_CODE_POINT + 1, 100),
+                    Automata.makeCharRange(101, Character.MAX_CODE_POINT))));
     assertFalse(Operations.isTotal(tricky2));
     Automaton tricky3 =
         Operations.repeat(
             Operations.union(
-                Automata.makeCharRange(Character.MIN_CODE_POINT, 99),
-                Automata.makeCharRange(101, Character.MAX_CODE_POINT)));
+                List.of(
+                    Automata.makeCharRange(Character.MIN_CODE_POINT, 99),
+                    Automata.makeCharRange(101, Character.MAX_CODE_POINT))));
     assertFalse(Operations.isTotal(tricky3));
     Automaton tricky4 =
         Operations.repeat(
             Operations.union(
-                Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
-                Automata.makeCharRange(101, Character.MAX_CODE_POINT - 1)));
+                List.of(
+                    Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
+                    Automata.makeCharRange(101, Character.MAX_CODE_POINT - 1))));
     assertFalse(Operations.isTotal(tricky4));
   }
 
@@ -327,7 +332,7 @@ public class TestOperations extends LuceneTestCase {
     assertTrue(AutomatonTestUtil.sameLanguage(abs, Operations.repeat(ab)));
     assertSame(abs, Operations.repeat(abs));
 
-    Automaton absThenC = Operations.concatenate(abs, Automata.makeChar('c'));
+    Automaton absThenC = Operations.concatenate(List.of(abs, Automata.makeChar('c')));
     Automaton absThenCs = new Automaton();
     absThenCs.createState();
     absThenCs.createState();
