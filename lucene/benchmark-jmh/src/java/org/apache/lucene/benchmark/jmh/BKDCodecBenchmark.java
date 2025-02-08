@@ -100,8 +100,12 @@ public class BKDCodecBenchmark {
     IOUtils.close(legacyIn, vectorIn, dir);
   }
 
+  /**
+   * It is important to make count variable, like what will happen in real BKD leaves. If this
+   * method constantly return 512, {@link #current} will run as fast as {@link #currentVector}.
+   */
   private static int count(int iter) {
-    // to make benchmark more realistic
+    // return 512;
     return iter % 20 == 0 ? 511 : SIZE;
   }
 
