@@ -340,10 +340,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       BytesRef expectedRef = new BytesRef(bytes);
 
       assertEquals(i, dvBytesDerefFixed.nextDoc());
-      BytesRef term = dvBytesDerefFixed.binaryValue();
+      BytesRef term = dvBytesDerefFixed.randomAccessInputValue().toBytesRef();
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesDerefVar.nextDoc());
-      term = dvBytesDerefVar.binaryValue();
+      term = dvBytesDerefVar.randomAccessInputValue().toBytesRef();
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesSortedFixed.nextDoc());
       term = dvBytesSortedFixed.lookupOrd(dvBytesSortedFixed.ordValue());
@@ -352,10 +352,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
       term = dvBytesSortedVar.lookupOrd(dvBytesSortedVar.ordValue());
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesStraightFixed.nextDoc());
-      term = dvBytesStraightFixed.binaryValue();
+      term = dvBytesStraightFixed.randomAccessInputValue().toBytesRef();
       assertEquals(expectedRef, term);
       assertEquals(i, dvBytesStraightVar.nextDoc());
-      term = dvBytesStraightVar.binaryValue();
+      term = dvBytesStraightVar.randomAccessInputValue().toBytesRef();
       assertEquals(expectedRef, term);
 
       assertEquals(i, dvDouble.nextDoc());
