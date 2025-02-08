@@ -82,6 +82,8 @@ Optimizations
 
 # GITHUB#14169: Optimize ContextQuery with big number of contexts. (Mayya Sharipova)
 
+# GITHUB#14203: Use Vector API to decode BKD docIds. (GuoFeng)
+
 Bug Fixes
 ---------------------
 

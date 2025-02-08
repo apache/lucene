@@ -33,7 +33,8 @@ import org.apache.lucene.util.LongsRef;
 /** Public for jmh benchmark. */
 public final class DocIdsWriter {
 
-  private static final BKDDecodingUtil BDU = VectorizationProvider.getInstance().newBKDDecodingUtil();
+  private static final BKDDecodingUtil BDU =
+      VectorizationProvider.getInstance().newBKDDecodingUtil();
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
   private static final byte DELTA_BPV_16 = (byte) 16;
