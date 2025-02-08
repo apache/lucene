@@ -265,7 +265,7 @@ public class BKDReader extends PointValues {
           1,
           minPackedValue,
           maxPackedValue,
-          new BKDReaderDocIDSetIterator(config.maxPointsInLeafNode()),
+          new BKDReaderDocIDSetIterator(config.maxPointsInLeafNode(), version),
           new byte[config.packedBytesLength()],
           new byte[config.packedIndexBytesLength()],
           new byte[config.packedIndexBytesLength()],
@@ -1034,9 +1034,9 @@ public class BKDReader extends PointValues {
     final int[] docIDs;
     private final DocIdsWriter docIdsWriter;
 
-    public BKDReaderDocIDSetIterator(int maxPointsInLeafNode) {
+    public BKDReaderDocIDSetIterator(int maxPointsInLeafNode, int version) {
       this.docIDs = new int[maxPointsInLeafNode];
-      this.docIdsWriter = new DocIdsWriter(maxPointsInLeafNode);
+      this.docIdsWriter = new DocIdsWriter(maxPointsInLeafNode, version);
     }
 
     @Override

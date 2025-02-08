@@ -85,7 +85,8 @@ public class BKDWriter implements Closeable {
   public static final int VERSION_SELECTIVE_INDEXING = 6;
   public static final int VERSION_LOW_CARDINALITY_LEAVES = 7;
   public static final int VERSION_META_FILE = 9;
-  public static final int VERSION_CURRENT = VERSION_META_FILE;
+  public static final int VERSION_VECTORIZED_BPV24 = 10;
+  public static final int VERSION_CURRENT = VERSION_VECTORIZED_BPV24;
 
   /** Number of splits before we compute the exact bounding box of an inner node. */
   private static final int SPLITS_BEFORE_EXACT_BOUNDS = 4;
@@ -131,6 +132,7 @@ public class BKDWriter implements Closeable {
 
   private final int maxDoc;
   private final DocIdsWriter docIdsWriter;
+  private final int version;
 
   public BKDWriter(
       int maxDoc,
@@ -139,6 +141,27 @@ public class BKDWriter implements Closeable {
       BKDConfig config,
       double maxMBSortInHeap,
       long totalPointCount) {
+    this(
+        maxDoc,
+        tempDir,
+        tempFileNamePrefix,
+        config,
+        maxMBSortInHeap,
+        totalPointCount,
+        BKDWriter.VERSION_CURRENT);
+  }
+
+  public BKDWriter(
+      int maxDoc,
+      Directory tempDir,
+      String tempFileNamePrefix,
+      BKDConfig config,
+      double maxMBSortInHeap,
+      long totalPointCount,
+      int version) {
+    if (version < VERSION_START || version > VERSION_CURRENT) {
+      throw new IllegalArgumentException("Version out of range: " + version);
+    }
     verifyParams(maxMBSortInHeap, totalPointCount);
     // We use tracking dir to deal with removing files on exception, so each place that
     // creates temp files doesn't need crazy try/finally/sucess logic:
@@ -148,6 +171,7 @@ public class BKDWriter implements Closeable {
 
     this.totalPointCount = totalPointCount;
     this.maxDoc = maxDoc;
+    this.version = version;
 
     this.config = config;
     this.comparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim());
@@ -165,7 +189,7 @@ public class BKDWriter implements Closeable {
 
     // Maximum number of points we hold in memory at any time
     maxPointsSortInHeap = (int) ((maxMBSortInHeap * 1024 * 1024) / (config.bytesPerDoc()));
-    docIdsWriter = new DocIdsWriter(config.maxPointsInLeafNode());
+    docIdsWriter = new DocIdsWriter(config.maxPointsInLeafNode(), version);
     // Finally, we must be able to hold at least the leaf node in heap during build:
     if (maxPointsSortInHeap < config.maxPointsInLeafNode()) {
       throw new IllegalArgumentException(

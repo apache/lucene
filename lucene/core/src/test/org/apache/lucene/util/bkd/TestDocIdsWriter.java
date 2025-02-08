@@ -113,24 +113,24 @@ public class TestDocIdsWriter extends LuceneTestCase {
 
   private void test(Directory dir, int[] ints) throws Exception {
     final long len;
-    DocIdsWriter docIdsWriter = new DocIdsWriter(ints.length);
+    DocIdsWriter encoder = new DocIdsWriter(ints.length, BKDWriter.VERSION_CURRENT);
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
-      docIdsWriter.writeDocIds(ints, 0, ints.length, out);
+      encoder.writeDocIds(ints, 0, ints.length, out);
       len = out.getFilePointer();
       if (random().nextBoolean()) {
         out.writeLong(0); // garbage
       }
     }
+    DocIdsWriter decoder = new DocIdsWriter(ints.length, BKDWriter.VERSION_CURRENT);
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
-      docIdsWriter.readInts(
-          BKDReader.VECTORIZATION_PROVIDER.newBKDDecodingUtil(in), ints.length, read);
+      decoder.readInts(BKDReader.VECTORIZATION_PROVIDER.newBKDDecodingUtil(in), ints.length, read);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
-      docIdsWriter.readInts(
+      decoder.readInts(
           BKDReader.VECTORIZATION_PROVIDER.newBKDDecodingUtil(in),
           ints.length,
           new IntersectVisitor() {
