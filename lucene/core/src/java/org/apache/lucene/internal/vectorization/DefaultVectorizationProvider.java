@@ -46,7 +46,7 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
   }
 
   @Override
-  public BKDDecodingUtil newBKDDecodingUtil(IndexInput input) {
-    return new BKDDecodingUtil(input);
+  public BKDDecodingUtil newBKDDecodingUtil() {
+    return new BKDDecodingUtil();
   }
 }

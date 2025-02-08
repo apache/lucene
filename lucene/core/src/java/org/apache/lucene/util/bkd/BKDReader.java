@@ -20,8 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.internal.vectorization.BKDDecodingUtil;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
@@ -35,7 +33,6 @@ import org.apache.lucene.util.MathUtil;
  * @lucene.experimental
  */
 public class BKDReader extends PointValues {
-  static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
   final BKDConfig config;
   final int numLeaves;
   final IndexInput in;
@@ -199,8 +196,6 @@ public class BKDReader extends PointValues {
     private final IndexInput innerNodes;
     // used to read the packed leaves off-heap
     private final IndexInput leafNodes;
-    // Util to decode leafNodes docs
-    private final BKDDecodingUtil leafNodesUtil;
     // holds the minimum (left most) leaf block file pointer for each level we've recursed to:
     private final long[] leafBlockFPStack;
     // holds the address, in the off-heap index, after reading the node data of each level:
@@ -301,7 +296,6 @@ public class BKDReader extends PointValues {
       leafNodeOffset = numLeaves;
       this.innerNodes = innerNodes;
       this.leafNodes = leafNodes;
-      this.leafNodesUtil = VECTORIZATION_PROVIDER.newBKDDecodingUtil(leafNodes);
       this.minPackedValue = minPackedValue.clone();
       this.maxPackedValue = maxPackedValue.clone();
       // stack arrays that keep information at different levels
@@ -596,7 +590,7 @@ public class BKDReader extends PointValues {
         int count = leafNodes.readVInt();
         // No need to call grow(), it has been called up-front
         // Borrow scratchIterator.docIds as decoding buffer
-        docIdsWriter.readInts(leafNodesUtil, count, visitor, scratchIterator.docIDs);
+        docIdsWriter.readInts(leafNodes, count, visitor, scratchIterator.docIDs);
       } else {
         pushLeft();
         addAll(visitor, grown);
@@ -629,7 +623,7 @@ public class BKDReader extends PointValues {
 
     private void visitDocValues(PointValues.IntersectVisitor visitor, long fp) throws IOException {
       // Leaf node; scan and filter all points in this block:
-      int count = readDocIDs(leafNodesUtil, fp, scratchIterator);
+      int count = readDocIDs(leafNodes, fp, scratchIterator);
       if (version >= BKDWriter.VERSION_LOW_CARDINALITY_LEAVES) {
         visitDocValuesWithCardinality(
             commonPrefixLengths,
@@ -653,13 +647,13 @@ public class BKDReader extends PointValues {
       }
     }
 
-    private int readDocIDs(BKDDecodingUtil bdu, long blockFP, BKDReaderDocIDSetIterator iterator)
+    private int readDocIDs(IndexInput in, long blockFP, BKDReaderDocIDSetIterator iterator)
         throws IOException {
-      bdu.in.seek(blockFP);
+      in.seek(blockFP);
       // How many points are stored in this leaf cell:
-      int count = bdu.in.readVInt();
+      int count = in.readVInt();
 
-      docIdsWriter.readInts(bdu, count, iterator.docIDs);
+      docIdsWriter.readInts(in, count, iterator.docIDs);
 
       return count;
     }

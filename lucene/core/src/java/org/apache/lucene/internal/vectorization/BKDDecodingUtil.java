@@ -5,14 +5,10 @@ import org.apache.lucene.store.IndexInput;
 
 public class BKDDecodingUtil {
 
-  public final IndexInput in;
-
   /** Sole constructor, called by sub-classes. */
-  protected BKDDecodingUtil(IndexInput in) {
-    this.in = in;
-  }
+  protected BKDDecodingUtil() {}
 
-  public void decodeDelta16(int[] docIds, int count) throws IOException {
+  public void decodeDelta16(IndexInput in, int[] docIds, int count) throws IOException {
     final int min = in.readVInt();
     final int halfLen = count >>> 1;
     in.readInts(docIds, 0, halfLen);
@@ -26,7 +22,7 @@ public class BKDDecodingUtil {
     }
   }
 
-  public void decode24(int[] docIds, int[] scratch, int count) throws IOException {
+  public void decode24(IndexInput in, int[] docIds, int[] scratch, int count) throws IOException {
     final int quarterLen = count >> 2;
     final int quarterLen3 = quarterLen * 3;
     in.readInts(scratch, 0, quarterLen3);

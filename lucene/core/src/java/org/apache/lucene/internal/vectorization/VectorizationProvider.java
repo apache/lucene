@@ -125,8 +125,8 @@ public abstract class VectorizationProvider {
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
 
-  /** Create a new {@link BKDDecodingUtil} for the given {@link IndexInput}.. */
-  public abstract BKDDecodingUtil newBKDDecodingUtil(IndexInput input);
+  /** Create a new {@link BKDDecodingUtil} to decode BKD doc ids. */
+  public abstract BKDDecodingUtil newBKDDecodingUtil();
 
   // *** Lookup mechanism: ***
 
@@ -220,7 +220,7 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene101.Lucene101PostingsReader",
           "org.apache.lucene.codecs.lucene101.PostingIndexInput",
-          "org.apache.lucene.util.bkd.BKDReader");
+          "org.apache.lucene.util.bkd.DocIdsWriter");
 
   private static void ensureCaller() {
     final boolean validCaller =

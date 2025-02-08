@@ -27,12 +27,12 @@ final class BKDVectorDecodingUtil extends BKDDecodingUtil {
   private static final VectorSpecies<Integer> INT_SPECIES =
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
 
-  BKDVectorDecodingUtil(IndexInput in) {
-    super(in);
+  BKDVectorDecodingUtil() {
+    super();
   }
 
   @Override
-  public void decodeDelta16(int[] docIds, int count) throws IOException {
+  public void decodeDelta16(IndexInput in, int[] docIds, int count) throws IOException {
     final int min = in.readVInt();
     final int halfLen = count >>> 1;
     in.readInts(docIds, 0, halfLen);
@@ -60,7 +60,7 @@ final class BKDVectorDecodingUtil extends BKDDecodingUtil {
   }
 
   @Override
-  public void decode24(int[] docIds, int[] scratch, int count) throws IOException {
+  public void decode24(IndexInput in, int[] docIds, int[] scratch, int count) throws IOException {
     final int quarterLen = count >> 2;
     final int halfLen = quarterLen << 1;
     final int quarterLen3 = quarterLen * 3;

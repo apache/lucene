@@ -66,7 +66,6 @@ module org.apache.lucene.core {
 
   exports org.apache.lucene.util.quantization;
   exports org.apache.lucene.codecs.hnsw;
-  exports org.apache.lucene.internal.vectorization;
 
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
