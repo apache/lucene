@@ -97,4 +97,12 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
     }
     return new PostingDecodingUtil(input);
   }
+
+  @Override
+  public BKDDecodingUtil newBKDDecodingUtil() {
+    if (PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+      return new BKDVectorDecodingUtil();
+    }
+    return new BKDDecodingUtil();
+  }
 }

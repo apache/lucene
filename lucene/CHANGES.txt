@@ -102,6 +102,8 @@ Optimizations
 * GITHUB#14193: Add Automata.makeCharSet() and makeCharClass() that return minimal DFA
   for lists of characters and ranges. Use them in RegExp parser.  (Robert Muir)
 
+# GITHUB#14203: Use Vector API to decode BKD docIds. (GuoFeng)
+
 Bug Fixes
 ---------------------
 
