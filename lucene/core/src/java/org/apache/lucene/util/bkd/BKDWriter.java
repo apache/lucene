@@ -132,7 +132,6 @@ public class BKDWriter implements Closeable {
 
   private final int maxDoc;
   private final DocIdsWriter docIdsWriter;
-  private final int version;
 
   public BKDWriter(
       int maxDoc,
@@ -171,7 +170,6 @@ public class BKDWriter implements Closeable {
 
     this.totalPointCount = totalPointCount;
     this.maxDoc = maxDoc;
-    this.version = version;
 
     this.config = config;
     this.comparator = ArrayUtil.getUnsignedComparator(config.bytesPerDim());
