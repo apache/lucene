@@ -124,14 +124,14 @@ public class TestDocIdsWriter extends LuceneTestCase {
     DocIdsWriter decoder = new DocIdsWriter(ints.length, BKDWriter.VERSION_CURRENT);
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
-      decoder.readInts(BKDReader.VECTORIZATION_PROVIDER.newBKDDecodingUtil(), ints.length, read);
+      decoder.readInts(in, ints.length, read);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
       decoder.readInts(
-          BKDReader.VECTORIZATION_PROVIDER.newBKDDecodingUtil(),
+          in,
           ints.length,
           new IntersectVisitor() {
             int i = 0;
