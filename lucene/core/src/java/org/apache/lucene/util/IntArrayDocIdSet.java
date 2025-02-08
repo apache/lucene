@@ -83,12 +83,7 @@ final class IntArrayDocIdSet extends DocIdSet {
 
     @Override
     public int advance(int target) throws IOException {
-      int bound = 1;
-      // given that we use this for small arrays only, this is very unlikely to overflow
-      while (i + bound < length && docs[i + bound] < target) {
-        bound *= 2;
-      }
-      i = Arrays.binarySearch(docs, i + bound / 2, Math.min(i + bound + 1, length), target);
+      i = ArrayUtil.exponentialSearch(docs, i, length, target);
       if (i < 0) {
         i = -1 - i;
       }
