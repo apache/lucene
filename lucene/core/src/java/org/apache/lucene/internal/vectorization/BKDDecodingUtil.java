@@ -19,6 +19,7 @@ package org.apache.lucene.internal.vectorization;
 import java.io.IOException;
 import org.apache.lucene.store.IndexInput;
 
+/** Utility class to decode BKD docIds. */
 public class BKDDecodingUtil {
 
   /** Sole constructor, called by sub-classes. */
