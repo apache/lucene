@@ -32,7 +32,8 @@ import org.apache.lucene.util.LongsRef;
 
 /** Public for jmh benchmark. */
 public final class DocIdsWriter {
-  private static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
+
+  private static final BKDDecodingUtil BDU = VectorizationProvider.getInstance().newBKDDecodingUtil();
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
   private static final byte DELTA_BPV_16 = (byte) 16;
@@ -44,8 +45,6 @@ public final class DocIdsWriter {
   private final int[] scratch;
 
   private final LongsRef scratchLongs = new LongsRef();
-
-  private static final BKDDecodingUtil BDU = VECTORIZATION_PROVIDER.newBKDDecodingUtil();
 
   /**
    * IntsRef to be used to iterate over the scratch buffer. A single instance is reused to avoid

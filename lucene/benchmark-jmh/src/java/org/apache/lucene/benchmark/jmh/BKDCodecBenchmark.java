@@ -60,8 +60,8 @@ public class BKDCodecBenchmark {
   private Directory dir;
   private DocIdsWriter legacy;
   private IndexInput legacyIn;
-  private DocIdsWriter current;
-  private IndexInput currentIn;
+  private DocIdsWriter vector;
+  private IndexInput vectorIn;
   private int[] docs;
 
   @Setup(Level.Trial)
@@ -71,8 +71,8 @@ public class BKDCodecBenchmark {
     docs = new int[SIZE];
     legacy = new DocIdsWriter(SIZE, BKDWriter.VERSION_META_FILE);
     legacyIn = writeDocIds("legacy", docs, legacy);
-    current = new DocIdsWriter(SIZE, BKDWriter.VERSION_CURRENT);
-    currentIn = writeDocIds("current", docs, current);
+    vector = new DocIdsWriter(SIZE, BKDWriter.VERSION_VECTORIZED_BPV24);
+    vectorIn = writeDocIds("current", docs, vector);
   }
 
   private IndexInput writeDocIds(String file, int[] docs, DocIdsWriter writer) throws IOException {
@@ -92,12 +92,12 @@ public class BKDCodecBenchmark {
   @Setup(Level.Invocation)
   public void setupInvocation() throws IOException {
     legacyIn.seek(0);
-    currentIn.seek(0);
+    vectorIn.seek(0);
   }
 
   @TearDown(Level.Trial)
   public void tearDownTrial() throws IOException {
-    IOUtils.close(legacyIn, currentIn, dir);
+    IOUtils.close(legacyIn, vectorIn, dir);
   }
 
   private static int count(int iter) {
@@ -119,7 +119,7 @@ public class BKDCodecBenchmark {
   public void current(Blackhole bh) throws IOException {
     for (int i = 0; i <= 100; i++) {
       int count = count(i);
-      current.readInts(currentIn, count, docs);
+      vector.readInts(vectorIn, count, docs);
       bh.consume(docs);
       setupInvocation();
     }
@@ -130,7 +130,7 @@ public class BKDCodecBenchmark {
   public void currentVector(Blackhole bh) throws IOException {
     for (int i = 0; i <= 100; i++) {
       int count = count(i);
-      current.readInts(currentIn, count, docs);
+      vector.readInts(vectorIn, count, docs);
       bh.consume(docs);
       setupInvocation();
     }
