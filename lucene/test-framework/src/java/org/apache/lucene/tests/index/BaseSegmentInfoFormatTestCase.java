@@ -391,11 +391,7 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
         for (int j = 0; j < numSortFields; ++j) {
           sortFields[j] = randomIndexSortField();
         }
-        if (supportsHasBlocks()) {
-          sort = new Sort(sortFields);
-        } else {
-          sort = new Sort(sortFields);
-        }
+        sort = new Sort(sortFields);
       }
 
       Directory dir = newDirectory();

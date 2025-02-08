@@ -211,8 +211,7 @@ public class TestQueryVisitor extends LuceneTestCase {
       if (occur == BooleanClause.Occur.MUST_NOT) {
         return QueryVisitor.EMPTY_VISITOR;
       }
-      if (parent instanceof BooleanQuery) {
-        BooleanQuery bq = (BooleanQuery) parent;
+      if (parent instanceof BooleanQuery bq) {
         if (bq.getClauses(BooleanClause.Occur.MUST).size() > 0
             || bq.getClauses(BooleanClause.Occur.FILTER).size() > 0) {
           return QueryVisitor.EMPTY_VISITOR;

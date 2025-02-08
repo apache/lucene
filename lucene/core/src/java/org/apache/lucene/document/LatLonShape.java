@@ -326,8 +326,7 @@ public class LatLonShape {
       String field, QueryRelation queryRelation, LatLonGeometry... latLonGeometries) {
     if (latLonGeometries.length == 1) {
       LatLonGeometry geometry = latLonGeometries[0];
-      if (geometry instanceof Rectangle) {
-        Rectangle rect = (Rectangle) geometry;
+      if (geometry instanceof Rectangle rect) {
         return newBoxQuery(
             field, queryRelation, rect.minLat, rect.maxLat, rect.minLon, rect.maxLon);
       } else {
@@ -355,9 +354,8 @@ public class LatLonShape {
   private static Query makeContainsGeometryQuery(String field, LatLonGeometry... latLonGeometries) {
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
     for (LatLonGeometry geometry : latLonGeometries) {
-      if (geometry instanceof Rectangle) {
+      if (geometry instanceof Rectangle rect) {
         // this handles rectangles across the dateline
-        Rectangle rect = (Rectangle) geometry;
         builder.add(
             newBoxQuery(
                 field, QueryRelation.CONTAINS, rect.minLat, rect.maxLat, rect.minLon, rect.maxLon),

@@ -44,7 +44,7 @@ import org.locationtech.spatial4j.shape.ShapeCollection;
  */
 public class Geo3dBinaryCodec extends BinaryCodec {
 
-  private PlanetModel planetModel;
+  private final PlanetModel planetModel;
 
   public Geo3dBinaryCodec(SpatialContext ctx, SpatialContextFactory factory) {
     super(ctx, factory);
@@ -55,8 +55,7 @@ public class Geo3dBinaryCodec extends BinaryCodec {
   public Shape readShape(DataInput dataInput) throws IOException {
     SerializableObject serializableObject =
         SerializableObject.readObject(planetModel, (InputStream) dataInput);
-    if (serializableObject instanceof GeoAreaShape) {
-      GeoAreaShape shape = (GeoAreaShape) serializableObject;
+    if (serializableObject instanceof GeoAreaShape shape) {
       return new Geo3dShape<>(shape, ctx);
     }
     throw new IllegalArgumentException(
@@ -65,8 +64,7 @@ public class Geo3dBinaryCodec extends BinaryCodec {
 
   @Override
   public void writeShape(DataOutput dataOutput, Shape s) throws IOException {
-    if (s instanceof Geo3dShape) {
-      Geo3dShape<?> geoAreaShape = (Geo3dShape<?>) s;
+    if (s instanceof Geo3dShape<?> geoAreaShape) {
       SerializableObject.writeObject((OutputStream) dataOutput, geoAreaShape.shape);
     } else {
       throw new IllegalArgumentException(
@@ -78,8 +76,7 @@ public class Geo3dBinaryCodec extends BinaryCodec {
   public Point readPoint(DataInput dataInput) throws IOException {
     SerializableObject serializableObject =
         SerializableObject.readObject(planetModel, (InputStream) dataInput);
-    if (serializableObject instanceof GeoPointShape) {
-      GeoPointShape shape = (GeoPointShape) serializableObject;
+    if (serializableObject instanceof GeoPointShape shape) {
       return new Geo3dPointShape(shape, ctx);
     }
     throw new IllegalArgumentException(
@@ -95,8 +92,7 @@ public class Geo3dBinaryCodec extends BinaryCodec {
   public Rectangle readRect(DataInput dataInput) throws IOException {
     SerializableObject serializableObject =
         SerializableObject.readObject(planetModel, (InputStream) dataInput);
-    if (serializableObject instanceof GeoBBox) {
-      GeoBBox shape = (GeoBBox) serializableObject;
+    if (serializableObject instanceof GeoBBox shape) {
       return new Geo3dRectangleShape(shape, ctx);
     }
     throw new IllegalArgumentException(
@@ -112,8 +108,7 @@ public class Geo3dBinaryCodec extends BinaryCodec {
   public Circle readCircle(DataInput dataInput) throws IOException {
     SerializableObject serializableObject =
         SerializableObject.readObject(planetModel, (InputStream) dataInput);
-    if (serializableObject instanceof GeoCircle) {
-      GeoCircle shape = (GeoCircle) serializableObject;
+    if (serializableObject instanceof GeoCircle shape) {
       return new Geo3dCircleShape(shape, ctx);
     }
     throw new IllegalArgumentException(

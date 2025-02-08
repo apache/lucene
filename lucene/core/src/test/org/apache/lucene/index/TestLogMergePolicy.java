@@ -24,6 +24,7 @@ import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
 import org.apache.lucene.util.Version;
 
+@SuppressWarnings("UnnecessaryAsync")
 public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
   @Override

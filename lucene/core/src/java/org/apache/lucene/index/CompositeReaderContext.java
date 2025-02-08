@@ -98,8 +98,7 @@ public final class CompositeReaderContext extends IndexReaderContext {
 
     private IndexReaderContext build(
         CompositeReaderContext parent, IndexReader reader, int ord, int docBase) {
-      if (reader instanceof LeafReader) {
-        final LeafReader ar = (LeafReader) reader;
+      if (reader instanceof LeafReader ar) {
         final LeafReaderContext atomic =
             new LeafReaderContext(parent, ar, ord, docBase, leaves.size(), leafDocBase);
         leaves.add(atomic);

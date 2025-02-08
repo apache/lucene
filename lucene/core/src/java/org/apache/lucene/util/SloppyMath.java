@@ -246,7 +246,7 @@ public class SloppyMath {
   //  7.70381505559019352791e-02
   private static final double ASIN_QS4 = Double.longBitsToDouble(0x3fb3b8c5b12e9282L);
 
-  /** Initializes look-up tables. */
+  /* Initializes look-up tables. */
   static {
     // sin and cos
     final int SIN_COS_PI_INDEX = (SIN_COS_TABS_SIZE - 1) / 2;

@@ -409,6 +409,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
    * Simulate an append-only use-case, ie. there are no deletes. {@code totalDocs} exist in the
    * index in the end, and flushes contribute at most {@code maxDocsPerFlush} documents.
    */
+  @SuppressWarnings("UnnecessaryAsync")
   protected void doTestSimulateAppendOnly(
       MergePolicy mergePolicy, int totalDocs, int maxDocsPerFlush) throws IOException {
     IOStats stats = new IOStats();
@@ -465,6 +466,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
    * totalDocs} exist in the index in the end, and flushes contribute at most {@code
    * maxDocsPerFlush} documents.
    */
+  @SuppressWarnings("UnnecessaryAsync")
   protected void doTestSimulateUpdates(MergePolicy mergePolicy, int totalDocs, int maxDocsPerFlush)
       throws IOException {
     IOStats stats = new IOStats();
@@ -532,6 +534,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
     long mergeBytesWritten;
   }
 
+  @SuppressWarnings("UnnecessaryAsync")
   public void testNoPathologicalMerges() throws IOException {
     MergePolicy mergePolicy = mergePolicy();
     IOStats stats = new IOStats();

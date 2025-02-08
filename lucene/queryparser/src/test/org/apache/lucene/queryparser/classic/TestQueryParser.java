@@ -328,7 +328,7 @@ public class TestQueryParser extends QueryParserTestBase {
 
   @Override
   public void testNewFieldQuery() throws Exception {
-    /** ordinary behavior, synonyms form uncoordinated boolean query */
+    /* ordinary behavior, synonyms form uncoordinated boolean query */
     QueryParser dumb = new QueryParser(FIELD, new Analyzer1());
     Query expanded =
         new SynonymQuery.Builder(FIELD)
@@ -336,10 +336,10 @@ public class TestQueryParser extends QueryParserTestBase {
             .addTerm(new Term(FIELD, "dog"))
             .build();
     assertEquals(expanded, dumb.parse("\"dogs\""));
-    /** even with the phrase operator the behavior is the same */
+    /* even with the phrase operator the behavior is the same */
     assertEquals(expanded, dumb.parse("dogs"));
 
-    /** custom behavior, the synonyms are expanded, unless you use quote operator */
+    /* custom behavior, the synonyms are expanded, unless you use quote operator */
     QueryParser smart = new SmartQueryParser();
     assertEquals(expanded, smart.parse("dogs"));
 

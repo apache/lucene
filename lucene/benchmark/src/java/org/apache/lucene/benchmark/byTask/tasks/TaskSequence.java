@@ -291,8 +291,7 @@ public class TaskSequence extends PerfTask {
     if (task instanceof ResetInputsTask) {
       exhausted = false;
       resetExhausted = true;
-    } else if (task instanceof TaskSequence) {
-      TaskSequence t = (TaskSequence) task;
+    } else if (task instanceof TaskSequence t) {
       if (t.resetExhausted) {
         exhausted = false;
         resetExhausted = true;
@@ -384,8 +383,7 @@ public class TaskSequence extends PerfTask {
     for (int i = 0; i < t.length; i++) {
       t[i].join();
       count += t[i].count;
-      if (t[i].task instanceof TaskSequence) {
-        TaskSequence sub = (TaskSequence) t[i].task;
+      if (t[i].task instanceof TaskSequence sub) {
         if (sub.countsByTime != null) {
           if (countsByTime == null) {
             countsByTime = new int[sub.countsByTime.length];

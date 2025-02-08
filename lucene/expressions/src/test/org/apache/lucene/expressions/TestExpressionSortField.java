@@ -34,6 +34,7 @@ public class TestExpressionSortField extends LuceneTestCase {
     assertEquals("<expr(sqrt(_score) + ln(popularity))>!", sf.toString());
   }
 
+  @SuppressWarnings("SelfAssertion")
   public void testEquals() throws Exception {
     Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
 

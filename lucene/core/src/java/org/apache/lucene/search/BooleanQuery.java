@@ -497,8 +497,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (musts.size() == 1 && filters.size() > 0) {
         Query must = musts.iterator().next();
         float boost = 1f;
-        if (must instanceof BoostQuery) {
-          BoostQuery boostQuery = (BoostQuery) must;
+        if (must instanceof BoostQuery boostQuery) {
           must = boostQuery.getQuery();
           boost = boostQuery.getBoost();
         }

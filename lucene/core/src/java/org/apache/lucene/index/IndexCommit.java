@@ -75,8 +75,7 @@ public abstract class IndexCommit implements Comparable<IndexCommit> {
   /** Two IndexCommits are equal if both their Directory and versions are equal. */
   @Override
   public boolean equals(Object other) {
-    if (other instanceof IndexCommit) {
-      IndexCommit otherCommit = (IndexCommit) other;
+    if (other instanceof IndexCommit otherCommit) {
       return otherCommit.getDirectory() == getDirectory()
           && otherCommit.getGeneration() == getGeneration();
     } else {

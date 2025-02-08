@@ -700,6 +700,7 @@ public class TestIntervals extends LuceneTestCase {
     assertEquals(2, source.minExtent());
   }
 
+  @SuppressWarnings("SelfAssertion")
   public void testMaxGaps() throws IOException {
 
     IntervalsSource source =

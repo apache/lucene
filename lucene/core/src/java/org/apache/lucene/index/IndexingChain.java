@@ -1450,7 +1450,7 @@ final class IndexingChain implements Accountable {
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
-    private static String errMsg =
+    private static final String errMsg =
         "Inconsistency of field data structures across documents for field ";
 
     FieldSchema(String name) {

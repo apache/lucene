@@ -134,8 +134,7 @@ public final class BlockPackedReaderIterator {
   }
 
   private void skipBytes(long count) throws IOException {
-    if (in instanceof IndexInput) {
-      final IndexInput iin = (IndexInput) in;
+    if (in instanceof IndexInput iin) {
       iin.seek(iin.getFilePointer() + count);
     } else {
       if (blocks == null) {

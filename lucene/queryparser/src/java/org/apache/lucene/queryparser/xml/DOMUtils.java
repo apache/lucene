@@ -91,8 +91,7 @@ public class DOMUtils {
       if ((n == element) || (n == null)) {
         return null;
       }
-      if (n instanceof Element) {
-        Element parent = (Element) n;
+      if (n instanceof Element parent) {
         return getAttributeWithInheritance(parent, attributeName);
       }
       return null; // we reached the top level of the document without finding attribute

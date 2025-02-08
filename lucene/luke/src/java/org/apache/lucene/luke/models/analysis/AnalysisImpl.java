@@ -52,6 +52,7 @@ public final class AnalysisImpl implements Analysis {
 
   private Analyzer analyzer = defaultAnalyzer();
 
+  @SuppressWarnings("BanClassLoader")
   @Override
   public void addExternalJars(List<String> jarFiles) {
     List<URL> urls = new ArrayList<>();

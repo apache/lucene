@@ -173,12 +173,12 @@ public class TestStressIndexing2 extends LuceneTestCase {
     LogMergePolicy lmp = (LogMergePolicy) w.getConfig().getMergePolicy();
     lmp.setNoCFSRatio(0.0);
     lmp.setMergeFactor(mergeFactor);
-    /***
+    /*
      * w.setMaxMergeDocs(Integer.MAX_VALUE);
      * w.setMaxFieldLength(10000);
      * w.setRAMBufferSizeMB(1);
      * w.setMergeFactor(10);
-     ***/
+     */
 
     threads = new IndexingThread[nThreads];
     for (int i = 0; i < threads.length; i++) {

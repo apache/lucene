@@ -307,7 +307,7 @@ public class TestBlendedInfixSuggester extends LuceneTestCase {
         };
     duplicateCheck(inputDocuments, 2);
 
-    /**
+    /*
      * same input, first not having a payload, the second having payload we would expect 2 entries
      * out but we are getting only 1 because the InputArrayIterator#hasPayloads() returns false
      * because the first item has no payload, therefore, when ingested, none of the 2 input has

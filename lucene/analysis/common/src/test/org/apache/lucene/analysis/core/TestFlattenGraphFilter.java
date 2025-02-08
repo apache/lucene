@@ -816,7 +816,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     return accept;
   }
 
-  /**
+  /*
    * This method checks if strings that lead to the accept state of the not flattened TokenStream
    * also lead to the accept state in the flattened TokenStream. This gets complicated when you
    * factor in holes. The FlattenGraphFilter will remove alternate paths that are made entirely of
@@ -840,7 +840,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     notFlattened.close();
   }*/
 
-  /**
+  /*
    * gets up to 10000 strings that lead to accept state in the given automaton.
    *
    * @param automaton automaton
@@ -856,7 +856,7 @@ public class TestFlattenGraphFilter extends BaseTokenStreamTestCase {
     return acceptedSequences;
   }*/
 
-  /**
+  /*
    * @param automaton automaton to generate strings from
    * @param state state to start at
    * @param prefix string prefix

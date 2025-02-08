@@ -359,6 +359,7 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
         0.0001);
   }
 
+  @SuppressWarnings("JUnitIncompatibleType")
   public void testFailuresWithSimilarityValuesSource() throws Exception {
     float[] floatQueryVector = new float[] {1.1f, 2.2f, 3.3f};
     byte[] byteQueryVector = new byte[] {-10, 20, 30};

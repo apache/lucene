@@ -42,9 +42,7 @@ public class UniqueFieldQueryNodeProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode preProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof FieldableNode) {
-      FieldableNode fieldNode = (FieldableNode) node;
-
+    if (node instanceof FieldableNode fieldNode) {
       QueryConfigHandler queryConfig = getQueryConfigHandler();
 
       if (queryConfig == null) {

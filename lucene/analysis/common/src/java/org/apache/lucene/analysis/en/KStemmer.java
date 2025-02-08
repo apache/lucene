@@ -822,12 +822,12 @@ class KStemmer {
   }
 
   private DictEntry wordInDict() {
-    /***
+    /*
      * if (matchedEntry != null) { if (dict_ht.get(word.getArray(), 0,
      * word.size()) != matchedEntry) {
      * System.out.println("Uh oh... cached entry doesn't match"); } return
      * matchedEntry; }
-     ***/
+     */
     if (matchedEntry != null) return matchedEntry;
     DictEntry e = dict_ht.get(word.getArray(), 0, word.length());
     if (e != null && !e.exception) {
@@ -861,11 +861,11 @@ class KStemmer {
          * common
          */
 
-        /****
+        /*
          * YCS: this was the one place where lookup was not followed by return.
          * So restructure it. if ((j>0)&&(lookup(word.toString())) &&
          * !((word.charAt(j) == 's') && (word.charAt(j-1) == 's'))) return;
-         *****/
+         */
         boolean tryE = j > 0 && !((word.charAt(j) == 's') && (word.charAt(j - 1) == 's'));
         if (tryE && lookup()) return;
 
@@ -913,7 +913,7 @@ class KStemmer {
   DictEntry matchedEntry = null;
 
   private boolean lookup() {
-    /******
+    /*
      * debugging code String thisLookup = word.toString(); boolean added =
      * lookups.add(thisLookup); if (!added) {
      * System.out.println("######extra lookup:" + thisLookup); // occaasional
@@ -921,7 +921,7 @@ class KStemmer {
      * manipulations // throw new RuntimeException("######extra lookup:" +
      * thisLookup); } else { // System.out.println("new lookup:" + thisLookup);
      * }
-     ******/
+     */
 
     matchedEntry = dict_ht.get(word.getArray(), 0, word.size());
     return matchedEntry != null;
@@ -1742,11 +1742,11 @@ class KStemmer {
   String result;
 
   private boolean matched() {
-    /***
+    /*
      * if (!lookups.contains(word.toString())) { throw new
      * RuntimeException("didn't look up "+word.toString()+" prev="+prevLookup);
      * }
-     ***/
+     */
     // lookup();
     return matchedEntry != null;
   }
@@ -1772,13 +1772,13 @@ class KStemmer {
       return false;
     }
 
-    /***
+    /*
      * caching off is normally faster if (cache == null) initializeStemHash();
      *
      * // now check the cache, before we copy chars to "word" if (cache != null)
      * { String val = cache.get(term, 0, len); if (val != null) { if (val !=
      * SAME) { result = val; return true; } return false; } }
-     ***/
+     */
 
     word.reset();
     // allocate enough space so that an expansion is never needed
@@ -1792,9 +1792,9 @@ class KStemmer {
     }
 
     matchedEntry = null;
-    /***
+    /*
      * lookups.clear(); lookups.add(word.toString());
-     ***/
+     */
 
     /*
      * This while loop will never be executed more than one time; it is here
@@ -1851,20 +1851,20 @@ class KStemmer {
       result = entry.root; // may be null, which means that "word" is the stem
     }
 
-    /***
+    /*
      * caching off is normally faster if (cache != null && cache.size() <
      * maxCacheSize) { char[] key = new char[len]; System.arraycopy(term, 0,
      * key, 0, len); if (result != null) { cache.put(key, result); } else {
      * cache.put(key, word.toString()); } }
-     ***/
+     */
 
-    /***
+    /*
      * if (entry == null) { if (!word.toString().equals(new String(term,0,len)))
      * { System.out.println("CASE:" + word.toString() + "," + new
      * String(term,0,len));
      *
      * } }
-     ***/
+     */
 
     // no entry matched means result is "word"
     return true;

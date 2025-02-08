@@ -91,6 +91,7 @@ public class TestCharArraySet extends LuceneTestCase {
   }
 
   // TODO: break this up into simpler test methods, vs "telling a story"
+  @SuppressWarnings("UnnecessaryStringBuilder")
   public void testModifyOnUnmodifiable() {
     CharArraySet set = new CharArraySet(10, true);
     set.addAll(Arrays.asList(TEST_STOP_WORDS));

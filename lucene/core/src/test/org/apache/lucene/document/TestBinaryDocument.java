@@ -43,27 +43,27 @@ public class TestBinaryDocument extends LuceneTestCase {
 
     doc.add(stringFldStored);
 
-    /** test for field count */
+    /* test for field count */
     assertEquals(2, doc.getFields().size());
 
-    /** add the doc to a ram index */
+    /* add the doc to a ram index */
     Directory dir = newDirectory();
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
     writer.addDocument(doc);
 
-    /** open a reader and fetch the document */
+    /* open a reader and fetch the document */
     IndexReader reader = writer.getReader();
     Document docFromReader = reader.storedFields().document(0);
     assertTrue(docFromReader != null);
 
-    /** fetch the binary stored field and compare its content with the original one */
+    /* fetch the binary stored field and compare its content with the original one */
     BytesRef bytes = docFromReader.getBinaryValue("binaryStored");
     assertNotNull(bytes);
     String binaryFldStoredTest =
         new String(bytes.bytes, bytes.offset, bytes.length, StandardCharsets.UTF_8);
     assertTrue(binaryFldStoredTest.equals(binaryValStored));
 
-    /** fetch the string field and compare its content with the original one */
+    /* fetch the string field and compare its content with the original one */
     String stringFldStoredTest = docFromReader.get("stringStored");
     assertTrue(stringFldStoredTest.equals(binaryValStored));
 

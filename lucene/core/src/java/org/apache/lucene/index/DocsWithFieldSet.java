@@ -28,7 +28,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  */
 public final class DocsWithFieldSet extends DocIdSet {
 
-  private static long BASE_RAM_BYTES_USED =
+  private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(DocsWithFieldSet.class);
 
   private FixedBitSet set;

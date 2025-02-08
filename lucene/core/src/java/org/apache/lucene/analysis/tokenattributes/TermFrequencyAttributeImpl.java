@@ -56,8 +56,7 @@ public class TermFrequencyAttributeImpl extends AttributeImpl implements TermFre
       return true;
     }
 
-    if (other instanceof TermFrequencyAttributeImpl) {
-      TermFrequencyAttributeImpl _other = (TermFrequencyAttributeImpl) other;
+    if (other instanceof TermFrequencyAttributeImpl _other) {
       return termFrequency == _other.termFrequency;
     }
 

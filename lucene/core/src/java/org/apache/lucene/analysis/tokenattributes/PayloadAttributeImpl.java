@@ -62,8 +62,7 @@ public class PayloadAttributeImpl extends AttributeImpl implements PayloadAttrib
       return true;
     }
 
-    if (other instanceof PayloadAttributeImpl) {
-      PayloadAttributeImpl o = (PayloadAttributeImpl) other;
+    if (other instanceof PayloadAttributeImpl o) {
       if (o.payload == null || payload == null) {
         return o.payload == null && payload == null;
       }

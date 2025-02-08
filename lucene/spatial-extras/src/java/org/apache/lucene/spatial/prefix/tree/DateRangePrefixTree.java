@@ -158,8 +158,7 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
 
     maxLV = toShape((Calendar) MAXCAL.clone());
     minLV = toShape((Calendar) MINCAL.clone());
-    if (MAXCAL instanceof GregorianCalendar) {
-      GregorianCalendar gCal = (GregorianCalendar) MAXCAL;
+    if (MAXCAL instanceof GregorianCalendar gCal) {
       gregorianChangeDateLV = toUnitShape(gCal.getGregorianChange());
     } else {
       gregorianChangeDateLV = null;
@@ -174,8 +173,9 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
   public int getNumSubCells(UnitNRShape lv) {
     int cmp = comparePrefix(lv, maxLV);
     assert cmp <= 0;
-    if (cmp == 0) // edge case (literally!)
-    return maxLV.getValAtLevel(lv.getLevel() + 1) + 1;
+    if (cmp == 0) { // edge case (literally!)
+      return maxLV.getValAtLevel(lv.getLevel() + 1) + 1;
+    }
 
     // if using GregorianCalendar and we're after the "Gregorian change date" then we'll compute
     //  the sub-cells ourselves more efficiently without the need to construct a Calendar.

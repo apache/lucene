@@ -482,9 +482,7 @@ public abstract class QueryParserBase extends QueryBuilder
 
     if (query instanceof PhraseQuery) {
       query = addSlopToPhrase((PhraseQuery) query, slop);
-    } else if (query instanceof MultiPhraseQuery) {
-      MultiPhraseQuery mpq = (MultiPhraseQuery) query;
-
+    } else if (query instanceof MultiPhraseQuery mpq) {
       if (slop != mpq.getSlop()) {
         query = new MultiPhraseQuery.Builder(mpq).setSlop(slop).build();
       }

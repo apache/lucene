@@ -41,11 +41,8 @@ public class MatchAllDocsQueryNodeProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof FieldQueryNode) {
-      FieldQueryNode fqn = (FieldQueryNode) node;
-
+    if (node instanceof FieldQueryNode fqn) {
       if (fqn.getField().toString().equals("*") && fqn.getText().toString().equals("*")) {
-
         return new MatchAllDocsQueryNode();
       }
     }

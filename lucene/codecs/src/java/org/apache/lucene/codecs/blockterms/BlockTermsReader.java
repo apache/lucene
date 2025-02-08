@@ -375,13 +375,13 @@ public class BlockTermsReader extends FieldsProducer {
         // target.utf8ToString() + " " + target + " current=" + term().utf8ToString() + " " + term()
         // + " indexIsCurrent=" + indexIsCurrent + " didIndexNext=" + didIndexNext + " seekPending="
         // + seekPending + " divisor=" + indexReader.getDivisor() + " this="  + this);
-        if (didIndexNext) {
-          if (nextIndexTerm == null) {
-            // System.out.println("  nextIndexTerm=null");
-          } else {
-            // System.out.println("  nextIndexTerm=" + nextIndexTerm.utf8ToString());
-          }
-        }
+        // if (didIndexNext) {
+        //  if (nextIndexTerm == null) {
+        //    // System.out.println("  nextIndexTerm=null");
+        //  } else {
+        //    // System.out.println("  nextIndexTerm=" + nextIndexTerm.utf8ToString());
+        //  }
+        // }
 
         boolean doSeek = true;
 

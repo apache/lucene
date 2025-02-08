@@ -263,8 +263,7 @@ public final class SegmentInfo {
   @Override
   public boolean equals(Object obj) {
     if (this == obj) return true;
-    if (obj instanceof SegmentInfo) {
-      final SegmentInfo other = (SegmentInfo) obj;
+    if (obj instanceof SegmentInfo other) {
       return other.dir == dir && other.name.equals(name);
     } else {
       return false;

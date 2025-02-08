@@ -136,6 +136,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
         new Sort(new SortField("double", SortField.Type.DOUBLE, random().nextBoolean())));
   }
 
+  @SuppressWarnings("SelfAssertion")
   public void testHashCodeAndEquals() {
     DoubleValuesSource vs1 = DoubleValuesSource.fromDoubleField("double");
     DoubleValuesSource vs2 = DoubleValuesSource.fromDoubleField("double");

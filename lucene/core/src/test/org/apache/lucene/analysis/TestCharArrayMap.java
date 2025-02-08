@@ -134,6 +134,7 @@ public class TestCharArrayMap extends LuceneTestCase {
   }
 
   // TODO: break this up into simpler test methods vs. "telling a story"
+  @SuppressWarnings("UnnecessaryStringBuilder")
   public void testModifyOnUnmodifiable() {
     CharArrayMap<Integer> map = new CharArrayMap<>(2, false);
     map.put("foo", 1);
