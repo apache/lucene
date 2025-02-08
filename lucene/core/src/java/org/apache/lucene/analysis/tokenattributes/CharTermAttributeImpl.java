@@ -27,7 +27,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 /** Default implementation of {@link CharTermAttribute}. */
 public class CharTermAttributeImpl extends AttributeImpl
     implements CharTermAttribute, TermToBytesRefAttribute {
-  private static int MIN_BUFFER_SIZE = 10;
+  private static final int MIN_BUFFER_SIZE = 10;
 
   private char[] termBuffer = new char[ArrayUtil.oversize(MIN_BUFFER_SIZE, Character.BYTES)];
   private int termLength = 0;
@@ -137,8 +137,7 @@ public class CharTermAttributeImpl extends AttributeImpl
         ((StringBuilder) csq).getChars(start, end, termBuffer, termLength);
       } else if (csq instanceof CharTermAttribute) {
         System.arraycopy(((CharTermAttribute) csq).buffer(), start, termBuffer, termLength, len);
-      } else if (csq instanceof CharBuffer && ((CharBuffer) csq).hasArray()) {
-        final CharBuffer cb = (CharBuffer) csq;
+      } else if (csq instanceof CharBuffer cb && cb.hasArray()) {
         System.arraycopy(
             cb.array(), cb.arrayOffset() + cb.position() + start, termBuffer, termLength, len);
       } else if (csq instanceof StringBuffer) {

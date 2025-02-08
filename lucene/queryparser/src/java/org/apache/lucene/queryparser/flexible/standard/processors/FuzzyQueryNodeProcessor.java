@@ -48,8 +48,7 @@ public class FuzzyQueryNodeProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode preProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof FuzzyQueryNode) {
-      FuzzyQueryNode fuzzyNode = (FuzzyQueryNode) node;
+    if (node instanceof FuzzyQueryNode fuzzyNode) {
       QueryConfigHandler config = getQueryConfigHandler();
 
       Analyzer analyzer = getQueryConfigHandler().get(ConfigurationKeys.ANALYZER);
