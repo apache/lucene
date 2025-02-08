@@ -85,7 +85,7 @@ public final class Lucene90PointsFormat extends PointsFormat {
 
   @Override
   public PointsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene90PointsWriter(state, VERSION_CURRENT);
+    return new Lucene90PointsWriter(state, version);
   }
 
   @Override
