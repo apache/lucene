@@ -88,7 +88,16 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
         }
       }
       if (this.onlyLongestMatch && longestMatchToken != null) {
-        tokens.add(longestMatchToken);
+        boolean contained = false;
+        for (CompoundToken addedToken : tokens) {
+          if (addedToken.txt.toString().contains(longestMatchToken.txt)) {
+            contained = true;
+            break;
+          }
+        }
+        if (!contained) {
+          tokens.add(longestMatchToken);
+        }
       }
     }
   }
