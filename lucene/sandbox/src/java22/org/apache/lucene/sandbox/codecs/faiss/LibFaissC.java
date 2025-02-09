@@ -29,6 +29,8 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.LongBuffer;
@@ -37,11 +39,20 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 public final class LibFaissC {
+  /*
+   * TODO: Requires some changes to Faiss
+   *  - https://github.com/facebookresearch/faiss/pull/4158 (merged in main, to be released in v1.11.0)
+   *  - https://github.com/facebookresearch/faiss/pull/4167 (merged in main, to be released in v1.11.0)
+   *  - https://github.com/facebookresearch/faiss/pull/4180 (in progress)
+   */
+
   public static final String LIBRARY_NAME = "faiss_c";
   public static final String LIBRARY_VERSION = "1.10.0";
 
@@ -60,7 +71,14 @@ public final class LibFaissC {
 
   private LibFaissC() {}
 
-  private static MethodHandle getMethodHandle(
+  @SuppressWarnings("SameParameterValue")
+  private static MemorySegment getUpcallStub(
+      Arena arena, MethodHandle target, MemoryLayout resLayout, MemoryLayout... argLayouts) {
+    return Linker.nativeLinker()
+        .upcallStub(target, FunctionDescriptor.of(resLayout, argLayouts), arena);
+  }
+
+  private static MethodHandle getDowncallHandle(
       String functionName, MemoryLayout resLayout, MemoryLayout... argLayouts) {
     return Linker.nativeLinker()
         .downcallHandle(
@@ -69,7 +87,7 @@ public final class LibFaissC {
   }
 
   private static void checkLibraryVersion() {
-    MethodHandle getVersion = getMethodHandle("faiss_get_version", ADDRESS);
+    MethodHandle getVersion = getDowncallHandle("faiss_get_version", ADDRESS);
     String actualVersion = callAndGetString(getVersion);
     if (LIBRARY_VERSION.equals(actualVersion) == false) {
       throw new UnsupportedOperationException(
@@ -82,58 +100,71 @@ public final class LibFaissC {
   }
 
   private static final MethodHandle FREE_INDEX =
-      getMethodHandle("faiss_Index_free", JAVA_INT, ADDRESS);
+      getDowncallHandle("faiss_Index_free", JAVA_INT, ADDRESS);
 
   public static void freeIndex(MemorySegment indexPointer) {
     callAndHandleError(FREE_INDEX, indexPointer);
   }
 
+  private static final MethodHandle FREE_CUSTOM_IO_WRITER =
+      getDowncallHandle("faiss_CustomIOWriter_free", JAVA_INT, ADDRESS);
+
+  public static void freeCustomIOWriter(MemorySegment customIOWriterPointer) {
+    callAndHandleError(FREE_CUSTOM_IO_WRITER, customIOWriterPointer);
+  }
+
+  private static final MethodHandle FREE_CUSTOM_IO_READER =
+      getDowncallHandle("faiss_CustomIOReader_free", JAVA_INT, ADDRESS);
+
+  public static void freeCustomIOReader(MemorySegment customIOReaderPointer) {
+    callAndHandleError(FREE_CUSTOM_IO_READER, customIOReaderPointer);
+  }
+
   private static final MethodHandle FREE_PARAMETER_SPACE =
-      getMethodHandle("faiss_ParameterSpace_free", JAVA_INT, ADDRESS);
+      getDowncallHandle("faiss_ParameterSpace_free", JAVA_INT, ADDRESS);
 
   private static void freeParameterSpace(MemorySegment parameterSpacePointer) {
     callAndHandleError(FREE_PARAMETER_SPACE, parameterSpacePointer);
   }
 
   private static final MethodHandle FREE_ID_SELECTOR_BITMAP =
-      getMethodHandle("faiss_IDSelectorBitmap_free", JAVA_INT, ADDRESS);
+      getDowncallHandle("faiss_IDSelectorBitmap_free", JAVA_INT, ADDRESS);
 
   private static void freeIDSelectorBitmap(MemorySegment idSelectorBitmapPointer) {
     callAndHandleError(FREE_ID_SELECTOR_BITMAP, idSelectorBitmapPointer);
   }
 
   private static final MethodHandle FREE_SEARCH_PARAMETERS =
-      getMethodHandle("faiss_SearchParameters_free", JAVA_INT, ADDRESS);
+      getDowncallHandle("faiss_SearchParameters_free", JAVA_INT, ADDRESS);
 
   private static void freeSearchParameters(MemorySegment searchParametersPointer) {
     callAndHandleError(FREE_SEARCH_PARAMETERS, searchParametersPointer);
   }
 
   private static final MethodHandle INDEX_FACTORY =
-      getMethodHandle("faiss_index_factory", JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, JAVA_INT);
+      getDowncallHandle("faiss_index_factory", JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, JAVA_INT);
 
   private static final MethodHandle PARAMETER_SPACE_NEW =
-      getMethodHandle("faiss_ParameterSpace_new", JAVA_INT, ADDRESS);
+      getDowncallHandle("faiss_ParameterSpace_new", JAVA_INT, ADDRESS);
 
   private static final MethodHandle SET_INDEX_PARAMETERS =
-      getMethodHandle(
+      getDowncallHandle(
           "faiss_ParameterSpace_set_index_parameters", JAVA_INT, ADDRESS, ADDRESS, ADDRESS);
 
-  // TODO: Requires https://github.com/facebookresearch/faiss/pull/4158
   private static final MethodHandle ID_SELECTOR_BITMAP_NEW =
-      getMethodHandle("faiss_IDSelectorBitmap_new", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS);
+      getDowncallHandle("faiss_IDSelectorBitmap_new", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS);
 
   private static final MethodHandle SEARCH_PARAMETERS_NEW =
-      getMethodHandle("faiss_SearchParameters_new", JAVA_INT, ADDRESS, ADDRESS);
+      getDowncallHandle("faiss_SearchParameters_new", JAVA_INT, ADDRESS, ADDRESS);
 
   private static final MethodHandle INDEX_IS_TRAINED =
-      getMethodHandle("faiss_Index_is_trained", JAVA_INT, ADDRESS);
+      getDowncallHandle("faiss_Index_is_trained", JAVA_INT, ADDRESS);
 
   private static final MethodHandle INDEX_TRAIN =
-      getMethodHandle("faiss_Index_train", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS);
+      getDowncallHandle("faiss_Index_train", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS);
 
   private static final MethodHandle INDEX_ADD_WITH_IDS =
-      getMethodHandle("faiss_Index_add_with_ids", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS);
+      getDowncallHandle("faiss_Index_add_with_ids", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS);
 
   public static MemorySegment createIndex(
       String description,
@@ -200,32 +231,112 @@ public final class LibFaissC {
     }
   }
 
-  private static final MethodHandle INDEX_WRITE =
-      getMethodHandle("faiss_write_index_fname", JAVA_INT, ADDRESS, ADDRESS);
+  private static int writeBytes(
+      IndexOutput output, MemorySegment inputPointer, int itemSize, int numItems)
+      throws IOException {
+    // TODO: Can we avoid copying to heap?
+    byte[] bytes =
+        new byte[(int) (Integer.toUnsignedLong(itemSize) * Integer.toUnsignedLong(numItems))];
+    inputPointer.reinterpret(bytes.length).asByteBuffer().order(ByteOrder.nativeOrder()).get(bytes);
+    output.writeBytes(bytes, 0, bytes.length);
+    return numItems;
+  }
 
-  public static void indexWrite(MemorySegment indexPointer, String fileName) {
-    try (Arena temp = Arena.ofConfined()) {
-      callAndHandleError(INDEX_WRITE, indexPointer, temp.allocateFrom(fileName));
+  private static int readBytes(
+      IndexInput input, MemorySegment outputPointer, int itemSize, int numItems)
+      throws IOException {
+    // TODO: Can we avoid copying to heap?
+    byte[] bytes =
+        new byte[(int) (Integer.toUnsignedLong(itemSize) * Integer.toUnsignedLong(numItems))];
+    input.readBytes(bytes, 0, bytes.length);
+    outputPointer
+        .reinterpret(bytes.length)
+        .asByteBuffer()
+        .order(ByteOrder.nativeOrder())
+        .put(bytes);
+    return numItems;
+  }
+
+  private static final MethodHandle WRITE_BYTES_HANDLE;
+  private static final MethodHandle READ_BYTES_HANDLE;
+
+  static {
+    try {
+      WRITE_BYTES_HANDLE =
+          MethodHandles.lookup()
+              .findStatic(
+                  LibFaissC.class,
+                  "writeBytes",
+                  MethodType.methodType(
+                      int.class, IndexOutput.class, MemorySegment.class, int.class, int.class));
+
+      READ_BYTES_HANDLE =
+          MethodHandles.lookup()
+              .findStatic(
+                  LibFaissC.class,
+                  "readBytes",
+                  MethodType.methodType(
+                      int.class, IndexInput.class, MemorySegment.class, int.class, int.class));
+    } catch (NoSuchMethodException | IllegalAccessException e) {
+      throw new RuntimeException(e);
     }
   }
 
-  private static final MethodHandle INDEX_READ =
-      getMethodHandle("faiss_read_index_fname", JAVA_INT, ADDRESS, JAVA_INT, ADDRESS);
+  private static final MethodHandle CUSTOM_IO_WRITER_NEW =
+      getDowncallHandle("faiss_CustomIOWriter_new", JAVA_INT, ADDRESS, ADDRESS);
 
-  public static MemorySegment indexRead(String fileName, int ioFlags) {
+  private static final MethodHandle WRITE_INDEX_CUSTOM =
+      getDowncallHandle("faiss_write_index_custom", JAVA_INT, ADDRESS, ADDRESS, JAVA_INT);
+
+  public static void indexWrite(MemorySegment indexPointer, IndexOutput output, int ioFlags) {
     try (Arena temp = Arena.ofConfined()) {
+      MethodHandle writerHandle = WRITE_BYTES_HANDLE.bindTo(output);
+      MemorySegment writerStub =
+          getUpcallStub(temp, writerHandle, JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT);
+
       MemorySegment pointer = temp.allocate(ADDRESS);
-      callAndHandleError(INDEX_READ, temp.allocateFrom(fileName), ioFlags, pointer);
+      callAndHandleError(CUSTOM_IO_WRITER_NEW, pointer, writerStub);
+      MemorySegment customIOWriterPointer =
+          pointer
+              .get(ADDRESS, 0)
+              // Ensure timely cleanup
+              .reinterpret(temp, LibFaissC::freeCustomIOWriter);
+
+      callAndHandleError(WRITE_INDEX_CUSTOM, indexPointer, customIOWriterPointer, ioFlags);
+    }
+  }
+
+  private static final MethodHandle CUSTOM_IO_READER_NEW =
+      getDowncallHandle("faiss_CustomIOReader_new", JAVA_INT, ADDRESS, ADDRESS);
+
+  private static final MethodHandle READ_INDEX_CUSTOM =
+      getDowncallHandle("faiss_read_index_custom", JAVA_INT, ADDRESS, JAVA_INT, ADDRESS);
+
+  public static MemorySegment indexRead(IndexInput input, int ioFlags) {
+    try (Arena temp = Arena.ofConfined()) {
+      MethodHandle readerHandle = READ_BYTES_HANDLE.bindTo(input);
+      MemorySegment readerStub =
+          getUpcallStub(temp, readerHandle, JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT);
+
+      MemorySegment pointer = temp.allocate(ADDRESS);
+      callAndHandleError(CUSTOM_IO_READER_NEW, pointer, readerStub);
+      MemorySegment customIOReaderPointer =
+          pointer
+              .get(ADDRESS, 0)
+              // Ensure timely cleanup
+              .reinterpret(temp, LibFaissC::freeCustomIOReader);
+
+      callAndHandleError(READ_INDEX_CUSTOM, customIOReaderPointer, ioFlags, pointer);
       return pointer.get(ADDRESS, 0);
     }
   }
 
   private static final MethodHandle INDEX_SEARCH =
-      getMethodHandle(
+      getDowncallHandle(
           "faiss_Index_search", JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS);
 
   private static final MethodHandle INDEX_SEARCH_WITH_PARAMS =
-      getMethodHandle(
+      getDowncallHandle(
           "faiss_Index_search_with_params",
           JAVA_INT,
           ADDRESS,
@@ -284,7 +395,6 @@ public final class LibFaissC {
                 .reinterpret(temp, LibFaissC::freeSearchParameters);
 
         // Search with runtime filters
-        // TODO: Requires https://github.com/facebookresearch/faiss/pull/4167
         callAndHandleError(
             INDEX_SEARCH_WITH_PARAMS,
             localIndex,
@@ -312,7 +422,7 @@ public final class LibFaissC {
   }
 
   private static final MethodHandle GET_LAST_ERROR =
-      getMethodHandle("faiss_get_last_error", ADDRESS);
+      getDowncallHandle("faiss_get_last_error", ADDRESS);
 
   private static int callAndGetInt(MethodHandle handle, Object... args) {
     try {

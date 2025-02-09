@@ -20,7 +20,6 @@ import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.DATA_
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.DATA_EXTENSION;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_CODEC_NAME;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_EXTENSION;
-import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.NAME;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.createIndex;
 import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.indexWrite;
@@ -29,8 +28,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +45,6 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
@@ -152,31 +148,25 @@ public final class FaissKnnVectorsWriter extends KnnVectorsWriter {
     int number = fieldInfo.number;
     meta.writeInt(number);
 
-    // TODO: Non FS-based approach?
-    Path tempFile = Files.createTempFile(NAME, fieldInfo.name);
-
     // Write index to temp file and deallocate from memory
     try (Arena temp = Arena.ofConfined()) {
       VectorSimilarityFunction function = fieldInfo.getVectorSimilarityFunction();
       MemorySegment indexPointer =
           createIndex(description, indexParams, function, floatVectorValues, oldToNewDocId)
-              // Assign index to explicit scope for timely cleanup
+              // Ensure timely cleanup
               .reinterpret(temp, LibFaissC::freeIndex);
-      indexWrite(indexPointer, tempFile.toString());
+
+      // See flags defined in c_api/index_io_c.h
+      int ioFlags = 3;
+
+      // Write index
+      long dataOffset = data.getFilePointer();
+      indexWrite(indexPointer, data, ioFlags);
+      long dataLength = data.getFilePointer() - dataOffset;
+
+      meta.writeLong(dataOffset);
+      meta.writeLong(dataLength);
     }
-
-    // Copy temp file to index
-    long dataOffset = data.getFilePointer();
-    try (InputStreamDataInput input = new InputStreamDataInput(Files.newInputStream(tempFile))) {
-      data.copyBytes(input, Files.size(tempFile));
-    }
-    long dataLength = data.getFilePointer() - dataOffset;
-
-    // Cleanup temp file
-    Files.delete(tempFile);
-
-    meta.writeLong(dataOffset);
-    meta.writeLong(dataLength);
   }
 
   @Override

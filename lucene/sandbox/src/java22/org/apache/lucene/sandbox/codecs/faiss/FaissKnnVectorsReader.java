@@ -20,7 +20,6 @@ import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.DATA_
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.DATA_EXTENSION;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_CODEC_NAME;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.META_EXTENSION;
-import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.NAME;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat.VERSION_START;
 import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.indexRead;
@@ -29,8 +28,6 @@ import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.indexSearch;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
@@ -44,7 +41,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
@@ -126,24 +122,14 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
     long dataOffset = meta.readLong();
     long dataLength = meta.readLong();
 
-    // Copy index to temp file
-    // TODO: Non FS-based approach?
-    Path tempFile = Files.createTempFile(NAME, fieldInfo.name);
-    try (OutputStreamDataOutput output =
-        new OutputStreamDataOutput(Files.newOutputStream(tempFile))) {
-      data.seek(dataOffset);
-      output.copyBytes(data, dataLength);
-    }
-
-    // Read index from temp file into memory
     // See flags defined in c_api/index_io_c.h
-    MemorySegment indexPointer =
-        indexRead(tempFile.toString(), 3)
-            // Assign index to explicit scope for timely cleanup
-            .reinterpret(arena, LibFaissC::freeIndex);
+    int ioFlags = 3;
 
-    // Cleanup
-    Files.delete(tempFile);
+    // Read index into memory
+    MemorySegment indexPointer =
+        indexRead(data.slice(fieldInfo.name, dataOffset, dataLength), ioFlags)
+            // Ensure timely cleanup
+            .reinterpret(arena, LibFaissC::freeIndex);
 
     return Map.entry(fieldInfo.name, indexPointer);
   }
