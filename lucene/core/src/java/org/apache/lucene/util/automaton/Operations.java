@@ -69,7 +69,10 @@ public final class Operations {
    * Returns an automaton that accepts the concatenation of the languages of the given automata.
    *
    * <p>Complexity: linear in total number of states.
+   *
+   * @deprecated use {@link #concatenate(List)} instead
    */
+  @Deprecated
   public static Automaton concatenate(Automaton a1, Automaton a2) {
     return concatenate(Arrays.asList(a1, a2));
   }
@@ -78,12 +81,14 @@ public final class Operations {
    * Returns an automaton that accepts the concatenation of the languages of the given automata.
    *
    * <p>Complexity: linear in total number of states.
+   *
+   * @param list List of automata to be joined
    */
-  public static Automaton concatenate(List<Automaton> l) {
+  public static Automaton concatenate(List<Automaton> list) {
     Automaton result = new Automaton();
 
     // First pass: create all states
-    for (Automaton a : l) {
+    for (Automaton a : list) {
       if (a.getNumStates() == 0) {
         result.finishState();
         return result;
@@ -98,11 +103,11 @@ public final class Operations {
     // states of A to init state of next A:
     int stateOffset = 0;
     Transition t = new Transition();
-    for (int i = 0; i < l.size(); i++) {
-      Automaton a = l.get(i);
+    for (int i = 0; i < list.size(); i++) {
+      Automaton a = list.get(i);
       int numStates = a.getNumStates();
 
-      Automaton nextA = (i == l.size() - 1) ? null : l.get(i + 1);
+      Automaton nextA = (i == list.size() - 1) ? null : list.get(i + 1);
 
       for (int s = 0; s < numStates; s++) {
         int numTransitions = a.initTransition(s, t);
@@ -127,7 +132,7 @@ public final class Operations {
               if (followA.isAccept(0)) {
                 // Keep chaining if followA accepts empty string
                 followOffset += followA.getNumStates();
-                followA = (upto == l.size() - 1) ? null : l.get(upto + 1);
+                followA = (upto == list.size() - 1) ? null : list.get(upto + 1);
                 upto++;
               } else {
                 break;
@@ -148,8 +153,7 @@ public final class Operations {
     }
 
     result.finishState();
-
-    return result;
+    return Operations.removeDeadStates(result);
   }
 
   /**
@@ -475,7 +479,10 @@ public final class Operations {
    * Returns an automaton that accepts the union of the languages of the given automata.
    *
    * <p>Complexity: linear in number of states.
+   *
+   * @deprecated use {@link #union(Collection)} instead
    */
+  @Deprecated
   public static Automaton union(Automaton a1, Automaton a2) {
     return union(Arrays.asList(a1, a2));
   }
@@ -484,21 +491,23 @@ public final class Operations {
    * Returns an automaton that accepts the union of the languages of the given automata.
    *
    * <p>Complexity: linear in number of states.
+   *
+   * @param list List of automata to be unioned.
    */
-  public static Automaton union(Collection<Automaton> l) {
+  public static Automaton union(Collection<Automaton> list) {
     Automaton result = new Automaton();
 
     // Create initial state:
     result.createState();
 
     // Copy over all automata
-    for (Automaton a : l) {
+    for (Automaton a : list) {
       result.copy(a);
     }
 
     // Add epsilon transition from new initial state
     int stateOffset = 1;
-    for (Automaton a : l) {
+    for (Automaton a : list) {
       if (a.getNumStates() == 0) {
         continue;
       }

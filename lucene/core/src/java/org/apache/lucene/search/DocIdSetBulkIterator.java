@@ -14,15 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search.knn;
+package org.apache.lucene.search;
 
-import org.apache.lucene.search.DocIdSetIterator;
+import java.io.IOException;
+import org.apache.lucene.util.Bits;
 
-/** Provides entry points for the kNN search */
-public interface EntryPointProvider {
-  /** Iterator of valid entry points for the kNN search */
-  DocIdSetIterator entryPoints();
+/** Bulk iterator over a {@link DocIdSetIterator}. */
+public abstract class DocIdSetBulkIterator {
 
-  /** Number of valid entry points for the kNN search */
-  int numberOfEntryPoints();
+  /** Sole constructor, invoked by sub-classes. */
+  protected DocIdSetBulkIterator() {}
+
+  /**
+   * Iterate over documents contained in this iterator and call {@link LeafCollector#collect} on
+   * them.
+   */
+  public abstract void iterate(LeafCollector collector, Bits acceptDocs, int min, int max)
+      throws IOException;
 }
