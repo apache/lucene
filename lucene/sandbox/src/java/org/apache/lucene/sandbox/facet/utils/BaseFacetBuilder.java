@@ -54,6 +54,7 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> implements FacetB
 
     @Override
     public final FacetBuilder initOrReuseCollector(FacetBuilder similar) {
+        TODO: can we do something about this method - it is weird that we have it
         // count aggregation
         // TODO: add support for other aggregation types, e.g. float/int associations
         //       and long aggregations
@@ -69,7 +70,7 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> implements FacetB
     }
 
     @Override
-    public final FacetFieldCollectorManager<?> getCollectorManager() {
+    public final FacetFieldCollectorManager<CountFacetRecorder> getCollectorManager() {
         return this.collectorManager;
     }
 

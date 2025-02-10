@@ -2,6 +2,7 @@ package org.apache.lucene.sandbox.facet.utils;
 
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
+import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 
 /**
  * End-to-end (request, collection and results) management of a single facet dimension.
@@ -16,7 +17,7 @@ public interface FacetBuilder {
 
 
     /** Create {@link org.apache.lucene.search.CollectorManager} for this facet (dimension). */
-    FacetFieldCollectorManager<?> getCollectorManager();
+    FacetFieldCollectorManager<CountFacetRecorder> getCollectorManager();
 
     /** Uniaue key for collection time.
      * Multiple facet requests can use the same collector, e.g. when they require

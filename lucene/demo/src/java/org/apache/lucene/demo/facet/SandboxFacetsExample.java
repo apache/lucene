@@ -23,9 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.DoubleDocValuesField;
-import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.*;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.DrillSideways;
 import org.apache.lucene.facet.FacetField;
@@ -42,14 +40,10 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.sandbox.facet.utils.ComparableUtils;
+import org.apache.lucene.sandbox.facet.utils.*;
 import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
 import org.apache.lucene.sandbox.facet.cutters.TaxonomyFacetsCutter;
 import org.apache.lucene.sandbox.facet.cutters.ranges.LongRangeFacetCutter;
-import org.apache.lucene.sandbox.facet.utils.FacetOrchestrator;
-import org.apache.lucene.sandbox.facet.utils.FacetBuilder;
-import org.apache.lucene.sandbox.facet.utils.LongRangeFacetBuilder;
-import org.apache.lucene.sandbox.facet.utils.TaxonomyFacetBuilder;
 import org.apache.lucene.sandbox.facet.iterators.ComparableSupplier;
 import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.iterators.TaxonomyChildrenOrdinalIterator;
@@ -162,6 +156,39 @@ public class SandboxFacetsExample {
             .addBuilder(priceFacetBuilder)
             .collect(new MatchAllDocsQuery(), searcher, hitsCollectorManager);
 
+
+    //// Results
+    FacetResult autorResults = authorFacetBuilder.getResult();
+    FacetResult rangeResults = priceFacetBuilder.getResult();
+
+    IOUtils.close(indexReader, taxoReader);
+
+    return List.of(autorResults, rangeResults);
+  }
+
+  /** Example for {@link FacetBuilder} usage with {@link DrillSideways}. */
+  private List<FacetResult> simpleFacetsWithDrillSideways() throws IOException {
+    //// init readers and searcher
+    DirectoryReader indexReader = DirectoryReader.open(indexDir);
+    IndexSearcher searcher = new IndexSearcher(indexReader);
+    TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
+    DrillSideways ds = new DrillSideways(searcher, config, taxoReader);
+
+    //// build facets requests
+    FacetBuilder authorFacetBuilder = new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
+    FacetBuilder priceFacetBuilder = new LongRangeFacetBuilder("Price",
+            new LongRange("0-10", 0, true, 10, true),
+            new LongRange("10-20", 10, true, 20, true)
+    );
+
+    //// Build query and collect
+    DrillDownQuery query = new DrillDownQuery(config);
+    query.add("Author", "Lisa");
+
+    new DrillSidewaysFacetOrchestrator()
+            .addDrillDownBuilder(priceFacetBuilder)
+            .addDrillSidewaysBuilder("Author", authorFacetBuilder)
+            .collect(query, ds);
 
     //// Results
     FacetResult autorResults = authorFacetBuilder.getResult();
@@ -685,10 +712,16 @@ public class SandboxFacetsExample {
     return facetResults;
   }
 
-  /** Runs the search example. */
+  /** Runs the simple search example. */
   public List<FacetResult> runSimpleFacetsWithSearch() throws IOException {
     index();
     return simpleFacetsWithSearch();
+  }
+
+  /** Runs the simple drill sideways example. */
+  public List<FacetResult> runSimpleFacetsWithDrillSideways() throws IOException {
+    index();
+    return simpleFacetsWithDrillSideways();
   }
 
   /** Runs the search example. */
@@ -737,9 +770,15 @@ public class SandboxFacetsExample {
   public static void main(String[] args) throws Exception {
     SandboxFacetsExample example = new SandboxFacetsExample();
 
-    System.out.println("Facet counting example with exclusive ranges:");
+    System.out.println("Simple facet counting example:");
     System.out.println("---------------------------------------------");
     for (FacetResult result : example.runSimpleFacetsWithSearch()) {
+      System.out.println(result);
+    }
+
+    System.out.println("Simple facet counting for drill sideways example:");
+    System.out.println("---------------------------------------------");
+    for (FacetResult result : example.runSimpleFacetsWithDrillSideways()) {
       System.out.println(result);
     }
 
