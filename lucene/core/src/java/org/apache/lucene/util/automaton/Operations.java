@@ -516,7 +516,7 @@ public final class Operations {
 
     result.finishState();
 
-    return removeDeadStates(result);
+    return mergeAcceptStatesWithNoTransition(removeDeadStates(result));
   }
 
   // Simple custom ArrayList<Transition>
@@ -1058,6 +1058,82 @@ public final class Operations {
     result.finishState();
     assert hasDeadStates(result) == false;
     return result;
+  }
+
+  /**
+   * Merge all accept states that don't have outgoing transitions to a single shared state. This is
+   * a subset of minimization that is much cheaper. This helper is useful because operations like
+   * concatenation need to connect accept states of an automaton with the start state of the next
+   * one, so having fewer accept states makes the produced automata simpler.
+   */
+  static Automaton mergeAcceptStatesWithNoTransition(Automaton a) {
+    int numStates = a.getNumStates();
+
+    int numAcceptStatesWithNoTransition = 0;
+    int[] acceptStatesWithNoTransition = new int[0];
+
+    BitSet acceptStates = a.getAcceptStates();
+    for (int i = 0; i < numStates; ++i) {
+      if (acceptStates.get(i) && a.getNumTransitions(i) == 0) {
+        acceptStatesWithNoTransition =
+            ArrayUtil.grow(acceptStatesWithNoTransition, 1 + numAcceptStatesWithNoTransition);
+        acceptStatesWithNoTransition[numAcceptStatesWithNoTransition++] = i;
+      }
+    }
+
+    if (numAcceptStatesWithNoTransition <= 1) {
+      // No states to merge
+      return a;
+    }
+
+    // Shrink for simplicity.
+    acceptStatesWithNoTransition =
+        ArrayUtil.copyOfSubArray(acceptStatesWithNoTransition, 0, numAcceptStatesWithNoTransition);
+
+    // Now copy states, preserving accept states.
+    Automaton result = new Automaton();
+    for (int s = 0; s < numStates; s++) {
+      int remappedS = remap(s, acceptStatesWithNoTransition);
+      while (result.getNumStates() <= remappedS) {
+        result.createState();
+      }
+      if (acceptStates.get(s)) {
+        result.setAccept(remappedS, true);
+      }
+    }
+
+    // Now copy transitions, making sure to remap states.
+    Transition t = new Transition();
+    for (int s = 0; s < numStates; ++s) {
+      int remappedSource = remap(s, acceptStatesWithNoTransition);
+      int numTransitions = a.initTransition(s, t);
+      for (int j = 0; j < numTransitions; j++) {
+        a.getNextTransition(t);
+        int remappedDest = remap(t.dest, acceptStatesWithNoTransition);
+        result.addTransition(remappedSource, remappedDest, t.min, t.max);
+      }
+    }
+
+    result.finishState();
+    return result;
+  }
+
+  private static int remap(int s, int[] combinedStates) {
+    int idx = Arrays.binarySearch(combinedStates, s);
+    if (idx >= 0) {
+      // This state is part of the states that get combined, remap to the first one.
+      return combinedStates[0];
+    } else {
+      idx = -1 - idx;
+      if (idx <= 1) {
+        // There is either no combined state before the current state, or only the first one, which
+        // we're preserving: no renumbering needed.
+        return s;
+      } else {
+        // Subtract the number of states that get combined into the first combined state.
+        return s - (idx - 1);
+      }
+    }
   }
 
   /**
