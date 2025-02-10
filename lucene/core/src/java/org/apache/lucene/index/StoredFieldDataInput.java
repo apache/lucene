@@ -22,6 +22,9 @@ import org.apache.lucene.store.DataInput;
 /**
  * A fixed size DataInput which includes the length of the input. For use as a StoredField.
  *
+ * @param in the data input
+ * @param length the length of the data input
+ *
  * @lucene.experimental
  */
 public record StoredFieldDataInput(DataInput in, int length) {
