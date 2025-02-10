@@ -115,6 +115,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
   }
 
   private void test(Directory dir, int[] ints) throws Exception {
+    // It is hard to get BPV24-encoded docs in TextLuceneXXPointsFormat, test bwc here as well.
     final int version = VERSIONS[random().nextInt(VERSIONS.length)];
     final long len;
     DocIdsWriter encoder = new DocIdsWriter(ints.length, version);
