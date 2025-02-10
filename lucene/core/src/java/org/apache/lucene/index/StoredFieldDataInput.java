@@ -24,7 +24,6 @@ import org.apache.lucene.store.DataInput;
  *
  * @param in the data input
  * @param length the length of the data input
- *
  * @lucene.experimental
  */
 public record StoredFieldDataInput(DataInput in, int length) {
