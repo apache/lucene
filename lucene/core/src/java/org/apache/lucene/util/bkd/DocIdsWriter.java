@@ -65,10 +65,6 @@ public final class DocIdsWriter {
     scratchIntsRef.offset = 0;
   }
 
-  DocIdsWriter(int maxPointsInLeaf) {
-    this(maxPointsInLeaf, BKDWriter.VERSION_CURRENT);
-  }
-
   public DocIdsWriter(int maxPointsInLeaf, int version) {
     this.scratch = new int[maxPointsInLeaf];
     this.version = version;

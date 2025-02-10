@@ -243,7 +243,8 @@ public class Lucene90PointsWriter extends PointsWriter {
                   writeState.segmentInfo.name,
                   config,
                   maxMBSortInHeap,
-                  totMaxSize)) {
+                  totMaxSize,
+                  Lucene90PointsFormat.bkdVersion(version))) {
             List<PointValues> pointValues = new ArrayList<>();
             List<MergeState.DocMap> docMaps = new ArrayList<>();
             for (int i = 0; i < mergeState.pointsReaders.length; i++) {

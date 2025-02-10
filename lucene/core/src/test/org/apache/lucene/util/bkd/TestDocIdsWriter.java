@@ -36,6 +36,9 @@ import org.apache.lucene.util.Constants;
 
 public class TestDocIdsWriter extends LuceneTestCase {
 
+  private static final int[] VERSIONS =
+      new int[] {BKDWriter.VERSION_META_FILE, BKDWriter.VERSION_CURRENT};
+
   public void testRandom() throws Exception {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
@@ -112,8 +115,9 @@ public class TestDocIdsWriter extends LuceneTestCase {
   }
 
   private void test(Directory dir, int[] ints) throws Exception {
+    final int version = VERSIONS[random().nextInt(VERSIONS.length)];
     final long len;
-    DocIdsWriter encoder = new DocIdsWriter(ints.length, BKDWriter.VERSION_CURRENT);
+    DocIdsWriter encoder = new DocIdsWriter(ints.length, version);
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
       encoder.writeDocIds(ints, 0, ints.length, out);
       len = out.getFilePointer();
@@ -121,7 +125,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
         out.writeLong(0); // garbage
       }
     }
-    DocIdsWriter decoder = new DocIdsWriter(ints.length, BKDWriter.VERSION_CURRENT);
+    DocIdsWriter decoder = new DocIdsWriter(ints.length, version);
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
       decoder.readInts(in, ints.length, read);
