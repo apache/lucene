@@ -87,6 +87,15 @@ public class TestSynonymQuery extends LuceneTestCase {
         new SynonymQuery.Builder("field2").addTerm(new Term("field2", "b"), 0.4f).build());
   }
 
+  public void testHashCode() {
+    Query q0 = new SynonymQuery.Builder("field1").addTerm(new Term("field1", "a"), 0.4f).build();
+    Query q1 = new SynonymQuery.Builder("field1").addTerm(new Term("field1", "a"), 0.4f).build();
+    Query q2 = new SynonymQuery.Builder("field2").addTerm(new Term("field2", "a"), 0.4f).build();
+
+    assertEquals(q0.hashCode(), q1.hashCode());
+    assertNotEquals(q0.hashCode(), q2.hashCode());
+  }
+
   public void testGetField() {
     SynonymQuery query =
         new SynonymQuery.Builder("field1").addTerm(new Term("field1", "a")).build();
