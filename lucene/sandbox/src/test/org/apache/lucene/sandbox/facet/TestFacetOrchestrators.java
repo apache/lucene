@@ -1,13 +1,12 @@
 package org.apache.lucene.sandbox.facet;
 
 import org.apache.lucene.document.Document;
-import org.apache.lucene.facet.FacetField;
-import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.LabelAndValue;
+import org.apache.lucene.facet.*;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.sandbox.facet.utils.DrillSidewaysFacetOrchestrator;
 import org.apache.lucene.sandbox.facet.utils.FacetBuilder;
 import org.apache.lucene.sandbox.facet.utils.FacetOrchestrator;
 import org.apache.lucene.sandbox.facet.utils.TaxonomyFacetBuilder;
@@ -18,7 +17,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
 
-public class TestFacetOrchestrator extends SandboxFacetTestCase {
+public class TestFacetOrchestrators extends SandboxFacetTestCase {
     public void testTaxonomyFacets() throws Exception {
         Directory dir = newDirectory();
         Directory taxoDir = newDirectory();
@@ -59,7 +58,7 @@ public class TestFacetOrchestrator extends SandboxFacetTestCase {
         writer.addDocument(config.build(taxoWriter, doc));
 
         // NRT open
-        IndexSearcher searcher = newSearcher(writer.getReader());
+        IndexSearcher searcher = getNewSearcherForDrillSideways(writer.getReader());
 
         // NRT open
         TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
@@ -113,39 +112,37 @@ public class TestFacetOrchestrator extends SandboxFacetTestCase {
                 new LabelAndValue("Lisa", 2),
                 new LabelAndValue("Susan", 1));
 
-        // Now user drills down on Publish Date/2010:
-        /* TK
+        // Now use drill sideways
+        authorTop10Builder = new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
+        publishDateTop10Builder = new TaxonomyFacetBuilder(config, taxoReader, "Publish Date").withTopN(10);
+        DrillSidewaysFacetOrchestrator drillSidewaysFacetOrchestrator = new DrillSidewaysFacetOrchestrator();
+        drillSidewaysFacetOrchestrator.addDrillDownBuilder(authorTop10Builder);
         DrillDownQuery q2 = new DrillDownQuery(config);
         q2.add("Publish Date", "2010");
-        final CountFacetRecorder countRecorder2 = new CountFacetRecorder();
-        collectorManager = new FacetFieldCollectorManager<>(defaultTaxoCutter, countRecorder2);
-        searcher.search(q2, collectorManager);
+        drillSidewaysFacetOrchestrator.addDrillSidewaysBuilder("Publish Date", publishDateTop10Builder);
 
+        DrillSideways ds =
+                new DrillSideways(searcher, config, taxoReader) {
+                    @Override
+                    protected boolean scoreSubDocsAtOnce() {
+                        return random().nextBoolean();
+                    }
+                };
+        drillSidewaysFacetOrchestrator.collect(q2, ds);
+
+        // For Author it is drill down
         assertEquals(
-                "dim=Author path=[] value=-2147483648 childCount=2\n  Bob (1)\n  Lisa (1)\n",
-                getTopChildrenByCount(countRecorder2, taxoReader, 10, "Author").toString());
-
-        assertEquals(1, getSpecificValue(countRecorder2, taxoReader, "Author", "Lisa"));
-
-        assertArrayEquals(
-                new int[] {1, 1},
-                getCountsForRecordedCandidates(
-                        countRecorder2,
-                        taxoReader,
-                        new FacetLabel[] {
-                                new FacetLabel("Author", "Lisa"),
-                                new FacetLabel("Author", "Susan"), // 0 count, filtered out
-                                new FacetLabel("Author", "DoesNotExist"), // Doesn't exist in the index, filtered out
-                                new FacetLabel("Author", "Bob"),
-                        }));
-
-        expectThrows(
-                AssertionError.class,
-                () -> {
-                    getTopChildrenByCount(countRecorder2, taxoReader, 10, "Non exitent dim");
-                });
-
-         */
+                "dim=Author path=[] value=2 childCount=2\n" +
+                        "  Bob (1)\n" +
+                        "  Lisa (1)\n",
+                authorTop10Builder.getResult().toString());
+        // For Publish Date it is drill sideways
+        assertEquals(
+                "dim=Publish Date path=[] value=5 childCount=3\n" +
+                        "  2010 (2)\n" +
+                        "  2012 (2)\n" +
+                        "  1999 (1)\n",
+                publishDateTop10Builder.getResult().toString());
 
         writer.close();
         IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
