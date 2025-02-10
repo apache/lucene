@@ -139,7 +139,7 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
 
     @Override
     public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
-      writer.writeField(fieldInfo, value, length);
+      writer.writeField(fieldInfo, new StoredFieldDataInput(value, length));
     }
 
     @Override

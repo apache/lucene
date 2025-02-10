@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.util.Objects;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.DataInput;
 
@@ -25,16 +24,7 @@ import org.apache.lucene.store.DataInput;
  *
  * @lucene.experimental
  */
-public class StoredFieldDataInput {
-
-  private final DataInput in;
-  private final int length;
-
-  /** Creates a StoredFieldDataInput from the provided data input and length */
-  public StoredFieldDataInput(DataInput in, int length) {
-    this.in = Objects.requireNonNull(in);
-    this.length = length;
-  }
+public record StoredFieldDataInput(DataInput in, int length) {
 
   /** Creates a StoredFieldDataInput from a ByteArrayDataInput */
   public StoredFieldDataInput(ByteArrayDataInput byteArrayDataInput) {
