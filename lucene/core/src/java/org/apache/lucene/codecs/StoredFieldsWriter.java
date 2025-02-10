@@ -30,7 +30,6 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.index.StoredFieldVisitor;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 
@@ -193,8 +192,8 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
     }
 
     @Override
-    public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
-      writeField(remap(fieldInfo), new StoredFieldDataInput(value, length));
+    public void binaryField(FieldInfo fieldInfo, StoredFieldDataInput value) throws IOException {
+      writeField(remap(fieldInfo), value);
     }
 
     @Override
