@@ -115,27 +115,26 @@ public class TestDocIdsWriter extends LuceneTestCase {
   }
 
   private void test(Directory dir, int[] ints) throws Exception {
+    final long len;
     // It is hard to get BPV24-encoded docs in TextLuceneXXPointsFormat, test bwc here as well.
     final int version = VERSIONS[random().nextInt(VERSIONS.length)];
-    final long len;
-    DocIdsWriter encoder = new DocIdsWriter(ints.length, version);
+    DocIdsWriter docIdsWriter = new DocIdsWriter(ints.length, version);
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
-      encoder.writeDocIds(ints, 0, ints.length, out);
+      docIdsWriter.writeDocIds(ints, 0, ints.length, out);
       len = out.getFilePointer();
       if (random().nextBoolean()) {
         out.writeLong(0); // garbage
       }
     }
-    DocIdsWriter decoder = new DocIdsWriter(ints.length, version);
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
-      decoder.readInts(in, ints.length, read);
+      docIdsWriter.readInts(in, ints.length, read);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
       int[] read = new int[ints.length];
-      decoder.readInts(
+      docIdsWriter.readInts(
           in,
           ints.length,
           new IntersectVisitor() {
