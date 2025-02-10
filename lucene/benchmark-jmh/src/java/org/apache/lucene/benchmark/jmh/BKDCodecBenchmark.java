@@ -57,6 +57,11 @@ public class BKDCodecBenchmark {
   @Param({"16", "24"})
   public int bpv;
 
+  // It is important to make count variable, like what will happen in real BKD leaves. If this
+  // method constantly return 512, {@link #current} will run as fast as {@link #currentVector}.
+  @Param({"true", "false"})
+  public boolean countVariable;
+
   private Directory dir;
   private DocIdsWriter legacy;
   private IndexInput legacyIn;
@@ -100,13 +105,12 @@ public class BKDCodecBenchmark {
     IOUtils.close(legacyIn, vectorIn, dir);
   }
 
-  /**
-   * It is important to make count variable, like what will happen in real BKD leaves. If this
-   * method constantly return 512, {@link #current} will run as fast as {@link #currentVector}.
-   */
-  private static int count(int iter) {
-    // return 512;
-    return iter % 20 == 0 ? 511 : SIZE;
+  private int count(int iter) {
+    if (countVariable) {
+      return iter % 20 == 0 ? 511 : SIZE;
+    } else {
+      return 512;
+    }
   }
 
   @Benchmark

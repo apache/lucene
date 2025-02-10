@@ -23,11 +23,11 @@ import org.apache.lucene.store.IndexInput;
 public class BKDDecodingUtil {
 
   /** Sole constructor, called by sub-classes. */
-  protected BKDDecodingUtil() {}
+  BKDDecodingUtil() {}
 
   public void decodeDelta16(IndexInput in, int[] docIds, int count) throws IOException {
     final int min = in.readVInt();
-    final int halfLen = count >>> 1;
+    final int halfLen = count >> 1;
     in.readInts(docIds, 0, halfLen);
     for (int i = 0; i < halfLen; ++i) {
       int l = docIds[i];

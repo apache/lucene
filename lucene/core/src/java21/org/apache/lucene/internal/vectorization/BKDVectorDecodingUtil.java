@@ -22,6 +22,13 @@ import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.store.IndexInput;
 
+/**
+ * Utility using Vector API to decode BKD doc ids.
+ *
+ * <p>We need this because BKD leaves size are variable, which prevents JIT auto-vectorize the
+ * decoding loops for {@link BKDDecodingUtil#decodeDelta16} and the remainder decoding in {@link
+ * BKDDecodingUtil#decode24}.
+ */
 final class BKDVectorDecodingUtil extends BKDDecodingUtil {
 
   private static final VectorSpecies<Integer> INT_SPECIES =
@@ -34,9 +41,9 @@ final class BKDVectorDecodingUtil extends BKDDecodingUtil {
   @Override
   public void decodeDelta16(IndexInput in, int[] docIds, int count) throws IOException {
     final int min = in.readVInt();
-    final int halfLen = count >>> 1;
+    final int halfLen = count >> 1;
     in.readInts(docIds, 0, halfLen);
-    int upperBound = INT_SPECIES.loopBound(halfLen);
+    final int upperBound = INT_SPECIES.loopBound(halfLen);
     int i = 0;
     for (; i < upperBound; i += INT_SPECIES.length()) {
       IntVector vector = IntVector.fromArray(INT_SPECIES, docIds, i);
@@ -76,9 +83,8 @@ final class BKDVectorDecodingUtil extends BKDDecodingUtil {
       docIds[i] = scratch[i] >>> 8;
     }
 
-    i = 0;
-    int upperBound2 = INT_SPECIES.loopBound(quarterLen);
-    for (; i < upperBound2; i += INT_SPECIES.length()) {
+    final int upperBound2 = INT_SPECIES.loopBound(quarterLen);
+    for (i = 0; i < upperBound2; i += INT_SPECIES.length()) {
       IntVector.fromArray(INT_SPECIES, scratch, i)
           .lanewise(VectorOperators.AND, 0xFF)
           .lanewise(VectorOperators.LSHL, 16)
