@@ -216,7 +216,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
-      if (minAcceptedSimilarity > topCandidateSimilarity) {
+      if (topCandidateSimilarity < minAcceptedSimilarity) {
         break;
       }
 

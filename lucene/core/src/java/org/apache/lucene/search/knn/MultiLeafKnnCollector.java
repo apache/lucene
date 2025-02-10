@@ -129,7 +129,7 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
     }
     return Math.max(
         subCollector.minCompetitiveSimilarity(),
-        Math.min(nonCompetitiveQueue.peek(), cachedGlobalMinSim));
+        Math.nextUp(Math.min(nonCompetitiveQueue.peek(), cachedGlobalMinSim)));
   }
 
   @Override

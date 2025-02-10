@@ -604,7 +604,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
     @Override
     public float minCompetitiveSimilarity() {
-      return queue.size() >= k() ? queue.topScore() : Float.NEGATIVE_INFINITY;
+      return queue.size() >= k() ? Math.nextUp(queue.topScore()) : Float.NEGATIVE_INFINITY;
     }
 
     @Override
