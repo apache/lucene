@@ -132,7 +132,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
     IntArrayQueue toExplore = new IntArrayQueue(graph.maxConn() * 2 * maxExplorationMultiplier);
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
-    float minAcceptedSimilarity = results.minCompetitiveSimilarity();
+    float minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
@@ -197,7 +197,7 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
         if (friendSimilarity > minAcceptedSimilarity) {
           candidates.add(toScoreOrd, friendSimilarity);
           if (results.collect(toScoreOrd, friendSimilarity)) {
-            minAcceptedSimilarity = results.minCompetitiveSimilarity();
+            minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
           }
         }
       }
