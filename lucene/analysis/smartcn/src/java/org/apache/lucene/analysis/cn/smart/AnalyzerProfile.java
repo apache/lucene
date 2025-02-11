@@ -34,13 +34,9 @@ import java.util.Properties;
 public class AnalyzerProfile {
 
   /** Global indicating the configured analysis data directory */
-  public static final String ANALYSIS_DATA_DIR;
+  public static final String ANALYSIS_DATA_DIR = resolveDataDir();
 
-  static {
-    ANALYSIS_DATA_DIR = init();
-  }
-
-  private static String init() {
+  private static String resolveDataDir() {
     String dirName = "analysis-data";
     String propName = "analysis.properties";
 
