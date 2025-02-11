@@ -27,11 +27,11 @@ import org.apache.lucene.search.CollectorManager;
 /**
  * {@link CollectorManager} that computes a histogram of the distribution of the values of a field.
  *
- * <p>It takes an {@code interval} as a parameter and counts the number of documents that fall into
- * intervals [0, interval), [interval, 2*interval), etc. The keys of the returned {@link
- * LongIntHashMap} identify these intervals as the quotient of the integer division by {@code
- * interval}. Said otherwise, a key equal to {@code k} maps to values in the interval {@code [k *
- * interval, (k+1) * interval)}.
+ * <p>It takes an {@code intervalWidth} as a parameter and counts the number of documents that fall
+ * into intervals [0, intervalWidth), [intervalWidth, 2*intervalWidth), etc. The keys of the
+ * returned {@link LongIntHashMap} identify these intervals as the quotient of the integer division
+ * by {@code intervalWidth}. Said otherwise, a key equal to {@code k} maps to values in the interval
+ * {@code [k * intervalWidth, (k+1) * intervalWidth)}.
  *
  * <p>This implementation is optimized for the case when {@code field} is part of the index sort and
  * has a {@link FieldType#setDocValuesSkipIndexType skip index}.
@@ -48,7 +48,7 @@ public final class HistogramCollectorManager
   private static final int DEFAULT_MAX_BUCKETS = 1024;
 
   private final String field;
-  private final long interval;
+  private final long intervalWidth;
   private final int maxBuckets;
 
   /**
@@ -66,12 +66,12 @@ public final class HistogramCollectorManager
    * @param maxBuckets Max allowed number of buckets. Note that this is checked at runtime and on a
    *     best-effort basis.
    */
-  public HistogramCollectorManager(String field, long interval, int maxBuckets) {
+  public HistogramCollectorManager(String field, long intervalWidth, int maxBuckets) {
     this.field = Objects.requireNonNull(field);
-    if (interval < 2) {
-      throw new IllegalArgumentException("interval must be at least 2, got: " + interval);
+    if (intervalWidth < 2) {
+      throw new IllegalArgumentException("intervalWidth must be at least 2, got: " + intervalWidth);
     }
-    this.interval = interval;
+    this.intervalWidth = intervalWidth;
     if (maxBuckets < 1) {
       throw new IllegalArgumentException("maxBuckets must be at least 1, got: " + maxBuckets);
     }
@@ -80,7 +80,7 @@ public final class HistogramCollectorManager
 
   @Override
   public HistogramCollector newCollector() throws IOException {
-    return new HistogramCollector(field, interval, maxBuckets);
+    return new HistogramCollector(field, intervalWidth, maxBuckets);
   }
 
   @Override

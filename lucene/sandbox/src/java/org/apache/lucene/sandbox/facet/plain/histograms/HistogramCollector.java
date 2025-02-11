@@ -34,13 +34,13 @@ import org.apache.lucene.search.ScoreMode;
 final class HistogramCollector implements Collector {
 
   private final String field;
-  private final long interval;
+  private final long intervalWidth;
   private final int maxBuckets;
   private final LongIntHashMap counts;
 
-  HistogramCollector(String field, long interval, int maxBuckets) {
+  HistogramCollector(String field, long intervalWidth, int maxBuckets) {
     this.field = field;
-    this.interval = interval;
+    this.intervalWidth = intervalWidth;
     this.maxBuckets = maxBuckets;
     this.counts = new LongIntHashMap();
   }
@@ -60,19 +60,20 @@ final class HistogramCollector implements Collector {
     SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues singleton = DocValues.unwrapSingleton(values);
     if (singleton == null) {
-      return new HistogramNaiveLeafCollector(values, interval, maxBuckets, counts);
+      return new HistogramNaiveLeafCollector(values, intervalWidth, maxBuckets, counts);
     } else {
       DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
       if (skipper != null) {
-        long leafMinQuotient = Math.floorDiv(skipper.minValue(), interval);
-        long leafMaxQuotient = Math.floorDiv(skipper.maxValue(), interval);
+        long leafMinQuotient = Math.floorDiv(skipper.minValue(), intervalWidth);
+        long leafMaxQuotient = Math.floorDiv(skipper.maxValue(), intervalWidth);
         if (leafMaxQuotient - leafMinQuotient <= 1024) {
           // Only use the optimized implementation if there is a small number of unique quotients,
           // so that we can count them using a dense array instead of a hash table.
-          return new HistogramLeafCollector(singleton, skipper, interval, maxBuckets, counts);
+          return new HistogramLeafCollector(singleton, skipper, intervalWidth, maxBuckets, counts);
         }
       }
-      return new HistogramNaiveSingleValuedLeafCollector(singleton, interval, maxBuckets, counts);
+      return new HistogramNaiveSingleValuedLeafCollector(
+          singleton, intervalWidth, maxBuckets, counts);
     }
   }
 
@@ -92,14 +93,14 @@ final class HistogramCollector implements Collector {
   private static class HistogramNaiveLeafCollector implements LeafCollector {
 
     private final SortedNumericDocValues values;
-    private final long interval;
+    private final long intervalWidth;
     private final int maxBuckets;
     private final LongIntHashMap counts;
 
     HistogramNaiveLeafCollector(
-        SortedNumericDocValues values, long interval, int maxBuckets, LongIntHashMap counts) {
+        SortedNumericDocValues values, long intervalWidth, int maxBuckets, LongIntHashMap counts) {
       this.values = values;
-      this.interval = interval;
+      this.intervalWidth = intervalWidth;
       this.maxBuckets = maxBuckets;
       this.counts = counts;
     }
@@ -114,7 +115,7 @@ final class HistogramCollector implements Collector {
         long prevQuotient = Long.MIN_VALUE;
         for (int i = 0; i < valueCount; ++i) {
           final long value = values.nextValue();
-          final long quotient = Math.floorDiv(value, interval);
+          final long quotient = Math.floorDiv(value, intervalWidth);
           // We must not double-count values that divide to the same quotient since this returns doc
           // counts as opposed to value counts.
           if (quotient != prevQuotient) {
@@ -134,14 +135,14 @@ final class HistogramCollector implements Collector {
   private static class HistogramNaiveSingleValuedLeafCollector implements LeafCollector {
 
     private final NumericDocValues values;
-    private final long interval;
+    private final long intervalWidth;
     private final int maxBuckets;
     private final LongIntHashMap counts;
 
     HistogramNaiveSingleValuedLeafCollector(
-        NumericDocValues values, long interval, int maxBuckets, LongIntHashMap counts) {
+        NumericDocValues values, long intervalWidth, int maxBuckets, LongIntHashMap counts) {
       this.values = values;
-      this.interval = interval;
+      this.intervalWidth = intervalWidth;
       this.maxBuckets = maxBuckets;
       this.counts = counts;
     }
@@ -153,7 +154,7 @@ final class HistogramCollector implements Collector {
     public void collect(int doc) throws IOException {
       if (values.advanceExact(doc)) {
         final long value = values.longValue();
-        final long quotient = Math.floorDiv(value, interval);
+        final long quotient = Math.floorDiv(value, intervalWidth);
         counts.addTo(quotient, 1);
         checkMaxBuckets(counts.size(), maxBuckets);
       }
@@ -168,7 +169,7 @@ final class HistogramCollector implements Collector {
 
     private final NumericDocValues values;
     private final DocValuesSkipper skipper;
-    private final long interval;
+    private final long intervalWidth;
     private final int maxBuckets;
     private final int[] counts;
     private final long leafMinQuotient;
@@ -188,17 +189,17 @@ final class HistogramCollector implements Collector {
     HistogramLeafCollector(
         NumericDocValues values,
         DocValuesSkipper skipper,
-        long interval,
+        long intervalWidth,
         int maxBuckets,
         LongIntHashMap collectorCounts) {
       this.values = values;
       this.skipper = skipper;
-      this.interval = interval;
+      this.intervalWidth = intervalWidth;
       this.maxBuckets = maxBuckets;
       this.collectorCounts = collectorCounts;
 
-      leafMinQuotient = Math.floorDiv(skipper.minValue(), interval);
-      long leafMaxQuotient = Math.floorDiv(skipper.maxValue(), interval);
+      leafMinQuotient = Math.floorDiv(skipper.minValue(), intervalWidth);
+      long leafMaxQuotient = Math.floorDiv(skipper.maxValue(), intervalWidth);
       counts = new int[Math.toIntExact(leafMaxQuotient - leafMinQuotient + 1)];
     }
 
@@ -223,8 +224,8 @@ final class HistogramCollector implements Collector {
       // Now find the highest level where all docs have the same quotient.
       for (int level = 0; level < skipper.numLevels(); ++level) {
         int totalDocsAtLevel = skipper.maxDocID(level) - skipper.minDocID(level) + 1;
-        long minQuotient = Math.floorDiv(skipper.minValue(level), interval);
-        long maxQuotient = Math.floorDiv(skipper.maxValue(level), interval);
+        long minQuotient = Math.floorDiv(skipper.minValue(level), intervalWidth);
+        long maxQuotient = Math.floorDiv(skipper.maxValue(level), intervalWidth);
 
         if (skipper.docCount(level) == totalDocsAtLevel && minQuotient == maxQuotient) {
           // All docs at this level have a value, and all values map to the same quotient.
@@ -247,7 +248,7 @@ final class HistogramCollector implements Collector {
         counts[upToQuotientIndex]++;
       } else if (values.advanceExact(doc)) {
         final long value = values.longValue();
-        final long quotient = Math.floorDiv(value, interval);
+        final long quotient = Math.floorDiv(value, intervalWidth);
         counts[(int) (quotient - leafMinQuotient)]++;
       }
     }
