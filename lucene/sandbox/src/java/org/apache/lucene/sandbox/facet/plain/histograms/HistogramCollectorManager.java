@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.facet.histogram;
+package org.apache.lucene.sandbox.facet.plain.histograms;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -27,8 +27,11 @@ import org.apache.lucene.search.CollectorManager;
 /**
  * {@link CollectorManager} that computes a histogram of the distribution of the values of a field.
  *
- * <p>The returned {@link LongIntHashMap} maps quotients to the number of documents whose value
- * returns this number when divided by the given {@code interval}.
+ * <p>It takes an {@code interval} as a parameter and counts the number of documents that fall into
+ * intervals [0, interval), [interval, 2*interval), etc. The keys of the returned {@link
+ * LongIntHashMap} identify these intervals as the quotient of the integer division by {@code
+ * interval}. Said otherwise, a key equal to {@code k} maps to values in the interval {@code [k *
+ * interval, (k+1) * interval)}.
  *
  * <p>This implementation is optimized for the case when {@code field} is part of the index sort and
  * has a {@link FieldType#setDocValuesSkipIndexType skip index}.

@@ -15,16 +15,10 @@
  * limitations under the License.
  */
 
-/** Faceted indexing and search capabilities */
-module org.apache.lucene.facet {
-  requires org.apache.lucene.core;
-
-  exports org.apache.lucene.facet;
-  exports org.apache.lucene.facet.range;
-  exports org.apache.lucene.facet.sortedset;
-  exports org.apache.lucene.facet.taxonomy;
-  exports org.apache.lucene.facet.taxonomy.directory;
-  exports org.apache.lucene.facet.taxonomy.writercache;
-  exports org.apache.lucene.facet.facetset;
-  exports org.apache.lucene.facet.rangeonrange;
-}
+/**
+ * Provides plain faceting capabilities, as opposed to {@link
+ * org.apache.lucene.sandbox.facet.cutters cutters} and {@link
+ * org.apache.lucene.sandbox.facet.recorders recorders}, which allow composing faceting components
+ * together.
+ */
+package org.apache.lucene.sandbox.facet.plain;
