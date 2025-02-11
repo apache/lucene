@@ -129,8 +129,14 @@ public class Automaton implements Accountable, TransitionAccessor {
     return transitions;
   }
 
-  /** Returns accept states. If the bit is set then that state is an accept state. */
-  BitSet getAcceptStates() {
+  /**
+   * Returns accept states. If the bit is set then that state is an accept state.
+   *
+   * <p>expert: Use {@link #isAccept(int)} instead, unless you really need to scan bits.
+   *
+   * @lucene.internal This method signature may change in the future
+   */
+  public BitSet getAcceptStates() {
     return isAccept;
   }
 

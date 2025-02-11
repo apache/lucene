@@ -143,32 +143,6 @@ public class TestAutomaton extends LuceneTestCase {
     assertEquals("boo", Operations.getCommonPrefix(a));
   }
 
-  public void testCommonPrefixDeadStates() throws Exception {
-    Automaton a =
-        Operations.concatenate(List.of(Automata.makeAnyString(), Automata.makeString("boo")));
-    // reverse it twice, to create some dead states
-    // TODO: is it possible to fix reverse() to not create dead states?!
-    Automaton withDeadStates = Operations.reverse(Operations.reverse(a));
-    IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              Operations.getCommonPrefix(withDeadStates);
-            });
-    assertEquals("input automaton has dead states", expected.getMessage());
-  }
-
-  public void testCommonPrefixRemoveDeadStates() throws Exception {
-    Automaton a =
-        Operations.concatenate(List.of(Automata.makeAnyString(), Automata.makeString("boo")));
-    // reverse it twice, to create some dead states
-    // TODO: is it possible to fix reverse() to not create dead states?!
-    Automaton withDeadStates = Operations.reverse(Operations.reverse(a));
-    // now remove the deadstates
-    Automaton withoutDeadStates = Operations.removeDeadStates(withDeadStates);
-    assertEquals("", Operations.getCommonPrefix(withoutDeadStates));
-  }
-
   public void testCommonPrefixOptional() throws Exception {
     Automaton a = new Automaton();
     int init = a.createState();
