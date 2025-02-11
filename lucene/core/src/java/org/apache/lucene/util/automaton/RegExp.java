@@ -425,14 +425,8 @@ public class RegExp {
   /**
    * Allows case-insensitive matching of ASCII characters.
    *
-   * <p>This flag has been replaced with the more generic {@link #CASE_INSENSITIVE} flag which
-   * maintains the same performance characteristics while providing full Unicode support
-   *
-   * <p>This flag behaves the same as the {@link #CASE_INSENSITIVE} and will cause case-insensitive
-   * matches outside the ASCII range
-   *
    * <p>This flag has been deprecated in favor of {@link #CASE_INSENSITIVE} that supports the full
-   * range of Unicode characters. Usage of this flag has the same behavior as {@link
+   * range of Unicode characters. Usage of this flag now has the same behavior as {@link
    * #CASE_INSENSITIVE}
    */
   @Deprecated public static final int ASCII_CASE_INSENSITIVE = 0x0100;

@@ -19,11 +19,11 @@ package org.apache.lucene.util.automaton;
 class CaseFolding {
 
   /**
-   * generates the set of codepoints which represent the given codepoint that are case-insensitive
+   * Generates the set of codepoints which represent the given codepoint that are case-insensitive
    * matches within the Unicode table, which may not always be intuitive for instance Σ, σ, ς do all
    * fold to one another and so would match one another
    *
-   * <p>known special cases derived from generating mappings using a combination of the Unicode
+   * <p>Known special cases derived from generating mappings using a combination of the Unicode
    * 16.0.0 spec: https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt and
    * https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt these are only the alternate
    * mappings for each codepoint that are not supported by a transform using Character.toUpperCase
