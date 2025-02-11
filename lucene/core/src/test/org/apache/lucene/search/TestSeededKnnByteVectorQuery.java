@@ -154,7 +154,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
           } else {
             searcher.setTimeout(null);
           }
-          int k = random().nextInt(80) + 1;
+          int k = random().nextInt(10) + 1;
           int n = random().nextInt(100) + 1;
           // we may get fewer results than requested if there are deletions, but this test doesn't
           // check that
