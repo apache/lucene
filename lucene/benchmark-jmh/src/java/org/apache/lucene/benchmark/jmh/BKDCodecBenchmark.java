@@ -21,11 +21,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.bkd.BKDWriter;
 import org.apache.lucene.util.bkd.DocIdsWriter;
@@ -47,8 +49,8 @@ import org.openjdk.jmh.infra.Blackhole;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 3)
-@Measurement(iterations = 5, time = 3)
+@Warmup(iterations = 3, time = 1)
+@Measurement(iterations = 5, time = 1)
 @Fork(value = 1)
 public class BKDCodecBenchmark {
 
@@ -57,8 +59,8 @@ public class BKDCodecBenchmark {
   @Param({"16", "24"})
   public int bpv;
 
-  // It is important to make count variable, like what will happen in real BKD leaves. If this
-  // method constantly return 512, {@link #current} will run as fast as {@link #currentVector}.
+  // It is important to make count variable, like what will happen in real BKD leaves. If
+  // countVariable=false, {@link #current} will run as fast as {@link #currentVector}.
   @Param({"true", "false"})
   public boolean countVariable;
 
@@ -107,7 +109,7 @@ public class BKDCodecBenchmark {
 
   private int count(int iter) {
     if (countVariable) {
-      return iter % 20 == 0 ? 511 : SIZE;
+      return iter % 20 == 0 ? 384 : SIZE;
     } else {
       return 512;
     }
@@ -141,6 +143,75 @@ public class BKDCodecBenchmark {
       vector.readInts(vectorIn, count, docs);
       bh.consume(docs);
       setupInvocation();
+    }
+  }
+
+  @Benchmark
+  public void innerLoop(Blackhole bh) throws IOException {
+    for (int i = 0; i <= 100; i++) {
+      int count = count(i);
+      read(vectorIn, count, docs);
+      bh.consume(docs);
+      setupInvocation();
+    }
+  }
+
+  private final int[] scratch = new int[SIZE];
+
+  private void read(IndexInput in, int count, int[] values) throws IOException {
+    switch (bpv) {
+      case 16 -> readInts16(in, count, values);
+      case 24 -> readInts24(in, values, scratch, count);
+      default -> throw new RuntimeException();
+    }
+  }
+
+  private static void readInts16(IndexInput in, int count, int[] values) throws IOException {
+    final int min = in.readVInt();
+    int k = 0;
+    for (; k < count - 127; k += 128) {
+      in.readInts(values, k, 64);
+      for (int i = k; i < k + 64; ++i) {
+        final int l = values[i];
+        values[i] = (l >>> 16) + min;
+        values[i + 64] = (l & 0xFFFF) + min;
+      }
+    }
+    for (; k < count; k++) {
+      values[k] = Short.toUnsignedInt(in.readShort());
+    }
+  }
+
+  public static void readInts24(IndexInput in, int[] docIds, int[] scratch, int count)
+      throws IOException {
+    int k = 0;
+    for (; k < count - 127; k += 128) {
+      in.readInts(scratch, k, 96);
+      for (int i = k; i < k + 96; i++) {
+        docIds[i] = scratch[i] >>> 8;
+      }
+      for (int i = k; i < k + 32; i++) {
+        docIds[i + 96] =
+            ((scratch[i] & 0xFF) << 16)
+                | ((scratch[i + 32] & 0xFF) << 8)
+                | (scratch[i + 64] & 0xFF);
+      }
+    }
+    for (; k < count - 7; k += 8) {
+      long l1 = in.readLong();
+      long l2 = in.readLong();
+      long l3 = in.readLong();
+      docIds[k] = (int) (l1 >>> 40);
+      docIds[k + 1] = (int) (l1 >>> 16) & 0xffffff;
+      docIds[k + 2] = (int) (((l1 & 0xffff) << 8) | (l2 >>> 56));
+      docIds[k + 3] = (int) (l2 >>> 32) & 0xffffff;
+      docIds[k + 4] = (int) (l2 >>> 8) & 0xffffff;
+      docIds[k + 5] = (int) (((l2 & 0xff) << 16) | (l3 >>> 48));
+      docIds[k + 6] = (int) (l3 >>> 24) & 0xffffff;
+      docIds[k + 7] = (int) l3 & 0xffffff;
+    }
+    for (; k < count; ++k) {
+      docIds[k] = (Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte());
     }
   }
 }
