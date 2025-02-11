@@ -64,11 +64,12 @@ final class HistogramCollector implements Collector {
     } else {
       DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
       if (skipper != null) {
-        long leafMinQuotient = Math.floorDiv(skipper.minValue(), intervalWidth);
-        long leafMaxQuotient = Math.floorDiv(skipper.maxValue(), intervalWidth);
-        if (leafMaxQuotient - leafMinQuotient <= 1024) {
-          // Only use the optimized implementation if there is a small number of unique quotients,
-          // so that we can count them using a dense array instead of a hash table.
+        long leafMinBucket = Math.floorDiv(skipper.minValue(), intervalWidth);
+        long leafMaxBucket = Math.floorDiv(skipper.maxValue(), intervalWidth);
+        if (leafMaxBucket - leafMinBucket <= 1024) {
+          // Only use the optimized implementation if there is a small number of unique buckets,
+          // so that we can count them using a dense array instead of a hash table. This helps save
+          // the overhead of hashing and collision resolution.
           return new HistogramLeafCollector(singleton, skipper, intervalWidth, maxBuckets, counts);
         }
       }
@@ -112,16 +113,16 @@ final class HistogramCollector implements Collector {
     public void collect(int doc) throws IOException {
       if (values.advanceExact(doc)) {
         int valueCount = values.docValueCount();
-        long prevQuotient = Long.MIN_VALUE;
+        long prevBucket = Long.MIN_VALUE;
         for (int i = 0; i < valueCount; ++i) {
           final long value = values.nextValue();
-          final long quotient = Math.floorDiv(value, intervalWidth);
-          // We must not double-count values that divide to the same quotient since this returns doc
+          final long bucket = Math.floorDiv(value, intervalWidth);
+          // We must not double-count values that map to the same bucket since this returns doc
           // counts as opposed to value counts.
-          if (quotient != prevQuotient) {
-            counts.addTo(quotient, 1);
+          if (bucket != prevBucket) {
+            counts.addTo(bucket, 1);
             checkMaxBuckets(counts.size(), maxBuckets);
-            prevQuotient = quotient;
+            prevBucket = bucket;
           }
         }
       }
@@ -154,8 +155,8 @@ final class HistogramCollector implements Collector {
     public void collect(int doc) throws IOException {
       if (values.advanceExact(doc)) {
         final long value = values.longValue();
-        final long quotient = Math.floorDiv(value, intervalWidth);
-        counts.addTo(quotient, 1);
+        final long bucket = Math.floorDiv(value, intervalWidth);
+        counts.addTo(bucket, 1);
         checkMaxBuckets(counts.size(), maxBuckets);
       }
     }
@@ -172,19 +173,17 @@ final class HistogramCollector implements Collector {
     private final long intervalWidth;
     private final int maxBuckets;
     private final int[] counts;
-    private final long leafMinQuotient;
+    private final long leafMinBucket;
     private final LongIntHashMap collectorCounts;
 
-    /**
-     * Max doc ID (inclusive) up to which all docs may map to values that have the same quotient.
-     */
+    /** Max doc ID (inclusive) up to which all docs values may map to the same bucket. */
     private int upToInclusive = -1;
 
-    /** Whether all docs up to {@link #upToInclusive} map to values that have the same quotient. */
-    private boolean upToSameQuotient;
+    /** Whether all docs up to {@link #upToInclusive} values map to the same bucket. */
+    private boolean upToSameBucket;
 
     /** Index in {@link #counts} for docs up to {@link #upToInclusive}. */
-    private int upToQuotientIndex;
+    private int upToBucketIndex;
 
     HistogramLeafCollector(
         NumericDocValues values,
@@ -198,9 +197,9 @@ final class HistogramCollector implements Collector {
       this.maxBuckets = maxBuckets;
       this.collectorCounts = collectorCounts;
 
-      leafMinQuotient = Math.floorDiv(skipper.minValue(), intervalWidth);
-      long leafMaxQuotient = Math.floorDiv(skipper.maxValue(), intervalWidth);
-      counts = new int[Math.toIntExact(leafMaxQuotient - leafMinQuotient + 1)];
+      leafMinBucket = Math.floorDiv(skipper.minValue(), intervalWidth);
+      long leafMaxBucket = Math.floorDiv(skipper.maxValue(), intervalWidth);
+      counts = new int[Math.toIntExact(leafMaxBucket - leafMinBucket + 1)];
     }
 
     @Override
@@ -210,7 +209,7 @@ final class HistogramCollector implements Collector {
       if (doc > skipper.maxDocID(0)) {
         skipper.advance(doc);
       }
-      upToSameQuotient = false;
+      upToSameBucket = false;
 
       if (skipper.minDocID(0) > doc) {
         // Corner case which happens if `doc` doesn't have a value and is between two intervals of
@@ -221,17 +220,17 @@ final class HistogramCollector implements Collector {
 
       upToInclusive = skipper.maxDocID(0);
 
-      // Now find the highest level where all docs have the same quotient.
+      // Now find the highest level where all docs map to the same bucket.
       for (int level = 0; level < skipper.numLevels(); ++level) {
         int totalDocsAtLevel = skipper.maxDocID(level) - skipper.minDocID(level) + 1;
-        long minQuotient = Math.floorDiv(skipper.minValue(level), intervalWidth);
-        long maxQuotient = Math.floorDiv(skipper.maxValue(level), intervalWidth);
+        long minBucket = Math.floorDiv(skipper.minValue(level), intervalWidth);
+        long maxBucket = Math.floorDiv(skipper.maxValue(level), intervalWidth);
 
-        if (skipper.docCount(level) == totalDocsAtLevel && minQuotient == maxQuotient) {
-          // All docs at this level have a value, and all values map to the same quotient.
+        if (skipper.docCount(level) == totalDocsAtLevel && minBucket == maxBucket) {
+          // All docs at this level have a value, and all values map to the same bucket.
           upToInclusive = skipper.maxDocID(level);
-          upToSameQuotient = true;
-          upToQuotientIndex = (int) (minQuotient - this.leafMinQuotient);
+          upToSameBucket = true;
+          upToBucketIndex = (int) (minBucket - this.leafMinBucket);
         } else {
           break;
         }
@@ -244,12 +243,12 @@ final class HistogramCollector implements Collector {
         advanceSkipper(doc);
       }
 
-      if (upToSameQuotient) {
-        counts[upToQuotientIndex]++;
+      if (upToSameBucket) {
+        counts[upToBucketIndex]++;
       } else if (values.advanceExact(doc)) {
         final long value = values.longValue();
-        final long quotient = Math.floorDiv(value, intervalWidth);
-        counts[(int) (quotient - leafMinQuotient)]++;
+        final long bucket = Math.floorDiv(value, intervalWidth);
+        counts[(int) (bucket - leafMinBucket)]++;
       }
     }
 
@@ -257,7 +256,7 @@ final class HistogramCollector implements Collector {
     public void finish() throws IOException {
       // Put counts that we computed in the int[] back into the hash map.
       for (int i = 0; i < counts.length; ++i) {
-        collectorCounts.addTo(leafMinQuotient + i, counts[i]);
+        collectorCounts.addTo(leafMinBucket + i, counts[i]);
       }
       checkMaxBuckets(collectorCounts.size(), maxBuckets);
     }
