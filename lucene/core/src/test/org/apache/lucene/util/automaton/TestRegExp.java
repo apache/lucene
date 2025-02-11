@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -143,24 +142,26 @@ public class TestRegExp extends LuceneTestCase {
 
   public void testUnicodeInsensitiveMatchPatternParity() throws IOException {
     // this ensures that if the Pattern class behavior were to change with a change to the Unicode
-    // spec then we would pick it up and may help indicate in the future if we don't notice
-    // that the spec has changed if Pattern picks up some change from the spec first
-    for (Map.Entry<Integer, int[]> entry : CaseFolding.loadMapping().entrySet()) {
-      int codePoint = entry.getKey();
-      int[] caseInsensitiveAlternatives = entry.getValue();
-      String pattern = new String(Character.toChars(codePoint));
-      Pattern javaRegex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-      RegExp r = new RegExp(pattern, RegExp.ALL, RegExp.CASE_INSENSITIVE);
-      CharacterRunAutomaton cra = new CharacterRunAutomaton(r.toAutomaton());
-      for (int i = 0; i < caseInsensitiveAlternatives.length; i++) {
+    // spec then we would pick it up.  It may help indicate in the future if we don't notice
+    // that the spec has changed and Pattern picks up the change first
+    for (int codepoint = 0; codepoint < Character.MAX_CODE_POINT + 1; codepoint++) {
+      int[] caseInsensitiveAlternatives = CaseFolding.lookupAlternates(codepoint);
+      if (caseInsensitiveAlternatives != null) {
+        String pattern = new String(Character.toChars(codepoint));
+        Pattern javaRegex =
+            Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+        RegExp r = new RegExp(pattern, RegExp.ALL, RegExp.CASE_INSENSITIVE);
+        CharacterRunAutomaton cra = new CharacterRunAutomaton(r.toAutomaton());
+        for (int i = 0; i < caseInsensitiveAlternatives.length; i++) {
 
-        int alt = caseInsensitiveAlternatives[i];
-        String altString = new String(Character.toChars(alt));
+          int alt = caseInsensitiveAlternatives[i];
+          String altString = new String(Character.toChars(alt));
 
-        // Pattern doesn't respect the Unicode spec so some things will not match
-        if (javaRegex.matcher(altString).matches()) {
-          // ... but if they do match then we must agree
-          assertTrue(cra.run(altString));
+          // Pattern doesn't respect the Unicode spec so some things will not match
+          if (javaRegex.matcher(altString).matches()) {
+            // ... but if they do match then we must agree
+            assertTrue(cra.run(altString));
+          }
         }
       }
     }

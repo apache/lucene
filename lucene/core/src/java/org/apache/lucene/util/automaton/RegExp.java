@@ -430,25 +430,31 @@ public class RegExp {
    *
    * <p>This flag behaves the same as the {@link #CASE_INSENSITIVE} and will cause case-insensitive
    * matches outside the ASCII range
+   *
+   * <p>This flag has been deprecated in favor of {@link #CASE_INSENSITIVE} that supports the full
+   * range of Unicode characters. Usage of this flag has the same behavior as {@link
+   * #CASE_INSENSITIVE}
    */
   @Deprecated public static final int ASCII_CASE_INSENSITIVE = 0x0100;
 
-  // FIXME: rewrite this comment block
   /**
    * Allows case-insensitive matching of most Unicode characters.
    *
    * <p>In general the attempt is to reach parity with {@link java.util.regex.Pattern}
    * Pattern.CASE_INSENSITIVE and Pattern.UNICODE_CASE flags when doing a case-insensitive match. We
-   * support common case folding in addition to simple case folding as defined by
-   * https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt This is in line with {@link
+   * support common case folding in addition to simple case folding as defined by the common (C),
+   * simple (S) and special (T) mappings in
+   * https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt. This is in line with {@link
    * java.util.regex.Pattern} and means characters like those representing the Greek symbol sigma
-   * (Σ, σ, ς) will all match one another
+   * (Σ, σ, ς) will all match one another despite σ and ς both being lowercase characters as
+   * detailed here: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt.
    *
    * <p>Some Unicode characters are difficult to correctly decode casing. In some cases Java's
    * String class correctly handles decoding these but Java's {@link java.util.regex.Pattern} class
-   * does not. Again to keep parity and for performance reasons we are maintaining consistency with
-   * {@link java.util.regex.Pattern}. There are three known special classes of these characters we
-   * term unstable:
+   * does not. We make only a best effort to maintaining consistency with {@link
+   * java.util.regex.Pattern} and there may be differences.
+   *
+   * <p>There are three known special classes of these characters:
    *
    * <ul>
    *   <li>1. the set of characters whose casing matches across multiple characters such as the
@@ -464,10 +470,12 @@ public class RegExp {
    * </ul>
    *
    * <p>Sometimes these classes of character will overlap; if a character is in both class 3 and any
-   * other case listed above it is ignored; this is consistent with {@link java.util.regex.Pattern}.
-   * For instance: this character ῼ will match it's lowercase form ῳ but not it's uppercase form: ΩΙ
+   * other case listed above it is ignored; this is consistent with {@link java.util.regex.Pattern}
+   * and C,S,T mappings in https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt. Support for
+   * class 3 is only available with full (F) mappings, which is not supported. For instance: this
+   * character ῼ will match it's lowercase form ῳ but not it's uppercase form: ΩΙ
    *
-   * <p>Class 3 characters that when uppercased generate multiple characters such as as ﬗ (0xFB17)
+   * <p>Class 3 characters that when uppercased generate multiple characters such as ﬗ (0xFB17)
    * which when uppercased produces ՄԽ (code points: 0x0544 0x053D) and are therefore ignored;
    * however, lowercase matching on these values is supported: 0x00DF, 0x0130, 0x0149, 0x01F0,
    * 0x0390, 0x03B0, 0x0587, 0x1E96-0x1E9A, 0x1F50, 0x1F52, 0x1F54, 0x1F56, 0x1F80-0x1FAF,
@@ -488,9 +496,6 @@ public class RegExp {
    * @deprecated This method will be removed in Lucene 11
    */
   @Deprecated public static final int DEPRECATED_COMPLEMENT = 0x10000;
-
-  /** See {@link #CASE_INSENSITIVE} for more details on the set of known alternative casings */
-  static final CaseFolding caseFolding = new CaseFolding();
 
   // Immutable parsed state
   /** The type of expression */
@@ -653,10 +658,6 @@ public class RegExp {
       throws IllegalArgumentException {
     List<Automaton> list;
     Automaton a = null;
-    // these insensitive flags are checked multiple times together and independently
-    // so pulling these up and checking each separately here
-    boolean isAsciiInsensitive = check(ASCII_CASE_INSENSITIVE);
-    boolean isUnicodeInsensitive = check(CASE_INSENSITIVE);
     switch (kind) {
       case REGEXP_UNION:
         list = new ArrayList<>();
@@ -703,7 +704,7 @@ public class RegExp {
         a = Operations.complement(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
         break;
       case REGEXP_CHAR:
-        if (isAsciiInsensitive || isUnicodeInsensitive) {
+        if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
           a = Automata.makeCharSet(toCaseInsensitiveChar(c));
         } else {
           a = Automata.makeChar(c);
@@ -722,7 +723,7 @@ public class RegExp {
         a = Automata.makeEmpty();
         break;
       case REGEXP_STRING:
-        if (isAsciiInsensitive || isUnicodeInsensitive) {
+        if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
           a = toCaseInsensitiveString();
         } else {
           a = Automata.makeString(s);
@@ -756,32 +757,31 @@ public class RegExp {
   }
 
   /**
-   * This function handles case folding for the Unicode spec for generating case-insensitive
-   * alternatives. Specifically for Unicode some special handling is required particularly to ensure
-   * behavior meets the Unicode spec: https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt
+   * This function handles uses the Unicode spec for generating case-insensitive alternates.
    *
    * <p>See the {@link #CASE_INSENSITIVE} flag for details on case folding within the Unicode spec.
    *
    * @param codepoint the Character code point to encode as an Automaton
-   * @return the set of Automaton that represent the original code point and it's variants
+   * @return the original codepoint and the set of alternates
    */
   private int[] toCaseInsensitiveChar(int codepoint) {
-    int[] result;
-    int[] altCodepoints = caseFolding.fold(codepoint);
+    int[] altCodepoints = CaseFolding.lookupAlternates(codepoint);
     if (altCodepoints != null) {
-      result = altCodepoints;
+      int[] concat = new int[altCodepoints.length + 1];
+      System.arraycopy(altCodepoints, 0, concat, 0, altCodepoints.length);
+      concat[altCodepoints.length] = codepoint;
+      return concat;
     } else {
       int altCase =
           Character.isLowerCase(codepoint)
               ? Character.toUpperCase(codepoint)
               : Character.toLowerCase(codepoint);
       if (altCase != codepoint) {
-        return new int[] {codepoint, altCase};
+        return new int[] {altCase, codepoint};
       } else {
         return new int[] {codepoint};
       }
     }
-    return result;
   }
 
   private Automaton toCaseInsensitiveString() {
@@ -1312,10 +1312,6 @@ public class RegExp {
     ArrayList<Integer> starts = new ArrayList<>();
     ArrayList<Integer> ends = new ArrayList<>();
 
-    // these insensitive flags are checked multiple times together and independently
-    // so pulling these up and checking each separately here
-    boolean isAsciiInsensitive = check(ASCII_CASE_INSENSITIVE);
-    boolean isUnicodeInsensitive = check(CASE_INSENSITIVE);
     do {
       // look for escape
       if (match('\\')) {
@@ -1328,7 +1324,7 @@ public class RegExp {
           // range from c-d
           starts.add(c);
           ends.add(parseCharExp());
-        } else if (isAsciiInsensitive || isUnicodeInsensitive) {
+        } else if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
           // single case-insensitive character
           for (int form : toCaseInsensitiveChar(c)) {
             starts.add(form);
