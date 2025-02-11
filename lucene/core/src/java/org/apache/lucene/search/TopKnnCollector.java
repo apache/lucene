@@ -52,7 +52,7 @@ public class TopKnnCollector extends AbstractKnnCollector {
 
   @Override
   public float minCompetitiveSimilarity() {
-    return queue.size() >= k() ? Math.nextUp(queue.topScore()) : Float.NEGATIVE_INFINITY;
+    return queue.size() >= k() ? queue.topScore() : Float.NEGATIVE_INFINITY;
   }
 
   @Override

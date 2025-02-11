@@ -61,7 +61,7 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
 
   @Override
   public float minCompetitiveSimilarity() {
-    return Math.nextUp(Math.min(traversalSimilarity, maxSimilarity));
+    return Math.min(traversalSimilarity, maxSimilarity);
   }
 
   @Override

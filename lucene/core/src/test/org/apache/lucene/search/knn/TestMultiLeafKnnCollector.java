@@ -39,7 +39,7 @@ public class TestMultiLeafKnnCollector extends LuceneTestCase {
     // The global heap should be updated since k hits were collected, and have a min score of
     // 100:
     assertEquals(100f, globalHeap.peek(), 0f);
-    assertEquals(Math.nextUp(100f), collector1.minCompetitiveSimilarity(), 0f);
+    assertEquals(100f, collector1.minCompetitiveSimilarity(), 0f);
 
     // Collect k (7) hits in collector2 with only two that are competitive (200 and 300),
     // which also forces an update of the global heap with collector2's hits. This is a tricky
@@ -57,6 +57,6 @@ public class TestMultiLeafKnnCollector extends LuceneTestCase {
     // values 200 and 300 from collector2 should have pushed out 100 and 101 from collector1.
     // The min value on the global heap should be 102:
     assertEquals(102f, globalHeap.peek(), 0f);
-    assertEquals(Math.nextUp(102f), collector2.minCompetitiveSimilarity(), 0f);
+    assertEquals(102f, collector2.minCompetitiveSimilarity(), 0f);
   }
 }

@@ -82,7 +82,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
 
   @Override
   public float minCompetitiveSimilarity() {
-    return heap.size >= k() ? Math.nextUp(heap.topScore()) : Float.NEGATIVE_INFINITY;
+    return heap.size >= k() ? heap.topScore() : Float.NEGATIVE_INFINITY;
   }
 
   @Override
