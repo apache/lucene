@@ -401,7 +401,7 @@ public class AutomatonTestUtil extends Assert {
   /** Asserts that an automaton is a DFA with no dead states */
   public static void assertCleanDFA(Automaton automaton) {
     assertCleanNFA(automaton);
-    assertTrue("must be determistic", automaton.isDeterministic());
+    assertTrue("must be deterministic", automaton.isDeterministic());
   }
 
   /** Asserts that an automaton has no dead states */
