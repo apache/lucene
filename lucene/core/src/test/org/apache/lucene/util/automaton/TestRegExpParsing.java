@@ -17,6 +17,7 @@
 package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -170,7 +171,8 @@ public class TestRegExpParsing extends LuceneTestCase {
 
     Automaton expected =
         Operations.union(
-            Automata.makeCharRange(0, 'b'), Automata.makeCharRange('d', Integer.MAX_VALUE));
+            List.of(
+                Automata.makeCharRange(0, 'b'), Automata.makeCharRange('d', Integer.MAX_VALUE)));
     assertSameLanguage(expected, actual);
   }
 
@@ -220,7 +222,8 @@ public class TestRegExpParsing extends LuceneTestCase {
 
     Automaton expected =
         Operations.union(
-            Automata.makeCharRange(0, 'a'), Automata.makeCharRange('e', Integer.MAX_VALUE));
+            List.of(
+                Automata.makeCharRange(0, 'a'), Automata.makeCharRange('e', Integer.MAX_VALUE)));
     assertSameLanguage(expected, actual);
   }
 
@@ -269,10 +272,13 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
 
-    Automaton expected = Automata.makeChar(' ');
-    expected = Operations.union(expected, Automata.makeChar('\n'));
-    expected = Operations.union(expected, Automata.makeChar('\r'));
-    expected = Operations.union(expected, Automata.makeChar('\t'));
+    Automaton expected =
+        Operations.union(
+            List.of(
+                Automata.makeChar(' '),
+                Automata.makeChar('\n'),
+                Automata.makeChar('\r'),
+                Automata.makeChar('\t')));
     assertSameLanguage(expected, actual);
   }
 
@@ -311,10 +317,13 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
 
-    Automaton expected = Automata.makeCharRange('a', 'z');
-    expected = Operations.union(expected, Automata.makeCharRange('A', 'Z'));
-    expected = Operations.union(expected, Automata.makeCharRange('0', '9'));
-    expected = Operations.union(expected, Automata.makeChar('_'));
+    Automaton expected =
+        Operations.union(
+            List.of(
+                Automata.makeCharRange('a', 'z'),
+                Automata.makeCharRange('A', 'Z'),
+                Automata.makeCharRange('0', '9'),
+                Automata.makeChar('_')));
     assertSameLanguage(expected, actual);
   }
 
@@ -568,11 +577,10 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton actual = re.toAutomaton();
     assertTrue(actual.isDeterministic());
 
-    Automaton c1 = Operations.union(Automata.makeChar('b'), Automata.makeChar('B'));
-    Automaton c2 = Operations.union(Automata.makeChar('o'), Automata.makeChar('O'));
+    Automaton c1 = Operations.union(List.of(Automata.makeChar('b'), Automata.makeChar('B')));
+    Automaton c2 = Operations.union(List.of(Automata.makeChar('o'), Automata.makeChar('O')));
 
-    Automaton expected = Operations.concatenate(c1, c2);
-    expected = Operations.concatenate(expected, c2);
+    Automaton expected = Operations.concatenate(List.of(c1, c2, c2));
     assertSameLanguage(expected, actual);
   }
 
@@ -611,7 +619,8 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertTrue(actual.isDeterministic());
 
     Automaton expected =
-        Operations.concatenate(Automata.makeCharRange('b', 'c'), Automata.makeCharRange('e', 'f'));
+        Operations.concatenate(
+            List.of(Automata.makeCharRange('b', 'c'), Automata.makeCharRange('e', 'f')));
     assertSameLanguage(expected, actual);
   }
 
@@ -665,7 +674,8 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertTrue(actual.isDeterministic());
 
     Automaton expected =
-        Operations.union(Automata.makeCharRange('b', 'c'), Automata.makeCharRange('e', 'f'));
+        Operations.union(
+            List.of(Automata.makeCharRange('b', 'c'), Automata.makeCharRange('e', 'f')));
     assertSameLanguage(expected, actual);
   }
 

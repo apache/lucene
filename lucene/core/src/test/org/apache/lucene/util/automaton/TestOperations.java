@@ -65,8 +65,8 @@ public class TestOperations extends LuceneTestCase {
 
   /** Test concatenation with empty language returns empty */
   public void testEmptyLanguageConcatenate() {
-    Automaton a = Automata.makeString("a");
-    Automaton concat = Operations.concatenate(a, Automata.makeEmpty());
+    Automaton concat =
+        Operations.concatenate(List.of(Automata.makeString("a"), Automata.makeEmpty()));
     assertTrue(Operations.isEmpty(concat));
   }
 
@@ -111,9 +111,10 @@ public class TestOperations extends LuceneTestCase {
     Automaton singleton = Automata.makeString("");
     Automaton expandedSingleton = singleton;
     // an NFA (two transitions for 't' from initial state)
-    Automaton nfa = Operations.union(Automata.makeString("this"), Automata.makeString("three"));
-    Automaton concat1 = Operations.concatenate(expandedSingleton, nfa);
-    Automaton concat2 = Operations.concatenate(singleton, nfa);
+    Automaton nfa =
+        Operations.union(List.of(Automata.makeString("this"), Automata.makeString("three")));
+    Automaton concat1 = Operations.concatenate(List.of(expandedSingleton, nfa));
+    Automaton concat2 = Operations.concatenate(List.of(singleton, nfa));
     assertFalse(concat2.isDeterministic());
     assertTrue(
         AutomatonTestUtil.sameLanguage(
@@ -167,7 +168,7 @@ public class TestOperations extends LuceneTestCase {
     TestUtil.randomFixedLengthUnicodeString(random(), chars, 0, chars.length);
     String bigString2 = new String(chars);
     Automaton a =
-        Operations.union(Automata.makeString(bigString1), Automata.makeString(bigString2));
+        Operations.union(List.of(Automata.makeString(bigString1), Automata.makeString(bigString2)));
     IllegalArgumentException exc =
         expectThrows(IllegalArgumentException.class, () -> AutomatonTestUtil.isFinite(a));
     assertTrue(exc.getMessage().contains("input automaton is too large"));
@@ -185,27 +186,31 @@ public class TestOperations extends LuceneTestCase {
     Automaton tricky =
         Operations.repeat(
             Operations.union(
-                Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
-                Automata.makeCharRange(101, Character.MAX_CODE_POINT)));
+                List.of(
+                    Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
+                    Automata.makeCharRange(101, Character.MAX_CODE_POINT))));
     assertTrue(Operations.isTotal(tricky));
     // not total, but close
     Automaton tricky2 =
         Operations.repeat(
             Operations.union(
-                Automata.makeCharRange(Character.MIN_CODE_POINT + 1, 100),
-                Automata.makeCharRange(101, Character.MAX_CODE_POINT)));
+                List.of(
+                    Automata.makeCharRange(Character.MIN_CODE_POINT + 1, 100),
+                    Automata.makeCharRange(101, Character.MAX_CODE_POINT))));
     assertFalse(Operations.isTotal(tricky2));
     Automaton tricky3 =
         Operations.repeat(
             Operations.union(
-                Automata.makeCharRange(Character.MIN_CODE_POINT, 99),
-                Automata.makeCharRange(101, Character.MAX_CODE_POINT)));
+                List.of(
+                    Automata.makeCharRange(Character.MIN_CODE_POINT, 99),
+                    Automata.makeCharRange(101, Character.MAX_CODE_POINT))));
     assertFalse(Operations.isTotal(tricky3));
     Automaton tricky4 =
         Operations.repeat(
             Operations.union(
-                Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
-                Automata.makeCharRange(101, Character.MAX_CODE_POINT - 1)));
+                List.of(
+                    Automata.makeCharRange(Character.MIN_CODE_POINT, 100),
+                    Automata.makeCharRange(101, Character.MAX_CODE_POINT - 1))));
     assertFalse(Operations.isTotal(tricky4));
   }
 
@@ -327,7 +332,7 @@ public class TestOperations extends LuceneTestCase {
     assertTrue(AutomatonTestUtil.sameLanguage(abs, Operations.repeat(ab)));
     assertSame(abs, Operations.repeat(abs));
 
-    Automaton absThenC = Operations.concatenate(abs, Automata.makeChar('c'));
+    Automaton absThenC = Operations.concatenate(List.of(abs, Automata.makeChar('c')));
     Automaton absThenCs = new Automaton();
     absThenCs.createState();
     absThenCs.createState();
@@ -367,6 +372,54 @@ public class TestOperations extends LuceneTestCase {
         AutomatonTestUtil.sameLanguage(
             Operations.determinize(aOrAbs, Integer.MAX_VALUE),
             Operations.determinize(Operations.repeat(aOrAb), Integer.MAX_VALUE)));
+  }
+
+  public void testMergeAcceptStatesWithNoTransition() {
+    Automaton emptyLanguage = Automata.makeEmpty();
+    assertSame(emptyLanguage, Operations.mergeAcceptStatesWithNoTransition(emptyLanguage));
+
+    Automaton a = Automata.makeString("a");
+    assertSame(a, Operations.mergeAcceptStatesWithNoTransition(a));
+
+    // All accept states get combined
+    Automaton aOrC = new Automaton();
+    aOrC.createState();
+    aOrC.createState();
+    aOrC.createState();
+    aOrC.addTransition(0, 1, 'a');
+    aOrC.setAccept(1, true);
+    aOrC.addTransition(0, 2, 'c');
+    aOrC.setAccept(2, true);
+    Automaton aOrCSingleAcceptState = Operations.mergeAcceptStatesWithNoTransition(aOrC);
+    assertEquals(1, aOrCSingleAcceptState.getAcceptStates().cardinality());
+    assertTrue(AutomatonTestUtil.sameLanguage(aOrC, aOrCSingleAcceptState));
+
+    // Two accept states get combined, but not the 3rd one since it has an outgoing transition
+    Automaton aOrCOrXStar = new Automaton();
+    aOrCOrXStar.createState();
+    aOrCOrXStar.createState();
+    aOrCOrXStar.createState();
+    aOrCOrXStar.createState();
+    aOrCOrXStar.addTransition(0, 1, 'a');
+    aOrCOrXStar.setAccept(1, true);
+    aOrCOrXStar.addTransition(0, 2, 'c');
+    aOrCOrXStar.setAccept(2, true);
+    aOrCOrXStar.addTransition(0, 3, 'x');
+    aOrCOrXStar.addTransition(3, 3, 'x');
+    aOrCOrXStar.setAccept(3, true);
+    Automaton aOrCOrXStarSingleAcceptState =
+        Operations.mergeAcceptStatesWithNoTransition(aOrCOrXStar);
+    assertEquals(2, aOrCOrXStarSingleAcceptState.getAcceptStates().cardinality());
+    assertTrue(AutomatonTestUtil.sameLanguage(aOrCOrXStar, aOrCOrXStarSingleAcceptState));
+
+    int iters = atLeast(100);
+    for (int iter = 0; iter < iters; iter++) {
+      // sameLangage requires a deterministic automaton
+      Automaton expected =
+          Operations.determinize(AutomatonTestUtil.randomAutomaton(random()), Integer.MAX_VALUE);
+      Automaton actual = Operations.mergeAcceptStatesWithNoTransition(expected);
+      assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
+    }
   }
 
   public void testDuelRepeat() {
