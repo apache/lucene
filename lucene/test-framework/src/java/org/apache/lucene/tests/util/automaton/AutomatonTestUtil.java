@@ -285,9 +285,9 @@ public class AutomatonTestUtil {
     // combine them in random ways
     switch (random.nextInt(4)) {
       case 0:
-        return Operations.concatenate(a1, a2);
+        return Operations.concatenate(List.of(a1, a2));
       case 1:
-        return Operations.union(a1, a2);
+        return Operations.union(List.of(a1, a2));
       case 2:
         return Operations.intersection(a1, a2);
       default:
@@ -329,12 +329,64 @@ public class AutomatonTestUtil {
    * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    */
 
+  /**
+   * Original brics implementation of reverse(). It tries to satisfy multiple use-cases by
+   * populating a set of initial states too.
+   */
+  public static Automaton reverseOriginal(Automaton a, Set<Integer> initialStates) {
+
+    if (Operations.isEmpty(a)) {
+      return new Automaton();
+    }
+
+    int numStates = a.getNumStates();
+
+    // Build a new automaton with all edges reversed
+    Automaton.Builder builder = new Automaton.Builder();
+
+    // Initial node; we'll add epsilon transitions in the end:
+    builder.createState();
+
+    for (int s = 0; s < numStates; s++) {
+      builder.createState();
+    }
+
+    // Old initial state becomes new accept state:
+    builder.setAccept(1, true);
+
+    Transition t = new Transition();
+    for (int s = 0; s < numStates; s++) {
+      int numTransitions = a.getNumTransitions(s);
+      a.initTransition(s, t);
+      for (int i = 0; i < numTransitions; i++) {
+        a.getNextTransition(t);
+        builder.addTransition(t.dest + 1, s + 1, t.min, t.max);
+      }
+    }
+
+    Automaton result = builder.finish();
+
+    int s = 0;
+    BitSet acceptStates = a.getAcceptStates();
+    while (s < numStates && (s = acceptStates.nextSetBit(s)) != -1) {
+      result.addEpsilon(0, s + 1);
+      if (initialStates != null) {
+        initialStates.add(s + 1);
+      }
+      s++;
+    }
+
+    result.finishState();
+
+    return result;
+  }
+
   /** Simple, original brics implementation of Brzozowski minimize() */
   public static Automaton minimizeSimple(Automaton a) {
     Set<Integer> initialSet = new HashSet<Integer>();
-    a = determinizeSimple(Operations.reverse(a, initialSet), initialSet);
+    a = determinizeSimple(reverseOriginal(a, initialSet), initialSet);
     initialSet.clear();
-    a = determinizeSimple(Operations.reverse(a, initialSet), initialSet);
+    a = determinizeSimple(reverseOriginal(a, initialSet), initialSet);
     return a;
   }
 
