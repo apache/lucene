@@ -19,8 +19,6 @@ package org.apache.lucene.util.bkd;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
-import org.apache.lucene.internal.vectorization.BKDDecodingUtil;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
@@ -33,8 +31,6 @@ import org.apache.lucene.util.LongsRef;
 /** Public for jmh benchmark. */
 public final class DocIdsWriter {
 
-  private static final BKDDecodingUtil BDU =
-      VectorizationProvider.getInstance().newBKDDecodingUtil();
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
   private static final byte DELTA_BPV_16 = (byte) 16;
@@ -121,10 +117,9 @@ public final class DocIdsWriter {
             writeInts16(k, scratch, batchSize, out);
           }
         }
-        while (k < count) {
-          out.writeShort((short) scratch[k++]);
+        for (; k < count; k++) {
+          out.writeShort((short) scratch[k]);
         }
-//        writeInts16(k, scratch, count - k, out);
       }
     } else {
       if (max <= 0xFFFFFF) {
@@ -162,7 +157,8 @@ public final class DocIdsWriter {
     }
   }
 
-  private static void writeInts16(int k, int[] scratch, int count, DataOutput out) throws IOException {
+  private static void writeInts16(int k, int[] scratch, int count, DataOutput out)
+      throws IOException {
     final int halfLen = count >> 1;
     for (int i = k; i < k + halfLen; i++) {
       scratch[i] = scratch[halfLen + i] | (scratch[i] << 16);
@@ -337,13 +333,13 @@ public final class DocIdsWriter {
       in.readInts(docIds, k, 64);
       inner16(k, docIds, 64, min);
     }
-    while (k < count) {
-      docIds[k++] = Short.toUnsignedInt(in.readShort()) + min;
+    for (; k < count; k++) {
+      docIds[k] = Short.toUnsignedInt(in.readShort()) + min;
     }
   }
 
   private static void inner16(int k, int[] docIds, int half, int min) {
-    for (int i = k; i < k + half; ++i) {
+    for (int i = k, to = k + half; i < to; ++i) {
       final int l = docIds[i];
       docIds[i] = (l >>> 16) + min;
       docIds[i + half] = (l & 0xFFFF) + min;
@@ -367,14 +363,14 @@ public final class DocIdsWriter {
   }
 
   private static void shift(int k, int[] docIds, int[] scratch, int halfAndQuarter) {
-    for (int i = k; i < k + halfAndQuarter; i++) {
+    for (int i = k, to = k + halfAndQuarter; i < to; i++) {
       docIds[i] = scratch[i] >>> 8;
     }
   }
 
   private static void remainder24(
       int k, int[] docIds, int[] scratch, int quarter, int half, int halfAndQuarter) {
-    for (int i = k; i < k + quarter; i++) {
+    for (int i = k, to = k + quarter; i < to; i++) {
       docIds[i + halfAndQuarter] =
           ((scratch[i] & 0xFF) << 16)
               | ((scratch[i + quarter] & 0xFF) << 8)
@@ -382,7 +378,8 @@ public final class DocIdsWriter {
     }
   }
 
-  private static void readScalarInts24(IndexInput in, int count, int[] docIDs, int offset) throws IOException {
+  private static void readScalarInts24(IndexInput in, int count, int[] docIDs, int offset)
+      throws IOException {
     int i;
     for (i = offset; i < offset + count - 7; i += 8) {
       long l1 = in.readLong();
@@ -477,7 +474,8 @@ public final class DocIdsWriter {
     visitor.visit(scratchIntsRef);
   }
 
-  private void readLegacyDelta16(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+  private void readLegacyDelta16(IndexInput in, int count, IntersectVisitor visitor)
+      throws IOException {
     readDelta16Legacy(in, count, scratch);
     scratchIntsRef.ints = scratch;
     scratchIntsRef.length = count;

@@ -38,6 +38,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @Warmup(iterations = 3, time = 1)
 @Measurement(iterations = 5, time = 1)
 @Fork(value = 1)
+/** no-commit : remove before merge */
 public class ShiftMaskBenchmark {
 
   private int[] counts;

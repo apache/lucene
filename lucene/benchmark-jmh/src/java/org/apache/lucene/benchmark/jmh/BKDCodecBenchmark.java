@@ -58,11 +58,6 @@ public class BKDCodecBenchmark {
   @Param({"16", "24"})
   public int bpv;
 
-  // It is important to make count variable, like what will happen in real BKD leaves. If
-  // countVariable=false, {@link #current} will run as fast as {@link #currentVector}.
-  @Param({"true", "false"})
-  public boolean countVariable;
-
   private Directory dir;
   private DocIdsWriter legacy;
   private IndexInput legacyIn;
@@ -107,15 +102,11 @@ public class BKDCodecBenchmark {
   }
 
   private int count(int iter) {
-    if (countVariable) {
-      return iter % 20 == 0 ? SIZE - 1 : SIZE;
-    } else {
-      return SIZE;
-    }
+    return iter % 20 == 0 ? SIZE - 1 : SIZE;
   }
 
   @Benchmark
-  public void legacy(Blackhole bh) throws IOException {
+  public void scalar(Blackhole bh) throws IOException {
     for (int i = 0; i <= 100; i++) {
       int count = count(i);
       legacy.readInts(legacyIn, count, docs);
@@ -125,112 +116,12 @@ public class BKDCodecBenchmark {
   }
 
   @Benchmark
-  public void current(Blackhole bh) throws IOException {
+  public void vector(Blackhole bh) throws IOException {
     for (int i = 0; i <= 100; i++) {
       int count = count(i);
       vector.readInts(vectorIn, count, docs);
       bh.consume(docs);
       setupInvocation();
-    }
-  }
-
-  @Benchmark
-  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
-  public void currentVector(Blackhole bh) throws IOException {
-    for (int i = 0; i <= 100; i++) {
-      int count = count(i);
-      vector.readInts(vectorIn, count, docs);
-      bh.consume(docs);
-      setupInvocation();
-    }
-  }
-
-  @Benchmark
-  public void innerLoop(Blackhole bh) throws IOException {
-    for (int i = 0; i <= 100; i++) {
-      int count = count(i);
-      read(vectorIn, count, docs);
-      bh.consume(docs);
-      setupInvocation();
-    }
-  }
-
-  private final int[] scratch = new int[SIZE];
-
-  private void read(IndexInput in, int count, int[] values) throws IOException {
-    switch (bpv) {
-      case 16 -> readInts16(in, count, values);
-      case 24 -> readInts24(in, values, scratch, count);
-      default -> throw new RuntimeException();
-    }
-  }
-
-  private static void readInts16(IndexInput in, int count, int[] docIds) throws IOException {
-    final int min = in.readVInt();
-    int k = 0;
-    for (int bound = count - 511; k < bound; k += 512) {
-      in.readInts(docIds, k, 256);
-      // Can be inlined to make offsets consistent so that loop get auto-vectorized.
-      inner16(k, docIds, 256, min);
-    }
-    for (int bound = count - 127; k < bound; k += 128) {
-      in.readInts(docIds, k, 64);
-      inner16(k, docIds, 64, min);
-    }
-    for (int bound = count - 31; k < bound; k += 32) {
-      in.readInts(docIds, k, 16);
-      inner16(k, docIds, 16, min);
-    }
-    for (; k < count; k++) {
-      docIds[k] = Short.toUnsignedInt(in.readShort());
-    }
-  }
-
-  private static void inner16(int k, int[] docIds, int half, int min) {
-    for (int i = k; i < k + half; ++i) {
-      final int l = docIds[i];
-      docIds[i] = (l >>> 16) + min;
-      docIds[i + half] = (l & 0xFFFF) + min;
-    }
-  }
-
-  private static void readInts24(IndexInput in, int[] docIds, int[] scratch, int count)
-      throws IOException {
-    int k = 0;
-    for (int bound = count - 511; k < bound; k += 512) {
-      in.readInts(scratch, k, 384);
-      shift(k, docIds, scratch, 384);
-      // Can be inlined to make offsets consistent so that loop get auto-vectorized.
-      remainder24(k, docIds, scratch, 128, 256, 384);
-    }
-    for (int bound = count - 127; k < bound; k += 128) {
-      in.readInts(scratch, k, 96);
-      shift(k, docIds, scratch, 96);
-      remainder24(k, docIds, scratch, 32, 64, 96);
-    }
-    for (int bound = count - 31; k < bound; k += 32) {
-      in.readInts(scratch, k, 24);
-      shift(k, docIds, scratch, 24);
-      remainder24(k, docIds, scratch, 8, 16, 24);
-    }
-    for (; k < count; ++k) {
-      docIds[k] = (Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte());
-    }
-  }
-
-  private static void shift(int k, int[] docIds, int[] scratch, int halfAndQuarter) {
-    for (int i = k; i < k + halfAndQuarter; i++) {
-      docIds[i] = scratch[i] >>> 8;
-    }
-  }
-
-  private static void remainder24(
-      int k, int[] docIds, int[] scratch, int quarter, int half, int halfAndQuarter) {
-    for (int i = k; i < k + quarter; i++) {
-      docIds[i + halfAndQuarter] =
-          ((scratch[i] & 0xFF) << 16)
-              | ((scratch[i + quarter] & 0xFF) << 8)
-              | (scratch[i + half] & 0xFF);
     }
   }
 }
