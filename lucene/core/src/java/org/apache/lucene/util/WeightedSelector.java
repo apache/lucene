@@ -51,7 +51,8 @@ public abstract class WeightedSelector {
       long beforeTotalValue,
       long rangeWeight,
       long beforeWeight,
-      double[] kWeights) {
+      double[] kWeights,
+      boolean selectMinimumInQuantiles) {
     WeightRangeInfo[] kIndexResults = new WeightRangeInfo[kWeights.length];
     Arrays.fill(kIndexResults, new WeightRangeInfo(-1, 0, 0));
     checkArgs(rangeWeight, beforeWeight, kWeights);
@@ -66,6 +67,8 @@ public abstract class WeightedSelector {
         0,
         kWeights.length,
         kIndexResults,
+        selectMinimumInQuantiles,
+        true,
         2 * MathUtil.log(to - from, 2));
     return kIndexResults;
   }
@@ -95,6 +98,8 @@ public abstract class WeightedSelector {
       int kFrom,
       int kTo,
       WeightRangeInfo[] kIndexResults,
+      boolean selectMinimumInQuantiles,
+      boolean fromIsStartOfQuantile,
       int maxDepth) {
 
     // This code is inspired from IntroSorter#sort, adapted to loop on a single partition.
@@ -208,6 +213,27 @@ public abstract class WeightedSelector {
           break;
         }
       }
+
+      // We create quantiles by finding the maximum value from each quantile.
+      // Sometime this lets us find the minimum of the next quantile, but not always.
+      // This variable lets us know if the minimum of the top group needs to be found,
+      // because a quantile was found at the last value of this partition
+      boolean lastPivotIsQuantileEnd = false;
+
+      // Choose the k result indexes for this partition
+      if (bottomKTo < topKFrom) {
+        lastPivotIsQuantileEnd =
+            findKIndexes(
+                j + 1,
+                i,
+                beforeTotalValue + leftTotalValue,
+                beforeWeight + leftWeight,
+                bottomKTo,
+                topKFrom,
+                kWeights,
+                kIndexResults);
+      }
+
       // Recursively select the relevant k-values from the bottom group, if there are any k-values
       // to select there
       if (bottomKTo > kFrom) {
@@ -222,8 +248,15 @@ public abstract class WeightedSelector {
             kFrom,
             bottomKTo,
             kIndexResults,
+            selectMinimumInQuantiles,
+            fromIsStartOfQuantile,
             maxDepth);
+      } else if (fromIsStartOfQuantile && selectMinimumInQuantiles && from < j) {
+        // This means that we don't need to look through the bottom group for the quantile,
+        // but we still need to select the minimum (from) value in this bottom range
+        selectMinimum(from, j + 1);
       }
+
       // Recursively select the relevant k-values from the top group, if there are any k-values to
       // select there
       if (topKFrom < kTo) {
@@ -238,20 +271,9 @@ public abstract class WeightedSelector {
             topKFrom,
             kTo,
             kIndexResults,
+            selectMinimumInQuantiles,
+            lastPivotIsQuantileEnd,
             maxDepth);
-      }
-
-      // Choose the k result indexes for this partition
-      if (bottomKTo < topKFrom) {
-        findKIndexes(
-            j + 1,
-            i,
-            beforeTotalValue + leftTotalValue,
-            beforeWeight + leftWeight,
-            bottomKTo,
-            topKFrom,
-            kWeights,
-            kIndexResults);
       }
     }
 
@@ -277,7 +299,7 @@ public abstract class WeightedSelector {
     }
   }
 
-  private void findKIndexes(
+  private boolean findKIndexes(
       int from,
       int to,
       long beforeTotalValue,
@@ -292,14 +314,36 @@ public abstract class WeightedSelector {
     for (int listIdx = from; listIdx < to && kIdx < kTo; listIdx++) {
       runningWeight += getWeight(listIdx);
       runningTotalValue += getValue(listIdx);
-      // Skip ahead in the weight list if the same value is used for multiple weights, we will only
-      // record a result index for the last weight that matches it.
+      // Skip ahead in the weight list if the same value is used for multiple quantiles, we will
+      // only record a result index for the last quantile that matches it.
       while (++kIdx < kTo && kWeights[kIdx] <= runningWeight) {}
       if (kWeights[--kIdx] <= runningWeight) {
         kIndexResults[kIdx] = new WeightRangeInfo(listIdx, runningTotalValue, runningWeight);
         // Now that we have recorded the resultIndex for this weight, go to the next weight
         kIdx++;
       }
+    }
+    // Determine if the last value was used for a WeightRangeBoundary.
+    // If so, then we need to select for the next value to get the minimum
+    // of the next quantile.
+    return kIndexResults[kTo - 1].index() == to - 1;
+  }
+
+  /**
+   * Find the minimum value in this range, and place it in the {@code from} position.
+   *
+   * @param from beginning of range (inclusive)
+   * @param to end of range (exclusive)
+   */
+  private void selectMinimum(int from, int to) {
+    int minIndex = from;
+    for (int index = from + 1; index < to; index++) {
+      if (compare(minIndex, index) > 0) {
+        minIndex = index;
+      }
+    }
+    if (minIndex != from) {
+      swap(minIndex, from);
     }
   }
 

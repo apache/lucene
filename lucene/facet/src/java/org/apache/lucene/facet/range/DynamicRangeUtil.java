@@ -263,7 +263,7 @@ public final class DynamicRangeUtil {
             }
             return cmp;
           }
-        }.select(0, len, totalValue, 0, totalWeight, 0, kWeights);
+        }.select(0, len, totalValue, 0, totalWeight, 0, kWeights, true);
 
     int lastIdx = -1;
     long lastTotalValue = 0;

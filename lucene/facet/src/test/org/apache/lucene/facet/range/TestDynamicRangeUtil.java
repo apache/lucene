@@ -87,6 +87,24 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
     assertDynamicNumericRangeResults(values, weights, 4, 993, 55109, expectedRangeInfoList);
   }
 
+  public void testComputeDynamicNumericRangesWithMisplacedValue() {
+    List<DynamicRangeUtil.DynamicRangeInfo> expectedRangeInfoList = new ArrayList<>();
+    long[] values =
+        new long[] {
+          1, 2, 11, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 12, 111, 112, 113, 114, 115
+        };
+    long[] weights =
+        new long[] {
+          2, 3, 12, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 13, 112, 113, 114, 115, 116
+        };
+
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(8, 444, 1L, 104L, 54.5D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(4, 430, 105L, 108L, 106.5D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(4, 446, 109L, 112L, 110.5D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(3, 345, 113L, 115L, 114.0D));
+    assertDynamicNumericRangeResults(values, weights, 4, 1646, 1665, expectedRangeInfoList);
+  }
+
   private static void assertDynamicNumericRangeResults(
       long[] values,
       long[] weights,
