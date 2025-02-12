@@ -77,7 +77,7 @@ public class BKDCodecBenchmark {
     docs = new int[SIZE];
     legacy = new DocIdsWriter(SIZE, BKDWriter.VERSION_META_FILE);
     legacyIn = writeDocIds("legacy", docs, legacy);
-    vector = new DocIdsWriter(SIZE, BKDWriter.VERSION_VECTORIZED_BPV24);
+    vector = new DocIdsWriter(SIZE, BKDWriter.VERSION_VECTORIZED_DOCID);
     vectorIn = writeDocIds("current", docs, vector);
   }
 

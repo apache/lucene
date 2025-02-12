@@ -43,6 +43,8 @@ public final class DocIdsWriter {
   // These signs are legacy, should no longer be used in the writing side.
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
 
+  private static final int[] BATCHES = new int[] {512, 128};
+
   private final int[] scratch;
 
   private final LongsRef scratchLongs = new LongsRef();
@@ -110,41 +112,46 @@ public final class DocIdsWriter {
         scratch[i] = docIds[start + i] - min;
       }
       out.writeVInt(min);
-      final int halfLen = count >>> 1;
-      for (int i = 0; i < halfLen; ++i) {
-        scratch[i] = scratch[halfLen + i] | (scratch[i] << 16);
-      }
-      for (int i = 0; i < halfLen; i++) {
-        out.writeInt(scratch[i]);
-      }
-      if ((count & 1) == 1) {
-        out.writeShort((short) scratch[count - 1]);
+      if (version < BKDWriter.VERSION_VECTORIZED_DOCID) {
+        writeInts16(0, scratch, count, out);
+      } else {
+        int k = 0;
+        for (int batchSize : BATCHES) {
+          for (int bound = count - batchSize + 1; k < bound; k += batchSize) {
+            writeInts16(k, scratch, batchSize, out);
+          }
+        }
+        while (k < count) {
+          out.writeShort((short) scratch[k++]);
+        }
+//        writeInts16(k, scratch, count - k, out);
       }
     } else {
       if (max <= 0xFFFFFF) {
         out.writeByte(BPV_24);
-        if (version < BKDWriter.VERSION_VECTORIZED_BPV24) {
-          writeLegacyBPV24(docIds, start, count, out);
+        if (version < BKDWriter.VERSION_VECTORIZED_DOCID) {
+          writeScalarInts24(docIds, start, count, out);
         } else {
-          final int quarterLen = count >>> 2;
-          final int quarterLen3 = quarterLen * 3;
-          for (int i = 0; i < quarterLen3; ++i) {
-            scratch[i] = docIds[start + i] << 8;
+          int k = 0;
+          for (int batchSize : BATCHES) {
+            for (int bound = count - batchSize + 1; k < bound; k += batchSize) {
+              final int quarterLen = batchSize >>> 2;
+              final int quarterLen3 = quarterLen * 3;
+              for (int i = k; i < k + quarterLen3; i++) {
+                scratch[i] = docIds[i + start] << 8;
+              }
+              for (int i = k; i < k + quarterLen; i++) {
+                final int longIdx = i + quarterLen3 + start;
+                scratch[i] |= docIds[longIdx] >>> 16;
+                scratch[i + quarterLen] |= (docIds[longIdx] >>> 8) & 0xFF;
+                scratch[i + quarterLen * 2] |= docIds[longIdx] & 0xFF;
+              }
+              for (int i = k; i < k + quarterLen3; i++) {
+                out.writeInt(scratch[i]);
+              }
+            }
           }
-          for (int i = 0; i < quarterLen; i++) {
-            final int longIdx = start + i + quarterLen3;
-            scratch[i] |= docIds[longIdx] >>> 16;
-            scratch[i + quarterLen] |= (docIds[longIdx] >>> 8) & 0xFF;
-            scratch[i + quarterLen * 2] |= docIds[longIdx] & 0xFF;
-          }
-          for (int i = 0; i < quarterLen3; ++i) {
-            out.writeInt(scratch[i]);
-          }
-
-          final int remainder = count & 0x3;
-          for (int i = 0; i < remainder; i++) {
-            out.writeInt(docIds[quarterLen * 4 + i]);
-          }
+          writeScalarInts24(docIds, start + k, count - k, out);
         }
       } else {
         out.writeByte(BPV_32);
@@ -155,7 +162,20 @@ public final class DocIdsWriter {
     }
   }
 
-  private static void writeLegacyBPV24(int[] docIds, int start, int count, DataOutput out)
+  private static void writeInts16(int k, int[] scratch, int count, DataOutput out) throws IOException {
+    final int halfLen = count >> 1;
+    for (int i = k; i < k + halfLen; i++) {
+      scratch[i] = scratch[halfLen + i] | (scratch[i] << 16);
+    }
+    for (int i = k; i < k + halfLen; i++) {
+      out.writeInt(scratch[i]);
+    }
+    if ((count & 1) == 1) {
+      out.writeShort((short) scratch[k + count - 1]);
+    }
+  }
+
+  private static void writeScalarInts24(int[] docIds, int start, int count, DataOutput out)
       throws IOException {
     int i;
     for (i = 0; i < count - 7; i += 8) {
@@ -228,11 +248,15 @@ public final class DocIdsWriter {
         readBitSet(in, count, docIDs);
         break;
       case DELTA_BPV_16:
-        readDelta16(in, count, docIDs);
+        if (version < BKDWriter.VERSION_VECTORIZED_DOCID) {
+          readDelta16Legacy(in, count, docIDs);
+        } else {
+          readDelta16(in, count, docIDs);
+        }
         break;
       case BPV_24:
-        if (version < BKDWriter.VERSION_VECTORIZED_BPV24) {
-          readInts24Legacy(in, count, docIDs);
+        if (version < BKDWriter.VERSION_VECTORIZED_DOCID) {
+          readScalarInts24(in, count, docIDs, 0);
         } else {
           readInts24(in, count, docIDs);
         }
@@ -287,17 +311,80 @@ public final class DocIdsWriter {
     assert pos == count : "pos: " + pos + ", count: " + count;
   }
 
-  private static void readDelta16(IndexInput in, int count, int[] docIDs) throws IOException {
-    BDU.decodeDelta16(in, docIDs, count);
+  private static void readDelta16Legacy(IndexInput in, int count, int[] docIds) throws IOException {
+    final int min = in.readVInt();
+    final int halfLen = count >> 1;
+    in.readInts(docIds, 0, halfLen);
+    for (int i = 0; i < halfLen; ++i) {
+      int l = docIds[i];
+      docIds[i] = (l >>> 16) + min;
+      docIds[halfLen + i] = (l & 0xFFFF) + min;
+    }
+    if ((count & 1) == 1) {
+      docIds[count - 1] = Short.toUnsignedInt(in.readShort()) + min;
+    }
+  }
+
+  private static void readDelta16(IndexInput in, int count, int[] docIds) throws IOException {
+    final int min = in.readVInt();
+    int k = 0;
+    for (int bound = count - 511; k < bound; k += 512) {
+      in.readInts(docIds, k, 256);
+      // Can be inlined to make offsets consistent so that loop get auto-vectorized.
+      inner16(k, docIds, 256, min);
+    }
+    for (int bound = count - 127; k < bound; k += 128) {
+      in.readInts(docIds, k, 64);
+      inner16(k, docIds, 64, min);
+    }
+    while (k < count) {
+      docIds[k++] = Short.toUnsignedInt(in.readShort()) + min;
+    }
+  }
+
+  private static void inner16(int k, int[] docIds, int half, int min) {
+    for (int i = k; i < k + half; ++i) {
+      final int l = docIds[i];
+      docIds[i] = (l >>> 16) + min;
+      docIds[i + half] = (l & 0xFFFF) + min;
+    }
   }
 
   private void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
-    BDU.decode24(in, docIDs, scratch, count);
+    int k = 0;
+    for (int bound = count - 511; k < bound; k += 512) {
+      in.readInts(scratch, k, 384);
+      shift(k, docIDs, scratch, 384);
+      // Can be inlined to make offsets consistent so that loop get auto-vectorized.
+      remainder24(k, docIDs, scratch, 128, 256, 384);
+    }
+    for (int bound = count - 127; k < bound; k += 128) {
+      in.readInts(scratch, k, 96);
+      shift(k, docIDs, scratch, 96);
+      remainder24(k, docIDs, scratch, 32, 64, 96);
+    }
+    readScalarInts24(in, count - k, docIDs, k);
   }
 
-  private void readInts24Legacy(IndexInput in, int count, int[] docIDs) throws IOException {
+  private static void shift(int k, int[] docIds, int[] scratch, int halfAndQuarter) {
+    for (int i = k; i < k + halfAndQuarter; i++) {
+      docIds[i] = scratch[i] >>> 8;
+    }
+  }
+
+  private static void remainder24(
+      int k, int[] docIds, int[] scratch, int quarter, int half, int halfAndQuarter) {
+    for (int i = k; i < k + quarter; i++) {
+      docIds[i + halfAndQuarter] =
+          ((scratch[i] & 0xFF) << 16)
+              | ((scratch[i + quarter] & 0xFF) << 8)
+              | (scratch[i + half] & 0xFF);
+    }
+  }
+
+  private static void readScalarInts24(IndexInput in, int count, int[] docIDs, int offset) throws IOException {
     int i;
-    for (i = 0; i < count - 7; i += 8) {
+    for (i = offset; i < offset + count - 7; i += 8) {
       long l1 = in.readLong();
       long l2 = in.readLong();
       long l3 = in.readLong();
@@ -310,7 +397,7 @@ public final class DocIdsWriter {
       docIDs[i + 6] = (int) (l3 >>> 24) & 0xffffff;
       docIDs[i + 7] = (int) l3 & 0xffffff;
     }
-    for (; i < count; ++i) {
+    for (; i < offset + count; ++i) {
       docIDs[i] = (Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte());
     }
   }
@@ -334,11 +421,15 @@ public final class DocIdsWriter {
         readBitSet(in, count, visitor);
         break;
       case DELTA_BPV_16:
-        readDelta16(in, count, visitor);
+        if (version < BKDWriter.VERSION_VECTORIZED_DOCID) {
+          readLegacyDelta16(in, count, visitor);
+        } else {
+          readDelta16(in, count, visitor);
+        }
         break;
       case BPV_24:
-        if (version < BKDWriter.VERSION_VECTORIZED_BPV24) {
-          readInts24Legacy(in, count, visitor);
+        if (version < BKDWriter.VERSION_VECTORIZED_DOCID) {
+          readScalarInts24(in, count, visitor);
         } else {
           readInts24(in, count, visitor, buffer);
         }
@@ -386,6 +477,13 @@ public final class DocIdsWriter {
     visitor.visit(scratchIntsRef);
   }
 
+  private void readLegacyDelta16(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+    readDelta16Legacy(in, count, scratch);
+    scratchIntsRef.ints = scratch;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
+  }
+
   private void readInts24(IndexInput in, int count, IntersectVisitor visitor, int[] buffer)
       throws IOException {
     readInts24(in, count, buffer);
@@ -394,9 +492,9 @@ public final class DocIdsWriter {
     visitor.visit(scratchIntsRef);
   }
 
-  private void readInts24Legacy(IndexInput in, int count, IntersectVisitor visitor)
+  private void readScalarInts24(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
-    readInts24Legacy(in, count, scratch);
+    readScalarInts24(in, count, scratch, 0);
     scratchIntsRef.ints = scratch;
     scratchIntsRef.length = count;
     visitor.visit(scratchIntsRef);

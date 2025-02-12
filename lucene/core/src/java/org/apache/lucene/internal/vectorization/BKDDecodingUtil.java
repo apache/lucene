@@ -27,15 +27,30 @@ public class BKDDecodingUtil {
 
   public void decodeDelta16(IndexInput in, int[] docIds, int count) throws IOException {
     final int min = in.readVInt();
-    final int halfLen = count >> 1;
-    in.readInts(docIds, 0, halfLen);
-    for (int i = 0; i < halfLen; ++i) {
-      int l = docIds[i];
-      docIds[i] = (l >>> 16) + min;
-      docIds[halfLen + i] = (l & 0xFFFF) + min;
+    int k = 0;
+    for (int bound = count - 511; k < bound; k += 512) {
+      in.readInts(docIds, k, 256);
+      // Can be inlined to make offsets consistent so that loop get auto-vectorized.
+      inner16(k, docIds, 256, min);
     }
-    if ((count & 1) == 1) {
-      docIds[count - 1] = Short.toUnsignedInt(in.readShort()) + min;
+    for (int bound = count - 127; k < bound; k += 128) {
+      in.readInts(docIds, k, 64);
+      inner16(k, docIds, 64, min);
+    }
+    for (int bound = count - 31; k < bound; k += 32) {
+      in.readInts(docIds, k, 16);
+      inner16(k, docIds, 16, min);
+    }
+    while (k < count) {
+      docIds[k++] = Short.toUnsignedInt(in.readShort()) + min;
+    }
+  }
+
+  private static void inner16(int k, int[] docIds, int half, int min) {
+    for (int i = k; i < k + half; ++i) {
+      final int l = docIds[i];
+      docIds[i] = (l >>> 16) + min;
+      docIds[i + half] = (l & 0xFFFF) + min;
     }
   }
 

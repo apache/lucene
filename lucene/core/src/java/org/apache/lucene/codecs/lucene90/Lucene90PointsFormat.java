@@ -67,7 +67,7 @@ public final class Lucene90PointsFormat extends PointsFormat {
   private static final Map<Integer, Integer> VERSION_TO_BKD_VERSION =
       Map.of(
           VERSION_START, BKDWriter.VERSION_META_FILE,
-          VERSION_BKD_VECTORIZED_BPV24, BKDWriter.VERSION_VECTORIZED_BPV24);
+          VERSION_BKD_VECTORIZED_BPV24, BKDWriter.VERSION_VECTORIZED_DOCID);
 
   private final int version;
 
