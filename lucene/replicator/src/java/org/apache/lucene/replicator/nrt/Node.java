@@ -51,13 +51,13 @@ public abstract class Node implements Closeable {
    * Key to store the primary gen in the commit data, which increments every time we promote a new
    * primary, so replicas can detect when the primary they were talking to is changed
    */
-  public static String PRIMARY_GEN_KEY = "__primaryGen";
+  public static final String PRIMARY_GEN_KEY = "__primaryGen";
 
   /**
    * Key to store the version in the commit data, which increments every time we open a new NRT
    * reader
    */
-  public static String VERSION_KEY = "__version";
+  public static final String VERSION_KEY = "__version";
 
   /** Compact ordinal for this node */
   protected final int id;

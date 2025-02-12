@@ -1448,11 +1448,9 @@ public final class TestUtil {
     // keep number of open files lowish
     MergePolicy mp = w.getConfig().getMergePolicy();
     mp.setNoCFSRatio(1.0);
-    if (mp instanceof LogMergePolicy) {
-      LogMergePolicy lmp = (LogMergePolicy) mp;
+    if (mp instanceof LogMergePolicy lmp) {
       lmp.setMergeFactor(Math.min(5, lmp.getMergeFactor()));
-    } else if (mp instanceof TieredMergePolicy) {
-      TieredMergePolicy tmp = (TieredMergePolicy) mp;
+    } else if (mp instanceof TieredMergePolicy tmp) {
       tmp.setMaxMergeAtOnce(Math.min(5, tmp.getMaxMergeAtOnce()));
       tmp.setSegmentsPerTier(Math.min(5, tmp.getSegmentsPerTier()));
     }
