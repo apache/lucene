@@ -1,5 +1,8 @@
 package org.apache.lucene.benchmark.jmh;
 
+import java.io.IOException;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -12,10 +15,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
-
-import java.io.IOException;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -34,7 +33,7 @@ public class ShiftMaskBenchmark {
     Random r = new Random(0);
     source = new int[1024];
     dest = new int[1024];
-    for (int i=0; i< 512; i++) {
+    for (int i = 0; i < 512; i++) {
       source[i] = r.nextInt(1 << 24);
     }
     counts = new int[] {255, 256, 511, 512};
@@ -55,7 +54,7 @@ public class ShiftMaskBenchmark {
   }
 
   private static void shiftMask(int[] src, int[] dst, int offset, int count, int shift, int mask) {
-    for (int i=0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
       dst[i] = (src[i + offset] >> shift) & mask;
     }
   }
