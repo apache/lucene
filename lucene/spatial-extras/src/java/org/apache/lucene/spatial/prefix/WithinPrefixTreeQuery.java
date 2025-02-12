@@ -116,8 +116,7 @@ public class WithinPrefixTreeQuery extends AbstractVisitingPrefixTreeQuery {
     SpatialContext ctx = grid.getSpatialContext();
     if (shape instanceof Point) {
       return ctx.getShapeFactory().circle((Point) shape, distErr);
-    } else if (shape instanceof Circle) {
-      Circle circle = (Circle) shape;
+    } else if (shape instanceof Circle circle) {
       double newDist = circle.getRadius() + distErr;
       if (ctx.isGeo() && newDist > 180) {
         newDist = 180;

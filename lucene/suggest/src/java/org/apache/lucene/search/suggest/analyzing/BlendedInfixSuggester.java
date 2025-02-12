@@ -195,7 +195,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
       boolean allTermsRequired,
       boolean doHighlight)
       throws IOException {
-    /** We need to do num * numFactor here only because it is the last call in the lookup chain */
+    /* We need to do num * numFactor here only because it is the last call in the lookup chain */
     return super.lookup(key, contextQuery, num * numFactor, allTermsRequired, doHighlight);
   }
 
