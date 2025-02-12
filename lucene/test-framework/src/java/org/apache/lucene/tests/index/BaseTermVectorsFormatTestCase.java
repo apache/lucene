@@ -167,8 +167,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         return true;
       }
 
-      if (other instanceof PermissiveOffsetAttributeImpl) {
-        PermissiveOffsetAttributeImpl o = (PermissiveOffsetAttributeImpl) other;
+      if (other instanceof PermissiveOffsetAttributeImpl o) {
         return o.start == start && o.end == end;
       }
 

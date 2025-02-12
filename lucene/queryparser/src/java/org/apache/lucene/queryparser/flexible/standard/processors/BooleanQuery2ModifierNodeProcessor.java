@@ -159,8 +159,7 @@ public class BooleanQuery2ModifierNodeProcessor implements QueryNodeProcessor {
   }
 
   protected void tagModifierButDoNotOverride(QueryNode node, Modifier mod) {
-    if (node instanceof ModifierQueryNode) {
-      ModifierQueryNode modNode = (ModifierQueryNode) node;
+    if (node instanceof ModifierQueryNode modNode) {
       if (modNode.getModifier() == Modifier.MOD_NONE) {
         node.setTag(TAG_MODIFIER, mod);
       }
