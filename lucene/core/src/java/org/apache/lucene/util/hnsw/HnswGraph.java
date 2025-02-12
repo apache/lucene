@@ -100,7 +100,7 @@ public abstract class HnswGraph {
   public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
 
   /** Empty graph value */
-  public static HnswGraph EMPTY =
+  public static final HnswGraph EMPTY =
       new HnswGraph() {
 
         @Override

@@ -56,12 +56,12 @@ import org.apache.lucene.util.BytesRef;
 public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
 
   /** Coefficient used for linear blending */
-  protected static double LINEAR_COEF = 0.10;
+  protected static final double LINEAR_COEF = 0.10;
 
   private Double exponent = 2.0;
 
   /** Default factor */
-  public static int DEFAULT_NUM_FACTOR = 10;
+  public static final int DEFAULT_NUM_FACTOR = 10;
 
   /** Factor to multiply the number of searched elements */
   private final int numFactor;
