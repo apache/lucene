@@ -42,7 +42,7 @@ public abstract class StoredFieldVisitor {
   /**
    * Expert: Process a binary field directly from the {@link StoredFieldDataInput}. Implementors of
    * this method must read {@code StoredFieldDataInput#length} bytes from the given {@link
-   * StoredFieldDataInput}. The default implementation reads all byes in a newly created byte array
+   * StoredFieldDataInput}. The default implementation reads all bytes in a newly created byte array
    * and calls {@link #binaryField(FieldInfo, byte[])}.
    *
    * @param value the stored field data input.
