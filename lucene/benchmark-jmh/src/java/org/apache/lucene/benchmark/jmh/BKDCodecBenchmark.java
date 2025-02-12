@@ -27,6 +27,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.bkd.BKDConfig;
 import org.apache.lucene.util.bkd.BKDWriter;
 import org.apache.lucene.util.bkd.DocIdsWriter;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -52,7 +53,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @Fork(value = 1)
 public class BKDCodecBenchmark {
 
-  private static final int SIZE = 512;
+  private static final int SIZE = BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
 
   @Param({"16", "24"})
   public int bpv;
@@ -107,7 +108,7 @@ public class BKDCodecBenchmark {
 
   private int count(int iter) {
     if (countVariable) {
-      return iter % 20 == 0 ? 384 : SIZE;
+      return iter % 20 == 0 ? SIZE - 1 : SIZE;
     } else {
       return SIZE;
     }
@@ -164,52 +165,72 @@ public class BKDCodecBenchmark {
     }
   }
 
-  private static void readInts16(IndexInput in, int count, int[] values) throws IOException {
+  private static void readInts16(IndexInput in, int count, int[] docIds) throws IOException {
     final int min = in.readVInt();
     int k = 0;
-    for (; k < count - 127; k += 128) {
-      in.readInts(values, k, 64);
-      for (int i = k; i < k + 64; ++i) {
-        final int l = values[i];
-        values[i] = (l >>> 16) + min;
-        values[i + 64] = (l & 0xFFFF) + min;
-      }
+    for (int bound = count - 511; k < bound; k += 512) {
+      in.readInts(docIds, k, 256);
+      // Can be inlined to make offsets consistent so that loop get auto-vectorized.
+      inner16(k, docIds, 256, min);
+    }
+    for (int bound = count - 127; k < bound; k += 128) {
+      in.readInts(docIds, k, 64);
+      inner16(k, docIds, 64, min);
+    }
+    for (int bound = count - 31; k < bound; k += 32) {
+      in.readInts(docIds, k, 16);
+      inner16(k, docIds, 16, min);
     }
     for (; k < count; k++) {
-      values[k] = Short.toUnsignedInt(in.readShort());
+      docIds[k] = Short.toUnsignedInt(in.readShort());
     }
   }
 
-  public static void readInts24(IndexInput in, int[] docIds, int[] scratch, int count)
+  private static void inner16(int k, int[] docIds, int half, int min) {
+    for (int i = k; i < k + half; ++i) {
+      final int l = docIds[i];
+      docIds[i] = (l >>> 16) + min;
+      docIds[i + half] = (l & 0xFFFF) + min;
+    }
+  }
+
+  private static void readInts24(IndexInput in, int[] docIds, int[] scratch, int count)
       throws IOException {
     int k = 0;
-    for (; k < count - 127; k += 128) {
-      in.readInts(scratch, k, 96);
-      for (int i = k; i < k + 96; i++) {
-        docIds[i] = scratch[i] >>> 8;
-      }
-      for (int i = k; i < k + 32; i++) {
-        docIds[i + 96] =
-            ((scratch[i] & 0xFF) << 16)
-                | ((scratch[i + 32] & 0xFF) << 8)
-                | (scratch[i + 64] & 0xFF);
-      }
+    for (int bound = count - 511; k < bound; k += 512) {
+      in.readInts(scratch, k, 384);
+      shift(k, docIds, scratch, 384);
+      // Can be inlined to make offsets consistent so that loop get auto-vectorized.
+      remainder24(k, docIds, scratch, 128, 256, 384);
     }
-    for (; k < count - 7; k += 8) {
-      long l1 = in.readLong();
-      long l2 = in.readLong();
-      long l3 = in.readLong();
-      docIds[k] = (int) (l1 >>> 40);
-      docIds[k + 1] = (int) (l1 >>> 16) & 0xffffff;
-      docIds[k + 2] = (int) (((l1 & 0xffff) << 8) | (l2 >>> 56));
-      docIds[k + 3] = (int) (l2 >>> 32) & 0xffffff;
-      docIds[k + 4] = (int) (l2 >>> 8) & 0xffffff;
-      docIds[k + 5] = (int) (((l2 & 0xff) << 16) | (l3 >>> 48));
-      docIds[k + 6] = (int) (l3 >>> 24) & 0xffffff;
-      docIds[k + 7] = (int) l3 & 0xffffff;
+    for (int bound = count - 127; k < bound; k += 128) {
+      in.readInts(scratch, k, 96);
+      shift(k, docIds, scratch, 96);
+      remainder24(k, docIds, scratch, 32, 64, 96);
+    }
+    for (int bound = count - 31; k < bound; k += 32) {
+      in.readInts(scratch, k, 24);
+      shift(k, docIds, scratch, 24);
+      remainder24(k, docIds, scratch, 8, 16, 24);
     }
     for (; k < count; ++k) {
       docIds[k] = (Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte());
+    }
+  }
+
+  private static void shift(int k, int[] docIds, int[] scratch, int halfAndQuarter) {
+    for (int i = k; i < k + halfAndQuarter; i++) {
+      docIds[i] = scratch[i] >>> 8;
+    }
+  }
+
+  private static void remainder24(
+      int k, int[] docIds, int[] scratch, int quarter, int half, int halfAndQuarter) {
+    for (int i = k; i < k + quarter; i++) {
+      docIds[i + halfAndQuarter] =
+          ((scratch[i] & 0xFF) << 16)
+              | ((scratch[i + quarter] & 0xFF) << 8)
+              | (scratch[i + half] & 0xFF);
     }
   }
 }
