@@ -104,6 +104,7 @@ public class BKDWriter implements Closeable {
   final TrackingDirectoryWrapper tempDir;
   final String tempFileNamePrefix;
   final double maxMBSortInHeap;
+  final int version;
 
   final byte[] scratchDiff;
   final byte[] scratch;
@@ -161,6 +162,7 @@ public class BKDWriter implements Closeable {
     if (version < VERSION_START || version > VERSION_CURRENT) {
       throw new IllegalArgumentException("Version out of range: " + version);
     }
+    this.version = version;
     verifyParams(maxMBSortInHeap, totalPointCount);
     // We use tracking dir to deal with removing files on exception, so each place that
     // creates temp files doesn't need crazy try/finally/sucess logic:
@@ -1267,7 +1269,7 @@ public class BKDWriter implements Closeable {
       byte[] packedIndex,
       long dataStartFP)
       throws IOException {
-    CodecUtil.writeHeader(metaOut, CODEC_NAME, VERSION_CURRENT);
+    CodecUtil.writeHeader(metaOut, CODEC_NAME, version);
     metaOut.writeVInt(config.numDims());
     metaOut.writeVInt(config.numIndexDims());
     metaOut.writeVInt(countPerLeaf);
