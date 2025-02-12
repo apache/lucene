@@ -391,6 +391,26 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  public void testEmptyClass() {
+    Exception expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new RegExp("[]");
+            });
+    assertEquals("expected ']' at position 2", expected.getMessage());
+  }
+
+  public void testEscapedInvalidClass() {
+    Exception expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new RegExp("[\\]");
+            });
+    assertEquals("expected ']' at position 3", expected.getMessage());
+  }
+
   public void testInterval() {
     RegExp re = new RegExp("<5-40>");
     assertEquals("<5-40>", re.toString());

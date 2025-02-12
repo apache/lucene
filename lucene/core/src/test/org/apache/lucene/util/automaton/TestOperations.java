@@ -132,10 +132,11 @@ public class TestOperations extends LuceneTestCase {
     final int ITER2 = atLeast(100);
     for (int i = 0; i < ITER1; i++) {
 
-      final RegExp re = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
+      final String text = AutomatonTestUtil.randomRegexp(random());
+      final RegExp re = new RegExp(text, RegExp.NONE);
       // System.out.println("TEST i=" + i + " re=" + re);
       final Automaton a = Operations.determinize(re.toAutomaton(), DEFAULT_DETERMINIZE_WORK_LIMIT);
-      assertFalse(Operations.isEmpty(a));
+      assertFalse("empty: " + text, Operations.isEmpty(a));
 
       final AutomatonTestUtil.RandomAcceptedStrings rx =
           new AutomatonTestUtil.RandomAcceptedStrings(a);

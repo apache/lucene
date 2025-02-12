@@ -1242,7 +1242,7 @@ public class RegExp {
 
     do {
       // look for escape
-      if (match('\\')) {
+      if (match('\\') && peek("\\ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")) {
         expandPreDefined(starts, ends);
       } else {
         // parse a character
