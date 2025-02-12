@@ -111,7 +111,7 @@ public class BKDCodecBenchmark {
     if (countVariable) {
       return iter % 20 == 0 ? 384 : SIZE;
     } else {
-      return 512;
+      return SIZE;
     }
   }
 
