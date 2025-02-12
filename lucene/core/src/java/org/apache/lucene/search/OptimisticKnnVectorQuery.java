@@ -83,7 +83,6 @@ public class OptimisticKnnVectorQuery extends KnnFloatVectorQuery {
     Map<Integer, TopDocs> perLeafResults = new HashMap<>(leafReaderContexts.size());
     int kInLoop = k;
     while (tasks.isEmpty() == false) {
-      // TODO: fix PerLeafResults
       List<TopDocs> taskResults = taskExecutor.invokeAll(tasks);
       for (int i = 0; i < taskResults.size(); i++) {
         perLeafResults.put(leafReaderContexts.get(i).ord, taskResults.get(i));
@@ -111,8 +110,7 @@ public class OptimisticKnnVectorQuery extends KnnFloatVectorQuery {
             && perLeafTopKCalculation(kInLoop / 2, ctx.reader().maxDoc() / (float) reader.maxDoc())
                 < k) {
           // All this leaf's hits are at or above the global topK min score; explore it further, and
-          // we have
-          // not yet tried perLeafK >= k.
+          // we have not yet tried perLeafK >= k.
           // System.out.println("leaf " + ctx.ord + " #hits=" + perLeaf.scoreDocs.length + "
           // #min-score=" + perLeaf.scoreDocs[perLeaf.scoreDocs.length - 1].score + " #global-min="
           // + minTopKScore);
@@ -120,8 +118,7 @@ public class OptimisticKnnVectorQuery extends KnnFloatVectorQuery {
           tasks.add(() -> searchLeaf(ctx, filterWeight, knnCollectorManagerInner));
         } else {
           // This leaf is tapped out; discard the context from the active list so we maintain
-          // correspondence
-          // between tasks and leaves
+          // correspondence between tasks and leaves
           ctxIter.remove();
         }
       }
