@@ -379,6 +379,15 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  public void testEscapedDashCharClass() {
+    RegExp re = new RegExp("[\\-]");
+    assertEquals("REGEXP_CHAR char=-\n", re.toStringTree());
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+    Automaton expected = Automata.makeChar('-');
+    assertSameLanguage(expected, actual);
+  }
+
   public void testEmpty() {
     RegExp re = new RegExp("#", RegExp.EMPTY);
     assertEquals("#", re.toString());
