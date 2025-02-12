@@ -19,7 +19,6 @@ package org.apache.lucene.search.knn;
 
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.hnsw.BlockingFloatHeap;
 import org.apache.lucene.util.hnsw.FloatHeap;
 
@@ -29,7 +28,7 @@ import org.apache.lucene.util.hnsw.FloatHeap;
  *
  * @lucene.experimental
  */
-public final class MultiLeafKnnCollector implements KnnCollector {
+public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
 
   // greediness of globally non-competitive search: (0,1]
   private static final float DEFAULT_GREEDINESS = 0.9f;
@@ -77,6 +76,7 @@ public final class MultiLeafKnnCollector implements KnnCollector {
       int interval,
       BlockingFloatHeap globalSimilarityQueue,
       AbstractKnnCollector subCollector) {
+    super(subCollector);
     if (greediness < 0 || greediness > 1) {
       throw new IllegalArgumentException("greediness must be in [0,1]");
     }
@@ -89,31 +89,6 @@ public final class MultiLeafKnnCollector implements KnnCollector {
     this.nonCompetitiveQueue = new FloatHeap(Math.max(1, Math.round((1 - greediness) * k)));
     this.updatesQueue = new FloatHeap(k);
     this.updatesScratch = new float[k];
-  }
-
-  @Override
-  public boolean earlyTerminated() {
-    return subCollector.earlyTerminated();
-  }
-
-  @Override
-  public void incVisitedCount(int count) {
-    subCollector.incVisitedCount(count);
-  }
-
-  @Override
-  public long visitedCount() {
-    return subCollector.visitedCount();
-  }
-
-  @Override
-  public long visitLimit() {
-    return subCollector.visitLimit();
-  }
-
-  @Override
-  public int k() {
-    return subCollector.k();
   }
 
   @Override
@@ -155,11 +130,6 @@ public final class MultiLeafKnnCollector implements KnnCollector {
     return Math.max(
         subCollector.minCompetitiveSimilarity(),
         Math.min(nonCompetitiveQueue.peek(), cachedGlobalMinSim));
-  }
-
-  @Override
-  public TopDocs topDocs() {
-    return subCollector.topDocs();
   }
 
   @Override

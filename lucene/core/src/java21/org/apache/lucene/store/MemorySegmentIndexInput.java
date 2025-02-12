@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOConsumer;
 
@@ -336,8 +337,6 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
     ensureOpen();
 
-    Objects.checkFromIndexSize(offset, length, length());
-
     if (BitUtil.isZeroOrPowerOfTwo(consecutivePrefetchHitCount++) == false) {
       // We've had enough consecutive hits on the page cache that this number is neither zero nor a
       // power of two. There is a good chance that a good chunk of this index input is cached in
@@ -359,14 +358,26 @@ abstract class MemorySegmentIndexInput extends IndexInput
         });
   }
 
+  @Override
+  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
+    if (NATIVE_ACCESS.isEmpty()) {
+      return;
+    }
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+
+    long offset = 0;
+    for (MemorySegment seg : segments) {
+      advise(offset, seg.byteSize(), segment -> nativeAccess.madvise(segment, readAdvice));
+      offset += seg.byteSize();
+    }
+  }
+
   void advise(long offset, long length, IOConsumer<MemorySegment> advice) throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
       return;
     }
 
     ensureOpen();
-
-    Objects.checkFromIndexSize(offset, length, length());
 
     final NativeAccess nativeAccess = NATIVE_ACCESS.get();
 
@@ -407,6 +418,24 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   @Override
+  public Optional<Boolean> isLoaded() {
+    boolean isLoaded = true;
+    for (MemorySegment seg : segments) {
+      if (seg.isLoaded() == false) {
+        isLoaded = false;
+        break;
+      }
+    }
+
+    if (Constants.WINDOWS && isLoaded == false) {
+      // see https://github.com/apache/lucene/issues/14050
+      return Optional.empty();
+    }
+
+    return Optional.of(isLoaded);
+  }
+
+  @Override
   public byte readByte(long pos) throws IOException {
     try {
       final int si = (int) (pos >> chunkSizePower);
@@ -419,7 +448,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   }
 
   @Override
-  public void readGroupVInt(long[] dst, int offset) throws IOException {
+  public void readGroupVInt(int[] dst, int offset) throws IOException {
     try {
       final int len =
           GroupVIntUtil.readGroupVInt(
@@ -530,7 +559,29 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
   @Override
   public final MemorySegmentIndexInput clone() {
-    final MemorySegmentIndexInput clone = buildSlice((String) null, 0L, this.length);
+    ensureOpen();
+    ensureAccessible();
+    final MemorySegmentIndexInput clone;
+    if (segments.length == 1) {
+      clone =
+          new SingleSegmentImpl(
+              toString(),
+              null, // clones don't have an Arena, as they can't close)
+              segments[0],
+              length,
+              chunkSizePower,
+              confined);
+    } else {
+      clone =
+          new MultiSegmentImpl(
+              toString(),
+              null, // clones don't have an Arena, as they can't close)
+              segments,
+              ((MultiSegmentImpl) this).offset,
+              length,
+              chunkSizePower,
+              confined);
+    }
     try {
       clone.seek(getFilePointer());
     } catch (IOException ioe) {
@@ -546,7 +597,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
    */
   @Override
   public final MemorySegmentIndexInput slice(String sliceDescription, long offset, long length) {
-    if (offset < 0 || length < 0 || offset + length > this.length) {
+    if ((length | offset) < 0 || length > this.length - offset) {
       throw new IllegalArgumentException(
           "slice() "
               + sliceDescription
@@ -567,14 +618,23 @@ abstract class MemorySegmentIndexInput extends IndexInput
   public final MemorySegmentIndexInput slice(
       String sliceDescription, long offset, long length, ReadAdvice advice) throws IOException {
     MemorySegmentIndexInput slice = slice(sliceDescription, offset, length);
-    if (NATIVE_ACCESS.isPresent()) {
+    if (NATIVE_ACCESS.isPresent() && advice != ReadAdvice.NORMAL) {
+      // No need to madvise with a normal advice, since it's the OS' default.
       final NativeAccess nativeAccess = NATIVE_ACCESS.get();
-      slice.advise(
-          0,
-          slice.length,
-          segment -> {
-            nativeAccess.madvise(segment, advice);
-          });
+      if (length >= nativeAccess.getPageSize()) {
+        // Only set the read advice if the inner file is large enough. Otherwise the cons are likely
+        // outweighing the pros as we're:
+        //  - potentially overriding the advice of other files that share the same pages,
+        //  - paying the cost of a madvise system call for little value.
+        // We could align inner files with the page size to avoid the first issue, but again the
+        // pros don't clearly overweigh the cons.
+        slice.advise(
+            0,
+            slice.length,
+            segment -> {
+              nativeAccess.madvise(segment, advice);
+            });
+      }
     }
     return slice;
   }
@@ -583,26 +643,30 @@ abstract class MemorySegmentIndexInput extends IndexInput
   MemorySegmentIndexInput buildSlice(String sliceDescription, long offset, long length) {
     ensureOpen();
     ensureAccessible();
+    final MemorySegment[] slices;
+    final boolean isClone = offset == 0 && length == this.length;
+    if (isClone) {
+      slices = segments;
+    } else {
+      final long sliceEnd = offset + length;
+      final int startIndex = (int) (offset >>> chunkSizePower);
+      final int endIndex = (int) (sliceEnd >>> chunkSizePower);
+      // we always allocate one more slice, the last one may be a 0 byte one after truncating with
+      // asSlice():
+      slices = ArrayUtil.copyOfSubArray(segments, startIndex, endIndex + 1);
 
-    final long sliceEnd = offset + length;
-    final int startIndex = (int) (offset >>> chunkSizePower);
-    final int endIndex = (int) (sliceEnd >>> chunkSizePower);
+      // set the last segment's limit for the sliced view.
+      slices[slices.length - 1] = slices[slices.length - 1].asSlice(0L, sliceEnd & chunkSizeMask);
 
-    // we always allocate one more slice, the last one may be a 0 byte one after truncating with
-    // asSlice():
-    final MemorySegment slices[] = ArrayUtil.copyOfSubArray(segments, startIndex, endIndex + 1);
-
-    // set the last segment's limit for the sliced view.
-    slices[slices.length - 1] = slices[slices.length - 1].asSlice(0L, sliceEnd & chunkSizeMask);
-
-    offset = offset & chunkSizeMask;
+      offset = offset & chunkSizeMask;
+    }
 
     final String newResourceDescription = getFullSliceDescription(sliceDescription);
     if (slices.length == 1) {
       return new SingleSegmentImpl(
           newResourceDescription,
           null, // clones don't have an Arena, as they can't close)
-          slices[0].asSlice(offset, length),
+          isClone ? slices[0] : slices[0].asSlice(offset, length),
           length,
           chunkSizePower,
           confined);
@@ -750,6 +814,12 @@ abstract class MemorySegmentIndexInput extends IndexInput
         throw handlePositionalIOOBE(e, "segmentSliceOrNull", pos);
       }
     }
+
+    @Override
+    public void prefetch(long offset, long length) throws IOException {
+      Objects.checkFromIndexSize(offset, length, this.length);
+      super.prefetch(offset, length);
+    }
   }
 
   /** This class adds offset support to MemorySegmentIndexInput, which is needed for slices. */
@@ -834,6 +904,12 @@ abstract class MemorySegmentIndexInput extends IndexInput
     @Override
     MemorySegmentIndexInput buildSlice(String sliceDescription, long ofs, long length) {
       return super.buildSlice(sliceDescription, this.offset + ofs, length);
+    }
+
+    @Override
+    public void prefetch(long offset, long length) throws IOException {
+      Objects.checkFromIndexSize(offset, length, this.length);
+      super.prefetch(this.offset + offset, length);
     }
   }
 }

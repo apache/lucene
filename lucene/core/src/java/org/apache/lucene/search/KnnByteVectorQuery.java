@@ -46,7 +46,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  private final byte[] target;
+  protected final byte[] target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -83,7 +83,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
+    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, null, context);
     LeafReader reader = context.reader();
     ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
     if (byteVectorValues == null) {
@@ -111,7 +111,14 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   public String toString(String field) {
-    return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]";
+    StringBuilder buffer = new StringBuilder();
+    buffer.append(getClass().getSimpleName() + ":");
+    buffer.append(this.field + "[" + target[0] + ",...]");
+    buffer.append("[" + k + "]");
+    if (this.filter != null) {
+      buffer.append("[" + this.filter + "]");
+    }
+    return buffer.toString();
   }
 
   @Override

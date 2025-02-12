@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
@@ -44,6 +45,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
 
   /* The subqueries */
   private final Multiset<Query> disjuncts = new Multiset<>();
+  private final List<Query> orderedQueries; // used for toString()
 
   /* Multiple of the non-max disjunct scores added into our final score.  Non-zero values support tie-breaking. */
   private final float tieBreakerMultiplier;
@@ -51,20 +53,21 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   /**
    * Creates a new DisjunctionMaxQuery
    *
-   * @param disjuncts a {@code Collection<Query>} of all the disjuncts to add
+   * @param disjuncts a collection of all the disjunct queries to add
    * @param tieBreakerMultiplier the score of each non-maximum disjunct for a document is multiplied
    *     by this weight and added into the final score. If non-zero, the value should be small, on
    *     the order of 0.1, which says that 10 occurrences of word in a lower-scored field that is
    *     also in a higher scored field is just as good as a unique word in the lower scored field
    *     (i.e., one that is not in any higher scored field.
    */
-  public DisjunctionMaxQuery(Collection<Query> disjuncts, float tieBreakerMultiplier) {
+  public DisjunctionMaxQuery(Collection<? extends Query> disjuncts, float tieBreakerMultiplier) {
     Objects.requireNonNull(disjuncts, "Collection of Querys must not be null");
     if (tieBreakerMultiplier < 0 || tieBreakerMultiplier > 1) {
       throw new IllegalArgumentException("tieBreakerMultiplier must be in [0, 1]");
     }
     this.tieBreakerMultiplier = tieBreakerMultiplier;
     this.disjuncts.addAll(disjuncts);
+    this.orderedQueries = new ArrayList<>(disjuncts); // order from the caller
   }
 
   /**
@@ -152,7 +155,19 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
             for (ScorerSupplier ss : scorerSuppliers) {
               scorers.add(ss.get(leadCost));
             }
-            return new DisjunctionMaxScorer(tieBreakerMultiplier, scorers, scoreMode);
+            return new DisjunctionMaxScorer(tieBreakerMultiplier, scorers, scoreMode, leadCost);
+          }
+
+          @Override
+          public BulkScorer bulkScorer() throws IOException {
+            if (tieBreakerMultiplier == 0f && scoreMode == ScoreMode.TOP_SCORES) {
+              List<BulkScorer> scorers = new ArrayList<>();
+              for (ScorerSupplier ss : scorerSuppliers) {
+                scorers.add(ss.bulkScorer());
+              }
+              return new DisjunctionMaxBulkScorer(scorers);
+            }
+            return super.bulkScorer();
           }
 
           @Override
@@ -295,24 +310,19 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
    */
   @Override
   public String toString(String field) {
-    StringBuilder buffer = new StringBuilder();
-    buffer.append("(");
-    Iterator<Query> it = disjuncts.iterator();
-    for (int i = 0; it.hasNext(); i++) {
-      Query subquery = it.next();
-      if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
-        buffer.append("(");
-        buffer.append(subquery.toString(field));
-        buffer.append(")");
-      } else buffer.append(subquery.toString(field));
-      if (i != disjuncts.size() - 1) buffer.append(" | ");
-    }
-    buffer.append(")");
-    if (tieBreakerMultiplier != 0.0f) {
-      buffer.append("~");
-      buffer.append(tieBreakerMultiplier);
-    }
-    return buffer.toString();
+    return this.orderedQueries.stream()
+        .map(
+            subquery -> {
+              if (subquery instanceof BooleanQuery) { // wrap sub-bools in parens
+                return "(" + subquery.toString(field) + ")";
+              }
+              return subquery.toString(field);
+            })
+        .collect(
+            Collectors.joining(
+                " | ",
+                "(",
+                ")" + ((tieBreakerMultiplier != 0.0f) ? "~" + tieBreakerMultiplier : "")));
   }
 
   /**

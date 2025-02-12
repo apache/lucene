@@ -17,7 +17,21 @@
 
 # Apache Lucene Migration Guide
 
+## Migration from Lucene 10.x to Lucene 11.0
+
+### TieredMergePolicy#setMaxMergeAtOnce removed
+
+This parameter has no replacement, TieredMergePolicy no longer bounds the
+number of segments that may be merged together.
+
 ## Migration from Lucene 9.x to Lucene 10.0
+
+### DataInput#readVLong() may now read negative vlongs
+
+LUCENE-10376 started allowing `DataInput#readVLong()` to read negative vlongs.
+In particular, this feature is used by the `DataInput#readZLong()` method. A
+practical implication is that `DataInput#readVLong()` may now read up to 10
+bytes, while it would never read more than 9 bytes in Lucene 9.x.
 
 ### Changes to DataInput.readGroupVInt and readGroupVInts methods 
 

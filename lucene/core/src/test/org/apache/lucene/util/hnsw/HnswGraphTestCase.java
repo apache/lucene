@@ -38,8 +38,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
@@ -152,19 +150,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new FilterCodec(
-                      TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-
-                    @Override
-                    public KnnVectorsFormat knnVectorsFormat() {
-                      return new PerFieldKnnVectorsFormat() {
-                        @Override
-                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene99HnswVectorsFormat(M, beamWidth);
-                        }
-                      };
-                    }
-                  })
+                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)))
               // set a random merge policy
               .setMergePolicy(newMergePolicy(random()));
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
@@ -255,18 +241,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new FilterCodec(
-                      TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-                    @Override
-                    public KnnVectorsFormat knnVectorsFormat() {
-                      return new PerFieldKnnVectorsFormat() {
-                        @Override
-                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene99HnswVectorsFormat(M, beamWidth);
-                        }
-                      };
-                    }
-                  });
+                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)));
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
         KnnVectorValues.DocIndexIterator it2 = v2.iterator();
         while (it2.nextDoc() != NO_MORE_DOCS) {
@@ -317,32 +292,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder.randSeed = seed;
     IndexWriterConfig iwc =
         new IndexWriterConfig()
-            .setCodec(
-                new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-                  @Override
-                  public KnnVectorsFormat knnVectorsFormat() {
-                    return new PerFieldKnnVectorsFormat() {
-                      @Override
-                      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene99HnswVectorsFormat(M, beamWidth);
-                      }
-                    };
-                  }
-                });
+            .setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)));
     IndexWriterConfig iwc2 =
         new IndexWriterConfig()
-            .setCodec(
-                new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-                  @Override
-                  public KnnVectorsFormat knnVectorsFormat() {
-                    return new PerFieldKnnVectorsFormat() {
-                      @Override
-                      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene99HnswVectorsFormat(M, beamWidth);
-                      }
-                    };
-                  }
-                })
+            .setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)))
             .setIndexSort(new Sort(new SortField("sortkey", SortField.Type.LONG)));
 
     try (Directory dir = newDirectory();
@@ -597,12 +550,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     // another graph to do the assertion
     OnHeapHnswGraph graphAfterInit =
         InitializedHnswGraphBuilder.initGraph(
-            10, initializerGraph, initializerOrdMap, initializerGraph.size());
+            initializerGraph, initializerOrdMap, initializerGraph.size());
 
     HnswGraphBuilder finalBuilder =
         InitializedHnswGraphBuilder.fromGraph(
             finalscorerSupplier,
-            10,
             30,
             seed,
             initializerGraph,
@@ -640,7 +592,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder finalBuilder =
         InitializedHnswGraphBuilder.fromGraph(
             finalscorerSupplier,
-            10,
             30,
             seed,
             initializerGraph,
@@ -1034,7 +985,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder.randSeed = random().nextLong();
     HnswConcurrentMergeBuilder builder =
         new HnswConcurrentMergeBuilder(
-            taskExecutor, 4, scorerSupplier, 10, 30, new OnHeapHnswGraph(10, size), null);
+            taskExecutor, 4, scorerSupplier, 30, new OnHeapHnswGraph(10, size), null);
     builder.setBatchSize(100);
     builder.build(size);
     exec.shutdownNow();
@@ -1382,6 +1333,11 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     @Override
     public int entryNode() throws IOException {
       return delegate.entryNode();
+    }
+
+    @Override
+    public int maxConn() throws IOException {
+      return delegate.maxConn();
     }
 
     @Override

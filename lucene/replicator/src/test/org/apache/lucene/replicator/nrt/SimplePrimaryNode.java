@@ -164,7 +164,6 @@ class SimplePrimaryNode extends PrimaryNode {
     if (mp instanceof TieredMergePolicy) {
       TieredMergePolicy tmp = (TieredMergePolicy) mp;
       tmp.setSegmentsPerTier(3);
-      tmp.setMaxMergeAtOnce(3);
     } else if (mp instanceof LogMergePolicy) {
       LogMergePolicy lmp = (LogMergePolicy) mp;
       lmp.setMergeFactor(3);

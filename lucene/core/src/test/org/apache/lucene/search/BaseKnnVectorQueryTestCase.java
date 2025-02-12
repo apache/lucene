@@ -19,11 +19,11 @@ package org.apache.lucene.search;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
@@ -41,7 +41,9 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
@@ -50,7 +52,6 @@ import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -62,6 +63,8 @@ import org.apache.lucene.util.FixedBitSet;
 
 /** Test cases for AbstractKnnVectorQuery objects. */
 abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
+  // handle quantization noise
+  static final float EPSILON = 0.001f;
 
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
@@ -85,6 +88,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
    */
   protected BaseDirectoryWrapper newDirectoryForTest() {
     return LuceneTestCase.newDirectory(random());
+  }
+
+  protected IndexWriterConfig configStandardCodec() throws IOException {
+    return new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
   }
 
   public void testEquals() {
@@ -318,66 +325,58 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   public void testScoreCosine() throws IOException {
-    try (Directory d = newDirectoryForTest()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
-        for (int j = 1; j <= 5; j++) {
-          Document doc = new Document();
-          doc.add(getKnnVectorField("field", new float[] {j, j * j}, COSINE));
-          w.addDocument(doc);
-        }
-      }
-      try (IndexReader reader = DirectoryReader.open(d)) {
-        assertEquals(1, reader.leaves().size());
-        IndexSearcher searcher = new IndexSearcher(reader);
-        AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {2, 3}, 3);
-        Query rewritten = query.rewrite(searcher);
-        Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-        Scorer scorer = weight.scorer(reader.leaves().get(0));
+    float[][] vectors = new float[5][];
+    for (int j = 1; j <= 5; j++) {
+      vectors[j - 1] = new float[] {j, j * j};
+    }
+    try (Directory d = getStableIndexStore("field", VectorSimilarityFunction.COSINE, vectors);
+        IndexReader reader = DirectoryReader.open(d)) {
+      assertEquals(1, reader.leaves().size());
+      IndexSearcher searcher = new IndexSearcher(reader);
+      AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {2, 3}, 3);
+      Query rewritten = query.rewrite(searcher);
+      Weight weight = searcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+      Scorer scorer = weight.scorer(reader.leaves().get(0));
 
-        // prior to advancing, score is undefined
-        assertEquals(-1, scorer.docID());
-        expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
+      // prior to advancing, score is undefined
+      assertEquals(-1, scorer.docID());
+      expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
 
-        /* score0 = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
-         * normalized by (1 + x) /2.
-         */
-        float score0 =
-            (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
+      /* score0 = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
+       * normalized by (1 + x) /2.
+       */
+      float score0 =
+          (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
 
-        /* score1 = ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
-         * normalized by (1 + x) /2
-         */
-        float score1 =
-            (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
+      /* score1 = ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
+       * normalized by (1 + x) /2
+       */
+      float score1 =
+          (float) ((1 + (2 * 2 + 3 * 4) / Math.sqrt((2 * 2 + 3 * 3) * (2 * 2 + 4 * 4))) / 2);
 
-        // doc 1 happens to have the maximum score
-        assertEquals(score1, scorer.getMaxScore(2), 0.0001);
-        assertEquals(score1, scorer.getMaxScore(Integer.MAX_VALUE), 0.0001);
+      // doc 1 happens to have the maximum score
+      assertEquals(score1, scorer.getMaxScore(2), 0.0001);
+      assertEquals(score1, scorer.getMaxScore(Integer.MAX_VALUE), 0.0001);
 
-        DocIdSetIterator it = scorer.iterator();
-        assertEquals(3, it.cost());
-        assertEquals(0, it.nextDoc());
-        // doc 0 has (1, 1)
-        assertEquals(score0, scorer.score(), 0.0001);
-        assertEquals(1, it.advance(1));
-        assertEquals(score1, scorer.score(), 0.0001);
+      DocIdSetIterator it = scorer.iterator();
+      assertEquals(3, it.cost());
+      assertEquals(0, it.nextDoc());
+      // doc 0 has (1, 1)
+      assertEquals(score0, scorer.score(), 0.0001);
+      assertEquals(1, it.advance(1));
+      assertEquals(score1, scorer.score(), 0.0001);
 
-        // since topK was 3
-        assertEquals(NO_MORE_DOCS, it.advance(4));
-        expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
-      }
+      // since topK was 3
+      assertEquals(NO_MORE_DOCS, it.advance(4));
+      expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
     }
   }
 
   public void testScoreMIP() throws IOException {
-    try (Directory indexStore =
-            getIndexStore(
-                "field",
-                VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT,
-                new float[] {0, 1},
-                new float[] {1, 2},
-                new float[] {0, 0});
-        IndexReader reader = DirectoryReader.open(indexStore)) {
+    float[][] vectors = {{0, 1}, {1, 2}, {0, 0}};
+    try (Directory d =
+            getStableIndexStore("field", VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, vectors);
+        IndexReader reader = DirectoryReader.open(d)) {
       IndexSearcher searcher = newSearcher(reader);
       AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0, -1}, 10);
       assertMatches(searcher, kvq, 3);
@@ -406,7 +405,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {2, 3}, 3);
         Explanation matched = searcher.explain(query, 2);
         assertTrue(matched.isMatch());
-        assertEquals(1 / 2f, matched.getValue());
+        // scores vary widely due to quantization
+        assertEquals(1 / 2f, matched.getValue().doubleValue(), 0.5);
         assertEquals(0, matched.getDetails().length);
         assertEquals("within top 3 docs", matched.getDescription());
 
@@ -432,9 +432,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {2, 3}, 3);
-        Explanation matched = searcher.explain(query, 2);
+        Explanation matched = searcher.explain(query, 2); // (2, 2)
         assertTrue(matched.isMatch());
-        assertEquals(1 / 2f, matched.getValue());
+        // scores vary widely due to quantization
+        assertEquals(1 / 2f, matched.getValue().doubleValue(), 0.5);
         assertEquals(0, matched.getDetails().length);
         assertEquals("within top 3 docs", matched.getDescription());
 
@@ -454,7 +455,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
      * randomly fail to find one).
      */
     try (Directory d = newDirectoryForTest()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w = new IndexWriter(d, configStandardCodec())) {
         int r = 0;
         for (int i = 0; i < 5; i++) {
           for (int j = 0; j < 5; j++) {
@@ -479,6 +480,62 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertEquals(8, results.scoreDocs.length);
         assertIdMatches(reader, "id10", results.scoreDocs[0]);
         assertIdMatches(reader, "id6", results.scoreDocs[7]);
+      }
+    }
+  }
+
+  /** Tests with random vectors, number of documents, etc. Uses RandomIndexWriter. */
+  public void testRandomConsistencySingleThreaded() throws IOException {
+    assertRandomConsistency(false);
+  }
+
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/14180")
+  public void testRandomConsistencyMultiThreaded() throws IOException {
+    assertRandomConsistency(true);
+  }
+
+  private void assertRandomConsistency(boolean multiThreaded) throws IOException {
+    int numDocs = 100;
+    int dimension = 4;
+    int numIters = 10;
+    boolean everyDocHasAVector = random().nextBoolean();
+    Random r = random();
+    try (Directory d = newDirectoryForTest()) {
+      // To ensure consistency between seeded runs, remove some randomness
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setMergeScheduler(new SerialMergeScheduler());
+      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+      iwc.setMaxBufferedDocs(numDocs);
+      iwc.setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+      try (IndexWriter w = new IndexWriter(d, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          if (everyDocHasAVector || random().nextInt(10) != 2) {
+            doc.add(getKnnVectorField("field", randomVector(dimension)));
+          }
+          w.addDocument(doc);
+          if (r.nextBoolean() && i % 50 == 0) {
+            w.flush();
+          }
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader, true, true, multiThreaded);
+        // first get the initial set of docs, and we expect all future queries to be exactly the
+        // same
+        int k = random().nextInt(80) + 1;
+        AbstractKnnVectorQuery query = getKnnVectorQuery("field", randomVector(dimension), k);
+        int n = random().nextInt(100) + 1;
+        TopDocs expectedResults = searcher.search(query, n);
+        for (int i = 0; i < numIters; i++) {
+          TopDocs results = searcher.search(query, n);
+          assertEquals(expectedResults.totalHits.value(), results.totalHits.value());
+          assertEquals(expectedResults.scoreDocs.length, results.scoreDocs.length);
+          for (int j = 0; j < results.scoreDocs.length; j++) {
+            assertEquals(expectedResults.scoreDocs[j].doc, results.scoreDocs[j].doc);
+            assertEquals(expectedResults.scoreDocs[j].score, results.scoreDocs[j].score, EPSILON);
+          }
+        }
       }
     }
   }
@@ -533,7 +590,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
       // format
       // implementation.
-      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+      IndexWriterConfig iwc = configStandardCodec();
       RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
@@ -610,7 +667,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   /** Tests filtering when all vectors have the same score. */
-  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/11787")
   public void testFilterWithSameScore() throws IOException {
     int numDocs = 100;
     int dimension = atLeast(5);
@@ -619,7 +675,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
       // format
       // implementation.
-      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+      IndexWriterConfig iwc = configStandardCodec();
       IndexWriter w = new IndexWriter(d, iwc);
       float[] vector = randomVector(dimension);
       for (int i = 0; i < numDocs; i++) {
@@ -829,7 +885,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager noTimeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, null);
       KnnCollector noTimeoutCollector =
-          noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
+          noTimeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a normal collector is created without timeout
       assertFalse(
@@ -846,7 +902,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager timeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, () -> true);
       KnnCollector timeoutCollector =
-          timeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
+          timeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a time limiting collector is created, which returns partial results
       assertFalse(timeoutCollector instanceof TopKnnCollector);
@@ -934,11 +990,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
    * preserving the order of the added documents.
    */
   private Directory getStableIndexStore(String field, float[]... contents) throws IOException {
+    return getStableIndexStore(field, VectorSimilarityFunction.EUCLIDEAN, contents);
+  }
+
+  private Directory getStableIndexStore(
+      String field, VectorSimilarityFunction similarityFunction, float[][] contents)
+      throws IOException {
     Directory indexStore = newDirectoryForTest();
-    try (IndexWriter writer = new IndexWriter(indexStore, new IndexWriterConfig())) {
+    try (IndexWriter writer = new IndexWriter(indexStore, configStandardCodec())) {
       for (int i = 0; i < contents.length; ++i) {
         Document doc = new Document();
-        doc.add(getKnnVectorField(field, contents[i]));
+        doc.add(getKnnVectorField(field, contents[i], similarityFunction));
         doc.add(new StringField("id", "id" + i, Field.Store.YES));
         writer.addDocument(doc);
       }
@@ -1084,13 +1146,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       IndexWriterConfig iwc = newIndexWriterConfig(mockAnalyzer);
       KnnVectorsFormat format1 = randomVectorFormat(VectorEncoding.FLOAT32);
       KnnVectorsFormat format2 = randomVectorFormat(VectorEncoding.FLOAT32);
-      iwc.setCodec(
-          new AssertingCodec() {
-            @Override
-            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return format1;
-            }
-          });
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format1));
 
       try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
         Document doc = new Document();
@@ -1104,13 +1160,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
 
       iwc = newIndexWriterConfig(mockAnalyzer);
-      iwc.setCodec(
-          new AssertingCodec() {
-            @Override
-            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return format2;
-            }
-          });
+      iwc.setCodec(TestUtil.alwaysKnnVectorsFormat(format2));
 
       try (IndexWriter iwriter = new IndexWriter(directory, iwc)) {
         Document doc = new Document();

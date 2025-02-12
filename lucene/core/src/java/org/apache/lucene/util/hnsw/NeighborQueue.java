@@ -93,21 +93,19 @@ public class NeighborQueue {
 
   /**
    * Encodes the node ID and its similarity score as long, preserving the Lucene tie-breaking rule
-   * that when two scores are equals, the smaller node ID must win.
+   * that when two scores are equal, the smaller node ID must win.
    *
    * <p>The most significant 32 bits represent the float score, encoded as a sortable int.
    *
-   * <p>The less significant 32 bits represent the node ID.
+   * <p>The least significant 32 bits represent the node ID.
    *
    * <p>The bits representing the node ID are complemented to guarantee the win for the smaller node
    * Id.
    *
-   * <p>The AND with 0xFFFFFFFFL (a long with first 32 bit as 1) is necessary to obtain a long that
-   * has
-   *
-   * <p>The most significant 32 bits to 0
-   *
-   * <p>The less significant 32 bits represent the node ID.
+   * <p>The AND with 0xFFFFFFFFL (a long with first 32 bits as 1) is necessary to obtain a long that
+   * has:
+   * <li>The most significant 32 bits set to 0
+   * <li>The least significant 32 bits represent the node ID.
    *
    * @param node the node ID
    * @param score the node score

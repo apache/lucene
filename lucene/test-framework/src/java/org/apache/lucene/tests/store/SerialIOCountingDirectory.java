@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.store;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
 import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -193,7 +194,7 @@ public class SerialIOCountingDirectory extends FilterDirectory {
     public IndexInput slice(
         String sliceDescription, long offset, long length, ReadAdvice readAdvice)
         throws IOException {
-      if (offset < 0 || offset + length > sliceLength) {
+      if ((length | offset) < 0 || length > sliceLength - offset) {
         throw new IllegalArgumentException();
       }
       IndexInput clone = in.clone();
@@ -205,6 +206,11 @@ public class SerialIOCountingDirectory extends FilterDirectory {
     public IndexInput clone() {
       IndexInput clone = in.clone();
       return new SerializedIOCountingIndexInput(clone, readAdvice, sliceOffset, sliceLength);
+    }
+
+    @Override
+    public Optional<Boolean> isLoaded() {
+      return in.isLoaded();
     }
   }
 }

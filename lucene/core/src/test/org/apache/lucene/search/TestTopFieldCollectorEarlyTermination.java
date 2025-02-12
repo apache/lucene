@@ -29,9 +29,10 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.IndexSearcher.LeafReaderContextPartition;
+import org.apache.lucene.search.IndexSearcher.LeafSlice;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
@@ -39,6 +40,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
 
 public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
 
@@ -119,12 +121,22 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
     final int iters = atLeast(1);
     for (int i = 0; i < iters; ++i) {
       createRandomIndex(false);
-      int maxSegmentSize = 0;
-      for (LeafReaderContext ctx : reader.leaves()) {
-        maxSegmentSize = Math.max(ctx.reader().numDocs(), maxSegmentSize);
-      }
       for (int j = 0; j < iters; ++j) {
         final IndexSearcher searcher = newSearcher(reader);
+        int maxSliceSize = 0;
+        for (LeafSlice slice : searcher.getSlices()) {
+          int numDocs = 0; // number of live docs in the slice
+          for (LeafReaderContextPartition partition : slice.partitions) {
+            Bits liveDocs = partition.ctx.reader().getLiveDocs();
+            int maxDoc = Math.min(partition.maxDocId, partition.ctx.reader().maxDoc());
+            for (int doc = partition.minDocId; doc < maxDoc; ++doc) {
+              if (liveDocs == null || liveDocs.get(doc)) {
+                numDocs++;
+              }
+            }
+          }
+          maxSliceSize = Math.max(maxSliceSize, numDocs);
+        }
         final int numHits = TestUtil.nextInt(random(), 1, numDocs);
         FieldDoc after;
         if (paging) {
@@ -149,7 +161,7 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         TopDocs td2 = searcher.search(query, manager2);
 
         assertNotEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td1.totalHits.relation());
-        if (paging == false && maxSegmentSize > numHits && query instanceof MatchAllDocsQuery) {
+        if (paging == false && maxSliceSize > numHits && query instanceof MatchAllDocsQuery) {
           // Make sure that we sometimes early terminate
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td2.totalHits.relation());
         }

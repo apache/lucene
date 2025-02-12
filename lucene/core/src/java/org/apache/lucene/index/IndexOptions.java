@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import org.apache.lucene.search.PhraseQuery;
+
 /**
  * Controls how much information is stored in the postings lists.
  *
@@ -33,7 +35,7 @@ public enum IndexOptions {
   DOCS,
   /**
    * Only documents and term frequencies are indexed: positions are omitted. This enables normal
-   * scoring, except Phrase and other positional queries will throw an exception.
+   * scoring, except {@link PhraseQuery} and other positional queries will throw an exception.
    */
   DOCS_AND_FREQS,
   /**

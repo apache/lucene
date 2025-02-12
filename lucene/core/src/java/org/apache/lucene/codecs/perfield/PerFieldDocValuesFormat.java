@@ -38,6 +38,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -256,7 +257,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
 
   private static class FieldsReader extends DocValuesProducer {
 
-    private final Map<String, DocValuesProducer> fields = new HashMap<>();
+    private final IntObjectHashMap<DocValuesProducer> fields = new IntObjectHashMap<>();
     private final Map<String, DocValuesProducer> formats = new HashMap<>();
 
     // clone for merge
@@ -270,10 +271,10 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
       }
 
       // Then rebuild fields:
-      for (Map.Entry<String, DocValuesProducer> ent : other.fields.entrySet()) {
-        DocValuesProducer producer = oldToNew.get(ent.getValue());
+      for (IntObjectHashMap.IntObjectCursor<DocValuesProducer> ent : other.fields) {
+        DocValuesProducer producer = oldToNew.get(ent.value);
         assert producer != null;
-        fields.put(ent.getKey(), producer);
+        fields.put(ent.key, producer);
       }
     }
 
@@ -302,7 +303,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
                     segmentSuffix,
                     format.fieldsProducer(new SegmentReadState(readState, segmentSuffix)));
               }
-              fields.put(fieldName, formats.get(segmentSuffix));
+              fields.put(fi.number, formats.get(segmentSuffix));
             }
           }
         }
@@ -316,37 +317,37 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
 
     @Override
     public NumericDocValues getNumeric(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getNumeric(field);
     }
 
     @Override
     public BinaryDocValues getBinary(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getBinary(field);
     }
 
     @Override
     public SortedDocValues getSorted(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getSorted(field);
     }
 
     @Override
     public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getSortedNumeric(field);
     }
 
     @Override
     public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getSortedSet(field);
     }
 
     @Override
     public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
-      DocValuesProducer producer = fields.get(field.name);
+      DocValuesProducer producer = fields.get(field.number);
       return producer == null ? null : producer.getSkipper(field);
     }
 

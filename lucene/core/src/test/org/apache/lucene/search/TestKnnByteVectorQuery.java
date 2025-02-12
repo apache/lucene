@@ -23,6 +23,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
@@ -60,7 +61,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     return new KnnByteVectorField(name, floatToBytes(vector), VectorSimilarityFunction.EUCLIDEAN);
   }
 
-  private static byte[] floatToBytes(float[] query) {
+  static byte[] floatToBytes(float[] query) {
     byte[] bytes = new byte[query.length];
     for (int i = 0; i < query.length; i++) {
       assert query[i] <= Byte.MAX_VALUE && query[i] >= Byte.MIN_VALUE && (query[i] % 1) == 0
@@ -78,6 +79,11 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       assertEquals("KnnByteVectorQuery:field[0,...][10]", query.toString("ignored"));
 
       assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
+
+      // test with filter
+      Query filter = new TermQuery(new Term("id", "text"));
+      query = getKnnVectorQuery("field", new float[] {0, 1}, 10, filter);
+      assertEquals("KnnByteVectorQuery:field[0,...][10][id:text]", query.toString("ignored"));
     }
   }
 
@@ -103,7 +109,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-  private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
+  static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
       super(field, target, k, filter);

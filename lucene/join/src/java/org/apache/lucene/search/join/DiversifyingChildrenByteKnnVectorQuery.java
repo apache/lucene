@@ -144,7 +144,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       KnnCollectorManager knnCollectorManager)
       throws IOException {
     ByteVectorValues.checkField(context.reader(), field);
-    KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, context);
+    KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, null, context);
     if (collector == null) {
       return NO_RESULTS;
     }
@@ -154,7 +154,14 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
 
   @Override
   public String toString(String field) {
-    return getClass().getSimpleName() + ":" + this.field + "[" + query[0] + ",...][" + k + "]";
+    StringBuilder buffer = new StringBuilder();
+    buffer.append(getClass().getSimpleName() + ":");
+    buffer.append(this.field + "[" + query[0] + ",...]");
+    buffer.append("[" + k + "]");
+    if (this.filter != null) {
+      buffer.append("[" + this.filter + "]");
+    }
+    return buffer.toString();
   }
 
   @Override
