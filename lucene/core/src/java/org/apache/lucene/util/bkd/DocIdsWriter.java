@@ -307,17 +307,17 @@ public final class DocIdsWriter {
     assert pos == count : "pos: " + pos + ", count: " + count;
   }
 
-  private static void readDelta16Legacy(IndexInput in, int count, int[] docIds) throws IOException {
+  private static void readDelta16Legacy(IndexInput in, int count, int[] docIDs) throws IOException {
     final int min = in.readVInt();
     final int halfLen = count >> 1;
-    in.readInts(docIds, 0, halfLen);
+    in.readInts(docIDs, 0, halfLen);
     for (int i = 0; i < halfLen; ++i) {
-      int l = docIds[i];
-      docIds[i] = (l >>> 16) + min;
-      docIds[halfLen + i] = (l & 0xFFFF) + min;
+      int l = docIDs[i];
+      docIDs[i] = (l >>> 16) + min;
+      docIDs[halfLen + i] = (l & 0xFFFF) + min;
     }
     if ((count & 1) == 1) {
-      docIds[count - 1] = Short.toUnsignedInt(in.readShort()) + min;
+      docIDs[count - 1] = Short.toUnsignedInt(in.readShort()) + min;
     }
   }
 
