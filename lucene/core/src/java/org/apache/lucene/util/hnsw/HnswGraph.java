@@ -175,7 +175,7 @@ public abstract class HnswGraph {
 
   /** NodesIterator that accepts nodes as an integer array. */
   public static class ArrayNodesIterator extends NodesIterator {
-    static NodesIterator EMPTY = new ArrayNodesIterator(0);
+    private static final NodesIterator EMPTY = new ArrayNodesIterator(0);
 
     private final int[] nodes;
     private int cur = 0;

@@ -47,6 +47,7 @@ import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 /** Factory of analysis chain dialog */
 public class AnalysisChainDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static AnalysisChainDialogFactory instance;
 
   private final Preferences prefs;

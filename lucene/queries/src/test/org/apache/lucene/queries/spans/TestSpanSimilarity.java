@@ -71,17 +71,17 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSpanSimilarity extends LuceneTestCase {
 
-  List<Similarity> sims;
+  private List<Similarity> sims;
 
   /** The DFR basic models to test. */
-  static BasicModel[] BASIC_MODELS = {
+  private static final BasicModel[] BASIC_MODELS = {
     new BasicModelG(), new BasicModelIF(), new BasicModelIn(), new BasicModelIne()
   };
 
   /** The DFR aftereffects to test. */
-  static AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
+  private static final AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
 
-  static Normalization[] NORMALIZATIONS = {
+  private static final Normalization[] NORMALIZATIONS = {
     new NormalizationH1(),
     new NormalizationH2(),
     new NormalizationH3(),
@@ -90,13 +90,13 @@ public class TestSpanSimilarity extends LuceneTestCase {
   };
 
   /** The distributions for IB. */
-  static Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
+  private static final Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
 
   /** Lambdas for IB. */
-  static Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
+  private static final Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
 
   /** Independence measures for DFI */
-  static Independence[] INDEPENDENCE_MEASURES = {
+  private static final Independence[] INDEPENDENCE_MEASURES = {
     new IndependenceStandardized(), new IndependenceSaturated(), new IndependenceChiSquared()
   };
 

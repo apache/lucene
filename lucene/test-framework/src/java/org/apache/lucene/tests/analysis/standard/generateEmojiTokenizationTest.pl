@@ -75,7 +75,7 @@ public final class ${class_name} {
     }
   }
 
-  private static String[] TESTS = new String[] {
+  private static final String[] TESTS = new String[] {
 __HEADER__
 
 my @tests = split /\r?\n/, get_URL_content($url);
