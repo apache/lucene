@@ -66,6 +66,7 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static ExportTermsDialogFactory instance;
 
   private final IndexToolsFactory indexToolsFactory = new IndexToolsFactory();

@@ -44,6 +44,7 @@ import org.apache.lucene.luke.models.analysis.Analysis;
 /** Factory of token attribute dialog */
 public final class TokenAttributeDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static TokenAttributeDialogFactory instance;
 
   private final Preferences prefs;

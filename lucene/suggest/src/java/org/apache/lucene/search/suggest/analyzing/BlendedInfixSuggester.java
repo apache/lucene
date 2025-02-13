@@ -378,7 +378,7 @@ public class BlendedInfixSuggester extends AnalyzingInfixSuggester {
     return coefficient;
   }
 
-  private static Comparator<Lookup.LookupResult> LOOKUP_COMP = new LookUpComparator();
+  private static final Comparator<Lookup.LookupResult> LOOKUP_COMP = new LookUpComparator();
 
   private static class LookUpComparator implements Comparator<Lookup.LookupResult> {
 

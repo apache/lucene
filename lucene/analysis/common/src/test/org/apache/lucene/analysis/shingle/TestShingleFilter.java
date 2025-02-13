@@ -48,7 +48,13 @@ public class TestShingleFilter extends BaseTokenStreamTestCase {
   public static final String[] UNIGRAM_ONLY_TYPES =
       new String[] {"word", "word", "word", "word", "word", "word"};
 
-  public static Token[] testTokenWithHoles;
+  public static final Token[] testTokenWithHoles =
+      new Token[] {
+        createToken("please", 0, 6),
+        createToken("divide", 7, 13),
+        createToken("sentence", 19, 27, 2),
+        createToken("shingles", 33, 39, 2),
+      };
 
   public static final Token[] BI_GRAM_TOKENS =
       new Token[] {
@@ -708,18 +714,6 @@ public class TestShingleFilter extends BaseTokenStreamTestCase {
         "shingle", "shingle", "shingle", "shingle", "shingle", "shingle", "shingle", "shingle",
         "shingle", "shingle", "shingle", "shingle",
       };
-
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    testTokenWithHoles =
-        new Token[] {
-          createToken("please", 0, 6),
-          createToken("divide", 7, 13),
-          createToken("sentence", 19, 27, 2),
-          createToken("shingles", 33, 39, 2),
-        };
-  }
 
   /*
    * Class under test for void ShingleFilter(TokenStream, int)

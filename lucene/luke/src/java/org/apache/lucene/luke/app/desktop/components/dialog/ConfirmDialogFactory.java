@@ -41,6 +41,7 @@ import org.apache.lucene.luke.app.desktop.util.lang.Callable;
 /** Factory of confirm dialog */
 public final class ConfirmDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static ConfirmDialogFactory instance;
 
   private final Preferences prefs;

@@ -23,10 +23,10 @@ import java.util.HashSet;
 
 class WindowsPath extends FilterPath {
 
-  static HashSet<Character> RESERVED_CHARACTERS =
+  static final HashSet<Character> RESERVED_CHARACTERS =
       new HashSet<>(Arrays.asList('<', '>', ':', '\"', '\\', '|', '?', '*'));
 
-  static HashSet<String> RESERVED_NAMES =
+  static final HashSet<String> RESERVED_NAMES =
       new HashSet<>(
           Arrays.asList(
               "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",

@@ -67,22 +67,22 @@ import org.apache.lucene.util.Version;
  * parameter values for LM), only the best performing setups in the original papers are verified.
  */
 public class TestSimilarityBase extends LuceneTestCase {
-  private static String FIELD_BODY = "body";
-  private static String FIELD_ID = "id";
+  private static final String FIELD_BODY = "body";
+  private static final String FIELD_ID = "id";
 
   /** The tolerance range for float equality. */
-  private static float FLOAT_EPSILON = 1e-5f;
+  private static final float FLOAT_EPSILON = 1e-5f;
 
   /** The DFR basic models to test. */
-  static BasicModel[] BASIC_MODELS = {
+  static final BasicModel[] BASIC_MODELS = {
     new BasicModelG(), new BasicModelIF(), new BasicModelIn(), new BasicModelIne()
   };
 
   /** The DFR aftereffects to test. */
-  static AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
+  static final AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
 
   /** The DFR normalizations to test. */
-  static Normalization[] NORMALIZATIONS = {
+  static final Normalization[] NORMALIZATIONS = {
     new NormalizationH1(),
     new NormalizationH2(),
     new NormalizationH3(),
@@ -91,13 +91,13 @@ public class TestSimilarityBase extends LuceneTestCase {
   };
 
   /** The distributions for IB. */
-  static Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
+  static final Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
 
   /** Lambdas for IB. */
-  static Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
+  static final Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
 
   /** Independence measures for DFI */
-  static Independence[] INDEPENDENCE_MEASURES = {
+  static final Independence[] INDEPENDENCE_MEASURES = {
     new IndependenceStandardized(), new IndependenceSaturated(), new IndependenceChiSquared()
   };
 
@@ -154,27 +154,27 @@ public class TestSimilarityBase extends LuceneTestCase {
   // ------------------------------- Unit tests --------------------------------
 
   /** The default number of documents in the unit tests. */
-  private static int NUMBER_OF_DOCUMENTS = 100;
+  private static final int NUMBER_OF_DOCUMENTS = 100;
 
   /** The default total number of tokens in the field in the unit tests. */
-  private static long NUMBER_OF_FIELD_TOKENS = 5000;
+  private static final long NUMBER_OF_FIELD_TOKENS = 5000;
 
   /** The default average field length in the unit tests. */
-  private static float AVG_FIELD_LENGTH = 50;
+  private static final float AVG_FIELD_LENGTH = 50;
 
   /** The default document frequency in the unit tests. */
-  private static int DOC_FREQ = 10;
+  private static final int DOC_FREQ = 10;
 
   /**
    * The default total number of occurrences of this term across all documents in the unit tests.
    */
-  private static long TOTAL_TERM_FREQ = 70;
+  private static final long TOTAL_TERM_FREQ = 70;
 
   /** The default tf in the unit tests. */
-  private static float FREQ = 7;
+  private static final float FREQ = 7;
 
   /** The default document length in the unit tests. */
-  private static int DOC_LEN = 40;
+  private static final int DOC_LEN = 40;
 
   /** Creates the default statistics object that the specific tests modify. */
   private BasicStats createStats() {

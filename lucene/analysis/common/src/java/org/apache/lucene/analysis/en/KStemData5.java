@@ -42,7 +42,7 @@ package org.apache.lucene.analysis.en;
 class KStemData5 {
   private KStemData5() {}
 
-  static String[] data = {
+  static final String[] data = {
     "lock", "locker", "locket", "lockjaw", "locknut",
     "lockout", "locks", "locksmith", "lockstitch", "lockup",
     "loco", "locomotion", "locomotive", "locum", "locus",
