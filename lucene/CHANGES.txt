@@ -32,6 +32,11 @@ Bug Fixes
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
+  LogByteSizeMergePolicy. (Adrien Grand)
+
 Other
 ---------------------
 (No changes)
