@@ -15,10 +15,8 @@
  * limitations under the License.
  */
 /**
- * Sandbox faceting: utility classes to make it easier to use the new API
- * for standard use cases.
+ * Sandbox faceting: utility classes to make it easier to use the new API for standard use cases.
  *
  * @lucene.experimental
  */
-
 package org.apache.lucene.sandbox.facet.utils;

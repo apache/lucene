@@ -31,7 +31,8 @@ import org.apache.lucene.search.LongValuesSource;
 /**
  * {@link FacetCutter} for ranges of long values. It's based on LongRangeCounter class.
  *
- * TODO: support "total count" facet ordinal - to be able to return {@link org.apache.lucene.facet.FacetResult#value}
+ * <p>TODO: support "total count" facet ordinal - to be able to return {@link
+ * org.apache.lucene.facet.FacetResult#value}
  *
  * @lucene.experimental
  */

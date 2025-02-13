@@ -24,50 +24,49 @@ import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 import org.apache.lucene.sandbox.facet.labels.RangeOrdToLabel;
 
 /** {@link FacetBuilder} for long range facets. */
-public final class LongRangeFacetBuilder extends BaseFacetBuilder<LongRangeFacetBuilder>{
-    private final MultiLongValuesSource valueSource;
-    private final LongRange[] ranges;
-    /**
-     * Request long range facets for numeric field by name.
-     */
-    public LongRangeFacetBuilder(String field,
-                                 LongRange... ranges) {
-        this(field, MultiLongValuesSource.fromLongField(field), ranges);
-    }
+public final class LongRangeFacetBuilder extends BaseFacetBuilder<LongRangeFacetBuilder> {
+  private final MultiLongValuesSource valueSource;
+  private final LongRange[] ranges;
 
-    /**
-     * Request long range facets for provided {@link MultiLongValuesSource}.
-     * @param dimension dimension to return in results to match
-     *                  {@link org.apache.lucene.facet.range.LongRangeFacetCounts#getTopChildren(int, String, String...)} results
-     * @param valuesSource value source
-     * @param ranges ranges
-     */
-    public LongRangeFacetBuilder(String dimension,
-                                 MultiLongValuesSource valuesSource,
-                                 LongRange... ranges) {
-        super(dimension);
-        this.valueSource = valuesSource;
-        this.ranges = ranges;
-    }
+  /** Request long range facets for numeric field by name. */
+  public LongRangeFacetBuilder(String field, LongRange... ranges) {
+    this(field, MultiLongValuesSource.fromLongField(field), ranges);
+  }
 
-    @Override
-    FacetCutter createFacetCutter() {
-        return LongRangeFacetCutter.create(valueSource, ranges);
-    }
+  /**
+   * Request long range facets for provided {@link MultiLongValuesSource}.
+   *
+   * @param dimension dimension to return in results to match {@link
+   *     org.apache.lucene.facet.range.LongRangeFacetCounts#getTopChildren(int, String, String...)}
+   *     results
+   * @param valuesSource value source
+   * @param ranges ranges
+   */
+  public LongRangeFacetBuilder(
+      String dimension, MultiLongValuesSource valuesSource, LongRange... ranges) {
+    super(dimension);
+    this.valueSource = valuesSource;
+    this.ranges = ranges;
+  }
 
-    @Override
-    Number getOverallValue() {
-        // Not currently supported, see TODO item in LongRangeFacetCutter
-        return -1;
-    }
+  @Override
+  FacetCutter createFacetCutter() {
+    return LongRangeFacetCutter.create(valueSource, ranges);
+  }
 
-    @Override
-    OrdToLabel ordToLabel() {
-        return new RangeOrdToLabel(ranges);
-    }
+  @Override
+  Number getOverallValue() {
+    // Not currently supported, see TODO item in LongRangeFacetCutter
+    return -1;
+  }
 
-    @Override
-    LongRangeFacetBuilder self() {
-        return this;
-    }
+  @Override
+  OrdToLabel ordToLabel() {
+    return new RangeOrdToLabel(ranges);
+  }
+
+  @Override
+  LongRangeFacetBuilder self() {
+    return this;
+  }
 }
