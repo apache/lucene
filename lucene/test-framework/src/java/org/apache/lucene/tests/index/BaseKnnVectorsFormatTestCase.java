@@ -2047,10 +2047,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           if (line.isEmpty()) {
             continue;
           }
-          if (seen.contains(line)) {
+          if (seen.add(line) == false) {
             continue;
           }
-          seen.add(line);
           ++lineNo;
           Document doc = new Document();
           doc.add(
