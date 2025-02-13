@@ -92,7 +92,7 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
     FacetBuilder publishDateAllBuilder =
         new TaxonomyFacetBuilder(config, taxoReader, "Publish Date");
 
-    FacetOrchestrator.start()
+    new FacetOrchestrator()
         .addBuilder(authorTop0Builder)
         .addBuilder(authorTop10Builder)
         .addBuilder(authorAllBuilder)

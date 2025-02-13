@@ -18,13 +18,14 @@ package org.apache.lucene.sandbox.facet.utils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.DrillSideways;
+import org.apache.lucene.sandbox.facet.FacetFieldCollector;
 import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
-import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.MultiCollectorManager;
@@ -63,41 +64,29 @@ public final class DrillSidewaysFacetOrchestrator {
     collect(query, drillSideways, null);
   }
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
+  @SuppressWarnings({"unchecked"})
   public <T> T collect(
       DrillDownQuery query,
       DrillSideways drillSideways,
       CollectorManager<? extends Collector, T> mainCollector)
       throws IOException {
     // drill down
-    List<FacetFieldCollectorManager<CountFacetRecorder>> drillDownManagers =
-        collectorManagerForBuilders(drillDownFacetBuilders);
-    int i = 0;
-    CollectorManager[] managersArray;
-    if (mainCollector != null) {
-      managersArray = new CollectorManager[drillDownManagers.size() + 1];
-      managersArray[i++] = mainCollector;
-    } else {
-      managersArray = new CollectorManager[drillDownManagers.size()];
-    }
-    for (FacetFieldCollectorManager<?> m : drillDownManagers) {
-      managersArray[i++] = m;
-    }
-    MultiCollectorManager drillDownManager = new MultiCollectorManager(managersArray);
+    MultiCollectorManager drillDownManager =
+        FacetOrchestrator.createMainCollector(drillDownFacetBuilders, mainCollector);
 
     // drill sideways
-    List<FacetFieldCollectorManager<CountFacetRecorder>> drillSidewaysManagers = new ArrayList<>();
-    for (i = 0; i < drillSidewaysFacetBuilders.size(); i++) {
-      List<FacetFieldCollectorManager<CountFacetRecorder>> managers =
-          collectorManagerForBuilders(drillSidewaysFacetBuilders.get(i));
+    List<VoidFacetFieldCollectorManager> drillSidewaysManagers = new ArrayList<>();
+    for (int i = 0; i < drillSidewaysFacetBuilders.size(); i++) {
+      List<FacetFieldCollectorManager<?>> managers =
+          FacetOrchestrator.collectorManagerForBuilders(drillSidewaysFacetBuilders.get(i));
       if (managers.size() != 1) {
         throw new IllegalArgumentException(
             "Expected exactly one collector manager per dimension but got " + managers.size());
       }
-      drillSidewaysManagers.add(managers.getFirst());
+      drillSidewaysManagers.add(new VoidFacetFieldCollectorManager(managers.getFirst()));
     }
 
-    DrillSideways.Result<Object[], CountFacetRecorder> result =
+    DrillSideways.Result<Object[], ?> result =
         drillSideways.search(query, drillDownManager, drillSidewaysManagers);
 
     if (mainCollector != null) {
@@ -107,18 +96,35 @@ public final class DrillSidewaysFacetOrchestrator {
     }
   }
 
-  private static List<FacetFieldCollectorManager<CountFacetRecorder>> collectorManagerForBuilders(
-      List<FacetBuilder> facetBuilders) {
-    // Check if we can reuse collectors for some FacetBuilders
-    Map<Object, FacetBuilder> buildersUniqueForCollection = new HashMap<>();
-    for (FacetBuilder builder : facetBuilders) {
-      buildersUniqueForCollection.compute(
-          builder.collectionKey(), (k, v) -> builder.initOrReuseCollector(v));
+  /**
+   * Class to hide {@link FacetFieldCollectorManager} return type.
+   *
+   * <p>The reason we need it is that {@link DrillSideways} requires drill sideways dimension
+   * collectors to be of the same type. As a result, we can't use wildcard (?) in the list of
+   * collectors in this class, and consequently, we can't use different {@link
+   * org.apache.lucene.sandbox.facet.recorders.FacetRecorder}s for different dimensions.
+   *
+   * <p>We can do it because each {@link FacetBuilder} keeps references to its {@link
+   * org.apache.lucene.sandbox.facet.recorders.FacetRecorder}(s) so we don't need DrillSideways to
+   * return them.
+   */
+  private static final class VoidFacetFieldCollectorManager
+      implements CollectorManager<FacetFieldCollector, Void> {
+    private final FacetFieldCollectorManager<?> delegate;
+
+    public VoidFacetFieldCollectorManager(FacetFieldCollectorManager<?> delegate) {
+      this.delegate = delegate;
     }
-    List<FacetFieldCollectorManager<CountFacetRecorder>> managers = new ArrayList<>();
-    for (FacetBuilder c : buildersUniqueForCollection.values()) {
-      managers.add(c.getCollectorManager());
+
+    @Override
+    public FacetFieldCollector newCollector() throws IOException {
+      return delegate.newCollector();
     }
-    return managers;
+
+    @Override
+    public Void reduce(Collection<FacetFieldCollector> collection) throws IOException {
+      delegate.reduce(collection);
+      return null;
+    }
   }
 }

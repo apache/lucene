@@ -82,7 +82,7 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
   }
 
   @Override
-  final FacetFieldCollectorManager<CountFacetRecorder> getCollectorManager() {
+  final FacetFieldCollectorManager<?> getCollectorManager() {
     return this.collectorManager;
   }
 
