@@ -23,9 +23,9 @@ package org.apache.lucene.search;
  * delegate} KnnCollector queue, at each HNSW node candidate visit. Once it saturates for a number
  * of consecutive node visits (e.g., the patience parameter), this early terminates.
  */
-public class HnswQueueSaturationCollector implements HnswKnnCollector {
+public class HnswQueueSaturationCollector extends HnswKnnCollector {
 
-  private static final double DEFAULT_SATURATION_THRESHOLD = 0.995d;
+  private static final double DEFAULT_SATURATION_THRESHOLD = 0.95d;
 
   private final KnnCollector delegate;
   private final double saturationThreshold;
@@ -36,6 +36,7 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
   private int currentQueueSize;
 
   HnswQueueSaturationCollector(KnnCollector delegate, double saturationThreshold, int patience) {
+    super(delegate);
     this.delegate = delegate;
     this.previousQueueSize = 0;
     this.currentQueueSize = 0;
@@ -46,6 +47,7 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
   }
 
   public HnswQueueSaturationCollector(KnnCollector delegate) {
+    super(delegate);
     this.delegate = delegate;
     this.previousQueueSize = 0;
     this.currentQueueSize = 0;
@@ -62,26 +64,6 @@ public class HnswQueueSaturationCollector implements HnswKnnCollector {
   @Override
   public boolean earlyTerminated() {
     return delegate.earlyTerminated() || patienceFinished;
-  }
-
-  @Override
-  public void incVisitedCount(int count) {
-    delegate.incVisitedCount(count);
-  }
-
-  @Override
-  public long visitedCount() {
-    return delegate.visitedCount();
-  }
-
-  @Override
-  public long visitLimit() {
-    return delegate.visitLimit();
-  }
-
-  @Override
-  public int k() {
-    return delegate.k();
   }
 
   @Override
