@@ -14,21 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.vectorsearch;
 
-apply plugin: 'java-library'
+import com.nvidia.cuvs.spi.CuVSProvider;
+import com.nvidia.cuvs.spi.CuVSServiceProvider;
 
-description = 'Various third party contributions and new ideas'
-
-repositories {
-  mavenLocal()
-}
-
-
-dependencies {
-  moduleApi project(':lucene:core')
-  moduleApi project(':lucene:queries')
-  moduleApi project(':lucene:facet')
-  moduleTestImplementation project(':lucene:test-framework')
-  moduleImplementation deps.commons.lang3
-  moduleImplementation deps.cuvs
+/** A provider that creates instances of FilterCuVSProvider. */
+public class FilterCuVSServiceProvider extends CuVSServiceProvider {
+  @Override
+  public CuVSProvider get(CuVSProvider builtinProvider) {
+    return new FilterCuVSProvider(builtinProvider);
+  }
 }
