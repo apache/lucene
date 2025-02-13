@@ -12,7 +12,7 @@ import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
 import java.io.IOException;
 
 /** {@link FacetBuilder} for taxonomy facets. */
-public class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBuilder> {
+public final class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBuilder> {
     private final FacetsConfig facetsConfig;
     private final FacetsConfig.DimConfig dimConfig;
     private final TaxonomyReader taxonomyReader;
@@ -34,12 +34,12 @@ public class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBuilder>
     }
 
     @Override
-    public Object collectionKey() {
+    Object collectionKey() {
         return indexFieldName;
     }
 
     @Override
-    public FacetCutter createFacetCutter() {
+    FacetCutter createFacetCutter() {
         return new TaxonomyFacetsCutter(indexFieldName, facetsConfig, taxonomyReader);
     }
 
@@ -52,7 +52,7 @@ public class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBuilder>
     }
 
     @Override
-    public OrdinalIterator getMatchingOrdinalIterator() throws IOException {
+    OrdinalIterator getMatchingOrdinalIterator() throws IOException {
         return new TaxonomyChildrenOrdinalIterator(
                 super.getMatchingOrdinalIterator(),
                 taxonomyReader.getParallelTaxonomyArrays().parents(),
@@ -60,7 +60,7 @@ public class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBuilder>
     }
 
     @Override
-    public Number getOverallValue() throws IOException {
+    Number getOverallValue() throws IOException {
         if (dimConfig.multiValued == false || dimConfig.hierarchical || dimConfig.requireDimCount) {
             return getValue(getParentOrd());
         }
@@ -68,7 +68,7 @@ public class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBuilder>
     }
 
     @Override
-    public TaxonomyOrdLabelBiMap ordToLabel() {
+    TaxonomyOrdLabelBiMap ordToLabel() {
         if (taxoOrdLabels == null) {
             taxoOrdLabels = new TaxonomyOrdLabelBiMap(taxonomyReader);
         }
@@ -76,7 +76,7 @@ public class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBuilder>
     }
 
     @Override
-    protected TaxonomyFacetBuilder self() {
+    TaxonomyFacetBuilder self() {
         return this;
     }
 }
