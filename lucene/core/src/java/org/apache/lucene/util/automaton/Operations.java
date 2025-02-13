@@ -89,8 +89,8 @@ public final class Operations {
     // First pass: create all states
     for (Automaton a : list) {
       if (a.getNumStates() == 0) {
-        result.finishState();
-        return result;
+        // concatenation with empty is empty
+        return Automata.makeEmpty();
       }
       int numStates = a.getNumStates();
       for (int s = 0; s < numStates; s++) {
@@ -331,7 +331,7 @@ public final class Operations {
       prevAcceptStates = toSet(a, numStates);
     }
 
-    return builder.finish();
+    return Operations.removeDeadStates(builder.finish());
   }
 
   private static IntHashSet toSet(Automaton a, int offset) {

@@ -37,6 +37,7 @@ import org.apache.lucene.util.automaton.RegExp;
 import org.apache.lucene.util.automaton.StatePair;
 import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 import org.apache.lucene.util.automaton.Transition;
+import org.junit.Assert;
 
 /**
  * Utilities for testing automata.
@@ -44,7 +45,7 @@ import org.apache.lucene.util.automaton.Transition;
  * <p>Capable of generating random regular expressions, and automata, and also provides a number of
  * very basic unoptimized implementations (*slow) for testing.
  */
-public class AutomatonTestUtil {
+public class AutomatonTestUtil extends Assert {
   /** Default maximum number of states that {@link Operations#determinize} should create. */
   public static final int DEFAULT_MAX_DETERMINIZED_STATES = 1000000;
 
@@ -390,6 +391,27 @@ public class AutomatonTestUtil {
     return a;
   }
 
+  /** Asserts that an automaton is a minimal DFA. */
+  public static void assertMinimalDFA(Automaton automaton) {
+    assertCleanDFA(automaton);
+    Automaton minimized = minimizeSimple(automaton);
+    assertEquals(minimized.getNumStates(), automaton.getNumStates());
+  }
+
+  /** Asserts that an automaton is a DFA with no dead states */
+  public static void assertCleanDFA(Automaton automaton) {
+    assertCleanNFA(automaton);
+    assertTrue("must be deterministic", automaton.isDeterministic());
+  }
+
+  /** Asserts that an automaton has no dead states */
+  public static void assertCleanNFA(Automaton automaton) {
+    assertFalse(
+        "has dead states reachable from initial", Operations.hasDeadStatesFromInitial(automaton));
+    assertFalse("has dead states leading to accept", Operations.hasDeadStatesToAccept(automaton));
+    assertFalse("has unreachable dead states (ghost states)", Operations.hasDeadStates(automaton));
+  }
+
   /** Simple, original brics implementation of determinize() */
   public static Automaton determinizeSimple(Automaton a) {
     Set<Integer> initialset = new HashSet<>();
@@ -607,7 +629,7 @@ public class AutomatonTestUtil {
     assert Operations.hasDeadStatesFromInitial(a1) == false;
     assert Operations.hasDeadStatesFromInitial(a2) == false;
     if (a1.getNumStates() == 0) {
-      // Empty language is alwyas a subset of any other language
+      // Empty language is always a subset of any other language
       return true;
     } else if (a2.getNumStates() == 0) {
       return Operations.isEmpty(a1);
