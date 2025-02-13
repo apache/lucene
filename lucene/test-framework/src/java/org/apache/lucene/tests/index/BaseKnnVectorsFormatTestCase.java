@@ -1952,7 +1952,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       // indexed 421 lines from LICENSE.txt
       // indexed 157 lines from NOTICE.txt
       int topK = 10;
-      int numQueries = 578;
+      int numQueries = 526;
       String[] testQueries = {
         "Apache Lucene",
         "Apache License",
@@ -2036,6 +2036,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     Directory indexStore = newDirectory(random());
     IndexWriter writer = new IndexWriter(indexStore, newIndexWriterConfig());
     float[] scratch = new float[dimension];
+    Set<String> seen = new HashSet<>(578);
     for (String file : List.of("LICENSE.txt", "NOTICE.txt")) {
       try (InputStream in = BaseKnnVectorsFormatTestCase.class.getResourceAsStream(file);
           BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8))) {
@@ -2046,6 +2047,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           if (line.isEmpty()) {
             continue;
           }
+          if (seen.contains(line)) {
+            continue;
+          }
+          seen.add(line);
           ++lineNo;
           Document doc = new Document();
           doc.add(
