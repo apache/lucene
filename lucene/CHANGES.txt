@@ -112,6 +112,8 @@ Optimizations
 
 * GITHUB#14176: Reduce when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
 
+# GITHUB#14203: Use Vector API to decode BKD docIds. (GuoFeng)
+
 Bug Fixes
 ---------------------
 
