@@ -66,6 +66,10 @@ Optimizations
   for fewer objects to be created during indexing and simplifies internally used iterfaces.
   (Ben Trent)
 
+* GITHUB#14160: Adds new filtered HNSW search heuristic based on ACORN-1 algorithm. This improves runtime of filtered HNSW
+  searches as much as 5x. By default this new heuristic isn't used, but is available via the new experimental
+  KnnSearchStrategy interface in knn queries (Ben Chaplin, Ben Trent)
+
 * GITHUB#14193: Add Automata.makeCharSet() and makeCharClass() that return minimal DFA
   for lists of characters and ranges. Use them in RegExp parser.  (Robert Muir)
 

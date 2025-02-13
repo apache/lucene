@@ -622,20 +622,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
                       getThrowingKnnVectorQuery("field", randomVector(dimension), 10, filter1),
                       numDocs));
 
-          // Test a restrictive filter and check we use exact search
-          Query filter2 = IntPoint.newRangeQuery("tag", lower, lower + 6);
-          results =
-              searcher.search(
-                  getKnnVectorQuery("field", randomVector(dimension), 5, filter2), numDocs);
-          assertEquals(5, results.totalHits.value());
-          assertEquals(results.totalHits.value(), results.scoreDocs.length);
-          expectThrows(
-              UnsupportedOperationException.class,
-              () ->
-                  searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter2),
-                      numDocs));
-
           // Test an unrestrictive filter and check we use approximate search
           Query filter3 = IntPoint.newRangeQuery("tag", lower, numDocs);
           results =
@@ -655,7 +641,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           }
 
           // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
-          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
+          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 6);
           expectThrows(
               UnsupportedOperationException.class,
               () ->
