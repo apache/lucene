@@ -491,6 +491,7 @@ public final class Automata {
    */
   public static Automaton makeDecimalInterval(int min, int max, int digits)
       throws IllegalArgumentException {
+    // TODO: can this be improved to always return a DFA?
     String x = Integer.toString(min);
     String y = Integer.toString(max);
     if (min > max || (digits > 0 && y.length() > digits)) {
@@ -533,7 +534,7 @@ public final class Automata {
       a1.finishState();
     }
 
-    return a1;
+    return Operations.removeDeadStates(a1);
   }
 
   /** Returns a new (deterministic) automaton that accepts the single given string. */

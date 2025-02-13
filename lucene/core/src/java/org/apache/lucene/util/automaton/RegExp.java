@@ -1243,7 +1243,15 @@ public class RegExp {
     do {
       // look for escape
       if (match('\\')) {
-        expandPreDefined(starts, ends);
+        if (peek("\\ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")) {
+          // special "escape" or invalid escape
+          expandPreDefined(starts, ends);
+        } else {
+          // escaped character, don't parse it
+          int c = next();
+          starts.add(c);
+          ends.add(c);
+        }
       } else {
         // parse a character
         int c = parseCharExp();

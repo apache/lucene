@@ -103,7 +103,7 @@ public abstract class HnswGraph {
   public abstract int neighborCount();
 
   /** Empty graph value */
-  public static HnswGraph EMPTY =
+  public static final HnswGraph EMPTY =
       new HnswGraph() {
 
         @Override

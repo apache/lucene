@@ -123,6 +123,8 @@ Bug Fixes
 * GITHUB#14126: Avoid overflow in index input slices invariant checks
   (Chris Hegarty)
 
+* GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
+
 Other
 ---------------------
 
@@ -134,6 +136,8 @@ Other
 
 * GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j 
   from 1.7.36 to 2.0.16. (Michael Froh)
+
+* GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
 
 ======================= Lucene 10.1.0 =======================
 
