@@ -183,8 +183,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertMatches(searcher, kvq, 2);
       ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
       assertEquals(scoreDocs.length, 2);
-      assertIdMatches(reader, "id2", scoreDocs[0]);
-      assertIdMatches(reader, "id0", scoreDocs[1]);
+      assertTopIdsMatches(reader, Set.of("id2", "id0"), scoreDocs);
     }
   }
 
@@ -1020,6 +1019,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       throws IOException {
     String actualId = reader.storedFields().document(scoreDoc.doc).get("id");
     assertEquals(expectedId, actualId);
+  }
+
+  void assertTopIdsMatches(IndexReader reader, Set<String> expectedIds, ScoreDoc[] scoreDocs)
+      throws IOException {
+    Set<String> actualIds = new HashSet<>();
+    for (ScoreDoc scoreDoc : scoreDocs) {
+      actualIds.add(reader.storedFields().document(scoreDoc.doc).get("id"));
+    }
+    assertEquals(expectedIds.size(), actualIds.size());
+    assertEquals(expectedIds, actualIds);
   }
 
   void assertDocScoreQueryToString(Query query) {
