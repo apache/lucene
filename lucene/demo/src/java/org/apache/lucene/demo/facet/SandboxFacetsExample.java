@@ -40,7 +40,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
-import org.apache.lucene.sandbox.facet.utils.*;
 import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
 import org.apache.lucene.sandbox.facet.cutters.TaxonomyFacetsCutter;
 import org.apache.lucene.sandbox.facet.cutters.ranges.LongRangeFacetCutter;
@@ -54,6 +53,7 @@ import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.LongAggregationsFacetRecorder;
 import org.apache.lucene.sandbox.facet.recorders.MultiFacetsRecorder;
 import org.apache.lucene.sandbox.facet.recorders.Reducer;
+import org.apache.lucene.sandbox.facet.utils.*;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
@@ -128,11 +128,13 @@ public class SandboxFacetsExample {
     IOUtils.close(indexWriter, taxoWriter);
   }
 
-  /** Example for {@link FacetBuilder} usage - simple API that provides
-   * results in a format very similar to classic facets module.
-   * It doesn't give all flexibility available with {@link org.apache.lucene.sandbox.facet.cutters.FacetCutter}
-   * and {@link org.apache.lucene.sandbox.facet.recorders.FacetRecorder} though,
-   * see below for lower level API usage examples. */
+  /**
+   * Example for {@link FacetBuilder} usage - simple API that provides results in a format very
+   * similar to classic facets module. It doesn't give all flexibility available with {@link
+   * org.apache.lucene.sandbox.facet.cutters.FacetCutter} and {@link
+   * org.apache.lucene.sandbox.facet.recorders.FacetRecorder} though, see below for lower level API
+   * usage examples.
+   */
   private List<FacetResult> simpleFacetsWithSearch() throws IOException {
     //// init readers and searcher
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
@@ -140,22 +142,29 @@ public class SandboxFacetsExample {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
 
     //// build facets requests
-    FacetBuilder authorFacetBuilder = new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
-    FacetBuilder priceFacetBuilder = new LongRangeFacetBuilder("Price",
+    FacetBuilder authorFacetBuilder =
+        new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
+    FacetBuilder priceFacetBuilder =
+        new LongRangeFacetBuilder(
+            "Price",
             new LongRange("0-10", 0, true, 10, true),
-            new LongRange("10-20", 10, true, 20, true)
-    );
+            new LongRange("10-20", 10, true, 20, true));
 
     //// Main hits collector
     TopScoreDocCollectorManager hitsCollectorManager =
-            new TopScoreDocCollectorManager(2, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(2, Integer.MAX_VALUE);
 
     //// Search and collect
-    TopDocs topDocs = FacetOrchestrator.start()
+    TopDocs topDocs =
+        FacetOrchestrator.start()
             .addBuilder(authorFacetBuilder)
             .addBuilder(priceFacetBuilder)
             .collect(new MatchAllDocsQuery(), searcher, hitsCollectorManager);
-
+    System.out.println(
+        "Search results: totalHits: "
+            + topDocs.totalHits
+            + ", collected hits: "
+            + topDocs.scoreDocs.length);
 
     //// Results
     FacetResult autorResults = authorFacetBuilder.getResult();
@@ -175,20 +184,22 @@ public class SandboxFacetsExample {
     DrillSideways ds = new DrillSideways(searcher, config, taxoReader);
 
     //// build facets requests
-    FacetBuilder authorFacetBuilder = new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
-    FacetBuilder priceFacetBuilder = new LongRangeFacetBuilder("Price",
+    FacetBuilder authorFacetBuilder =
+        new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
+    FacetBuilder priceFacetBuilder =
+        new LongRangeFacetBuilder(
+            "Price",
             new LongRange("0-10", 0, true, 10, true),
-            new LongRange("10-20", 10, true, 20, true)
-    );
+            new LongRange("10-20", 10, true, 20, true));
 
     //// Build query and collect
     DrillDownQuery query = new DrillDownQuery(config);
     query.add("Author", "Lisa");
 
     new DrillSidewaysFacetOrchestrator()
-            .addDrillDownBuilder(priceFacetBuilder)
-            .addDrillSidewaysBuilder("Author", authorFacetBuilder)
-            .collect(query, ds);
+        .addDrillDownBuilder(priceFacetBuilder)
+        .addDrillSidewaysBuilder("Author", authorFacetBuilder)
+        .collect(query, ds);
 
     //// Results
     FacetResult autorResults = authorFacetBuilder.getResult();
