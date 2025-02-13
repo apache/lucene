@@ -44,9 +44,8 @@ public final class DrillSidewaysFacetOrchestrator {
       String dim, FacetBuilder facetBuilder) {
     // TODO: this looks fragile as it duplicates index assignment logic from DrillDownQuery.
     //       Instead we can change DrillSideways API to accept a dimension (String) to collector
-    // manager map
-    //       instead of a list so that we can be sure that we use the right collector for the right
-    // dimension.
+    //       manager map instead of a list so that we can be sure that we use the right
+    //       collector for the right dimension.
     //       but I think we should do it in a separate PR as it requires changing existing API.
     int dimIndex = dimToIndex.computeIfAbsent(dim, (x) -> dimToIndex.size());
     drillSidewaysFacetBuilders

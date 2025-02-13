@@ -145,7 +145,7 @@ public class SandboxFacetsExample {
     FacetBuilder authorFacetBuilder =
         new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
     FacetBuilder priceFacetBuilder =
-        new LongRangeFacetBuilder(
+        LongRangeFacetBuilder.create(
             "Price",
             new LongRange("0-10", 0, true, 10, true),
             new LongRange("10-20", 10, true, 20, true));
@@ -187,7 +187,7 @@ public class SandboxFacetsExample {
     FacetBuilder authorFacetBuilder =
         new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
     FacetBuilder priceFacetBuilder =
-        new LongRangeFacetBuilder(
+        LongRangeFacetBuilder.create(
             "Price",
             new LongRange("0-10", 0, true, 10, true),
             new LongRange("10-20", 10, true, 20, true));

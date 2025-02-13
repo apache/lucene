@@ -392,7 +392,6 @@ abstract class TaxonomyFacets extends Facets {
 
     if (dimConfig.multiValued) {
       if (dimConfig.requireDimCount) {
-        // TODO: hmm, does it work correctly for dimension + path?
         aggregatedValue = getAggregationValue(dimOrd);
       } else {
         // Our aggregated value is not correct, in general:

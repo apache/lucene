@@ -16,15 +16,26 @@
  */
 package org.apache.lucene.sandbox.facet;
 
+import java.io.IOException;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.DoubleDocValuesField;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.facet.*;
+import org.apache.lucene.facet.range.DoubleRange;
+import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.sandbox.facet.cutters.ranges.DoubleRangeFacetCutter;
+import org.apache.lucene.sandbox.facet.labels.RangeOrdToLabel;
+import org.apache.lucene.sandbox.facet.utils.CommonFacetBuilder;
 import org.apache.lucene.sandbox.facet.utils.DrillSidewaysFacetOrchestrator;
 import org.apache.lucene.sandbox.facet.utils.FacetBuilder;
 import org.apache.lucene.sandbox.facet.utils.FacetOrchestrator;
+import org.apache.lucene.sandbox.facet.utils.LongRangeFacetBuilder;
 import org.apache.lucene.sandbox.facet.utils.TaxonomyFacetBuilder;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -45,6 +56,7 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
 
     FacetsConfig config = new FacetsConfig();
     config.setHierarchical("Publish Date", true);
+    config.setHierarchical("Author", false);
 
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
@@ -91,6 +103,11 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
         new TaxonomyFacetBuilder(config, taxoReader, "Publish Date").withTopN(10);
     FacetBuilder publishDateAllBuilder =
         new TaxonomyFacetBuilder(config, taxoReader, "Publish Date");
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new TaxonomyFacetBuilder(config, taxoReader, "Not configured dimension");
+        });
 
     new FacetOrchestrator()
         .addBuilder(authorTop0Builder)
@@ -169,5 +186,214 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
 
     writer.close();
     IOUtils.close(taxoWriter, searcher.getIndexReader(), taxoReader, taxoDir, dir);
+  }
+
+  /** Tests mix of long range, double range and taxonomy facets. */
+  public void testMixedRangeAndNonRangeTaxonomy() throws IOException {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    Directory td = newDirectory();
+    DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(td, IndexWriterConfig.OpenMode.CREATE);
+
+    FacetsConfig config = new FacetsConfig();
+    config.setRequireDimCount("dim", false);
+
+    for (long l = 0; l < 100; l++) {
+      Document doc = new Document();
+      // For computing range facet counts:
+      doc.add(new NumericDocValuesField("longField", l));
+      // For drill down by numeric range:
+      doc.add(new LongPoint("longField", l));
+      // For double range facets
+      doc.add(new DoubleDocValuesField("doubleField", (double) l / 10));
+
+      if ((l & 3) == 0) {
+        doc.add(new FacetField("dim", "a"));
+      } else {
+        doc.add(new FacetField("dim", "b"));
+      }
+      w.addDocument(config.build(tw, doc));
+    }
+
+    final IndexReader r = w.getReader();
+    final TaxonomyReader tr = new DirectoryTaxonomyReader(tw);
+
+    IndexSearcher s = newSearcher(r, false, false, Concurrency.INTER_SEGMENT);
+    // DrillSideways requires the entire range of docs to be scored at once, so it doesn't support
+    // timeouts whose implementation scores one window of doc IDs at a time.
+    s.setTimeout(null);
+
+    if (VERBOSE) {
+      System.out.println("TEST: searcher=" + s);
+    }
+
+    DrillSideways ds =
+        new DrillSideways(s, config, tr) {
+          @Override
+          protected boolean scoreSubDocsAtOnce() {
+            return random().nextBoolean();
+          }
+        };
+
+    // Data for range facets
+    LongRange[] longRanges =
+        new LongRange[] {
+          new LongRange("less than 10", 0L, true, 10L, false),
+          new LongRange("less than or equal to 10", 0L, true, 10L, true),
+          new LongRange("over 90", 90L, false, 100L, false),
+          new LongRange("90 or above", 90L, true, 100L, false),
+          new LongRange("over 1000", 1000L, false, Long.MAX_VALUE, false)
+        };
+    DoubleRange[] doubleRanges =
+        new DoubleRange[] {
+          new DoubleRange("less than 1.0", 0.0, true, 1.0, false),
+          new DoubleRange("less than or equal to 1.0", 0.0, true, 1.0, true),
+          new DoubleRange("over 9.0", 9.0, false, 10.0, false),
+          new DoubleRange("9.0 or above", 9.0, true, 10.0, false),
+          new DoubleRange("over 10.0", 10.0, false, Double.POSITIVE_INFINITY, false)
+        };
+
+    // Search with IndexSearcher
+    FacetBuilder longRangeFacetBuilder = LongRangeFacetBuilder.create("longField", longRanges);
+    FacetBuilder doubleRangeFacetBuilder =
+        new CommonFacetBuilder(
+                "doubleField",
+                new DoubleRangeFacetCutter(
+                    MultiDoubleValuesSource.fromDoubleField("doubleField"), doubleRanges),
+                new RangeOrdToLabel(doubleRanges))
+            .withSortByCount()
+            .withTopN(3);
+    FacetBuilder taxonomyFacetBuilder = new TaxonomyFacetBuilder(config, tr, "dim").withTopN(10);
+
+    new FacetOrchestrator()
+        .addBuilder(taxonomyFacetBuilder)
+        .addBuilder(longRangeFacetBuilder)
+        .addBuilder(doubleRangeFacetBuilder)
+        .collect(new MatchAllDocsQuery(), s);
+    assertEquals(
+        "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
+        taxonomyFacetBuilder.getResult().toString());
+    assertEquals(
+        "dim=longField path=[] value=-1 childCount=4\n"
+            + "  less than 10 (10)\n"
+            + "  less than or equal to 10 (11)\n"
+            + "  over 90 (9)\n"
+            + "  90 or above (10)\n",
+        longRangeFacetBuilder.getResult().toString());
+    assertEquals(
+        "dim=doubleField path=[] value=-1 childCount=4\n"
+            + "  less than or equal to 1.0 (11)\n"
+            + "  less than 1.0 (10)\n"
+            + "  9.0 or above (10)\n",
+        doubleRangeFacetBuilder.getResult().toString());
+
+    // Now search with DrillDownQuery
+    longRangeFacetBuilder = LongRangeFacetBuilder.create("longField", longRanges);
+    doubleRangeFacetBuilder =
+        new CommonFacetBuilder(
+                "doubleField",
+                new DoubleRangeFacetCutter(
+                    MultiDoubleValuesSource.fromDoubleField("doubleField"), doubleRanges),
+                new RangeOrdToLabel(doubleRanges))
+            .withSortByCount()
+            .withTopN(3);
+    taxonomyFacetBuilder = new TaxonomyFacetBuilder(config, tr, "dim").withTopN(10);
+
+    new DrillSidewaysFacetOrchestrator()
+        .addDrillDownBuilder(taxonomyFacetBuilder)
+        .addDrillDownBuilder(longRangeFacetBuilder)
+        .addDrillDownBuilder(doubleRangeFacetBuilder)
+        .collect(new DrillDownQuery(config), ds);
+    assertEquals(
+        "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
+        taxonomyFacetBuilder.getResult().toString());
+    assertEquals(
+        "dim=longField path=[] value=-1 childCount=4\n"
+            + "  less than 10 (10)\n"
+            + "  less than or equal to 10 (11)\n"
+            + "  over 90 (9)\n"
+            + "  90 or above (10)\n",
+        longRangeFacetBuilder.getResult().toString());
+    assertEquals(
+        "dim=doubleField path=[] value=-1 childCount=4\n"
+            + "  less than or equal to 1.0 (11)\n"
+            + "  less than 1.0 (10)\n"
+            + "  9.0 or above (10)\n",
+        doubleRangeFacetBuilder.getResult().toString());
+
+    // Now search with DrillDownQuery, with drill down on dim=b
+    longRangeFacetBuilder = LongRangeFacetBuilder.create("longField", longRanges);
+    doubleRangeFacetBuilder =
+        new CommonFacetBuilder(
+                "doubleField",
+                new DoubleRangeFacetCutter(
+                    MultiDoubleValuesSource.fromDoubleField("doubleField"), doubleRanges),
+                new RangeOrdToLabel(doubleRanges))
+            .withSortByCount()
+            .withTopN(3);
+    taxonomyFacetBuilder = new TaxonomyFacetBuilder(config, tr, "dim").withTopN(10);
+
+    DrillDownQuery query = new DrillDownQuery(config);
+    query.add("dim", "b");
+    new DrillSidewaysFacetOrchestrator()
+        .addDrillDownBuilder(longRangeFacetBuilder)
+        .addDrillDownBuilder(doubleRangeFacetBuilder)
+        .addDrillSidewaysBuilder("dim", taxonomyFacetBuilder)
+        .collect(query, ds);
+    assertEquals(
+        "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
+        taxonomyFacetBuilder.getResult().toString());
+    assertEquals(
+        "dim=longField path=[] value=-1 childCount=4\n"
+            + "  less than 10 (7)\n"
+            + "  less than or equal to 10 (8)\n"
+            + "  over 90 (7)\n"
+            + "  90 or above (8)\n",
+        longRangeFacetBuilder.getResult().toString());
+    assertEquals(
+        "dim=doubleField path=[] value=-1 childCount=4\n"
+            + "  less than or equal to 1.0 (8)\n"
+            + "  9.0 or above (8)\n"
+            + "  less than 1.0 (7)\n",
+        doubleRangeFacetBuilder.getResult().toString());
+
+    // Now search with DrillDownQuery, with drill down on longField range "less than or equal to
+    // 10":
+    longRangeFacetBuilder = LongRangeFacetBuilder.create("longField", longRanges);
+    doubleRangeFacetBuilder =
+        new CommonFacetBuilder(
+                "doubleField",
+                new DoubleRangeFacetCutter(
+                    MultiDoubleValuesSource.fromDoubleField("doubleField"), doubleRanges),
+                new RangeOrdToLabel(doubleRanges))
+            .withSortByCount()
+            .withTopN(3);
+    taxonomyFacetBuilder = new TaxonomyFacetBuilder(config, tr, "dim").withTopN(10);
+
+    query = new DrillDownQuery(config);
+    query.add("longField", LongPoint.newRangeQuery("longField", 0L, 10L));
+    new DrillSidewaysFacetOrchestrator()
+        .addDrillDownBuilder(taxonomyFacetBuilder)
+        .addDrillDownBuilder(doubleRangeFacetBuilder)
+        .addDrillSidewaysBuilder("longField", longRangeFacetBuilder)
+        .collect(query, ds);
+    assertEquals(
+        "dim=dim path=[] value=11 childCount=2\n" + "  b (8)\n" + "  a (3)\n",
+        taxonomyFacetBuilder.getResult().toString());
+    assertEquals(
+        "dim=longField path=[] value=-1 childCount=4\n"
+            + "  less than 10 (10)\n"
+            + "  less than or equal to 10 (11)\n"
+            + "  over 90 (9)\n"
+            + "  90 or above (10)\n",
+        longRangeFacetBuilder.getResult().toString());
+    assertEquals(
+        "dim=doubleField path=[] value=-1 childCount=2\n"
+            + "  less than or equal to 1.0 (11)\n"
+            + "  less than 1.0 (10)\n",
+        doubleRangeFacetBuilder.getResult().toString());
+
+    w.close();
+    IOUtils.close(tw, tr, td, r, d);
   }
 }
