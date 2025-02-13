@@ -75,6 +75,8 @@ Improvements
   mergeFactor segments together when the merge is below the min merge size.
   (Adrien Grand)
 
+* GITHUB#14213: Allowing indexing stored-only StoredField directly from DataInput. (Tim Brooks)
+
 Optimizations
 ---------------------
 
