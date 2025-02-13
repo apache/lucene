@@ -30,19 +30,17 @@ public final class LengthOrdinalIterator implements OrdinalIterator {
   private int length;
 
   /** Constructor. */
-  public LengthOrdinalIterator(OrdinalIterator delegate)
-      throws IOException {
+  public LengthOrdinalIterator(OrdinalIterator delegate) throws IOException {
     this.delegate = delegate;
   }
 
-  /**
-   * Number of ordinals in the delegate.
-   */
+  /** Number of ordinals in the delegate. */
   public int length() {
     if (complete) {
       return length;
     } else {
-      throw new IllegalStateException("You can't request count before the ordinal iterator was consumed");
+      throw new IllegalStateException(
+          "You can't request count before the ordinal iterator was consumed");
     }
   }
 
