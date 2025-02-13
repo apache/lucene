@@ -40,10 +40,24 @@ public final class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBu
   public TaxonomyFacetBuilder(
       FacetsConfig facetsConfig, TaxonomyReader taxonomyReader, String dimension, String... path) {
     super(dimension, path);
+    if (facetsConfig.isDimConfigured(dimension) == false) {
+      // The reason the dimension config is required is that we want to be able to compute total
+      // value for single value fields that use default config, and to do that we need to rollup
+      // value for the dimension, but TaxonomyFacetsCutter uses FacetConfig#getDimConfigs
+      // to find dimensions that need to be rolled up, hence it needs the dimension to be
+      // configured explicitly.
+      throw new IllegalArgumentException(
+          "Dimension config for "
+              + dimension
+              + " is required."
+              + "Call one of the FacetsConfig's setter with a default value.");
+    }
     this.facetsConfig = facetsConfig;
     this.taxonomyReader = taxonomyReader;
     this.dimConfig = facetsConfig.getDimConfig(dimension);
     this.indexFieldName = dimConfig.indexFieldName;
+    // For taxo facets we sort by count by default
+    this.withSortByCount();
   }
 
   @Override
@@ -74,7 +88,7 @@ public final class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBu
 
   @Override
   Number getOverallValue() throws IOException {
-    if (dimConfig.multiValued == false || dimConfig.hierarchical || dimConfig.requireDimCount) {
+    if (dimConfig.multiValued == false || dimConfig.requireDimCount) {
       return getValue(getParentOrd());
     }
     return -1; // Can't compute

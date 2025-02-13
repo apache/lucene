@@ -39,6 +39,7 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
   CountFacetRecorder countRecorder;
   private FacetFieldCollectorManager<CountFacetRecorder> collectorManager;
   private int topN = -1;
+  private SortOrder sortOrder = SortOrder.count;
 
   BaseFacetBuilder(String dimension, String... path) {
     this.dimension = dimension;
@@ -47,6 +48,16 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
 
   public final C withTopN(int n) {
     this.topN = n;
+    return self();
+  }
+
+  public final C withSortByCount() {
+    this.sortOrder = SortOrder.count;
+    return self();
+  }
+
+  public final C withSortByOrdinal() {
+    this.sortOrder = SortOrder.ordinal;
     return self();
   }
 
@@ -65,6 +76,21 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
   abstract Number getOverallValue() throws IOException;
 
   abstract OrdToLabel ordToLabel();
+
+  private enum SortOrder {
+    ordinal,
+    count,
+    longAggregation,
+  }
+
+  private ComparableSupplier<?> getComparableSupplier() {
+    assert countRecorder != null : "must not be called before collect";
+    return switch (sortOrder) {
+      case ordinal -> ComparableUtils.byOrdinal();
+      case count -> ComparableUtils.byCount(countRecorder);
+      case longAggregation -> throw new UnsupportedOperationException("Not implemented yet");
+    };
+  }
 
   @Override
   final FacetBuilder initOrReuseCollector(FacetBuilder similar) {
@@ -89,22 +115,23 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
   @Override
   public final FacetResult getResult() {
     assert countRecorder != null : "must not be called before collect";
-    ComparableSupplier<?> comparableSupplier = ComparableUtils.byCount(countRecorder);
     OrdinalIterator ordinalIterator;
     try {
       LengthOrdinalIterator lengthOrdinalIterator =
           new LengthOrdinalIterator(getMatchingOrdinalIterator());
       ordinalIterator = lengthOrdinalIterator;
 
+      ComparableSupplier<?> comparableSupplier = getComparableSupplier();
+      int[] ordinalsArray;
       if (topN != -1) {
-        ordinalIterator = new TopnOrdinalIterator<>(ordinalIterator, comparableSupplier, topN);
+        ordinalsArray =
+            new TopnOrdinalIterator<>(ordinalIterator, comparableSupplier, topN).toArray();
+      } else {
+        ordinalsArray = ordinalIterator.toArray();
+        ComparableUtils.sort(ordinalsArray, comparableSupplier);
       }
-      // TODO: else sort?
 
-      // Build results
       OrdToLabel ordToLabel = ordToLabel();
-
-      int[] ordinalsArray = ordinalIterator.toArray();
       FacetLabel[] labels = ordToLabel.getLabels(ordinalsArray);
 
       LabelAndValue[] labelsAndValues = new LabelAndValue[labels.length];

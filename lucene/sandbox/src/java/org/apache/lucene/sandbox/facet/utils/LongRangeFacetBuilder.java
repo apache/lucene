@@ -18,19 +18,15 @@ package org.apache.lucene.sandbox.facet.utils;
 
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
-import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.ranges.LongRangeFacetCutter;
-import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 import org.apache.lucene.sandbox.facet.labels.RangeOrdToLabel;
 
-/** {@link FacetBuilder} for long range facets. */
-public final class LongRangeFacetBuilder extends BaseFacetBuilder<LongRangeFacetBuilder> {
-  private final MultiLongValuesSource valueSource;
-  private final LongRange[] ranges;
+/** {@link FacetBuilder} factory for long range facets. */
+public final class LongRangeFacetBuilder {
 
   /** Request long range facets for numeric field by name. */
-  public LongRangeFacetBuilder(String field, LongRange... ranges) {
-    this(field, MultiLongValuesSource.fromLongField(field), ranges);
+  public static CommonFacetBuilder create(String field, LongRange... ranges) {
+    return create(field, MultiLongValuesSource.fromLongField(field), ranges);
   }
 
   /**
@@ -42,31 +38,12 @@ public final class LongRangeFacetBuilder extends BaseFacetBuilder<LongRangeFacet
    * @param valuesSource value source
    * @param ranges ranges
    */
-  public LongRangeFacetBuilder(
+  public static CommonFacetBuilder create(
       String dimension, MultiLongValuesSource valuesSource, LongRange... ranges) {
-    super(dimension);
-    this.valueSource = valuesSource;
-    this.ranges = ranges;
-  }
-
-  @Override
-  FacetCutter createFacetCutter() {
-    return LongRangeFacetCutter.create(valueSource, ranges);
-  }
-
-  @Override
-  Number getOverallValue() {
-    // Not currently supported, see TODO item in LongRangeFacetCutter
-    return -1;
-  }
-
-  @Override
-  OrdToLabel ordToLabel() {
-    return new RangeOrdToLabel(ranges);
-  }
-
-  @Override
-  LongRangeFacetBuilder self() {
-    return this;
+    return new CommonFacetBuilder(
+            dimension,
+            LongRangeFacetCutter.create(valuesSource, ranges),
+            new RangeOrdToLabel(ranges))
+        .withSortByOrdinal();
   }
 }
