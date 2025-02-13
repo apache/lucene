@@ -18,7 +18,7 @@ import java.io.IOException;
  * Base implementation for {@link FacetBuilder}, provides common functionality
  * that can be shared between different facet types.
  */
-abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> implements FacetBuilder {
+abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuilder {
     final String dimension;
     final String[] path;
     CountFacetRecorder countRecorder;
@@ -53,14 +53,12 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> implements FacetB
     abstract OrdToLabel ordToLabel();
 
     @Override
-    public final FacetBuilder initOrReuseCollector(FacetBuilder similar) {
-        TODO: can we do something about this method - it is weird that we have it
-        // count aggregation
+    final FacetBuilder initOrReuseCollector(FacetBuilder similar) {
+        // share recorders between FacetBuilders that share CollectorManager
         // TODO: add support for other aggregation types, e.g. float/int associations
         //       and long aggregations
         if (similar instanceof BaseFacetBuilder<?> castedSimilar) {
             this.countRecorder = castedSimilar.countRecorder;
-            // this.collectorManager = castedSimilar.collectorManager;
             return similar;
         } else {
             this.countRecorder = new CountFacetRecorder();
@@ -70,7 +68,7 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> implements FacetB
     }
 
     @Override
-    public final FacetFieldCollectorManager<CountFacetRecorder> getCollectorManager() {
+    final FacetFieldCollectorManager<CountFacetRecorder> getCollectorManager() {
         return this.collectorManager;
     }
 
@@ -112,5 +110,6 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> implements FacetB
         }
     }
 
+    /** Util method to be able to extend this class. */
     abstract C self();
 }
