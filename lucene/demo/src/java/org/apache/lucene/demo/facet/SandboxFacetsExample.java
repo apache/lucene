@@ -156,7 +156,7 @@ public class SandboxFacetsExample {
 
     //// Search and collect
     TopDocs topDocs =
-        FacetOrchestrator.start()
+        new FacetOrchestrator()
             .addBuilder(authorFacetBuilder)
             .addBuilder(priceFacetBuilder)
             .collect(new MatchAllDocsQuery(), searcher, hitsCollectorManager);
