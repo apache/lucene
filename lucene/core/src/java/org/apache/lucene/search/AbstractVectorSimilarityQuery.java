@@ -25,6 +25,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
@@ -248,9 +249,12 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
             @Override
             public int advance(int target) {
+              assert index >= -1 : "index must >= -1 but got " + index;
               index =
-                  Arrays.binarySearch(
+                  ArrayUtil.exponentialSearch(
                       scoreDocs,
+                      Math.min(index + 1, scoreDocs.length),
+                      scoreDocs.length,
                       new ScoreDoc(target, 0),
                       Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
               if (index < 0) {
