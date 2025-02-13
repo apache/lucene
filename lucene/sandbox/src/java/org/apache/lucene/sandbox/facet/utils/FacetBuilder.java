@@ -23,13 +23,13 @@ import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
  * End-to-end (request, collection and results) management of a single facet request. Requires
  * implementation for each facet type (taxonomy, ranges, etc).
  *
- * <p>It's an abstract class, not interface, to define some methods as package private as they
- * should be only called by {@link FacetOrchestrator} or {@link DrillSidewaysFacetOrchestrator}.
+ * <p>It's an abstract class, not an interface, to define some methods as package private as they
+ * should only be called by {@link FacetOrchestrator} or {@link DrillSidewaysFacetOrchestrator}.
  */
 public abstract class FacetBuilder {
 
   /**
-   * If parameter is null, init attrs required for collection phase Otherwise, reuse the attributes
+   * If parameter is null, init attrs required for collection phase. Otherwise, reuse the attributes
    * from {@link FacetBuilder}, so that we can share {@link
    * org.apache.lucene.search.CollectorManager} with it.
    *
