@@ -21,8 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.facet.DrillDownQuery;
-import org.apache.lucene.facet.DrillSideways;
+import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
@@ -36,11 +35,7 @@ import org.apache.lucene.search.Query;
 public final class FacetOrchestrator {
   private List<FacetBuilder> facetBuilders = new ArrayList<>();
 
-  private FacetOrchestrator() {}
-
-  public static FacetOrchestrator start() {
-    return new FacetOrchestrator();
-  }
+  public FacetOrchestrator() {}
 
   public FacetOrchestrator addBuilder(FacetBuilder request) {
     facetBuilders.add(request);
@@ -52,25 +47,11 @@ public final class FacetOrchestrator {
   }
 
   // public FacetBuilder addCollector(CollectorManager<C, T>)
-  @SuppressWarnings({"rawtypes", "unchecked"})
+  @SuppressWarnings({"unchecked"})
   public <C extends Collector, T> T collect(
       Query query, IndexSearcher searcher, CollectorManager<C, T> mainCollector)
       throws IOException {
-    // Check if we can reuse collectors for some FacetBuilders
-    Map<Object, FacetBuilder> buildersUniqueForCollection = new HashMap<>();
-    for (FacetBuilder builder : facetBuilders) {
-      buildersUniqueForCollection.compute(
-          builder.collectionKey(), (k, v) -> builder.initOrReuseCollector(v));
-    }
-    List<CollectorManager<? extends Collector, ?>> managers = new ArrayList<>();
-    if (mainCollector != null) {
-      managers.add(mainCollector);
-    }
-    for (FacetBuilder c : buildersUniqueForCollection.values()) {
-      managers.add(c.getCollectorManager());
-    }
-    MultiCollectorManager mcm =
-        new MultiCollectorManager(managers.toArray(new CollectorManager[0]));
+    MultiCollectorManager mcm = createMainCollector(facetBuilders, mainCollector);
     Object[] res = searcher.search(query, mcm);
     if (mainCollector != null) {
       return (T) res[0];
@@ -79,7 +60,38 @@ public final class FacetOrchestrator {
     }
   }
 
-  public void collect(DrillDownQuery query, DrillSideways drillSideways) {
-    // TK
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  static <C extends Collector, T> MultiCollectorManager createMainCollector(
+      List<FacetBuilder> facetBuilders, CollectorManager<C, T> additionalCollectorManager) {
+    // drill down
+    List<FacetFieldCollectorManager<?>> drillDownManagers =
+        collectorManagerForBuilders(facetBuilders);
+    int i = 0;
+    CollectorManager[] managersArray;
+    if (additionalCollectorManager != null) {
+      managersArray = new CollectorManager[drillDownManagers.size() + 1];
+      managersArray[i++] = additionalCollectorManager;
+    } else {
+      managersArray = new CollectorManager[drillDownManagers.size()];
+    }
+    for (FacetFieldCollectorManager<?> m : drillDownManagers) {
+      managersArray[i++] = m;
+    }
+    return new MultiCollectorManager(managersArray);
+  }
+
+  static List<FacetFieldCollectorManager<?>> collectorManagerForBuilders(
+      List<FacetBuilder> facetBuilders) {
+    // Check if we can reuse collectors for some FacetBuilders
+    Map<Object, FacetBuilder> buildersUniqueForCollection = new HashMap<>();
+    for (FacetBuilder builder : facetBuilders) {
+      buildersUniqueForCollection.compute(
+          builder.collectionKey(), (k, v) -> builder.initOrReuseCollector(v));
+    }
+    List<FacetFieldCollectorManager<?>> managers = new ArrayList<>();
+    for (FacetBuilder c : buildersUniqueForCollection.values()) {
+      managers.add(c.getCollectorManager());
+    }
+    return managers;
   }
 }
