@@ -606,6 +606,22 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       throw new IllegalStateException("terms index was not loaded");
     }
 
+    if (fr.size() > 0) {
+      if(target.compareTo(fr.getMin()) < 0){
+        // TODO: set current frame to min entry's block.
+        termExists = true;
+        term.copyBytes(fr.getMin());
+        System.out.println("target: " + target.utf8ToString() + ", term: " + term().utf8ToString() + ", frame: " + currentFrame);
+        return SeekStatus.NOT_FOUND;
+      }else if(target.compareTo(fr.getMax()) > 0){
+        // TODO: set current frame to max entry's block.
+        termExists = false;
+        term.clear();
+        System.out.println("target: " + target.utf8ToString() + ", term: " + term().utf8ToString() + ", frame: " + currentFrame);
+        return SeekStatus.END;
+      }
+    }
+
     term.grow(1 + target.length);
 
     assert clearEOF();
@@ -717,6 +733,8 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) {
           // System.out.println("  target is same as current; return FOUND");
           // }
+          System.out.println("target: " + target.utf8ToString() + ", term: " + term().utf8ToString() + ", frame: " + currentFrame);
+
           return SeekStatus.FOUND;
         } else {
           // if (DEBUG) {
@@ -790,11 +808,13 @@ final class SegmentTermsEnum extends BaseTermsEnum {
             // System.out.println("  return NOT_FOUND term=" +
             // ToStringUtils.bytesRefToString(term));
             // }
+            System.out.println("target: " + target.utf8ToString() + ", term: " + term().utf8ToString() + ", frame: " + currentFrame);
             return SeekStatus.NOT_FOUND;
           } else {
             // if (DEBUG) {
             // System.out.println("  return END");
             // }
+            System.out.println("target: " + target.utf8ToString() + ", term: " + term().utf8ToString() + ", frame: " + currentFrame);
             return SeekStatus.END;
           }
         } else {
@@ -802,6 +822,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           // System.out.println("  return " + result + " term=" +
           // ToStringUtils.bytesRefToString(term));
           // }
+          System.out.println("target: " + target.utf8ToString() + ", term: " + term().utf8ToString() + ", frame: " + currentFrame);
           return result;
         }
       } else {
@@ -845,14 +866,20 @@ final class SegmentTermsEnum extends BaseTermsEnum {
         // if (DEBUG) {
         // System.out.println("  return NOT_FOUND term=" + term.get().utf8ToString() + " " + term);
         // }
+        System.out.println("target: " + target.utf8ToString() + ", term: " + term().utf8ToString() + ", frame: " + currentFrame);
+
         return SeekStatus.NOT_FOUND;
       } else {
         // if (DEBUG) {
         // System.out.println("  return END");
         // }
+        System.out.println("target: " + target.utf8ToString() + ", term: " + term().utf8ToString() + ", frame: " + currentFrame);
+
         return SeekStatus.END;
       }
     } else {
+      System.out.println("target: " + target.utf8ToString() + ", term: " + term().utf8ToString() + ", frame: " + currentFrame);
+
       return result;
     }
   }
