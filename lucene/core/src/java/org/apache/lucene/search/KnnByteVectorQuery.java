@@ -83,7 +83,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
+    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, null, context);
     LeafReader reader = context.reader();
     ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);
     if (byteVectorValues == null) {

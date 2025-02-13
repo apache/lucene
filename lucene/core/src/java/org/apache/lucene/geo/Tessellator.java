@@ -327,8 +327,7 @@ public final class Tessellator {
       final Node holeNode = holeList.get(i);
       double holeMinX, holeMaxX, holeMinY, holeMaxY;
       Object h = holeListPolygons.get(holeNode);
-      if (h instanceof Polygon) {
-        Polygon holePoly = (Polygon) h;
+      if (h instanceof Polygon holePoly) {
         holeMinX = holePoly.minLon;
         holeMaxX = holePoly.maxLon;
         holeMinY = holePoly.minLat;

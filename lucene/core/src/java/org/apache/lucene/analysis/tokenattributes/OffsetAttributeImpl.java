@@ -73,8 +73,7 @@ public class OffsetAttributeImpl extends AttributeImpl implements OffsetAttribut
       return true;
     }
 
-    if (other instanceof OffsetAttributeImpl) {
-      OffsetAttributeImpl o = (OffsetAttributeImpl) other;
+    if (other instanceof OffsetAttributeImpl o) {
       return o.startOffset == startOffset && o.endOffset == endOffset;
     }
 

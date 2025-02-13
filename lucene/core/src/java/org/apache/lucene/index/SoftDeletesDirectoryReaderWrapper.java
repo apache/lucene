@@ -154,8 +154,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
 
   private static boolean assertDocCounts(
       int expectedNumDocs, int numSoftDeletes, LeafReader reader) {
-    if (reader instanceof SegmentReader) {
-      SegmentReader segmentReader = (SegmentReader) reader;
+    if (reader instanceof SegmentReader segmentReader) {
       SegmentCommitInfo segmentInfo = segmentReader.getSegmentInfo();
       if (segmentReader.isNRT == false) {
         int numDocs =

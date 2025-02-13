@@ -265,8 +265,7 @@ public final class WeakIdentityMap<K, V> {
       if (this == o) {
         return true;
       }
-      if (o instanceof IdentityWeakReference) {
-        final IdentityWeakReference ref = (IdentityWeakReference) o;
+      if (o instanceof IdentityWeakReference ref) {
         if (this.get() == ref.get()) {
           return true;
         }
