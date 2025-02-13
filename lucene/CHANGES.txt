@@ -105,6 +105,8 @@ Optimizations
 
 * GITHUB#14176: Reduce when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
 
+* GITHUB#14094: Early terminate when HNSW nearest neighbor queue saturates (Tommaso Teofili)
+
 Bug Fixes
 ---------------------
 
