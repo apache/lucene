@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -32,13 +33,24 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.IntsRef;
+import org.junit.Assert;
 
 public class TestNFARunAutomaton extends LuceneTestCase {
 
   private static final String FIELD = "field";
+
+  public void testRamUsageEstimation() {
+    RegExp regExp = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
+    Automaton nfa = regExp.toAutomaton();
+    NFARunAutomaton runAutomaton = new NFARunAutomaton(nfa);
+    long estimation = runAutomaton.ramBytesUsed();
+    long actual = RamUsageTester.ramUsed(runAutomaton);
+    Assert.assertEquals((double) actual, (double) estimation, (double) actual * 0.3);
+  }
 
   @SuppressWarnings("unused")
   public void testWithRandomRegex() {
@@ -161,7 +173,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
         if (a == null) {
           a = Automata.makeString(term);
         } else {
-          a = Operations.union(a, Automata.makeString(term));
+          a = Operations.union(List.of(a, Automata.makeString(term)));
         }
       }
       if (a.isDeterministic()) {

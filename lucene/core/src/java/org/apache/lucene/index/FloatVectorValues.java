@@ -17,8 +17,8 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 
 /**
@@ -27,34 +27,21 @@ import org.apache.lucene.search.VectorScorer;
  *
  * @lucene.experimental
  */
-public abstract class FloatVectorValues extends DocIdSetIterator {
+public abstract class FloatVectorValues extends KnnVectorValues {
 
   /** Sole constructor */
   protected FloatVectorValues() {}
 
-  /** Return the dimension of the vectors */
-  public abstract int dimension();
-
   /**
-   * Return the number of vectors for this field.
-   *
-   * @return the number of vectors returned by this iterator
-   */
-  public abstract int size();
-
-  @Override
-  public final long cost() {
-    return size();
-  }
-
-  /**
-   * Return the vector value for the current document ID. It is illegal to call this method when the
-   * iterator is not positioned: before advancing, or after failing to advance. The returned array
-   * may be shared across calls, re-used, and modified as the iterator advances.
+   * Return the vector value for the given vector ordinal which must be in [0, size() - 1],
+   * otherwise IndexOutOfBoundsException is thrown. The returned array may be shared across calls.
    *
    * @return the vector value
    */
-  public abstract float[] vectorValue() throws IOException;
+  public abstract float[] vectorValue(int ord) throws IOException;
+
+  @Override
+  public abstract FloatVectorValues copy() throws IOException;
 
   /**
    * Checks the Vector Encoding of a field
@@ -79,12 +66,53 @@ public abstract class FloatVectorValues extends DocIdSetIterator {
 
   /**
    * Return a {@link VectorScorer} for the given query vector and the current {@link
-   * FloatVectorValues}. The iterator for the scorer is not the same instance as the iterator for
-   * this {@link FloatVectorValues}. It is a copy, and iteration over the scorer will not affect the
-   * iteration of this {@link FloatVectorValues}.
+   * FloatVectorValues}.
    *
-   * @param query the query vector
+   * @param target the query vector
    * @return a {@link VectorScorer} instance or null
    */
-  public abstract VectorScorer scorer(float[] query) throws IOException;
+  public VectorScorer scorer(float[] target) throws IOException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public VectorEncoding getEncoding() {
+    return VectorEncoding.FLOAT32;
+  }
+
+  /**
+   * Creates a {@link FloatVectorValues} from a list of float arrays.
+   *
+   * @param vectors the list of float arrays
+   * @param dim the dimension of the vectors
+   * @return a {@link FloatVectorValues} instance
+   */
+  public static FloatVectorValues fromFloats(List<float[]> vectors, int dim) {
+    return new FloatVectorValues() {
+      @Override
+      public int size() {
+        return vectors.size();
+      }
+
+      @Override
+      public int dimension() {
+        return dim;
+      }
+
+      @Override
+      public float[] vectorValue(int targetOrd) {
+        return vectors.get(targetOrd);
+      }
+
+      @Override
+      public FloatVectorValues copy() {
+        return this;
+      }
+
+      @Override
+      public DocIndexIterator iterator() {
+        return createDenseIterator();
+      }
+    };
+  }
 }

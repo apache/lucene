@@ -52,6 +52,7 @@ public final class AnalysisImpl implements Analysis {
 
   private Analyzer analyzer = defaultAnalyzer();
 
+  @SuppressWarnings("BanClassLoader")
   @Override
   public void addExternalJars(List<String> jarFiles) {
     List<URL> urls = new ArrayList<>();
@@ -167,16 +168,16 @@ public final class AnalysisImpl implements Analysis {
 
       // set tokenizer
       builder.withTokenizer(
-          config.getTokenizerConfig().getName(), config.getTokenizerConfig().getParams());
+          config.getTokenizerConfig().name(), config.getTokenizerConfig().params());
 
       // add char filters
       for (CustomAnalyzerConfig.ComponentConfig cfConf : config.getCharFilterConfigs()) {
-        builder.addCharFilter(cfConf.getName(), cfConf.getParams());
+        builder.addCharFilter(cfConf.name(), cfConf.params());
       }
 
       // add token filters
       for (CustomAnalyzerConfig.ComponentConfig tfConf : config.getTokenFilterConfigs()) {
-        builder.addTokenFilter(tfConf.getName(), tfConf.getParams());
+        builder.addTokenFilter(tfConf.name(), tfConf.params());
       }
 
       // build analyzer

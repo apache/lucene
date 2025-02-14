@@ -54,6 +54,7 @@ import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.FieldExistsQuery;
+import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
@@ -127,8 +128,7 @@ public class WeightedSpanTermExtractor {
    */
   protected void extract(Query query, float boost, Map<String, WeightedSpanTerm> terms)
       throws IOException {
-    if (query instanceof BoostQuery) {
-      BoostQuery boostQuery = (BoostQuery) query;
+    if (query instanceof BoostQuery boostQuery) {
       extract(boostQuery.getQuery(), boost * boostQuery.getBoost(), terms);
     } else if (query instanceof BooleanQuery) {
       for (BooleanClause clause : (BooleanQuery) query) {
@@ -163,6 +163,11 @@ public class WeightedSpanTermExtractor {
             new SpanNearQuery(clauses, phraseQuery.getSlop() + positionGaps, inorder);
         extractWeightedSpanTerms(terms, sp, boost);
       }
+    } else if (query instanceof IndexOrDocValuesQuery) {
+      Query indexQuery = ((IndexOrDocValuesQuery) query).getIndexQuery();
+      if (indexQuery != null) {
+        extract(indexQuery, boost, terms);
+      }
     } else if (query instanceof TermQuery || query instanceof SynonymQuery) {
       extractWeightedTerms(terms, query, boost);
     } else if (query instanceof SpanQuery) {
@@ -180,8 +185,7 @@ public class WeightedSpanTermExtractor {
       for (Query clause : ((DisjunctionMaxQuery) query)) {
         extract(clause, boost, terms);
       }
-    } else if (query instanceof MultiPhraseQuery) {
-      final MultiPhraseQuery mpq = (MultiPhraseQuery) query;
+    } else if (query instanceof MultiPhraseQuery mpq) {
       final Term[][] termArrays = mpq.getTermArrays();
       final int[] positions = mpq.getPositions();
       if (positions.length > 0) {
@@ -592,8 +596,7 @@ public class WeightedSpanTermExtractor {
         }
       }
       return false;
-    } else if (spanQuery instanceof SpanNotQuery) {
-      SpanNotQuery spanNotQuery = (SpanNotQuery) spanQuery;
+    } else if (spanQuery instanceof SpanNotQuery spanNotQuery) {
       return mustRewriteQuery(spanNotQuery.getInclude())
           || mustRewriteQuery(spanNotQuery.getExclude());
     } else if (spanQuery instanceof SpanOrQuery) {

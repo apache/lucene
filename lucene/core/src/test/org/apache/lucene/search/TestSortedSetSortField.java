@@ -34,16 +34,16 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Query query = new TermQuery(new Term("contents", "foo"));
     TopDocs td =
         empty.search(query, 10, new Sort(new SortedSetSortField("sortedset", false)), true);
-    assertEquals(0, td.totalHits.value);
+    assertEquals(0, td.totalHits.value());
 
     // for an empty index, any selector should work
     for (SortedSetSelector.Type v : SortedSetSelector.Type.values()) {
       td = empty.search(query, 10, new Sort(new SortedSetSortField("sortedset", false, v)), true);
-      assertEquals(0, td.totalHits.value);
+      assertEquals(0, td.totalHits.value());
     }
   }
 
-  @SuppressWarnings("unlikely-arg-type")
+  @SuppressWarnings({"unlikely-arg-type", "SelfAssertion"})
   public void testEquals() throws Exception {
     SortField sf = new SortedSetSortField("a", false);
     assertFalse(sf.equals(null));
@@ -79,7 +79,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Sort sort = new Sort(new SortedSetSortField("value", false));
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'baz'
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
@@ -108,7 +108,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Sort sort = new Sort(new SortedSetSortField("value", true));
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'baz'
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
@@ -141,7 +141,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(3, td.totalHits.value);
+    assertEquals(3, td.totalHits.value());
     // 'bar' comes before 'baz'
     // null comes first
     assertEquals("3", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
@@ -176,7 +176,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Sort sort = new Sort(sortField);
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(3, td.totalHits.value);
+    assertEquals(3, td.totalHits.value());
     // 'bar' comes before 'baz'
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));
@@ -205,7 +205,7 @@ public class TestSortedSetSortField extends LuceneTestCase {
     Sort sort = new Sort(new SortedSetSortField("value", false));
 
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
-    assertEquals(2, td.totalHits.value);
+    assertEquals(2, td.totalHits.value());
     // 'bar' comes before 'baz'
     assertEquals("1", searcher.storedFields().document(td.scoreDocs[0].doc).get("id"));
     assertEquals("2", searcher.storedFields().document(td.scoreDocs[1].doc).get("id"));

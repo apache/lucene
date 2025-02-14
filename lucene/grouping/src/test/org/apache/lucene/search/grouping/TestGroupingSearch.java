@@ -135,29 +135,29 @@ public class TestGroupingSearch extends LuceneTestCase {
     // value
     GroupDocs<?> group = groups.groups[0];
     compareGroupValue("author3", group);
-    assertEquals(2, group.scoreDocs.length);
-    assertEquals(5, group.scoreDocs[0].doc);
-    assertEquals(4, group.scoreDocs[1].doc);
-    assertTrue(group.scoreDocs[0].score >= group.scoreDocs[1].score);
+    assertEquals(2, group.scoreDocs().length);
+    assertEquals(5, group.scoreDocs()[0].doc);
+    assertEquals(4, group.scoreDocs()[1].doc);
+    assertTrue(group.scoreDocs()[0].score >= group.scoreDocs()[1].score);
 
     group = groups.groups[1];
     compareGroupValue("author1", group);
-    assertEquals(3, group.scoreDocs.length);
-    assertEquals(0, group.scoreDocs[0].doc);
-    assertEquals(1, group.scoreDocs[1].doc);
-    assertEquals(2, group.scoreDocs[2].doc);
-    assertTrue(group.scoreDocs[0].score >= group.scoreDocs[1].score);
-    assertTrue(group.scoreDocs[1].score >= group.scoreDocs[2].score);
+    assertEquals(3, group.scoreDocs().length);
+    assertEquals(0, group.scoreDocs()[0].doc);
+    assertEquals(1, group.scoreDocs()[1].doc);
+    assertEquals(2, group.scoreDocs()[2].doc);
+    assertTrue(group.scoreDocs()[0].score >= group.scoreDocs()[1].score);
+    assertTrue(group.scoreDocs()[1].score >= group.scoreDocs()[2].score);
 
     group = groups.groups[2];
     compareGroupValue("author2", group);
-    assertEquals(1, group.scoreDocs.length);
-    assertEquals(3, group.scoreDocs[0].doc);
+    assertEquals(1, group.scoreDocs().length);
+    assertEquals(3, group.scoreDocs()[0].doc);
 
     group = groups.groups[3];
     compareGroupValue(null, group);
-    assertEquals(1, group.scoreDocs.length);
-    assertEquals(6, group.scoreDocs[0].doc);
+    assertEquals(1, group.scoreDocs().length);
+    assertEquals(6, group.scoreDocs()[0].doc);
 
     Query lastDocInBlock = new TermQuery(new Term("groupend", "x"));
     groupingSearch = new GroupingSearch(lastDocInBlock);
@@ -182,22 +182,22 @@ public class TestGroupingSearch extends LuceneTestCase {
 
   private void compareGroupValue(String expected, GroupDocs<?> group) {
     if (expected == null) {
-      if (group.groupValue == null) {
+      if (group.groupValue() == null) {
         return;
-      } else if (group.groupValue.getClass().isAssignableFrom(MutableValueStr.class)) {
+      } else if (group.groupValue().getClass().isAssignableFrom(MutableValueStr.class)) {
         return;
-      } else if (((BytesRef) group.groupValue).length == 0) {
+      } else if (((BytesRef) group.groupValue()).length == 0) {
         return;
       }
       fail();
     }
 
-    if (group.groupValue.getClass().isAssignableFrom(BytesRef.class)) {
-      assertEquals(new BytesRef(expected), group.groupValue);
-    } else if (group.groupValue.getClass().isAssignableFrom(MutableValueStr.class)) {
+    if (group.groupValue().getClass().isAssignableFrom(BytesRef.class)) {
+      assertEquals(new BytesRef(expected), group.groupValue());
+    } else if (group.groupValue().getClass().isAssignableFrom(MutableValueStr.class)) {
       MutableValueStr v = new MutableValueStr();
       v.value.copyChars(expected);
-      assertEquals(v, group.groupValue);
+      assertEquals(v, group.groupValue());
     } else {
       fail();
     }

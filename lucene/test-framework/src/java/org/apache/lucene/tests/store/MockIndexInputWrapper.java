@@ -19,10 +19,12 @@ package org.apache.lucene.tests.store;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 
 /**
  * Used by MockDirectoryWrapper to create an input stream that keeps track of when it's been closed.
@@ -39,10 +41,18 @@ public class MockIndexInputWrapper extends FilterIndexInput {
 
   // Which MockIndexInputWrapper we were cloned from, or null if we are not a clone:
   private final MockIndexInputWrapper parent;
+  private final boolean confined;
+  private final Thread thread;
+  private ReadAdvice readAdvice;
 
   /** Sole constructor */
   public MockIndexInputWrapper(
-      MockDirectoryWrapper dir, String name, IndexInput delegate, MockIndexInputWrapper parent) {
+      MockDirectoryWrapper dir,
+      String name,
+      IndexInput delegate,
+      MockIndexInputWrapper parent,
+      ReadAdvice readAdvice,
+      boolean confined) {
     super("MockIndexInputWrapper(name=" + name + " delegate=" + delegate + ")", delegate);
 
     // If we are a clone then our parent better not be a clone!
@@ -51,6 +61,9 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     this.parent = parent;
     this.name = name;
     this.dir = dir;
+    this.readAdvice = readAdvice;
+    this.confined = confined;
+    this.thread = Thread.currentThread();
   }
 
   @Override
@@ -84,6 +97,12 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     }
   }
 
+  private void ensureAccessible() {
+    if (confined && thread != Thread.currentThread()) {
+      throw new RuntimeException("Abusing from another thread!");
+    }
+  }
+
   @Override
   public MockIndexInputWrapper clone() {
     ensureOpen();
@@ -93,7 +112,8 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     dir.inputCloneCount.incrementAndGet();
     IndexInput iiclone = in.clone();
     MockIndexInputWrapper clone =
-        new MockIndexInputWrapper(dir, name, iiclone, parent != null ? parent : this);
+        new MockIndexInputWrapper(
+            dir, name, iiclone, parent != null ? parent : this, readAdvice, confined);
     // Pending resolution on LUCENE-686 we may want to
     // uncomment this code so that we also track that all
     // clones get closed:
@@ -120,26 +140,64 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     dir.inputCloneCount.incrementAndGet();
     IndexInput slice = in.slice(sliceDescription, offset, length);
     MockIndexInputWrapper clone =
-        new MockIndexInputWrapper(dir, sliceDescription, slice, parent != null ? parent : this);
+        new MockIndexInputWrapper(
+            dir, sliceDescription, slice, parent != null ? parent : this, readAdvice, confined);
+    return clone;
+  }
+
+  @Override
+  public IndexInput slice(String sliceDescription, long offset, long length, ReadAdvice readAdvice)
+      throws IOException {
+    if (this.readAdvice != ReadAdvice.NORMAL) {
+      throw new IllegalStateException(
+          "slice() may only be called with a custom read advice on inputs that have been open with ReadAdvice.NORMAL");
+    }
+    ensureOpen();
+    if (dir.verboseClone) {
+      new Exception("slice: " + this).printStackTrace(System.out);
+    }
+    dir.inputCloneCount.incrementAndGet();
+    IndexInput slice = in.slice(sliceDescription, offset, length);
+    MockIndexInputWrapper clone =
+        new MockIndexInputWrapper(
+            dir, sliceDescription, slice, parent != null ? parent : this, readAdvice, confined);
     return clone;
   }
 
   @Override
   public long getFilePointer() {
     ensureOpen();
+    ensureAccessible();
     return in.getFilePointer();
   }
 
   @Override
   public void seek(long pos) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.seek(pos);
   }
 
   @Override
   public void prefetch(long offset, long length) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.prefetch(offset, length);
+  }
+
+  @Override
+  public Optional<Boolean> isLoaded() {
+    ensureOpen();
+    ensureAccessible();
+    return in.isLoaded();
+  }
+
+  @Override
+  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
+    ensureOpen();
+    ensureAccessible();
+    this.readAdvice = readAdvice;
+    in.updateReadAdvice(readAdvice);
   }
 
   @Override
@@ -151,90 +209,105 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   @Override
   public byte readByte() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readByte();
   }
 
   @Override
   public void readBytes(byte[] b, int offset, int len) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.readBytes(b, offset, len);
   }
 
   @Override
   public void readBytes(byte[] b, int offset, int len, boolean useBuffer) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.readBytes(b, offset, len, useBuffer);
   }
 
   @Override
   public void readFloats(float[] floats, int offset, int len) throws IOException {
     ensureOpen();
+    ensureAccessible();
     in.readFloats(floats, offset, len);
   }
 
   @Override
   public short readShort() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readShort();
   }
 
   @Override
   public int readInt() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readInt();
   }
 
   @Override
   public long readLong() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readLong();
   }
 
   @Override
   public String readString() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readString();
   }
 
   @Override
   public int readVInt() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readVInt();
   }
 
   @Override
   public long readVLong() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readVLong();
   }
 
   @Override
   public int readZInt() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readZInt();
   }
 
   @Override
   public long readZLong() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readZLong();
   }
 
   @Override
   public void skipBytes(long numBytes) throws IOException {
     ensureOpen();
+    ensureAccessible();
     super.skipBytes(numBytes);
   }
 
   @Override
   public Map<String, String> readMapOfStrings() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readMapOfStrings();
   }
 
   @Override
   public Set<String> readSetOfStrings() throws IOException {
     ensureOpen();
+    ensureAccessible();
     return in.readSetOfStrings();
   }
 

@@ -26,8 +26,11 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.NumberFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -45,16 +48,21 @@ import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.KnnCollector;
@@ -71,11 +79,13 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -87,6 +97,7 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
+import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
  * Basic tool and API to check the health of an index and write a new segments file that removes
@@ -245,6 +256,9 @@ public final class CheckIndex implements Closeable {
       /** Status of vectors */
       public VectorValuesStatus vectorValuesStatus;
 
+      /** Status of HNSW graph */
+      public HnswGraphsStatus hnswGraphsStatus;
+
       /** Status of soft deletes */
       public SoftDeletesStatus softDeletesStatus;
 
@@ -365,6 +379,9 @@ public final class CheckIndex implements Closeable {
       /** Total number of sortedset fields */
       public long totalSortedSetFields;
 
+      /** Total number of skipping index tested. */
+      public long totalSkippingIndex;
+
       /** Exception thrown during doc values test (null on success) */
       public Throwable error;
     }
@@ -396,6 +413,32 @@ public final class CheckIndex implements Closeable {
       public int totalKnnVectorFields;
 
       /** Exception thrown during vector values test (null on success) */
+      public Throwable error;
+    }
+
+    /** Status from testing a single HNSW graph */
+    public static final class HnswGraphStatus {
+
+      HnswGraphStatus() {}
+
+      /** Number of nodes at each level */
+      public List<Integer> numNodesAtLevel;
+
+      /** Connectedness at each level represented as a fraction */
+      public List<String> connectednessAtLevel;
+    }
+
+    /** Status from testing all HNSW graphs */
+    public static final class HnswGraphsStatus {
+
+      HnswGraphsStatus() {
+        this.hnswGraphsStatusByField = new HashMap<>();
+      }
+
+      /** Status of the HNSW graph keyed with field name */
+      public Map<String, HnswGraphStatus> hnswGraphsStatusByField;
+
+      /** Exception thrown during term index test (null on success) */
       public Throwable error;
     }
 
@@ -1078,6 +1121,9 @@ public final class CheckIndex implements Closeable {
         // Test FloatVectorValues and ByteVectorValues
         segInfoStat.vectorValuesStatus = testVectors(reader, infoStream, failFast);
 
+        // Test HNSW graph
+        segInfoStat.hnswGraphsStatus = testHnswGraphs(reader, infoStream, failFast);
+
         // Test Index Sort
         if (indexSort != null) {
           segInfoStat.indexSortStatus = testSort(reader, indexSort, infoStream, failFast);
@@ -1181,10 +1227,10 @@ public final class CheckIndex implements Closeable {
         FieldInfos fieldInfos = reader.getFieldInfos();
         if (metaData.hasBlocks()
             && fieldInfos.getParentField() == null
-            && metaData.getCreatedVersionMajor() >= Version.LUCENE_10_0_0.major) {
+            && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
           throw new IllegalStateException(
               "parent field is not set but the index has document blocks and was created with version: "
-                  + metaData.getCreatedVersionMajor());
+                  + metaData.createdVersionMajor());
         }
         final DocIdSetIterator iter;
         if (metaData.hasBlocks() && fieldInfos.getParentField() != null) {
@@ -2739,26 +2785,228 @@ public final class CheckIndex implements Closeable {
     return status;
   }
 
+  /** Test the HNSW graph. */
+  public static Status.HnswGraphsStatus testHnswGraphs(
+      CodecReader reader, PrintStream infoStream, boolean failFast) throws IOException {
+    if (infoStream != null) {
+      infoStream.print("    test: hnsw graphs.........");
+    }
+    long startNS = System.nanoTime();
+    Status.HnswGraphsStatus status = new Status.HnswGraphsStatus();
+    KnnVectorsReader vectorsReader = reader.getVectorReader();
+    FieldInfos fieldInfos = reader.getFieldInfos();
+
+    try {
+      if (fieldInfos.hasVectorValues()) {
+        for (FieldInfo fieldInfo : fieldInfos) {
+          if (fieldInfo.hasVectorValues()) {
+            KnnVectorsReader fieldReader = getFieldReaderForName(vectorsReader, fieldInfo.name);
+            if (fieldReader instanceof HnswGraphProvider graphProvider) {
+              HnswGraph hnswGraph = graphProvider.getGraph(fieldInfo.name);
+              testHnswGraph(hnswGraph, fieldInfo.name, status);
+            }
+          }
+        }
+      }
+      msg(
+          infoStream,
+          String.format(
+              Locale.ROOT,
+              "OK [%d fields] [took %.3f sec]",
+              status.hnswGraphsStatusByField.size(),
+              nsToSec(System.nanoTime() - startNS)));
+      printHnswInfo(infoStream, status.hnswGraphsStatusByField);
+    } catch (Exception e) {
+      if (failFast) {
+        throw IOUtils.rethrowAlways(e);
+      }
+      msg(infoStream, "ERROR: " + e);
+      status.error = e;
+      if (infoStream != null) {
+        e.printStackTrace(infoStream);
+      }
+    }
+
+    return status;
+  }
+
+  private static KnnVectorsReader getFieldReaderForName(
+      KnnVectorsReader vectorsReader, String fieldName) {
+    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+      return fieldsReader.getFieldReader(fieldName);
+    } else {
+      return vectorsReader;
+    }
+  }
+
+  private static void printHnswInfo(
+      PrintStream infoStream, Map<String, CheckIndex.Status.HnswGraphStatus> fieldsStatus) {
+    for (Map.Entry<String, CheckIndex.Status.HnswGraphStatus> entry : fieldsStatus.entrySet()) {
+      String fieldName = entry.getKey();
+      CheckIndex.Status.HnswGraphStatus status = entry.getValue();
+      msg(infoStream, "      hnsw field name: " + fieldName);
+
+      int numLevels = Math.min(status.numNodesAtLevel.size(), status.connectednessAtLevel.size());
+      for (int level = numLevels - 1; level >= 0; level--) {
+        int numNodes = status.numNodesAtLevel.get(level);
+        String connectedness = status.connectednessAtLevel.get(level);
+        msg(
+            infoStream,
+            String.format(
+                Locale.ROOT,
+                "        level %d: %d nodes, %s connected",
+                level,
+                numNodes,
+                connectedness));
+      }
+    }
+  }
+
+  private static void testHnswGraph(
+      HnswGraph hnswGraph, String fieldName, Status.HnswGraphsStatus status)
+      throws IOException, CheckIndexException {
+    if (hnswGraph != null) {
+      status.hnswGraphsStatusByField.put(fieldName, new Status.HnswGraphStatus());
+      final int numLevels = hnswGraph.numLevels();
+      status.hnswGraphsStatusByField.get(fieldName).numNodesAtLevel =
+          new ArrayList<>(Collections.nCopies(numLevels, null));
+      status.hnswGraphsStatusByField.get(fieldName).connectednessAtLevel =
+          new ArrayList<>(Collections.nCopies(numLevels, null));
+      // Perform checks on each level of the HNSW graph
+      for (int level = numLevels - 1; level >= 0; level--) {
+        // Collect BitSet of all nodes on this level
+        BitSet nodesOnThisLevel = new FixedBitSet(hnswGraph.size());
+        HnswGraph.NodesIterator nodesIterator = hnswGraph.getNodesOnLevel(level);
+        while (nodesIterator.hasNext()) {
+          nodesOnThisLevel.set(nodesIterator.nextInt());
+        }
+
+        nodesIterator = hnswGraph.getNodesOnLevel(level);
+        // Perform checks on each node on the level
+        while (nodesIterator.hasNext()) {
+          int node = nodesIterator.nextInt();
+          if (node < 0 || node > hnswGraph.size() - 1) {
+            throw new CheckIndexException(
+                "Field \""
+                    + fieldName
+                    + "\" has node: "
+                    + node
+                    + " not in the expected range [0, "
+                    + (hnswGraph.size() - 1)
+                    + "]");
+          }
+
+          // Perform checks on the node's neighbors
+          hnswGraph.seek(level, node);
+          int nbr, lastNeighbor = -1, firstNeighbor = -1;
+          while ((nbr = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+            if (!nodesOnThisLevel.get(nbr)) {
+              throw new CheckIndexException(
+                  "Field \""
+                      + fieldName
+                      + "\" has node: "
+                      + node
+                      + " with a neighbor "
+                      + nbr
+                      + " which is not on its level ("
+                      + level
+                      + ")");
+            }
+            if (firstNeighbor == -1) {
+              firstNeighbor = nbr;
+            }
+            if (nbr < lastNeighbor) {
+              throw new CheckIndexException(
+                  "Field \""
+                      + fieldName
+                      + "\" has neighbors out of order for node "
+                      + node
+                      + ": "
+                      + nbr
+                      + "<"
+                      + lastNeighbor
+                      + " 1st="
+                      + firstNeighbor);
+            } else if (nbr == lastNeighbor) {
+              throw new CheckIndexException(
+                  "Field \""
+                      + fieldName
+                      + "\" has repeated neighbors of node "
+                      + node
+                      + " with value "
+                      + nbr);
+            }
+            lastNeighbor = nbr;
+          }
+        }
+        int numNodesOnLayer = nodesIterator.size();
+        status.hnswGraphsStatusByField.get(fieldName).numNodesAtLevel.set(level, numNodesOnLayer);
+
+        // Evaluate connectedness at this level by measuring the number of nodes reachable from the
+        // entry point
+        IntIntHashMap connectedNodes = getConnectedNodesOnLevel(hnswGraph, numNodesOnLayer, level);
+        status
+            .hnswGraphsStatusByField
+            .get(fieldName)
+            .connectednessAtLevel
+            .set(level, connectedNodes.size() + "/" + numNodesOnLayer);
+      }
+    }
+  }
+
+  private static IntIntHashMap getConnectedNodesOnLevel(
+      HnswGraph hnswGraph, int numNodesOnLayer, int level) throws IOException {
+    IntIntHashMap connectedNodes = new IntIntHashMap(numNodesOnLayer);
+    int entryPoint = hnswGraph.entryNode();
+    Deque<Integer> stack = new ArrayDeque<>();
+    stack.push(entryPoint);
+    while (!stack.isEmpty()) {
+      int node = stack.pop();
+      if (connectedNodes.containsKey(node)) {
+        continue;
+      }
+      connectedNodes.put(node, 1);
+      hnswGraph.seek(level, node);
+      int friendOrd;
+      while ((friendOrd = hnswGraph.nextNeighbor()) != NO_MORE_DOCS) {
+        stack.push(friendOrd);
+      }
+    }
+    return connectedNodes;
+  }
+
+  private static boolean vectorsReaderSupportsSearch(CodecReader codecReader, String fieldName) {
+    KnnVectorsReader vectorsReader = codecReader.getVectorReader();
+    if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader perFieldReader) {
+      vectorsReader = perFieldReader.getFieldReader(fieldName);
+    }
+    return (vectorsReader instanceof FlatVectorsReader) == false;
+  }
+
   private static void checkFloatVectorValues(
       FloatVectorValues values,
       FieldInfo fieldInfo,
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)
       throws IOException {
-    int docCount = 0;
+    int count = 0;
     int everyNdoc = Math.max(values.size() / 64, 1);
-    while (values.nextDoc() != NO_MORE_DOCS) {
+    while (count < values.size()) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (values.docID() % everyNdoc == 0) {
+      if (values.ordToDoc(count) % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
-        TopDocs docs = collector.topDocs();
-        if (docs.scoreDocs.length == 0) {
-          throw new CheckIndexException(
-              "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+        if (vectorsReaderSupportsSearch(codecReader, fieldInfo.name)) {
+          codecReader
+              .getVectorReader()
+              .search(fieldInfo.name, values.vectorValue(count), collector, null);
+          TopDocs docs = collector.topDocs();
+          if (docs.scoreDocs.length == 0) {
+            throw new CheckIndexException(
+                "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+          }
         }
       }
-      int valueLength = values.vectorValue().length;
+      int valueLength = values.vectorValue(count).length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""
@@ -2768,19 +3016,19 @@ public final class CheckIndex implements Closeable {
                 + " not matching the field's dimension="
                 + fieldInfo.getVectorDimension());
       }
-      ++docCount;
+      ++count;
     }
-    if (docCount != values.size()) {
+    if (count != values.size()) {
       throw new CheckIndexException(
           "Field \""
               + fieldInfo.name
               + "\" has size="
               + values.size()
               + " but when iterated, returns "
-              + docCount
+              + count
               + " docs with values");
     }
-    status.totalVectorValues += docCount;
+    status.totalVectorValues += count;
   }
 
   private static void checkByteVectorValues(
@@ -2789,20 +3037,23 @@ public final class CheckIndex implements Closeable {
       CheckIndex.Status.VectorValuesStatus status,
       CodecReader codecReader)
       throws IOException {
-    int docCount = 0;
+    int count = 0;
     int everyNdoc = Math.max(values.size() / 64, 1);
-    while (values.nextDoc() != NO_MORE_DOCS) {
+    boolean supportsSearch = vectorsReaderSupportsSearch(codecReader, fieldInfo.name);
+    while (count < values.size()) {
       // search the first maxNumSearches vectors to exercise the graph
-      if (values.docID() % everyNdoc == 0) {
+      if (supportsSearch && values.ordToDoc(count) % everyNdoc == 0) {
         KnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
-        codecReader.getVectorReader().search(fieldInfo.name, values.vectorValue(), collector, null);
+        codecReader
+            .getVectorReader()
+            .search(fieldInfo.name, values.vectorValue(count), collector, null);
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
           throw new CheckIndexException(
               "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
         }
       }
-      int valueLength = values.vectorValue().length;
+      int valueLength = values.vectorValue(count).length;
       if (valueLength != fieldInfo.getVectorDimension()) {
         throw new CheckIndexException(
             "Field \""
@@ -2812,19 +3063,19 @@ public final class CheckIndex implements Closeable {
                 + " not matching the field's dimension="
                 + fieldInfo.getVectorDimension());
       }
-      ++docCount;
+      ++count;
     }
-    if (docCount != values.size()) {
+    if (count != values.size()) {
       throw new CheckIndexException(
           "Field \""
               + fieldInfo.name
               + "\" has size="
               + values.size()
               + " but when iterated, returns "
-              + docCount
+              + count
               + " docs with values");
     }
-    status.totalVectorValues += docCount;
+    status.totalVectorValues += count;
   }
 
   /**
@@ -3123,12 +3374,7 @@ public final class CheckIndex implements Closeable {
     }
   }
 
-  private static class ConstantRelationIntersectVisitor implements IntersectVisitor {
-    private final Relation relation;
-
-    ConstantRelationIntersectVisitor(Relation relation) {
-      this.relation = relation;
-    }
+  private record ConstantRelationIntersectVisitor(Relation relation) implements IntersectVisitor {
 
     @Override
     public void visit(int docID) throws IOException {
@@ -3228,13 +3474,14 @@ public final class CheckIndex implements Closeable {
           infoStream,
           String.format(
               Locale.ROOT,
-              "OK [%d docvalues fields; %d BINARY; %d NUMERIC; %d SORTED; %d SORTED_NUMERIC; %d SORTED_SET] [took %.3f sec]",
+              "OK [%d docvalues fields; %d BINARY; %d NUMERIC; %d SORTED; %d SORTED_NUMERIC; %d SORTED_SET; %d SKIPPING INDEX] [took %.3f sec]",
               status.totalValueFields,
               status.totalBinaryFields,
               status.totalNumericFields,
               status.totalSortedFields,
               status.totalSortedNumericFields,
               status.totalSortedSetFields,
+              status.totalSkippingIndex,
               nsToSec(System.nanoTime() - startNS)));
     } catch (Throwable e) {
       if (failFast) {
@@ -3252,6 +3499,94 @@ public final class CheckIndex implements Closeable {
   @FunctionalInterface
   private interface DocValuesIteratorSupplier {
     DocValuesIterator get(FieldInfo fi) throws IOException;
+  }
+
+  private static void checkDocValueSkipper(FieldInfo fi, DocValuesSkipper skipper)
+      throws IOException {
+    String fieldName = fi.name;
+    if (skipper.maxDocID(0) != -1) {
+      throw new CheckIndexException(
+          "binary dv iterator for field: "
+              + fieldName
+              + " should start at docID=-1, but got "
+              + skipper.maxDocID(0));
+    }
+    if (skipper.docCount() > 0 && skipper.minValue() > skipper.maxValue()) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " reports wrong global value range, got  "
+              + skipper.minValue()
+              + " > "
+              + skipper.maxValue());
+    }
+    int docCount = 0;
+    int doc;
+    while (true) {
+      doc = skipper.maxDocID(0) + 1;
+      skipper.advance(doc);
+      if (skipper.maxDocID(0) == NO_MORE_DOCS) {
+        break;
+      }
+      if (skipper.minDocID(0) < doc) {
+        throw new CheckIndexException(
+            "skipper dv iterator for field: "
+                + fieldName
+                + " reports wrong minDocID, got "
+                + skipper.minDocID(0)
+                + " < "
+                + doc);
+      }
+      int levels = skipper.numLevels();
+      for (int level = 0; level < levels; level++) {
+        if (skipper.minDocID(level) > skipper.maxDocID(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " reports wrong doc range, got "
+                  + skipper.minDocID(level)
+                  + " > "
+                  + skipper.maxDocID(level));
+        }
+        if (skipper.minValue() > skipper.minValue(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " : global minValue  "
+                  + skipper.minValue()
+                  + " , got  "
+                  + skipper.minValue(level));
+        }
+        if (skipper.maxValue() < skipper.maxValue(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " : global maxValue  "
+                  + skipper.maxValue()
+                  + " , got  "
+                  + skipper.maxValue(level));
+        }
+        if (skipper.minValue(level) > skipper.maxValue(level)) {
+          throw new CheckIndexException(
+              "skipper dv iterator for field: "
+                  + fieldName
+                  + " reports wrong value range, got  "
+                  + skipper.minValue(level)
+                  + " > "
+                  + skipper.maxValue(level));
+        }
+      }
+      docCount += skipper.docCount(0);
+    }
+    if (skipper.docCount() != docCount) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " inconsistent docCount, got "
+              + skipper.docCount()
+              + " != "
+              + docCount);
+    }
   }
 
   private static void checkDVIterator(FieldInfo fi, DocValuesIteratorSupplier producer)
@@ -3627,6 +3962,10 @@ public final class CheckIndex implements Closeable {
 
   private static void checkDocValues(
       FieldInfo fi, DocValuesProducer dvReader, DocValuesStatus status) throws Exception {
+    if (fi.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
+      status.totalSkippingIndex++;
+      checkDocValueSkipper(fi, dvReader.getSkipper(fi));
+    }
     switch (fi.getDocValuesType()) {
       case SORTED:
         status.totalSortedFields++;
@@ -3702,6 +4041,9 @@ public final class CheckIndex implements Closeable {
       if (vectorsReader != null) {
         vectorsReader = vectorsReader.getMergeInstance();
         for (int j = 0; j < reader.maxDoc(); ++j) {
+          if ((j & 0x03) == 0) {
+            vectorsReader.prefetch(j);
+          }
           // Intentionally pull/visit (but don't count in
           // stats) deleted documents to make sure they too
           // are not corrupt:
@@ -3728,7 +4070,7 @@ public final class CheckIndex implements Closeable {
 
               // Make sure FieldInfo thinks this field is vector'd:
               final FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
-              if (fieldInfo.hasVectors() == false) {
+              if (fieldInfo.hasTermVectors() == false) {
                 throw new CheckIndexException(
                     "docID="
                         + j
@@ -3757,6 +4099,7 @@ public final class CheckIndex implements Closeable {
                 TermsEnum postingsTermsEnum = postingsTerms.iterator();
 
                 final boolean hasProx = terms.hasOffsets() || terms.hasPositions();
+                int seekExactCounter = 0;
                 BytesRef term;
                 while ((term = termsEnum.next()) != null) {
 
@@ -3764,7 +4107,14 @@ public final class CheckIndex implements Closeable {
                   postings = termsEnum.postings(postings, PostingsEnum.ALL);
                   assert postings != null;
 
-                  if (postingsTermsEnum.seekExact(term) == false) {
+                  boolean termExists;
+                  if ((seekExactCounter++ & 0x01) == 0) {
+                    termExists = postingsTermsEnum.seekExact(term);
+                  } else {
+                    IOBooleanSupplier termExistsSupplier = postingsTermsEnum.prepareSeekExact(term);
+                    termExists = termExistsSupplier != null && termExistsSupplier.get();
+                  }
+                  if (termExists == false) {
                     throw new CheckIndexException(
                         "vector term="
                             + term
@@ -4163,21 +4513,8 @@ public final class CheckIndex implements Closeable {
         int level = Integer.parseInt(args[i]);
         Level.checkIfLevelInBounds(level);
         opts.level = level;
-      } else if ("-fast".equals(arg)) {
-        // Deprecated. Remove in Lucene 11.
-        System.err.println(
-            "-fast is deprecated, use '-level 1' for explicitly verifying file checksums only. This is also now the default "
-                + "behaviour!");
-      } else if ("-slow".equals(arg)) {
-        // Deprecated. Remove in Lucene 11.
-        System.err.println("-slow is deprecated, use '-level 3' instead for slow checks");
-        opts.level = Level.MIN_LEVEL_FOR_SLOW_CHECKS;
       } else if ("-exorcise".equals(arg)) {
         opts.doExorcise = true;
-      } else if ("-crossCheckTermVectors".equals(arg)) {
-        // Deprecated. Remove in Lucene 11.
-        System.err.println("-crossCheckTermVectors is deprecated, use '-level 3' instead");
-        opts.level = Level.MAX_VALUE;
       } else if (arg.equals("-verbose")) {
         opts.verbose = true;
       } else if (arg.equals("-segment")) {

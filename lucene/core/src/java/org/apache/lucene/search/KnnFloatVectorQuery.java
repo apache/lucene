@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -23,8 +25,10 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
@@ -46,7 +50,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
 
-  private final float[] target;
+  protected final float[] target;
 
   /**
    * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
@@ -72,7 +76,25 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
   public KnnFloatVectorQuery(String field, float[] target, int k, Query filter) {
-    super(field, k, filter);
+    this(field, target, k, filter, DEFAULT);
+  }
+
+  /**
+   * Find the <code>k</code> nearest documents to the target vector according to the vectors in the
+   * given field. <code>target</code> vector.
+   *
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param target the target of the search
+   * @param k the number of documents to find
+   * @param filter a filter applied before the vector search
+   * @param searchStrategy the search strategy to use. If null, the default strategy will be used.
+   *     The underlying format may not support all strategies and is free to ignore the requested
+   *     strategy.
+   * @lucene.experimental
+   */
+  public KnnFloatVectorQuery(
+      String field, float[] target, int k, Query filter, KnnSearchStrategy searchStrategy) {
+    super(field, k, filter, searchStrategy);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
   }
 
@@ -83,25 +105,28 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {
-    KnnCollector knnCollector = knnCollectorManager.newCollector(visitedLimit, context);
-    FloatVectorValues floatVectorValues = context.reader().getFloatVectorValues(field);
+    KnnCollector knnCollector =
+        knnCollectorManager.newCollector(visitedLimit, searchStrategy, context);
+    LeafReader reader = context.reader();
+    FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
     if (floatVectorValues == null) {
-      FloatVectorValues.checkField(context.reader(), field);
+      FloatVectorValues.checkField(reader, field);
       return NO_RESULTS;
     }
     if (Math.min(knnCollector.k(), floatVectorValues.size()) == 0) {
       return NO_RESULTS;
     }
-    context.reader().searchNearestVectors(field, target, knnCollector, acceptDocs);
+    reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
     TopDocs results = knnCollector.topDocs();
     return results != null ? results : NO_RESULTS;
   }
 
   @Override
   VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi) throws IOException {
-    FloatVectorValues vectorValues = context.reader().getFloatVectorValues(field);
+    LeafReader reader = context.reader();
+    FloatVectorValues vectorValues = reader.getFloatVectorValues(field);
     if (vectorValues == null) {
-      FloatVectorValues.checkField(context.reader(), field);
+      FloatVectorValues.checkField(reader, field);
       return null;
     }
     return vectorValues.scorer(target);
@@ -109,7 +134,14 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
 
   @Override
   public String toString(String field) {
-    return getClass().getSimpleName() + ":" + this.field + "[" + target[0] + ",...][" + k + "]";
+    StringBuilder buffer = new StringBuilder();
+    buffer.append(getClass().getSimpleName() + ":");
+    buffer.append(this.field + "[" + target[0] + ",...]");
+    buffer.append("[" + k + "]");
+    if (this.filter != null) {
+      buffer.append("[" + this.filter + "]");
+    }
+    return buffer.toString();
   }
 
   @Override

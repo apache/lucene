@@ -33,18 +33,11 @@ def resources = scriptResources(buildscript)
 // Configure different icu4j dependencies.
 configure(rootProject) {
   configurations {
-    // icu_xyz
     icu_current
   }
 
   dependencies {
-    // icu_xyz "com.ibm.icu:icu4j:xyz"
-    icu_current 'com.ibm.icu:icu4j'
-  }
-
-  // Exclude explicit ICU configs from palantir's version unification.
-  versionRecommendations {
-    // excludeConfigurations "icu_xyz"
+    icu_current deps.icu4j
   }
 }
 
@@ -72,10 +65,8 @@ configure(project(":lucene:analysis:icu")) {
     icupkg = file("${icuBinDir}/icupkg")
   }
 
-  // Resolve version lazily (can't resolve at configuration time).
-  def icu4jVersionProvider = project.provider { getVersion('com.ibm.icu', 'icu4j') }
   // lazy gstring with ICU version.
-  def icu4jVersion = "${-> icu4jVersionProvider.get()}"
+  def icu4jVersion = deps.icu4j.get().version
 
   def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
 

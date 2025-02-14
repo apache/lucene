@@ -18,6 +18,7 @@ package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -32,6 +33,10 @@ public final class FixedBitSet extends BitSet {
 
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(FixedBitSet.class);
+
+  // An array that is small enough to use reasonable amounts of RAM and large enough to allow
+  // Arrays#mismatch to use SIMD instructions and multiple registers under the hood.
+  private static final long[] ZEROES = new long[32];
 
   private final long[] bits; // Array of longs holding the bits
   private final int numBits; // The number of bits in use
@@ -272,16 +277,36 @@ public final class FixedBitSet extends BitSet {
 
   @Override
   public int nextSetBit(int index) {
+    // Override with a version that skips the bound check on the result since we know it will not
+    // go OOB:
+    return nextSetBitInRange(index, numBits);
+  }
+
+  @Override
+  public int nextSetBit(int start, int upperBound) {
+    int res = nextSetBitInRange(start, upperBound);
+    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Returns the next set bit in the specified range, but treats `upperBound` as a best-effort hint
+   * rather than a hard requirement. Note that this may return a result that is >= upperBound in
+   * some cases, so callers must add their own check if `upperBound` is a hard requirement.
+   */
+  private int nextSetBitInRange(int start, int upperBound) {
     // Depends on the ghost bits being clear!
-    assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
-    int i = index >> 6;
-    long word = bits[i] >> index; // skip all the bits to the right of index
+    assert start >= 0 && start < numBits : "index=" + start + ", numBits=" + numBits;
+    assert start < upperBound : "index=" + start + ", upperBound=" + upperBound;
+    assert upperBound <= numBits : "upperBound=" + upperBound + ", numBits=" + numBits;
+    int i = start >> 6;
+    long word = bits[i] >> start; // skip all the bits to the right of index
 
     if (word != 0) {
-      return index + Long.numberOfTrailingZeros(word);
+      return start + Long.numberOfTrailingZeros(word);
     }
 
-    while (++i < numWords) {
+    int limit = upperBound == numBits ? numWords : bits2words(upperBound);
+    while (++i < limit) {
       word = bits[i];
       if (word != 0) {
         return (i << 6) + Long.numberOfTrailingZeros(word);
@@ -314,36 +339,155 @@ public final class FixedBitSet extends BitSet {
 
   @Override
   public void or(DocIdSetIterator iter) throws IOException {
-    if (BitSetIterator.getFixedBitSetOrNull(iter) != null) {
-      checkUnpositioned(iter);
-      final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
-      or(bits);
-    } else if (iter instanceof DocBaseBitSetIterator) {
-      checkUnpositioned(iter);
-      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
-      or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
+    checkUnpositioned(iter);
+    iter.nextDoc();
+    iter.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, this, 0);
+  }
+
+  /** Read {@code numBits} (between 1 and 63) bits from {@code bitSet} at {@code from}. */
+  private static long readNBits(long[] bitSet, int from, int numBits) {
+    assert numBits > 0 && numBits < Long.SIZE;
+    long bits = bitSet[from >> 6] >>> from;
+    int numBitsSoFar = Long.SIZE - (from & 0x3F);
+    if (numBitsSoFar < numBits) {
+      bits |= bitSet[(from >> 6) + 1] << -from;
+    }
+    return bits & ((1L << numBits) - 1);
+  }
+
+  /**
+   * Or {@code length} bits starting at {@code sourceFrom} from {@code source} into {@code dest}
+   * starting at {@code destFrom}.
+   */
+  public static void orRange(
+      FixedBitSet source, int sourceFrom, FixedBitSet dest, int destFrom, int length) {
+    assert length >= 0;
+    Objects.checkFromIndexSize(sourceFrom, length, source.length());
+    Objects.checkFromIndexSize(destFrom, length, dest.length());
+
+    if (length == 0) {
+      return;
+    }
+
+    long[] sourceBits = source.getBits();
+    long[] destBits = dest.getBits();
+
+    // First, align `destFrom` with a word start, ie. a multiple of Long.SIZE (64)
+    if ((destFrom & 0x3F) != 0) {
+      int numBitsNeeded = Math.min(-destFrom & 0x3F, length);
+      long bits = readNBits(sourceBits, sourceFrom, numBitsNeeded) << destFrom;
+      destBits[destFrom >> 6] |= bits;
+
+      sourceFrom += numBitsNeeded;
+      destFrom += numBitsNeeded;
+      length -= numBitsNeeded;
+    }
+
+    if (length == 0) {
+      return;
+    }
+
+    assert (destFrom & 0x3F) == 0;
+
+    // Now OR at the word level
+    int numFullWords = length >> 6;
+    int sourceWordFrom = sourceFrom >> 6;
+    int destWordFrom = destFrom >> 6;
+
+    // Note: these two for loops auto-vectorize
+    if ((sourceFrom & 0x3F) == 0) {
+      // sourceFrom and destFrom are both aligned with a long[]
+      for (int i = 0; i < numFullWords; ++i) {
+        destBits[destWordFrom + i] |= sourceBits[sourceWordFrom + i];
+      }
     } else {
-      super.or(iter);
+      for (int i = 0; i < numFullWords; ++i) {
+        destBits[destWordFrom + i] |=
+            (sourceBits[sourceWordFrom + i] >>> sourceFrom)
+                | (sourceBits[sourceWordFrom + i + 1] << -sourceFrom);
+      }
+    }
+
+    sourceFrom += numFullWords << 6;
+    destFrom += numFullWords << 6;
+    length -= numFullWords << 6;
+
+    // Finally handle tail bits
+    if (length > 0) {
+      long bits = readNBits(sourceBits, sourceFrom, length);
+      destBits[destFrom >> 6] |= bits;
+    }
+  }
+
+  /**
+   * And {@code length} bits starting at {@code sourceFrom} from {@code source} into {@code dest}
+   * starting at {@code destFrom}.
+   */
+  public static void andRange(
+      FixedBitSet source, int sourceFrom, FixedBitSet dest, int destFrom, int length) {
+    assert length >= 0 : length;
+    Objects.checkFromIndexSize(sourceFrom, length, source.length());
+    Objects.checkFromIndexSize(destFrom, length, dest.length());
+
+    if (length == 0) {
+      return;
+    }
+
+    long[] sourceBits = source.getBits();
+    long[] destBits = dest.getBits();
+
+    // First, align `destFrom` with a word start, ie. a multiple of Long.SIZE (64)
+    if ((destFrom & 0x3F) != 0) {
+      int numBitsNeeded = Math.min(-destFrom & 0x3F, length);
+      long bits = readNBits(sourceBits, sourceFrom, numBitsNeeded) << destFrom;
+      bits |= ~(((1L << numBitsNeeded) - 1) << destFrom);
+      destBits[destFrom >> 6] &= bits;
+
+      sourceFrom += numBitsNeeded;
+      destFrom += numBitsNeeded;
+      length -= numBitsNeeded;
+    }
+
+    if (length == 0) {
+      return;
+    }
+
+    assert (destFrom & 0x3F) == 0;
+
+    // Now AND at the word level
+    int numFullWords = length >> 6;
+    int sourceWordFrom = sourceFrom >> 6;
+    int destWordFrom = destFrom >> 6;
+
+    // Note: these two for loops auto-vectorize
+    if ((sourceFrom & 0x3F) == 0) {
+      // sourceFrom and destFrom are both aligned with a long[]
+      for (int i = 0; i < numFullWords; ++i) {
+        destBits[destWordFrom + i] &= sourceBits[sourceWordFrom + i];
+      }
+    } else {
+      for (int i = 0; i < numFullWords; ++i) {
+        destBits[destWordFrom + i] &=
+            (sourceBits[sourceWordFrom + i] >>> sourceFrom)
+                | (sourceBits[sourceWordFrom + i + 1] << -sourceFrom);
+      }
+    }
+
+    sourceFrom += numFullWords << 6;
+    destFrom += numFullWords << 6;
+    length -= numFullWords << 6;
+
+    // Finally handle tail bits
+    if (length > 0) {
+      long bits = readNBits(sourceBits, sourceFrom, length);
+      bits |= (~0L << length);
+      destBits[destFrom >> 6] &= bits;
     }
   }
 
   /** this = this OR other */
   public void or(FixedBitSet other) {
-    or(0, other.bits, other.numWords);
-  }
-
-  private void or(final int otherOffsetWords, FixedBitSet other) {
-    or(otherOffsetWords, other.bits, other.numWords);
-  }
-
-  private void or(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
-    assert otherNumWords + otherOffsetWords <= numWords
-        : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
-    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
-    final long[] thisArr = this.bits;
-    while (--pos >= 0) {
-      thisArr[pos + otherOffsetWords] |= otherArr[pos];
-    }
+    orRange(other, 0, this, 0, other.length());
   }
 
   /** this = this XOR other */
@@ -448,8 +592,11 @@ public final class FixedBitSet extends BitSet {
     // Depends on the ghost bits being clear!
     final int count = numWords;
 
-    for (int i = 0; i < count; i++) {
-      if (bits[i] != 0) return false;
+    for (int i = 0; i < count; i += ZEROES.length) {
+      int cmpLen = Math.min(ZEROES.length, bits.length - i);
+      if (Arrays.equals(bits, i, i + cmpLen, ZEROES, 0, cmpLen) == false) {
+        return false;
+      }
     }
 
     return true;
@@ -600,9 +747,8 @@ public final class FixedBitSet extends BitSet {
 
   /** Make a copy of the given bits. */
   public static FixedBitSet copyOf(Bits bits) {
-    if (bits instanceof FixedBits) {
+    if (bits instanceof FixedBits fixedBits) {
       // restore the original FixedBitSet
-      FixedBits fixedBits = (FixedBits) bits;
       bits = new FixedBitSet(fixedBits.bits, fixedBits.length);
     }
 
@@ -629,5 +775,19 @@ public final class FixedBitSet extends BitSet {
    */
   public Bits asReadOnlyBits() {
     return new FixedBits(bits, numBits);
+  }
+
+  @Override
+  public void applyMask(FixedBitSet bitSet, int offset) {
+    // Note: Some scorers don't track maxDoc and may thus call this method with an offset that is
+    // beyond bitSet.length()
+    int length = Math.min(bitSet.length(), length() - offset);
+    if (length >= 0) {
+      andRange(this, offset, bitSet, 0, length);
+    }
+    if (length < bitSet.length()
+        && bitSet.nextSetBit(Math.max(0, length)) != DocIdSetIterator.NO_MORE_DOCS) {
+      throw new IllegalArgumentException("Some bits are set beyond the end of live docs");
+    }
   }
 }

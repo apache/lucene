@@ -99,7 +99,7 @@ public class SpatialDocMaker extends DocMaker {
         return makeRPTStrategy(SPATIAL_FIELD, config, configMap, ctx);
       case "composite":
         return makeCompositeStrategy(config, configMap, ctx);
-        // TODO add more as-needed
+      // TODO add more as-needed
       default:
         throw new IllegalStateException("Unknown spatial.strategy: " + strategyName);
     }
@@ -172,8 +172,7 @@ public class SpatialDocMaker extends DocMaker {
     return new ShapeConverter() {
       @Override
       public Shape convert(Shape shape) {
-        if (shape instanceof Point && (radiusDegrees != 0.0 || plusMinus != 0.0)) {
-          Point point = (Point) shape;
+        if (shape instanceof Point point && (radiusDegrees != 0.0 || plusMinus != 0.0)) {
           double radius = radiusDegrees;
           if (plusMinus > 0.0) {
             Random random =

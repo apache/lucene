@@ -130,15 +130,7 @@ class WritableQueryIndex extends QueryIndex {
     }
   }
 
-  private static class Indexable {
-    final QueryCacheEntry queryCacheEntry;
-    final Document document;
-
-    private Indexable(QueryCacheEntry queryCacheEntry, Document document) {
-      this.queryCacheEntry = queryCacheEntry;
-      this.document = document;
-    }
-  }
+  private record Indexable(QueryCacheEntry queryCacheEntry, Document document) {}
 
   private void populateQueryCache(MonitorQuerySerializer serializer, QueryDecomposer decomposer)
       throws IOException {
@@ -250,7 +242,7 @@ class WritableQueryIndex extends QueryIndex {
   }
 
   @Override
-  /**
+  /*
    * Remove unused queries from the query cache.
    *
    * <p>This is normally called from a background thread at a rate set by configurePurgeFrequency().

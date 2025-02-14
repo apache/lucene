@@ -25,6 +25,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.VectorUtil;
 
 public class TestScalarQuantizer extends LuceneTestCase {
 
@@ -33,8 +34,16 @@ public class TestScalarQuantizer extends LuceneTestCase {
       int dims = random().nextInt(9) + 1;
       int numVecs = random().nextInt(9) + 10;
       float[][] floats = randomFloats(numVecs, dims);
+      if (function == VectorSimilarityFunction.COSINE) {
+        for (float[] v : floats) {
+          VectorUtil.l2normalize(v);
+        }
+      }
       for (byte bits : new byte[] {4, 7}) {
         FloatVectorValues floatVectorValues = fromFloats(floats);
+        if (function == VectorSimilarityFunction.COSINE) {
+          function = VectorSimilarityFunction.DOT_PRODUCT;
+        }
         ScalarQuantizer scalarQuantizer =
             random().nextBoolean()
                 ? ScalarQuantizer.fromVectors(floatVectorValues, 0.9f, numVecs, bits)
@@ -63,11 +72,15 @@ public class TestScalarQuantizer extends LuceneTestCase {
         expectThrows(
             IllegalStateException.class,
             () -> ScalarQuantizer.fromVectors(floatVectorValues, 0.9f, numVecs, bits));
+        VectorSimilarityFunction actualFunction =
+            function == VectorSimilarityFunction.COSINE
+                ? VectorSimilarityFunction.DOT_PRODUCT
+                : function;
         expectThrows(
             IllegalStateException.class,
             () ->
                 ScalarQuantizer.fromVectorsAutoInterval(
-                    floatVectorValues, function, numVecs, bits));
+                    floatVectorValues, actualFunction, numVecs, bits));
       }
     }
   }
@@ -103,7 +116,6 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
     // int7 should always quantize to 0-127
     assertTrue(minDimValue >= (byte) 0);
-    assertTrue(maxDimValue <= (byte) 127);
   }
 
   public void testQuantiles() {
@@ -185,6 +197,9 @@ public class TestScalarQuantizer extends LuceneTestCase {
     VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
 
     float[][] floats = randomFloats(numVecs, dims);
+    for (float[] v : floats) {
+      VectorUtil.l2normalize(v);
+    }
     FloatVectorValues floatVectorValues = fromFloats(floats);
     ScalarQuantizer scalarQuantizer =
         ScalarQuantizer.fromVectorsAutoInterval(
@@ -256,14 +271,27 @@ public class TestScalarQuantizer extends LuceneTestCase {
   static class TestSimpleFloatVectorValues extends FloatVectorValues {
     protected final float[][] floats;
     protected final Set<Integer> deletedVectors;
+    protected final int[] ordToDoc;
     protected final int numLiveVectors;
-    protected int curDoc = -1;
 
     TestSimpleFloatVectorValues(float[][] values, Set<Integer> deletedVectors) {
       this.floats = values;
       this.deletedVectors = deletedVectors;
-      this.numLiveVectors =
+      numLiveVectors =
           deletedVectors == null ? values.length : values.length - deletedVectors.size();
+      ordToDoc = new int[numLiveVectors];
+      if (deletedVectors == null) {
+        for (int i = 0; i < numLiveVectors; i++) {
+          ordToDoc[i] = i;
+        }
+      } else {
+        int ord = 0;
+        for (int doc = 0; doc < values.length; doc++) {
+          if (!deletedVectors.contains(doc)) {
+            ordToDoc[ord++] = doc;
+          }
+        }
+      }
     }
 
     @Override
@@ -277,40 +305,64 @@ public class TestScalarQuantizer extends LuceneTestCase {
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
-      if (curDoc == -1 || curDoc >= floats.length) {
-        throw new IOException("Current doc not set or too many iterations");
-      }
-      return floats[curDoc];
+    public float[] vectorValue(int ord) throws IOException {
+      return floats[ordToDoc(ord)];
     }
 
     @Override
-    public int docID() {
-      if (curDoc >= floats.length) {
-        return NO_MORE_DOCS;
-      }
-      return curDoc;
+    public int ordToDoc(int ord) {
+      return ordToDoc[ord];
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      while (++curDoc < floats.length) {
-        if (deletedVectors == null || !deletedVectors.contains(curDoc)) {
-          return curDoc;
+    public DocIndexIterator iterator() {
+      return new DocIndexIterator() {
+
+        int ord = -1;
+        int doc = -1;
+
+        @Override
+        public int docID() {
+          return doc;
         }
-      }
-      return docID();
-    }
 
-    @Override
-    public int advance(int target) throws IOException {
-      curDoc = target - 1;
-      return nextDoc();
+        @Override
+        public int nextDoc() throws IOException {
+          while (doc < floats.length - 1) {
+            ++doc;
+            if (deletedVectors == null || !deletedVectors.contains(doc)) {
+              ++ord;
+              return doc;
+            }
+          }
+          return doc = NO_MORE_DOCS;
+        }
+
+        @Override
+        public int index() {
+          return ord;
+        }
+
+        @Override
+        public long cost() {
+          return floats.length - deletedVectors.size();
+        }
+
+        @Override
+        public int advance(int target) throws IOException {
+          throw new UnsupportedOperationException();
+        }
+      };
     }
 
     @Override
     public VectorScorer scorer(float[] target) {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public TestSimpleFloatVectorValues copy() {
+      return this;
     }
   }
 }

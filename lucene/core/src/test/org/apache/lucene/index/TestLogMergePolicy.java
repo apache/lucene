@@ -24,6 +24,7 @@ import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
 import org.apache.lucene.util.Version;
 
+@SuppressWarnings("UnnecessaryAsync")
 public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
   @Override
@@ -50,8 +51,13 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
   @Override
   protected void assertMerge(MergePolicy policy, MergeSpecification merge) throws IOException {
     LogMergePolicy lmp = (LogMergePolicy) policy;
+    MergeContext mockMergeContext = new MockMergeContext(SegmentCommitInfo::getDelCount);
     for (OneMerge oneMerge : merge.merges) {
-      assertTrue(oneMerge.segments.size() <= lmp.getMergeFactor());
+      long mergeSize = 0;
+      for (SegmentCommitInfo info : oneMerge.segments) {
+        mergeSize += lmp.size(info, mockMergeContext);
+      }
+      assertTrue(mergeSize < lmp.minMergeSize || oneMerge.segments.size() <= lmp.getMergeFactor());
     }
   }
 
@@ -249,8 +255,10 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
     SegmentInfos segmentInfos = new SegmentInfos(Version.LATEST.major);
 
     LogMergePolicy mp = mergePolicy();
+    // Number of segments guaranteed to trigger a merge.
+    int numSegmentsForMerging = mp.getMergeFactor() + mp.getTargetSearchConcurrency();
 
-    for (int i = 0; i < mp.getMergeFactor(); ++i) {
+    for (int i = 0; i < numSegmentsForMerging; ++i) {
       segmentInfos.add(
           makeSegmentCommitInfo(
               "_" + segNameGenerator.getAndIncrement(),
@@ -266,6 +274,6 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
       segmentInfos =
           applyMerge(segmentInfos, merge, "_" + segNameGenerator.getAndIncrement(), stats);
     }
-    assertEquals(1, segmentInfos.size());
+    assertTrue(segmentInfos.size() < numSegmentsForMerging);
   }
 }

@@ -51,6 +51,7 @@ import org.apache.lucene.internal.hppc.IntCursor;
  * exclude deleted documents.
  */
 public abstract class HnswGraph {
+  public static final int UNKNOWN_MAX_CONN = -1;
 
   /** Sole constructor */
   protected HnswGraph() {}
@@ -68,7 +69,7 @@ public abstract class HnswGraph {
   /** Returns the number of nodes in the graph */
   public abstract int size();
 
-  /** Returns max node id, inclusive, normally this value will be size - 1 */
+  /** Returns max node id, inclusive. Normally this value will be size - 1. */
   public int maxNodeId() {
     return size() - 1;
   }
@@ -84,6 +85,9 @@ public abstract class HnswGraph {
   /** Returns the number of levels of the graph */
   public abstract int numLevels() throws IOException;
 
+  /** returns M, the maximum number of connections for a node. */
+  public abstract int maxConn();
+
   /** Returns graph's entry point on the top level * */
   public abstract int entryNode() throws IOException;
 
@@ -96,8 +100,10 @@ public abstract class HnswGraph {
    */
   public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
 
+  public abstract int neighborCount();
+
   /** Empty graph value */
-  public static HnswGraph EMPTY =
+  public static final HnswGraph EMPTY =
       new HnswGraph() {
 
         @Override
@@ -124,13 +130,23 @@ public abstract class HnswGraph {
         }
 
         @Override
+        public int neighborCount() {
+          return 0;
+        }
+
+        @Override
+        public int maxConn() {
+          return UNKNOWN_MAX_CONN;
+        }
+
+        @Override
         public NodesIterator getNodesOnLevel(int level) {
           return ArrayNodesIterator.EMPTY;
         }
       };
 
   /**
-   * Iterator over the graph nodes on a certain level, Iterator also provides the size – the total
+   * Iterator over the graph nodes on a certain level. Iterator also provides the size – the total
    * number of nodes to be iterated over. The nodes are NOT guaranteed to be presented in any
    * particular order.
    */

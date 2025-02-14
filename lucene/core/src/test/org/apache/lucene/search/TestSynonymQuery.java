@@ -87,6 +87,15 @@ public class TestSynonymQuery extends LuceneTestCase {
         new SynonymQuery.Builder("field2").addTerm(new Term("field2", "b"), 0.4f).build());
   }
 
+  public void testHashCode() {
+    Query q0 = new SynonymQuery.Builder("field1").addTerm(new Term("field1", "a"), 0.4f).build();
+    Query q1 = new SynonymQuery.Builder("field1").addTerm(new Term("field1", "a"), 0.4f).build();
+    Query q2 = new SynonymQuery.Builder("field2").addTerm(new Term("field2", "a"), 0.4f).build();
+
+    assertEquals(q0.hashCode(), q1.hashCode());
+    assertNotEquals(q0.hashCode(), q2.hashCode());
+  }
+
   public void testGetField() {
     SynonymQuery query =
         new SynonymQuery.Builder("field1").addTerm(new Term("field1", "a")).build();
@@ -165,7 +174,7 @@ public class TestSynonymQuery extends LuceneTestCase {
   }
 
   public void testScores() throws IOException {
-    doTestScores(2);
+    doTestScores(1);
     doTestScores(Integer.MAX_VALUE);
   }
 
@@ -195,10 +204,10 @@ public class TestSynonymQuery extends LuceneTestCase {
         new TopScoreDocCollectorManager(
             Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, collectorManager);
-    if (topDocs.totalHits.value < totalHitsThreshold) {
+    if (topDocs.totalHits.value() < totalHitsThreshold) {
       assertEquals(new TotalHits(11, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
     } else {
-      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
     }
     // All docs must have the same score
     for (int i = 0; i < topDocs.scoreDocs.length; ++i) {
@@ -211,7 +220,7 @@ public class TestSynonymQuery extends LuceneTestCase {
   }
 
   public void testBoosts() throws IOException {
-    doTestBoosts(2);
+    doTestBoosts(1);
     doTestBoosts(Integer.MAX_VALUE);
   }
 
@@ -254,11 +263,11 @@ public class TestSynonymQuery extends LuceneTestCase {
         new TopScoreDocCollectorManager(
             Math.min(reader.numDocs(), totalHitsThreshold), totalHitsThreshold);
     TopDocs topDocs = searcher.search(query, collectorManager);
-    if (topDocs.totalHits.value < totalHitsThreshold) {
-      assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
-      assertEquals(22, topDocs.totalHits.value);
+    if (topDocs.totalHits.value() < totalHitsThreshold) {
+      assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
+      assertEquals(22, topDocs.totalHits.value());
     } else {
-      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+      assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
     }
     // All docs must have the same score
     for (int i = 0; i < topDocs.scoreDocs.length; ++i) {

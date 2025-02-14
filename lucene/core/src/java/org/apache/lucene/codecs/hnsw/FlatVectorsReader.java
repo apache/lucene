@@ -17,12 +17,11 @@
 
 package org.apache.lucene.codecs.hnsw;
 
-import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**
@@ -39,7 +38,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  *
  * @lucene.experimental
  */
-public abstract class FlatVectorsReader implements Closeable, Accountable {
+public abstract class FlatVectorsReader extends KnnVectorsReader implements Accountable {
 
   /** Scorer for flat vectors */
   protected final FlatVectorsScorer vectorScorer;
@@ -54,6 +53,18 @@ public abstract class FlatVectorsReader implements Closeable, Accountable {
    */
   public FlatVectorsScorer getFlatVectorScorer() {
     return vectorScorer;
+  }
+
+  @Override
+  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+      throws IOException {
+    // don't scan stored field data. If we didn't index it, produce no search results
+  }
+
+  @Override
+  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+      throws IOException {
+    // don't scan stored field data. If we didn't index it, produce no search results
   }
 
   /**
@@ -79,26 +90,13 @@ public abstract class FlatVectorsReader implements Closeable, Accountable {
       throws IOException;
 
   /**
-   * Checks consistency of this reader.
+   * Returns an instance optimized for merging. This instance may only be consumed in the thread
+   * that called {@link #getMergeInstance()}.
    *
-   * <p>Note that this may be costly in terms of I/O, e.g. may involve computing a checksum value
-   * against large data files.
-   *
-   * @lucene.internal
+   * <p>The default implementation returns {@code this}
    */
-  public abstract void checkIntegrity() throws IOException;
-
-  /**
-   * Returns the {@link FloatVectorValues} for the given {@code field}. The behavior is undefined if
-   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
-   * never {@code null}.
-   */
-  public abstract FloatVectorValues getFloatVectorValues(String field) throws IOException;
-
-  /**
-   * Returns the {@link ByteVectorValues} for the given {@code field}. The behavior is undefined if
-   * the given field doesn't have KNN vectors enabled on its {@link FieldInfo}. The return value is
-   * never {@code null}.
-   */
-  public abstract ByteVectorValues getByteVectorValues(String field) throws IOException;
+  @Override
+  public FlatVectorsReader getMergeInstance() {
+    return this;
+  }
 }

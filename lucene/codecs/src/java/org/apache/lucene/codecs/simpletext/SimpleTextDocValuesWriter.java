@@ -46,8 +46,13 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
   static final BytesRef END = new BytesRef("END");
   static final BytesRef FIELD = new BytesRef("field ");
   static final BytesRef TYPE = new BytesRef("  type ");
+  static final BytesRef DOCCOUNT = new BytesRef("  doccount ");
   // used for numerics
-  static final BytesRef MINVALUE = new BytesRef("  minvalue ");
+  static final BytesRef ORIGIN = new BytesRef("  origin "); // for deltas
+
+  static final BytesRef MINVALUE = new BytesRef("  minalue ");
+  static final BytesRef MAXVALUE = new BytesRef("  maxvalue ");
+
   static final BytesRef PATTERN = new BytesRef("  pattern ");
   // used for bytes
   static final BytesRef LENGTH = new BytesRef("length ");
@@ -97,13 +102,27 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       maxValue = Math.max(maxValue, v);
       numValues++;
     }
+
+    // write absolute min and max for skipper
+    SimpleTextUtil.write(data, MINVALUE);
+    SimpleTextUtil.write(data, Long.toString(minValue), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    SimpleTextUtil.write(data, MAXVALUE);
+    SimpleTextUtil.write(data, Long.toString(maxValue), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    SimpleTextUtil.write(data, DOCCOUNT);
+    SimpleTextUtil.write(data, Integer.toString(numValues), scratch);
+    SimpleTextUtil.writeNewline(data);
+
     if (numValues != numDocs) {
       minValue = Math.min(minValue, 0);
       maxValue = Math.max(maxValue, 0);
     }
 
     // write our minimum value to the .dat, all entries are deltas from that
-    SimpleTextUtil.write(data, MINVALUE);
+    SimpleTextUtil.write(data, ORIGIN);
     SimpleTextUtil.write(data, Long.toString(minValue), scratch);
     SimpleTextUtil.writeNewline(data);
 
@@ -161,6 +180,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
   public void addBinaryField(FieldInfo field, DocValuesProducer valuesProducer) throws IOException {
     assert fieldSeen(field.name);
     assert field.getDocValuesType() == DocValuesType.BINARY;
+    writeFieldEntry(field, DocValuesType.BINARY);
     doAddBinaryField(field, valuesProducer);
   }
 
@@ -168,10 +188,15 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       throws IOException {
     int maxLength = 0;
     BinaryDocValues values = valuesProducer.getBinary(field);
+    int docCount = 0;
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      ++docCount;
       maxLength = Math.max(maxLength, values.binaryValue().toString().length());
     }
-    writeFieldEntry(field, DocValuesType.BINARY);
+
+    SimpleTextUtil.write(data, DOCCOUNT);
+    SimpleTextUtil.write(data, Integer.toString(docCount), scratch);
+    SimpleTextUtil.writeNewline(data);
 
     // write maxLength
     SimpleTextUtil.write(data, MAXLENGTH);
@@ -231,6 +256,15 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     assert fieldSeen(field.name);
     assert field.getDocValuesType() == DocValuesType.SORTED;
     writeFieldEntry(field, DocValuesType.SORTED);
+
+    int docCount = 0;
+    SortedDocValues values = valuesProducer.getSorted(field);
+    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      ++docCount;
+    }
+    SimpleTextUtil.write(data, DOCCOUNT);
+    SimpleTextUtil.write(data, Integer.toString(docCount), scratch);
+    SimpleTextUtil.writeNewline(data);
 
     int valueCount = 0;
     int maxLength = -1;
@@ -301,7 +335,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
 
     assert valuesSeen == valueCount;
 
-    SortedDocValues values = valuesProducer.getSorted(field);
+    values = valuesProducer.getSorted(field);
     for (int i = 0; i < numDocs; ++i) {
       if (values.docID() < i) {
         values.nextDoc();
@@ -321,6 +355,28 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
       throws IOException {
     assert fieldSeen(field.name);
     assert field.getDocValuesType() == DocValuesType.SORTED_NUMERIC;
+    writeFieldEntry(field, DocValuesType.SORTED_NUMERIC);
+
+    long minValue = Long.MAX_VALUE;
+    long maxValue = Long.MIN_VALUE;
+    SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
+    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      for (int i = 0; i < values.docValueCount(); ++i) {
+        long v = values.nextValue();
+        minValue = Math.min(minValue, v);
+        maxValue = Math.max(maxValue, v);
+      }
+    }
+
+    // write absolute min and max for skipper
+    SimpleTextUtil.write(data, MINVALUE);
+    SimpleTextUtil.write(data, Long.toString(minValue), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    SimpleTextUtil.write(data, MAXVALUE);
+    SimpleTextUtil.write(data, Long.toString(maxValue), scratch);
+    SimpleTextUtil.writeNewline(data);
+
     doAddBinaryField(
         field,
         new EmptyDocValuesProducer() {
@@ -395,6 +451,15 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     assert field.getDocValuesType() == DocValuesType.SORTED_SET;
     writeFieldEntry(field, DocValuesType.SORTED_SET);
 
+    int docCount = 0;
+    SortedSetDocValues values = valuesProducer.getSortedSet(field);
+    for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      ++docCount;
+    }
+    SimpleTextUtil.write(data, DOCCOUNT);
+    SimpleTextUtil.write(data, Integer.toString(docCount), scratch);
+    SimpleTextUtil.writeNewline(data);
+
     long valueCount = 0;
     int maxLength = 0;
     TermsEnum terms = valuesProducer.getSortedSet(field).termsEnum();
@@ -430,7 +495,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     // length
     int maxOrdListLength = 0;
     StringBuilder sb2 = new StringBuilder();
-    SortedSetDocValues values = valuesProducer.getSortedSet(field);
+    values = valuesProducer.getSortedSet(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       sb2.setLength(0);
       for (int i = 0; i < values.docValueCount(); i++) {

@@ -19,7 +19,7 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
@@ -46,30 +46,24 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
   }
 
   @Override
-  protected HnswBuilder createBuilder(DocIdSetIterator mergedVectorIterator, int maxOrd)
+  protected HnswBuilder createBuilder(KnnVectorValues mergedVectorValues, int maxOrd)
       throws IOException {
+    OnHeapHnswGraph graph;
+    BitSet initializedNodes = null;
+
     if (initReader == null) {
-      return new HnswConcurrentMergeBuilder(
-          taskExecutor,
-          numWorker,
-          scorerSupplier,
-          M,
-          beamWidth,
-          new OnHeapHnswGraph(M, maxOrd),
-          null);
+      graph = new OnHeapHnswGraph(M, maxOrd);
+    } else {
+      HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
+      if (initializerGraph.size() == 0) {
+        graph = new OnHeapHnswGraph(M, maxOrd);
+      } else {
+        initializedNodes = new FixedBitSet(maxOrd);
+        int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorValues, initializedNodes);
+        graph = InitializedHnswGraphBuilder.initGraph(initializerGraph, oldToNewOrdinalMap, maxOrd);
+      }
     }
-
-    HnswGraph initializerGraph = ((HnswGraphProvider) initReader).getGraph(fieldInfo.name);
-    BitSet initializedNodes = new FixedBitSet(maxOrd);
-    int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorIterator, initializedNodes);
-
     return new HnswConcurrentMergeBuilder(
-        taskExecutor,
-        numWorker,
-        scorerSupplier,
-        M,
-        beamWidth,
-        InitializedHnswGraphBuilder.initGraph(M, initializerGraph, oldToNewOrdinalMap, maxOrd),
-        initializedNodes);
+        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes);
   }
 }

@@ -106,6 +106,7 @@ public class TestCodecs extends LuceneTestCase {
                     storePayloads,
                     indexOptions,
                     DocValuesType.NONE,
+                    DocValuesSkipIndexType.NONE,
                     -1,
                     new HashMap<>(),
                     0,

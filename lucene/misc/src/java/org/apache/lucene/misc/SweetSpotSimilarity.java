@@ -45,8 +45,14 @@ public class SweetSpotSimilarity extends ClassicSimilarity {
   private double tf_hyper_base = 1.3d;
   private float tf_hyper_xoffset = 10.0f;
 
+  /** Default constructor: parameter-free */
   public SweetSpotSimilarity() {
     super();
+  }
+
+  /** Primary constructor. */
+  public SweetSpotSimilarity(boolean discountOverlaps) {
+    super(discountOverlaps);
   }
 
   /**
@@ -82,11 +88,10 @@ public class SweetSpotSimilarity extends ClassicSimilarity {
    *
    * @see #lengthNorm
    */
-  public void setLengthNormFactors(int min, int max, float steepness, boolean discountOverlaps) {
+  public void setLengthNormFactors(int min, int max, float steepness) {
     this.ln_min = min;
     this.ln_max = max;
     this.ln_steep = steepness;
-    this.discountOverlaps = discountOverlaps;
   }
 
   /**

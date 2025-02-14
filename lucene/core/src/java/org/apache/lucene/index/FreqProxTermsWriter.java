@@ -70,9 +70,8 @@ final class FreqProxTermsWriter extends TermsHash {
                   state.liveDocs = new FixedBitSet(state.segmentInfo.maxDoc());
                   state.liveDocs.set(0, state.segmentInfo.maxDoc());
                 }
-                if (state.liveDocs.get(doc)) {
+                if (state.liveDocs.getAndClear(doc)) {
                   state.delCountOnFlush++;
-                  state.liveDocs.clear(doc);
                 }
               }
             }

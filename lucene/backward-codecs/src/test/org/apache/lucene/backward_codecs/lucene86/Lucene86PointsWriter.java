@@ -183,7 +183,7 @@ public class Lucene86PointsWriter extends PointsWriter {
 
   @Override
   public void merge(MergeState mergeState) throws IOException {
-    /**
+    /*
      * If indexSort is activated and some of the leaves are not sorted the next test will catch that
      * and the non-optimized merge will run. If the readers are all sorted then it's safe to perform
      * a bulk merge of the points.
@@ -249,7 +249,7 @@ public class Lucene86PointsWriter extends PointsWriter {
 
                 // we confirmed this up above
                 assert reader instanceof Lucene86PointsReader;
-                Lucene86PointsReader reader60 = (Lucene86PointsReader) reader;
+                Lucene86PointsReader reader86 = (Lucene86PointsReader) reader;
 
                 // NOTE: we cannot just use the merged fieldInfo.number (instead of resolving to
                 // this
@@ -259,7 +259,7 @@ public class Lucene86PointsWriter extends PointsWriter {
                 FieldInfos readerFieldInfos = mergeState.fieldInfos[i];
                 FieldInfo readerFieldInfo = readerFieldInfos.fieldInfo(fieldInfo.name);
                 if (readerFieldInfo != null && readerFieldInfo.getPointDimensionCount() > 0) {
-                  PointValues aPointValues = reader60.readers.get(readerFieldInfo.number);
+                  PointValues aPointValues = reader86.getValues(readerFieldInfo.name);
                   if (aPointValues != null) {
                     pointValues.add(aPointValues);
                     docMaps.add(mergeState.docMaps[i]);

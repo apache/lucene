@@ -77,6 +77,11 @@ public class TestAllDictionaries extends LuceneTestCase {
         protected boolean tolerateAffixRuleCountMismatches() {
           return true;
         }
+
+        @Override
+        protected boolean tolerateRepRuleCountMismatches() {
+          return true;
+        }
       };
     }
   }

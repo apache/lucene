@@ -21,8 +21,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -39,6 +37,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -61,7 +60,7 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
 public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
 
   private final FieldInfos fieldInfos;
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
   private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
@@ -161,7 +160,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
       }
       FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
@@ -238,18 +237,27 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     CodecUtil.checksumEntireFile(vectorIndex);
   }
 
-  @Override
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    if (fieldEntry.vectorEncoding != expectedEncoding) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
               + fieldEntry.vectorEncoding
               + " expected: "
-              + VectorEncoding.FLOAT32);
+              + expectedEncoding);
     }
+    return fieldEntry;
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
     return OffHeapFloatVectorValues.load(
         fieldEntry.similarityFunction,
         defaultFlatVectorScorer,
@@ -263,16 +271,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
-      throw new IllegalArgumentException(
-          "field=\""
-              + field
-              + "\" is encoded as: "
-              + fieldEntry.vectorEncoding
-              + " expected: "
-              + VectorEncoding.BYTE);
-    }
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     return OffHeapByteVectorValues.load(
         fieldEntry.similarityFunction,
         defaultFlatVectorScorer,
@@ -287,11 +286,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.FLOAT32) {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT32);
+    if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
 
@@ -318,11 +314,8 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
-    if (fieldEntry.size() == 0
-        || knnCollector.k() == 0
-        || fieldEntry.vectorEncoding != VectorEncoding.BYTE) {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
+    if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
 
@@ -349,12 +342,12 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   /** Get knn graph values; used for testing */
   @Override
   public HnswGraph getGraph(String field) throws IOException {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    if (info == null) {
-      throw new IllegalArgumentException("No such field '" + field + "'");
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry entry;
+    if (info == null || (entry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    FieldEntry entry = fields.get(field);
-    if (entry != null && entry.vectorIndexLength > 0) {
+    if (entry.vectorIndexLength > 0) {
       return getGraph(entry);
     } else {
       return HnswGraph.EMPTY;
@@ -472,6 +465,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     int arc;
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
+    private final int maxConn;
     // Allocated to be M*2 to track the current neighbors being explored
     private int[] currentNeighborsBuffer;
 
@@ -487,6 +481,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
       this.graphLevelNodeOffsets =
           DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
       this.currentNeighborsBuffer = new int[entry.M * 2];
+      this.maxConn = entry.M;
       graphLevelNodeIndexOffsets = new long[numLevels];
       graphLevelNodeIndexOffsets[0] = 0;
       for (int i = 1; i < numLevels; i++) {
@@ -542,6 +537,16 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     @Override
     public int entryNode() throws IOException {
       return entryNode;
+    }
+
+    @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
+    public int maxConn() {
+      return maxConn;
     }
 
     @Override

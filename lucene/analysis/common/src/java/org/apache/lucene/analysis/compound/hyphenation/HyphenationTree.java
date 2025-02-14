@@ -225,7 +225,7 @@ public class HyphenationTree extends TernaryTree implements PatternConsumer {
           } else {
             q = lo[q];
 
-            /**
+            /*
              * actually the code should be: q = sc[q] < 0 ? hi[q] : lo[q]; but java chars are
              * unsigned
              */

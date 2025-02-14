@@ -1503,7 +1503,7 @@ public class TestIndexWriter extends LuceneTestCase {
     DirectoryReader r0 = DirectoryReader.open(dir);
     for (LeafReaderContext ctx : r0.leaves()) {
       SegmentReader sr = (SegmentReader) ctx.reader();
-      assertFalse(sr.getFieldInfos().hasVectors());
+      assertFalse(sr.getFieldInfos().hasTermVectors());
     }
 
     r0.close();
@@ -1930,7 +1930,7 @@ public class TestIndexWriter extends LuceneTestCase {
     builder.add(new Term("body", "test"), 2);
     PhraseQuery pq = builder.build();
     // body:"just ? test"
-    assertEquals(1, is.search(pq, 5).totalHits.value);
+    assertEquals(1, is.search(pq, 5).totalHits.value());
     ir.close();
     dir.close();
   }
@@ -1963,7 +1963,7 @@ public class TestIndexWriter extends LuceneTestCase {
     builder.add(new Term("body", "test"), 3);
     PhraseQuery pq = builder.build();
     // body:"just ? ? test"
-    assertEquals(1, is.search(pq, 5).totalHits.value);
+    assertEquals(1, is.search(pq, 5).totalHits.value());
     ir.close();
     dir.close();
   }
@@ -3484,7 +3484,7 @@ public class TestIndexWriter extends LuceneTestCase {
     assertEquals(2, reader.docFreq(new Term("id", "1")));
     IndexSearcher searcher = new IndexSearcher(reader);
     TopDocs topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     Document document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("2", document.get("version"));
 
@@ -3500,7 +3500,7 @@ public class TestIndexWriter extends LuceneTestCase {
     oldReader.close();
     searcher = new IndexSearcher(reader);
     topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("3", document.get("version"));
 
@@ -3513,7 +3513,7 @@ public class TestIndexWriter extends LuceneTestCase {
     oldReader.close();
     searcher = new IndexSearcher(reader);
     topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
     int numSoftDeleted = 0;
     for (SegmentCommitInfo info : writer.cloneSegmentInfos()) {
       numSoftDeleted += info.getSoftDelCount();
@@ -3650,10 +3650,10 @@ public class TestIndexWriter extends LuceneTestCase {
     for (String id : ids) {
       TopDocs topDocs = searcher.search(new TermQuery(new Term("id", id)), 10);
       if (updateSeveralDocs) {
-        assertEquals(2, topDocs.totalHits.value);
+        assertEquals(2, topDocs.totalHits.value());
         assertEquals(Math.abs(topDocs.scoreDocs[0].doc - topDocs.scoreDocs[1].doc), 1);
       } else {
-        assertEquals(1, topDocs.totalHits.value);
+        assertEquals(1, topDocs.totalHits.value());
       }
     }
     if (mixDeletes == false) {
@@ -4442,7 +4442,10 @@ public class TestIndexWriter extends LuceneTestCase {
                       try {
                         assertEquals(
                             1,
-                            acquire.search(new TermQuery(new Term("id", id)), 10).totalHits.value);
+                            acquire
+                                .search(new TermQuery(new Term("id", id)), 10)
+                                .totalHits
+                                .value());
                       } finally {
                         manager.release(acquire);
                       }
@@ -4973,6 +4976,64 @@ public class TestIndexWriter extends LuceneTestCase {
       iwc2.setParentField("parent");
       try (IndexWriter writer = new IndexWriter(dir, iwc2)) {
         writer.commit();
+      }
+    }
+  }
+
+  public void testDocValuesMixedSkippingIndex() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+        Document doc1 = new Document();
+        doc1.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
+        writer.addDocument(doc1);
+
+        Document doc2 = new Document();
+        doc2.add(new SortedNumericDocValuesField("test", random().nextLong()));
+        IllegalArgumentException ex =
+            expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
+        ex.printStackTrace();
+        assertEquals(
+            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index type: expected 'RANGE', but it has 'NONE'.",
+            ex.getMessage());
+      }
+    }
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+        Document doc1 = new Document();
+        doc1.add(new SortedSetDocValuesField("test", TestUtil.randomBinaryTerm(random())));
+        writer.addDocument(doc1);
+
+        Document doc2 = new Document();
+        doc2.add(SortedSetDocValuesField.indexedField("test", TestUtil.randomBinaryTerm(random())));
+        IllegalArgumentException ex =
+            expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
+        assertEquals(
+            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index type: expected 'NONE', but it has 'RANGE'.",
+            ex.getMessage());
+      }
+    }
+  }
+
+  public void testDocValuesSkippingIndexWithoutDocValues() throws Exception {
+    for (DocValuesType docValuesType :
+        new DocValuesType[] {DocValuesType.NONE, DocValuesType.BINARY}) {
+      FieldType fieldType = new FieldType();
+      fieldType.setStored(true);
+      fieldType.setDocValuesType(docValuesType);
+      fieldType.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
+      fieldType.freeze();
+      try (Directory dir = newMockDirectory()) {
+        try (IndexWriter writer =
+            new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+          Document doc1 = new Document();
+          doc1.add(new Field("test", new byte[10], fieldType));
+          IllegalArgumentException ex =
+              expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
+          assertTrue(
+              ex.getMessage().startsWith("field 'test' cannot have docValuesSkipIndexType=RANGE"));
+        }
       }
     }
   }

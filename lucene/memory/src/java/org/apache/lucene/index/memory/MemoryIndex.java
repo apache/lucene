@@ -36,15 +36,19 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
@@ -281,7 +285,7 @@ public class MemoryIndex {
       /**
        * Returns the offset of the currently written slice. The returned value should be used as the
        * end offset to initialize a {@link SliceReader} once this slice is fully written or to reset
-       * the this writer if another slice needs to be written.
+       * the writer if another slice needs to be written.
        */
       public int getCurrentOffset() {
         return offset;
@@ -636,6 +640,10 @@ public class MemoryIndex {
     if (field.fieldType().stored()) {
       storeValues(info, field);
     }
+
+    if (field.fieldType().vectorDimension() > 0) {
+      storeVectorValues(info, field);
+    }
   }
 
   /**
@@ -728,6 +736,7 @@ public class MemoryIndex {
         storePayloads,
         indexOptions,
         fieldType.docValuesType(),
+        fieldType.docValuesSkipIndexType(),
         -1,
         Collections.emptyMap(),
         fieldType.pointDimensionCount(),
@@ -746,6 +755,56 @@ public class MemoryIndex {
     }
     info.pointValues = ArrayUtil.grow(info.pointValues, info.pointValuesCount + 1);
     info.pointValues[info.pointValuesCount++] = BytesRef.deepCopyOf(pointValue);
+  }
+
+  private void storeVectorValues(Info info, IndexableField vectorField) {
+    assert vectorField instanceof KnnFloatVectorField || vectorField instanceof KnnByteVectorField;
+    switch (info.fieldInfo.getVectorEncoding()) {
+      case BYTE -> {
+        if (vectorField instanceof KnnByteVectorField byteVectorField) {
+          if (info.byteVectorCount == 1) {
+            throw new IllegalArgumentException(
+                "Only one value per field allowed for byte vector field ["
+                    + vectorField.name()
+                    + "]");
+          }
+          info.byteVectorCount++;
+          if (info.byteVectorValues == null) {
+            info.byteVectorValues = new byte[1][];
+          }
+          info.byteVectorValues[0] =
+              ArrayUtil.copyOfSubArray(
+                  byteVectorField.vectorValue(), 0, info.fieldInfo.getVectorDimension());
+          return;
+        }
+        throw new IllegalArgumentException(
+            "Field ["
+                + vectorField.name()
+                + "] is not a byte vector field, but the field info is configured for byte vectors");
+      }
+      case FLOAT32 -> {
+        if (vectorField instanceof KnnFloatVectorField floatVectorField) {
+          if (info.floatVectorCount == 1) {
+            throw new IllegalArgumentException(
+                "Only one value per field allowed for float vector field ["
+                    + vectorField.name()
+                    + "]");
+          }
+          info.floatVectorCount++;
+          if (info.floatVectorValues == null) {
+            info.floatVectorValues = new float[1][];
+          }
+          info.floatVectorValues[0] =
+              ArrayUtil.copyOfSubArray(
+                  floatVectorField.vectorValue(), 0, info.fieldInfo.getVectorDimension());
+          return;
+        }
+        throw new IllegalArgumentException(
+            "Field ["
+                + vectorField.name()
+                + "] is not a float vector field, but the field info is configured for float vectors");
+      }
+    }
   }
 
   private void storeValues(Info info, IndexableField field) {
@@ -777,11 +836,12 @@ public class MemoryIndex {
           new FieldInfo(
               info.fieldInfo.name,
               info.fieldInfo.number,
-              info.fieldInfo.hasVectors(),
+              info.fieldInfo.hasTermVectors(),
               info.fieldInfo.hasPayloads(),
               info.fieldInfo.hasPayloads(),
               info.fieldInfo.getIndexOptions(),
               docValuesType,
+              DocValuesSkipIndexType.NONE,
               -1,
               info.fieldInfo.attributes(),
               info.fieldInfo.getPointDimensionCount(),
@@ -1145,6 +1205,18 @@ public class MemoryIndex {
     private List<Object> storedValues;
 
     private BytesRef[] pointValues;
+
+    /** Number of float vectors added for this field */
+    private int floatVectorCount;
+
+    /** the float vectors added for this field */
+    private float[][] floatVectorValues;
+
+    /** Number of byte vectors added for this field */
+    private int byteVectorCount;
+
+    /** the byte vectors added for this field */
+    private byte[][] byteVectorValues;
 
     private byte[] minPackedValue;
 
@@ -1623,6 +1695,12 @@ public class MemoryIndex {
     }
 
     @Override
+    public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+      // Skipping isn't needed on a 1-doc index.
+      return null;
+    }
+
+    @Override
     public PointValues getPointValues(String fieldName) {
       Info info = fields.get(fieldName);
       if (info == null || info.pointValues == null) {
@@ -1633,12 +1711,20 @@ public class MemoryIndex {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String fieldName) {
-      return null;
+      Info info = fields.get(fieldName);
+      if (info == null || info.floatVectorValues == null) {
+        return null;
+      }
+      return new MemoryFloatVectorValues(info);
     }
 
     @Override
     public ByteVectorValues getByteVectorValues(String fieldName) {
-      return null;
+      Info info = fields.get(fieldName);
+      if (info == null || info.byteVectorValues == null) {
+        return null;
+      }
+      return new MemoryByteVectorValues(info);
     }
 
     @Override
@@ -2194,6 +2280,134 @@ public class MemoryIndex {
     public int[] clear() {
       start = end = null;
       return super.clear();
+    }
+  }
+
+  private static final class MemoryFloatVectorValues extends FloatVectorValues {
+    private final Info info;
+
+    MemoryFloatVectorValues(Info info) {
+      this.info = info;
+    }
+
+    @Override
+    public int dimension() {
+      return info.fieldInfo.getVectorDimension();
+    }
+
+    @Override
+    public int size() {
+      return info.floatVectorCount;
+    }
+
+    @Override
+    public float[] vectorValue(int ord) {
+      if (ord == 0) {
+        return info.floatVectorValues[0];
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
+    }
+
+    @Override
+    public VectorScorer scorer(float[] query) {
+      if (query.length != info.fieldInfo.getVectorDimension()) {
+        throw new IllegalArgumentException(
+            "query vector dimension "
+                + query.length
+                + " does not match field dimension "
+                + info.fieldInfo.getVectorDimension());
+      }
+      MemoryFloatVectorValues vectorValues = new MemoryFloatVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          assert iterator.docID() == 0;
+          return info.fieldInfo
+              .getVectorSimilarityFunction()
+              .compare(vectorValues.vectorValue(0), query);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+      };
+    }
+
+    @Override
+    public MemoryFloatVectorValues copy() {
+      return this;
+    }
+  }
+
+  private static final class MemoryByteVectorValues extends ByteVectorValues {
+    private final Info info;
+
+    MemoryByteVectorValues(Info info) {
+      this.info = info;
+    }
+
+    @Override
+    public int dimension() {
+      return info.fieldInfo.getVectorDimension();
+    }
+
+    @Override
+    public int size() {
+      return info.byteVectorCount;
+    }
+
+    @Override
+    public byte[] vectorValue(int ord) {
+      if (ord == 0) {
+        return info.byteVectorValues[0];
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
+    }
+
+    @Override
+    public VectorScorer scorer(byte[] query) {
+      if (query.length != info.fieldInfo.getVectorDimension()) {
+        throw new IllegalArgumentException(
+            "query vector dimension "
+                + query.length
+                + " does not match field dimension "
+                + info.fieldInfo.getVectorDimension());
+      }
+      MemoryByteVectorValues vectorValues = new MemoryByteVectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
+      return new VectorScorer() {
+        @Override
+        public float score() {
+          assert iterator.docID() == 0;
+          return info.fieldInfo
+              .getVectorSimilarityFunction()
+              .compare(vectorValues.vectorValue(0), query);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+      };
+    }
+
+    @Override
+    public MemoryByteVectorValues copy() {
+      return this;
     }
   }
 }

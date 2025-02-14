@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
@@ -85,33 +83,15 @@ public class TestKnnGraph extends LuceneTestCase {
     vectorEncoding = randomVectorEncoding();
     boolean quantized = randomBoolean();
     codec =
-        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          @Override
-          public KnnVectorsFormat knnVectorsFormat() {
-            return new PerFieldKnnVectorsFormat() {
-              @Override
-              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                return quantized
-                    ? new Lucene99HnswScalarQuantizedVectorsFormat(
-                        M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH)
-                    : new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
-              }
-            };
-          }
-        };
+        TestUtil.alwaysKnnVectorsFormat(
+            quantized
+                ? new Lucene99HnswScalarQuantizedVectorsFormat(
+                    M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH)
+                : new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH));
 
     float32Codec =
-        new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          @Override
-          public KnnVectorsFormat knnVectorsFormat() {
-            return new PerFieldKnnVectorsFormat() {
-              @Override
-              public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                return new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH);
-              }
-            };
-          }
-        };
+        TestUtil.alwaysKnnVectorsFormat(
+            new Lucene99HnswVectorsFormat(M, HnswGraphBuilder.DEFAULT_BEAM_WIDTH));
   }
 
   private VectorEncoding randomVectorEncoding() {
@@ -413,11 +393,13 @@ public class TestKnnGraph extends LuceneTestCase {
         // stored vector values are the same as original
         int nextDocWithVectors = 0;
         StoredFields storedFields = reader.storedFields();
+        KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
         for (int i = 0; i < reader.maxDoc(); i++) {
-          nextDocWithVectors = vectorValues.advance(i);
+          nextDocWithVectors = iterator.advance(i);
           while (i < nextDocWithVectors && i < reader.maxDoc()) {
             int id = Integer.parseInt(storedFields.document(i).get("id"));
-            assertNull("document " + id + " has no vector, but was expected to", values[id]);
+            assertNull(
+                "document " + id + ", expected to have no vector, does have one", values[id]);
             ++i;
           }
           if (nextDocWithVectors == NO_MORE_DOCS) {
@@ -425,7 +407,7 @@ public class TestKnnGraph extends LuceneTestCase {
           }
           int id = Integer.parseInt(storedFields.document(i).get("id"));
           // documents with KnnGraphValues have the expected vectors
-          float[] scratch = vectorValues.vectorValue();
+          float[] scratch = vectorValues.vectorValue(iterator.index());
           assertArrayEquals(
               "vector did not match for doc " + i + ", id=" + id + ": " + Arrays.toString(scratch),
               values[id],
@@ -435,9 +417,9 @@ public class TestKnnGraph extends LuceneTestCase {
         }
         // if IndexDisi.doc == NO_MORE_DOCS, we should not call IndexDisi.nextDoc()
         if (nextDocWithVectors != NO_MORE_DOCS) {
-          assertEquals(NO_MORE_DOCS, vectorValues.nextDoc());
+          assertEquals(NO_MORE_DOCS, iterator.nextDoc());
         } else {
-          assertEquals(NO_MORE_DOCS, vectorValues.docID());
+          assertEquals(NO_MORE_DOCS, iterator.docID());
         }
 
         // assert graph values:
@@ -560,7 +542,6 @@ public class TestKnnGraph extends LuceneTestCase {
     String idString = Integer.toString(id);
     doc.add(new StringField("id", idString, Field.Store.YES));
     doc.add(new SortedDocValuesField("id", new BytesRef(idString)));
-    // XSSystem.out.println("add " + idString + " " + Arrays.toString(vector));
     iw.updateDocument(new Term("id", idString), doc);
   }
 }

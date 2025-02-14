@@ -276,4 +276,112 @@ public class TestVectorUtil extends LuceneTestCase {
     u[1] = -v[0];
     assertEquals(0, VectorUtil.cosine(u, v), DELTA);
   }
+
+  interface ToIntBiFunction {
+    int apply(byte[] a, byte[] b);
+  }
+
+  public void testBasicXorBitCount() {
+    testBasicXorBitCountImpl(VectorUtil::xorBitCount);
+    testBasicXorBitCountImpl(VectorUtil::xorBitCountInt);
+    testBasicXorBitCountImpl(VectorUtil::xorBitCountLong);
+    // test sanity
+    testBasicXorBitCountImpl(TestVectorUtil::xorBitCount);
+  }
+
+  void testBasicXorBitCountImpl(ToIntBiFunction xorBitCount) {
+    assertEquals(0, xorBitCount.apply(new byte[] {1}, new byte[] {1}));
+    assertEquals(0, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {1, 2, 3}));
+    assertEquals(1, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {0, 2, 3}));
+    assertEquals(2, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {0, 6, 3}));
+    assertEquals(3, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {0, 6, 7}));
+    assertEquals(4, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {2, 6, 7}));
+
+    // 32-bit / int boundary
+    assertEquals(0, xorBitCount.apply(new byte[] {1, 2, 3, 4}, new byte[] {1, 2, 3, 4}));
+    assertEquals(1, xorBitCount.apply(new byte[] {1, 2, 3, 4}, new byte[] {0, 2, 3, 4}));
+    assertEquals(0, xorBitCount.apply(new byte[] {1, 2, 3, 4, 5}, new byte[] {1, 2, 3, 4, 5}));
+    assertEquals(1, xorBitCount.apply(new byte[] {1, 2, 3, 4, 5}, new byte[] {0, 2, 3, 4, 5}));
+
+    // 64-bit / long boundary
+    assertEquals(
+        0,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8}, new byte[] {1, 2, 3, 4, 5, 6, 7, 8}));
+    assertEquals(
+        1,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8}, new byte[] {0, 2, 3, 4, 5, 6, 7, 8}));
+
+    assertEquals(
+        0,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9}, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9}));
+    assertEquals(
+        1,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9}, new byte[] {0, 2, 3, 4, 5, 6, 7, 8, 9}));
+  }
+
+  public void testXorBitCount() {
+    int iterations = atLeast(100);
+    for (int i = 0; i < iterations; i++) {
+      int size = random().nextInt(1024);
+      byte[] a = new byte[size];
+      byte[] b = new byte[size];
+      random().nextBytes(a);
+      random().nextBytes(b);
+
+      int expected = xorBitCount(a, b);
+      assertEquals(expected, VectorUtil.xorBitCount(a, b));
+      assertEquals(expected, VectorUtil.xorBitCountInt(a, b));
+      assertEquals(expected, VectorUtil.xorBitCountLong(a, b));
+    }
+  }
+
+  private static int xorBitCount(byte[] a, byte[] b) {
+    int res = 0;
+    for (int i = 0; i < a.length; i++) {
+      byte x = a[i];
+      byte y = b[i];
+      for (int j = 0; j < Byte.SIZE; j++) {
+        if (x == y) break;
+        if ((x & 0x01) != (y & 0x01)) res++;
+        x = (byte) ((x & 0xFF) >> 1);
+        y = (byte) ((y & 0xFF) >> 1);
+      }
+    }
+    return res;
+  }
+
+  public void testFindNextGEQ() {
+    int padding = TestUtil.nextInt(random(), 0, 5);
+    int[] values = new int[128 + padding];
+    int v = 0;
+    for (int i = 0; i < 128; ++i) {
+      v += TestUtil.nextInt(random(), 1, 1000);
+      values[i] = v;
+    }
+
+    // Now duel with slowFindFirstGreater
+    for (int iter = 0; iter < 1_000; ++iter) {
+      int from = TestUtil.nextInt(random(), 0, 127);
+      int target =
+          TestUtil.nextInt(random(), values[from], Math.max(values[from], values[127]))
+              + random().nextInt(10)
+              - 5;
+      assertEquals(
+          slowFindNextGEQ(values, 128, target, from),
+          VectorUtil.findNextGEQ(values, target, from, 128));
+    }
+  }
+
+  private static int slowFindNextGEQ(int[] buffer, int length, int target, int from) {
+    for (int i = from; i < length; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return length;
+  }
 }

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static java.util.Locale.ROOT;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
@@ -24,6 +25,8 @@ import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRO
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -39,6 +42,8 @@ import java.util.stream.IntStream;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -47,8 +52,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
-import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.junit.BeforeClass;
 
 public class TestVectorScorer extends LuceneTestCase {
@@ -103,9 +107,13 @@ public class TestVectorScorer extends LuceneTestCase {
 
               // getRandomVectorScorerSupplier
               var scorer1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-              float expected = scorer1.scorer(idx0).score(idx1);
+              var scorer1idx0 = scorer1.scorer();
+              scorer1idx0.setScoringOrdinal(idx0);
+              float expected = scorer1idx0.score(idx1);
               var scorer2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-              assertEquals(scorer2.scorer(idx0).score(idx1), expected, DELTA);
+              scorer1idx0 = scorer2.scorer();
+              scorer1idx0.setScoringOrdinal(idx0);
+              assertEquals(scorer1idx0.score(idx1), expected, DELTA);
 
               // getRandomVectorScorer
               var scorer3 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
@@ -160,9 +168,13 @@ public class TestVectorScorer extends LuceneTestCase {
 
             // getRandomVectorScorerSupplier
             var scorer1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-            float expected = scorer1.scorer(idx0).score(idx1);
+            var scorer1idx0 = scorer1.scorer();
+            scorer1idx0.setScoringOrdinal(idx0);
+            float expected = scorer1idx0.score(idx1);
             var scorer2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-            assertEquals(scorer2.scorer(idx0).score(idx1), expected, DELTA);
+            scorer1idx0 = scorer2.scorer();
+            scorer1idx0.setScoringOrdinal(idx0);
+            assertEquals(scorer1idx0.score(idx1), expected, DELTA);
 
             // getRandomVectorScorer
             var scorer3 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
@@ -214,9 +226,13 @@ public class TestVectorScorer extends LuceneTestCase {
 
             // getRandomVectorScorerSupplier
             var scorer1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-            float expected = scorer1.scorer(idx0).score(idx1);
+            var scorer1idx0 = scorer1.scorer();
+            scorer1idx0.setScoringOrdinal(idx0);
+            float expected = scorer1idx0.score(idx1);
             var scorer2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-            assertEquals(scorer2.scorer(idx0).score(idx1), expected, DELTA);
+            scorer1idx0 = scorer2.scorer();
+            scorer1idx0.setScoringOrdinal(idx0);
+            assertEquals(scorer1idx0.score(idx1), expected, DELTA);
 
             // getRandomVectorScorer
             var scorer3 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, vectors[idx0]);
@@ -247,14 +263,17 @@ public class TestVectorScorer extends LuceneTestCase {
         for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
           var vectorValues = vectorValues(dims, 4, in, sim);
           var scoreSupplier = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-          var expectedScore1 = scoreSupplier.scorer(0).score(1);
-          var expectedScore2 = scoreSupplier.scorer(2).score(3);
+          var scorer1 = scoreSupplier.scorer();
+          scorer1.setScoringOrdinal(0);
+          var expectedScore1 = scorer1.score(1);
+          scorer1.setScoringOrdinal(2);
+          var expectedScore2 = scorer1.score(3);
 
           var scorer = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
           var tasks =
               List.<Callable<Optional<Throwable>>>of(
-                  new AssertingScoreCallable(scorer.copy().scorer(0), 1, expectedScore1),
-                  new AssertingScoreCallable(scorer.copy().scorer(2), 3, expectedScore2));
+                  new AssertingScoreCallable(scorer.copy().scorer(), 0, 1, expectedScore1),
+                  new AssertingScoreCallable(scorer.copy().scorer(), 2, 3, expectedScore2));
           var executor = Executors.newFixedThreadPool(2, new NamedThreadFactory("copiesThreads"));
           var results = executor.invokeAll(tasks);
           executor.shutdown();
@@ -269,19 +288,13 @@ public class TestVectorScorer extends LuceneTestCase {
   }
 
   // A callable that scores the given ord and scorer and asserts the expected result.
-  static class AssertingScoreCallable implements Callable<Optional<Throwable>> {
-    final RandomVectorScorer scorer;
-    final int ord;
-    final float expectedScore;
-
-    AssertingScoreCallable(RandomVectorScorer scorer, int ord, float expectedScore) {
-      this.scorer = scorer;
-      this.ord = ord;
-      this.expectedScore = expectedScore;
-    }
+  record AssertingScoreCallable(
+      UpdateableRandomVectorScorer scorer, int target, int ord, float expectedScore)
+      implements Callable<Optional<Throwable>> {
 
     @Override
     public Optional<Throwable> call() throws Exception {
+      scorer.setScoringOrdinal(target);
       try {
         for (int i = 0; i < 100; i++) {
           assertEquals(scorer.score(ord), expectedScore, DELTA);
@@ -320,9 +333,13 @@ public class TestVectorScorer extends LuceneTestCase {
 
               // getRandomVectorScorerSupplier
               var scorer1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-              float expected = scorer1.scorer(idx0).score(idx1);
+              var scorer1idx0 = scorer1.scorer();
+              scorer1idx0.setScoringOrdinal(idx0);
+              float expected = scorer1idx0.score(idx1);
               var scorer2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
-              assertEquals(scorer2.scorer(idx0).score(idx1), expected, DELTA);
+              scorer1idx0 = scorer2.scorer();
+              scorer1idx0.setScoringOrdinal(idx0);
+              assertEquals(scorer1idx0.score(idx1), expected, DELTA);
 
               // getRandomVectorScorer
               var query = vector(idx0, dims);
@@ -337,10 +354,65 @@ public class TestVectorScorer extends LuceneTestCase {
     }
   }
 
-  RandomAccessVectorValues vectorValues(
-      int dims, int size, IndexInput in, VectorSimilarityFunction sim) throws IOException {
+  // Tests that the FlatVectorsScorer handles float vectors correctly.
+  public void testWithFloatValues() throws IOException {
+    try (Directory dir = new MMapDirectory(createTempDir("testWithFloatValues"))) {
+      final String fileName = "floatvalues";
+      try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
+        var vec = floatToByteArray(1f); // single vector, with one dimension
+        out.writeBytes(vec, 0, vec.length);
+      }
+
+      try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
+        for (int times = 0; times < TIMES; times++) {
+          for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
+            var vectorValues = floatVectorValues(1, 1, in, sim);
+            assert vectorValues.getEncoding().byteSize == 4;
+
+            var supplier1 = DEFAULT_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
+            var supplier2 = MEMSEG_SCORER.getRandomVectorScorerSupplier(sim, vectorValues);
+            // these assertion assumes that the supplier and scorer's toString will have float
+            // in it, since it's based on float vectors.
+            assertTrue(supplier1.toString().toLowerCase(ROOT).contains("float"));
+            assertTrue(supplier2.toString().toLowerCase(ROOT).contains("float"));
+            assertTrue(supplier1.scorer().toString().toLowerCase(ROOT).contains("float"));
+            assertTrue(supplier2.scorer().toString().toLowerCase(ROOT).contains("float"));
+            var scorer1idx0 = supplier1.scorer();
+            scorer1idx0.setScoringOrdinal(0);
+            float expected = scorer1idx0.score(0);
+            scorer1idx0 = supplier2.scorer();
+            scorer1idx0.setScoringOrdinal(0);
+            assertEquals(scorer1idx0.score(0), expected, DELTA);
+
+            var scorer1 = DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, new float[] {1f});
+            var scorer2 = MEMSEG_SCORER.getRandomVectorScorer(sim, vectorValues, new float[] {1f});
+            assertTrue(scorer1.toString().toLowerCase(ROOT).contains("float"));
+            assertTrue(scorer2.toString().toLowerCase(ROOT).contains("float"));
+            expected = scorer1.score(0);
+            assertEquals(scorer2.score(0), expected, DELTA);
+
+            expectThrows(
+                Throwable.class,
+                () -> DEFAULT_SCORER.getRandomVectorScorer(sim, vectorValues, new byte[] {1}));
+            expectThrows(
+                Throwable.class,
+                () -> MEMSEG_SCORER.getRandomVectorScorer(sim, vectorValues, new byte[] {1}));
+          }
+        }
+      }
+    }
+  }
+
+  KnnVectorValues vectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
+      throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
         dims, size, in.slice("byteValues", 0, in.length()), dims, MEMSEG_SCORER, sim);
+  }
+
+  KnnVectorValues floatVectorValues(int dims, int size, IndexInput in, VectorSimilarityFunction sim)
+      throws IOException {
+    return new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+        dims, size, in.slice("floatValues", 0, in.length()), dims, MEMSEG_SCORER, sim);
   }
 
   // creates the vector based on the given ordinal, which is reproducible given the ord and dims
@@ -361,6 +433,11 @@ public class TestVectorScorer extends LuceneTestCase {
       }
       return baos.toByteArray();
     }
+  }
+
+  /** Converts a float value to a byte array. */
+  public static byte[] floatToByteArray(float value) {
+    return ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putFloat(value).array();
   }
 
   static int randomIntBetween(int minInclusive, int maxInclusive) {

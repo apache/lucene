@@ -241,6 +241,11 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
+      public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
+        return reader.getDocValuesSkipper(field.name);
+      }
+
+      @Override
       public void checkIntegrity() throws IOException {
         // We already checkIntegrity the entire reader up front
       }
@@ -291,6 +296,11 @@ public final class SlowCodecReaderWrapper {
       throw new UncheckedIOException(e);
     }
     return new TermVectorsReader() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        termVectors.prefetch(docID);
+      }
+
       @Override
       public Fields get(int docID) throws IOException {
         return termVectors.get(docID);

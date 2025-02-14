@@ -34,9 +34,7 @@ import org.apache.lucene.util.Constants;
 public record IOContext(
     Context context, MergeInfo mergeInfo, FlushInfo flushInfo, ReadAdvice readAdvice) {
 
-  /**
-   * Context is a enumerator which specifies the context in which the Directory is being used for.
-   */
+  /** Context is an enumerator which specifies the context in which the Directory is being used. */
   public enum Context {
     /** Context for reads and writes that are associated with a merge. */
     MERGE,
@@ -55,7 +53,12 @@ public record IOContext(
    */
   public static final IOContext DEFAULT = new IOContext(Constants.DEFAULT_READADVICE);
 
-  /** A default context for reads with {@link ReadAdvice#SEQUENTIAL}. */
+  /**
+   * A default context for reads with {@link ReadAdvice#SEQUENTIAL}.
+   *
+   * <p>This context should only be used when the read operations will be performed in the same
+   * thread as the thread that opens the underlying storage.
+   */
   public static final IOContext READONCE = new IOContext(ReadAdvice.SEQUENTIAL);
 
   @SuppressWarnings("incomplete-switch")
@@ -63,10 +66,10 @@ public record IOContext(
     Objects.requireNonNull(context, "context must not be null");
     Objects.requireNonNull(readAdvice, "readAdvice must not be null");
     switch (context) {
-      case MERGE -> Objects.requireNonNull(
-          mergeInfo, "mergeInfo must not be null if context is MERGE");
-      case FLUSH -> Objects.requireNonNull(
-          flushInfo, "flushInfo must not be null if context is FLUSH");
+      case MERGE ->
+          Objects.requireNonNull(mergeInfo, "mergeInfo must not be null if context is MERGE");
+      case FLUSH ->
+          Objects.requireNonNull(flushInfo, "flushInfo must not be null if context is FLUSH");
     }
     if ((context == Context.FLUSH || context == Context.MERGE)
         && readAdvice != ReadAdvice.SEQUENTIAL) {

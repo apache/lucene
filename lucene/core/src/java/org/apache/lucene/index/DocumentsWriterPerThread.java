@@ -487,7 +487,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         infoStream.message(
             "DWPT",
             "new segment has "
-                + (flushState.fieldInfos.hasVectors() ? "vectors" : "no vectors")
+                + (flushState.fieldInfos.hasTermVectors() ? "vectors" : "no vectors")
                 + "; "
                 + (flushState.fieldInfos.hasNorms() ? "norms" : "no norms")
                 + "; "
@@ -718,6 +718,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     return flushPending.get() == Boolean.TRUE;
   }
 
+  boolean isQueueAdvanced() {
+    return deleteQueue.isAdvanced();
+  }
+
   /** Sets this DWPT as flush pending. This can only be set once. */
   void setFlushPending() {
     flushPending.set(Boolean.TRUE);
@@ -732,7 +736,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
   }
 
   /**
-   * Commits the current {@link #ramBytesUsed()} and stores it's value for later reuse. The last
+   * Commits the current {@link #ramBytesUsed()} and stores its value for later reuse. The last
    * committed bytes used can be retrieved via {@link #getLastCommittedBytesUsed()}
    */
   void commitLastBytesUsed(long delta) {

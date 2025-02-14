@@ -20,9 +20,6 @@ package org.apache.lucene.backward_codecs.lucene90;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.SplittableRandom;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -34,7 +31,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -44,7 +41,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.NeighborQueue;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Reads vectors from the index segments along with index data structures supporting KNN search.
@@ -53,14 +49,16 @@ import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
  */
 public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
   private final long checksumSeed;
+  private final FieldInfos fieldInfos;
 
   Lucene90HnswVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
     long[] checksumRef = new long[1];
+    this.fieldInfos = state.fieldInfos;
     boolean success = false;
     try {
       vectorData =
@@ -161,7 +159,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
 
       FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
@@ -221,10 +219,18 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     CodecUtil.checksumEntireFile(vectorIndex);
   }
 
+  private FieldEntry getFieldEntry(String field) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    return fieldEntry;
+  }
+
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    return getOffHeapVectorValues(fieldEntry);
+    return getOffHeapVectorValues(getFieldEntry(field));
   }
 
   @Override
@@ -235,8 +241,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
+    final FieldEntry fieldEntry = getFieldEntry(field);
     if (fieldEntry.size() == 0) {
       return;
     }
@@ -260,7 +265,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
       int node = results.topNode();
       float minSimilarity = results.topScore();
       results.pop();
-      knnCollector.collect(node, minSimilarity);
+      knnCollector.collect(vectorValues.ordToDoc(node), minSimilarity);
     }
   }
 
@@ -352,8 +357,7 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   /** Read the vector values from the index input. This supports both iterated and random access. */
-  static class OffHeapFloatVectorValues extends FloatVectorValues
-      implements RandomAccessVectorValues.Floats {
+  static class OffHeapFloatVectorValues extends FloatVectorValues {
 
     final int dimension;
     final int[] ordToDoc;
@@ -363,9 +367,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     int lastOrd = -1;
     final float[] value;
     final VectorSimilarityFunction similarityFunction;
-
-    int ord = -1;
-    int doc = -1;
 
     OffHeapFloatVectorValues(
         int dimension,
@@ -392,42 +393,6 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
-      return vectorValue(ord);
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() {
-      if (++ord >= size()) {
-        doc = NO_MORE_DOCS;
-      } else {
-        doc = ordToDoc[ord];
-      }
-      return doc;
-    }
-
-    @Override
-    public int advance(int target) {
-      assert docID() < target;
-      ord = Arrays.binarySearch(ordToDoc, ord + 1, ordToDoc.length, target);
-      if (ord < 0) {
-        ord = -(ord + 1);
-      }
-      assert ord <= ordToDoc.length;
-      if (ord == ordToDoc.length) {
-        doc = NO_MORE_DOCS;
-      } else {
-        doc = ordToDoc[ord];
-      }
-      return doc;
-    }
-
-    @Override
     public OffHeapFloatVectorValues copy() {
       return new OffHeapFloatVectorValues(dimension, ordToDoc, similarityFunction, dataIn.clone());
     }
@@ -444,20 +409,31 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int ordToDoc(int ord) {
+      return ordToDoc[ord];
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createSparseIterator();
+    }
+
+    @Override
     public VectorScorer scorer(float[] target) {
       if (size() == 0) {
         return null;
       }
       OffHeapFloatVectorValues values = this.copy();
+      DocIndexIterator iterator = values.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.similarityFunction.compare(values.vectorValue(), target);
+          return values.similarityFunction.compare(values.vectorValue(iterator.index()), target);
         }
 
         @Override
-        public DocIdSetIterator iterator() {
-          return values;
+        public DocIndexIterator iterator() {
+          return iterator;
         }
       };
     }
@@ -488,8 +464,18 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int maxConn() {
+      return UNKNOWN_MAX_CONN;
+    }
+
+    @Override
     public int size() {
       return entry.size();
+    }
+
+    @Override
+    public int neighborCount() {
+      return arcCount;
     }
 
     @Override

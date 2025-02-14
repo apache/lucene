@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.index.FieldInfo.verifySameDocValuesSkipIndex;
 import static org.apache.lucene.index.FieldInfo.verifySameDocValuesType;
 import static org.apache.lucene.index.FieldInfo.verifySameIndexOptions;
 import static org.apache.lucene.index.FieldInfo.verifySameOmitNorms;
@@ -51,7 +52,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
   private final boolean hasProx;
   private final boolean hasPayloads;
   private final boolean hasOffsets;
-  private final boolean hasVectors;
+  private final boolean hasTermVectors;
   private final boolean hasNorms;
   private final boolean hasDocValues;
   private final boolean hasPointValues;
@@ -72,7 +73,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
    * as the backing structure.
    */
   public FieldInfos(FieldInfo[] infos) {
-    boolean hasVectors = false;
+    boolean hasTermVectors = false;
     boolean hasPostings = false;
     boolean hasProx = false;
     boolean hasPayloads = false;
@@ -110,7 +111,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 + info.name);
       }
 
-      hasVectors |= info.hasVectors();
+      hasTermVectors |= info.hasTermVectors();
       hasPostings |= info.getIndexOptions() != IndexOptions.NONE;
       hasProx |= info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
       hasFreq |= info.getIndexOptions() != IndexOptions.DOCS;
@@ -138,7 +139,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       }
     }
 
-    this.hasVectors = hasVectors;
+    this.hasTermVectors = hasTermVectors;
     this.hasPostings = hasPostings;
     this.hasProx = hasProx;
     this.hasPayloads = hasPayloads;
@@ -274,9 +275,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
     return hasOffsets;
   }
 
-  /** Returns true if any fields have vectors */
-  public boolean hasVectors() {
-    return hasVectors;
+  /** Returns true if any fields have term vectors */
+  public boolean hasTermVectors() {
+    return hasTermVectors;
   }
 
   /** Returns true if any fields have norms */
@@ -364,6 +365,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       IndexOptions indexOptions,
       IndexOptionsProperties indexOptionsProperties,
       DocValuesType docValuesType,
+      DocValuesSkipIndexType docValuesSkipIndex,
       FieldDimensions fieldDimensions,
       FieldVectorProperties fieldVectorProperties) {}
 
@@ -408,8 +410,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     /**
-     * Returns the global field number for the given field name. If the name does not exist yet it
-     * tries to add it with the given preferred field number assigned if possible otherwise the
+     * Returns the global field number for the given field name. If the name does not exist yet, it
+     * tries to add it with the given preferred field number assigned, if possible, otherwise the
      * first unassigned field number is used as the field number.
      */
     synchronized int addOrGet(FieldInfo fi) {
@@ -439,9 +441,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 fieldNumber,
                 fi.getIndexOptions(),
                 fi.getIndexOptions() != IndexOptions.NONE
-                    ? new IndexOptionsProperties(fi.hasVectors(), fi.omitsNorms())
+                    ? new IndexOptionsProperties(fi.hasTermVectors(), fi.omitsNorms())
                     : null,
                 fi.getDocValuesType(),
+                fi.docValuesSkipIndexType(),
                 new FieldDimensions(
                     fi.getPointDimensionCount(),
                     fi.getPointIndexDimensionCount(),
@@ -514,13 +517,16 @@ public class FieldInfos implements Iterable<FieldInfo> {
       verifySameIndexOptions(fieldName, currentOpts, fi.getIndexOptions());
       if (currentOpts != IndexOptions.NONE) {
         boolean curStoreTermVector = fieldProperties.indexOptionsProperties.storeTermVectors;
-        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasVectors());
+        verifySameStoreTermVectors(fieldName, curStoreTermVector, fi.hasTermVectors());
         boolean curOmitNorms = fieldProperties.indexOptionsProperties.omitNorms;
         verifySameOmitNorms(fieldName, curOmitNorms, fi.omitsNorms());
       }
 
       DocValuesType currentDVType = fieldProperties.docValuesType;
       verifySameDocValuesType(fieldName, currentDVType, fi.getDocValuesType());
+      DocValuesSkipIndexType currentDocValuesSkipIndex = fieldProperties.docValuesSkipIndex;
+      verifySameDocValuesSkipIndex(
+          fieldName, currentDocValuesSkipIndex, fi.docValuesSkipIndexType());
 
       FieldDimensions dims = fieldProperties.fieldDimensions;
       verifySamePointsOptions(
@@ -544,9 +550,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     /**
-     * This function is called from {@code IndexWriter} to verify if doc values of the field can be
-     * updated. If the field with this name already exists, we verify that it is doc values only
-     * field. If the field doesn't exists and the parameter fieldMustExist is false, we create a new
+     * This function is called from {@link IndexWriter} to verify if doc values of the field can be
+     * updated. If the field with this name already exists, we verify that it is a doc values-only
+     * field. If the field doesn't exist and the parameter fieldMustExist is false, we create a new
      * field in the global field numbers.
      *
      * @param fieldName - name of the field
@@ -576,6 +582,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   false,
                   IndexOptions.NONE,
                   dvType,
+                  DocValuesSkipIndexType.NONE,
                   -1,
                   new HashMap<>(),
                   0,
@@ -601,6 +608,15 @@ public class FieldInfos implements Iterable<FieldInfo> {
                   + "] has inconsistent doc values' type of ["
                   + fieldDvType
                   + "].");
+        }
+        DocValuesSkipIndexType hasDocValuesSkipIndex = fieldProperties.docValuesSkipIndex;
+        if (hasDocValuesSkipIndex != DocValuesSkipIndexType.NONE) {
+          throw new IllegalArgumentException(
+              "Can't update ["
+                  + dvType
+                  + "] doc values; the field ["
+                  + fieldName
+                  + "] must be doc values only field, bit it has doc values skip index");
         }
         FieldDimensions fdimensions = fieldProperties.fieldDimensions;
         if (fdimensions != null && fdimensions.dimensionCount != 0) {
@@ -660,6 +676,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
           false,
           IndexOptions.NONE,
           dvType,
+          DocValuesSkipIndexType.NONE,
           -1,
           new HashMap<>(),
           0,
@@ -775,11 +792,12 @@ public class FieldInfos implements Iterable<FieldInfo> {
           new FieldInfo(
               fi.getName(),
               fieldNumber,
-              fi.hasVectors(),
+              fi.hasTermVectors(),
               fi.omitsNorms(),
               fi.hasPayloads(),
               fi.getIndexOptions(),
               fi.getDocValuesType(),
+              fi.docValuesSkipIndexType(),
               dvGen,
               // original attributes is UnmodifiableMap
               new HashMap<>(fi.attributes()),

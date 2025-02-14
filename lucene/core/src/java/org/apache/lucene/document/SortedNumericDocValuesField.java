@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.document;
 
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.Query;
@@ -43,9 +44,27 @@ public class SortedNumericDocValuesField extends Field {
   /** Type for sorted numeric DocValues. */
   public static final FieldType TYPE = new FieldType();
 
+  private static final FieldType INDEXED_TYPE;
+
   static {
     TYPE.setDocValuesType(DocValuesType.SORTED_NUMERIC);
     TYPE.freeze();
+
+    INDEXED_TYPE = new FieldType(TYPE);
+    INDEXED_TYPE.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
+    INDEXED_TYPE.freeze();
+  }
+
+  /**
+   * Creates a new {@link SortedNumericDocValuesField} with the specified 64-bit long value that
+   * also creates a {@link FieldType#docValuesSkipIndexType() skip index}.
+   *
+   * @param name field name
+   * @param value 64-bit long value
+   * @throws IllegalArgumentException if the field name is null
+   */
+  public static SortedNumericDocValuesField indexedField(String name, long value) {
+    return new SortedNumericDocValuesField(name, value, INDEXED_TYPE);
   }
 
   /**
@@ -56,8 +75,12 @@ public class SortedNumericDocValuesField extends Field {
    * @throws IllegalArgumentException if the field name is null
    */
   public SortedNumericDocValuesField(String name, long value) {
-    super(name, TYPE);
-    fieldsData = Long.valueOf(value);
+    this(name, Long.valueOf(value), TYPE);
+  }
+
+  private SortedNumericDocValuesField(String name, Long value, FieldType fieldType) {
+    super(name, fieldType);
+    fieldsData = value;
   }
 
   /**

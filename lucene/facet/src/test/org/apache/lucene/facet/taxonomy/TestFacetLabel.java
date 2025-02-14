@@ -160,88 +160,43 @@ public class TestFacetLabel extends FacetTestCase {
 
     // empty or null components should not be allowed.
     for (String[] components : components_tests) {
+      expectThrows(IllegalArgumentException.class, () -> new FacetLabel(components));
+      expectThrows(IllegalArgumentException.class, () -> new FacetField("dim", components));
       expectThrows(
           IllegalArgumentException.class,
-          () -> {
-            new FacetLabel(components);
-          });
+          () -> new AssociationFacetField(new BytesRef(), "dim", components));
       expectThrows(
           IllegalArgumentException.class,
-          () -> {
-            new FacetField("dim", components);
-          });
+          () -> new IntAssociationFacetField(17, "dim", components));
       expectThrows(
           IllegalArgumentException.class,
-          () -> {
-            new AssociationFacetField(new BytesRef(), "dim", components);
-          });
-      expectThrows(
-          IllegalArgumentException.class,
-          () -> {
-            new IntAssociationFacetField(17, "dim", components);
-          });
-      expectThrows(
-          IllegalArgumentException.class,
-          () -> {
-            new FloatAssociationFacetField(17.0f, "dim", components);
-          });
+          () -> new FloatAssociationFacetField(17.0f, "dim", components));
     }
 
+    expectThrows(IllegalArgumentException.class, () -> new FacetField(null, new String[] {"abc"}));
+    expectThrows(IllegalArgumentException.class, () -> new FacetField("", "abc"));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new FacetField(null, new String[] {"abc"});
-        });
+        () -> new IntAssociationFacetField(17, null, new String[] {"abc"}));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new FacetField("", new String[] {"abc"});
-        });
+        () -> new IntAssociationFacetField(17, "", new String[] {"abc"}));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new IntAssociationFacetField(17, null, new String[] {"abc"});
-        });
+        () -> new FloatAssociationFacetField(17.0f, null, new String[] {"abc"}));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new IntAssociationFacetField(17, "", new String[] {"abc"});
-        });
+        () -> new FloatAssociationFacetField(17.0f, "", new String[] {"abc"}));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new FloatAssociationFacetField(17.0f, null, new String[] {"abc"});
-        });
+        () -> new AssociationFacetField(new BytesRef(), null, "abc"));
     expectThrows(
         IllegalArgumentException.class,
-        () -> {
-          new FloatAssociationFacetField(17.0f, "", new String[] {"abc"});
-        });
+        () -> new AssociationFacetField(new BytesRef(), "", new String[] {"abc"}));
     expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new AssociationFacetField(new BytesRef(), null, new String[] {"abc"});
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new AssociationFacetField(new BytesRef(), "", new String[] {"abc"});
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new SortedSetDocValuesFacetField(null, "abc");
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new SortedSetDocValuesFacetField("", "abc");
-        });
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new SortedSetDocValuesFacetField("dim", "");
-        });
+        IllegalArgumentException.class, () -> new SortedSetDocValuesFacetField(null, "abc"));
+    expectThrows(IllegalArgumentException.class, () -> new SortedSetDocValuesFacetField("", "abc"));
+    expectThrows(IllegalArgumentException.class, () -> new SortedSetDocValuesFacetField("dim", ""));
   }
 
   @Test
@@ -258,10 +213,6 @@ public class TestFacetLabel extends FacetTestCase {
 
     // long paths should not be allowed
     final String longPath = bigComp;
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          new FacetLabel("dim", longPath);
-        });
+    expectThrows(IllegalArgumentException.class, () -> new FacetLabel("dim", longPath));
   }
 }

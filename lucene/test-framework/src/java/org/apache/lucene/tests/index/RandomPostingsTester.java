@@ -45,6 +45,7 @@ import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -74,6 +75,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil.RandomAcceptedStrings;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.UnicodeUtil;
@@ -108,6 +110,9 @@ public class RandomPostingsTester {
 
     // Sometimes don't fully consume positions at each doc
     PARTIAL_POS_CONSUME,
+
+    // Check DocIdSetIterator#intoBitSet
+    INTO_BIT_SET,
 
     // Sometimes check payloads
     PAYLOADS,
@@ -157,6 +162,7 @@ public class RandomPostingsTester {
               true,
               IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
               DocValuesType.NONE,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -731,6 +737,7 @@ public class RandomPostingsTester {
               doPayloads,
               indexOptions,
               DocValuesType.NONE,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -1359,6 +1366,48 @@ public class RandomPostingsTester {
                 + " in postings, but no impact triggers equal or better scores in "
                 + impactsCopy,
             idx <= impactsCopy.size() && impactsCopy.get(idx).norm <= norm);
+      }
+    }
+
+    if (options.contains(Option.INTO_BIT_SET)) {
+      int flags = PostingsEnum.FREQS;
+      if (doCheckPositions) {
+        flags |= PostingsEnum.POSITIONS;
+        if (doCheckOffsets) {
+          flags |= PostingsEnum.OFFSETS;
+        }
+        if (doCheckPayloads) {
+          flags |= PostingsEnum.PAYLOADS;
+        }
+      }
+      PostingsEnum pe1 = termsEnum.postings(null, flags);
+      if (random.nextBoolean()) {
+        pe1.advance(maxDoc / 2);
+        pe1 = termsEnum.postings(pe1, flags);
+      }
+      PostingsEnum pe2 = termsEnum.postings(null, flags);
+      FixedBitSet set1 = new FixedBitSet(1024);
+      FixedBitSet set2 = new FixedBitSet(1024);
+
+      while (true) {
+        pe1.nextDoc();
+        pe2.nextDoc();
+
+        int offset =
+            TestUtil.nextInt(random, Math.max(0, pe1.docID() - set1.length()), pe1.docID());
+        int upTo = offset + random.nextInt(set1.length());
+        pe1.intoBitSet(upTo, set1, offset);
+        for (int d = pe2.docID(); d < upTo; d = pe2.nextDoc()) {
+          set2.set(d - offset);
+        }
+
+        assertEquals(set1, set2);
+        assertEquals(pe1.docID(), pe2.docID());
+        if (pe1.docID() == DocIdSetIterator.NO_MORE_DOCS) {
+          break;
+        }
+        set1.clear();
+        set2.clear();
       }
     }
   }

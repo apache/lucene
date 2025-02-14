@@ -708,11 +708,12 @@ final class ReadersAndUpdates {
     return new FieldInfo(
         fi.name,
         fieldNumber,
-        fi.hasVectors(),
+        fi.hasTermVectors(),
         fi.omitsNorms(),
         fi.hasPayloads(),
         fi.getIndexOptions(),
         fi.getDocValuesType(),
+        fi.docValuesSkipIndexType(),
         fi.getDocValuesGen(),
         new HashMap<>(fi.attributes()),
         fi.getPointDimensionCount(),

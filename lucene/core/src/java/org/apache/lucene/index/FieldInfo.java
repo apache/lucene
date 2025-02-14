@@ -28,13 +28,16 @@ import java.util.Objects;
  * threads accessing this object.
  */
 public final class FieldInfo {
+
   /** Field's name */
   public final String name;
 
   /** Internal field number */
   public final int number;
 
-  private DocValuesType docValuesType;
+  private DocValuesType docValuesType = DocValuesType.NONE;
+
+  private final DocValuesSkipIndexType docValuesSkipIndex;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
@@ -80,6 +83,7 @@ public final class FieldInfo {
       boolean storePayloads,
       IndexOptions indexOptions,
       DocValuesType docValues,
+      DocValuesSkipIndexType docValuesSkipIndex,
       long dvGen,
       Map<String, String> attributes,
       int pointDimensionCount,
@@ -95,6 +99,7 @@ public final class FieldInfo {
     this.docValuesType =
         Objects.requireNonNull(
             docValues, "DocValuesType must not be null (field: \"" + name + "\")");
+    this.docValuesSkipIndex = docValuesSkipIndex;
     this.indexOptions =
         Objects.requireNonNull(
             indexOptions, "IndexOptions must not be null (field: \"" + name + "\")");
@@ -151,6 +156,15 @@ public final class FieldInfo {
 
     if (docValuesType == null) {
       throw new IllegalArgumentException("DocValuesType must not be null (field: '" + name + "')");
+    }
+    if (docValuesSkipIndex.isCompatibleWith(docValuesType) == false) {
+      throw new IllegalArgumentException(
+          "field '"
+              + name
+              + "' cannot have docValuesSkipIndexType="
+              + docValuesSkipIndex
+              + " with doc values type "
+              + docValuesType);
     }
     if (dvGen != -1 && docValuesType == DocValuesType.NONE) {
       throw new IllegalArgumentException(
@@ -235,6 +249,7 @@ public final class FieldInfo {
       verifySameStoreTermVectors(fieldName, this.storeTermVector, o.storeTermVector);
     }
     verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType);
+    verifySameDocValuesSkipIndex(fieldName, this.docValuesSkipIndex, o.docValuesSkipIndex);
     verifySamePointsOptions(
         fieldName,
         this.pointDimensionCount,
@@ -286,6 +301,26 @@ public final class FieldInfo {
               + docValuesType1
               + " to inconsistent doc values type="
               + docValuesType2);
+    }
+  }
+
+  /**
+   * Verify that the provided docValues type are the same
+   *
+   * @throws IllegalArgumentException if they are not the same
+   */
+  static void verifySameDocValuesSkipIndex(
+      String fieldName,
+      DocValuesSkipIndexType hasDocValuesSkipIndex1,
+      DocValuesSkipIndexType hasDocValuesSkipIndex2) {
+    if (hasDocValuesSkipIndex1 != hasDocValuesSkipIndex2) {
+      throw new IllegalArgumentException(
+          "cannot change field \""
+              + fieldName
+              + "\" from docValuesSkipIndexType="
+              + hasDocValuesSkipIndex1
+              + " to inconsistent docValuesSkipIndexType="
+              + hasDocValuesSkipIndex2);
     }
   }
 
@@ -557,6 +592,11 @@ public final class FieldInfo {
     return docValuesType;
   }
 
+  /** Returns true if, and only if, this field has a skip index. */
+  public DocValuesSkipIndexType docValuesSkipIndexType() {
+    return docValuesSkipIndex;
+  }
+
   /** Sets the docValues generation of this field. */
   void setDocValuesGen(long dvGen) {
     this.dvGen = dvGen;
@@ -605,7 +645,7 @@ public final class FieldInfo {
   }
 
   /** Returns true if any term vectors exist for this field. */
-  public boolean hasVectors() {
+  public boolean hasTermVectors() {
     return storeTermVector;
   }
 

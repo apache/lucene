@@ -27,7 +27,7 @@ import java.lang.foreign.MemorySegment;
 public interface MemorySegmentAccessInput extends RandomAccessInput, Cloneable {
 
   /** Returns the memory segment for a given position and length, or null. */
-  MemorySegment segmentSliceOrNull(long pos, int len) throws IOException;
+  MemorySegment segmentSliceOrNull(long pos, long len) throws IOException;
 
   MemorySegmentAccessInput clone();
 }
