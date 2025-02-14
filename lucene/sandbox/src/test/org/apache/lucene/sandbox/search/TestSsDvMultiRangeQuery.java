@@ -95,8 +95,8 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       int numRanges = RandomNumbers.randomIntBetween(random(), 1, 20);
       LongPointMultiRangeBuilder builder1 = new LongPointMultiRangeBuilder("point", dims);
       BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
-      DocValuesMultiRangeQuery.SortedSetStabbingFixedBuilder builder3 =
-          new DocValuesMultiRangeQuery.SortedSetStabbingFixedBuilder("docVal", Long.BYTES);
+      DocValuesMultiRangeQuery.SortedSetStabbingBuilder builder3 =
+          new DocValuesMultiRangeQuery.SortedSetStabbingBuilder("docVal");
 
       for (int i = 0; i < numRanges; i++) {
         long[] lower = new long[dims];
@@ -122,7 +122,7 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       assertEquals(result2.scoreDocs.length, result3.scoreDocs.length);
       for (int i = 0; i < result2.scoreDocs.length; i++) {
         assertEquals(result2.scoreDocs[i].doc, result1.scoreDocs[i].doc);
-        assertEquals(result3.scoreDocs[i].doc, result3.scoreDocs[i].doc);
+        assertEquals(result2.scoreDocs[i].doc, result3.scoreDocs[i].doc);
       }
 
       IOUtils.close(reader, w, dir);

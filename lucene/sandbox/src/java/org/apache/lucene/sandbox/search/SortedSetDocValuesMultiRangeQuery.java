@@ -17,10 +17,7 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
@@ -38,15 +35,19 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongBitSet;
 
-/** A union multiple ranges over SortedSetDocValuesField */
+/**
+ * A union multiple ranges over SortedSetDocValuesField
+ *
+ * @lucene.experimental
+ */
 class SortedSetDocValuesMultiRangeQuery extends Query {
 
   protected static final class OrdRange {
     final long lower;
-    long upper;
+    long upper; // mutable field, can't afford equals hashcode here
 
     public OrdRange(long lower, long upper) {
       this.lower = lower;
@@ -55,19 +56,15 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
   }
 
   protected final String fieldName;
-  private final int bytesPerDim;
   protected final List<DocValuesMultiRangeQuery.Range> rangeClauses;
 
   SortedSetDocValuesMultiRangeQuery(
-      String fieldName,
-      List<DocValuesMultiRangeQuery.Range> clauses,
-      int bytesPerDim,
-      ArrayUtil.ByteArrayComparator comparator) {
+      String fieldName, List<DocValuesMultiRangeQuery.Range> clauses) {
     this.fieldName = fieldName;
-    this.bytesPerDim = bytesPerDim;
     ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>(clauses);
     sortedClauses.sort(
-        (r, s) -> comparator.compare(r.lower.bytes, r.lower.offset, s.lower.bytes, s.lower.offset));
+        Comparator.<DocValuesMultiRangeQuery.Range, BytesRef>comparing(r -> r.lower)
+            .thenComparing(r -> r.upper));
     this.rangeClauses = sortedClauses;
   }
 
@@ -152,13 +149,12 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
     if (o == null || getClass() != o.getClass()) return false;
     SortedSetDocValuesMultiRangeQuery that = (SortedSetDocValuesMultiRangeQuery) o;
     return Objects.equals(fieldName, that.fieldName)
-        && bytesPerDim == that.bytesPerDim
         && Objects.equals(rangeClauses, that.rangeClauses);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fieldName, bytesPerDim, rangeClauses);
+    return Objects.hash(fieldName, rangeClauses);
   }
 
   protected class MultiRangeWeight extends ConstantScoreWeight {
