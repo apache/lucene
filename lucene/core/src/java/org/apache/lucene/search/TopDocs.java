@@ -355,10 +355,14 @@ public class TopDocs {
     }
   }
 
+  private record ShardIndexAndDoc(int shardIndex, int doc) {}
+
   /**
    * Reciprocal Rank Fusion method.
    *
-   * <p>This method combines different search results into a single ranked list.
+   * <p>This method combines different search results into a single ranked list by combining their
+   * ranks. This is especially well suited when combining hits computed via different methods, whose
+   * score distributions are hardly comparable.
    *
    * @param topN the top N results to be returned
    * @param k a constant determines how much influence documents in individual rankings have on the
@@ -368,35 +372,71 @@ public class TopDocs {
    * @return a TopDocs contains the top N ranked results.
    */
   public static TopDocs rrf(int topN, int k, TopDocs[] hits) {
-    Map<Integer, Float> rrfScore = new HashMap<>();
-    long minHits = Long.MAX_VALUE;
-    for (TopDocs topDoc : hits) {
-      minHits = Math.min(minHits, topDoc.totalHits.value);
-      Map<Integer, Float> scoreMap = new HashMap<>();
-      for (ScoreDoc scoreDoc : topDoc.scoreDocs) {
-        scoreMap.put(scoreDoc.doc, scoreDoc.score);
+    if (topN < 1) {
+      throw new IllegalArgumentException("topN must be >= 1, got " + topN);
+    }
+    if (k < 1) {
+      throw new IllegalArgumentException("k must be >= 1, got " + k);
+    }
+
+    boolean shardIndexSet = false;
+    outer:
+    for (TopDocs topDocs : hits) {
+      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+        shardIndexSet = scoreDoc.shardIndex != -1;
+        break outer;
       }
-
-      List<Map.Entry<Integer, Float>> scoreList = new ArrayList<>(scoreMap.entrySet());
-      scoreList.sort(Map.Entry.comparingByValue());
-
-      int rank = 1;
-      for (ScoreDoc scoreDoc : topDoc.scoreDocs) {
-        rrfScore.put(scoreDoc.doc, rrfScore.getOrDefault(scoreDoc.doc, 0.0f) + 1.0f / (rank + k));
-        rank++;
+    }
+    for (TopDocs topDocs : hits) {
+      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+        boolean thisShardIndexSet = scoreDoc.shardIndex != -1;
+        if (shardIndexSet != thisShardIndexSet) {
+          throw new IllegalArgumentException(
+              "All hits must either have their ScoreDoc#shardIndex set, or unset (-1), not a mix of both.");
+        }
       }
     }
 
-    List<Map.Entry<Integer, Float>> rrfScoreRank = new ArrayList<>(rrfScore.entrySet());
+    // Compute the rrf score as a double to reduce accuracy loss due to floating-point arithmetic.
+    Map<ShardIndexAndDoc, Double> rrfScore = new HashMap<>();
+    long totalHitCount = 0;
+    for (TopDocs topDoc : hits) {
+      // A document is a hit globally if it is a hit for any of the top docs, so we compute the
+      // total hit count as the max total hit count.
+      totalHitCount = Math.max(totalHitCount, topDoc.totalHits.value());
+      for (int i = 0; i < topDoc.scoreDocs.length; ++i) {
+        ScoreDoc scoreDoc = topDoc.scoreDocs[i];
+        int rank = i + 1;
+        double rrfScoreContribution = 1d / Math.addExact(k, rank);
+        rrfScore.compute(
+            new ShardIndexAndDoc(scoreDoc.shardIndex, scoreDoc.doc),
+            (key, score) -> (score == null ? 0 : score) + rrfScoreContribution);
+      }
+    }
+
+    List<Map.Entry<ShardIndexAndDoc, Double>> rrfScoreRank = new ArrayList<>(rrfScore.entrySet());
     rrfScoreRank.sort(
-        Map.Entry.<Integer, Float>comparingByValue().reversed()); // Sort in descending order
+        // Sort by descending score
+        Map.Entry.<ShardIndexAndDoc, Double>comparingByValue()
+            .reversed()
+            // Tie-break by doc ID, then shard index (like TopDocs#merge)
+            .thenComparing(
+                Map.Entry.<ShardIndexAndDoc, Double>comparingByKey(
+                    Comparator.comparingInt(ShardIndexAndDoc::doc)))
+            .thenComparing(
+                Map.Entry.<ShardIndexAndDoc, Double>comparingByKey(
+                    Comparator.comparingInt(ShardIndexAndDoc::shardIndex))));
 
     ScoreDoc[] rrfScoreDocs = new ScoreDoc[Math.min(topN, rrfScoreRank.size())];
     for (int i = 0; i < rrfScoreDocs.length; i++) {
-      rrfScoreDocs[i] = new ScoreDoc(rrfScoreRank.get(i).getKey(), rrfScoreRank.get(i).getValue());
+      Map.Entry<ShardIndexAndDoc, Double> entry = rrfScoreRank.get(i);
+      int doc = entry.getKey().doc;
+      int shardIndex = entry.getKey().shardIndex();
+      float score = entry.getValue().floatValue();
+      rrfScoreDocs[i] = new ScoreDoc(doc, score, shardIndex);
     }
 
-    return new TopDocs(
-        new TotalHits(minHits, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), rrfScoreDocs);
+    TotalHits totalHits = new TotalHits(totalHitCount, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO);
+    return new TopDocs(totalHits, rrfScoreDocs);
   }
 }
