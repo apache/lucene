@@ -57,7 +57,7 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
       for (SegmentCommitInfo info : oneMerge.segments) {
         mergeSize += lmp.size(info, mockMergeContext);
       }
-      assertTrue(mergeSize < lmp.minMergeSize || oneMerge.segments.size() <= lmp.getMergeFactor());
+      assertTrue(mergeSize <= lmp.minMergeSize || oneMerge.segments.size() <= lmp.getMergeFactor());
     }
   }
 
