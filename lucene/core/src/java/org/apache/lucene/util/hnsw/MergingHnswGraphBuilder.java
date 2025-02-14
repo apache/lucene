@@ -99,9 +99,18 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      String graphSizes = "";
+      for (HnswGraph g : graphs) {
+        graphSizes += g.size() + " ";
+      }
       infoStream.message(
           HNSW_COMPONENT,
-          "build graph from merging " + graphs.length + " graphs of " + maxOrd + " vectors");
+          "build graph from merging "
+              + graphs.length
+              + " graphs of "
+              + maxOrd
+              + " vectors, graph sizes:"
+              + graphSizes);
     }
     for (int i = 1; i < graphs.length; i++) {
       updateGraph(graphs[i], ordMaps[i]);
