@@ -21,10 +21,13 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.search.*;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
-/** A few query builder for doc values multi range queries */
+/**
+ * A few query builders for doc values multi range queries.
+ *
+ * @lucene.experimental
+ */
 public final class DocValuesMultiRangeQuery {
 
   private DocValuesMultiRangeQuery() {}
@@ -62,36 +65,22 @@ public final class DocValuesMultiRangeQuery {
   }
 
   /**
-   * Builder for creating a multi-range query for stabbing by SortedSet or Sorted fixed width field
-   * values. Name highlights two key points:
-   *
-   * <ul>
-   *   <li>treats multiple or single field value as a scalar for range matching (stabbing)
-   *   <li>field values have fixed width
-   * </ul>
-   *
-   * For example, it matches IPs in docvalues field by multiple IP ranges. For the single range it
+   * Builder for creating a multi-range query for stabbing by SortedSet or Sorted field values. For
+   * example, it matches IPs in docvalues field by multiple IP ranges. For the single range it
    * behaves like {@link SortedSetDocValuesField#newSlowRangeQuery(String, BytesRef, BytesRef,
    * boolean, boolean)} with both true arguments
    */
-  public static class SortedSetStabbingFixedBuilder {
+  public static class SortedSetStabbingBuilder {
     protected final String fieldName;
     final List<Range> clauses = new ArrayList<>();
-    protected final int bytesPerDim;
-    protected final ArrayUtil.ByteArrayComparator comparator;
 
-    public SortedSetStabbingFixedBuilder(String fieldName, int bytesPerDim) {
+    public SortedSetStabbingBuilder(String fieldName) {
       this.fieldName = Objects.requireNonNull(fieldName);
-      if (bytesPerDim <= 0) {
-        throw new IllegalArgumentException("bytesPerDim should be a valid value");
-      }
-      this.bytesPerDim = bytesPerDim;
-      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
     }
 
     // TODO support nulls as min,max boundaries ???
     /** NB:Deeply copies the given bytes */
-    public SortedSetStabbingFixedBuilder add(BytesRef lowerValue, BytesRef upperValue) {
+    public SortedSetStabbingBuilder add(BytesRef lowerValue, BytesRef upperValue) {
       BytesRef lowRef = BytesRef.deepCopyOf(lowerValue);
       BytesRef upRef = BytesRef.deepCopyOf(upperValue);
       clauses.add(new Range(lowRef, upRef));
@@ -111,8 +100,7 @@ public final class DocValuesMultiRangeQuery {
     }
 
     SortedSetDocValuesMultiRangeQuery createSortedSetDocValuesMultiRangeQuery() {
-      return new SortedSetDocValuesMultiRangeQuery(
-          fieldName, clauses, this.bytesPerDim, comparator);
+      return new SortedSetDocValuesMultiRangeQuery(fieldName, clauses);
     }
   }
 }
