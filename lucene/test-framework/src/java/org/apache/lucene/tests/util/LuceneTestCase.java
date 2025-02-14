@@ -587,7 +587,7 @@ public abstract class LuceneTestCase extends Assert {
     ignoreAfterMaxFailures = TestRuleDelegate.of(ignoreAfterMaxFailuresDelegate);
   }
 
-  /**
+  /*
    * Try to capture streams early so that other classes don't have a chance to steal references to
    * them (as is the case with ju.logging handlers).
    */
@@ -1202,8 +1202,7 @@ public abstract class LuceneTestCase extends Assert {
     if (rarely(r)) {
       // change CMS merge parameters
       MergeScheduler ms = c.getMergeScheduler();
-      if (ms instanceof ConcurrentMergeScheduler) {
-        ConcurrentMergeScheduler cms = (ConcurrentMergeScheduler) ms;
+      if (ms instanceof ConcurrentMergeScheduler cms) {
         int maxThreadCount = TestUtil.nextInt(r, 1, 4);
         int maxMergeCount = TestUtil.nextInt(r, maxThreadCount, maxThreadCount + 4);
         boolean enableAutoIOThrottle = random().nextBoolean();
@@ -1220,16 +1219,14 @@ public abstract class LuceneTestCase extends Assert {
     if (rarely(r)) {
       MergePolicy mp = c.getMergePolicy();
       configureRandom(r, mp);
-      if (mp instanceof LogMergePolicy) {
-        LogMergePolicy logmp = (LogMergePolicy) mp;
+      if (mp instanceof LogMergePolicy logmp) {
         logmp.setCalibrateSizeByDeletes(r.nextBoolean());
         if (rarely(r)) {
           logmp.setMergeFactor(TestUtil.nextInt(r, 2, 9));
         } else {
           logmp.setMergeFactor(TestUtil.nextInt(r, 10, 50));
         }
-      } else if (mp instanceof TieredMergePolicy) {
-        TieredMergePolicy tmp = (TieredMergePolicy) mp;
+      } else if (mp instanceof TieredMergePolicy tmp) {
         if (rarely(r)) {
           tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
         } else {
@@ -1694,8 +1691,7 @@ public abstract class LuceneTestCase extends Assert {
                   : new ParallelCompositeReader((CompositeReader) r);
           break;
         case 1:
-          if (r instanceof LeafReader) {
-            final LeafReader ar = (LeafReader) r;
+          if (r instanceof LeafReader ar) {
             final List<String> allFields = new ArrayList<>();
             for (FieldInfo fi : ar.getFieldInfos()) {
               allFields.add(fi.name);

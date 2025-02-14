@@ -274,6 +274,7 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
       }
 
       @Override
+      @SuppressWarnings("DuplicateBranches")
       public long minValue(int level) {
         int d = doc % 1024;
         if (d < 128) {

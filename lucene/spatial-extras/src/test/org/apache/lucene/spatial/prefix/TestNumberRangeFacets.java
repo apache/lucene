@@ -221,8 +221,7 @@ public class TestNumberRangeFacets extends StrategyTestCase {
   }
 
   private void preQueryHavoc() {
-    if (strategy instanceof RecursivePrefixTreeStrategy) {
-      RecursivePrefixTreeStrategy rpts = (RecursivePrefixTreeStrategy) strategy;
+    if (strategy instanceof RecursivePrefixTreeStrategy rpts) {
       int scanLevel = randomIntBetween(0, rpts.getGrid().getMaxLevels());
       rpts.setPrefixGridScanLevel(scanLevel);
     }

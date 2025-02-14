@@ -977,6 +977,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     assertEquals(50, mergeSpec.merges.get(0).segments.size());
   }
 
+  @SuppressWarnings("UnnecessaryAsync")
   public void testFullFlushMerges() throws IOException {
     AtomicLong segNameGenerator = new AtomicLong();
     IOStats stats = new IOStats();
