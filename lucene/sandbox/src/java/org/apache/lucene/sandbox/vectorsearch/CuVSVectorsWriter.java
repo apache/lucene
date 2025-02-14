@@ -22,7 +22,6 @@ import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_INDE
 import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_INDEX_EXT;
 import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_META_CODEC_EXT;
 import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_META_CODEC_NAME;
-import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.MIN_CAGRA_INDEX_SIZE;
 import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.VERSION_CURRENT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
@@ -67,6 +66,10 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
 
   @SuppressWarnings("unused")
   private static final Logger log = Logger.getLogger(CuVSVectorsWriter.class.getName());
+
+  // The minimum number of vectors in the dataset required before
+  // we attempt to build a Cagra index
+  static final int MIN_CAGRA_INDEX_SIZE = 2;
 
   private final int cuvsWriterThreads;
   private final int intGraphDegree;
@@ -242,7 +245,7 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
   }
 
   private void writeField(CuVSFieldWriter fieldData) throws IOException {
-    // TODO: Argh!
+    // TODO: Argh! https://github.com/rapidsai/cuvs/issues/698
     float[][] vectors = fieldData.getVectors().toArray(float[][]::new);
     writeFieldInternal(fieldData.fieldInfo(), vectors);
   }
@@ -254,7 +257,8 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
 
     mapOldOrdToNewOrd(oldDocsWithFieldSet, sortMap, null, new2OldOrd, null);
 
-    // TODO: Argh! we need to be able to avoid loading all vectors into contiguous heap memory
+    // TODO: Argh! https://github.com/rapidsai/cuvs/issues/698
+    // Also will be replaced with the cuVS merge api
     float[][] oldVectors = fieldData.getVectors().toArray(float[][]::new);
     float[][] newVectors = new float[oldVectors.length][];
     for (int i = 0; i < oldVectors.length; i++) {

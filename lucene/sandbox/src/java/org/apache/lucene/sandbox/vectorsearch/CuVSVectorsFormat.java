@@ -46,10 +46,6 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
   public static final int DEFAULT_INTERMEDIATE_GRAPH_DEGREE = 128;
   public static final int DEFAULT_GRAPH_DEGREE = 64;
 
-  // The minimum number of vectors in the dataset required before
-  // we attempt to build a Cagra index
-  static final int MIN_CAGRA_INDEX_SIZE = 2;
-
   static CuVSResources resources = cuVSResourcesOrNull();
 
   /** The format for storing, reading, and merging raw vectors on disk. */

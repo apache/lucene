@@ -312,7 +312,7 @@ public class CuVSVectorsReader extends KnnVectorsReader {
     return score -> (1f / (1f + score));
   }
 
-  // This is a hack - replace with cuVS bugId/filter support
+  // This is a hack - https://github.com/rapidsai/cuvs/issues/696
   static final int FILTER_OVER_SAMPLE = 10;
 
   @Override
@@ -350,6 +350,7 @@ public class CuVSVectorsReader extends KnnVectorsReader {
           new CagraQuery.Builder()
               .withTopK(topK)
               .withSearchParams(searchParams)
+              // we don't use ord to doc mapping, https://github.com/rapidsai/cuvs/issues/699
               .withMapping(null)
               .withQueryVectors(new float[][] {target})
               .build();
