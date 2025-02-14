@@ -45,7 +45,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       float acc2 = 0;
       float acc3 = 0;
       float acc4 = 0;
-      int upperBound = a.length & ~(4 - 1);
+      int upperBound = a.length & -4;
       for (; i < upperBound; i += 4) {
         acc1 = fma(a[i], b[i], acc1);
         acc2 = fma(a[i + 1], b[i + 1], acc2);
@@ -77,7 +77,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       float norm2_1 = 0;
       float norm2_2 = 0;
 
-      int upperBound = a.length & ~(2 - 1);
+      int upperBound = a.length & -2;
       for (; i < upperBound; i += 2) {
         // one
         sum1 = fma(a[i], b[i], sum1);
@@ -114,7 +114,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       float acc3 = 0;
       float acc4 = 0;
 
-      int upperBound = a.length & ~(4 - 1);
+      int upperBound = a.length & -4;
       for (; i < upperBound; i += 4) {
         // one
         float diff1 = a[i] - b[i];
