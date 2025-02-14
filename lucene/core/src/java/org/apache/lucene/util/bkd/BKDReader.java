@@ -898,6 +898,15 @@ public class BKDReader extends PointValues {
               dim * config.bytesPerDim() + prefix,
               config.bytesPerDim() - prefix);
         }
+        if (config.numDims() == 1) {
+          Relation r = visitor.compare(scratchPackedValue, maxPackedValue);
+          if (r != Relation.CELL_CROSSES_QUERY) {
+            if (r == Relation.CELL_INSIDE_QUERY) {
+              visitor.visit(scratchIterator.docsRef(i, count - i));
+            }
+            return;
+          }
+        }
         scratchIterator.reset(i, length);
         visitor.visit(scratchIterator, scratchPackedValue);
         i += length;
@@ -945,7 +954,17 @@ public class BKDReader extends PointValues {
                 dim * config.bytesPerDim() + prefix,
                 config.bytesPerDim() - prefix);
           }
-          visitor.visit(scratchIterator.docIDs[i + j], scratchPackedValue);
+          int index = i + j;
+          if (config.numDims() == 1 && (index & 0x0F) == 0x07) {
+            Relation r = visitor.compare(scratchPackedValue, maxPackedValue);
+            if (r != Relation.CELL_CROSSES_QUERY) {
+              if (r == Relation.CELL_INSIDE_QUERY) {
+                visitor.visit(scratchIterator.docsRef(index, count - index));
+              }
+              return;
+            }
+          }
+          visitor.visit(scratchIterator.docIDs[index], scratchPackedValue);
         }
         i += runLen;
       }
@@ -1027,6 +1046,7 @@ public class BKDReader extends PointValues {
     private int docID;
     final int[] docIDs;
     private final DocIdsWriter docIdsWriter;
+    private final IntsRef docsRef = new IntsRef();
 
     public BKDReaderDocIDSetIterator(int maxPointsInLeafNode) {
       this.docIDs = new int[maxPointsInLeafNode];
@@ -1044,6 +1064,13 @@ public class BKDReader extends PointValues {
       assert offset + length <= docIDs.length;
       this.docID = -1;
       this.idx = 0;
+    }
+
+    private IntsRef docsRef(int offset, int length) {
+      docsRef.ints = docIDs;
+      docsRef.offset = offset;
+      docsRef.length = length;
+      return docsRef;
     }
 
     @Override
