@@ -24,6 +24,8 @@ import org.apache.lucene.sandbox.facet.labels.RangeOrdToLabel;
 /** {@link FacetBuilder} factory for long range facets. */
 public final class LongRangeFacetBuilder {
 
+  private LongRangeFacetBuilder() {}
+
   /** Request long range facets for numeric field by name. */
   public static CommonFacetBuilder create(String field, LongRange... ranges) {
     return create(field, MultiLongValuesSource.fromLongField(field), ranges);
