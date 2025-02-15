@@ -4,6 +4,8 @@ asm = "9.6"
 assertj = "3.21.0"
 commons-codec = "1.17.2"
 commons-compress = "1.19"
+commons-lang3 = "3.17.0"
+cuvs = "25.02.0"
 ecj = "3.36.0"
 errorprone = "2.36.0"
 flexmark = "0.61.24"
@@ -42,6 +44,8 @@ asm-core = { module = "org.ow2.asm:asm", version.ref = "asm" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
+cuvs = { module = "com.nvidia.cuvs:cuvs-java", version.ref = "cuvs" }
 ecj = { module = "org.eclipse.jdt:ecj", version.ref = "ecj" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 flexmark-core = { module = "com.vladsch.flexmark:flexmark", version.ref = "flexmark" }
