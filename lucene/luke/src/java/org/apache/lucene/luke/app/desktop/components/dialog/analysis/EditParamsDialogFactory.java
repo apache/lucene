@@ -50,6 +50,7 @@ import org.apache.lucene.luke.app.desktop.util.lang.Callable;
 /** Factory of edit parameters dialog */
 public final class EditParamsDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static EditParamsDialogFactory instance;
 
   private final Preferences prefs;

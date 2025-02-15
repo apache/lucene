@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
@@ -450,11 +451,19 @@ public class TestLRUQueryCache extends LuceneTestCase {
   /** A query that doesn't match anything */
   private static class DummyQuery extends Query {
 
-    private static int COUNTER = 0;
+    private static final IntSupplier COUNTER =
+        new IntSupplier() {
+          int counter = 0;
+
+          @Override
+          public int getAsInt() {
+            return counter++;
+          }
+        };
     private final int id;
 
     DummyQuery() {
-      id = COUNTER++;
+      id = COUNTER.getAsInt();
     }
 
     @Override

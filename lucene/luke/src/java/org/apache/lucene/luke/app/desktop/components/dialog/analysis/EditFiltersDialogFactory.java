@@ -53,6 +53,7 @@ import org.apache.lucene.luke.app.desktop.util.lang.Callable;
 /** Factory of edit filters dialog */
 public final class EditFiltersDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static EditFiltersDialogFactory instance;
 
   private final Preferences prefs;

@@ -192,7 +192,7 @@ public interface SerializableObject {
    * @param clazz is the class to write.
    */
   static void writeClass(final OutputStream outputStream, final Class<?> clazz) throws IOException {
-    Integer index = StandardObjects.classRegsitry.get(clazz);
+    Integer index = StandardObjects.CLASS_REGISTRY.get(clazz);
     if (index == null) {
       writeBoolean(outputStream, false);
       writeString(outputStream, clazz.getName());
@@ -213,7 +213,7 @@ public interface SerializableObject {
     boolean standard = readBoolean(inputStream);
     if (standard) {
       int index = inputStream.read();
-      return StandardObjects.codeRegsitry.get(index);
+      return StandardObjects.CODE_REGISTRY.get(index);
     } else {
       String className = readString(inputStream);
       return Class.forName(className);

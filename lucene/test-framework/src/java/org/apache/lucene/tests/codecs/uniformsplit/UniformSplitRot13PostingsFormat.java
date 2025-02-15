@@ -39,6 +39,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
 /** {@link UniformSplitPostingsFormat} with block encoding using ROT13 cypher. */
+@SuppressWarnings("NonFinalStaticField")
 public class UniformSplitRot13PostingsFormat extends PostingsFormat {
 
   public static volatile boolean encoderCalled;

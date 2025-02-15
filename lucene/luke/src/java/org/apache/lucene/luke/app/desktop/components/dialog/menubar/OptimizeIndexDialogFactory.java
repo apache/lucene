@@ -59,6 +59,7 @@ import org.apache.lucene.util.NamedThreadFactory;
 /** Factory of optimize index dialog */
 public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static OptimizeIndexDialogFactory instance;
 
   private final Preferences prefs;

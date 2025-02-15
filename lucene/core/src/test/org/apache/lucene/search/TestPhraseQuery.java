@@ -742,7 +742,7 @@ public class TestPhraseQuery extends LuceneTestCase {
         });
   }
 
-  static String[] DOCS =
+  private static final String[] DOCS =
       new String[] {
         "a b c d e f g h",
         "b c b",
