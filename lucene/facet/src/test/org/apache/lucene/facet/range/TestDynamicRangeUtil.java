@@ -63,6 +63,24 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
     assertDynamicNumericRangeResults(values, weights, 4, totalWeight, expectedRangeInfoList);
   }
 
+  public void testComputeDynamicNumericRangesWithSameWeights() {
+    List<DynamicRangeUtil.DynamicRangeInfo> expectedRangeInfoList = new ArrayList<>();
+    long[] values = new long[100];
+    long[] weights = new long[100];
+    for (int i = 0; i < 100; i++) {
+      values[i] = i;
+      weights[i] = 50;
+    }
+
+    // Supplying only equal weights should return ranges with equal counts - excluding the last
+    // range
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 0L, 24L, 12.0D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 25L, 49L, 37.0D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 50L, 74L, 62.0D));
+    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 75L, 99L, 87.0D));
+    assertDynamicNumericRangeResults(values, weights, 4, 5000L, expectedRangeInfoList);
+  }
+
   public void testComputeDynamicNumericRangesWithOneValue() {
     long[] values = new long[] {50};
     long[] weights = new long[] {1};
@@ -121,24 +139,6 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
     assertDynamicNumericRangeResults(values, weights, 2, 1863L, expectedRangeInfoList);
   }
 
-  public void testComputeDynamicNumericRangesWithSameWeights() {
-    List<DynamicRangeUtil.DynamicRangeInfo> expectedRangeInfoList = new ArrayList<>();
-    long[] values = new long[100];
-    long[] weights = new long[100];
-    for (int i = 0; i < 100; i++) {
-      values[i] = i;
-      weights[i] = 50;
-    }
-
-    // Supplying only equal weights should return ranges with equal counts - excluding the last
-    // range
-    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 0L, 24L, 12.0D));
-    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 25L, 49L, 37.0D));
-    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 50L, 74L, 62.0D));
-    expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 75L, 99L, 87.0D));
-    assertDynamicNumericRangeResults(values, weights, 4, 5000L, expectedRangeInfoList);
-  }
-
   public void testComputeDynamicNumericRangesWithSameWeightsShuffled() {
     List<DynamicRangeUtil.DynamicRangeInfo> expectedRangeInfoList = new ArrayList<>();
     long[] values = new long[100];
@@ -148,7 +148,9 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
       weights[i] = 50;
     }
 
-    // Shuffling the values and weights should not change the answer when the weights are the same
+    // Shuffling the values and weights should not change the answer between runs
+    // We expect that returned ranges should come in a strict, deterministic order
+    // with the same values and weights
     shuffleValuesWeights(values, weights);
     expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 0L, 24L, 12.0D));
     expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(25, 1250L, 25L, 49L, 37.0D));
@@ -168,7 +170,9 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
       totalWeight += i;
     }
 
-    // Shuffling the values and weights should not change the answer when the values are the same
+    // Shuffling the values and weights should not change the answer between runs
+    // We expect that returned ranges should come in a strict, deterministic order
+    // with the same values and weights
     shuffleValuesWeights(values, weights);
     expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(51, 1275L, 50L, 50L, 50D));
     expectedRangeInfoList.add(new DynamicRangeUtil.DynamicRangeInfo(21, 1281L, 50L, 50L, 50D));
