@@ -20,6 +20,7 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#14238: Improve test coverage of Dynamic Range Faceting. (John Houser)
 
 (No changes)
 
