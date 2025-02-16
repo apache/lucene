@@ -49,6 +49,7 @@ import org.apache.lucene.util.LongBitSet;
  */
 public class SortedSetDocValuesMultiRangeQuery extends Query {
 
+  /** A range for ordinal ends. */
   protected static final class OrdRange {
     final long lower;
     long upper; // mutable field, can't afford equals hashcode here
@@ -151,6 +152,7 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
     return Objects.hash(fieldName, rangeClauses);
   }
 
+  /** Weight for {@linkplain SortedSetDocValuesMultiRangeQuery} */
   protected class MultiRangeWeight extends ConstantScoreWeight {
     final ScoreMode scoreMode;
 
@@ -176,6 +178,7 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
       return DocValues.isCacheable(ctx, fieldName);
     }
 
+    /** Scorer supplier for {@linkplain SortedSetDocValuesMultiRangeQuery} */
     protected class MultiRangeScorerSupplier extends ScorerSupplier {
       final SortedSetDocValues values;
       protected final LeafReaderContext context;
