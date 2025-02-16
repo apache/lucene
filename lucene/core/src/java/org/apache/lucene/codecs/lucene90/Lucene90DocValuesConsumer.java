@@ -454,7 +454,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         for (long v : sortedUniqueValues) {
           meta.writeLong(v); // table[] entry
         }
-        encode = new LongIntHashMap();
+        encode = new LongIntHashMap(sortedUniqueValues.length);
         for (int i = 0; i < sortedUniqueValues.length; ++i) {
           encode.put(sortedUniqueValues[i], i);
         }
