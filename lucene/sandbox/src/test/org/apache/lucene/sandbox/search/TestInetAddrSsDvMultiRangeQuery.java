@@ -43,7 +43,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
-public class TestInetAddrSsDvMultiRange extends LuceneTestCase {
+public class TestInetAddrSsDvMultiRangeQuery extends LuceneTestCase {
   /** Add a single address and search for it */
   public void testBasics() throws Exception {
     Directory dir = newDirectory();
