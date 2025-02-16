@@ -443,12 +443,7 @@ public abstract class PointRangeQuery extends Query {
             new IntersectVisitor() {
               @Override
               public void visit(int docID) {
-                // this branch should be unreachable
-                throw new UnsupportedOperationException(
-                    "This IntersectVisitor does not perform any actions on a "
-                        + "docID="
-                        + docID
-                        + " node being visited");
+                matchingNodeCount[0]++;
               }
 
               @Override
