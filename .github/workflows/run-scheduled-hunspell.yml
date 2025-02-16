@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '13 4 * * 1' // 4:13 on Mondays
+    # 4:13 on Mondays
+    - cron: '13 4 * * 1'
 
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
