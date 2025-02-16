@@ -47,7 +47,7 @@ import org.apache.lucene.util.LongBitSet;
  *
  * @lucene.experimental
  */
-class SortedSetDocValuesMultiRangeQuery extends Query {
+public class SortedSetDocValuesMultiRangeQuery extends Query {
 
   protected static final class OrdRange {
     final long lower;
@@ -60,29 +60,21 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
   }
 
   protected final String fieldName;
-  protected final List<DocValuesMultiRangeQuery.Range> rangeClauses;
+  protected final List<DocValuesMultiRangeQuery.ByteRange> rangeClauses;
 
-  SortedSetDocValuesMultiRangeQuery(
-      String fieldName, List<DocValuesMultiRangeQuery.Range> clauses) {
+  protected SortedSetDocValuesMultiRangeQuery(
+      String fieldName, List<DocValuesMultiRangeQuery.ByteRange> clauses) {
     this.fieldName = fieldName;
-    ArrayList<DocValuesMultiRangeQuery.Range> sortedClauses = new ArrayList<>(clauses);
+    ArrayList<DocValuesMultiRangeQuery.ByteRange> sortedClauses = new ArrayList<>(clauses);
     sortedClauses.sort(
-        Comparator.<DocValuesMultiRangeQuery.Range, BytesRef>comparing(r -> r.lower)
+        Comparator.<DocValuesMultiRangeQuery.ByteRange, BytesRef>comparing(r -> r.lower)
             .thenComparing(r -> r.upper));
     this.rangeClauses = sortedClauses;
   }
 
   @Override
   public String toString(String fld) {
-    return SortedSetDocValuesMultiRangeQuery.class.getSimpleName()
-        + "{"
-        + "field='"
-        + fld
-        + '\''
-        + ", rangeClauses="
-        + rangeClauses
-        + // TODO better toString
-        '}';
+    return (Objects.equals(fieldName, fld) ? "" : fieldName + ":") + rangeClauses;
   }
 
   @Override
@@ -103,7 +95,7 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
     TermsEnum termsEnum = values.termsEnum();
     OrdRange previous = null;
     clauses:
-    for (DocValuesMultiRangeQuery.Range range : rangeClauses) {
+    for (DocValuesMultiRangeQuery.ByteRange range : rangeClauses) {
       TermsEnum.SeekStatus seekStatus = termsEnum.seekCeil(range.lower);
       long lowerOrd = -1;
       switch (seekStatus) {
@@ -128,14 +120,12 @@ class SortedSetDocValuesMultiRangeQuery extends Query {
           upperOrd = termsEnum.ord() - 1;
       }
       if (lowerOrd <= upperOrd) { // otherwise ignore
-        if (previous != null) {
-          if (previous.upper >= lowerOrd - 1) { // adjacent or overlap
-            previous.upper =
-                Math.max(upperOrd, previous.upper); // update one. which was yield. danger
-            continue;
-          }
+        if (previous == null || previous.upper < lowerOrd - 1) { // standing out of previous
+          ordRanges.add(previous = new OrdRange(lowerOrd, upperOrd));
+        } else { // adjacent or overlap
+          previous.upper =
+              Math.max(upperOrd, previous.upper); // update one. which was yield. danger
         }
-        ordRanges.add(previous = new OrdRange(lowerOrd, upperOrd));
       }
     }
   }

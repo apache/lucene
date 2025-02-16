@@ -33,17 +33,16 @@ public final class DocValuesMultiRangeQuery {
   private DocValuesMultiRangeQuery() {}
 
   /** Representation of a single clause in a MultiRangeQuery */
-  static final class Range {
-    BytesRef lower;
-    BytesRef upper;
+  public static class ByteRange {
+    protected BytesRef lower;
+    protected BytesRef upper;
 
-    /** NB: One absolutely must copy ByteRefs before. */
-    Range(BytesRef lowerValue, BytesRef upperValue) {
-      this.lower = lowerValue;
-      this.upper = upperValue;
+    /** copies ByteRefs passed */
+    public ByteRange(BytesRef lowerValue, BytesRef upperValue) {
+      this.lower = BytesRef.deepCopyOf(lowerValue);
+      this.upper = BytesRef.deepCopyOf(upperValue);
     }
 
-    // TODO test equals
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -52,7 +51,7 @@ public final class DocValuesMultiRangeQuery {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      Range that = (Range) o;
+      ByteRange that = (ByteRange) o;
       return lower.equals(that.lower) && upper.equals(that.upper);
     }
 
@@ -61,6 +60,11 @@ public final class DocValuesMultiRangeQuery {
       int result = lower.hashCode();
       result = 31 * result + upper.hashCode();
       return result;
+    }
+
+    @Override
+    public String toString() {
+      return lower + ".." + upper;
     }
   }
 
@@ -72,18 +76,15 @@ public final class DocValuesMultiRangeQuery {
    */
   public static class SortedSetStabbingBuilder {
     protected final String fieldName;
-    final List<Range> clauses = new ArrayList<>();
+    protected final List<ByteRange> clauses = new ArrayList<>();
 
     public SortedSetStabbingBuilder(String fieldName) {
       this.fieldName = Objects.requireNonNull(fieldName);
     }
 
     // TODO support nulls as min,max boundaries ???
-    /** NB:Deeply copies the given bytes */
     public SortedSetStabbingBuilder add(BytesRef lowerValue, BytesRef upperValue) {
-      BytesRef lowRef = BytesRef.deepCopyOf(lowerValue);
-      BytesRef upRef = BytesRef.deepCopyOf(upperValue);
-      clauses.add(new Range(lowRef, upRef));
+      clauses.add(new ByteRange(lowerValue, upperValue));
       return this;
     }
 
@@ -92,14 +93,14 @@ public final class DocValuesMultiRangeQuery {
         return new MatchNoDocsQuery();
       }
       if (clauses.size() == 1) {
-        Range theOnlyOne = clauses.getFirst();
+        ByteRange theOnlyOne = clauses.getFirst();
         return SortedSetDocValuesField.newSlowRangeQuery(
             fieldName, theOnlyOne.lower, theOnlyOne.upper, true, true);
       }
       return createSortedSetDocValuesMultiRangeQuery();
     }
 
-    SortedSetDocValuesMultiRangeQuery createSortedSetDocValuesMultiRangeQuery() {
+    protected Query createSortedSetDocValuesMultiRangeQuery() {
       return new SortedSetDocValuesMultiRangeQuery(fieldName, clauses);
     }
   }

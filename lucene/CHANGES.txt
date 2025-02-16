@@ -49,7 +49,7 @@ API Changes
 * GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
   bit set of matches. (Adrien Grand)
 
-* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and 
+* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and
   concatenate(Automaton,Automaton) in favor of the methods taking List.  (Robert Muir)
 
 New Features
@@ -137,7 +137,7 @@ Other
 
 * GITHUB#14091: Cover all DataType. (Lu Xugang)
 
-* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j 
+* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j
   from 1.7.36 to 2.0.16. (Michael Froh)
 
 * GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
@@ -160,6 +160,8 @@ API Changes
 New Features
 ---------------------
 * GITHUB#14034: Add support for storing term vectors in FeatureField. (Jim Ferenczi)
+
+* GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
 
 Improvements
 ---------------------

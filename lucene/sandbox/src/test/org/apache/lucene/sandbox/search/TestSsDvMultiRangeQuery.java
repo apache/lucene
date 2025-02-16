@@ -48,9 +48,7 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
 
       int dims = 1;
       boolean singleton = random().nextBoolean();
-      boolean sortedIndex =
-          // singleton &&
-          random().nextBoolean(); // sorting by multivalue field??
+      boolean sortedIndex = random().nextBoolean();
       if (!sortedIndex) {
         w = new RandomIndexWriter(random(), dir);
       } else {
@@ -61,12 +59,12 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       }
 
       long[] scratch = new long[dims];
-      for (int i = 0; i < 100; i++) {
+      for (int i = 0; i < (LuceneTestCase.TEST_NIGHTLY ? atLeast(1000) : 100); i++) {
         int numPoints = singleton ? 1 : RandomNumbers.randomIntBetween(random(), 1, 10);
         Document doc = new Document();
         for (int j = 0; j < numPoints; j++) {
           for (int v = 0; v < dims; v++) {
-            scratch[v] = RandomNumbers.randomLongBetween(random(), 0, 100);
+            scratch[v] = RandomNumbers.randomLongBetween(random(), 0, atLeast(100));
           }
           doc.add(new LongPoint("point", scratch));
           if (singleton) {
