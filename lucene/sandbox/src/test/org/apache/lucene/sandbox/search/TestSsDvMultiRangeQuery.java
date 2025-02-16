@@ -20,7 +20,6 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
@@ -157,9 +156,9 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
   }
 
   private static DocValuesMultiRangeQuery.SortedSetStabbingBuilder mrSsDvBuilder(
-          String field, int... ends) {
+      String field, int... ends) {
     DocValuesMultiRangeQuery.SortedSetStabbingBuilder b =
-            new DocValuesMultiRangeQuery.SortedSetStabbingBuilder(field);
+        new DocValuesMultiRangeQuery.SortedSetStabbingBuilder(field);
     for (int j = 0; j < ends.length; j += 2) {
       b.add(IntPoint.pack(ends[j]), IntPoint.pack(ends[j + 1]));
     }
@@ -175,30 +174,30 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
 
   public void testOverrideToString() {
     DocValuesMultiRangeQuery.SortedSetStabbingBuilder b =
-            new DocValuesMultiRangeQuery.SortedSetStabbingBuilder("foo") {
+        new DocValuesMultiRangeQuery.SortedSetStabbingBuilder("foo") {
+          @Override
+          protected Query createSortedSetDocValuesMultiRangeQuery() {
+            return new SortedSetDocValuesMultiRangeQuery(fieldName, clauses) {
               @Override
-              protected Query createSortedSetDocValuesMultiRangeQuery() {
-                return new SortedSetDocValuesMultiRangeQuery(fieldName, clauses) {
-                  @Override
-                  public String toString(String fld) {
-                    return fieldName + " " + rangeClauses.size();
-                  }
-                };
+              public String toString(String fld) {
+                return fieldName + " " + rangeClauses.size();
               }
             };
+          }
+        };
     b.add(IntPoint.pack(1), IntPoint.pack(2));
     b.add(IntPoint.pack(3), IntPoint.pack(4));
     assertEquals("foo 2", b.build().toString());
 
     DocValuesMultiRangeQuery.ByteRange myrange =
-            new DocValuesMultiRangeQuery.ByteRange(IntPoint.pack(1), IntPoint.pack(2)) {
-              @Override
-              public String toString() {
-                return IntPoint.decodeDimension(lower.bytes, 0)
-                        + " "
-                        + IntPoint.decodeDimension(upper.bytes, 0);
-              }
-            };
+        new DocValuesMultiRangeQuery.ByteRange(IntPoint.pack(1), IntPoint.pack(2)) {
+          @Override
+          public String toString() {
+            return IntPoint.decodeDimension(lower.bytes, 0)
+                + " "
+                + IntPoint.decodeDimension(upper.bytes, 0);
+          }
+        };
     assertEquals("1 2", myrange.toString());
   }
 
@@ -231,8 +230,8 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
     iw.close();
     IndexSearcher searcher = newSearcher(reader);
     for (DocValuesMultiRangeQuery.SortedSetStabbingBuilder builder :
-            List.of(
-                    mrSsDvBuilder("foo", 2, 3, 4, 5, -5, -2), mrSsDvBuilder("foo", 2, 3, 4, 5, 12, 15))) {
+        List.of(
+            mrSsDvBuilder("foo", 2, 3, 4, 5, -5, -2), mrSsDvBuilder("foo", 2, 3, 4, 5, 12, 15))) {
       assertEquals("no match", 0, searcher.search(builder.build(), 1).totalHits.value());
       BytesRef lower;
       BytesRef upper;
@@ -241,14 +240,14 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       lower.bytes = IntPoint.pack(1).bytes;
       upper.bytes = IntPoint.pack(10).bytes;
       assertEquals(
-              "updating bytes changes nothing",
-              0,
-              searcher.search(builder.build(), 1).totalHits.value());
+          "updating bytes changes nothing",
+          0,
+          searcher.search(builder.build(), 1).totalHits.value());
       builder.add(lower, upper);
       assertEquals(
-              "sanity check for potential match",
-              2,
-              searcher.search(builder.build(), 1).totalHits.value());
+          "sanity check for potential match",
+          2,
+          searcher.search(builder.build(), 1).totalHits.value());
     }
     // hit by value as a range upper==lower
     TopDocs hit1 = searcher.search(mrSsDvQ("foo", 2, 3, 4, 5, -5, -2, 1, 1), 1);
