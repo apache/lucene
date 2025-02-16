@@ -174,7 +174,6 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
   }
 
   public void testOverrideToString() {
-    int[] ends = new int[] {3, 5, 7, 9};
     DocValuesMultiRangeQuery.SortedSetStabbingBuilder b =
             new DocValuesMultiRangeQuery.SortedSetStabbingBuilder("foo") {
               @Override
@@ -212,7 +211,7 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     for (Query query : Collections.singletonList(mrSsDvQ("foo", 1, 2))) {
       Weight w = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
-      assertNull(w.scorer(searcher.getIndexReader().leaves().get(0)));
+      assertNull(w.scorer(searcher.getIndexReader().leaves().getFirst()));
     }
     reader.close();
     dir.close();
@@ -238,8 +237,7 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       BytesRef lower;
       BytesRef upper;
       builder.add(lower = IntPoint.pack(100), upper = IntPoint.pack(200));
-      Query frozen;
-      assertEquals("no match", 0, searcher.search(frozen = builder.build(), 1).totalHits.value());
+      assertEquals("no match", 0, searcher.search(builder.build(), 1).totalHits.value());
       lower.bytes = IntPoint.pack(1).bytes;
       upper.bytes = IntPoint.pack(10).bytes;
       assertEquals(
