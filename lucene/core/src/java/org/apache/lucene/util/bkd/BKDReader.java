@@ -888,7 +888,10 @@ public class BKDReader extends PointValues {
         int count,
         PointValues.IntersectVisitor visitor)
         throws IOException {
-      int acc = 0;
+      // Check relation per 4 values.
+      // Initialized as 2 to check the 2nd value in the leaf since it is a common shortcut point for
+      // the exact queries on the value stored across leaves.
+      int acc = 2;
       int i;
       for (i = 0; i < count; ) {
         int length = in.readVInt();
