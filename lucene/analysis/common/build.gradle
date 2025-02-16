@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import java.nio.file.Files;
+
 apply plugin: 'java-library'
 
 description = 'Analyzers for indexing content in different languages and domains'
@@ -24,34 +26,54 @@ dependencies {
   moduleTestImplementation project(':lucene:test-framework')
 }
 
-// Fetch the data and enable regression tests against woorm/ libreoffice dictionaries.
-task checkoutHunspellRegressionRepos() {
-  ext {
-    checkoutDir = file("${buildDir}/hunspell-regressions")
-  }
+def checkoutDirProv = project.layout.buildDirectory.dir("hunspell-regressions")
 
-  outputs.dir checkoutDir
+// Fetch the data and enable regression tests against woorm/ libreoffice dictionaries.
+def checkoutHunspellRegressionRepos = tasks.register("checkoutHunspellRegressionRepos", {
+  outputs.dir(checkoutDirProv)
+  outputs.upToDateWhen { false }
+
   doFirst {
-    // Clone the repositories we need if they don't exist.
+    // Clone the repositories and refs we need.
     [
-        "libreoffice": "https://github.com/LibreOffice/dictionaries",
-        "woorm": "https://github.com/wooorm/dictionaries"
-    ].each { name, repo ->
-      if (!file("${checkoutDir}/${name}").exists()) {
-        checkoutDir.mkdirs()
-        // This will work only if git is available, but I assume it is.
+        "libreoffice": [
+          "url": "https://github.com/LibreOffice/dictionaries",
+          "ref": "master"
+        ],
+        "woorm": [
+          "url": "https://github.com/wooorm/dictionaries",
+          "ref": "main"
+        ]
+    ].each { name, repoSpec ->
+      def url = repoSpec.url
+      def ref = repoSpec.ref
+      def cloneDir = checkoutDirProv.map { dir -> dir.dir(name) }.get().asFile.toPath()
+
+      def logger = this.logger
+      def gitExec = (List<String> cmdArgs) -> {
+        logger.lifecycle("Executing git " + cmdArgs.join(" "))
         project.exec {
           executable "git"
           ignoreExitValue false
-          workingDir checkoutDir
-          args = [ "clone", "--depth=1", repo, name ]
+          workingDir cloneDir
+          args = cmdArgs
         }
       }
+
+      if (!Files.exists(cloneDir)) {
+        Files.createDirectories(cloneDir);
+        gitExec(["init", "--initial-branch", "irrelevant"])
+        gitExec(["config", "advice.detachedHead", "false"])
+        gitExec(["remote", "add", "origin", url])
+      }
+
+      gitExec(["fetch", "--depth", "1", "origin", ref])
+      gitExec(["checkout", "FETCH_HEAD"])
     }
   }
-}
+})
 
-task testRegressions(type: Test) {
+tasks.register("testRegressions", Test, {
   group "Verification"
   description "Run Hunspell regression tests against Woorm/ LibreOffice git repositories."
 
@@ -60,15 +82,15 @@ task testRegressions(type: Test) {
   failFast = true
   include "**/TestAllDictionaries*"
 
-  systemProperty "hunspell.dictionaries", checkoutHunspellRegressionRepos.checkoutDir
+  systemProperty "hunspell.dictionaries", checkoutDirProv.map { dir -> dir.asFile.absolutePath }.get()
 
   doFirst {
     logger.lifecycle("Running Hunspell regression tests...")
   }
-}
+})
 
-// Pass all hunspell-tests-specific project properties to tests as system properties.
-tasks.withType(Test) {
+// Pass all hunspell-tests-specific project properties to tests as system properties, if they're specified.
+tasks.withType(Test).configureEach {
   [
       "hunspell.dictionaries",
       "hunspell.corpora",
