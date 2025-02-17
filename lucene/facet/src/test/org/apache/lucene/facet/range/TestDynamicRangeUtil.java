@@ -289,14 +289,10 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
     for (int pairOffset = 0, rangeIdx = 0; rangeIdx < mockDynamicRangeResult.size(); rangeIdx++) {
       DynamicRangeUtil.DynamicRangeInfo rangeInfo = mockDynamicRangeResult.get(rangeIdx);
       int count = rangeInfo.count();
-      long min = Long.MAX_VALUE;
-      long max = Long.MIN_VALUE;
-      for (int i = pairOffset; i < pairOffset + count; i++) {
-        List<Long> pair = sortedPairs.get(i);
-        long value = pair.get(0);
-        min = Math.min(min, value);
-        max = Math.max(max, value);
-      }
+      List<Long> minPair = sortedPairs.get(pairOffset);
+      List<Long> maxPair = sortedPairs.get(pairOffset + count - 1);
+      long min = minPair.get(0);
+      long max = maxPair.get(0);
       assertTrue(rangeInfo.min() == min);
       assertTrue(rangeInfo.max() == max);
       pairOffset += count;
