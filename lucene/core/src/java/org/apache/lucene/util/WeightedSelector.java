@@ -205,7 +205,7 @@ public abstract class WeightedSelector {
       int topKFrom = kTo;
       int bottomKTo = kFrom;
       for (int ki = kTo - 1; ki >= kFrom; ki--) {
-        if (kWeights[ki] >= rightWeightStart) {
+        if (kWeights[ki] > rightWeightStart) {
           topKFrom = ki;
         }
         if (kWeights[ki] <= leftWeightEnd) {
