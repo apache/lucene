@@ -37,7 +37,7 @@ public final class CommonFacetBuilder extends BaseFacetBuilder<CommonFacetBuilde
   }
 
   @Override
-  FacetCutter createFacetCutter() {
+  FacetCutter getFacetCutter() {
     return cutter;
   }
 
