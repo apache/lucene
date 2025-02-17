@@ -66,7 +66,7 @@ public final class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBu
   }
 
   @Override
-  FacetCutter createFacetCutter() {
+  FacetCutter getFacetCutter() {
     return new TaxonomyFacetsCutter(indexFieldName, facetsConfig, taxonomyReader);
   }
 
