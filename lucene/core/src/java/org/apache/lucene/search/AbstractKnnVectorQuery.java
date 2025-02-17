@@ -27,11 +27,7 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.stream.IntStream;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
@@ -94,7 +90,23 @@ abstract class AbstractKnnVectorQuery extends Query {
       /* sort LRCs by segment size */
       List<LeafReaderContext> sortedLeafReaderContexts =
           leafReaderContexts.stream()
-              .sorted(Comparator.comparingInt(o -> o.reader().numDocs()))
+              .sorted(
+                  Comparator.comparingInt(
+                      value -> {
+                        try {
+                          LeafReader leafReader = value.reader();
+                          KnnVectorValues vectorValues;
+                          if ((vectorValues = leafReader.getFloatVectorValues(field)) != null) {
+                            return vectorValues.size();
+                          } else if ((vectorValues = leafReader.getByteVectorValues(field))
+                              != null) {
+                            return vectorValues.size();
+                          }
+                        } catch (IOException e) {
+                          // do nothing
+                        }
+                        return 0;
+                      }))
               .toList();
       int noLRCs = sortedLeafReaderContexts.size();
       int minNumDocs = sortedLeafReaderContexts.get(0).reader().numDocs();
