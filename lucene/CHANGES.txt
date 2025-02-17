@@ -11,6 +11,9 @@ API Changes
 
 * GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
 
+* GITHUB#14160: Adjusts the default HNSW search behavior so that filter optimized search is enabled
+  when 60% or less of vectors pass the pre-filter. (Ben Chaplin, Ben Trent)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -46,6 +49,9 @@ API Changes
 * GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
   bit set of matches. (Adrien Grand)
 
+* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and 
+  concatenate(Automaton,Automaton) in favor of the methods taking List.  (Robert Muir)
+
 New Features
 ---------------------
 
@@ -75,6 +81,14 @@ Improvements
   mergeFactor segments together when the merge is below the min merge size.
   (Adrien Grand)
 
+* GITHUB#14154: Add UnwrappingReuseStrategy for AnalyzerWrapper that consults
+  the wrapped analyzer's strategy to decide if components can be reused or need
+  to be updated. (Mayya Sharipova)
+
+* GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
+  improved to tolerate more instances of this problem.  (Robert Muir)
+
+
 Optimizations
 ---------------------
 
@@ -86,7 +100,20 @@ Optimizations
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
 
-# GITHUB#14169: Optimize ContextQuery with big number of contexts. (Mayya Sharipova)
+* GITHUB#14169: Optimize ContextQuery with big number of contexts. (Mayya Sharipova)
+
+* GITHUB#14181: Add updateable random scorer interface for knn vector index building. This allows
+  for fewer objects to be created during indexing and simplifies internally used iterfaces.
+  (Ben Trent)
+
+* GITHUB#14160: Adds new filtered HNSW search heuristic based on ACORN-1 algorithm. This improves runtime of filtered HNSW
+  searches as much as 5x. By default this new heuristic isn't used, but is available via the new experimental
+  KnnSearchStrategy interface in knn queries (Ben Chaplin, Ben Trent)
+
+* GITHUB#14193: Add Automata.makeCharSet() and makeCharClass() that return minimal DFA
+  for lists of characters and ranges. Use them in RegExp parser.  (Robert Muir)
+
+* GITHUB#14176: Reduce when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
 
 Bug Fixes
 ---------------------
@@ -99,6 +126,8 @@ Bug Fixes
 * GITHUB#14126: Avoid overflow in index input slices invariant checks
   (Chris Hegarty)
 
+* GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
+
 Other
 ---------------------
 
@@ -110,6 +139,8 @@ Other
 
 * GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j 
   from 1.7.36 to 2.0.16. (Michael Froh)
+
+* GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
 
 ======================= Lucene 10.1.0 =======================
 

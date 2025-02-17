@@ -70,7 +70,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
   }
 
   SeededKnnVectorQuery(AbstractKnnVectorQuery knnQuery, Query seed, Weight seedWeight) {
-    super(knnQuery.field, knnQuery.k, knnQuery.filter);
+    super(knnQuery.field, knnQuery.k, knnQuery.filter, knnQuery.searchStrategy);
     this.delegate = knnQuery;
     this.seed = Objects.requireNonNull(seed);
     this.seedWeight = seedWeight;
@@ -229,10 +229,11 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     private final int[] sortedDocIds;
     private int idx = -1;
 
-    private TopDocsDISI(TopDocs topDocs) {
+    private TopDocsDISI(TopDocs topDocs, LeafReaderContext ctx) {
       sortedDocIds = new int[topDocs.scoreDocs.length];
       for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-        sortedDocIds[i] = topDocs.scoreDocs[i].doc;
+        // Remove the doc base as added by the collector
+        sortedDocIds[i] = topDocs.scoreDocs[i].doc - ctx.docBase;
       }
       Arrays.sort(sortedDocIds);
     }
@@ -311,9 +312,12 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
       }
       // Most underlying iterators are indexed, so we can map the seed docs to the vector docs
       if (vectorIterator instanceof KnnVectorValues.DocIndexIterator indexIterator) {
-        DocIdSetIterator seedDocs = new MappedDISI(indexIterator, new TopDocsDISI(seedTopDocs));
+        DocIdSetIterator seedDocs =
+            new MappedDISI(indexIterator, new TopDocsDISI(seedTopDocs, ctx));
         return knnCollectorManager.newCollector(
-            visitLimit, new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length), ctx);
+            visitLimit,
+            new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length, searchStrategy),
+            ctx);
       }
       return delegateCollector;
     }

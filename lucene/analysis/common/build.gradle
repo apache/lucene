@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import java.nio.file.Files;
+
 apply plugin: 'java-library'
 
 description = 'Analyzers for indexing content in different languages and domains'
@@ -24,51 +26,104 @@ dependencies {
   moduleTestImplementation project(':lucene:test-framework')
 }
 
-// Fetch the data and enable regression tests against woorm/ libreoffice dictionaries.
-task checkoutHunspellRegressionRepos() {
-  ext {
-    checkoutDir = file("${buildDir}/hunspell-regressions")
-  }
+// Enable Hunspell tests against LibreOffice/ Woorm dictionaries. We pull
+// these dictionaries dynamically from git of each respective project. To keep
+// things consistent across pull requests/ re-runs, we use a fixed git commit
+// for each project ({@linkplain https://github.com/apache/lucene/issues/14235 #14235}),
+// with a periodic workflow running against the latest commit on each
+// project's respective development branch.
 
-  outputs.dir checkoutDir
-  doFirst {
-    // Clone the repositories we need if they don't exist.
+// A gradle property with the parent directory for all git clones for each project.
+def cloneDirProperty = project.layout.buildDirectory.dir("hunspell-regressions")
+
+// The list of dictionary projects to pull/ check against. Also includes
+// a full commit reference for each project. These should be updated
+// from time to time based on what's available at the head reference.
+def dictionaryProjects = [
     [
-        "libreoffice": "https://github.com/LibreOffice/dictionaries",
-        "woorm": "https://github.com/wooorm/dictionaries"
-    ].each { name, repo ->
-      if (!file("${checkoutDir}/${name}").exists()) {
-        checkoutDir.mkdirs()
-        // This will work only if git is available, but I assume it is.
-        project.exec {
+        "name": "libreoffice",
+        "url": "https://github.com/LibreOffice/dictionaries",
+        "ref": "762abe74008b94b2ff06db6f4024b59a8254c467" // head: master
+    ],
+    [
+        "name": "woorm",
+        "url": "https://github.com/wooorm/dictionaries",
+        "ref": "8cfea406b505e4d7df52d5a19bce525df98c54ab" // head: main
+    ]
+]
+
+// We need this for the new gradle configuration cache. I personally think it's
+// awful.
+interface ExecOperationsProvider {
+  @javax.inject.Inject
+  ExecOperations getExecOperations()
+}
+
+// Generate a set of tasks cloning the git repository of each project
+// and setting it to the given reference (hash or named).
+def cloningTasks = dictionaryProjects.collect { repoSpec ->
+  def cloningTask = tasks.register(repoSpec.name + "CloneAndSetRef", {task ->
+    def targetDir = cloneDirProperty.map { dir -> dir.dir(repoSpec.name) }
+
+    // The repository reference should be taken from a gradle property or default to the stable
+    // reference above.
+    def ref = providers.gradleProperty("tests.hunspell." + repoSpec.name + ".ref").orElse(repoSpec.ref)
+
+    // register task outputs.
+    outputs.dir(targetDir)
+
+    // register task inputs; we care about the url and ref.
+    inputs.property("ref", ref)
+    inputs.properties(repoSpec)
+
+    doFirst {
+      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
+
+      def logger = task.logger
+      def dotGitPath = targetDir.get().asFile.toPath().toAbsolutePath().resolve(".git")
+      def gitExec = (List<String> cmdArgs) -> {
+        logger.lifecycle("Executing git " + cmdArgs.join(" "))
+        execOps.exec {
           executable "git"
           ignoreExitValue false
-          workingDir checkoutDir
-          args = [ "clone", "--depth=1", repo, name ]
+          workingDir dotGitPath.getParent().toString()
+          args = cmdArgs
+
+          // An explicit GIT_DIR to prevent .git upward scanning if something goes wrong.
+          environment("GIT_DIR", dotGitPath.toString())
         }
       }
+
+      // if the target doesn't exist, create an empty repository, set
+      // the remote url (origin) but don't fetch anything.
+      if (!Files.exists(dotGitPath)) {
+        Files.createDirectories(dotGitPath.getParent())
+        gitExec(["init", "--initial-branch", "irrelevant"])
+        gitExec(["config", "advice.detachedHead", "false"])
+        gitExec(["remote", "add", "origin", repoSpec.url])
+      }
+
+      // Fetch just the revision we're interested in.
+      // This avoids downloading the entire repo.
+      gitExec(["fetch", "--depth", "1", "origin", ref.get()])
+      gitExec(["checkout", "FETCH_HEAD"])
     }
+  })
+  return cloningTask
+}
+
+// check if we should run tests with hunspell dictionaries.
+def withDictionaries = Boolean.parseBoolean(propertyOrDefault("tests.hunspell.regressions", "false"))
+if (withDictionaries) {
+  tasks.withType(Test).configureEach {
+    dependsOn cloningTasks
+    inputs.dir cloneDirProperty
+    systemProperty "hunspell.dictionaries", cloneDirProperty.map { dir -> dir.asFile.absolutePath }.get()
   }
 }
 
-task testRegressions(type: Test) {
-  group "Verification"
-  description "Run Hunspell regression tests against Woorm/ LibreOffice git repositories."
-
-  dependsOn checkoutHunspellRegressionRepos
-
-  failFast = true
-  include "**/TestAllDictionaries*"
-
-  systemProperty "hunspell.dictionaries", checkoutHunspellRegressionRepos.checkoutDir
-
-  doFirst {
-    logger.lifecycle("Running Hunspell regression tests...")
-  }
-}
-
-// Pass all hunspell-tests-specific project properties to tests as system properties.
-tasks.withType(Test) {
+// Pass all hunspell-tests-specific project properties to tests as system properties, if they're specified.
+tasks.withType(Test).configureEach {
   [
       "hunspell.dictionaries",
       "hunspell.corpora",

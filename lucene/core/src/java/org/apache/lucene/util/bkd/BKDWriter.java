@@ -1020,7 +1020,7 @@ public class BKDWriter implements Closeable {
    * structure.
    */
   private byte[] packIndex(BKDTreeLeafNodes leafNodes) throws IOException {
-    /** Reused while packing the index */
+    /* Reused while packing the index */
     ByteBuffersDataOutput writeBuffer = ByteBuffersDataOutput.newResettableInstance();
 
     // This is the "file" we append the byte[] to:
