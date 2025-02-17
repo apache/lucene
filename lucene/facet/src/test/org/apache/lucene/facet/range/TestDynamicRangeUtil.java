@@ -221,7 +221,7 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
   }
 
   /** Implementation of Durstenfeld's algorithm for shuffling values and weights */
-  private void shuffleValuesWeights(long[] values, long[] weights) {
+  private static void shuffleValuesWeights(long[] values, long[] weights) {
     for (int i = values.length - 1; i > 0; i--) {
       int rdmIdx = random().nextInt(i + 1);
       long tmpValue = values[i];
@@ -235,19 +235,17 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
 
   private static void assertDynamicNumericRangeValidProperties(
       long[] values, long[] weights, int topN, long totalWeight) {
-    List<List<Long>> sortedPairs = new ArrayList<>();
+    List<WeightedPair> sortedPairs = new ArrayList<>();
     for (int i = 0; i < values.length; i++) {
       long value = values[i];
       long weight = weights[i];
-      List<Long> pair = new ArrayList<>();
-      pair.add(value);
-      pair.add(weight);
+      WeightedPair pair = new WeightedPair(value, weight);
       sortedPairs.add(pair);
     }
 
     sortedPairs.sort(
-        Comparator.comparingLong((List<Long> innerList) -> innerList.get(0))
-            .thenComparingLong((List<Long> innerList) -> innerList.get(1)));
+        Comparator.comparingLong((WeightedPair weightedPair) -> weightedPair.value())
+            .thenComparingLong((WeightedPair weightedPair) -> weightedPair.weight()));
 
     int len = values.length;
 
@@ -278,8 +276,8 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
       DynamicRangeUtil.DynamicRangeInfo rangeInfo = mockDynamicRangeResult.get(rangeIdx);
       int count = rangeInfo.count();
       for (int i = pairOffset; i < pairOffset + count; i++) {
-        List<Long> pair = sortedPairs.get(i);
-        long value = pair.get(0);
+        WeightedPair pair = sortedPairs.get(i);
+        long value = pair.value();
         assertTrue(rangeInfo.min() <= value && value <= rangeInfo.max());
       }
       pairOffset += count;
@@ -289,10 +287,10 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
     for (int pairOffset = 0, rangeIdx = 0; rangeIdx < mockDynamicRangeResult.size(); rangeIdx++) {
       DynamicRangeUtil.DynamicRangeInfo rangeInfo = mockDynamicRangeResult.get(rangeIdx);
       int count = rangeInfo.count();
-      List<Long> minPair = sortedPairs.get(pairOffset);
-      List<Long> maxPair = sortedPairs.get(pairOffset + count - 1);
-      long min = minPair.get(0);
-      long max = maxPair.get(0);
+      WeightedPair minPair = sortedPairs.get(pairOffset);
+      WeightedPair maxPair = sortedPairs.get(pairOffset + count - 1);
+      long min = minPair.value();
+      long max = maxPair.value();
       assertTrue(rangeInfo.min() == min);
       assertTrue(rangeInfo.max() == max);
       pairOffset += count;
@@ -311,8 +309,8 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
         rangeIdx++) {
       DynamicRangeUtil.DynamicRangeInfo rangeInfo = mockDynamicRangeResult.get(rangeIdx);
       int count = rangeInfo.count();
-      List<Long> lastPair = sortedPairs.get(pairOffset + count - 1);
-      long lastWeight = lastPair.get(1);
+      WeightedPair lastPair = sortedPairs.get(pairOffset + count - 1);
+      long lastWeight = lastPair.weight();
       pairOffset += count;
       assertTrue(rangeInfo.weight() - lastWeight < rangeWeightTarget);
     }
@@ -323,8 +321,8 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
       int count = rangeInfo.count();
       long accuValue = 0;
       for (int i = pairOffset; i < pairOffset + count; i++) {
-        List<Long> pair = sortedPairs.get(i);
-        long value = pair.get(0);
+        WeightedPair pair = sortedPairs.get(i);
+        long value = pair.value();
         accuValue += value;
       }
       pairOffset += count;
@@ -343,4 +341,12 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
             values, weights, values.length, totalWeight, topN);
     assertEquals(mockDynamicRangeResult, expectedDynamicRangeResult);
   }
+
+  /**
+   * Holds parameters of a weighted pair.
+   *
+   * @param value the value of the pair
+   * @param weight the weight of the pair
+   */
+  private record WeightedPair(long value, long weight) {}
 }
