@@ -216,11 +216,14 @@ public final class DynamicRangeUtil {
       return dynamicRangeResult;
     }
 
-    double rangeWeightTarget = (double) totalWeight / topN;
+    double rangeWeightTarget = ((double) totalWeight) / topN;
     double[] kWeights = new double[topN];
-    for (int i = 0; i < topN; i++) {
-      kWeights[i] = (i == 0 ? 0 : kWeights[i - 1]) + rangeWeightTarget;
+    for (int i = 0; i < topN - 1; i++) {
+      kWeights[i] = (i + 1) * rangeWeightTarget;
     }
+    // Avoid issues with floating point math.
+    // The end of the last quantile needs to be the total weight.
+    kWeights[topN - 1] = totalWeight;
 
     WeightedSelector.WeightRangeInfo[] kIndexResults =
         new WeightedSelector() {
