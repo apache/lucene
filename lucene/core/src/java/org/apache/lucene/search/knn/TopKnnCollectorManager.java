@@ -18,7 +18,6 @@
 package org.apache.lucene.search.knn;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
@@ -36,7 +35,6 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
   private final int k;
   // the global score queue used to track the top scores collected across all leaves
   private final BlockingFloatHeap globalScoreQueue;
-  private final AtomicBoolean freeze = new AtomicBoolean(true);
 
   public TopKnnCollectorManager(int k, IndexSearcher indexSearcher) {
     boolean isMultiSegments = indexSearcher.getIndexReader().leaves().size() > 1;
@@ -57,13 +55,8 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
     if (globalScoreQueue == null) {
       return new TopKnnCollector(k, visitedLimit, searchStrategy);
     } else {
-      if (freeze.getAndSet(false)) {
-        return new MultiLeafKnnCollector(
-            k, globalScoreQueue, new TopKnnCollector(k, visitedLimit, searchStrategy), false);
-      } else {
-        return new MultiLeafKnnCollector(
-            k, globalScoreQueue, new TopKnnCollector(k, visitedLimit, searchStrategy), true);
-      }
+      return new MultiLeafKnnCollector(
+          k, globalScoreQueue, new TopKnnCollector(k, visitedLimit, searchStrategy));
     }
   }
 }

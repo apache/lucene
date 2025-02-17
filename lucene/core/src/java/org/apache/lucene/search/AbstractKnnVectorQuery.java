@@ -25,9 +25,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -86,9 +84,6 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    TimeLimitingKnnCollectorManager knnCollectorManager =
-        new TimeLimitingKnnCollectorManager(
-            getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = reader.leaves();
 
@@ -96,54 +91,62 @@ abstract class AbstractKnnVectorQuery extends Query {
 
     TopDocs[] perLeafResults;
     if (leafReaderContexts.size() > 1) {
-      if (true) {
-        /* sort LRCs by segment size */
-        List<LeafReaderContext> sortedLeafReaderContexts = leafReaderContexts.stream()
-                .sorted(Comparator.comparingInt(o -> o.reader().numDocs())).toList();
-        int noLRCs = sortedLeafReaderContexts.size();
-        int minNumDocs = sortedLeafReaderContexts.get(0).reader().numDocs();
-        int maxNumDocs = sortedLeafReaderContexts.get(noLRCs - 1).reader().numDocs();
+      /* sort LRCs by segment size */
+      List<LeafReaderContext> sortedLeafReaderContexts =
+          leafReaderContexts.stream()
+              .sorted(Comparator.comparingInt(o -> o.reader().numDocs()))
+              .toList();
+      int noLRCs = sortedLeafReaderContexts.size();
+      int minNumDocs = sortedLeafReaderContexts.get(0).reader().numDocs();
+      int maxNumDocs = sortedLeafReaderContexts.get(noLRCs - 1).reader().numDocs();
 
-        // each worker has a budget range to spend, and we have no more than e.g., 8 workers
-        int minBudget = 1000;
-        int maxBudget = 1_000_000;
-        int meanDocsPerLeaf = (maxNumDocs + minNumDocs) / 2;
-        int approximateTotalDocsCount = meanDocsPerLeaf * noLRCs;
-        int numBins = Math.max(approximateTotalDocsCount / maxBudget, Math.min(approximateTotalDocsCount / minBudget, 8));
+      // each worker has a budget range to spend, and we have no more than e.g., 8 workers
+      int minBudget = 100;
+      int maxBudget = 1_000_000;
+      int meanDocsPerLeaf = (maxNumDocs + minNumDocs) / 2;
+      int approximateTotalDocsCount = meanDocsPerLeaf * noLRCs;
+      int numBins =
+          Math.max(
+                  approximateTotalDocsCount / maxBudget,
+                  Math.min(approximateTotalDocsCount / minBudget, 7))
+              + 1;
 
-        List<Callable<TopDocs>> binTasks = new ArrayList<>(numBins);
-        int consumed = 0;
-        for (int nb = 0; nb < numBins; ++nb) {
-          // each task uses a different (multi leaf) knn collector (to freeze-and-share global queue)
-          TimeLimitingKnnCollectorManager binKnnCollectorManager =
-                  new TimeLimitingKnnCollectorManager(
-                          getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
-          int finalNb = nb;
+      List<Callable<TopDocs>> binTasks = new ArrayList<>(numBins);
+      int consumed = 0;
+      for (int nb = 0; nb < numBins; ++nb) {
+        // each task uses a different (multi leaf) knn collector (to freeze-and-share global queue)
+        TimeLimitingKnnCollectorManager binKnnCollectorManager =
+            new TimeLimitingKnnCollectorManager(
+                getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
+        int finalNb = nb;
 
-          /* assign LRCs to threads in a "round-robin" fashion */
-          List<LeafReaderContext> binContexts = new ArrayList<>(IntStream.range(0, noLRCs)
-                  .filter(i -> i % (numBins) == finalNb)
-                  .mapToObj(sortedLeafReaderContexts::get)
-                  .toList());
-          consumed += binContexts.size();
-
-          if (nb == numBins -1) {
-            // assign remaining LRCs to the last thread
-            int finalConsumed = consumed;
-            binContexts.addAll(IntStream.range(0, noLRCs)
-                    .filter(i -> i >= finalConsumed)
+        /* assign LRCs to threads in a "round-robin" fashion */
+        List<LeafReaderContext> binContexts =
+            new ArrayList<>(
+                IntStream.range(0, noLRCs)
+                    .filter(i -> i % (numBins) == finalNb)
                     .mapToObj(sortedLeafReaderContexts::get)
                     .toList());
-          }
+        consumed += binContexts.size();
 
-          binTasks.add(() -> searchLeaves(filterWeight, binKnnCollectorManager, binContexts));
+        if (nb == numBins - 1) {
+          // assign remaining LRCs to the last thread
+          int finalConsumed = consumed;
+          binContexts.addAll(
+              IntStream.range(0, noLRCs)
+                  .filter(i -> i >= finalConsumed)
+                  .mapToObj(sortedLeafReaderContexts::get)
+                  .toList());
         }
-        /* option2: for each thread keep a running estimate of the total work, i.e. sum_i log(n_i) */
-        /* add the next segment to thread with the smallest total work assigned to it so far */
 
-        perLeafResults = taskExecutor.invokeAll(binTasks).toArray(TopDocs[]::new);
+        binTasks.add(() -> searchLeaves(filterWeight, binKnnCollectorManager, binContexts));
       }
+
+      perLeafResults = taskExecutor.invokeAll(binTasks).toArray(TopDocs[]::new);
     } else {
+      TimeLimitingKnnCollectorManager knnCollectorManager =
+          new TimeLimitingKnnCollectorManager(
+              getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
       for (LeafReaderContext context : leafReaderContexts) {
         tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
       }
@@ -159,20 +162,20 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   private TopDocs searchLeaves(
-        Weight filterWeight,
-        TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager,
-        List<LeafReaderContext> ctxs)
-        throws IOException {
+      Weight filterWeight,
+      TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager,
+      List<LeafReaderContext> ctxs)
+      throws IOException {
     TopDocs[] results = new TopDocs[ctxs.size()];
     int i = 0;
     for (LeafReaderContext ctx : ctxs) {
-        results[i] = getLeafResults(ctx, filterWeight, timeLimitingKnnCollectorManager);
-        if (ctx.docBase > 0) {
-            for (ScoreDoc scoreDoc : results[i].scoreDocs) {
-                scoreDoc.doc += ctx.docBase;
-            }
+      results[i] = getLeafResults(ctx, filterWeight, timeLimitingKnnCollectorManager);
+      if (ctx.docBase > 0) {
+        for (ScoreDoc scoreDoc : results[i].scoreDocs) {
+          scoreDoc.doc += ctx.docBase;
         }
-        i++;
+      }
+      i++;
     }
     return mergeLeafResults(results);
   }
