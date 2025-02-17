@@ -285,6 +285,23 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
       pairOffset += count;
     }
 
+    // The minimum/maximum of each range is actually the smallest/largest value
+    for (int pairOffset = 0, rangeIdx = 0; rangeIdx < mockDynamicRangeResult.size(); rangeIdx++) {
+      DynamicRangeUtil.DynamicRangeInfo rangeInfo = mockDynamicRangeResult.get(rangeIdx);
+      int count = rangeInfo.count();
+      long min = Long.MAX_VALUE;
+      long max = Long.MIN_VALUE;
+      for (int i = pairOffset; i < pairOffset + count; i++) {
+        List<Long> pair = sortedPairs.get(i);
+        long value = pair.get(0);
+        min = Math.min(min, value);
+        max = Math.max(max, value);
+      }
+      assertTrue(rangeInfo.min() == min);
+      assertTrue(rangeInfo.max() == max);
+      pairOffset += count;
+    }
+
     // Weights of each range is over the rangeWeightTarget - exclude last range
     for (int i = 0; i < mockDynamicRangeResult.size() - 1; i++) {
       DynamicRangeUtil.DynamicRangeInfo rangeInfo = mockDynamicRangeResult.get(i);
@@ -298,12 +315,8 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
         rangeIdx++) {
       DynamicRangeUtil.DynamicRangeInfo rangeInfo = mockDynamicRangeResult.get(rangeIdx);
       int count = rangeInfo.count();
-      long lastWeight = Long.MAX_VALUE;
-      for (int i = pairOffset; i < pairOffset + count; i++) {
-        List<Long> pair = sortedPairs.get(i);
-        long weight = pair.get(1);
-        lastWeight = weight;
-      }
+      List<Long> lastPair = sortedPairs.get(pairOffset + count - 1);
+      long lastWeight = lastPair.get(1);
       pairOffset += count;
       assertTrue(rangeInfo.weight() - lastWeight < rangeWeightTarget);
     }
