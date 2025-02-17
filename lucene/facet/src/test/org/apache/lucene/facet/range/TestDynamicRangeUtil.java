@@ -244,8 +244,7 @@ public class TestDynamicRangeUtil extends LuceneTestCase {
     }
 
     sortedPairs.sort(
-        Comparator.comparingLong((WeightedPair weightedPair) -> weightedPair.value())
-            .thenComparingLong((WeightedPair weightedPair) -> weightedPair.weight()));
+        Comparator.comparingLong(WeightedPair::value).thenComparingLong(WeightedPair::weight));
 
     int len = values.length;
 
