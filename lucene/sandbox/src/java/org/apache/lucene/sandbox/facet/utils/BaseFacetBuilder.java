@@ -61,8 +61,8 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
     return self();
   }
 
-  /** Create {@link FacetCutter} */
-  abstract FacetCutter createFacetCutter();
+  /** Get {@link FacetCutter} to be used for this facet builder. */
+  abstract FacetCutter getFacetCutter();
 
   OrdinalIterator getMatchingOrdinalIterator() throws IOException {
     return countRecorder.recordedOrds();
@@ -102,7 +102,7 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
       return similar;
     } else {
       this.countRecorder = new CountFacetRecorder();
-      this.collectorManager = new FacetFieldCollectorManager<>(createFacetCutter(), countRecorder);
+      this.collectorManager = new FacetFieldCollectorManager<>(getFacetCutter(), countRecorder);
       return this;
     }
   }
