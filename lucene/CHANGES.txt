@@ -85,7 +85,11 @@ Improvements
   the wrapped analyzer's strategy to decide if components can be reused or need
   to be updated. (Mayya Sharipova)
 
+
 * GITHUB#14238: Improve test coverage of Dynamic Range Faceting. (John Houser)
+
+* GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
+  improved to tolerate more instances of this problem.  (Robert Muir)
 
 Optimizations
 ---------------------
