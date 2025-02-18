@@ -110,7 +110,7 @@ public final class RamUsageEstimator {
   /** For testing only */
   static final boolean JVM_IS_HOTSPOT_64BIT;
 
-  /** Initialize constants and try to collect information about the JVM internals. */
+  /* Initialize constants and try to collect information about the JVM internals. */
   static {
     if (Constants.JRE_IS_64BIT) {
       JVM_IS_HOTSPOT_64BIT = HotspotVMOptions.IS_HOTSPOT_VM;

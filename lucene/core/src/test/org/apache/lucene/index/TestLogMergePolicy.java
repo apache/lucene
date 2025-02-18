@@ -24,6 +24,7 @@ import org.apache.lucene.index.MergePolicy.OneMerge;
 import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
 import org.apache.lucene.util.Version;
 
+@SuppressWarnings("UnnecessaryAsync")
 public class TestLogMergePolicy extends BaseMergePolicyTestCase {
 
   @Override
@@ -56,7 +57,16 @@ public class TestLogMergePolicy extends BaseMergePolicyTestCase {
       for (SegmentCommitInfo info : oneMerge.segments) {
         mergeSize += lmp.size(info, mockMergeContext);
       }
-      assertTrue(mergeSize < lmp.minMergeSize || oneMerge.segments.size() <= lmp.getMergeFactor());
+      assertTrue(
+          "mergeSize: "
+              + mergeSize
+              + " minMergeSize: "
+              + lmp.minMergeSize
+              + " segmentsCount: "
+              + oneMerge.segments.size()
+              + " mergeFactor: "
+              + lmp.getMergeFactor(),
+          mergeSize <= lmp.minMergeSize || oneMerge.segments.size() <= lmp.getMergeFactor());
     }
   }
 

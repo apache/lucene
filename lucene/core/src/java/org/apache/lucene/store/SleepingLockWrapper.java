@@ -33,7 +33,7 @@ public final class SleepingLockWrapper extends FilterDirectory {
   /**
    * How long {@link #obtainLock} waits, in milliseconds, in between attempts to acquire the lock.
    */
-  public static long DEFAULT_POLL_INTERVAL = 1000;
+  public static final long DEFAULT_POLL_INTERVAL = 1000;
 
   private final long lockWaitTimeout;
   private final long pollInterval;

@@ -34,8 +34,7 @@ public class RegexpQueryNodeProcessor extends QueryNodeProcessorImpl {
 
   @Override
   protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
-    if (node instanceof RegexpQueryNode) {
-      RegexpQueryNode regexpNode = (RegexpQueryNode) node;
+    if (node instanceof RegexpQueryNode regexpNode) {
       Analyzer analyzer = getQueryConfigHandler().get(ConfigurationKeys.ANALYZER);
       if (analyzer != null) {
         String text = regexpNode.getText().toString();

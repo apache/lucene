@@ -75,15 +75,13 @@ public class UsageTrackingQueryCachingPolicy implements QueryCachingPolicy {
       return true;
     }
 
-    if (query instanceof BooleanQuery) {
-      BooleanQuery bq = (BooleanQuery) query;
+    if (query instanceof BooleanQuery bq) {
       if (bq.clauses().isEmpty()) {
         return true;
       }
     }
 
-    if (query instanceof DisjunctionMaxQuery) {
-      DisjunctionMaxQuery dmq = (DisjunctionMaxQuery) query;
+    if (query instanceof DisjunctionMaxQuery dmq) {
       if (dmq.getDisjuncts().isEmpty()) {
         return true;
       }

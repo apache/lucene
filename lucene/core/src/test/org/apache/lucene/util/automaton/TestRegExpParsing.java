@@ -403,6 +403,15 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
+  public void testEscapedDashCharClass() {
+    RegExp re = new RegExp("[\\-]");
+    assertEquals("REGEXP_CHAR char=-\n", re.toStringTree());
+    Automaton actual = re.toAutomaton();
+    assertTrue(actual.isDeterministic());
+    Automaton expected = Automata.makeChar('-');
+    assertSameLanguage(expected, actual);
+  }
+
   public void testEmpty() {
     RegExp re = new RegExp("#", RegExp.EMPTY);
     assertEquals("#", re.toString());
@@ -413,6 +422,26 @@ public class TestRegExpParsing extends LuceneTestCase {
 
     Automaton expected = Automata.makeEmpty();
     assertSameLanguage(expected, actual);
+  }
+
+  public void testEmptyClass() {
+    Exception expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new RegExp("[]");
+            });
+    assertEquals("expected ']' at position 2", expected.getMessage());
+  }
+
+  public void testEscapedInvalidClass() {
+    Exception expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new RegExp("[\\]");
+            });
+    assertEquals("expected ']' at position 3", expected.getMessage());
   }
 
   public void testInterval() {
