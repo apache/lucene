@@ -25,7 +25,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
-import java.util.stream.IntStream;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -108,11 +107,6 @@ abstract class AbstractKnnVectorQuery extends Query {
       // each worker has a budget range to spend, and we have no more than e.g., 16 workers
       int minNumVectors = numVectors(sortedLeafReaderContexts.get(0));
       int maxNumVectors = numVectors(sortedLeafReaderContexts.get(noLRCs - 1));
-      /*int maxWorkers = 8;
-      final double percentageVectorsPerThread = Math.max(0.1, 1.0 / maxWorkers);
-      int numVectors = sortedLeafReaderContexts.stream().map(this::numVectors).reduce(Integer::sum).get();
-      int minVectorsPerSlice = Math.max(1000, (int) (percentageVectorsPerThread * numVectors));*/
-
 
       int minBudget = 100;
       int maxBudget = 1_000_000;
