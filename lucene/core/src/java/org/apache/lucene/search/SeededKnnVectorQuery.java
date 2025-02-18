@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FieldInfo;
@@ -27,6 +26,8 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
+import org.apache.lucene.search.knn.MappedDISI;
+import org.apache.lucene.search.knn.TopDocsDISI;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -179,93 +180,6 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     return delegate.createVectorScorer(context, fi);
   }
 
-  private static class MappedDISI extends DocIdSetIterator {
-    KnnVectorValues.DocIndexIterator indexedDISI;
-    DocIdSetIterator sourceDISI;
-
-    private MappedDISI(KnnVectorValues.DocIndexIterator indexedDISI, DocIdSetIterator sourceDISI) {
-      this.indexedDISI = indexedDISI;
-      this.sourceDISI = sourceDISI;
-    }
-
-    /**
-     * Advances the source iterator to the first document number that is greater than or equal to
-     * the provided target and returns the corresponding index.
-     */
-    @Override
-    public int advance(int target) throws IOException {
-      int newTarget = sourceDISI.advance(target);
-      if (newTarget != NO_MORE_DOCS) {
-        indexedDISI.advance(newTarget);
-      }
-      return docID();
-    }
-
-    @Override
-    public long cost() {
-      return sourceDISI.cost();
-    }
-
-    @Override
-    public int docID() {
-      if (indexedDISI.docID() == NO_MORE_DOCS || sourceDISI.docID() == NO_MORE_DOCS) {
-        return NO_MORE_DOCS;
-      }
-      return indexedDISI.index();
-    }
-
-    /** Advances to the next document in the source iterator and returns the corresponding index. */
-    @Override
-    public int nextDoc() throws IOException {
-      int newTarget = sourceDISI.nextDoc();
-      if (newTarget != NO_MORE_DOCS) {
-        indexedDISI.advance(newTarget);
-      }
-      return docID();
-    }
-  }
-
-  private static class TopDocsDISI extends DocIdSetIterator {
-    private final int[] sortedDocIds;
-    private int idx = -1;
-
-    private TopDocsDISI(TopDocs topDocs, LeafReaderContext ctx) {
-      sortedDocIds = new int[topDocs.scoreDocs.length];
-      for (int i = 0; i < topDocs.scoreDocs.length; i++) {
-        // Remove the doc base as added by the collector
-        sortedDocIds[i] = topDocs.scoreDocs[i].doc - ctx.docBase;
-      }
-      Arrays.sort(sortedDocIds);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return slowAdvance(target);
-    }
-
-    @Override
-    public long cost() {
-      return sortedDocIds.length;
-    }
-
-    @Override
-    public int docID() {
-      if (idx == -1) {
-        return -1;
-      } else if (idx >= sortedDocIds.length) {
-        return DocIdSetIterator.NO_MORE_DOCS;
-      } else {
-        return sortedDocIds[idx];
-      }
-    }
-
-    @Override
-    public int nextDoc() {
-      idx += 1;
-      return docID();
-    }
-  }
-
   class SeededCollectorManager implements KnnCollectorManager {
     final KnnCollectorManager knnCollectorManager;
 
@@ -313,7 +227,7 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
       // Most underlying iterators are indexed, so we can map the seed docs to the vector docs
       if (vectorIterator instanceof KnnVectorValues.DocIndexIterator indexIterator) {
         DocIdSetIterator seedDocs =
-            new MappedDISI(indexIterator, new TopDocsDISI(seedTopDocs, ctx));
+            MappedDISI.from(indexIterator, TopDocsDISI.fromTopDocs(seedTopDocs, ctx));
         return knnCollectorManager.newCollector(
             visitLimit,
             new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length, searchStrategy),

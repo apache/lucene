@@ -129,6 +129,21 @@ public class NeighborQueue {
     return decodeNodeId(heap.pop());
   }
 
+  /**
+   * Collect the decoded nodes and scores into the provided arrays
+   *
+   * @param nodes where to place the decoded nodes
+   * @param scores where to place the decoded scores
+   */
+  public void collectNodesAndScores(int[] nodes, float[] scores) {
+    int size = size();
+    assert nodes.length >= size && scores.length >= size;
+    for (int i = 0; i < size; i++) {
+      nodes[i] = decodeNodeId(heap.get(i + 1));
+      scores[i] = decodeScore(heap.get(i + 1));
+    }
+  }
+
   public int[] nodes() {
     int size = size();
     int[] nodes = new int[size];

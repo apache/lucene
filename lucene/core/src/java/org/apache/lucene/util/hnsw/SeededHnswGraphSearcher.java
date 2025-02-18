@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.knn.MappedDISI;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -33,12 +34,19 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
 
   private final AbstractHnswGraphSearcher delegate;
   private final int[] seedOrds;
+  private final float[] seedScores;
 
   static SeededHnswGraphSearcher fromEntryPoints(
       AbstractHnswGraphSearcher delegate, int numEps, DocIdSetIterator eps, int graphSize)
       throws IOException {
     if (numEps <= 0) {
       throw new IllegalArgumentException("The number of entry points must be > 0");
+    }
+    float[] seedScores = null;
+    MappedDISI.Scored scored = null;
+    if (eps instanceof MappedDISI.Scored scoredInstance) {
+      seedScores = new float[numEps];
+      scored = scoredInstance;
     }
     int[] entryPoints = new int[numEps];
     int idx = 0;
@@ -49,14 +57,18 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
             "The number of entry points provided is less than the number of entry points requested");
       }
       assert entryPointOrdInt < graphSize;
+      if (scored != null) {
+        seedScores[idx] = scored.score();
+      }
       entryPoints[idx++] = entryPointOrdInt;
     }
-    return new SeededHnswGraphSearcher(delegate, entryPoints);
+    return new SeededHnswGraphSearcher(delegate, entryPoints, seedScores);
   }
 
-  SeededHnswGraphSearcher(AbstractHnswGraphSearcher delegate, int[] seedOrds) {
+  SeededHnswGraphSearcher(AbstractHnswGraphSearcher delegate, int[] seedOrds, float[] seedScores) {
     this.delegate = delegate;
     this.seedOrds = seedOrds;
+    this.seedScores = seedScores;
   }
 
   @Override
@@ -65,14 +77,17 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
       RandomVectorScorer scorer,
       int level,
       int[] eps,
+      float[] epsScores,
+      int epCount,
       HnswGraph graph,
       Bits acceptOrds)
       throws IOException {
-    delegate.searchLevel(results, scorer, level, eps, graph, acceptOrds);
+    delegate.searchLevel(results, scorer, level, eps, epsScores, epCount, graph, acceptOrds);
   }
 
   @Override
-  int[] findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector) {
-    return seedOrds;
+  EntryPoints findBestEntryPoint(
+      RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector) {
+    return new EntryPoints(seedOrds, seedScores);
   }
 }

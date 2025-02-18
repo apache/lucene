@@ -31,6 +31,7 @@ import java.util.concurrent.locks.Lock;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswUtil.Component;
@@ -229,13 +230,15 @@ public class HnswGraphBuilder implements HnswBuilder {
       // NOTE: the entry node and max level may not be paired, but because we get the level first
       // we ensure that the entry node we get later will always exist on the curMaxLevel
       int[] eps = new int[] {hnsw.entryNode()};
+      float[] epsScores = new float[] {scorer.score(eps[0])};
 
       // we first do the search from top to bottom
       // for levels > nodeLevel search with topk = 1
       GraphBuilderKnnCollector candidates = entryCandidates;
       for (int level = curMaxLevel; level > nodeLevel; level--) {
         candidates.clear();
-        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
+        graphSearcher.searchLevel(candidates, scorer, level, eps, epsScores, hnsw, null);
+        epsScores[0] = candidates.queue.topScore();
         eps[0] = candidates.popNode();
       }
 
@@ -243,11 +246,16 @@ public class HnswGraphBuilder implements HnswBuilder {
       candidates = beamCandidates;
       NeighborArray[] scratchPerLevel =
           new NeighborArray[Math.min(nodeLevel, curMaxLevel) - lowestUnsetLevel + 1];
+      int epCount = eps.length;
       for (int i = scratchPerLevel.length - 1; i >= 0; i--) {
         int level = i + lowestUnsetLevel;
         candidates.clear();
-        graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
-        eps = candidates.popUntilNearestKNodes();
+        graphSearcher.searchLevel(candidates, scorer, level, eps, epsScores, epCount, hnsw, null);
+        candidates.popUntilNearestKNodes();
+        eps = ArrayUtil.growExact(eps, candidates.size());
+        epsScores = ArrayUtil.growExact(epsScores, candidates.size());
+        epCount = candidates.size();
+        candidates.collectNodesAndScores(eps, epsScores);
         scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
         popToScratch(candidates, scratchPerLevel[i]);
       }
@@ -479,7 +487,7 @@ public class HnswGraphBuilder implements HnswBuilder {
           scorer.setScoringOrdinal(c.start());
           // find the closest node in the largest component to the lowest-numbered node in this
           // component that has room to make a connection
-          graphSearcher.searchLevel(beam, scorer, level, eps, hnsw, notFullyConnected);
+          graphSearcher.searchLevel(beam, scorer, level, eps, null, hnsw, notFullyConnected);
           boolean linked = false;
           while (beam.size() > 0) {
             int c0node = beam.popNode();
@@ -557,11 +565,18 @@ public class HnswGraphBuilder implements HnswBuilder {
       return queue.pop();
     }
 
-    public int[] popUntilNearestKNodes() {
+    public void popUntilNearestKNodes() {
       while (size() > k()) {
         queue.pop();
       }
+    }
+
+    public int[] nodes() {
       return queue.nodes();
+    }
+
+    public void collectNodesAndScores(int[] nodes, float[] scores) {
+      queue.collectNodesAndScores(nodes, scores);
     }
 
     public float minimumScore() {

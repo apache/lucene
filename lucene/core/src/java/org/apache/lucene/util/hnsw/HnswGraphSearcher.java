@@ -174,7 +174,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       throws IOException {
     HnswGraphBuilder.GraphBuilderKnnCollector results =
         new HnswGraphBuilder.GraphBuilderKnnCollector(topK);
-    searchLevel(results, scorer, level, eps, graph, null);
+    searchLevel(results, scorer, level, eps, null, graph, null);
     return results;
   }
 
@@ -189,11 +189,11 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
    * @throws IOException When accessing the vector fails
    */
   @Override
-  int[] findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
+  EntryPoints findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
       throws IOException {
     int currentEp = graph.entryNode();
     if (currentEp == -1 || graph.numLevels() == 1) {
-      return new int[] {currentEp};
+      return new EntryPoints(new int[] {currentEp}, null);
     }
     int size = getGraphSize(graph);
     prepareScratchState(size);
@@ -214,7 +214,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
             continue;
           }
           if (collector.earlyTerminated()) {
-            return new int[] {UNK_EP};
+            return UNK_EP;
           }
           float friendSimilarity = scorer.score(friendOrd);
           collector.incVisitedCount(1);
@@ -226,7 +226,9 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
         }
       }
     }
-    return collector.earlyTerminated() ? new int[] {UNK_EP} : new int[] {currentEp};
+    return collector.earlyTerminated()
+        ? UNK_EP
+        : new EntryPoints(new int[] {currentEp}, new float[] {currentScore});
   }
 
   /**
@@ -241,20 +243,23 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       RandomVectorScorer scorer,
       int level,
       final int[] eps,
+      final float[] epsScores,
+      int epCount,
       HnswGraph graph,
       Bits acceptOrds)
       throws IOException {
-
+    assert eps.length <= epCount;
+    assert epsScores == null || epsScores.length <= epCount;
     int size = getGraphSize(graph);
 
     prepareScratchState(size);
-
-    for (int ep : eps) {
+    for (int i = 0; i < epCount; i++) {
+      int ep = eps[i];
       if (visited.getAndSet(ep) == false) {
         if (results.earlyTerminated()) {
-          break;
+          return;
         }
-        float score = scorer.score(ep);
+        final float score = epsScores != null ? epsScores[i] : scorer.score(ep);
         results.incVisitedCount(1);
         candidates.add(ep, score);
         if (acceptOrds == null || acceptOrds.get(ep)) {
