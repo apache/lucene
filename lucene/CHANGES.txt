@@ -54,6 +54,8 @@ Improvements
 * GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
   improved to tolerate more instances of this problem.  (Robert Muir)
 
+* GITHUB#14213: Allowing indexing stored-only StoredField directly from DataInput. (Tim Brooks)
+
 Optimizations
 ---------------------
 
