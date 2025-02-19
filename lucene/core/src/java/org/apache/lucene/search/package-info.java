@@ -278,6 +278,30 @@
  * <p>See the {@link org.apache.lucene.search.similarities} package documentation for information on
  * the built-in available scoring models and extending or changing Similarity.
  *
+ * <h3>Scoring multiple fields</h3>
+ *
+ * <p>In the real world, documents often have multiple fields with different degrees of relevance. A
+ * robust way of scoring across multiple fields is called BM25F, which is implemented via {@link
+ * org.apache.lucene.search.CombinedFieldQuery}. It scores documents with multiple fields as if
+ * their content had been indexed in a single combined field. It supports configuring per-field
+ * boosts where the value of the boost is interpreted as the number of times that the content of the
+ * field exists in the virtual combined field.
+ *
+ * <p>Here is an example that constructs a query on "apache OR lucene" on fields "title" with a
+ * boost of 10, and "body" with a boost of 1:
+ *
+ * <pre class="prettyprint">
+ * BooleanQuery.Builder builder = new BooleanQuery.Builder();
+ * for (String term : new String[] { "apache", "lucene" }) {
+ *   Query query = new CombinedFieldQuery(term)
+ *         .addField("title", 10f)
+ *         .addField("body", 1f)
+ *         .build();
+ *   builder.add(query, Occur.SHOULD);
+ * }
+ * Query query = builder.build();
+ * </pre>
+ *
  * <h3>Integrating field values into the score</h3>
  *
  * <p>While similarities help score a document relatively to a query, it is also common for
