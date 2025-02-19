@@ -75,7 +75,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton actual = re.toAutomaton();
     AutomatonTestUtil.assertMinimalDFA(actual);
 
-    Automaton expected = Operations.union(List.of(Automata.makeChar('c'), Automata.makeChar('C')));
+    Automaton expected = Automata.makeCharSet(new int[] {'c', 'C'});
     assertSameLanguage(expected, actual);
   }
 
@@ -83,7 +83,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   public void testCaseInsensitiveClassChar() {
     RegExp re = new RegExp("[c]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
     assertEquals(
-        "REGEXP_CHAR_CLASS starts=[U+0063 U+0043] ends=[U+0063 U+0043]\n", re.toStringTree());
+        "REGEXP_CHAR_CLASS starts=[U+0043 U+0063] ends=[U+0043 U+0063]\n", re.toStringTree());
     AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
   }
 
@@ -103,7 +103,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton actual = re.toAutomaton();
     AutomatonTestUtil.assertMinimalDFA(actual);
 
-    Automaton expected = Operations.union(List.of(Automata.makeChar('c'), Automata.makeChar('C')));
+    Automaton expected = Automata.makeCharSet(new int[] {'c', 'C'});
     assertSameLanguage(expected, actual);
   }
 
@@ -127,7 +127,31 @@ public class TestRegExpParsing extends LuceneTestCase {
     Automaton actual = re.toAutomaton();
     AutomatonTestUtil.assertMinimalDFA(actual);
 
-    Automaton expected = Automata.makeChar('Ж');
+    Automaton expected = Automata.makeCharSet(new int[] {'Ж', 'ж'});
+    assertSameLanguage(expected, actual);
+  }
+
+  public void testCaseInsensitiveCharUnicode() {
+    RegExp re = new RegExp("Ж", RegExp.NONE, RegExp.CASE_INSENSITIVE);
+    assertEquals("\\Ж", re.toString());
+    assertEquals("REGEXP_CHAR char=Ж\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    AutomatonTestUtil.assertMinimalDFA(actual);
+
+    Automaton expected = Automata.makeCharSet(new int[] {'Ж', 'ж'});
+    assertSameLanguage(expected, actual);
+  }
+
+  public void testCaseInsensitiveCharUnicodeSigma() {
+    RegExp re = new RegExp("σ", RegExp.NONE, RegExp.CASE_INSENSITIVE);
+    assertEquals("\\σ", re.toString());
+    assertEquals("REGEXP_CHAR char=σ\n", re.toStringTree());
+
+    Automaton actual = re.toAutomaton();
+    AutomatonTestUtil.assertMinimalDFA(actual);
+
+    Automaton expected = Automata.makeCharSet(new int[] {'Σ', 'σ', 'ς'});
     assertSameLanguage(expected, actual);
   }
 
