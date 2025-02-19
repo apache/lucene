@@ -36,7 +36,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.DFRSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
-import org.apache.lucene.search.similarities.SimilarityBase;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
@@ -60,8 +59,8 @@ import org.apache.lucene.util.SmallFloat;
  * <p>In order for a similarity to be compatible, {@link Similarity#computeNorm} must be additive:
  * the norm of the combined field is the sum of norms for each individual field. The norms must also
  * be encoded using {@link SmallFloat#intToByte4}. These requirements hold for all similarities that
- * compute norms the same way as {@link SimilarityBase#computeNorm}, which includes {@link
- * BM25Similarity} and {@link DFRSimilarity}. Per-field similarities are not supported.
+ * don't customize {@link Similarity#computeNorm}, which includes {@link BM25Similarity} and {@link
+ * DFRSimilarity}. Per-field similarities are not supported.
  *
  * <p>The query also requires that either all fields or no fields have norms enabled. Having only
  * some fields with norms enabled can result in errors.
