@@ -181,11 +181,11 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
         if (v < u || j.contains(v)) {
           int newv = ordMapS[v];
           w.add(newv);
-          NeighborArray nsVArray = hnsw.getNeighbors(0, newv);
-          int[] nsV = nsVArray.nodes();
-          int nsVSize = nsVArray.size();
-          for (int k = 0; k < nsVSize; k++) {
-            w.add(nsV[k]);
+
+          hnsw.seek(0, newv);
+          int friendOrd;
+          while ((friendOrd = hnsw.nextNeighbor()) != NO_MORE_DOCS) {
+            w.add(friendOrd);
           }
         }
       }
