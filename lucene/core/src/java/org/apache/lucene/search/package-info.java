@@ -41,6 +41,12 @@
  * important Query classes. For details on implementing your own Query class, see <a
  * href="#customQueriesExpert">Custom Queries -- Expert Level</a> below.
  *
+ * <p>Make sure to look at {@link org.apache.lucene.search.Query} factory methods on {@link
+ * org.apache.lucene.index.IndexableField}s that you feed into the index writer, they are convenient
+ * to use and sometimes more efficient than a naively constructed {@link
+ * org.apache.lucene.search.Query}. See {@link
+ * org.apache.lucene.document.LongField#newRangeQuery(String, long, long)} for instance.
+ *
  * <p>To perform a search, applications usually call {@link
  * org.apache.lucene.search.IndexSearcher#search(Query,int)}.
  *
@@ -204,7 +210,8 @@
  * documents that need to be scored based on boolean logic in the Query specification, and then
  * ranks this subset of matching documents via the retrieval model. For some valuable references on
  * VSM and IR in general refer to <a
- * href="http://wiki.apache.org/lucene-java/InformationRetrieval">Lucene Wiki IR references</a>.
+ * href="https://cwiki.apache.org/confluence/display/LUCENEJAVA/InformationRetrieval">Lucene Wiki IR
+ * references</a>.
  *
  * <p>The rest of this document will cover <a href="#scoringBasics">Scoring basics</a> and explain
  * how to change your {@link org.apache.lucene.search.similarities.Similarity Similarity}. Next, it
@@ -253,8 +260,12 @@
  * org.apache.lucene.index.IndexWriterConfig#setSimilarity(org.apache.lucene.search.similarities.Similarity)
  * IndexWriterConfig.setSimilarity(Similarity)} and at query-time with {@link
  * org.apache.lucene.search.IndexSearcher#setSimilarity(org.apache.lucene.search.similarities.Similarity)
- * IndexSearcher.setSimilarity(Similarity)}. Be sure to use the same Similarity at query-time as at
- * index-time (so that norms are encoded/decoded correctly); Lucene makes no effort to verify this.
+ * IndexSearcher.setSimilarity(Similarity)}. Be sure to use search-time similarities that encode the
+ * length normalization factor the same way as the similarity that you used at index time. All
+ * Lucene built-in similarities use the default encoding so they are compatible, but if you use a
+ * custom similarity that changes the encoding of the length normalization factor, you are on your
+ * own: Lucene makes no effort to ensure that the index-time and the search-time similarities are
+ * compatible.
  *
  * <p>You can influence scoring by configuring a different built-in Similarity implementation, or by
  * tweaking its parameters, subclassing it to override behavior. Some implementations also offer a
