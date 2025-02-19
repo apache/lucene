@@ -291,15 +291,12 @@
  * boost of 10, and "body" with a boost of 1:
  *
  * <pre class="prettyprint">
- * BooleanQuery.Builder builder = new BooleanQuery.Builder();
- * for (String term : new String[] { "apache", "lucene" }) {
- *   Query query = new CombinedFieldQuery(term)
- *         .addField("title", 10f)
- *         .addField("body", 1f)
- *         .build();
- *   builder.add(query, Occur.SHOULD);
- * }
- * Query query = builder.build();
+ * QueryBuilder builder = new QueryBuilder(analyzer);
+ * Query query = builder.createBooleanQuery(
+ *     Map.of("title", 10f, "body", 1f),
+ *     "apache lucene",
+ *     MultiFieldScoreMode.PER_TERM_COMBINED,
+ *     BooleanClause.Occur.SHOULD);
  * </pre>
  *
  * <h3>Integrating field values into the score</h3>

@@ -19,9 +19,11 @@ package org.apache.lucene.util;
 import static org.apache.lucene.search.BoostAttribute.DEFAULT_BOOST;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CachingTokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -33,6 +35,9 @@ import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.CombinedFieldQuery;
+import org.apache.lucene.search.DisjunctionMaxQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
@@ -50,6 +55,11 @@ import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
  *   Query a = builder.createBooleanQuery("body", "just a test");
  *   Query b = builder.createPhraseQuery("body", "another test");
  *   Query c = builder.createMinShouldMatchQuery("body", "another test", 0.5f);
+ *   Query d = builder.createBooleanQuery(
+ *     Map.of("title", 10f, "body", 1f),
+ *     "yet another test",
+ *     MultiFieldScoreMode.PER_TERM_COMBINED,
+ *     BooleanClause.Occur.SHOULD);
  * </pre>
  *
  * <p>This can also be used as a subclass for query parsers to make it easier to interact with the
@@ -57,6 +67,35 @@ import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
  * queries can be customized.
  */
 public class QueryBuilder {
+
+  /** Approaches for scoring against multiple fields. */
+  public enum MultiFieldScoreMode {
+    /**
+     * Queries against multiple fields as if the fields had been indexed in a single combined field.
+     * This works by aggregating term and document statistics before feeding them to the scoring
+     * logic. This is called BM25F in the literature and is implemented via {@link
+     * CombinedFieldQuery}.
+     *
+     * <p>Field boosts are interpreted as multipliers to the term frequency and length normalization
+     * factor.
+     *
+     * <p>This should be considered the best approach scoring-wise, but this requires all queried
+     * fields to share the same analyzer, the same similarity and that either all fields have norms
+     * or none have norms. Note that Lucene makes no effort at validating this.
+     */
+    PER_TERM_COMBINED,
+    /**
+     * Queries against multiple fields by searching each field independently and then returning the
+     * maximum score across fields.
+     *
+     * <p>Field boosts are interpreted as multipliers to the score on these fields.
+     *
+     * <p>This is a poor approach, but it has the benefit of making no assumption about the way that
+     * fields are indexed.
+     */
+    GLOBAL_MAX;
+  }
+
   protected Analyzer analyzer;
   protected boolean enablePositionIncrements = true;
   protected boolean enableGraphQueries = true;
@@ -106,6 +145,58 @@ public class QueryBuilder {
       throw new IllegalArgumentException("invalid operator: only SHOULD or MUST are allowed");
     }
     return createFieldQuery(analyzer, operator, field, queryText, false, 0);
+  }
+
+  /**
+   * Creates a boolean query from the query text against multiple fields.
+   *
+   * @param fields fields to query with their respective boosts
+   * @param queryText text to be passed to the analyzer
+   * @param operator operator used for clauses between analyzer tokens.
+   * @return {@code TermQuery} or {@code BooleanQuery}, based on the analysis of {@code queryText}
+   */
+  public Query createBooleanQuery(
+      Map<String, Float> fields,
+      String queryText,
+      MultiFieldScoreMode scoreMode,
+      BooleanClause.Occur operator) {
+    if (operator != BooleanClause.Occur.SHOULD && operator != BooleanClause.Occur.MUST) {
+      throw new IllegalArgumentException("invalid operator: only SHOULD or MUST are allowed");
+    }
+    if (fields.isEmpty()) {
+      return new MatchNoDocsQuery("No fields to query");
+    }
+    switch (scoreMode) {
+      case GLOBAL_MAX:
+        List<Query> disjuncts = new ArrayList<>();
+        for (Map.Entry<String, Float> entry : fields.entrySet()) {
+          String field = entry.getKey();
+          float boost = entry.getValue();
+          Query query = createFieldQuery(analyzer, operator, field, queryText, false, 0);
+          if (query != null) {
+            if (boost != 1f) {
+              query = new BoostQuery(query, boost);
+            }
+            disjuncts.add(query);
+          }
+        }
+        if (disjuncts.isEmpty()) {
+          return null;
+        } else if (disjuncts.size() == 1) {
+          return disjuncts.get(0);
+        }
+        return new DisjunctionMaxQuery(disjuncts, 0f);
+      case PER_TERM_COMBINED:
+        // All fields must share the same analyzer so pick any field.
+        String anyField = fields.keySet().iterator().next();
+        try (TokenStream source = analyzer.tokenStream(anyField, queryText)) {
+          return createFieldQuery(source, operator, fields);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      default:
+        throw new AssertionError();
+    }
   }
 
   /**
@@ -277,6 +368,50 @@ public class QueryBuilder {
     return enableGraphQueries;
   }
 
+  private static String singleFieldOrNull(Map<String, Float> fields) {
+    if (fields.size() == 1) {
+      Map.Entry<String, Float> entry = fields.entrySet().iterator().next();
+      if (Float.valueOf(1f).equals(entry.getValue())) {
+        return entry.getKey();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Creates a query from a token stream on multiple fields.
+   *
+   * @param source the token stream to create the query from
+   * @param operator default boolean operator used for this query
+   * @param fields fields to create queries against
+   */
+  protected Query createFieldQuery(
+      TokenStream source, BooleanClause.Occur operator, Map<String, Float> fields) {
+    assert operator == BooleanClause.Occur.SHOULD || operator == BooleanClause.Occur.MUST;
+
+    if (fields.size() == 0) {
+      return new MatchNoDocsQuery();
+    } else {
+      String singleField = singleFieldOrNull(fields);
+      if (singleField != null) {
+        return createFieldQuery(source, operator, singleField, false, 0);
+      }
+    }
+
+    // Build an appropriate query based on the analysis chain.
+    TermToBytesRefAttribute termAtt = source.getAttribute(TermToBytesRefAttribute.class);
+
+    if (termAtt == null) {
+      return null;
+    }
+
+    try {
+      return analyzeGraphBoolean(fields, source, operator);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
   /**
    * Creates a query from a token stream.
    *
@@ -328,6 +463,7 @@ public class QueryBuilder {
           isGraph = true;
         }
       }
+      stream.end();
 
       // phase 2: based on token count, presence of synonyms, and options
       // formulate a single term, boolean, or phrase.
@@ -378,7 +514,14 @@ public class QueryBuilder {
       throw new AssertionError();
     }
 
-    return newTermQuery(new Term(field, termAtt.getBytesRef()), boostAtt.getBoost());
+    Query query = newTermQuery(new Term(field, termAtt.getBytesRef()), boostAtt.getBoost());
+
+    if (stream.incrementToken()) {
+      throw new AssertionError();
+    }
+    stream.end();
+
+    return query;
   }
 
   /** Creates simple boolean query from the cached tokenstream contents */
@@ -503,8 +646,22 @@ public class QueryBuilder {
    */
   protected Query analyzeGraphBoolean(
       String field, TokenStream source, BooleanClause.Occur operator) throws IOException {
-    source.reset();
+    return analyzeGraphBoolean(Map.of(field, 1f), source, operator);
+  }
+
+  /**
+   * Multi-field variant: Creates a boolean query from a graph token stream. The articulation points
+   * of the graph are visited in order and the queries created at each point are merged in the
+   * returned boolean query.
+   */
+  protected Query analyzeGraphBoolean(
+      Map<String, Float> fields, TokenStream source, BooleanClause.Occur operator)
+      throws IOException {
+    String singleField = singleFieldOrNull(fields);
     GraphTokenStreamFiniteStrings graph = new GraphTokenStreamFiniteStrings(source);
+    if (graph.getNumStates() == 0) {
+      return null;
+    }
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
     int[] articulationPoints = graph.articulationPoints();
     int lastState = 0;
@@ -528,12 +685,16 @@ public class QueryBuilder {
               @Override
               public Query next() {
                 TokenStream sidePath = sidePathsIterator.next();
-                return createFieldQuery(
-                    sidePath,
-                    BooleanClause.Occur.MUST,
-                    field,
-                    getAutoGenerateMultiTermSynonymsPhraseQuery(),
-                    0);
+                if (singleField != null) {
+                  return createFieldQuery(
+                      sidePath,
+                      BooleanClause.Occur.MUST,
+                      singleField,
+                      getAutoGenerateMultiTermSynonymsPhraseQuery(),
+                      0);
+                } else {
+                  return createFieldQuery(sidePath, BooleanClause.Occur.MUST, fields);
+                }
               }
             };
         positionalQuery = newGraphSynonymQuery(queries);
@@ -549,17 +710,32 @@ public class QueryBuilder {
                     })
                 .toArray(TermAndBoost[]::new);
         assert terms.length > 0;
-        if (terms.length == 1) {
-          positionalQuery = newTermQuery(new Term(field, terms[0].term), terms[0].boost);
+        if (singleField != null) {
+          if (terms.length == 1) {
+            positionalQuery = newTermQuery(new Term(singleField, terms[0].term), terms[0].boost);
+          } else {
+            positionalQuery = newSynonymQuery(singleField, terms);
+          }
         } else {
-          positionalQuery = newSynonymQuery(field, terms);
+          if (terms.length == 1) {
+            positionalQuery = newTermQuery(fields, terms[0].term, terms[0].boost);
+          } else {
+            positionalQuery = newSynonymQuery(fields, terms);
+          }
         }
       }
       if (positionalQuery != null) {
         builder.add(positionalQuery, operator);
       }
     }
-    return builder.build();
+    BooleanQuery bq = builder.build();
+    if (bq.clauses().isEmpty()) {
+      return null;
+    } else if (bq.clauses().size() == 1) {
+      return bq.clauses().get(0).query();
+    } else {
+      return bq;
+    }
   }
 
   /** Creates graph phrase query from the tokenstream contents */
@@ -609,6 +785,31 @@ public class QueryBuilder {
   }
 
   /**
+   * Builds a new synonym query on multiple fields.
+   *
+   * <p>This is intended for subclasses that wish to customize the generated queries.
+   *
+   * @return new Query instance
+   */
+  protected Query newSynonymQuery(Map<String, Float> fields, TermAndBoost[] terms) {
+    for (TermAndBoost term : terms) {
+      if (term.boost != DEFAULT_BOOST) {
+        throw new IllegalArgumentException(
+            "Multi-field queries don't support synonyms that have a boost different from 1");
+      }
+    }
+
+    CombinedFieldQuery.Builder builder = new CombinedFieldQuery.Builder();
+    for (TermAndBoost term : terms) {
+      builder.addTerm(term.term);
+    }
+    for (Map.Entry<String, Float> entry : fields.entrySet()) {
+      builder.addField(entry.getKey(), entry.getValue());
+    }
+    return builder.build();
+  }
+
+  /**
    * Builds a new GraphQuery for multi-terms synonyms.
    *
    * <p>This is intended for subclasses that wish to customize the generated queries.
@@ -641,6 +842,30 @@ public class QueryBuilder {
       return q;
     }
     return new BoostQuery(q, boost);
+  }
+
+  /**
+   * Builds a new term query on multiple fields.
+   *
+   * <p>This is intended for subclasses that wish to customize the generated queries.
+   *
+   * @param fields the fields
+   * @param term the term
+   * @param boost the boost
+   * @return new TermQuery instance
+   */
+  protected Query newTermQuery(Map<String, Float> fields, BytesRef term, float boost) {
+    CombinedFieldQuery.Builder builder = new CombinedFieldQuery.Builder();
+    builder.addTerm(term);
+    for (Map.Entry<String, Float> entry : fields.entrySet()) {
+      builder.addField(entry.getKey(), entry.getValue());
+    }
+
+    Query q = builder.build();
+    if (boost != DEFAULT_BOOST) {
+      q = new BoostQuery(q, boost);
+    }
+    return q;
   }
 
   /**

@@ -19,10 +19,17 @@ package org.apache.lucene.document;
 import java.io.Reader;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.util.QueryBuilder;
 
 /**
  * A field that is indexed and tokenized, without term vectors. For example this would be used on a
  * 'body' field, that contains the bulk of a document's text.
+ *
+ * <p>To create queries on {@link TextField}, see {@link QueryBuilder} and more specifically {@link
+ * QueryBuilder#createBooleanQuery(String, String, org.apache.lucene.search.BooleanClause.Occur)} to
+ * query against a single field or {@link QueryBuilder#createBooleanQuery(java.util.Map, String,
+ * org.apache.lucene.util.QueryBuilder.MultiFieldScoreMode,
+ * org.apache.lucene.search.BooleanClause.Occur)} to query against several fields.
  */
 public final class TextField extends Field {
 
