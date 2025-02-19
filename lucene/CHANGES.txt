@@ -59,6 +59,7 @@ New Features
   These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
+* GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
 
 Improvements
 ---------------------
@@ -160,8 +161,6 @@ API Changes
 New Features
 ---------------------
 * GITHUB#14034: Add support for storing term vectors in FeatureField. (Jim Ferenczi)
-
-* GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
 
 Improvements
 ---------------------
