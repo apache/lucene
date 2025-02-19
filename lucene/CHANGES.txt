@@ -13,7 +13,7 @@ API Changes
 * GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
   bit set of matches. (Adrien Grand)
 
-* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and 
+* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and
   concatenate(Automaton,Automaton) in favor of the methods taking List.  (Robert Muir)
 
 * GITHUB#14236: CombinedFieldQuery moved from lucene-sandbox to lucene-core.
@@ -26,6 +26,7 @@ New Features
   These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
+* GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
 
 Improvements
 ---------------------
