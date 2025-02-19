@@ -27,7 +27,7 @@ import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
  * Simple unit tests for RegExp parsing.
  *
  * <p>For each type of node, test the toString() and parse tree, test the resulting automaton's
- * language, and whether it is deterministic
+ * language, and test properties such as minimal, deterministic, no dead states
  */
 public class TestRegExpParsing extends LuceneTestCase {
 
@@ -37,7 +37,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_ANYCHAR\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeAnyChar();
     assertSameLanguage(expected, actual);
@@ -49,7 +49,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_ANYSTRING\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeAnyString();
     assertSameLanguage(expected, actual);
@@ -61,7 +61,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR char=c\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeChar('c');
     assertSameLanguage(expected, actual);
@@ -73,7 +73,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR char=c\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeCharSet(new int[] {'c', 'C'});
     assertSameLanguage(expected, actual);
@@ -84,6 +84,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     RegExp re = new RegExp("[c]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
     assertEquals(
         "REGEXP_CHAR_CLASS starts=[U+0043 U+0063] ends=[U+0043 U+0063]\n", re.toStringTree());
+    AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
   }
 
   // ranges aren't treated as case-insensitive, but maybe ok with charclass
@@ -91,6 +92,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   public void testCaseInsensitiveClassRange() {
     RegExp re = new RegExp("[c-d]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
     assertEquals("REGEXP_CHAR_RANGE from=c to=d\n", re.toStringTree());
+    AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
   }
 
   public void testCaseInsensitiveCharUpper() {
@@ -99,7 +101,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR char=C\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeCharSet(new int[] {'c', 'C'});
     assertSameLanguage(expected, actual);
@@ -111,7 +113,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR char=4\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeChar('4');
     assertSameLanguage(expected, actual);
@@ -123,7 +125,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR char=Ж\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeCharSet(new int[] {'Ж', 'ж'});
     assertSameLanguage(expected, actual);
@@ -135,7 +137,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR char=Ж\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeCharSet(new int[] {'Ж', 'ж'});
     assertSameLanguage(expected, actual);
@@ -147,7 +149,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR char=σ\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeCharSet(new int[] {'Σ', 'σ', 'ς'});
     assertSameLanguage(expected, actual);
@@ -167,7 +169,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected =
         Operations.union(
@@ -188,8 +190,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
-    assertEquals(2, actual.getNumStates());
+    AutomatonTestUtil.assertMinimalDFA(actual);
   }
 
   public void testCharRange() {
@@ -198,7 +199,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR_RANGE from=b to=d\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeCharRange('b', 'd');
     assertSameLanguage(expected, actual);
@@ -218,7 +219,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected =
         Operations.union(
@@ -241,7 +242,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR_RANGE from=0 to=9\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeCharRange('0', '9');
     assertSameLanguage(expected, actual);
@@ -253,7 +254,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         "REGEXP_CHAR_CLASS starts=[U+0000 U+003A] ends=[U+002F U+10FFFF]\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected =
         Operations.minus(
@@ -270,7 +271,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected =
         Operations.union(
@@ -289,7 +290,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeAnyChar();
     expected =
@@ -315,7 +316,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected =
         Operations.union(
@@ -334,7 +335,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeAnyChar();
     expected =
@@ -359,8 +360,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         "REGEXP_CHAR_CLASS starts=[U+0030 U+0061 U+0009 U+000D U+0020 U+0062 U+0063] ends=[U+0035 U+0061 U+000A U+000D U+0020 U+0062 U+0064]\n",
         re.toStringTree());
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
-    assertEquals(2, actual.getNumStates());
+    AutomatonTestUtil.assertMinimalDFA(actual);
   }
 
   public void testTruncatedCharClass() {
@@ -385,7 +385,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR char=?\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeChar('?');
     assertSameLanguage(expected, actual);
@@ -397,7 +397,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_CHAR char=\\\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeChar('\\');
     assertSameLanguage(expected, actual);
@@ -406,8 +406,10 @@ public class TestRegExpParsing extends LuceneTestCase {
   public void testEscapedDashCharClass() {
     RegExp re = new RegExp("[\\-]");
     assertEquals("REGEXP_CHAR char=-\n", re.toStringTree());
+
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
+
     Automaton expected = Automata.makeChar('-');
     assertSameLanguage(expected, actual);
   }
@@ -418,7 +420,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_EMPTY\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeEmpty();
     assertSameLanguage(expected, actual);
@@ -451,6 +453,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
     Automaton actual = re.toAutomaton();
     // TODO: numeric intervals are NFAs
+    AutomatonTestUtil.assertCleanNFA(actual);
 
     Automaton expected = Automata.makeDecimalInterval(5, 40, 0);
     assertSameLanguage(expected, actual);
@@ -463,6 +466,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
     Automaton actual = re.toAutomaton();
     // TODO: numeric intervals are NFAs
+    AutomatonTestUtil.assertCleanNFA(actual);
 
     Automaton expected = Automata.makeDecimalInterval(5, 40, 0);
     assertSameLanguage(expected, actual);
@@ -498,7 +502,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals(String.join("\n", "REGEXP_OPTIONAL", "  REGEXP_CHAR char=a\n"), re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Operations.optional(Automata.makeChar('a'));
     assertSameLanguage(expected, actual);
@@ -510,7 +514,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals(String.join("\n", "REGEXP_REPEAT", "  REGEXP_CHAR char=a\n"), re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Operations.repeat(Automata.makeChar('a'));
     assertSameLanguage(expected, actual);
@@ -523,7 +527,9 @@ public class TestRegExpParsing extends LuceneTestCase {
         String.join("\n", "REGEXP_REPEAT_MIN min=1", "  REGEXP_CHAR char=a\n"), re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    // not minimal, but close: minimal + 1
+    assertEquals(3, actual.getNumStates());
+    AutomatonTestUtil.assertCleanDFA(actual);
 
     Automaton expected = Operations.repeat(Automata.makeChar('a'), 1);
     assertSameLanguage(expected, actual);
@@ -537,7 +543,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Operations.repeat(Automata.makeChar('a'), 5, 5);
     assertSameLanguage(expected, actual);
@@ -550,7 +556,9 @@ public class TestRegExpParsing extends LuceneTestCase {
         String.join("\n", "REGEXP_REPEAT_MIN min=5", "  REGEXP_CHAR char=a\n"), re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    // not minimal, but close: minimal + 1
+    assertEquals(7, actual.getNumStates());
+    AutomatonTestUtil.assertCleanDFA(actual);
 
     Automaton expected = Operations.repeat(Automata.makeChar('a'), 5);
     assertSameLanguage(expected, actual);
@@ -564,7 +572,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Operations.repeat(Automata.makeChar('a'), 5, 8);
     assertSameLanguage(expected, actual);
@@ -592,7 +600,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_STRING string=boo\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeString("boo");
     assertSameLanguage(expected, actual);
@@ -604,7 +612,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_STRING string=boo\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton c1 = Operations.union(List.of(Automata.makeChar('b'), Automata.makeChar('B')));
     Automaton c2 = Operations.union(List.of(Automata.makeChar('o'), Automata.makeChar('O')));
@@ -619,7 +627,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals("REGEXP_STRING string=boo\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeString("boo");
     assertSameLanguage(expected, actual);
@@ -645,7 +653,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected =
         Operations.concatenate(
@@ -665,7 +673,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected =
         Operations.intersection(Automata.makeCharRange('b', 'f'), Automata.makeCharRange('e', 'f'));
@@ -700,7 +708,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         re.toStringTree());
 
     Automaton actual = re.toAutomaton();
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected =
         Operations.union(
@@ -738,7 +746,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals(Set.of("myletter"), re.getIdentifiers());
 
     Automaton actual = re.toAutomaton(myProvider);
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeChar('z');
     assertSameLanguage(expected, actual);
@@ -751,7 +759,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertEquals(Set.of("myletter"), re.getIdentifiers());
 
     Automaton actual = re.toAutomaton(Map.of("myletter", Automata.makeChar('z')));
-    assertTrue(actual.isDeterministic());
+    AutomatonTestUtil.assertMinimalDFA(actual);
 
     Automaton expected = Automata.makeChar('z');
     assertSameLanguage(expected, actual);
