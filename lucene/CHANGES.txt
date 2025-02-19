@@ -52,6 +52,9 @@ API Changes
 * GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and 
   concatenate(Automaton,Automaton) in favor of the methods taking List.  (Robert Muir)
 
+* GITHUB#14236: CombinedFieldQuery moved from lucene-sandbox to lucene-core.
+  (Adrien Grand)
+
 New Features
 ---------------------
 
