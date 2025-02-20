@@ -664,6 +664,7 @@ public class QueryBuilder {
     }
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
     int[] articulationPoints = graph.articulationPoints();
+    boolean termQuery = articulationPoints.length == 0;
     int lastState = 0;
     for (int i = 0; i <= articulationPoints.length; i++) {
       int start = lastState;
@@ -674,6 +675,7 @@ public class QueryBuilder {
       lastState = end;
       final Query positionalQuery;
       if (graph.hasSidePath(start)) {
+        termQuery = false;
         final Iterator<TokenStream> sidePathsIterator = graph.getFiniteStrings(start, end);
         Iterator<Query> queries =
             new Iterator<>() {
@@ -729,9 +731,10 @@ public class QueryBuilder {
       }
     }
     BooleanQuery bq = builder.build();
-    if (bq.clauses().isEmpty()) {
+    if (bq.clauses().size() == 0) {
       return null;
-    } else if (bq.clauses().size() == 1) {
+    } else if (termQuery) {
+      assert bq.clauses().size() == 1;
       return bq.clauses().get(0).query();
     } else {
       return bq;

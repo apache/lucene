@@ -407,8 +407,11 @@ public class TestQueryBuilder extends LuceneTestCase {
               .add(syn2, BooleanClause.Occur.SHOULD)
               .build();
 
+      BooleanQuery expectedGraphQuery = new BooleanQuery.Builder().add(synQuery, occur).build();
+
       QueryBuilder queryBuilder = new QueryBuilder(new MockSynonymAnalyzer());
-      assertEquals(synQuery, queryBuilder.createBooleanQuery("field", "guinea pig", occur));
+      assertEquals(
+          expectedGraphQuery, queryBuilder.createBooleanQuery("field", "guinea pig", occur));
 
       BooleanQuery expectedBooleanQuery =
           new BooleanQuery.Builder()
@@ -480,8 +483,10 @@ public class TestQueryBuilder extends LuceneTestCase {
               .add(cavy, BooleanClause.Occur.SHOULD)
               .build();
 
+      Query expectedGraphQuery = new BooleanQuery.Builder().add(synQuery, occur).build();
+
       assertEquals(
-          synQuery,
+          expectedGraphQuery,
           queryBuilder.createBooleanQuery(
               fields, "guinea pig", MultiFieldScoreMode.PER_TERM_COMBINED, occur));
 
@@ -504,13 +509,21 @@ public class TestQueryBuilder extends LuceneTestCase {
               Arrays.asList(
                   new BoostQuery(
                       new BooleanQuery.Builder()
-                          .add(titleSyn1, BooleanClause.Occur.SHOULD)
-                          .add(titleSyn2, BooleanClause.Occur.SHOULD)
+                          .add(
+                              new BooleanQuery.Builder()
+                                  .add(titleSyn1, BooleanClause.Occur.SHOULD)
+                                  .add(titleSyn2, BooleanClause.Occur.SHOULD)
+                                  .build(),
+                              occur)
                           .build(),
                       10f),
                   new BooleanQuery.Builder()
-                      .add(bodySyn1, BooleanClause.Occur.SHOULD)
-                      .add(bodySyn2, BooleanClause.Occur.SHOULD)
+                      .add(
+                          new BooleanQuery.Builder()
+                              .add(bodySyn1, BooleanClause.Occur.SHOULD)
+                              .add(bodySyn2, BooleanClause.Occur.SHOULD)
+                              .build(),
+                          occur)
                       .build()),
               0f);
 
@@ -537,9 +550,11 @@ public class TestQueryBuilder extends LuceneTestCase {
               .add(syn1, BooleanClause.Occur.SHOULD)
               .add(syn2, BooleanClause.Occur.SHOULD)
               .build();
+      BooleanQuery expectedGraphQuery = new BooleanQuery.Builder().add(synQuery, occur).build();
       QueryBuilder queryBuilder = new QueryBuilder(new MockSynonymAnalyzer());
       queryBuilder.setAutoGenerateMultiTermSynonymsPhraseQuery(true);
-      assertEquals(synQuery, queryBuilder.createBooleanQuery("field", "guinea pig", occur));
+      assertEquals(
+          expectedGraphQuery, queryBuilder.createBooleanQuery("field", "guinea pig", occur));
 
       BooleanQuery expectedBooleanQuery =
           new BooleanQuery.Builder()
