@@ -258,8 +258,7 @@ public abstract class FilterFileSystemProvider extends FileSystemProvider {
   }
 
   protected Path toDelegate(Path path) {
-    if (path instanceof FilterPath) {
-      FilterPath fp = (FilterPath) path;
+    if (path instanceof FilterPath fp) {
       if (fp.fileSystem != fileSystem) {
         throw new ProviderMismatchException(
             "mismatch, expected: "

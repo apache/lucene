@@ -91,9 +91,7 @@ public interface KnnCollector {
   /**
    * @return the search strategy used by this collector, can be null
    */
-  default KnnSearchStrategy getSearchStrategy() {
-    return null;
-  }
+  KnnSearchStrategy getSearchStrategy();
 
   /**
    * KnnCollector.Decorator is the base class for decorators of KnnCollector objects, which extend

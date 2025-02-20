@@ -149,7 +149,7 @@ public final class SynonymQuery extends Query {
 
   @Override
   public int hashCode() {
-    return 31 * classHash() + Arrays.hashCode(terms);
+    return 31 * classHash() + Arrays.hashCode(terms) + field.hashCode();
   }
 
   @Override

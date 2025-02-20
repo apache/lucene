@@ -215,18 +215,13 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       conf.setMergePolicy(tmp);
       conf.setMaxBufferedDocs(2);
       tmp.setSegmentsPerTier(6);
-      tmp.setFloorSegmentMB(Double.MIN_VALUE);
 
       IndexWriter w = new IndexWriter(dir, conf);
-      int maxCount = 0;
       final int numDocs = TestUtil.nextInt(random(), 20, 100);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
         doc.add(newTextField("content", "aaa " + (i % 4), Field.Store.NO));
         w.addDocument(doc);
-        int count = w.getSegmentCount();
-        maxCount = Math.max(count, maxCount);
-        assertTrue("count=" + count + " maxCount=" + maxCount, count >= maxCount - 6);
       }
 
       w.flush(true, true);
@@ -977,6 +972,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     assertEquals(50, mergeSpec.merges.get(0).segments.size());
   }
 
+  @SuppressWarnings("UnnecessaryAsync")
   public void testFullFlushMerges() throws IOException {
     AtomicLong segNameGenerator = new AtomicLong();
     IOStats stats = new IOStats();

@@ -1074,7 +1074,7 @@ public class BKDWriter60 implements Closeable {
       }
     }
 
-    /** Reused while packing the index */
+    /* Reused while packing the index */
     ByteBuffersDataOutput writeBuffer = new ByteBuffersDataOutput();
 
     // This is the "file" we append the byte[] to:
