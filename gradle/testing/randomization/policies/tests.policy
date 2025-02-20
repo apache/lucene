@@ -80,6 +80,12 @@ grant {
   permission java.io.FilePermission "${hunspell.corpora}${/}-", "read";
   permission java.io.FilePermission "${hunspell.dictionaries}", "read";
   permission java.io.FilePermission "${hunspell.dictionaries}${/}-", "read";
+
+  // TODO: these are just temporary to allow tesing with cuvs-java
+  permission java.lang.RuntimePermission "getenv.CUVS_JAVA_SO_PATH";
+  permission java.io.FilePermission "${/}-", "read";
+  // For temporary files to communicate with cuvs
+  permission java.io.FilePermission "${/}tmp${/}-", "write,delete";
 };
 
 // Permissions for jacoco code coverage
