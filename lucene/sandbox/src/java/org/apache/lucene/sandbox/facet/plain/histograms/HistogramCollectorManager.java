@@ -53,8 +53,8 @@ public final class HistogramCollectorManager
 
   /**
    * Compute a histogram of the distribution of the values of the given {@code field} according to
-   * the given {@code bucketWidth}. This configures a maximum number of buckets equal to the default of
-   * 1024.
+   * the given {@code bucketWidth}. This configures a maximum number of buckets equal to the default
+   * of 1024.
    */
   public HistogramCollectorManager(String field, long bucketWidth) {
     this(field, bucketWidth, DEFAULT_MAX_BUCKETS);
