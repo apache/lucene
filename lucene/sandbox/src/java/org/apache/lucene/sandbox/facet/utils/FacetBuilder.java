@@ -20,11 +20,20 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.sandbox.facet.FacetFieldCollectorManager;
 
 /**
- * End-to-end (request, collection and results) management of a single facet request. Requires
- * implementation for each facet type (taxonomy, ranges, etc).
+ * End-to-end (request, collection and results) management of a single facet request.
+ *
+ * <p>Use {@link CommonFacetBuilder} unless there is a facet type specific implementation, such as
+ * {@link TaxonomyFacetBuilder}. Use with {@link FacetOrchestrator} or {@link
+ * DrillSidewaysFacetOrchestrator}.
+ *
+ * <p>Note that you need separate {@link FacetBuilder} instances even for very similar requests,
+ * e.g. when sort order is the only difference. {@link FacetOrchestrator} and {@link
+ * DrillSidewaysFacetOrchestrator}
  *
  * <p>It's an abstract class, not an interface, to define some methods as package private as they
  * should only be called by {@link FacetOrchestrator} or {@link DrillSidewaysFacetOrchestrator}.
+ *
+ * @lucene.experimental
  */
 public abstract class FacetBuilder {
 

@@ -174,12 +174,12 @@ public class SandboxFacetsExample {
             + topDocs.scoreDocs.length);
 
     //// Results
-    FacetResult autorResults = authorFacetBuilder.getResult();
+    FacetResult authorResults = authorFacetBuilder.getResult();
     FacetResult rangeResults = priceFacetBuilder.getResult();
 
     IOUtils.close(indexReader, taxoReader);
 
-    return List.of(autorResults, rangeResults);
+    return List.of(authorResults, rangeResults);
   }
 
   /** Example for {@link FacetBuilder} usage with {@link DrillSideways}. */
@@ -209,12 +209,12 @@ public class SandboxFacetsExample {
         .collect(query, ds);
 
     //// Results
-    FacetResult autorResults = authorFacetBuilder.getResult();
+    FacetResult authorResults = authorFacetBuilder.getResult();
     FacetResult rangeResults = priceFacetBuilder.getResult();
 
     IOUtils.close(indexReader, taxoReader);
 
-    return List.of(autorResults, rangeResults);
+    return List.of(authorResults, rangeResults);
   }
 
   /** User runs a query and counts facets only without collecting the matching documents. */

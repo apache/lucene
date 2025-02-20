@@ -32,6 +32,8 @@ import org.apache.lucene.sandbox.facet.recorders.CountFacetRecorder;
 /**
  * Base implementation for {@link FacetBuilder}, provides common functionality that can be shared
  * between different facet types.
+ *
+ * @lucene.experimental
  */
 abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuilder {
   final String dimension;
@@ -46,16 +48,22 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
     this.path = path;
   }
 
+  /** Request top N results only. If not set, return all results. */
   public final C withTopN(int n) {
     this.topN = n;
     return self();
   }
 
+  /** Sort results by count. */
   public final C withSortByCount() {
     this.sortOrder = SortOrder.count;
     return self();
   }
 
+  /**
+   * Expert: sort results by facet ordinal. Facet ordinal meaning depends on {@link FacetCutter}
+   * implementation.
+   */
   public final C withSortByOrdinal() {
     this.sortOrder = SortOrder.ordinal;
     return self();
@@ -64,18 +72,25 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
   /** Get {@link FacetCutter} to be used for this facet builder. */
   abstract FacetCutter getFacetCutter();
 
+  /** Get {@link OrdToLabel} to be used for this facet builder. */
+  abstract OrdToLabel getOrdToLabel();
+
+  /**
+   * Child classes should override this method to return only face ordinals that match the request
+   * before topN cutoff.
+   */
   OrdinalIterator getMatchingOrdinalIterator() throws IOException {
     return countRecorder.recordedOrds();
   }
 
+  /** Get value for {@link LabelAndValue}. */
   final Number getValue(int facetOrd) {
     // TODO: support other aggregations
     return countRecorder.getCount(facetOrd);
   }
 
+  /** Get value for {@link FacetResult#value} */
   abstract Number getOverallValue() throws IOException;
-
-  abstract OrdToLabel ordToLabel();
 
   private enum SortOrder {
     ordinal,
@@ -131,7 +146,7 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
         ComparableUtils.sort(ordinalsArray, comparableSupplier);
       }
 
-      OrdToLabel ordToLabel = ordToLabel();
+      OrdToLabel ordToLabel = getOrdToLabel();
       FacetLabel[] labels = ordToLabel.getLabels(ordinalsArray);
 
       LabelAndValue[] labelsAndValues = new LabelAndValue[labels.length];

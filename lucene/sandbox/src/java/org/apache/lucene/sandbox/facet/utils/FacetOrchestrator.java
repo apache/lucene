@@ -31,6 +31,8 @@ import org.apache.lucene.search.Query;
 /**
  * Utility class to orchestrate {@link FacetBuilder}s to setup and exec collection for multiple
  * facets.
+ *
+ * @lucene.experimental
  */
 public final class FacetOrchestrator {
   private List<FacetBuilder> facetBuilders = new ArrayList<>();
