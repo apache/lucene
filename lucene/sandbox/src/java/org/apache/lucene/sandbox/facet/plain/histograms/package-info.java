@@ -16,4 +16,4 @@
  */
 
 /** Provides histotgram faceting capabilities. */
-package org.apache.lucene.facet.histogram;
+package org.apache.lucene.sandbox.facet.plain.histograms;

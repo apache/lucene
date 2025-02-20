@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.facet.histogram;
+package org.apache.lucene.sandbox.facet.plain.histograms;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
@@ -56,6 +56,11 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     expectedCounts.put(0, 1);
     expectedCounts.put(1, 2);
     assertEquals(expectedCounts, actualCounts);
+
+    expectThrows(
+        IllegalStateException.class,
+        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+
     reader.close();
     dir.close();
   }
@@ -82,6 +87,11 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     expectedCounts.put(1, 1);
     expectedCounts.put(2, 2);
     assertEquals(expectedCounts, actualCounts);
+
+    expectThrows(
+        IllegalStateException.class,
+        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+
     reader.close();
     dir.close();
   }
@@ -122,6 +132,11 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
       expectedCounts.addTo(Math.floorDiv(value, 4), 1);
     }
     assertEquals(expectedCounts, actualCounts);
+
+    expectThrows(
+        IllegalStateException.class,
+        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+
     reader.close();
     dir.close();
   }
