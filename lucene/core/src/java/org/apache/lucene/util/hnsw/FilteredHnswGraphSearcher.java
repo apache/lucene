@@ -105,6 +105,8 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
       RandomVectorScorer scorer,
       int level,
       final int[] eps,
+      final float[] epsScores,
+      int epCount,
       HnswGraph graph,
       Bits acceptOrds)
       throws IOException {
@@ -114,13 +116,14 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
 
     prepareScratchState();
 
-    for (int ep : eps) {
+    for (int i = 0; i < eps.length; i++) {
+      int ep = eps[i];
       if (visited.getAndSet(ep) == false) {
         if (results.earlyTerminated()) {
           return;
         }
-        float score = scorer.score(ep);
         results.incVisitedCount(1);
+        final float score = epsScores != null ? epsScores[i] : scorer.score(ep);
         candidates.add(ep, score);
         if (acceptOrds.get(ep)) {
           results.collect(ep, score);
