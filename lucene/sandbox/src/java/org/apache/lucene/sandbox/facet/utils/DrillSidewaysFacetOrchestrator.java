@@ -32,6 +32,8 @@ import org.apache.lucene.search.MultiCollectorManager;
 
 /**
  * Utility class to orchestrate {@link FacetBuilder}s to collect facets using {@link DrillSideways}.
+ *
+ * @lucene.experimental
  */
 public final class DrillSidewaysFacetOrchestrator {
   private List<FacetBuilder> drillDownFacetBuilders = new ArrayList<>();

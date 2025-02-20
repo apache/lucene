@@ -26,7 +26,11 @@ import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
 import org.apache.lucene.sandbox.facet.iterators.TaxonomyChildrenOrdinalIterator;
 import org.apache.lucene.sandbox.facet.labels.TaxonomyOrdLabelBiMap;
 
-/** {@link FacetBuilder} for taxonomy facets. */
+/**
+ * {@link FacetBuilder} for taxonomy facets.
+ *
+ * @lucene.experimental
+ */
 public final class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBuilder> {
   private final FacetsConfig facetsConfig;
   private final FacetsConfig.DimConfig dimConfig;
@@ -73,7 +77,7 @@ public final class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBu
   private int getParentOrd() throws IOException {
     if (this.parentOrd < 0) {
       FacetLabel parentLabel = new FacetLabel(dimension, path);
-      this.parentOrd = ordToLabel().getOrd(parentLabel);
+      this.parentOrd = getOrdToLabel().getOrd(parentLabel);
     }
     return this.parentOrd;
   }
@@ -95,7 +99,7 @@ public final class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBu
   }
 
   @Override
-  TaxonomyOrdLabelBiMap ordToLabel() {
+  TaxonomyOrdLabelBiMap getOrdToLabel() {
     if (taxoOrdLabels == null) {
       taxoOrdLabels = new TaxonomyOrdLabelBiMap(taxonomyReader);
     }

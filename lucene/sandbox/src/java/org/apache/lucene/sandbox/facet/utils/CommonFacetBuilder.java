@@ -17,13 +17,14 @@
 
 package org.apache.lucene.sandbox.facet.utils;
 
-import java.io.IOException;
 import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.labels.OrdToLabel;
 
 /**
  * Common {@link FacetBuilder} that works with any {@link FacetCutter} and {@link OrdToLabel}
  * provided by user.
+ *
+ * @lucene.experimental
  */
 public final class CommonFacetBuilder extends BaseFacetBuilder<CommonFacetBuilder> {
 
@@ -42,12 +43,13 @@ public final class CommonFacetBuilder extends BaseFacetBuilder<CommonFacetBuilde
   }
 
   @Override
-  Number getOverallValue() throws IOException {
+  Number getOverallValue() {
+    // There is no common way to compute overall value for all facet types
     return -1;
   }
 
   @Override
-  OrdToLabel ordToLabel() {
+  OrdToLabel getOrdToLabel() {
     return ordToLabel;
   }
 

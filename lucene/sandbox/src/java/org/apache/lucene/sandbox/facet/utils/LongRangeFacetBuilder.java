@@ -21,7 +21,11 @@ import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.sandbox.facet.cutters.ranges.LongRangeFacetCutter;
 import org.apache.lucene.sandbox.facet.labels.RangeOrdToLabel;
 
-/** {@link FacetBuilder} factory for long range facets. */
+/**
+ * {@link FacetBuilder} factory for long range facets.
+ *
+ * @lucene.experimental
+ */
 public final class LongRangeFacetBuilder {
 
   private LongRangeFacetBuilder() {}
@@ -32,7 +36,8 @@ public final class LongRangeFacetBuilder {
   }
 
   /**
-   * Request long range facets for provided {@link MultiLongValuesSource}.
+   * Request long range facets for provided {@link MultiLongValuesSource} by default sorted in
+   * original ranges order.
    *
    * @param dimension dimension to return in results to match {@link
    *     org.apache.lucene.facet.range.LongRangeFacetCounts#getTopChildren(int, String, String...)}
