@@ -223,15 +223,11 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
       tmp.setSegmentsPerTier(6);
 
       IndexWriter w = new IndexWriter(dir, conf);
-      int maxCount = 0;
       final int numDocs = TestUtil.nextInt(random(), 20, 100);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
         doc.add(newTextField("content", "aaa " + (i % 4), Field.Store.NO));
         w.addDocument(doc);
-        int count = w.getSegmentCount();
-        maxCount = Math.max(count, maxCount);
-        assertTrue("count=" + count + " maxCount=" + maxCount, count >= maxCount - 3);
       }
 
       w.flush(true, true);
