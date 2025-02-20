@@ -72,7 +72,8 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       }
 
       long[] scratch = new long[dims];
-      for (int i = 0; i < (LuceneTestCase.TEST_NIGHTLY ? atLeast(1000) : 100); i++) {
+      int maxDocs = LuceneTestCase.TEST_NIGHTLY ? atLeast(1000) : 100;
+      for (int i = 0; i < maxDocs; i++) {
         int numPoints = singleton ? 1 : RandomNumbers.randomIntBetween(random(), 1, 10);
         Document doc = new Document();
         for (int j = 0; j < numPoints; j++) {
@@ -124,9 +125,9 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       Query query1 = builder1.build();
       Query query2 = builder2.build();
       Query query3 = builder3.build();
-      TopDocs result1 = searcher.search(query1, 100, Sort.INDEXORDER);
-      TopDocs result2 = searcher.search(query2, 100, Sort.INDEXORDER);
-      TopDocs result3 = searcher.search(query3, 100, Sort.INDEXORDER);
+      TopDocs result1 = searcher.search(query1, maxDocs, Sort.INDEXORDER);
+      TopDocs result2 = searcher.search(query2, maxDocs, Sort.INDEXORDER);
+      TopDocs result3 = searcher.search(query3, maxDocs, Sort.INDEXORDER);
       assertEquals(result2.totalHits, result1.totalHits);
       assertEquals(result2.totalHits, result3.totalHits);
       assertEquals(result2.scoreDocs.length, result1.scoreDocs.length);
