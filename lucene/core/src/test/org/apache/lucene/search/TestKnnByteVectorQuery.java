@@ -136,32 +136,30 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-    static class CappedResultsThrowingKnnVectorQuery extends ThrowingKnnVectorQuery {
+  static class CappedResultsThrowingKnnVectorQuery extends ThrowingKnnVectorQuery {
 
-        private final int maxResults;
+    private final int maxResults;
 
-        public CappedResultsThrowingKnnVectorQuery(
-                String field, byte[] target, int k, Query filter, int maxResults) {
-            super(field, target, k, filter);
-            this.maxResults = maxResults;
-        }
-
-        @Override
-        protected TopDocs approximateSearch(
-                LeafReaderContext context,
-                Bits acceptDocs,
-                int visitedLimit,
-                KnnCollectorManager knnCollectorManager)
-                throws IOException {
-            TopDocs topDocs =
-                    super.approximateSearch(context, acceptDocs, Integer.MAX_VALUE, knnCollectorManager);
-            long results = Math.min(topDocs.totalHits.value(), maxResults);
-            ScoreDoc[] scoreDocs = new ScoreDoc[(int) results];
-            for (int i = 0; i < scoreDocs.length; i++) {
-                scoreDocs[i] = topDocs.scoreDocs[i];
-            }
-
-            return new TopDocs(new TotalHits(results, TotalHits.Relation.EQUAL_TO), scoreDocs);
-        }
+    public CappedResultsThrowingKnnVectorQuery(
+        String field, byte[] target, int k, Query filter, int maxResults) {
+      super(field, target, k, filter);
+      this.maxResults = maxResults;
     }
+
+    @Override
+    protected TopDocs approximateSearch(
+        LeafReaderContext context,
+        Bits acceptDocs,
+        int visitedLimit,
+        KnnCollectorManager knnCollectorManager)
+        throws IOException {
+      TopDocs topDocs =
+          super.approximateSearch(context, acceptDocs, Integer.MAX_VALUE, knnCollectorManager);
+      long results = Math.min(topDocs.totalHits.value(), maxResults);
+      ScoreDoc[] scoreDocs = new ScoreDoc[(int) results];
+      System.arraycopy(topDocs.scoreDocs, 0, scoreDocs, 0, scoreDocs.length);
+
+      return new TopDocs(new TotalHits(results, TotalHits.Relation.EQUAL_TO), scoreDocs);
+    }
+  }
 }
