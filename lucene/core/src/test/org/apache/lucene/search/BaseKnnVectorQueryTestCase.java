@@ -640,8 +640,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
                       numDocs));
 
           // Test a filter with cost slightly more than k, and check we use exact search as k
-          // results are not
-          // retrieved from approximate search
+          // results are not retrieved from approximate search
           Query filter5 = IntPoint.newRangeQuery("tag", lower, lower + 11);
           results =
               searcher.search(
