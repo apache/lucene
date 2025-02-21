@@ -54,6 +54,7 @@ public abstract class PointRangeQuery extends Query {
   final int bytesPerDim;
   final byte[] lowerPoint;
   final byte[] upperPoint;
+  final boolean equalValues;
 
   /**
    * Expert: create a multidimensional range query for point values.
@@ -89,6 +90,17 @@ public abstract class PointRangeQuery extends Query {
 
     this.lowerPoint = lowerPoint;
     this.upperPoint = upperPoint;
+
+    ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+    boolean equalValues = true;
+    int offset = 0;
+    for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
+      if (comparator.compare(lowerPoint, offset, upperPoint, offset) != 0) {
+        equalValues = false;
+        break;
+      }
+    }
+    this.equalValues = equalValues;
   }
 
   /**
@@ -129,6 +141,16 @@ public abstract class PointRangeQuery extends Query {
 
       private boolean matches(byte[] packedValue) {
         int offset = 0;
+
+        if (equalValues) {
+          for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
+            if (comparator.compare(packedValue, offset, lowerPoint, offset) != 0) {
+              return false;
+            }
+          }
+          return true;
+        }
+
         for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
           if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
             // Doc's value is too low, in this dimension
@@ -146,6 +168,31 @@ public abstract class PointRangeQuery extends Query {
 
         boolean crosses = false;
         int offset = 0;
+
+        if (equalValues) {
+          for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
+
+            int cmpMin = comparator.compare(minPackedValue, offset, lowerPoint, offset);
+            if (cmpMin > 0) {
+              return Relation.CELL_OUTSIDE_QUERY;
+            }
+
+            int cmpMax = comparator.compare(maxPackedValue, offset, lowerPoint, offset);
+            if (cmpMax < 0) {
+              return Relation.CELL_OUTSIDE_QUERY;
+            }
+
+            if (cmpMin != 0 || cmpMax != 0) {
+              crosses = true;
+            }
+          }
+
+          if (crosses) {
+            return Relation.CELL_CROSSES_QUERY;
+          } else {
+            return Relation.CELL_INSIDE_QUERY;
+          }
+        }
 
         for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
 
