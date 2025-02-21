@@ -63,6 +63,14 @@ module org.apache.lucene.core {
   // Open certain packages for the test framework (ram usage tester).
   opens org.apache.lucene.document to
       org.apache.lucene.test_framework;
+  opens org.apache.lucene.util.fst to
+      org.apache.lucene.test_framework;
+  opens org.apache.lucene.store to
+      org.apache.lucene.test_framework;
+  opens org.apache.lucene.util.automaton to
+      org.apache.lucene.test_framework;
+  opens org.apache.lucene.util to
+      org.apache.lucene.test_framework;
 
   exports org.apache.lucene.util.quantization;
   exports org.apache.lucene.codecs.hnsw;
