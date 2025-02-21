@@ -336,6 +336,7 @@ public class CuVSVectorsReader extends KnnVectorsReader {
       collectorTopK = knnCollector.k() * FILTER_OVER_SAMPLE;
     }
     final int topK = Math.min(collectorTopK, fieldEntry.count());
+    assert topK > 0 : "Expected topK > 0, got:" + topK;
 
     Map<Integer, Float> result;
     if (knnCollector.k() <= 1024 && cuvsIndex.getCagraIndex() != null) {

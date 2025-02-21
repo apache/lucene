@@ -125,6 +125,11 @@ public class TestCuVSVectorsFormat extends BaseKnnVectorsFormatTestCase {
         assertEquals(2, values.size());
         assertArrayEquals(f2[0], values.vectorValue(0), 0.0f);
         assertArrayEquals(f2[1], values.vectorValue(1), 0.0f);
+
+        // opportunistically check boundary condition - search with a 0 topK
+        var topDocs = r.searchNearestVectors("f1", randomVector(384), 0, null, 10);
+        assertEquals(0, topDocs.scoreDocs.length);
+        assertEquals(0, topDocs.totalHits.value());
       }
     }
   }
