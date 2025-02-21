@@ -104,13 +104,12 @@ public abstract class CompletionPostingsFormat extends PostingsFormat {
   static final String INDEX_EXTENSION = "cmp";
   static final String DICT_EXTENSION = "lkp";
 
-  /**
-   * Default way of loading FSTs when reading a completion field
-   */
+  /** Default way of loading FSTs when reading a completion field */
   public static final FSTLoadMode DEFAULT_FST_LOAD_MODE = FSTLoadMode.ON_HEAP;
+
   /**
-   * The {@link FSTLoadMode} that drives how {@link CompletionPostingsFormat} subclasses load their FSTs,
-   * used whenever a completion field is read.
+   * The {@link FSTLoadMode} that drives how {@link CompletionPostingsFormat} subclasses load their
+   * FSTs, used whenever a completion field is read.
    */
   public static FSTLoadMode FST_LOAD_MODE = DEFAULT_FST_LOAD_MODE;
 
