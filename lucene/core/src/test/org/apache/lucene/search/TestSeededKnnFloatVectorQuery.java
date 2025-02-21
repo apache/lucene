@@ -49,6 +49,15 @@ public class TestSeededKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   }
 
   @Override
+  AbstractKnnVectorQuery getCappedResultsThrowingKnnVectorQuery(
+      String field, float[] vec, int k, Query query, int maxResults) {
+    KnnFloatVectorQuery knnQuery =
+        new TestKnnFloatVectorQuery.CappedResultsThrowingKnnVectorQuery(
+            field, vec, k, query, maxResults);
+    return SeededKnnVectorQuery.fromFloatQuery(knnQuery, MATCH_NONE);
+  }
+
+  @Override
   float[] randomVector(int dim) {
     return TestVectorUtil.randomVector(dim);
   }
