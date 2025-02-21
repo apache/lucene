@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import org.apache.lucene.search.suggest.document.CompletionPostingsFormat.FSTLoadMode;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Accountable;
 
 /**

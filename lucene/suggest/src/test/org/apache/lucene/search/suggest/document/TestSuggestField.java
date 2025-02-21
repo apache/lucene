@@ -79,11 +79,14 @@ public class TestSuggestField extends LuceneTestCase {
   @Before
   public void before() throws Exception {
     dir = newDirectory();
+    CompletionPostingsFormat.FST_LOAD_MODE =
+            RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
   }
 
   @After
   public void after() throws Exception {
     dir.close();
+    CompletionPostingsFormat.FST_LOAD_MODE = CompletionPostingsFormat.DEFAULT_FST_LOAD_MODE;
   }
 
   @Test
@@ -949,10 +952,7 @@ public class TestSuggestField extends LuceneTestCase {
     iwc.setMergePolicy(newLogMergePolicy());
     Codec filterCodec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          final CompletionPostingsFormat.FSTLoadMode fstLoadMode =
-              RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
-          final PostingsFormat postingsFormat = new Completion101PostingsFormat(fstLoadMode);
-
+          final PostingsFormat postingsFormat = new Completion101PostingsFormat();
           @Override
           public PostingsFormat postingsFormat() {
             return new PerFieldPostingsFormat() {
