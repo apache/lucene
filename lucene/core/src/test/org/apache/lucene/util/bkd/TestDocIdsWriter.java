@@ -122,8 +122,7 @@ public class TestDocIdsWriter extends LuceneTestCase {
       }
     }
     try (IndexInput in = dir.openInput("tmp", IOContext.READONCE)) {
-      int[] read = new int[ints.length];
-      docIdsWriter.readInts(in, ints.length, read);
+      int[] read = docIdsWriter.readInts(in, ints.length);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }
