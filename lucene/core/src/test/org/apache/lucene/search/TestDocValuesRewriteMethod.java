@@ -41,10 +41,10 @@ import org.apache.lucene.util.automaton.RegExp;
 
 /** Tests the DocValuesRewriteMethod */
 public class TestDocValuesRewriteMethod extends LuceneTestCase {
-  protected IndexSearcher searcher;
+  private IndexSearcher searcher;
   private IndexReader reader;
   private Directory dir;
-  protected String fieldName;
+  private String fieldName;
 
   @Override
   public void setUp() throws Exception {
