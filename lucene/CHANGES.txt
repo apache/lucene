@@ -129,9 +129,11 @@ Optimizations
 * GITHUB#14193: Add Automata.makeCharSet() and makeCharClass() that return minimal DFA
   for lists of characters and ranges. Use them in RegExp parser.  (Robert Muir)
 
-* GITHUB#14176: Reduce when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
+* GITHUB#14176: Reduce virtual call when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
 
 * GITHUB#14269: Implement #intoBitset for DocIdSetIterator#all and DocIdSetIterator#range. (Guo Feng)
+
+* GITHUB#14272: Use DocIdSetIterator#range for continuous-id BKD leaves. (Guo Feng)
 
 Bug Fixes
 ---------------------
