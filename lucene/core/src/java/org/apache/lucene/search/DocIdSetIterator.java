@@ -87,6 +87,18 @@ public abstract class DocIdSetIterator {
       public long cost() {
         return maxDoc;
       }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
+        assert offset <= doc;
+        if (upTo >= maxDoc) {
+          bitSet.set(doc - offset, maxDoc - offset);
+          doc = NO_MORE_DOCS;
+        } else if (upTo > doc) {
+          bitSet.set(doc - offset, upTo - offset);
+          doc = upTo;
+        }
+      }
     };
   }
 
@@ -130,6 +142,18 @@ public abstract class DocIdSetIterator {
       @Override
       public long cost() {
         return maxDoc - minDoc;
+      }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
+        assert offset <= doc;
+        if (upTo >= maxDoc) {
+          bitSet.set(doc - offset, maxDoc - offset);
+          doc = NO_MORE_DOCS;
+        } else if (upTo > doc) {
+          bitSet.set(doc - offset, upTo - offset);
+          doc = upTo;
+        }
       }
     };
   }
@@ -224,7 +248,7 @@ public abstract class DocIdSetIterator {
    * </pre>
    *
    * <p><b>Note</b>: {@code offset} must be less than or equal to the {@link #docID() current doc
-   * ID}.
+   * ID}. Behaviour is undefined if this iterator is unpositioned or exhausted.
    *
    * <p><b>Note</b>: It is important not to clear bits from {@code bitSet} that may be already set.
    *
