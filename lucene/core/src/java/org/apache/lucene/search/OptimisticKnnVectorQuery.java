@@ -195,7 +195,9 @@ public class OptimisticKnnVectorQuery extends KnnFloatVectorQuery {
             new SeededKnnVectorQuery.MappedDISI(
                 indexIterator, new SeededKnnVectorQuery.TopDocsDISI(seedTopDocs, ctx));
         return knnCollectorManager.newCollector(
-            visitLimit, new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length), ctx);
+            visitLimit,
+            new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length, null),
+            ctx);
       }
       // could lead to an infinite loop if this ever happens
       assert false;

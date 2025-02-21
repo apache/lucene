@@ -123,9 +123,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     final AbstractHnswGraphSearcher graphSearcher;
     if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded
         && seeded.numberOfEntryPoints() > 0) {
-      graphSearcher =
-          SeededHnswGraphSearcher.fromEntryPoints(
-              innerSearcher, seeded.numberOfEntryPoints(), seeded.entryPoints(), graph.size());
+      graphSearcher = SeededHnswGraphSearcher.fromEntryPoints(innerSearcher, seeded, graph.size());
     } else {
       graphSearcher = innerSearcher;
     }
