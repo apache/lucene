@@ -364,6 +364,8 @@ public class RandomCodec extends AssertingCodec {
     return super.toString()
         + ": "
         + previousMappings.toString()
+        + ", knn_vectors:"
+        + previousKnnMappings.toString()
         + ", docValues:"
         + previousDVMappings.toString()
         + ", maxPointsInLeafNode="

@@ -179,7 +179,7 @@ final class ViterbiNBest extends org.apache.lucene.analysis.morph.ViterbiNBest<T
   protected void backtrace(Position endPosData, int fromIDX) throws IOException {
     final int endPos = endPosData.getPos();
 
-    /**
+    /*
      * LUCENE-10059: If the endPos is the same as lastBackTracePos, we don't want to backtrace to
      * avoid an assertion error {@link RollingCharBuffer#get(int)} when it tries to generate an
      * empty buffer
