@@ -166,7 +166,8 @@ public final class Lucene91HnswGraphBuilder {
     // for levels <= nodeLevel search with topk = beamWidth, and add connections
     for (int level = Math.min(nodeLevel, curMaxLevel); level >= 0; level--) {
       candidates = graphSearcher.searchLevel(scorer, beamWidth, level, eps, hnsw);
-      eps = candidates.popUntilNearestKNodes();
+      candidates.popUntilNearestKNodes();
+      eps = candidates.nodes();
       hnsw.addNode(level, node);
       addDiverseNeighbors(level, node, candidates);
     }
