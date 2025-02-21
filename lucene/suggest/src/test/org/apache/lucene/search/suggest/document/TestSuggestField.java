@@ -80,7 +80,7 @@ public class TestSuggestField extends LuceneTestCase {
   public void before() throws Exception {
     dir = newDirectory();
     CompletionPostingsFormat.FST_LOAD_MODE =
-            RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
+        RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
   }
 
   @After
@@ -953,6 +953,7 @@ public class TestSuggestField extends LuceneTestCase {
     Codec filterCodec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
           final PostingsFormat postingsFormat = new Completion101PostingsFormat();
+
           @Override
           public PostingsFormat postingsFormat() {
             return new PerFieldPostingsFormat() {
