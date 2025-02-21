@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.ByteArrayRandomAccessInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -29,6 +30,7 @@ import org.apache.lucene.util.BytesRefArray;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.PagedBytes;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -153,6 +155,8 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     final PackedLongValues.Iterator lengthsIterator;
     final DocIdSetIterator docsWithField;
     final DataInput bytesIterator;
+    final ByteArrayRandomAccessInput bytes = new ByteArrayRandomAccessInput();
+    final RandomAccessInputRef inputRef = new RandomAccessInputRef(bytes);
 
     BufferedBinaryDocValues(
         PackedLongValues lengths,
@@ -198,14 +202,20 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     }
 
     @Override
-    public BytesRef binaryValue() {
-      return value.get();
+    public RandomAccessInputRef randomAccessInputValue() {
+      BytesRef bytesRef = value.get();
+      bytes.reset(bytesRef.bytes);
+      inputRef.offset = bytesRef.offset;
+      inputRef.length = bytesRef.length;
+      return inputRef;
     }
   }
 
   static class SortingBinaryDocValues extends BinaryDocValues {
     private final BinaryDVs dvs;
     private final BytesRefBuilder spare = new BytesRefBuilder();
+    private final ByteArrayRandomAccessInput bytes = new ByteArrayRandomAccessInput();
+    private final RandomAccessInputRef inputRef = new RandomAccessInputRef(bytes);
     private int docID = -1;
 
     SortingBinaryDocValues(BinaryDVs dvs) {
@@ -220,6 +230,7 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
           return docID = NO_MORE_DOCS;
         }
       } while (dvs.offsets[docID] <= 0);
+      dvs.values.get(spare, dvs.offsets[docID] - 1);
       return docID;
     }
 
@@ -239,9 +250,12 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     }
 
     @Override
-    public BytesRef binaryValue() {
-      dvs.values.get(spare, dvs.offsets[docID] - 1);
-      return spare.get();
+    public RandomAccessInputRef randomAccessInputValue() throws IOException {
+      BytesRef bytesRef = spare.get();
+      bytes.reset(spare.get().bytes);
+      inputRef.offset = bytesRef.offset;
+      inputRef.length = bytesRef.length;
+      return inputRef;
     }
 
     @Override
@@ -261,7 +275,7 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
       int docID;
       while ((docID = oldValues.nextDoc()) != NO_MORE_DOCS) {
         int newDocID = sortMap.oldToNew(docID);
-        values.append(oldValues.binaryValue());
+        values.append(oldValues.randomAccessInputValue());
         offsets[newDocID] = offset++;
       }
     }
