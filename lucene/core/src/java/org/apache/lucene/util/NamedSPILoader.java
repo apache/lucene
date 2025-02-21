@@ -64,18 +64,25 @@ public final class NamedSPILoader<S extends NamedSPILoader.NamedSPI> implements 
    */
   public void reload(ClassLoader classloader) {
     Objects.requireNonNull(classloader, "classloader");
-    final LinkedHashMap<String, S> services = new LinkedHashMap<>(this.services);
+    final Map<String, S> services = this.services;
+    final LinkedHashMap<String, S> newServices = new LinkedHashMap<>();
     for (final S service : ServiceLoader.load(clazz, classloader)) {
       final String name = service.getName();
       // only add the first one for each name, later services will be ignored
       // this allows to place services before others in classpath to make
       // them used instead of others
-      if (!services.containsKey(name)) {
-        checkServiceName(name);
-        services.put(name, service);
+      var prevNew = newServices.get(name);
+      if (prevNew == null || service.replace(prevNew)) {
+        if (!services.containsKey(name)) {
+          checkServiceName(name);
+          newServices.put(name, service);
+        }
       }
     }
-    this.services = Collections.unmodifiableMap(services);
+    Map<String, S> finalServices = new LinkedHashMap<>(services.size() + newServices.size());
+    finalServices.putAll(services);
+    finalServices.putAll(newServices);
+    this.services = Collections.unmodifiableMap(finalServices);
   }
 
   /** Validates that a service name meets the requirements of {@link NamedSPI} */
@@ -129,5 +136,30 @@ public final class NamedSPILoader<S extends NamedSPILoader.NamedSPI> implements 
    */
   public interface NamedSPI {
     String getName();
+
+    /**
+     * Allows a service provider found during the load iteration to replace another provider found
+     * earlier during the same load iteration, before the providers becomes externally visible, via
+     * {@link #iterator()} or {@link #availableServices()}.
+     *
+     * <p>This allows for finer-grain selection within a particular load iteration, between new
+     * service providers of the same name found later in that iteration.
+     *
+     * <p>Note, this replacement does not break the externally observable invariant of {@link
+     * #reload(ClassLoader) reload} - that only new service providers are added, existing ones are
+     * never removed or replaced. The replacement here is within the same load iteration.
+     *
+     * <p>Among the usages, this mechanism can be used to facilitate ordering between service
+     * providers within the same module layer, since the iteration order of services within a module
+     * layer is undefined. Whereas applications deployed as unnamed modules can depend upon the
+     * ordering within the classpath .
+     *
+     * <p>The default implementation returns false - do not replace.
+     *
+     * @param previous the previous service provider, never null
+     */
+    default boolean replace(NamedSPI previous) {
+      return false;
+    }
   }
 }
