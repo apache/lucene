@@ -49,6 +49,7 @@ import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 /** Factory of index options dialog */
 public final class IndexOptionsDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static IndexOptionsDialogFactory instance;
 
   private final Preferences prefs;

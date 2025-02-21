@@ -42,7 +42,7 @@ package org.apache.lucene.analysis.en;
 class KStemData4 {
   private KStemData4() {}
 
-  static String[] data = {
+  static final String[] data = {
     "granular", "granulate", "granule", "grape", "grapefruit",
     "grapeshot", "grapevine", "graph", "graphic", "graphical",
     "graphically", "graphite", "graphology", "grapnel", "grapple",

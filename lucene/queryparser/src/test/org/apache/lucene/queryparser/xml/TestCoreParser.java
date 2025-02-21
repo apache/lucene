@@ -47,9 +47,13 @@ public class TestCoreParser extends LuceneTestCase {
 
   private static final String defaultField = "contents";
 
+  @SuppressWarnings("NonFinalStaticField")
   private static Analyzer analyzer;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static CoreParser coreParser;
 
+  @SuppressWarnings("NonFinalStaticField")
   private static CoreParserTestIndexData indexData;
 
   protected Analyzer newAnalyzer() {

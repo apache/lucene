@@ -486,7 +486,7 @@ allprojects { prj ->
             // '-Xep:NonApiType:OFF', // noisy
             // '-Xep:NonAtomicVolatileUpdate:OFF', // TODO: there are problems
             // '-Xep:NonCanonicalType:OFF', // noisy
-            // '-Xep:NonFinalStaticField:OFF', // noisy
+            '-Xep:NonFinalStaticField:WARN',
             '-Xep:NonOverridingEquals:WARN',
             '-Xep:NotJavadoc:WARN',
             '-Xep:NullOptional:WARN',

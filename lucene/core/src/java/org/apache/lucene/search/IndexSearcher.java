@@ -76,9 +76,15 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
  */
 public class IndexSearcher {
 
+  @SuppressWarnings("NonFinalStaticField")
   static int maxClauseCount = 1024;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static QueryCache DEFAULT_QUERY_CACHE;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static QueryCachingPolicy DEFAULT_CACHING_POLICY = new UsageTrackingQueryCachingPolicy();
+
   private QueryTimeout queryTimeout = null;
   // partialResult may be set on one of the threads of the executor. It may be correct to not make
   // this variable volatile since joining these threads should ensure a happens-before relationship

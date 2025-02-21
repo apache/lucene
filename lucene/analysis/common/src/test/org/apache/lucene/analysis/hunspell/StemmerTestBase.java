@@ -30,6 +30,7 @@ import org.junit.AfterClass;
 
 /** base class for hunspell stemmer tests */
 public abstract class StemmerTestBase extends LuceneTestCase {
+  @SuppressWarnings("NonFinalStaticField")
   private static Stemmer stemmer;
 
   @AfterClass

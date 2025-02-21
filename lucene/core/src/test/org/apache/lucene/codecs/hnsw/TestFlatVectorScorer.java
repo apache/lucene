@@ -49,9 +49,9 @@ import org.hamcrest.MatcherAssert;
 
 public class TestFlatVectorScorer extends LuceneTestCase {
 
-  static volatile AtomicInteger count = new AtomicInteger();
-  final FlatVectorsScorer flatVectorsScorer;
-  final ThrowingSupplier<Directory> newDirectory;
+  private static final AtomicInteger count = new AtomicInteger();
+  private final FlatVectorsScorer flatVectorsScorer;
+  private final ThrowingSupplier<Directory> newDirectory;
 
   public TestFlatVectorScorer(
       FlatVectorsScorer flatVectorsScorer, ThrowingSupplier<Directory> newDirectory) {

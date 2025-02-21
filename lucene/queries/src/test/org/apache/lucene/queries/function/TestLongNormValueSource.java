@@ -46,7 +46,7 @@ public class TestLongNormValueSource extends LuceneTestCase {
   static IndexSearcher searcher;
   static Analyzer analyzer;
 
-  private static Similarity sim = new ClassicSimilarity();
+  private static final Similarity sim = new ClassicSimilarity();
 
   @BeforeClass
   public static void beforeClass() throws Exception {
