@@ -28,6 +28,10 @@ New Features
 
 * GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
 
+* GITHUB#14204: Added HistogramCollectorManager to efficiently compute a
+  histogram of the distribution of the values of a field, for documents
+  matching a given query. (Adrien Grand)
+
 Improvements
 ---------------------
 
