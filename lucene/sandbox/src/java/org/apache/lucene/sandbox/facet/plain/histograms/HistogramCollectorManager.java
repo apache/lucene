@@ -89,6 +89,7 @@ public final class HistogramCollectorManager
     for (HistogramCollector collector : collectors) {
       for (LongIntCursor cursor : collector.getCounts()) {
         reduced.addTo(cursor.key, cursor.value);
+        HistogramCollector.checkMaxBuckets(reduced.size(), maxBuckets);
       }
     }
     return reduced;
