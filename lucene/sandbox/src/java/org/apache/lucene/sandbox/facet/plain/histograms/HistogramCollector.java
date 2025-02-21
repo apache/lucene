@@ -262,7 +262,7 @@ final class HistogramCollector implements Collector {
     }
   }
 
-  private static void checkMaxBuckets(int size, int maxBuckets) {
+  static void checkMaxBuckets(int size, int maxBuckets) {
     if (size > maxBuckets) {
       throw new IllegalStateException(
           "Collected "
