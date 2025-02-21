@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -105,7 +104,8 @@ public class TestDocIdSetIterator extends LuceneTestCase {
                     ? expectedDisi.docID() - 1
                     : expectedDisi.docID() + random().nextInt(5);
             int offset = expectedDisi.docID() - random().nextInt(max);
-            defaultIntoBitset(expectedDisi, upTo, expected, offset);
+            // use the default impl of intoBitSet
+            new FilterDocIdSetIterator(expectedDisi).intoBitSet(upTo, expected, offset);
             actualDisi.intoBitSet(upTo, actual, offset);
             assertArrayEquals(expected.getBits(), actual.getBits());
           }
@@ -113,14 +113,6 @@ public class TestDocIdSetIterator extends LuceneTestCase {
         assertEquals(expectedDisi.docID(), actualDisi.docID());
         doc = expectedDisi.docID();
       }
-    }
-  }
-
-  private static void defaultIntoBitset(
-      DocIdSetIterator disi, int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    assert offset <= disi.docID();
-    for (int doc = disi.docID(); doc < upTo; doc = disi.nextDoc()) {
-      bitSet.set(doc - offset);
     }
   }
 }
