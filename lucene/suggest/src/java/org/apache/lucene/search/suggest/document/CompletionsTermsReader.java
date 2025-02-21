@@ -72,10 +72,8 @@ public final class CompletionsTermsReader implements Accountable {
    */
   public synchronized NRTSuggester suggester() throws IOException {
     if (suggester == null) {
-      try (IndexInput dictClone = dictIn.clone()) { // let multiple fields load concurrently
-        dictClone.seek(offset);
-        suggester = NRTSuggester.load(dictClone, fstLoadMode);
-      }
+      IndexInput indexInput = dictIn.slice("NRTSuggester", offset, dictIn.length() - offset);
+      suggester = NRTSuggester.load(indexInput, fstLoadMode);
     }
     return suggester;
   }

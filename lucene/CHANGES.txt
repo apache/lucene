@@ -130,6 +130,7 @@ Bug Fixes
 * GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
   their corresponding ordinals. (Paul King)
 * GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
+* GITHUB#14271: Stop closing index input when loading NRTSuggester (Luca Cavanna)
 
 Build
 ---------------------
