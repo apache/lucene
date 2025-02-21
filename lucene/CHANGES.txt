@@ -64,6 +64,10 @@ New Features
 
 * GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
 
+* GITHUB#14204: Added HistogramCollectorManager to efficiently compute a
+  histogram of the distribution of the values of a field, for documents
+  matching a given query. (Adrien Grand)
+
 Improvements
 ---------------------
 
@@ -126,6 +130,8 @@ Optimizations
   for lists of characters and ranges. Use them in RegExp parser.  (Robert Muir)
 
 * GITHUB#14176: Reduce when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
+
+* GITHUB#14269: Implement #intoBitset for DocIdSetIterator#all and DocIdSetIterator#range. (Guo Feng)
 
 Bug Fixes
 ---------------------
@@ -273,6 +279,7 @@ Bug Fixes
 * GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
   their corresponding ordinals. (Paul King)
 * GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
+* GITHUB#14271: Stop closing index input when loading NRTSuggester (Luca Cavanna)
 
 Build
 ---------------------
