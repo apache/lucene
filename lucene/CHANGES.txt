@@ -105,6 +105,8 @@ Optimizations
 
 * GITHUB#14176: Reduce when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
 
+* GITHUB#14269: Implement #intoBitset for DocIdSetIterator#all and DocIdSetIterator#range. (Guo Feng)
+
 Bug Fixes
 ---------------------
 
