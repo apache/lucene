@@ -35,7 +35,7 @@ class ReplicaFileDeleter {
         new FileDeleter(
             dir,
             ((msgType, s) -> {
-              if (msgType == FileDeleter.MsgType.FILE && Node.VERBOSE_FILES) {
+              if (msgType == FileDeleter.MsgType.FILE && node.isVerboseFiles()) {
                 node.message(s);
               }
             }));

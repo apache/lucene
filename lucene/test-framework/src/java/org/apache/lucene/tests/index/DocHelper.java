@@ -49,7 +49,7 @@ public class DocHelper {
   public static final FieldType customType;
   public static final String FIELD_1_TEXT = "field one text";
   public static final String TEXT_FIELD_1_KEY = "textField1";
-  public static Field textField1;
+  public static final Field textField1;
 
   static {
     customType = new FieldType(TextField.TYPE_STORED);
@@ -152,15 +152,23 @@ public class DocHelper {
   }
 
   public static final String LAZY_FIELD_BINARY_KEY = "lazyFieldBinary";
+
+  @SuppressWarnings("NonFinalStaticField")
   public static byte[] LAZY_FIELD_BINARY_BYTES;
+
+  @SuppressWarnings("NonFinalStaticField")
   public static Field lazyFieldBinary;
 
   public static final String LAZY_FIELD_KEY = "lazyField";
   public static final String LAZY_FIELD_TEXT = "These are some field bytes";
-  public static Field lazyField = new Field(LAZY_FIELD_KEY, LAZY_FIELD_TEXT, customType);
+  public static final Field lazyField = new Field(LAZY_FIELD_KEY, LAZY_FIELD_TEXT, customType);
 
   public static final String LARGE_LAZY_FIELD_KEY = "largeLazyField";
+
+  @SuppressWarnings("NonFinalStaticField")
   public static String LARGE_LAZY_FIELD_TEXT;
+
+  @SuppressWarnings("NonFinalStaticField")
   public static Field largeLazyField;
 
   // From Issue 509

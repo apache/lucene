@@ -49,7 +49,7 @@ import org.junit.Test;
 
 public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
-  private static FacetLabel ILLEGAL_PATH =
+  private static final FacetLabel ILLEGAL_PATH =
       new FacetLabel("PATH_THAT_CAUSED_IllegalArgumentException");
 
   @Test

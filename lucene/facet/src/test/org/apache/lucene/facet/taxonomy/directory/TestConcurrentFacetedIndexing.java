@@ -38,7 +38,7 @@ public class TestConcurrentFacetedIndexing extends FacetTestCase {
 
   // A No-Op TaxonomyWriterCache which always discards all given categories, and
   // always returns true in put(), to indicate some cache entries were cleared.
-  private static TaxonomyWriterCache NO_OP_CACHE =
+  private static final TaxonomyWriterCache NO_OP_CACHE =
       new TaxonomyWriterCache() {
 
         @Override

@@ -66,6 +66,7 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static OpenIndexDialogFactory instance;
 
   private final Preferences prefs;

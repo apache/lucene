@@ -38,6 +38,7 @@ import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 /** Factory of help dialog */
 public final class HelpDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static HelpDialogFactory instance;
 
   private final Preferences prefs;

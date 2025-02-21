@@ -59,6 +59,7 @@ import org.junit.BeforeClass;
 @SuppressCodecs({"MockRandom", "Direct", "SimpleText"})
 @SuppressSysoutChecks(bugUrl = "Stuff gets printed, important stuff for debugging a failure")
 public class TestSimpleServer extends LuceneTestCase {
+  private static final boolean VERBOSE_CONNECTIONS = true;
 
   static final Set<Thread> clientThreads = Collections.synchronizedSet(new HashSet<>());
   static final AtomicBoolean stop = new AtomicBoolean();
@@ -77,7 +78,7 @@ public class TestSimpleServer extends LuceneTestCase {
       this.node = node;
       this.socket = socket;
       this.bufferSize = TestUtil.nextInt(random(), 128, 65536);
-      if (Node.VERBOSE_CONNECTIONS) {
+      if (VERBOSE_CONNECTIONS) {
         node.message("new connection socket=" + socket);
       }
     }
@@ -100,7 +101,7 @@ public class TestSimpleServer extends LuceneTestCase {
         }
 
         bos.flush();
-        if (Node.VERBOSE_CONNECTIONS) {
+        if (VERBOSE_CONNECTIONS) {
           node.message("bos.flush done");
         }
 
@@ -128,7 +129,7 @@ public class TestSimpleServer extends LuceneTestCase {
           IOUtils.closeWhileHandlingException(socket);
         }
       }
-      if (Node.VERBOSE_CONNECTIONS) {
+      if (VERBOSE_CONNECTIONS) {
         node.message("socket.close done");
       }
     }

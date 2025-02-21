@@ -29,7 +29,7 @@ public class QualityStats {
 
   private double maxGoodPoints;
   private double recall;
-  private double[] pAt;
+  private final double[] pAt;
   private double pReleventSum = 0;
   private double numPoints = 0;
   private double numGoodPoints = 0;
@@ -39,8 +39,8 @@ public class QualityStats {
 
   /** A certain rank in which a relevant doc was found. */
   public static class RecallPoint {
-    private int rank;
-    private double recall;
+    private final int rank;
+    private final double recall;
 
     private RecallPoint(int rank, double recall) {
       this.rank = rank;
@@ -58,7 +58,7 @@ public class QualityStats {
     }
   }
 
-  private ArrayList<RecallPoint> recallPoints;
+  private final ArrayList<RecallPoint> recallPoints;
 
   /**
    * Construct a QualityStats object with anticipated maximal number of relevant hits.
@@ -170,7 +170,7 @@ public class QualityStats {
     }
   }
 
-  private static String padd = "                                    ";
+  private static final String padd = "                                    ";
 
   private String format(String s, int minLen) {
     s = (s == null ? "" : s);
@@ -200,19 +200,19 @@ public class QualityStats {
     }
     int m = 0; // queries with positive judgements
     // aggregate
-    for (int i = 0; i < stats.length; i++) {
-      avg.searchTime += stats[i].searchTime;
-      avg.docNamesExtractTime += stats[i].docNamesExtractTime;
-      if (stats[i].maxGoodPoints > 0) {
+    for (QualityStats stat : stats) {
+      avg.searchTime += stat.searchTime;
+      avg.docNamesExtractTime += stat.docNamesExtractTime;
+      if (stat.maxGoodPoints > 0) {
         m++;
-        avg.numGoodPoints += stats[i].numGoodPoints;
-        avg.numPoints += stats[i].numPoints;
-        avg.pReleventSum += stats[i].getAvp();
-        avg.recall += stats[i].recall;
-        avg.mrr += stats[i].getMRR();
-        avg.maxGoodPoints += stats[i].maxGoodPoints;
+        avg.numGoodPoints += stat.numGoodPoints;
+        avg.numPoints += stat.numPoints;
+        avg.pReleventSum += stat.getAvp();
+        avg.recall += stat.recall;
+        avg.mrr += stat.getMRR();
+        avg.maxGoodPoints += stat.maxGoodPoints;
         for (int j = 1; j < avg.pAt.length; j++) {
-          avg.pAt[j] += stats[i].getPrecisionAt(j);
+          avg.pAt[j] += stat.getPrecisionAt(j);
         }
       }
     }

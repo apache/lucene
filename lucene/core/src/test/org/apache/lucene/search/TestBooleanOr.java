@@ -37,13 +37,13 @@ import org.apache.lucene.util.FixedBitSet;
 
 public class TestBooleanOr extends LuceneTestCase {
 
-  private static String FIELD_T = "T";
-  private static String FIELD_C = "C";
+  private static final String FIELD_T = "T";
+  private static final String FIELD_C = "C";
 
-  private TermQuery t1 = new TermQuery(new Term(FIELD_T, "files"));
-  private TermQuery t2 = new TermQuery(new Term(FIELD_T, "deleting"));
-  private TermQuery c1 = new TermQuery(new Term(FIELD_C, "production"));
-  private TermQuery c2 = new TermQuery(new Term(FIELD_C, "optimize"));
+  private final TermQuery t1 = new TermQuery(new Term(FIELD_T, "files"));
+  private final TermQuery t2 = new TermQuery(new Term(FIELD_T, "deleting"));
+  private final TermQuery c1 = new TermQuery(new Term(FIELD_C, "production"));
+  private final TermQuery c2 = new TermQuery(new Term(FIELD_C, "optimize"));
 
   private IndexSearcher searcher = null;
   private Directory dir;

@@ -30,7 +30,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Tests customing the function map */
 public class TestCustomFunctions extends CompilerTestCase {
-  private static double DELTA = 0.0000001;
+  private static final double DELTA = 0.0000001;
   private static final Lookup LOOKUP = MethodHandles.lookup();
 
   /** empty list of methods */
@@ -238,7 +238,7 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertEquals(16, expr.evaluate(null), DELTA);
   }
 
-  static String MESSAGE = "This should not happen but it happens";
+  private static final String MESSAGE = "This should not happen but it happens";
 
   public static double staticThrowingException() {
     throw new ArithmeticException(MESSAGE);
