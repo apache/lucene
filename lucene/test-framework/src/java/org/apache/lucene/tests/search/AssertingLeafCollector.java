@@ -102,7 +102,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
   private class AssertingDocIdStream extends DocIdStream {
 
     private final DocIdStream stream;
-    private boolean consumed;
+    private boolean fullyConsumed;
 
     AssertingDocIdStream(DocIdStream stream) {
       this.stream = stream;
@@ -110,7 +110,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
     @Override
     public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      assert consumed == false : "A terminal operation has already been called";
+      assert fullyConsumed == false : "A terminal operation has already been called";
       stream.forEach(
           doc -> {
             assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
@@ -119,15 +119,54 @@ class AssertingLeafCollector extends FilterLeafCollector {
             consumer.accept(doc);
             lastCollected = doc;
           });
-      consumed = true;
+      fullyConsumed = true;
+      assert stream.mayHaveRemaining() == false;
+    }
+
+    @Override
+    public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
+      assert fullyConsumed == false : "A terminal operation has already been called";
+      stream.forEach(
+          doc -> {
+            assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
+            assert doc >= min : "Out of range: " + doc + " < " + min;
+            assert doc < max : "Out of range: " + doc + " >= " + max;
+            consumer.accept(doc);
+            lastCollected = doc;
+          });
+      fullyConsumed = upTo == DocIdSetIterator.NO_MORE_DOCS;
+      if (fullyConsumed) {
+        assert stream.mayHaveRemaining() == false;
+      }
     }
 
     @Override
     public int count() throws IOException {
-      assert consumed == false : "A terminal operation has already been called";
+      assert fullyConsumed == false : "A terminal operation has already been called";
       int count = stream.count();
-      consumed = true;
+      fullyConsumed = true;
+      assert stream.mayHaveRemaining() == false;
       return count;
+    }
+
+    @Override
+    public int count(int upTo) throws IOException {
+      assert fullyConsumed == false : "A terminal operation has already been called";
+      int count = stream.count();
+      fullyConsumed = upTo == DocIdSetIterator.NO_MORE_DOCS;
+      if (fullyConsumed) {
+        assert stream.mayHaveRemaining() == false;
+      }
+      return count;
+    }
+
+    @Override
+    public boolean mayHaveRemaining() {
+      boolean mayHaveRemaining = stream.mayHaveRemaining();
+      if (fullyConsumed) {
+        assert mayHaveRemaining == false;
+      }
+      return mayHaveRemaining;
     }
   }
 }

@@ -19,8 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 
 /**
- * A stream of doc IDs. Most methods on {@link DocIdStream}s are terminal, meaning that the {@link
- * DocIdStream} may not be further used.
+ * A stream of doc IDs. Doc IDs may be consumed at most once.
  *
  * @see LeafCollector#collect(DocIdStream)
  * @lucene.experimental
@@ -34,7 +33,17 @@ public abstract class DocIdStream {
    * Iterate over doc IDs contained in this stream in order, calling the given {@link
    * CheckedIntConsumer} on them. This is a terminal operation.
    */
-  public abstract void forEach(CheckedIntConsumer<IOException> consumer) throws IOException;
+  public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
+    forEach(DocIdSetIterator.NO_MORE_DOCS, consumer);
+  }
+
+  /**
+   * Iterate over doc IDs contained in this doc ID stream up to the given {@code upTo} exclusive,
+   * calling the given {@link CheckedIntConsumer} on them. It is not possible to iterate these doc
+   * IDs again later on.
+   */
+  public abstract void forEach(int upTo, CheckedIntConsumer<IOException> consumer)
+      throws IOException;
 
   /** Count the number of entries in this stream. This is a terminal operation. */
   public int count() throws IOException {
@@ -42,4 +51,17 @@ public abstract class DocIdStream {
     forEach(doc -> count[0]++);
     return count[0];
   }
+
+  /**
+   * Count the number of doc IDs in this stream that are below the given {@code upTo}. These doc IDs
+   * may not be consumed again later.
+   */
+  public int count(int upTo) throws IOException {
+    int[] count = new int[1];
+    forEach(upTo, doc -> count[0]++);
+    return count[0];
+  }
+
+  /** Return {@code true} if this stream may have remaining doc IDs. */
+  public abstract boolean mayHaveRemaining();
 }
