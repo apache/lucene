@@ -28,6 +28,8 @@ import org.apache.lucene.analysis.TokenStream;
  */
 public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBase {
 
+  private boolean consumeChars = false;
+
   /**
    * Creates a new {@link DictionaryCompoundWordTokenFilter}
    *
@@ -50,6 +52,9 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
    * @param minSubwordSize only subwords longer than this get to the output stream
    * @param maxSubwordSize only subwords shorter than this get to the output stream
    * @param onlyLongestMatch Add only the longest matching subword to the stream
+   * @param consumeChars Characters are consumes, if a matching word is found and not used for
+   *     further potential matches (e.g. if the word "schwein" is extracted, the sub-word "wein" is
+   *     not extracted anymore
    */
   public DictionaryCompoundWordTokenFilter(
       TokenStream input,
@@ -57,8 +62,11 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
       int minWordSize,
       int minSubwordSize,
       int maxSubwordSize,
-      boolean onlyLongestMatch) {
+      boolean onlyLongestMatch,
+      boolean consumeChars) {
     super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
+    this.consumeChars = consumeChars;
+
     if (dictionary == null) {
       throw new IllegalArgumentException("dictionary must not be null");
     }
@@ -87,6 +95,11 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
           }
         }
       }
+
+      if (longestMatchToken != null && consumeChars) {
+        i += longestMatchToken.txt.length() - 1;
+      }
+
       if (this.onlyLongestMatch && longestMatchToken != null) {
         tokens.add(longestMatchToken);
       }
