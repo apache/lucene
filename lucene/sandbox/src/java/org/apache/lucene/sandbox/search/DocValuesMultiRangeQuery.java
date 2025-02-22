@@ -43,6 +43,10 @@ public final class DocValuesMultiRangeQuery {
       this.upper = BytesRef.deepCopyOf(upperValue);
     }
 
+    public ByteRange(BytesRef singleValue) {
+      this.upper = this.lower = BytesRef.deepCopyOf(singleValue);
+    }
+
     @Override
     public boolean equals(Object o) {
       if (this == o) {
@@ -85,6 +89,12 @@ public final class DocValuesMultiRangeQuery {
     // TODO support nulls as min,max boundaries ???
     public SortedSetStabbingBuilder add(BytesRef lowerValue, BytesRef upperValue) {
       clauses.add(new ByteRange(lowerValue, upperValue));
+      return this;
+    }
+
+    /** Adds a value when lower and upper values are equal */
+    public SortedSetStabbingBuilder add(BytesRef singleValue) {
+      clauses.add(new ByteRange(singleValue));
       return this;
     }
 
