@@ -68,28 +68,6 @@ public class TestInetAddrSsDvMultiRangeQuery extends LuceneTestCase {
                 new byte[] {127, 2, 3, 3}), // bogus range to avoid optimization
             InetAddress.getByAddress(new byte[] {127, 2, 3, 5}));
     assertEquals(1, searcher.count(q));
-    //        assertEquals(1, searcher.count(InetAddressPoint.newPrefixQuery("field", address,
-    // 24)));
-    //        assertEquals(
-    //                1,
-    //                searcher.count(
-    //                        InetAddressPoint.newRangeQuery(
-    //                                "field", InetAddress.getByName("1.2.3.3"),
-    // InetAddress.getByName("1.2.3.5"))));
-    //        assertEquals(
-    //                1, searcher.count(InetAddressPoint.newSetQuery("field",
-    // InetAddress.getByName("1.2.3.4"))));
-    //        assertEquals(
-    //                1,
-    //                searcher.count(
-    //                        InetAddressPoint.newSetQuery(
-    //                                "field", InetAddress.getByName("1.2.3.4"),
-    // InetAddress.getByName("1.2.3.5"))));
-    //        assertEquals(
-    //                0, searcher.count(InetAddressPoint.newSetQuery("field",
-    // InetAddress.getByName("1.2.3.3"))));
-    //        assertEquals(0, searcher.count(InetAddressPoint.newSetQuery("field")));
-
     reader.close();
     writer.close();
     dir.close();
@@ -147,17 +125,19 @@ public class TestInetAddrSsDvMultiRangeQuery extends LuceneTestCase {
       for (int q = 0; q < atLeast(10); q++) {
         byte[] alfa = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
         byte[] beta = random().nextBoolean() ? getRandomIpBytes() : pivotIpsStream.get();
-        if (comparator.compare(alfa, 0, beta, 0) > 0) {
+        int cmp;
+        if ((cmp = comparator.compare(alfa, 0, beta, 0)) > 0) {
           byte[] swap = beta;
           beta = alfa;
           alfa = swap;
         }
-        // ranges.add(InetAddress.getByAddress(alfa));
-        // ranges.add(InetAddress.getByAddress(beta));
-        qbuilder.add(
-            new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(alfa))),
-            new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(beta))));
-
+        if (cmp == 0 && random().nextBoolean()) {
+          qbuilder.add(new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(alfa))));
+        } else {
+          qbuilder.add(
+              new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(alfa))),
+              new BytesRef(InetAddressPoint.encode(InetAddress.getByAddress(beta))));
+        }
         bq.add(
             SortedSetDocValuesField.newSlowRangeQuery(
                 "field",
@@ -176,13 +156,13 @@ public class TestInetAddrSsDvMultiRangeQuery extends LuceneTestCase {
       }
       TopDocs boolRes;
       // System.out.println(Arrays.toString((
-      boolRes = searcher.search(orRanges, 1000); // ).scoreDocs));
+      boolRes = searcher.search(orRanges, reader.maxDoc()); // ).scoreDocs));
 
       Set<Integer> boolDocs =
           Stream.of(boolRes.scoreDocs).map((sd) -> sd.doc).collect(Collectors.toSet());
       TopDocs mulRes;
       // System.out.println(Arrays.toString((
-      mulRes = searcher.search(multiRange, 1000); // ).scoreDocs));
+      mulRes = searcher.search(multiRange, reader.maxDoc()); // ).scoreDocs));
       Set<Integer> mulDocs =
           Stream.of(mulRes.scoreDocs).map((sd) -> sd.doc).collect(Collectors.toSet());
       Set<Integer> falsePos = new HashSet<>(mulDocs);
