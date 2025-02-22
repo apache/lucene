@@ -107,8 +107,7 @@ public class CompletionWeight extends Weight {
         if ((terms = reader.terms(completionQuery.getField())) == null) {
           return null;
         }
-        if (terms instanceof CompletionTerms) {
-          CompletionTerms completionTerms = (CompletionTerms) terms;
+        if (terms instanceof CompletionTerms completionTerms) {
           if ((suggester = completionTerms.suggester()) == null) {
             // a segment can have a null suggester
             // i.e. no FST was built
