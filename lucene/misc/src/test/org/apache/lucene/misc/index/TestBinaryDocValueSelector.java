@@ -18,6 +18,7 @@
 package org.apache.lucene.misc.index;
 
 import java.io.IOException;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -93,7 +94,7 @@ public class TestBinaryDocValueSelector extends LuceneTestCase {
   }
 
   private static IndexWriterConfig getIndexWriterConfig() {
-    return new IndexWriterConfig(null)
+    return new IndexWriterConfig((Analyzer) null)
         .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
         .setMergePolicy(NoMergePolicy.INSTANCE)
         .setIndexSort(new Sort(new SortField("ord", SortField.Type.INT)));
