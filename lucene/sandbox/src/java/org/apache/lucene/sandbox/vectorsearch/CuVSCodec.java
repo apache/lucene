@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene101.Lucene101Codec;
+import org.apache.lucene.sandbox.vectorsearch.CuVSVectorsWriter.IndexType;
 import org.apache.lucene.sandbox.vectorsearch.CuVSVectorsWriter.MergeStrategy;
 
 /** CuVS based codec for GPU based vector search */
@@ -35,7 +36,9 @@ public class CuVSCodec extends FilterCodec {
     super(name, delegate);
     KnnVectorsFormat format;
     try {
-      format = new CuVSVectorsFormat(1, 128, 64, MergeStrategy.NON_TRIVIAL_MERGE);
+      format =
+          new CuVSVectorsFormat(
+              1, 128, 64, MergeStrategy.NON_TRIVIAL_MERGE, IndexType.CAGRA_AND_BRUTE_FORCE);
       setKnnFormat(format);
     } catch (LibraryException ex) {
       Logger log = Logger.getLogger(CuVSCodec.class.getName());
