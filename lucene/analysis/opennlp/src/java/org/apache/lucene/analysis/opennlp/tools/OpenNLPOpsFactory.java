@@ -26,6 +26,7 @@ import opennlp.tools.lemmatizer.DictionaryLemmatizer;
 import opennlp.tools.lemmatizer.LemmatizerModel;
 import opennlp.tools.namefind.TokenNameFinderModel;
 import opennlp.tools.postag.POSModel;
+import opennlp.tools.postag.POSTagFormat;
 import opennlp.tools.sentdetect.SentenceModel;
 import opennlp.tools.tokenize.TokenizerModel;
 import org.apache.lucene.util.ResourceLoader;
@@ -87,8 +88,13 @@ public class OpenNLPOpsFactory {
   }
 
   public static NLPPOSTaggerOp getPOSTagger(String modelName) throws IOException {
+    return getPOSTagger(modelName, POSTagFormat.CUSTOM);
+  }
+
+  public static NLPPOSTaggerOp getPOSTagger(String modelName, POSTagFormat posTagFormat)
+      throws IOException {
     POSModel model = posTaggerModels.get(modelName);
-    return new NLPPOSTaggerOp(model);
+    return new NLPPOSTaggerOp(model, posTagFormat);
   }
 
   public static POSModel getPOSTaggerModel(String modelName, ResourceLoader loader)
