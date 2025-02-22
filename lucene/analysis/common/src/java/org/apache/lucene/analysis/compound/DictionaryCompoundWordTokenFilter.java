@@ -53,8 +53,8 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
    * @param maxSubwordSize only subwords shorter than this get to the output stream
    * @param onlyLongestMatch Add only the longest matching subword to the stream
    * @param consumeChars Characters are consumed, if a matching word is found and not used for
-   *     further potential matches (e.g. if the word "schwein" is extracted, the sub-word "wein" is
-   *     not extracted anymore
+   *     further potential matches anymore. E.g. if the word "schwein" is extracted, the sub-word "wein" is
+   *     not extracted anymore.
    */
   public DictionaryCompoundWordTokenFilter(
       TokenStream input,
