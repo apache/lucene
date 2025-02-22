@@ -69,8 +69,7 @@ public final class NamedSPILoader<S extends NamedSPILoader.NamedSPI> implements 
     for (final S service : ServiceLoader.load(clazz, classloader)) {
       final String name = service.getName();
       // only add the first one for each name, later services will be ignored
-      // this allows to place services before others in classpath to make
-      // them used instead of others
+      // unless the later-found service allows to replace the previous.
       var prevNew = newServices.get(name);
       if (prevNew == null || service.replace(prevNew)) {
         if (!services.containsKey(name)) {
