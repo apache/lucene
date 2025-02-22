@@ -114,6 +114,18 @@ final class BooleanScorer extends BulkScorer {
     }
 
     @Override
+    public int intoBitset(FixedBitSet bitSet) throws IOException {
+      if (buckets != null) {
+        return super.intoBitset(bitSet);
+      }
+      int length = Math.min(matching.length(), bitSet.length() - base);
+      if (length > 0) {
+        FixedBitSet.orRange(matching, 0, bitSet, base, length);
+      }
+      return matching.cardinality();
+    }
+
+    @Override
     public int count() throws IOException {
       if (minShouldMatch > 1) {
         // We can't just count bits in that case

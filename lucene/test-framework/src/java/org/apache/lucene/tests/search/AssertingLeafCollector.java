@@ -23,6 +23,7 @@ import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Wraps another Collector and checks that order is respected. */
 class AssertingLeafCollector extends FilterLeafCollector {
@@ -120,6 +121,14 @@ class AssertingLeafCollector extends FilterLeafCollector {
             lastCollected = doc;
           });
       consumed = true;
+    }
+
+    @Override
+    public int intoBitset(FixedBitSet bitSet) throws IOException {
+      assert consumed == false : "A terminal operation has already been called";
+      int count = stream.intoBitset(bitSet);
+      consumed = true;
+      return count;
     }
 
     @Override

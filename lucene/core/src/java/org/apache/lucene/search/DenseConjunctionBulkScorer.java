@@ -191,6 +191,19 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     }
 
     @Override
+    public int intoBitset(FixedBitSet bitSet) {
+      int length = Math.min(WINDOW_SIZE, bitSet.length() - offset);
+      if (length > 0) {
+        FixedBitSet.orRange(windowMatches, 0, bitSet, offset, length);
+      }
+      return windowMatches.cardinality();
+    }
+
+    protected DocIdStreamView() {
+      super();
+    }
+
+    @Override
     public int count() throws IOException {
       return windowMatches.cardinality();
     }

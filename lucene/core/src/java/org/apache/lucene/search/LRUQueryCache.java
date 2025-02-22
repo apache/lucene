@@ -525,6 +525,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
             count[0]++;
             bitSet.set(doc);
           }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            count[0] += stream.intoBitset(bitSet);
+          }
         },
         null,
         0,

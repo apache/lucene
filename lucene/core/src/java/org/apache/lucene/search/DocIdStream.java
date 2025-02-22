@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * A stream of doc IDs. Most methods on {@link DocIdStream}s are terminal, meaning that the {@link
@@ -35,6 +36,20 @@ public abstract class DocIdStream {
    * CheckedIntConsumer} on them. This is a terminal operation.
    */
   public abstract void forEach(CheckedIntConsumer<IOException> consumer) throws IOException;
+
+  /**
+   * Set all entries into a bitset and return the number of entries in this stream. This is a
+   * terminal operation.
+   */
+  public int intoBitset(FixedBitSet bitSet) throws IOException {
+    int[] count = new int[1];
+    forEach(
+        doc -> {
+          bitSet.set(doc);
+          count[0]++;
+        });
+    return count[0];
+  }
 
   /** Count the number of entries in this stream. This is a terminal operation. */
   public int count() throws IOException {
