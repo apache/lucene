@@ -18,10 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.function.Supplier;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
@@ -36,15 +34,28 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
       clause2.set(i);
       clause3.set(i);
     }
-    assertScore(
-        clause1,
-        () ->
-            new DenseConjunctionBulkScorer(
-                Arrays.asList(
-                    new BitSetIterator(clause1, clause1.approximateCardinality()),
-                    new BitSetIterator(clause2, clause2.approximateCardinality()),
-                    new BitSetIterator(clause3, clause3.approximateCardinality()))),
-        null);
+    DenseConjunctionBulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality()),
+                new BitSetIterator(clause3, clause3.approximateCardinality())));
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+
+    assertEquals(clause1, result);
   }
 
   public void testApplyAcceptDocs() throws IOException {
@@ -57,15 +68,27 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     for (int i = 0; i < maxDoc; i += 2) {
       acceptDocs.set(i);
     }
+    DenseConjunctionBulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality())));
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
 
-    assertScore(
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
         acceptDocs,
-        () ->
-            new DenseConjunctionBulkScorer(
-                Arrays.asList(
-                    new BitSetIterator(clause1, clause1.approximateCardinality()),
-                    new BitSetIterator(clause2, clause2.approximateCardinality()))),
-        acceptDocs);
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+
+    assertEquals(acceptDocs, result);
   }
 
   public void testEmptyIntersection() throws IOException {
@@ -76,14 +99,27 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
       clause1.set(i);
       clause2.set(i + 1);
     }
-    assertScore(
-        new FixedBitSet(maxDoc),
-        () ->
-            new DenseConjunctionBulkScorer(
-                Arrays.asList(
-                    new BitSetIterator(clause1, clause1.approximateCardinality()),
-                    new BitSetIterator(clause2, clause2.approximateCardinality()))),
-        null);
+    DenseConjunctionBulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality())));
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+
+    assertTrue(result.scanIsEmpty());
   }
 
   public void testClustered() throws IOException {
@@ -94,18 +130,31 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     clause1.set(10_000, 90_000);
     clause2.set(0, 80_000);
     clause3.set(20_000, 100_000);
+    DenseConjunctionBulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality()),
+                new BitSetIterator(clause3, clause3.approximateCardinality())));
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
 
     FixedBitSet expected = new FixedBitSet(maxDoc);
     expected.set(20_000, 80_000);
-    assertScore(
-        expected,
-        () ->
-            new DenseConjunctionBulkScorer(
-                Arrays.asList(
-                    new BitSetIterator(clause1, clause1.approximateCardinality()),
-                    new BitSetIterator(clause2, clause2.approximateCardinality()),
-                    new BitSetIterator(clause3, clause3.approximateCardinality()))),
-        null);
+    assertArrayEquals(expected.getBits(), result.getBits());
+    assertEquals(expected, result);
   }
 
   public void testSparseAfter2ndClause() throws IOException {
@@ -125,68 +174,31 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     for (int i = 0; i < maxDoc; i += 19) {
       clause3.set(i);
     }
+    DenseConjunctionBulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality()),
+                new BitSetIterator(clause3, clause3.approximateCardinality())));
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
 
     FixedBitSet expected = new FixedBitSet(maxDoc);
     for (int i = 0; i < maxDoc; i += 13 * 17 * 19) {
       expected.set(i);
     }
-    assertScore(
-        expected,
-        () ->
-            new DenseConjunctionBulkScorer(
-                Arrays.asList(
-                    new BitSetIterator(clause1, clause1.approximateCardinality()),
-                    new BitSetIterator(clause2, clause2.approximateCardinality()),
-                    new BitSetIterator(clause3, clause3.approximateCardinality()))),
-        null);
-  }
-
-  private static void assertScore(
-      FixedBitSet expected, Supplier<BulkScorer> bulkScorerSupplier, Bits acceptDocs)
-      throws IOException {
-    FixedBitSet result = new FixedBitSet(expected.length());
-    bulkScorerSupplier
-        .get()
-        .score(
-            new LeafCollector() {
-              @Override
-              public void setScorer(Scorable scorer) {}
-
-              @Override
-              public void collect(int doc) {
-                result.set(doc);
-              }
-            },
-            acceptDocs,
-            0,
-            DocIdSetIterator.NO_MORE_DOCS);
-    assertArrayEquals(expected.getBits(), result.getBits());
-    assertEquals(expected, result);
-
-    result.clear();
-    int[] count = {0};
-    bulkScorerSupplier
-        .get()
-        .score(
-            new LeafCollector() {
-              @Override
-              public void setScorer(Scorable scorer) {}
-
-              @Override
-              public void collect(int doc) {
-                result.set(doc);
-              }
-
-              @Override
-              public void collect(DocIdStream stream) throws IOException {
-                count[0] += stream.intoBitset(result);
-              }
-            },
-            acceptDocs,
-            0,
-            DocIdSetIterator.NO_MORE_DOCS);
-    assertEquals(expected.cardinality(), count[0]);
-    assertArrayEquals(expected.getBits(), result.getBits());
     assertEquals(expected, result);
   }
 }

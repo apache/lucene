@@ -72,6 +72,7 @@ public final class DocsWithFieldSet extends DocIdSet {
   }
 
   /** Return the number of documents of this set. */
+  @Override
   public int cardinality() {
     return cardinality;
   }

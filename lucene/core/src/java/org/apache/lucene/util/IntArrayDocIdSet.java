@@ -59,6 +59,11 @@ final class IntArrayDocIdSet extends DocIdSet {
     return new IntArrayDocIdSetIterator(docs, length);
   }
 
+  @Override
+  public int cardinality() throws IOException {
+    return length;
+  }
+
   static class IntArrayDocIdSetIterator extends DocIdSetIterator {
 
     private final int[] docs;

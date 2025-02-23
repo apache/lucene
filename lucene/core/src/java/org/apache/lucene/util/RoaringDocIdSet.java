@@ -353,6 +353,7 @@ public class RoaringDocIdSet extends DocIdSet {
   }
 
   /** Return the exact number of documents that are contained in this set. */
+  @Override
   public int cardinality() {
     return cardinality;
   }

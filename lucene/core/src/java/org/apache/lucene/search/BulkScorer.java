@@ -17,7 +17,10 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.RoaringDocIdSet;
 
 /**
  * This class is used to score a range of documents at once, and is returned by {@link
@@ -75,6 +78,51 @@ public abstract class BulkScorer {
    */
   public abstract int score(LeafCollector collector, Bits acceptDocs, int min, int max)
       throws IOException;
+
+  /**
+   * Score all matching docs into a {@link DocIdSet}.
+   *
+   * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}
+   *     if they are all allowed to match.
+   * @param maxDoc maxDoc of current leaf
+   * @return a set of all doc ids matching
+   */
+  public DocIdSet scoreAllAsDocIdSet(Bits acceptDocs, int maxDoc) throws IOException {
+    long cost = cost();
+    if (cost * 100 > maxDoc) {
+      FixedBitSet bitSet = new FixedBitSet(maxDoc);
+      score(
+          new LeafCollector() {
+            @Override
+            public void setScorer(Scorable scorer) {}
+
+            @Override
+            public void collect(int doc) {
+              bitSet.set(doc);
+            }
+          },
+          acceptDocs,
+          0,
+          DocIdSetIterator.NO_MORE_DOCS);
+      return new BitDocIdSet(bitSet, cost);
+    } else {
+      RoaringDocIdSet.Builder builder = new RoaringDocIdSet.Builder(maxDoc);
+      score(
+          new LeafCollector() {
+            @Override
+            public void setScorer(Scorable scorer) {}
+
+            @Override
+            public void collect(int doc) {
+              builder.add(doc);
+            }
+          },
+          acceptDocs,
+          0,
+          DocIdSetIterator.NO_MORE_DOCS);
+      return builder.build();
+    }
+  }
 
   /** Same as {@link DocIdSetIterator#cost()} for bulk scorers. */
   public abstract long cost();

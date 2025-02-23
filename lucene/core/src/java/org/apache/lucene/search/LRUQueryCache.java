@@ -502,13 +502,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * and a {@link BitDocIdSet} over a {@link FixedBitSet} otherwise.
    */
   protected CacheAndCount cacheImpl(BulkScorer scorer, int maxDoc) throws IOException {
-    if (scorer.cost() * 100 >= maxDoc) {
-      // FixedBitSet is faster for dense sets and will enable the random-access
-      // optimization in ConjunctionDISI
-      return cacheIntoBitSet(scorer, maxDoc);
-    } else {
-      return cacheIntoRoaringDocIdSet(scorer, maxDoc);
-    }
+    DocIdSet docIdSet = scorer.scoreAllAsDocIdSet(null, maxDoc);
+    return new CacheAndCount(docIdSet, docIdSet.cardinality());
   }
 
   private static CacheAndCount cacheIntoBitSet(BulkScorer scorer, int maxDoc) throws IOException {
@@ -525,11 +520,6 @@ public class LRUQueryCache implements QueryCache, Accountable {
             count[0]++;
             bitSet.set(doc);
           }
-
-          @Override
-          public void collect(DocIdStream stream) throws IOException {
-            count[0] += stream.intoBitset(bitSet);
-          }
         },
         null,
         0,
@@ -544,10 +534,10 @@ public class LRUQueryCache implements QueryCache, Accountable {
         new LeafCollector() {
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {}
+          public void setScorer(Scorable scorer) {}
 
           @Override
-          public void collect(int doc) throws IOException {
+          public void collect(int doc) {
             builder.add(doc);
           }
         },

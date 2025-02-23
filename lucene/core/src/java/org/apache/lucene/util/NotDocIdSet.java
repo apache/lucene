@@ -110,4 +110,9 @@ public final class NotDocIdSet extends DocIdSet {
       }
     };
   }
+
+  @Override
+  public int cardinality() throws IOException {
+    return maxDoc - in.cardinality();
+  }
 }

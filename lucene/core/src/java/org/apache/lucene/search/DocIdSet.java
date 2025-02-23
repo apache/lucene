@@ -46,6 +46,11 @@ public abstract class DocIdSet implements Accountable {
         public long ramBytesUsed() {
           return 0L;
         }
+
+        @Override
+        public int cardinality() throws IOException {
+          return 0;
+        }
       };
 
   /** A {@code DocIdSet} that matches all doc ids up to a specified doc (exclusive). */
@@ -64,6 +69,11 @@ public abstract class DocIdSet implements Accountable {
       @Override
       public long ramBytesUsed() {
         return Integer.BYTES;
+      }
+
+      @Override
+      public int cardinality() throws IOException {
+        return maxDoc;
       }
     };
   }
@@ -95,5 +105,15 @@ public abstract class DocIdSet implements Accountable {
    */
   public Bits bits() throws IOException {
     return null;
+  }
+
+  /** Return the exact number of documents that are contained in this set. */
+  public int cardinality() throws IOException {
+    DocIdSetIterator disi = iterator();
+    int count = 0;
+    for (int doc = disi.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = disi.nextDoc()) {
+      count++;
+    }
+    return count;
   }
 }

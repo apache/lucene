@@ -29,7 +29,7 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
-import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
@@ -341,11 +341,10 @@ public abstract class PointRangeQuery extends Query {
 
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
-          return new ScorerSupplier() {
+          return new DocIdSetScorerSupplier(score(), scoreMode) {
             @Override
-            public Scorer get(long leadCost) {
-              return new ConstantScoreScorer(
-                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+            protected DocIdSet computeDocIdSet() {
+              return DocIdSet.all(reader.maxDoc());
             }
 
             @Override
@@ -354,14 +353,14 @@ public abstract class PointRangeQuery extends Query {
             }
           };
         } else {
-          return new ScorerSupplier() {
+          return new DocIdSetScorerSupplier(score(), scoreMode) {
 
             final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 
             @Override
-            public Scorer get(long leadCost) throws IOException {
+            protected DocIdSet computeDocIdSet() throws IOException {
               if (values.getDocCount() == reader.maxDoc()
                   && values.getDocCount() == values.size()
                   && cost() > reader.maxDoc() / 2) {
@@ -372,13 +371,11 @@ public abstract class PointRangeQuery extends Query {
                 result.set(0, reader.maxDoc());
                 long[] cost = new long[] {reader.maxDoc()};
                 values.intersect(getInverseIntersectVisitor(result, cost));
-                final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-                return new ConstantScoreScorer(score(), scoreMode, iterator);
+                return new BitDocIdSet(result, cost[0]);
               }
 
               values.intersect(visitor);
-              DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(score(), scoreMode, iterator);
+              return result.build();
             }
 
             @Override
