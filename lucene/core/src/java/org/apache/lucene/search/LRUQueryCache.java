@@ -506,48 +506,6 @@ public class LRUQueryCache implements QueryCache, Accountable {
     return new CacheAndCount(docIdSet, docIdSet.cardinality());
   }
 
-  private static CacheAndCount cacheIntoBitSet(BulkScorer scorer, int maxDoc) throws IOException {
-    final FixedBitSet bitSet = new FixedBitSet(maxDoc);
-    int[] count = new int[1];
-    scorer.score(
-        new LeafCollector() {
-
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {}
-
-          @Override
-          public void collect(int doc) throws IOException {
-            count[0]++;
-            bitSet.set(doc);
-          }
-        },
-        null,
-        0,
-        DocIdSetIterator.NO_MORE_DOCS);
-    return new CacheAndCount(new BitDocIdSet(bitSet, count[0]), count[0]);
-  }
-
-  private static CacheAndCount cacheIntoRoaringDocIdSet(BulkScorer scorer, int maxDoc)
-      throws IOException {
-    RoaringDocIdSet.Builder builder = new RoaringDocIdSet.Builder(maxDoc);
-    scorer.score(
-        new LeafCollector() {
-
-          @Override
-          public void setScorer(Scorable scorer) {}
-
-          @Override
-          public void collect(int doc) {
-            builder.add(doc);
-          }
-        },
-        null,
-        0,
-        DocIdSetIterator.NO_MORE_DOCS);
-    RoaringDocIdSet cache = builder.build();
-    return new CacheAndCount(cache, cache.cardinality());
-  }
-
   /**
    * Return the total number of times that a {@link Query} has been looked up in this {@link
    * QueryCache}. Note that this number is incremented once per segment so running a cached query

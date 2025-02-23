@@ -26,7 +26,7 @@ public abstract class DocIdSetScorerSupplier extends ScorerSupplier {
   private final ScoreMode scoreMode;
   protected DocIdSet docIdSet;
 
-  public DocIdSetScorerSupplier(float score, ScoreMode scoreMode) {
+  protected DocIdSetScorerSupplier(float score, ScoreMode scoreMode) {
     this.score = score;
     this.scoreMode = scoreMode;
   }
