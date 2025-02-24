@@ -6,7 +6,7 @@ on:
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   ISSUE: ${{ github.event.issue.html_url }}
-  ESCAPE_HATCH: ${{ '__NA__' }}
+  SKIP_CHANGELOG_LABEL: ${{ '"skip changelog"' }}
   CHANGE_LOG_FILE: ${{ 'lucene/CHANGES.txt' }}
 
 jobs:
@@ -23,15 +23,16 @@ jobs:
       - name: ChangeLog Entry Verifier and Milestone Setter
         run: |
           echo "################## STEP 1 ##################"
-          echo "Checking for escape hatch in the top comment"
-          pr_comment=$(gh pr view ${{ github.event.number }} --json body -q '.body')
-          if echo "$pr_comment" | grep -q ${{ env.ESCAPE_HATCH }}; then
-            echo "Skipping checks as escape hatch: ${ESCAPE_HATCH} is found in the top comment."
-            exit 0
-          else
-            echo "No escape hatch found in the top comment. Proceeding with next steps."
-          fi
-          
+          echo "Get all labels from the PR"
+          mapfile -t labels < <(gh pr view ${{ github.event.number }} --json labels -q '.labels[].name')
+          IFS=','; echo "${labels[*]}"
+          for label in "${labels[@]}"; do
+            if [[ $label == ${{ env.SKIP_CHANGELOG_LABEL }} ]]; then
+              echo "Skipping github action workflow as label: ${SKIP_CHANGELOG_LABEL} is found in the PR."
+              exit 0
+            fi
+          done
+          echo "${{ env.SKIP_CHANGELOG_LABEL }} not found in the PR. Proceeding with next steps."
           
           echo -e "\n"
           echo "################## STEP 2 ##################"
@@ -97,4 +98,6 @@ jobs:
             echo "Milestone:${lucene_version} does not exist. Please create the milestone and run the workflow again."
             exit 0
           fi
-          gh pr edit ${{ github.event.number }} --milestone "${lucene_version}"
+          # Will uncomment this line after we ensure it runs perfectly in production.
+          # gh pr edit ${{ github.event.number }} --milestone "${lucene_version}"
+          echo "Adding/Updating milestone for the PR to:${lucene_version}"
