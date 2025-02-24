@@ -89,6 +89,7 @@ public final class Version {
   /**
    * @see #getPackageImplementationVersion()
    */
+  @SuppressWarnings("NonFinalStaticField")
   private static String implementationVersion;
 
   /**

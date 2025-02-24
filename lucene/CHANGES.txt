@@ -11,6 +11,9 @@ API Changes
 
 * GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
 
+* GITHUB#14160: Adjusts the default HNSW search behavior so that filter optimized search is enabled
+  when 60% or less of vectors pass the pre-filter. (Ben Chaplin, Ben Trent)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -46,8 +49,11 @@ API Changes
 * GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
   bit set of matches. (Adrien Grand)
 
-* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and 
+* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and
   concatenate(Automaton,Automaton) in favor of the methods taking List.  (Robert Muir)
+
+* GITHUB#14236: CombinedFieldQuery moved from lucene-sandbox to lucene-core.
+  (Adrien Grand)
 
 New Features
 ---------------------
@@ -56,6 +62,11 @@ New Features
   These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
+* GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
+
+* GITHUB#14204: Added HistogramCollectorManager to efficiently compute a
+  histogram of the distribution of the values of a field, for documents
+  matching a given query. (Adrien Grand)
 
 Improvements
 ---------------------
@@ -82,6 +93,17 @@ Improvements
   the wrapped analyzer's strategy to decide if components can be reused or need
   to be updated. (Mayya Sharipova)
 
+* GITHUB#14192: Added support for RegExp to handle case insensitive matching
+  across the full set of Unicode characters. (John Wagster)
+
+* GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
+  improved to tolerate more instances of this problem.  (Robert Muir)
+
+
+* GITHUB#14238: Improve test coverage of Dynamic Range Faceting. (John Houser)
+
+* GITHUB#14213: Allowing indexing stored-only StoredField directly from DataInput. (Tim Brooks)
+
 
 Optimizations
 ---------------------
@@ -100,10 +122,18 @@ Optimizations
   for fewer objects to be created during indexing and simplifies internally used iterfaces.
   (Ben Trent)
 
+* GITHUB#14160: Adds new filtered HNSW search heuristic based on ACORN-1 algorithm. This improves runtime of filtered HNSW
+  searches as much as 5x. By default this new heuristic isn't used, but is available via the new experimental
+  KnnSearchStrategy interface in knn queries (Ben Chaplin, Ben Trent)
+
 * GITHUB#14193: Add Automata.makeCharSet() and makeCharClass() that return minimal DFA
   for lists of characters and ranges. Use them in RegExp parser.  (Robert Muir)
 
-* GITHUB#14176: Reduce when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
+* GITHUB#14176: Reduce virtual call when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
+
+* GITHUB#14269: Implement #intoBitset for DocIdSetIterator#all and DocIdSetIterator#range. (Guo Feng)
+
+* GITHUB#14272: Use DocIdSetIterator#range for continuous-id BKD leaves. (Guo Feng)
 
 * GITHUB#14094: Early terminate when HNSW nearest neighbor queue saturates (Tommaso Teofili)
 
@@ -129,8 +159,10 @@ Other
 
 * GITHUB#14091: Cover all DataType. (Lu Xugang)
 
-* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j 
+* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j
   from 1.7.36 to 2.0.16. (Michael Froh)
+
+* GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
 
 ======================= Lucene 10.1.0 =======================
 
@@ -251,6 +283,7 @@ Bug Fixes
 * GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
   their corresponding ordinals. (Paul King)
 * GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
+* GITHUB#14271: Stop closing index input when loading NRTSuggester (Luca Cavanna)
 
 Build
 ---------------------

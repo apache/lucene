@@ -642,33 +642,32 @@ class KStemmer {
     DictEntry entry;
 
     CharArrayMap<DictEntry> d = new CharArrayMap<>(1000, false);
-    for (int i = 0; i < exceptionWords.length; i++) {
-      if (!d.containsKey(exceptionWords[i])) {
-        entry = new DictEntry(exceptionWords[i], true);
-        d.put(exceptionWords[i], entry);
+    for (String exceptionWord : exceptionWords) {
+      if (!d.containsKey(exceptionWord)) {
+        entry = new DictEntry(exceptionWord, true);
+        d.put(exceptionWord, entry);
       } else {
         throw new RuntimeException(
-            "Warning: Entry [" + exceptionWords[i] + "] already in dictionary 1");
+            "Warning: Entry [" + exceptionWord + "] already in dictionary 1");
       }
     }
 
-    for (int i = 0; i < directConflations.length; i++) {
-      if (!d.containsKey(directConflations[i][0])) {
-        entry = new DictEntry(directConflations[i][1], false);
-        d.put(directConflations[i][0], entry);
+    for (String[] directConflation : directConflations) {
+      if (!d.containsKey(directConflation[0])) {
+        entry = new DictEntry(directConflation[1], false);
+        d.put(directConflation[0], entry);
       } else {
         throw new RuntimeException(
-            "Warning: Entry [" + directConflations[i][0] + "] already in dictionary 2");
+            "Warning: Entry [" + directConflation[0] + "] already in dictionary 2");
       }
     }
 
-    for (int i = 0; i < countryNationality.length; i++) {
-      if (!d.containsKey(countryNationality[i][0])) {
-        entry = new DictEntry(countryNationality[i][1], false);
-        d.put(countryNationality[i][0], entry);
+    for (String[] strings : countryNationality) {
+      if (!d.containsKey(strings[0])) {
+        entry = new DictEntry(strings[1], false);
+        d.put(strings[0], entry);
       } else {
-        throw new RuntimeException(
-            "Warning: Entry [" + countryNationality[i][0] + "] already in dictionary 3");
+        throw new RuntimeException("Warning: Entry [" + strings[0] + "] already in dictionary 3");
       }
     }
 
@@ -677,92 +676,90 @@ class KStemmer {
     String[] array;
     array = KStemData1.data;
 
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData2.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData3.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData4.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData5.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData6.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData7.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
-    for (int i = 0; i < KStemData8.data.length; i++) {
-      if (!d.containsKey(KStemData8.data[i])) {
-        d.put(KStemData8.data[i], defaultEntry);
+    array = KStemData8.data;
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException(
-            "Warning: Entry [" + KStemData8.data[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
-    for (int i = 0; i < supplementDict.length; i++) {
-      if (!d.containsKey(supplementDict[i])) {
-        d.put(supplementDict[i], defaultEntry);
+    for (String s : supplementDict) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException(
-            "Warning: Entry [" + supplementDict[i] + "] already in dictionary 5");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 5");
       }
     }
 
-    for (int i = 0; i < properNouns.length; i++) {
-      if (!d.containsKey(properNouns[i])) {
-        d.put(properNouns[i], defaultEntry);
+    for (String properNoun : properNouns) {
+      if (!d.containsKey(properNoun)) {
+        d.put(properNoun, defaultEntry);
       } else {
-        throw new RuntimeException(
-            "Warning: Entry [" + properNouns[i] + "] already in dictionary 6");
+        throw new RuntimeException("Warning: Entry [" + properNoun + "] already in dictionary 6");
       }
     }
 
@@ -1346,10 +1343,10 @@ class KStemmer {
     return;
   }
 
-  private static char[] ization = "ization".toCharArray();
-  private static char[] ition = "ition".toCharArray();
-  private static char[] ation = "ation".toCharArray();
-  private static char[] ication = "ication".toCharArray();
+  private static final char[] ization = "ization".toCharArray();
+  private static final char[] ition = "ition".toCharArray();
+  private static final char[] ation = "ation".toCharArray();
+  private static final char[] ication = "ication".toCharArray();
 
   /* handle some derivational endings */
   /*

@@ -40,23 +40,23 @@ import org.apache.lucene.util.IOUtils;
 /** Test case for indexing cartesian shapes and search by bounding box, lines, and polygons */
 public class TestXYShape extends LuceneTestCase {
 
-  protected static String FIELDNAME = "field";
+  private static final String FIELDNAME = "field";
 
-  protected static void addPolygonsToDoc(String field, Document doc, XYPolygon polygon) {
+  private static void addPolygonsToDoc(String field, Document doc, XYPolygon polygon) {
     Field[] fields = XYShape.createIndexableFields(field, polygon);
     for (Field f : fields) {
       doc.add(f);
     }
   }
 
-  protected static void addLineToDoc(String field, Document doc, XYLine line) {
+  private static void addLineToDoc(String field, Document doc, XYLine line) {
     Field[] fields = XYShape.createIndexableFields(field, line);
     for (Field f : fields) {
       doc.add(f);
     }
   }
 
-  protected Query newRectQuery(String field, float minX, float maxX, float minY, float maxY) {
+  private Query newRectQuery(String field, float minX, float maxX, float minY, float maxY) {
     return XYShape.newBoxQuery(field, QueryRelation.INTERSECTS, minX, maxX, minY, maxY);
   }
 

@@ -40,7 +40,8 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
    */
   public VectorSimilarityCollector(
       float traversalSimilarity, float resultSimilarity, long visitLimit) {
-    super(1, visitLimit);
+    // TODO: add search strategy support
+    super(1, visitLimit, AbstractVectorSimilarityQuery.DEFAULT_STRATEGY);
     if (traversalSimilarity > resultSimilarity) {
       throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
     }

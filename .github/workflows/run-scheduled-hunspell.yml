@@ -1,0 +1,32 @@
+name: "Run scheduled checks: Hunspell tests against latest dictionaries"
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    # 4:13 on Mondays
+    - cron: '13 4 * * 1'
+
+env:
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+
+jobs:
+  test:
+    name: Hunspell regression tests against latest dictionaries
+    timeout-minutes: 15
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/prepare-for-build
+
+      - name: Run Hunspell regression tests against latest commits in dictionary repositories
+        run: >
+          ./gradlew -p lucene/analysis/common 
+          -Ptests.hunspell.regressions=true
+          -Ptests.verbose=true
+          -Ptests.hunspell.libreoffice.ref=master
+          -Ptests.hunspell.woorm.ref=main
+          test 
+          --tests "TestAllDictionaries"

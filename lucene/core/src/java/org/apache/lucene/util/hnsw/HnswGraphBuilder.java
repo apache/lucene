@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.hnsw.HnswUtil.Component;
@@ -55,6 +56,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   public static final String HNSW_COMPONENT = "HNSW";
 
   /** Random seed for level generation; public to expose for testing * */
+  @SuppressWarnings("NonFinalStaticField")
   public static long randSeed = DEFAULT_RAND_SEED;
 
   private final int M; // max number of connections on upper layers
@@ -610,6 +612,11 @@ public class HnswGraphBuilder implements HnswBuilder {
     @Override
     public TopDocs topDocs() {
       throw new IllegalArgumentException();
+    }
+
+    @Override
+    public KnnSearchStrategy getSearchStrategy() {
+      throw new IllegalArgumentException("Should not use unique strategy during graph building");
     }
   }
 }

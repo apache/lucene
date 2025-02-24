@@ -44,6 +44,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
@@ -310,22 +311,36 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       Bits acceptDocs,
       IOSupplier<RandomVectorScorer> scorerSupplier)
       throws IOException {
-
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    if (knnCollector.k() < scorer.maxOrd()) {
-      final KnnCollector collector;
-      OrdinalTranslatedKnnCollector ordinalTranslatedKnnCollector =
-          new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-      if (scorer.maxOrd() > 1000) {
-        collector = new HnswQueueSaturationCollector(ordinalTranslatedKnnCollector);
-      } else {
-        collector = ordinalTranslatedKnnCollector;
+    final KnnCollector collector;
+    OrdinalTranslatedKnnCollector ordinalTranslatedKnnCollector =
+        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    if (scorer.maxOrd() > 1000) {
+      collector = new HnswQueueSaturationCollector(ordinalTranslatedKnnCollector);
+    } else {
+      collector = ordinalTranslatedKnnCollector;
+    }
+    HnswGraph graph = getGraph(fieldEntry);
+    boolean doHnsw = knnCollector.k() < scorer.maxOrd();
+    // Take into account if quantized? E.g. some scorer cost?
+    int filteredDocCount = 0;
+    // The approximate number of vectors that would be visited if we did not filter
+    int unfilteredVisit = (int) (Math.log(graph.size()) * knnCollector.k());
+    if (acceptDocs instanceof BitSet bitSet) {
+      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+      // size as that is illogical
+      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
+      if (unfilteredVisit >= filteredDocCount) {
+        doHnsw = false;
       }
-      HnswGraphSearcher.search(scorer, collector, getGraph(fieldEntry), acceptedOrds);
+    }
+    if (doHnsw) {
+      HnswGraphSearcher.search(
+          scorer, collector, getGraph(fieldEntry), acceptedOrds, filteredDocCount);
     } else {
       // if k is larger than the number of vectors, we can just iterate over all vectors
       // and collect them
@@ -466,6 +481,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     int arcCount;
     int arcUpTo;
     int arc;
+    private final int maxConn;
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
     // Allocated to be M*2 to track the current neighbors being explored
@@ -483,6 +499,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       this.graphLevelNodeOffsets =
           DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
       this.currentNeighborsBuffer = new int[entry.M * 2];
+      this.maxConn = entry.M;
       graphLevelNodeIndexOffsets = new long[numLevels];
       graphLevelNodeIndexOffsets[0] = 0;
       for (int i = 1; i < numLevels; i++) {
@@ -530,13 +547,18 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
 
     @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
     public int numLevels() throws IOException {
       return numLevels;
     }
 
     @Override
     public int maxConn() {
-      return currentNeighborsBuffer.length >> 1;
+      return maxConn;
     }
 
     @Override

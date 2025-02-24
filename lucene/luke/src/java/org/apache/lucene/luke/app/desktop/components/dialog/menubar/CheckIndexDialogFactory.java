@@ -65,6 +65,7 @@ public final class CheckIndexDialogFactory implements DialogOpener.DialogFactory
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static CheckIndexDialogFactory instance;
 
   private final Preferences prefs;
