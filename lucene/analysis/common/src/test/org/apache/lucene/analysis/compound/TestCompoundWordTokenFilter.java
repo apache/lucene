@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
@@ -252,7 +253,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             true,
-            false);
+            true);
 
     assertTokenStreamContents(
         tf,
@@ -277,7 +278,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             false,
-            false);
+            true);
 
     assertTokenStreamContents(
         tf,
@@ -300,7 +301,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             false,
-            false);
+            true);
 
     // since "d" is shorter than the minimum subword size, it should not be added to the token
     // stream
@@ -327,7 +328,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             false,
-            false);
+            true);
 
     CharTermAttribute termAtt = tf.getAttribute(CharTermAttribute.class);
     tf.reset();
@@ -356,7 +357,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             false,
-            false);
+            true);
     MockRetainAttribute retAtt = stream.addAttribute(MockRetainAttribute.class);
     stream.reset();
     while (stream.incrementToken()) {
@@ -695,7 +696,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
     String searchTerm = "schweinefleisch";
     DictionaryCompoundWordTokenFilter tf =
-        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict);
+        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict, true);
 
     assertTokenStreamContents(tf, new String[] {searchTerm, "schwein", "fleisch"});
   }
@@ -707,13 +708,23 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     String searchTerm = "nahkampfwaffen";
 
     DictionaryCompoundWordTokenFilter tf =
-        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict);
+        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict, true);
 
     assertTokenStreamContents(tf, new String[] {searchTerm, "kampf", "waffe"});
   }
 
+  public void testDecompoundingWithInvalidParameterCombination() {
+
+    Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            getDictionaryCompoundWordTokenFilter(
+                tokenizer, "", new CharArraySet(List.of(), true), false));
+  }
+
   private DictionaryCompoundWordTokenFilter getDictionaryCompoundWordTokenFilter(
-      Tokenizer tokenizer, String searchTerm, CharArraySet dict) {
+      Tokenizer tokenizer, String searchTerm, CharArraySet dict, boolean onlyLongestMatch) {
     tokenizer.setReader(new StringReader(searchTerm));
     return new DictionaryCompoundWordTokenFilter(
         tokenizer,
@@ -721,7 +732,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
         CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
         CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
         CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-        true,
-        true);
+        onlyLongestMatch,
+        false);
   }
 }
