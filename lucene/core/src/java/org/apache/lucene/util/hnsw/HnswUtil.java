@@ -129,6 +129,7 @@ public class HnswUtil {
         }
         Component component =
             markRooted(hnsw, level, connectedNodes, notFullyConnected, maxConn, nextClear);
+        assert component.start() == nextClear;
         assert component.size() > 0;
         components.add(component);
         total += component.size();

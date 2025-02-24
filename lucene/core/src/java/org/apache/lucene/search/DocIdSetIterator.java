@@ -28,7 +28,7 @@ import org.apache.lucene.util.FixedBitSet;
 public abstract class DocIdSetIterator {
 
   /** An empty {@code DocIdSetIterator} instance */
-  public static final DocIdSetIterator empty() {
+  public static DocIdSetIterator empty() {
     return new DocIdSetIterator() {
       boolean exhausted = false;
 
@@ -60,7 +60,7 @@ public abstract class DocIdSetIterator {
   }
 
   /** A {@link DocIdSetIterator} that matches all documents up to {@code maxDoc - 1}. */
-  public static final DocIdSetIterator all(int maxDoc) {
+  public static DocIdSetIterator all(int maxDoc) {
     return new DocIdSetIterator() {
       int doc = -1;
 
@@ -70,12 +70,12 @@ public abstract class DocIdSetIterator {
       }
 
       @Override
-      public int nextDoc() throws IOException {
+      public int nextDoc() {
         return advance(doc + 1);
       }
 
       @Override
-      public int advance(int target) throws IOException {
+      public int advance(int target) {
         doc = target;
         if (doc >= maxDoc) {
           doc = NO_MORE_DOCS;
@@ -87,6 +87,16 @@ public abstract class DocIdSetIterator {
       public long cost() {
         return maxDoc;
       }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
+        assert offset <= doc;
+        upTo = Math.min(upTo, maxDoc);
+        if (upTo > doc) {
+          bitSet.set(doc - offset, upTo - offset);
+          advance(upTo);
+        }
+      }
     };
   }
 
@@ -94,7 +104,7 @@ public abstract class DocIdSetIterator {
    * A {@link DocIdSetIterator} that matches a range documents from minDocID (inclusive) to maxDocID
    * (exclusive).
    */
-  public static final DocIdSetIterator range(int minDoc, int maxDoc) {
+  public static DocIdSetIterator range(int minDoc, int maxDoc) {
     if (minDoc >= maxDoc) {
       throw new IllegalArgumentException(
           "minDoc must be < maxDoc but got minDoc=" + minDoc + " maxDoc=" + maxDoc);
@@ -111,12 +121,12 @@ public abstract class DocIdSetIterator {
       }
 
       @Override
-      public int nextDoc() throws IOException {
+      public int nextDoc() {
         return advance(doc + 1);
       }
 
       @Override
-      public int advance(int target) throws IOException {
+      public int advance(int target) {
         if (target < minDoc) {
           doc = minDoc;
         } else if (target >= maxDoc) {
@@ -130,6 +140,16 @@ public abstract class DocIdSetIterator {
       @Override
       public long cost() {
         return maxDoc - minDoc;
+      }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
+        assert offset <= doc;
+        upTo = Math.min(upTo, maxDoc);
+        if (upTo > doc) {
+          bitSet.set(doc - offset, upTo - offset);
+          advance(upTo);
+        }
       }
     };
   }
@@ -224,9 +244,11 @@ public abstract class DocIdSetIterator {
    * </pre>
    *
    * <p><b>Note</b>: {@code offset} must be less than or equal to the {@link #docID() current doc
-   * ID}.
+   * ID}. Behaviour is undefined if this iterator is unpositioned.
    *
    * <p><b>Note</b>: It is important not to clear bits from {@code bitSet} that may be already set.
+   *
+   * <p><b>Note</b>: {@code offset} may be negative.
    *
    * @lucene.internal
    */

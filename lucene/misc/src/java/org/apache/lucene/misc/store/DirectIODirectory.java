@@ -28,6 +28,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -148,7 +149,7 @@ public class DirectIODirectory extends FilterDirectory {
 
   /**
    * Determines if direct IO should be used for a file. By default this tests if it is a merge
-   * context and if the merge or file length extends the minimum size (see {@link
+   * context and if the merge or file length exceeds the minimum size (see {@link
    * #DEFAULT_MIN_BYTES_DIRECT}). Subclasses may override method to enforce direct IO for specific
    * file types.
    *
@@ -213,8 +214,8 @@ public class DirectIODirectory extends FilterDirectory {
      * bypassing OS buffer
      *
      * @throws UnsupportedOperationException if the JDK does not support Direct I/O
-     * @throws IOException if the operating system or filesystem does not support support Direct I/O
-     *     or a sufficient equivalent.
+     * @throws IOException if the operating system or filesystem does not support Direct I/O or a
+     *     sufficient equivalent.
      */
     public DirectIOIndexOutput(Path path, String name, int blockSize, int bufferSize)
         throws IOException {
@@ -298,9 +299,10 @@ public class DirectIODirectory extends FilterDirectory {
     private final ByteBuffer buffer;
     private final FileChannel channel;
     private final int blockSize;
-
+    private final long offset;
+    private final long length;
+    private final boolean isClosable; // clones and slices are not closable
     private boolean isOpen;
-    private boolean isClone;
     private long filePos;
 
     /**
@@ -313,31 +315,32 @@ public class DirectIODirectory extends FilterDirectory {
      */
     public DirectIOIndexInput(Path path, int blockSize, int bufferSize) throws IOException {
       super("DirectIOIndexInput(path=\"" + path + "\")");
-      this.blockSize = blockSize;
-
       this.channel = FileChannel.open(path, StandardOpenOption.READ, getDirectOpenOption());
+      this.blockSize = blockSize;
       this.buffer = allocateBuffer(bufferSize, blockSize);
-
-      isOpen = true;
-      isClone = false;
-      filePos = -bufferSize;
-      buffer.limit(0);
+      this.isOpen = true;
+      this.isClosable = true;
+      this.length = channel.size();
+      this.offset = 0L;
+      this.filePos = -bufferSize;
+      this.buffer.limit(0);
     }
 
-    // for clone
-    private DirectIOIndexInput(DirectIOIndexInput other) throws IOException {
-      super(other.toString());
-      this.channel = other.channel;
-      this.blockSize = other.blockSize;
-
+    // for clone/slice
+    private DirectIOIndexInput(
+        String description, DirectIOIndexInput other, long offset, long length) throws IOException {
+      super(description);
+      Objects.checkFromIndexSize(offset, length, other.channel.size());
       final int bufferSize = other.buffer.capacity();
-      this.buffer = allocateBuffer(bufferSize, blockSize);
-
-      isOpen = true;
-      isClone = true;
-      filePos = -bufferSize;
+      this.buffer = allocateBuffer(bufferSize, other.blockSize);
+      this.blockSize = other.blockSize;
+      this.channel = other.channel;
+      this.isOpen = true;
+      this.isClosable = false;
+      this.length = length;
+      this.offset = offset;
+      this.filePos = -bufferSize;
       buffer.limit(0);
-      seek(other.getFilePointer());
     }
 
     private static ByteBuffer allocateBuffer(int bufferSize, int blockSize) {
@@ -348,20 +351,21 @@ public class DirectIODirectory extends FilterDirectory {
 
     @Override
     public void close() throws IOException {
-      if (isOpen && !isClone) {
+      if (isOpen && isClosable) {
         channel.close();
+        isOpen = false;
       }
     }
 
     @Override
     public long getFilePointer() {
-      long filePointer = filePos + buffer.position();
+      long filePointer = filePos + buffer.position() - offset;
 
       // opening the input and immediately calling getFilePointer without calling readX (and thus
       // refill) first,
       // will result in negative value equal to bufferSize being returned,
       // due to the initialization method filePos = -bufferSize used in constructor.
-      assert filePointer == -buffer.capacity() || filePointer >= 0
+      assert filePointer == -buffer.capacity() - offset || filePointer >= 0
           : "filePointer should either be initial value equal to negative buffer capacity, or larger than or equal to 0";
       return Math.max(filePointer, 0);
     }
@@ -369,23 +373,24 @@ public class DirectIODirectory extends FilterDirectory {
     @Override
     public void seek(long pos) throws IOException {
       if (pos != getFilePointer()) {
-        final long alignedPos = pos - (pos % blockSize);
-        filePos = alignedPos - buffer.capacity();
-
-        final int delta = (int) (pos - alignedPos);
-        refill(delta);
-        buffer.position(delta);
+        seekInternal(pos);
       }
       assert pos == getFilePointer();
     }
 
+    private void seekInternal(long pos) throws IOException {
+      final long absPos = pos + offset;
+      final long alignedPos = absPos - (absPos % blockSize);
+      filePos = alignedPos - buffer.capacity();
+
+      final int delta = (int) (absPos - alignedPos);
+      refill(delta);
+      buffer.position(delta);
+    }
+
     @Override
     public long length() {
-      try {
-        return channel.size();
-      } catch (IOException ioe) {
-        throw new UncheckedIOException(ioe);
-      }
+      return length;
     }
 
     @Override
@@ -429,7 +434,7 @@ public class DirectIODirectory extends FilterDirectory {
 
       // BaseDirectoryTestCase#testSeekPastEOF test for consecutive read past EOF,
       // hence throwing EOFException early to maintain buffer state (position in particular)
-      if (filePos > channel.size() || (channel.size() - filePos < bytesToRead)) {
+      if (filePos > offset + length || ((offset + length) - filePos < bytesToRead)) {
         throw new EOFException("read past EOF: " + this);
       }
 
@@ -523,16 +528,23 @@ public class DirectIODirectory extends FilterDirectory {
     @Override
     public DirectIOIndexInput clone() {
       try {
-        return new DirectIOIndexInput(this);
+        var clone = new DirectIOIndexInput("clone:" + this, this, offset, length);
+        clone.seekInternal(getFilePointer());
+        return clone;
       } catch (IOException ioe) {
         throw new UncheckedIOException(ioe);
       }
     }
 
     @Override
-    public IndexInput slice(String sliceDescription, long offset, long length) {
-      // TODO: is this the right thing to do?
-      return BufferedIndexInput.wrap(sliceDescription, this, offset, length);
+    public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
+      if ((length | offset) < 0 || length > this.length - offset) {
+        throw new IllegalArgumentException(
+            "slice() " + sliceDescription + " out of bounds: " + this);
+      }
+      var slice = new DirectIOIndexInput(sliceDescription, this, this.offset + offset, length);
+      slice.seekInternal(0L);
+      return slice;
     }
   }
 }

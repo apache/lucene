@@ -116,8 +116,7 @@ public class MappedMultiFields extends FilterFields {
     @Override
     public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
       MappingMultiPostingsEnum mappingDocsAndPositionsEnum;
-      if (reuse instanceof MappingMultiPostingsEnum) {
-        MappingMultiPostingsEnum postings = (MappingMultiPostingsEnum) reuse;
+      if (reuse instanceof MappingMultiPostingsEnum postings) {
         if (postings.field.equals(this.field)) {
           mappingDocsAndPositionsEnum = postings;
         } else {

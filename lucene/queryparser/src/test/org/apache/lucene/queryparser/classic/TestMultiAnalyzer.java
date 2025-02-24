@@ -37,7 +37,7 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
  */
 public class TestMultiAnalyzer extends BaseTokenStreamTestCase {
 
-  private static int multiToken = 0;
+  private int multiToken = 0;
 
   public void testMultiAnalyzer() throws ParseException {
 
@@ -124,7 +124,7 @@ public class TestMultiAnalyzer extends BaseTokenStreamTestCase {
    * Expands "multi" to "multi" and "multi2", both at the same position, and expands "triplemulti"
    * to "triplemulti", "multi3", and "multi2".
    */
-  private static class MultiAnalyzer extends Analyzer {
+  private class MultiAnalyzer extends Analyzer {
 
     @Override
     public TokenStreamComponents createComponents(String fieldName) {
@@ -133,7 +133,7 @@ public class TestMultiAnalyzer extends BaseTokenStreamTestCase {
     }
   }
 
-  private static final class TestFilter extends TokenFilter {
+  private final class TestFilter extends TokenFilter {
 
     private String prevType;
     private int prevStartOffset;
@@ -153,7 +153,7 @@ public class TestMultiAnalyzer extends BaseTokenStreamTestCase {
     }
 
     @Override
-    public final boolean incrementToken() throws java.io.IOException {
+    public boolean incrementToken() throws java.io.IOException {
       if (multiToken > 0) {
         termAtt.setEmpty().append("multi" + (multiToken + 1));
         offsetAtt.setOffset(prevStartOffset, prevEndOffset);
@@ -216,7 +216,7 @@ public class TestMultiAnalyzer extends BaseTokenStreamTestCase {
     }
 
     @Override
-    public final boolean incrementToken() throws java.io.IOException {
+    public boolean incrementToken() throws java.io.IOException {
       while (input.incrementToken()) {
         if (termAtt.toString().equals("the")) {
           // stopword, do nothing

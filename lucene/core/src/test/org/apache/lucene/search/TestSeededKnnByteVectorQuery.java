@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.TestKnnByteVectorQuery.floatToBytes;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -28,11 +29,13 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.TestVectorUtil;
 
 public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
@@ -41,12 +44,16 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
   @Override
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new SeededKnnByteVectorQuery(field, floatToBytes(query), k, queryFilter, MATCH_NONE);
+    KnnByteVectorQuery knnByteVectorQuery =
+        new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
+    return SeededKnnVectorQuery.fromByteQuery(knnByteVectorQuery, MATCH_NONE);
   }
 
   @Override
   AbstractKnnVectorQuery getThrowingKnnVectorQuery(String field, float[] vec, int k, Query query) {
-    return new ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query, MATCH_NONE);
+    KnnByteVectorQuery knnByteVectorQuery =
+        new TestKnnByteVectorQuery.ThrowingKnnVectorQuery(field, floatToBytes(vec), k, query);
+    return SeededKnnVectorQuery.fromByteQuery(knnByteVectorQuery, MATCH_NONE);
   }
 
   @Override
@@ -69,6 +76,46 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
   @Override
   Field getKnnVectorField(String name, float[] vector) {
     return new KnnByteVectorField(name, floatToBytes(vector), VectorSimilarityFunction.EUCLIDEAN);
+  }
+
+  public void testSeedWithTimeout() throws IOException {
+    int numDocs = atLeast(50);
+    int dimension = atLeast(5);
+    int numIters = atLeast(5);
+    try (Directory d = newDirectoryForTest()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+      RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(getKnnVectorField("field", randomVector(dimension)));
+        doc.add(new NumericDocValuesField("tag", i));
+        doc.add(new IntPoint("tag", i));
+        w.addDocument(doc);
+      }
+      w.close();
+
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader);
+        searcher.setTimeout(() -> true);
+        int k = random().nextInt(80) + 1;
+        for (int i = 0; i < numIters; i++) {
+          // All documents as seeds
+          Query seed =
+              random().nextBoolean()
+                  ? IntPoint.newRangeQuery("tag", 1, 6)
+                  : new MatchAllDocsQuery();
+          Query filter = random().nextBoolean() ? null : new MatchAllDocsQuery();
+          KnnByteVectorQuery byteVectorQuery =
+              new KnnByteVectorQuery("field", floatToBytes(randomVector(dimension)), k, filter);
+          Query knnQuery = SeededKnnVectorQuery.fromByteQuery(byteVectorQuery, seed);
+          assertEquals(0, searcher.count(knnQuery));
+          // No seed documents -- falls back on full approx search
+          seed = new MatchNoDocsQuery();
+          knnQuery = SeededKnnVectorQuery.fromByteQuery(byteVectorQuery, seed);
+          assertEquals(0, searcher.count(knnQuery));
+        }
+      }
+    }
   }
 
   /** Tests with random vectors and a random seed. Uses RandomIndexWriter. */
@@ -101,19 +148,28 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = newSearcher(reader);
         for (int i = 0; i < numIters; i++) {
-          int k = random().nextInt(80) + 1;
+          // verify timeout collector wrapping is used
+          if (random().nextBoolean()) {
+            searcher.setTimeout(() -> false);
+          } else {
+            searcher.setTimeout(null);
+          }
+          int k = random().nextInt(10) + 1;
           int n = random().nextInt(100) + 1;
           // we may get fewer results than requested if there are deletions, but this test doesn't
           // check that
           assert reader.hasDeletions() == false;
 
           // All documents as seeds
+          AtomicInteger seedCalls = new AtomicInteger();
           Query seed1 = new MatchAllDocsQuery();
           Query filter = random().nextBoolean() ? null : new MatchAllDocsQuery();
-          SeededKnnByteVectorQuery query =
-              new SeededKnnByteVectorQuery(
-                  "field", floatToBytes(randomVector(dimension)), k, filter, seed1);
+          KnnByteVectorQuery byteVectorQuery =
+              new KnnByteVectorQuery("field", floatToBytes(randomVector(dimension)), k, filter);
+          AssertingSeededKnnVectorQuery query =
+              new AssertingSeededKnnVectorQuery(byteVectorQuery, seed1, null, seedCalls);
           TopDocs results = searcher.search(query, n);
+          assertEquals(seedCalls.get(), 1);
           int expected = Math.min(Math.min(n, k), numDocsWithVector);
 
           assertEquals(expected, results.scoreDocs.length);
@@ -127,10 +183,19 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
           // Restrictive seed query -- 6 documents
           Query seed2 = IntPoint.newRangeQuery("tag", 1, 6);
+          int seedCount =
+              searcher.count(
+                  new BooleanQuery.Builder()
+                      .add(seed2, BooleanClause.Occur.MUST)
+                      .add(new FieldExistsQuery("field"), BooleanClause.Occur.MUST)
+                      .build());
+          byteVectorQuery =
+              new KnnByteVectorQuery("field", floatToBytes(randomVector(dimension)), k, null);
           query =
-              new SeededKnnByteVectorQuery(
-                  "field", floatToBytes(randomVector(dimension)), k, null, seed2);
+              new AssertingSeededKnnVectorQuery(
+                  byteVectorQuery, seed2, null, seedCount > 0 ? seedCalls : null);
           results = searcher.search(query, n);
+          assertEquals(seedCalls.get(), seedCount > 0 ? 2 : 1);
           expected = Math.min(Math.min(n, k), reader.numDocs());
           assertEquals(expected, results.scoreDocs.length);
           assertTrue(results.totalHits.value() >= results.scoreDocs.length);
@@ -143,9 +208,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
           // No seed documents -- falls back on full approx search
           Query seed3 = new MatchNoDocsQuery();
-          query =
-              new SeededKnnByteVectorQuery(
-                  "field", floatToBytes(randomVector(dimension)), k, null, seed3);
+          query = new AssertingSeededKnnVectorQuery(byteVectorQuery, seed3, null, null);
           results = searcher.search(query, n);
           expected = Math.min(Math.min(n, k), reader.numDocs());
           assertEquals(expected, results.scoreDocs.length);
@@ -161,45 +224,100 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-  private static class ThrowingKnnVectorQuery extends SeededKnnByteVectorQuery {
+  static class AssertingSeededKnnVectorQuery extends SeededKnnVectorQuery {
+    private final AtomicInteger seedCalls;
 
-    public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter, Query seed) {
-      super(field, target, k, filter, seed);
-    }
-
-    private ThrowingKnnVectorQuery(
-        String field, byte[] target, int k, Query filter, Weight seedWeight) {
-      super(field, target, k, filter, seedWeight);
+    public AssertingSeededKnnVectorQuery(
+        AbstractKnnVectorQuery query, Query seed, Weight seedWeight, AtomicInteger seedCalls) {
+      super(query, seed, seedWeight);
+      this.seedCalls = seedCalls;
     }
 
     @Override
-    // This is test only and we need to overwrite the inner rewrite to throw
     public Query rewrite(IndexSearcher indexSearcher) throws IOException {
       if (seedWeight != null) {
         return super.rewrite(indexSearcher);
       }
-      BooleanQuery.Builder booleanSeedQueryBuilder =
-          new BooleanQuery.Builder()
-              .add(seed, BooleanClause.Occur.MUST)
-              .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER);
-      if (filter != null) {
-        booleanSeedQueryBuilder.add(filter, BooleanClause.Occur.FILTER);
+      AssertingSeededKnnVectorQuery rewritten =
+          new AssertingSeededKnnVectorQuery(
+              delegate, seed, createSeedWeight(indexSearcher), seedCalls);
+      return rewritten.rewrite(indexSearcher);
+    }
+
+    @Override
+    protected TopDocs approximateSearch(
+        LeafReaderContext context,
+        Bits acceptDocs,
+        int visitedLimit,
+        KnnCollectorManager knnCollectorManager)
+        throws IOException {
+      return delegate.approximateSearch(
+          context,
+          acceptDocs,
+          visitedLimit,
+          new AssertingSeededCollectorManager(new SeededCollectorManager(knnCollectorManager)));
+    }
+
+    class AssertingSeededCollectorManager extends SeededCollectorManager {
+
+      public AssertingSeededCollectorManager(SeededCollectorManager delegate) {
+        super(delegate);
       }
-      Query seedRewritten = indexSearcher.rewrite(booleanSeedQueryBuilder.build());
-      Weight seedWeight = indexSearcher.createWeight(seedRewritten, ScoreMode.TOP_SCORES, 1f);
-      return new ThrowingKnnVectorQuery(field, target, k, filter, seedWeight)
-          .rewrite(indexSearcher);
+
+      @Override
+      public KnnCollector newCollector(
+          int numVisisted, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+          throws IOException {
+        KnnCollector knnCollector =
+            knnCollectorManager.newCollector(numVisisted, searchStrategy, context);
+        if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded) {
+          if (seedCalls == null && seeded.numberOfEntryPoints() > 0) {
+            fail("Expected non-seeded collector but received: " + knnCollector);
+          }
+          return new AssertingKnnCollector(knnCollector);
+        }
+        if (seedCalls != null) {
+          fail("Expected seeded collector but received: " + knnCollector);
+        }
+        return knnCollector;
+      }
     }
 
-    @Override
-    protected TopDocs exactSearch(
-        LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout) {
-      throw new UnsupportedOperationException("exact search is not supported");
-    }
+    class AssertingKnnCollector extends KnnCollector.Decorator {
+      public AssertingKnnCollector(KnnCollector collector) {
+        super(collector);
+      }
 
-    @Override
-    public String toString(String field) {
-      return null;
+      @Override
+      public KnnSearchStrategy getSearchStrategy() {
+        KnnSearchStrategy searchStrategy = collector.getSearchStrategy();
+        if (searchStrategy instanceof KnnSearchStrategy.Seeded seeded) {
+          return new AssertingSeededStrategy(seeded);
+        }
+        return searchStrategy;
+      }
+
+      class AssertingSeededStrategy extends KnnSearchStrategy.Seeded {
+        private final KnnSearchStrategy.Seeded seeded;
+
+        public AssertingSeededStrategy(KnnSearchStrategy.Seeded seeded) {
+          super(seeded.entryPoints(), seeded.numberOfEntryPoints(), seeded.originalStrategy());
+          this.seeded = seeded;
+        }
+
+        @Override
+        public int numberOfEntryPoints() {
+          return seeded.numberOfEntryPoints();
+        }
+
+        @Override
+        public DocIdSetIterator entryPoints() {
+          DocIdSetIterator iterator = seeded.entryPoints();
+          assert iterator.cost() > 0;
+          seedCalls.incrementAndGet();
+          return iterator;
+        }
+      }
     }
   }
 }

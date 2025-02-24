@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -172,7 +173,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
         if (a == null) {
           a = Automata.makeString(term);
         } else {
-          a = Operations.union(a, Automata.makeString(term));
+          a = Operations.union(List.of(a, Automata.makeString(term)));
         }
       }
       if (a.isDeterministic()) {

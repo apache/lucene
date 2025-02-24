@@ -73,7 +73,7 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
 
   @Override
   public String toString(String defaultField) {
-    return new StringBuilder().append(field).append(": ").append(numbers.toString()).toString();
+    return field + ": " + numbers.toString();
   }
 
   @Override

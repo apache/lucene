@@ -36,7 +36,7 @@ public final class FixedBitSet extends BitSet {
 
   // An array that is small enough to use reasonable amounts of RAM and large enough to allow
   // Arrays#mismatch to use SIMD instructions and multiple registers under the hood.
-  private static long[] ZEROES = new long[32];
+  private static final long[] ZEROES = new long[32];
 
   private final long[] bits; // Array of longs holding the bits
   private final int numBits; // The number of bits in use
@@ -339,30 +339,9 @@ public final class FixedBitSet extends BitSet {
 
   @Override
   public void or(DocIdSetIterator iter) throws IOException {
-    if (iter instanceof DocBaseBitSetIterator) {
-      // TODO: implement DocBaseBitSetIterator#intoBitSet instead
-      checkUnpositioned(iter);
-      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
-      or(baseIter.getDocBase() >> 6, baseIter.getBitSet());
-    } else {
-      checkUnpositioned(iter);
-      iter.nextDoc();
-      iter.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, this, 0);
-    }
-  }
-
-  private void or(final int otherOffsetWords, FixedBitSet other) {
-    or(otherOffsetWords, other.bits, other.numWords);
-  }
-
-  private void or(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
-    assert otherNumWords + otherOffsetWords <= numWords
-        : "numWords=" + numWords + ", otherNumWords=" + otherNumWords;
-    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
-    final long[] thisArr = this.bits;
-    while (--pos >= 0) {
-      thisArr[pos + otherOffsetWords] |= otherArr[pos];
-    }
+    checkUnpositioned(iter);
+    iter.nextDoc();
+    iter.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, this, 0);
   }
 
   /** Read {@code numBits} (between 1 and 63) bits from {@code bitSet} at {@code from}. */
@@ -768,9 +747,8 @@ public final class FixedBitSet extends BitSet {
 
   /** Make a copy of the given bits. */
   public static FixedBitSet copyOf(Bits bits) {
-    if (bits instanceof FixedBits) {
+    if (bits instanceof FixedBits fixedBits) {
       // restore the original FixedBitSet
-      FixedBits fixedBits = (FixedBits) bits;
       bits = new FixedBitSet(fixedBits.bits, fixedBits.length);
     }
 

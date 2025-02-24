@@ -101,7 +101,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int i = 0;
     float res = 0;
 
-    // if the array size is large (> 2x platform vector size), its worth the overhead to vectorize
+    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
     if (a.length > 2 * FLOAT_SPECIES.length()) {
       i += FLOAT_SPECIES.loopBound(a.length);
       res += dotProductBody(a, b, i);
@@ -164,7 +164,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     float norm1 = 0;
     float norm2 = 0;
 
-    // if the array size is large (> 2x platform vector size), its worth the overhead to vectorize
+    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
     if (a.length > 2 * FLOAT_SPECIES.length()) {
       i += FLOAT_SPECIES.loopBound(a.length);
       float[] ret = cosineBody(a, b, i);
@@ -229,7 +229,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int i = 0;
     float res = 0;
 
-    // if the array size is large (> 2x platform vector size), its worth the overhead to vectorize
+    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
     if (a.length > 2 * FLOAT_SPECIES.length()) {
       i += FLOAT_SPECIES.loopBound(a.length);
       res += squareDistanceBody(a, b, i);

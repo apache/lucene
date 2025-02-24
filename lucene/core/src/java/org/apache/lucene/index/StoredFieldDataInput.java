@@ -14,35 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search.knn;
+package org.apache.lucene.index;
 
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.DataInput;
 
 /**
- * A {@link KnnCollector} that provides seeded knn collection. See usage in {@link
- * SeededKnnCollectorManager}.
+ * A fixed size DataInput which includes the length of the input. For use as a StoredField.
  *
+ * @param in the data input
+ * @param length the length of the data input
  * @lucene.experimental
  */
-class SeededKnnCollector extends KnnCollector.Decorator implements EntryPointProvider {
-  private final DocIdSetIterator entryPoints;
-  private final int numberOfEntryPoints;
+public record StoredFieldDataInput(DataInput in, int length) {
 
-  SeededKnnCollector(
-      KnnCollector collector, DocIdSetIterator entryPoints, int numberOfEntryPoints) {
-    super(collector);
-    this.entryPoints = entryPoints;
-    this.numberOfEntryPoints = numberOfEntryPoints;
+  /** Creates a StoredFieldDataInput from a ByteArrayDataInput */
+  public StoredFieldDataInput(ByteArrayDataInput byteArrayDataInput) {
+    this(byteArrayDataInput, byteArrayDataInput.length());
   }
 
-  @Override
-  public DocIdSetIterator entryPoints() {
-    return entryPoints;
+  /** Returns the data input */
+  public DataInput getDataInput() {
+    return in;
   }
 
-  @Override
-  public int numberOfEntryPoints() {
-    return numberOfEntryPoints;
+  /** Returns the length of the data input */
+  public int getLength() {
+    return length;
   }
 }

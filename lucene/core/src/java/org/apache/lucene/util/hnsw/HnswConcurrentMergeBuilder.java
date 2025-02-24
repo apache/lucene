@@ -90,9 +90,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
-    finish();
-    frozen = true;
-    return workers[0].getCompletedGraph();
+    return getCompletedGraph();
   }
 
   @Override
@@ -144,6 +142,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
     private final BitSet initializedNodes;
     private int batchSize = DEFAULT_BATCH_SIZE;
+    private final UpdateableRandomVectorScorer scorer;
 
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
@@ -164,6 +163,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
+      this.scorer = scorerSupplier.scorer();
     }
 
     /**
@@ -193,11 +193,20 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     }
 
     @Override
+    public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
+      if (initializedNodes != null && initializedNodes.get(node)) {
+        return;
+      }
+      super.addGraphNode(node, scorer);
+    }
+
+    @Override
     public void addGraphNode(int node) throws IOException {
       if (initializedNodes != null && initializedNodes.get(node)) {
         return;
       }
-      super.addGraphNode(node);
+      scorer.setScoringOrdinal(node);
+      addGraphNode(node, scorer);
     }
   }
 

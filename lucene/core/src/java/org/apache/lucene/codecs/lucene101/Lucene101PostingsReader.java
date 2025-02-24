@@ -615,19 +615,21 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           numLongs = -bitsPerValue;
           docIn.readLongs(docBitSet.getBits(), 0, numLongs);
         }
-        // Note: we know that BLOCK_SIZE bits are set, so no need to compute the cumulative pop
-        // count at the last index, it will be BLOCK_SIZE.
-        // Note: this for loop auto-vectorizes
-        for (int i = 0; i < numLongs - 1; ++i) {
-          docCumulativeWordPopCounts[i] = Long.bitCount(docBitSet.getBits()[i]);
+        if (needsFreq) {
+          // Note: we know that BLOCK_SIZE bits are set, so no need to compute the cumulative pop
+          // count at the last index, it will be BLOCK_SIZE.
+          // Note: this for loop auto-vectorizes
+          for (int i = 0; i < numLongs - 1; ++i) {
+            docCumulativeWordPopCounts[i] = Long.bitCount(docBitSet.getBits()[i]);
+          }
+          for (int i = 1; i < numLongs - 1; ++i) {
+            docCumulativeWordPopCounts[i] += docCumulativeWordPopCounts[i - 1];
+          }
+          docCumulativeWordPopCounts[numLongs - 1] = BLOCK_SIZE;
+          assert docCumulativeWordPopCounts[numLongs - 2]
+                  + Long.bitCount(docBitSet.getBits()[numLongs - 1])
+              == BLOCK_SIZE;
         }
-        for (int i = 1; i < numLongs - 1; ++i) {
-          docCumulativeWordPopCounts[i] += docCumulativeWordPopCounts[i - 1];
-        }
-        docCumulativeWordPopCounts[numLongs - 1] = BLOCK_SIZE;
-        assert docCumulativeWordPopCounts[numLongs - 2]
-                + Long.bitCount(docBitSet.getBits()[numLongs - 1])
-            == BLOCK_SIZE;
         encoding = DeltaEncoding.UNARY;
       }
       if (indexHasFreq) {
@@ -726,7 +728,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     }
 
     private void doMoveToNextLevel0Block() throws IOException {
-      assert docBufferUpto == BLOCK_SIZE;
+      assert doc == level0LastDocID;
       if (posIn != null) {
         if (level0PosEndFP >= posIn.getFilePointer()) {
           posIn.seek(level0PosEndFP);
@@ -886,16 +888,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     public void advanceShallow(int target) throws IOException {
       if (target > level0LastDocID) { // advance level 0 skip data
         doAdvanceShallow(target);
-
-        // If we are on the last doc ID of a block and we are advancing on the doc ID just beyond
-        // this block, then we decode the block. This may not be necessary, but this helps avoid
-        // having to check whether we are in a block that is not decoded yet in #nextDoc().
-        if (docBufferUpto == BLOCK_SIZE && target == doc + 1) {
-          refillDocs();
-          needsRefilling = false;
-        } else {
-          needsRefilling = true;
-        }
+        needsRefilling = true;
       }
     }
 
@@ -912,8 +905,13 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (docBufferUpto == BLOCK_SIZE) {
-        moveToNextLevel0Block();
+      if (doc == level0LastDocID || needsRefilling) {
+        if (needsRefilling) {
+          refillDocs();
+          needsRefilling = false;
+        } else {
+          moveToNextLevel0Block();
+        }
       }
 
       switch (encoding) {
@@ -954,13 +952,21 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
             int next = docBitSet.nextSetBit(target - docBitSetBase);
             assert next != NO_MORE_DOCS;
             this.doc = docBitSetBase + next;
-            int wordIndex = next >> 6;
-            // Take the cumulative pop count for the given word, and subtract bits on the left of
-            // the current doc.
-            docBufferUpto =
-                1
-                    + docCumulativeWordPopCounts[wordIndex]
-                    - Long.bitCount(docBitSet.getBits()[wordIndex] >>> next);
+            if (needsFreq) {
+              int wordIndex = next >> 6;
+              // Take the cumulative pop count for the given word, and subtract bits on the left of
+              // the current doc.
+              docBufferUpto =
+                  1
+                      + docCumulativeWordPopCounts[wordIndex]
+                      - Long.bitCount(docBitSet.getBits()[wordIndex] >>> next);
+            } else {
+              // When only docs needed and block is UNARY encoded, we do not need to maintain
+              // docBufferUpTo to record the iteration position in the block.
+              // docBufferUpTo == 0 means the block has not been iterated.
+              // docBufferUpTo != 0 means the block has been iterated.
+              docBufferUpto = 1;
+            }
           }
           break;
       }
@@ -978,7 +984,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       bitSet.set(doc - offset);
 
       for (; ; ) {
-        if (docBufferUpto == BLOCK_SIZE) {
+        if (doc == level0LastDocID) {
           // refill
           moveToNextLevel0Block();
         }
