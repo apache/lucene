@@ -66,7 +66,7 @@ public final class NotDocIdSet extends DocIdSet {
   }
 
   @Override
-  public DocIdSetIterator iterator() throws IOException {
+  public DocIdSetIterator iterator() {
     final DocIdSetIterator inIterator = in.iterator();
     return new DocIdSetIterator() {
 
