@@ -209,6 +209,7 @@ public class IndexWriter
 
   // Use package-private instance var to enforce the limit so testing
   // can use less electricity:
+  @SuppressWarnings("NonFinalStaticField")
   private static int actualMaxDocs = MAX_DOCS;
 
   /** Used only for testing. */

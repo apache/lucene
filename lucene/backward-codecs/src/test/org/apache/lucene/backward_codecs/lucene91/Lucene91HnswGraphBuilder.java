@@ -48,6 +48,7 @@ public final class Lucene91HnswGraphBuilder {
   public static final String HNSW_COMPONENT = "HNSW";
 
   /** Random seed for level generation; public to expose for testing * */
+  @SuppressWarnings("NonFinalStaticField")
   public static long randSeed = DEFAULT_RAND_SEED;
 
   private final int maxConn;

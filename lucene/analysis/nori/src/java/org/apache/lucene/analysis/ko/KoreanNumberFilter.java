@@ -83,11 +83,11 @@ public class KoreanNumberFilter extends TokenFilter {
       addAttribute(PositionIncrementAttribute.class);
   private final PositionLengthAttribute posLengthAttr = addAttribute(PositionLengthAttribute.class);
 
-  private static char NO_NUMERAL = Character.MAX_VALUE;
+  private static final char NO_NUMERAL = Character.MAX_VALUE;
 
-  private static char[] numerals;
+  private static final char[] numerals;
 
-  private static char[] exponents;
+  private static final char[] exponents;
 
   private State state;
 
@@ -112,7 +112,6 @@ public class KoreanNumberFilter extends TokenFilter {
     numerals['구'] = 9; // 구 U+AD6C 9
 
     exponents = new char[0x10000];
-    Arrays.fill(exponents, (char) 0);
     exponents['십'] = 1; // 십 U+C2ED 10
     exponents['백'] = 2; // 백 U+BC31 100
     exponents['천'] = 3; // 천 U+CC9C 1,000
@@ -588,7 +587,7 @@ public class KoreanNumberFilter extends TokenFilter {
 
     private int position;
 
-    private String string;
+    private final String string;
 
     public NumberBuffer(String string) {
       this.string = string;

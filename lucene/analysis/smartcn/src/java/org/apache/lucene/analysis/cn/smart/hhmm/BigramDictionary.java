@@ -40,6 +40,7 @@ class BigramDictionary extends AbstractDictionary {
 
   public static final char WORD_SEGMENT_CHAR = '@';
 
+  @SuppressWarnings("NonFinalStaticField")
   private static BigramDictionary singleInstance;
 
   public static final int PRIME_BIGRAM_LENGTH = 402137;

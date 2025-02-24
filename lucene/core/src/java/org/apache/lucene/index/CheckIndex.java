@@ -4106,6 +4106,7 @@ public final class CheckIndex implements Closeable {
     result.newSegments.commit(result.dir);
   }
 
+  @SuppressWarnings("NonFinalStaticField")
   private static boolean assertsOn;
 
   private static boolean testAsserts() {

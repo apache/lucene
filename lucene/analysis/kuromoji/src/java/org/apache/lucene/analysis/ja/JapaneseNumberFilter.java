@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Arrays;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -93,11 +94,11 @@ public class JapaneseNumberFilter extends TokenFilter {
       addAttribute(PositionIncrementAttribute.class);
   private final PositionLengthAttribute posLengthAttr = addAttribute(PositionLengthAttribute.class);
 
-  private static char NO_NUMERAL = Character.MAX_VALUE;
+  private static final char NO_NUMERAL = Character.MAX_VALUE;
 
-  private static char[] numerals;
+  private static final char[] numerals;
 
-  private static char[] exponents;
+  private static final char[] exponents;
 
   private State state;
 
@@ -109,9 +110,7 @@ public class JapaneseNumberFilter extends TokenFilter {
 
   static {
     numerals = new char[0x10000];
-    for (int i = 0; i < numerals.length; i++) {
-      numerals[i] = NO_NUMERAL;
-    }
+    Arrays.fill(numerals, NO_NUMERAL);
     numerals['〇'] = 0; // 〇 U+3007 0
     numerals['一'] = 1; // 一 U+4E00 1
     numerals['二'] = 2; // 二 U+4E8C 2
@@ -124,9 +123,6 @@ public class JapaneseNumberFilter extends TokenFilter {
     numerals['九'] = 9; // 九 U+4E5D 9
 
     exponents = new char[0x10000];
-    for (int i = 0; i < exponents.length; i++) {
-      exponents[i] = 0;
-    }
     exponents['十'] = 1; // 十 U+5341 10
     exponents['百'] = 2; // 百 U+767E 100
     exponents['千'] = 3; // 千 U+5343 1,000
@@ -602,7 +598,7 @@ public class JapaneseNumberFilter extends TokenFilter {
 
     private int position;
 
-    private String string;
+    private final String string;
 
     public NumberBuffer(String string) {
       this.string = string;

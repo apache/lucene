@@ -36,7 +36,7 @@ public class MessageUtils {
     return new MessageFormat(pattern, Locale.ENGLISH).format(args);
   }
 
-  private static ResourceBundle bundle =
+  private static final ResourceBundle bundle =
       ResourceBundle.getBundle(MESSAGE_BUNDLE_BASENAME, Locale.ENGLISH);
 
   private MessageUtils() {}

@@ -49,6 +49,7 @@ import org.apache.lucene.search.Explanation;
 /** Factory of explain dialog */
 public final class ExplainDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static ExplainDialogFactory instance;
 
   private final Preferences prefs;
