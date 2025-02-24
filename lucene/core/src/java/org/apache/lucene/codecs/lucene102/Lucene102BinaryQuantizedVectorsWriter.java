@@ -58,8 +58,8 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
-import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 /** Copied from Lucene, replace with Lucene's implementation sometime after Lucene 10 */
@@ -760,6 +760,10 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       return size;
     }
 
+    public int quantizedLength() {
+      return binaryValue.length;
+    }
+
     public int dimension() {
       return dimension;
     }
@@ -886,8 +890,8 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      return supplier.scorer(ord);
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      return supplier.scorer();
     }
 
     @Override

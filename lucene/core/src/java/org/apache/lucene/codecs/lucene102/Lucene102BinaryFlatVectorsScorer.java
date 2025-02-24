@@ -30,6 +30,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer.QuantizationResult;
 
@@ -71,8 +72,13 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
       OptimizedScalarQuantizer.QuantizationResult queryCorrections =
           quantizer.scalarQuantize(target, initial, (byte) 4, centroid);
       transposeHalfByte(initial, quantized);
-      BinaryQueryVector queryVector = new BinaryQueryVector(quantized, queryCorrections);
-      return new BinarizedRandomVectorScorer(queryVector, binarizedVectors, similarityFunction);
+      return new RandomVectorScorer.AbstractRandomVectorScorer(binarizedVectors) {
+        @Override
+        public float score(int node) throws IOException {
+          return quantizedScore(
+              quantized, queryCorrections, binarizedVectors, node, similarityFunction);
+        }
+      };
     }
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
@@ -114,11 +120,28 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      byte[] vector = queryVectors.vectorValue(ord);
-      QuantizationResult correctiveTerms = queryVectors.getCorrectiveTerms(ord);
-      BinaryQueryVector binaryQueryVector = new BinaryQueryVector(vector, correctiveTerms);
-      return new BinarizedRandomVectorScorer(binaryQueryVector, targetVectors, similarityFunction);
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      final BinarizedByteVectorValues targetVectors = this.targetVectors.copy();
+      final Lucene102BinaryQuantizedVectorsWriter.OffHeapBinarizedQueryVectorValues queryVectors =
+          this.queryVectors.copy();
+      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(targetVectors) {
+        private QuantizationResult queryCorrections = null;
+        private byte[] vector = null;
+
+        @Override
+        public void setScoringOrdinal(int node) throws IOException {
+          queryCorrections = queryVectors.getCorrectiveTerms(node);
+          vector = queryVectors.vectorValue(node);
+        }
+
+        @Override
+        public float score(int node) throws IOException {
+          if (vector == null || queryCorrections == null) {
+            throw new IllegalStateException("setScoringOrdinal was not called");
+          }
+          return quantizedScore(vector, queryCorrections, targetVectors, node, similarityFunction);
+        }
+      };
     }
 
     @Override
@@ -128,65 +151,45 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
     }
   }
 
-  /** A binarized query representing its quantized form along with factors */
-  public record BinaryQueryVector(
-      byte[] vector, OptimizedScalarQuantizer.QuantizationResult quantizationResult) {}
-
-  /** Vector scorer over binarized vector values */
-  public static class BinarizedRandomVectorScorer
-      extends RandomVectorScorer.AbstractRandomVectorScorer {
-    private final BinaryQueryVector queryVector;
-    private final BinarizedByteVectorValues targetVectors;
-    private final VectorSimilarityFunction similarityFunction;
-
-    public BinarizedRandomVectorScorer(
-        BinaryQueryVector queryVectors,
-        BinarizedByteVectorValues targetVectors,
-        VectorSimilarityFunction similarityFunction) {
-      super(targetVectors);
-      this.queryVector = queryVectors;
-      this.targetVectors = targetVectors;
-      this.similarityFunction = similarityFunction;
-    }
-
-    @Override
-    public float score(int targetOrd) throws IOException {
-      byte[] quantizedQuery = queryVector.vector();
-      byte[] binaryCode = targetVectors.vectorValue(targetOrd);
-      float qcDist = VectorUtil.int4BitDotProduct(quantizedQuery, binaryCode);
-      OptimizedScalarQuantizer.QuantizationResult queryCorrections =
-          queryVector.quantizationResult();
-      OptimizedScalarQuantizer.QuantizationResult indexCorrections =
-          targetVectors.getCorrectiveTerms(targetOrd);
-      float x1 = indexCorrections.quantizedComponentSum();
-      float ax = indexCorrections.lowerInterval();
-      // Here we assume `lx` is simply bit vectors, so the scaling isn't necessary
-      float lx = indexCorrections.upperInterval() - ax;
-      float ay = queryCorrections.lowerInterval();
-      float ly = (queryCorrections.upperInterval() - ay) * FOUR_BIT_SCALE;
-      float y1 = queryCorrections.quantizedComponentSum();
-      float score =
-          ax * ay * targetVectors.dimension() + ay * lx * x1 + ax * ly * y1 + lx * ly * qcDist;
-      // For euclidean, we need to invert the score and apply the additional correction, which is
-      // assumed to be the squared l2norm of the centroid centered vectors.
-      if (similarityFunction == EUCLIDEAN) {
-        score =
-            queryCorrections.additionalCorrection()
-                + indexCorrections.additionalCorrection()
-                - 2 * score;
-        return Math.max(1 / (1f + score), 0);
-      } else {
-        // For cosine and max inner product, we need to apply the additional correction, which is
-        // assumed to be the non-centered dot-product between the vector and the centroid
-        score +=
-            queryCorrections.additionalCorrection()
-                + indexCorrections.additionalCorrection()
-                - targetVectors.getCentroidDP();
-        if (similarityFunction == MAXIMUM_INNER_PRODUCT) {
-          return VectorUtil.scaleMaxInnerProductScore(score);
-        }
-        return Math.max((1f + score) / 2f, 0);
+  static float quantizedScore(
+      byte[] quantizedQuery,
+      OptimizedScalarQuantizer.QuantizationResult queryCorrections,
+      BinarizedByteVectorValues targetVectors,
+      int targetOrd,
+      VectorSimilarityFunction similarityFunction)
+      throws IOException {
+    byte[] binaryCode = targetVectors.vectorValue(targetOrd);
+    float qcDist = VectorUtil.int4BitDotProduct(quantizedQuery, binaryCode);
+    OptimizedScalarQuantizer.QuantizationResult indexCorrections =
+        targetVectors.getCorrectiveTerms(targetOrd);
+    float x1 = indexCorrections.quantizedComponentSum();
+    float ax = indexCorrections.lowerInterval();
+    // Here we assume `lx` is simply bit vectors, so the scaling isn't necessary
+    float lx = indexCorrections.upperInterval() - ax;
+    float ay = queryCorrections.lowerInterval();
+    float ly = (queryCorrections.upperInterval() - ay) * FOUR_BIT_SCALE;
+    float y1 = queryCorrections.quantizedComponentSum();
+    float score =
+        ax * ay * targetVectors.dimension() + ay * lx * x1 + ax * ly * y1 + lx * ly * qcDist;
+    // For euclidean, we need to invert the score and apply the additional correction, which is
+    // assumed to be the squared l2norm of the centroid centered vectors.
+    if (similarityFunction == EUCLIDEAN) {
+      score =
+          queryCorrections.additionalCorrection()
+              + indexCorrections.additionalCorrection()
+              - 2 * score;
+      return Math.max(1 / (1f + score), 0);
+    } else {
+      // For cosine and max inner product, we need to apply the additional correction, which is
+      // assumed to be the non-centered dot-product between the vector and the centroid
+      score +=
+          queryCorrections.additionalCorrection()
+              + indexCorrections.additionalCorrection()
+              - targetVectors.getCentroidDP();
+      if (similarityFunction == MAXIMUM_INNER_PRODUCT) {
+        return VectorUtil.scaleMaxInnerProductScore(score);
       }
+      return Math.max((1f + score) / 2f, 0);
     }
   }
 }

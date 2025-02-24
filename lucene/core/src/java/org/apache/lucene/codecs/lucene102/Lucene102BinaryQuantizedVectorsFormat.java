@@ -28,23 +28,29 @@ import org.apache.lucene.index.SegmentWriteState;
 /**
  * The binary quantization format used here is a per-vector optimized scalar quantization. These
  * ideas are evolutions of LVQ proposed in <a href="https://arxiv.org/abs/2304.04759">Similarity
- * search in the blink of an eye with compressed indices</a> by Cecilia Aguerrebere et al. and the
- * previous work on globally optimized scalar
- *
- * <p>The format is stored in two files: Also see {@link
+ * search in the blink of an eye with compressed indices</a> by Cecilia Aguerrebere et al., the
+ * previous work on globally optimized scalar quantization in Apache Lucene, and <a
+ * href="https://arxiv.org/abs/1908.10396">Accelerating Large-Scale Inference with Anisotropic
+ * Vector Quantization </a> by Ruiqi Guo et. al. Also see {@link
  * org.apache.lucene.util.quantization.OptimizedScalarQuantizer}. Some of key features are:
  *
  * <ul>
- *   <li>Estimating the distance between two vectors using their centroid normalized distance. This
- *       requires some additional corrective factors, but allows for centroid normalization to
- *       occur.
- *   <li>Optimized scalar quantization to single bit level of centroid normalized vectors.
+ *   <li>Estimating the distance between two vectors using their centroid centered distance. This
+ *       requires some additional corrective factors, but allows for centroid centering to occur.
+ *   <li>Optimized scalar quantization to single bit level of centroid centered vectors.
  *   <li>Asymmetric quantization of vectors, where query vectors are quantized to half-byte (4 bits)
  *       precision (normalized to the centroid) and then compared directly against the single bit
  *       quantized vectors in the index.
  *   <li>Transforming the half-byte quantized query vectors in such a way that the comparison with
  *       single bit vectors can be done with bit arithmetic.
  * </ul>
+ *
+ * A previous work related to improvements over regular LVQ is <a
+ * href="https://arxiv.org/abs/2409.09913">Practical and Asymptotically Optimal Quantization of
+ * High-Dimensional Vectors in Euclidean Space for Approximate Nearest Neighbor Search </a> by
+ * Jianyang Gao, et. al.
+ *
+ * <p>The format is stored within two files:
  *
  * <h2>.veb (vector data) file</h2>
  *
