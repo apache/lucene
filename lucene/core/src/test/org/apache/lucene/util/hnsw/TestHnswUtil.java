@@ -251,11 +251,6 @@ public class TestHnswUtil extends LuceneTestCase {
     }
 
     @Override
-    public int maxConn() {
-      return 0;
-    }
-
-    @Override
     public String toString() {
       StringBuilder buf = new StringBuilder();
       for (int level = nodes.length - 1; level >= 0; level--) {
@@ -271,6 +266,16 @@ public class TestHnswUtil extends LuceneTestCase {
         }
       }
       return buf.toString();
+    }
+
+    @Override
+    public int neighborCount() {
+      return nodes[currentLevel][currentNode].length;
+    }
+
+    @Override
+    public int maxConn() {
+      return UNKNOWN_MAX_CONN;
     }
 
     @Override
