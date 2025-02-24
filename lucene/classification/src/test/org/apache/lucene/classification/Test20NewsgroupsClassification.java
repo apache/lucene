@@ -77,8 +77,8 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
   private static final String SUBJECT_FIELD = "subject";
   // private static final String INDEX_DIR = "/path/to/lucene-solr/lucene/classification/20n";
 
-  private static boolean index = true;
-  private static boolean split = true;
+  private boolean index = true;
+  private boolean split = true;
 
   @SuppressForbidden(reason = "Thread sleep")
   @Test
@@ -87,7 +87,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     String indexProperty = System.getProperty("index");
     if (indexProperty != null) {
       try {
-        index = Boolean.valueOf(indexProperty);
+        index = Boolean.parseBoolean(indexProperty);
       } catch (
           @SuppressWarnings("unused")
           Exception e) {
@@ -98,7 +98,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     String splitProperty = System.getProperty("split");
     if (splitProperty != null) {
       try {
-        split = Boolean.valueOf(splitProperty);
+        split = Boolean.parseBoolean(splitProperty);
       } catch (
           @SuppressWarnings("unused")
           Exception e) {
@@ -441,7 +441,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     }
   }
 
-  private class NewsPost {
+  private static class NewsPost {
     private final String body;
     private final String subject;
     private final String group;
