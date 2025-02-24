@@ -38,9 +38,13 @@ import org.apache.lucene.util.PriorityQueue;
 /** Util class for Scorer related methods */
 class ScorerUtil {
 
-  private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS;
+  private static Class<?> DEFAULT_IMPACTS_ENUM_CLASS = null;
 
-  static {
+  private static Class<?> getDefaultImpactsEnumClass() {
+    if (DEFAULT_IMPACTS_ENUM_CLASS != null) {
+      return DEFAULT_IMPACTS_ENUM_CLASS;
+    }
+
     try (Directory dir = new ByteBuffersDirectory();
         IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
       Document doc = new Document();
@@ -54,6 +58,7 @@ class ScorerUtil {
         }
         ImpactsEnum ie = te.impacts(PostingsEnum.FREQS);
         DEFAULT_IMPACTS_ENUM_CLASS = ie.getClass();
+        return DEFAULT_IMPACTS_ENUM_CLASS;
       }
     } catch (IOException e) {
       throw new Error(e);
@@ -92,7 +97,7 @@ class ScorerUtil {
    * bimorphic at most and candidate for inlining.
    */
   static DocIdSetIterator likelyImpactsEnum(DocIdSetIterator it) {
-    if (it.getClass() != DEFAULT_IMPACTS_ENUM_CLASS
+    if (it.getClass() != getDefaultImpactsEnumClass()
         && it.getClass() != FilterDocIdSetIterator.class) {
       it = new FilterDocIdSetIterator(it);
     }
