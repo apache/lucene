@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.util.ArrayUtil;
 
