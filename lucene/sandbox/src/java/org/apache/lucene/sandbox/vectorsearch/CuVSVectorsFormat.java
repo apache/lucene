@@ -43,7 +43,7 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
 
-  public static final int DEFAULT_WRITER_THREADS = 1;
+  public static final int DEFAULT_WRITER_THREADS = 32;
   public static final int DEFAULT_INTERMEDIATE_GRAPH_DEGREE = 128;
   public static final int DEFAULT_GRAPH_DEGREE = 64;
   public static final MergeStrategy DEFAULT_MERGE_STRATEGY = MergeStrategy.NON_TRIVIAL_MERGE;
