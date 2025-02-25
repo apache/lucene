@@ -57,6 +57,9 @@ API Changes
 * GITHUB#14236: CombinedFieldQuery moved from lucene-sandbox to lucene-core.
   (Adrien Grand)
 
+* GITHUB#14282: Remove redundant field argument from the DocIdSetBuilder constructor that takes a
+  PointValues instance. (Luca Cavanna)
+
 New Features
 ---------------------
 
