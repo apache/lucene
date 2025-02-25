@@ -187,8 +187,8 @@ public class PatienceKnnVectorQuery extends AbstractKnnVectorQuery {
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     PatienceKnnVectorQuery that = (PatienceKnnVectorQuery) o;
-    return Objects.equals(saturationThreshold, that.saturationThreshold)
-        && Objects.equals(patience, that.patience)
+    return saturationThreshold == that.saturationThreshold
+        && patience == that.patience
         && Objects.equals(delegate, that.delegate);
   }
 
