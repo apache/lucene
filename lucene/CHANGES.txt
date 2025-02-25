@@ -16,6 +16,8 @@ API Changes
 
 * GITHUB#14284: Remove IOException from DocIdSet#iterator signature (Luca Cavanna)
 
+* GITHUB#14288: The unused public static DocIdSet#all method has been removed. (Luca Cavanna)
+
 * GITHUB#14290: Remove redundant bits method from DocIdSet. (Luca Cavanna)
 
 New Features
@@ -61,6 +63,9 @@ API Changes
 
 * GITHUB#14282: Remove redundant field argument from the DocIdSetBuilder constructor that takes a
   PointValues instance. (Luca Cavanna)
+
+* GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
+  (Luca Cavanna)
 
 New Features
 ---------------------
