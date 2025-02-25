@@ -36,7 +36,6 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
-import org.apache.lucene.search.HnswQueueSaturationCollector;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -316,14 +315,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
     final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
-    final KnnCollector collector;
-    OrdinalTranslatedKnnCollector ordinalTranslatedKnnCollector =
+    final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    if (scorer.maxOrd() > 1000) {
-      collector = new HnswQueueSaturationCollector(ordinalTranslatedKnnCollector);
-    } else {
-      collector = ordinalTranslatedKnnCollector;
-    }
     HnswGraph graph = getGraph(fieldEntry);
     boolean doHnsw = knnCollector.k() < scorer.maxOrd();
     // Take into account if quantized? E.g. some scorer cost?

@@ -30,7 +30,7 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     int k = random.nextInt(1, 10);
     KnnCollector delegate = new TopKnnCollector(k, numDocs);
     HnswQueueSaturationCollector queueSaturationCollector =
-        new HnswQueueSaturationCollector(delegate);
+        new HnswQueueSaturationCollector(delegate, 1, Integer.MAX_VALUE);
     for (int i = 0; i < random.nextInt(numDocs); i++) {
       queueSaturationCollector.collect(random.nextInt(numDocs), random.nextFloat(1.0f));
     }
@@ -69,7 +69,7 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     int k = random.nextInt(1, 100);
     KnnCollector delegate = new TopKnnCollector(k, numDocs);
     HnswQueueSaturationCollector queueSaturationCollector =
-        new HnswQueueSaturationCollector(delegate);
+        new HnswQueueSaturationCollector(delegate, 0.5, 1);
     for (int i = 0; i < random.nextInt(numDocs); i++) {
       queueSaturationCollector.collect(random.nextInt(numDocs), random.nextFloat(1.0f));
       if (i % 10 == 0) {
@@ -88,7 +88,7 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     int k = random.nextInt(100);
     KnnCollector delegate = new TopKnnCollector(k, random.nextInt(numDocs));
     HnswQueueSaturationCollector queueSaturationCollector =
-        new HnswQueueSaturationCollector(delegate);
+        new HnswQueueSaturationCollector(delegate, 0.5, 1);
     for (int i = 0; i < random.nextInt(numDocs); i++) {
       queueSaturationCollector.collect(random.nextInt(numDocs), random.nextFloat(1.0f));
       if (i % 10 == 0) {

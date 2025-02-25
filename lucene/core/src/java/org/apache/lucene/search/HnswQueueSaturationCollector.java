@@ -22,10 +22,10 @@ package org.apache.lucene.search;
  * 'patience' parameter. This records the rate of collection of new nearest neighbors in the {@code
  * delegate} KnnCollector queue, at each HNSW node candidate visit. Once it saturates for a number
  * of consecutive node visits (e.g., the patience parameter), this early terminates.
+ *
+ * @lucene.experimental
  */
 public class HnswQueueSaturationCollector extends HnswKnnCollector {
-
-  private static final double DEFAULT_SATURATION_THRESHOLD = 0.95d;
 
   private final KnnCollector delegate;
   private final double saturationThreshold;
@@ -44,21 +44,6 @@ public class HnswQueueSaturationCollector extends HnswKnnCollector {
     this.patienceFinished = false;
     this.saturationThreshold = saturationThreshold;
     this.patience = patience;
-  }
-
-  public HnswQueueSaturationCollector(KnnCollector delegate) {
-    super(delegate);
-    this.delegate = delegate;
-    this.previousQueueSize = 0;
-    this.currentQueueSize = 0;
-    this.countSaturated = 0;
-    this.patienceFinished = false;
-    this.saturationThreshold = DEFAULT_SATURATION_THRESHOLD;
-    this.patience = defaultPatience();
-  }
-
-  private int defaultPatience() {
-    return Math.max(7, (int) (k() * 0.3));
   }
 
   @Override

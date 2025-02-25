@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.search;
 
-/** {@link KnnCollector} that exposes methods to hook into specific parts of the HNSW algorithm. */
+/**
+ * {@link KnnCollector} that exposes methods to hook into specific parts of the HNSW algorithm.
+ *
+ * @lucene.experimental
+ */
 public abstract class HnswKnnCollector extends KnnCollector.Decorator {
 
   public HnswKnnCollector(KnnCollector collector) {
@@ -24,5 +28,6 @@ public abstract class HnswKnnCollector extends KnnCollector.Decorator {
   }
 
   /** Indicates exploration of the next HNSW candidate graph node. */
-  public abstract void nextCandidate();
+  public void nextCandidate() {}
+  ;
 }
