@@ -59,13 +59,11 @@ API Changes
 * GITHUB#14236: CombinedFieldQuery moved from lucene-sandbox to lucene-core.
   (Adrien Grand)
 
-<<<<<<< HEAD
-* GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
-  (Luca Cavanna)
-=======
 * GITHUB#14282: Remove redundant field argument from the DocIdSetBuilder constructor that takes a
   PointValues instance. (Luca Cavanna)
->>>>>>> main
+
+* GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
+  (Luca Cavanna)
 
 New Features
 ---------------------
