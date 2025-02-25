@@ -52,7 +52,7 @@ public abstract class DocIdSet implements Accountable {
    * Provides a {@link DocIdSetIterator} to access the set. This implementation can return <code>
    * null</code> if there are no docs that match.
    */
-  public abstract DocIdSetIterator iterator() throws IOException;
+  public abstract DocIdSetIterator iterator();
 
   // TODO: somehow this class should express the cost of
   // iteration vs the cost of random access Bits; for
