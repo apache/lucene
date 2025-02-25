@@ -14,6 +14,8 @@ API Changes
 * GITHUB#14160: Adjusts the default HNSW search behavior so that filter optimized search is enabled
   when 60% or less of vectors pass the pre-filter. (Ben Chaplin, Ben Trent)
 
+* GITHUB#14288: The unused public static DocIdSet#all method has been removed. (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
