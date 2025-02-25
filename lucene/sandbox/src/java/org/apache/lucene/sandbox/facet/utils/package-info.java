@@ -17,6 +17,39 @@
 /**
  * Sandbox faceting: utility classes to make it easier to use the new API for standard use cases.
  *
+ * <p>Create a {@link org.apache.lucene.sandbox.facet.utils.FacetBuilder} for each facet request you
+ * have, use {@link org.apache.lucene.sandbox.facet.utils.FacetOrchestrator} or {@link
+ * org.apache.lucene.sandbox.facet.utils.DrillSidewaysFacetOrchestrator} to complete facet requests
+ * for a query, and call {@link org.apache.lucene.sandbox.facet.utils.FacetBuilder#getResult()} to
+ * get final results.
+ *
+ * <p>Which {@link org.apache.lucene.sandbox.facet.utils.FacetBuilder} to use?
+ *
+ * <ul>
+ *   <li>Use implementation specific to your use case, e.g. {@link
+ *       org.apache.lucene.sandbox.facet.utils.TaxonomyFacetBuilder} for taxonomy fields ({@link
+ *       org.apache.lucene.facet.FacetField}), {@link
+ *       org.apache.lucene.sandbox.facet.utils.RangeFacetBuilderFactory} for range facets, {@link
+ *       org.apache.lucene.sandbox.facet.utils.LongValueFacetBuilder} for numeric fields.
+ *   <li>Use {@link org.apache.lucene.sandbox.facet.utils.CommonFacetBuilder} for other cases where
+ *       you can provide {@link org.apache.lucene.sandbox.facet.cutters.FacetCutter} and {@link
+ *       org.apache.lucene.sandbox.facet.labels.OrdToLabel}.
+ * </ul>
+ *
+ * <p>There is no implementation for your use case?
+ *
+ * <ul>
+ *   <li>Implement {@link org.apache.lucene.sandbox.facet.cutters.FacetCutter}, {@link
+ *       org.apache.lucene.sandbox.facet.labels.OrdToLabel} and/or {@link
+ *       org.apache.lucene.sandbox.facet.recorders.FacetRecorder} for your use case. See {@link
+ *       org.apache.lucene.sandbox.facet} for low level API overview.
+ *   <li>Implement {@link org.apache.lucene.sandbox.facet.utils.FacetBuilder} for your use case
+ *       unless {@link org.apache.lucene.sandbox.facet.utils.CommonFacetBuilder} is sufficient, or
+ *       use low level API directly.
+ * </ul>
+ *
+ * <p>See SandboxFacetsExample for examples.
+ *
  * @lucene.experimental
  */
 package org.apache.lucene.sandbox.facet.utils;

@@ -59,7 +59,7 @@ import org.apache.lucene.sandbox.facet.utils.ComparableUtils;
 import org.apache.lucene.sandbox.facet.utils.DrillSidewaysFacetOrchestrator;
 import org.apache.lucene.sandbox.facet.utils.FacetBuilder;
 import org.apache.lucene.sandbox.facet.utils.FacetOrchestrator;
-import org.apache.lucene.sandbox.facet.utils.LongRangeFacetBuilder;
+import org.apache.lucene.sandbox.facet.utils.RangeFacetBuilderFactory;
 import org.apache.lucene.sandbox.facet.utils.TaxonomyFacetBuilder;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
@@ -81,6 +81,7 @@ public class SandboxFacetsExample {
 
   private SandboxFacetsExample() {
     config.setHierarchical("Publish Date", true);
+    config.setHierarchical("Author", false);
   }
 
   /** Build the example index. */
@@ -152,7 +153,7 @@ public class SandboxFacetsExample {
     FacetBuilder authorFacetBuilder =
         new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
     FacetBuilder priceFacetBuilder =
-        LongRangeFacetBuilder.create(
+        RangeFacetBuilderFactory.forLongRanges(
             "Price",
             new LongRange("0-10", 0, true, 10, true),
             new LongRange("10-20", 10, true, 20, true));
@@ -194,7 +195,7 @@ public class SandboxFacetsExample {
     FacetBuilder authorFacetBuilder =
         new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(10);
     FacetBuilder priceFacetBuilder =
-        LongRangeFacetBuilder.create(
+        RangeFacetBuilderFactory.forLongRanges(
             "Price",
             new LongRange("0-10", 0, true, 10, true),
             new LongRange("10-20", 10, true, 20, true));

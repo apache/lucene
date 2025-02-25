@@ -14,9 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.sandbox.facet;
+package org.apache.lucene.sandbox.facet.utils;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.LongPoint;
@@ -29,14 +30,7 @@ import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.sandbox.facet.cutters.ranges.DoubleRangeFacetCutter;
-import org.apache.lucene.sandbox.facet.labels.RangeOrdToLabel;
-import org.apache.lucene.sandbox.facet.utils.CommonFacetBuilder;
-import org.apache.lucene.sandbox.facet.utils.DrillSidewaysFacetOrchestrator;
-import org.apache.lucene.sandbox.facet.utils.FacetBuilder;
-import org.apache.lucene.sandbox.facet.utils.FacetOrchestrator;
-import org.apache.lucene.sandbox.facet.utils.LongRangeFacetBuilder;
-import org.apache.lucene.sandbox.facet.utils.TaxonomyFacetBuilder;
+import org.apache.lucene.sandbox.facet.SandboxFacetTestCase;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -108,6 +102,18 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
         () -> {
           new TaxonomyFacetBuilder(config, taxoReader, "Not configured dimension");
         });
+
+    assertEquals(
+        "There must be only one collector because all TaxonomyFacetBuilder use the same index field",
+        1,
+        FacetOrchestrator.collectorManagerForBuilders(
+                List.of(
+                    authorTop0Builder,
+                    authorTop10Builder,
+                    authorAllBuilder,
+                    publishDateTop10Builder,
+                    publishDateAllBuilder))
+            .size());
 
     new FacetOrchestrator()
         .addBuilder(authorTop0Builder)
@@ -254,13 +260,10 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
         };
 
     // Search with IndexSearcher
-    FacetBuilder longRangeFacetBuilder = LongRangeFacetBuilder.create("longField", longRanges);
+    FacetBuilder longRangeFacetBuilder =
+        RangeFacetBuilderFactory.forLongRanges("longField", longRanges);
     FacetBuilder doubleRangeFacetBuilder =
-        new CommonFacetBuilder(
-                "doubleField",
-                new DoubleRangeFacetCutter(
-                    MultiDoubleValuesSource.fromDoubleField("doubleField"), doubleRanges),
-                new RangeOrdToLabel(doubleRanges))
+        RangeFacetBuilderFactory.forDoubleRanges("doubleField", doubleRanges)
             .withSortByCount()
             .withTopN(3);
     FacetBuilder taxonomyFacetBuilder = new TaxonomyFacetBuilder(config, tr, "dim").withTopN(10);
@@ -288,13 +291,9 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
         doubleRangeFacetBuilder.getResult().toString());
 
     // Now search with DrillDownQuery
-    longRangeFacetBuilder = LongRangeFacetBuilder.create("longField", longRanges);
+    longRangeFacetBuilder = RangeFacetBuilderFactory.forLongRanges("longField", longRanges);
     doubleRangeFacetBuilder =
-        new CommonFacetBuilder(
-                "doubleField",
-                new DoubleRangeFacetCutter(
-                    MultiDoubleValuesSource.fromDoubleField("doubleField"), doubleRanges),
-                new RangeOrdToLabel(doubleRanges))
+        RangeFacetBuilderFactory.forDoubleRanges("doubleField", doubleRanges)
             .withSortByCount()
             .withTopN(3);
     taxonomyFacetBuilder = new TaxonomyFacetBuilder(config, tr, "dim").withTopN(10);
@@ -322,13 +321,9 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
         doubleRangeFacetBuilder.getResult().toString());
 
     // Now search with DrillDownQuery, with drill down on dim=b
-    longRangeFacetBuilder = LongRangeFacetBuilder.create("longField", longRanges);
+    longRangeFacetBuilder = RangeFacetBuilderFactory.forLongRanges("longField", longRanges);
     doubleRangeFacetBuilder =
-        new CommonFacetBuilder(
-                "doubleField",
-                new DoubleRangeFacetCutter(
-                    MultiDoubleValuesSource.fromDoubleField("doubleField"), doubleRanges),
-                new RangeOrdToLabel(doubleRanges))
+        RangeFacetBuilderFactory.forDoubleRanges("doubleField", doubleRanges)
             .withSortByCount()
             .withTopN(3);
     taxonomyFacetBuilder = new TaxonomyFacetBuilder(config, tr, "dim").withTopN(10);
@@ -359,13 +354,9 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
 
     // Now search with DrillDownQuery, with drill down on longField range "less than or equal to
     // 10":
-    longRangeFacetBuilder = LongRangeFacetBuilder.create("longField", longRanges);
+    longRangeFacetBuilder = RangeFacetBuilderFactory.forLongRanges("longField", longRanges);
     doubleRangeFacetBuilder =
-        new CommonFacetBuilder(
-                "doubleField",
-                new DoubleRangeFacetCutter(
-                    MultiDoubleValuesSource.fromDoubleField("doubleField"), doubleRanges),
-                new RangeOrdToLabel(doubleRanges))
+        RangeFacetBuilderFactory.forDoubleRanges("doubleField", doubleRanges)
             .withSortByCount()
             .withTopN(3);
     taxonomyFacetBuilder = new TaxonomyFacetBuilder(config, tr, "dim").withTopN(10);
@@ -395,5 +386,71 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
 
     w.close();
     IOUtils.close(tw, tr, td, r, d);
+  }
+
+  public void testLongValues() throws Exception {
+    Directory d = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), d);
+    for (long l = 0; l < 5; l++) {
+      for (long ll = 0; ll < l + 10; ll++) {
+        Document doc = new Document();
+        doc.add(new NumericDocValuesField("field", l));
+        w.addDocument(doc);
+      }
+    }
+
+    // Also add Long.MAX_VALUE
+    Document doc = new Document();
+    doc.add(new NumericDocValuesField("field", Long.MAX_VALUE));
+    w.addDocument(doc);
+
+    IndexReader r = w.getReader();
+    w.close();
+
+    IndexSearcher s = newSearcher(r);
+    FacetBuilder allChildrenSortByValue = new LongValueFacetBuilder("field");
+    FacetBuilder allChildrenSortByCount = new LongValueFacetBuilder("field").withSortByCount();
+    FacetBuilder topChildrenSortByCount =
+        new LongValueFacetBuilder("field").withSortByCount().withTopN(2);
+
+    assertEquals(
+        "There must be only one collector for all builders since they all use the same field",
+        1,
+        FacetOrchestrator.collectorManagerForBuilders(
+                List.of(allChildrenSortByCount, allChildrenSortByValue, topChildrenSortByCount))
+            .size());
+
+    new FacetOrchestrator()
+        .addBuilder(allChildrenSortByValue)
+        .addBuilder(allChildrenSortByCount)
+        .addBuilder(topChildrenSortByCount)
+        .collect(new MatchAllDocsQuery(), s);
+
+    assertEquals(
+        "dim=field path=[] value=-1 childCount=6\n"
+            + "  0 (10)\n"
+            + "  1 (11)\n"
+            + "  2 (12)\n"
+            + "  3 (13)\n"
+            + "  4 (14)\n"
+            + "  9223372036854775807 (1)\n",
+        allChildrenSortByValue.getResult().toString());
+
+    assertEquals(
+        "dim=field path=[] value=-1 childCount=6\n" + "  4 (14)\n" + "  3 (13)\n",
+        topChildrenSortByCount.getResult().toString());
+
+    assertEquals(
+        "dim=field path=[] value=-1 childCount=6\n"
+            + "  4 (14)\n"
+            + "  3 (13)\n"
+            + "  2 (12)\n"
+            + "  1 (11)\n"
+            + "  0 (10)\n"
+            + "  9223372036854775807 (1)\n",
+        allChildrenSortByCount.getResult().toString());
+
+    r.close();
+    d.close();
   }
 }

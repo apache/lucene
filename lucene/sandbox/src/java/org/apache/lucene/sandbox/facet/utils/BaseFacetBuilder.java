@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.facet.utils;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
@@ -41,7 +42,8 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
   CountFacetRecorder countRecorder;
   private FacetFieldCollectorManager<CountFacetRecorder> collectorManager;
   private int topN = -1;
-  private SortOrder sortOrder = SortOrder.count;
+  // Sort results by count by default
+  Supplier<ComparableSupplier<?>> sortOrderSupplier = () -> ComparableUtils.byCount(countRecorder);
 
   BaseFacetBuilder(String dimension, String... path) {
     this.dimension = dimension;
@@ -56,7 +58,7 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
 
   /** Sort results by count. */
   public final C withSortByCount() {
-    this.sortOrder = SortOrder.count;
+    this.sortOrderSupplier = () -> ComparableUtils.byCount(countRecorder);
     return self();
   }
 
@@ -64,8 +66,8 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
    * Expert: sort results by facet ordinal. Facet ordinal meaning depends on {@link FacetCutter}
    * implementation.
    */
-  public final C withSortByOrdinal() {
-    this.sortOrder = SortOrder.ordinal;
+  final C withSortByOrdinal() {
+    this.sortOrderSupplier = ComparableUtils::byOrdinal;
     return self();
   }
 
@@ -92,23 +94,8 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
   /** Get value for {@link FacetResult#value} */
   abstract Number getOverallValue() throws IOException;
 
-  private enum SortOrder {
-    ordinal,
-    count,
-    longAggregation,
-  }
-
-  private ComparableSupplier<?> getComparableSupplier() {
-    assert countRecorder != null : "must not be called before collect";
-    return switch (sortOrder) {
-      case ordinal -> ComparableUtils.byOrdinal();
-      case count -> ComparableUtils.byCount(countRecorder);
-      case longAggregation -> throw new UnsupportedOperationException("Not implemented yet");
-    };
-  }
-
   @Override
-  final FacetBuilder initOrReuseCollector(FacetBuilder similar) {
+  FacetBuilder initOrReuseCollector(FacetBuilder similar) {
     // share recorders between FacetBuilders that share CollectorManager
     // TODO: add support for other aggregation types, e.g. float/int associations
     //       and long aggregations
@@ -136,7 +123,7 @@ abstract class BaseFacetBuilder<C extends BaseFacetBuilder<C>> extends FacetBuil
           new LengthOrdinalIterator(getMatchingOrdinalIterator());
       ordinalIterator = lengthOrdinalIterator;
 
-      ComparableSupplier<?> comparableSupplier = getComparableSupplier();
+      ComparableSupplier<?> comparableSupplier = sortOrderSupplier.get();
       int[] ordinalsArray;
       if (topN != -1) {
         ordinalsArray =

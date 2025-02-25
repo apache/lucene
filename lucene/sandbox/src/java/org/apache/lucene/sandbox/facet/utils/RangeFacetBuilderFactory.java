@@ -16,23 +16,26 @@
  */
 package org.apache.lucene.sandbox.facet.utils;
 
+import org.apache.lucene.facet.MultiDoubleValuesSource;
 import org.apache.lucene.facet.MultiLongValuesSource;
+import org.apache.lucene.facet.range.DoubleRange;
 import org.apache.lucene.facet.range.LongRange;
+import org.apache.lucene.sandbox.facet.cutters.ranges.DoubleRangeFacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.ranges.LongRangeFacetCutter;
 import org.apache.lucene.sandbox.facet.labels.RangeOrdToLabel;
 
 /**
- * {@link FacetBuilder} factory for long range facets.
+ * {@link FacetBuilder} factory for faceting types base on numeric fields.
  *
  * @lucene.experimental
  */
-public final class LongRangeFacetBuilder {
+public final class RangeFacetBuilderFactory {
 
-  private LongRangeFacetBuilder() {}
+  private RangeFacetBuilderFactory() {}
 
   /** Request long range facets for numeric field by name. */
-  public static CommonFacetBuilder create(String field, LongRange... ranges) {
-    return create(field, MultiLongValuesSource.fromLongField(field), ranges);
+  public static CommonFacetBuilder forLongRanges(String field, LongRange... ranges) {
+    return forLongRanges(field, MultiLongValuesSource.fromLongField(field), ranges);
   }
 
   /**
@@ -40,16 +43,38 @@ public final class LongRangeFacetBuilder {
    * original ranges order.
    *
    * @param dimension dimension to return in results to match {@link
-   *     org.apache.lucene.facet.range.LongRangeFacetCounts#getTopChildren(int, String, String...)}
-   *     results
+   *     org.apache.lucene.facet.range.LongRangeFacetCounts#getTopChildren} results
    * @param valuesSource value source
    * @param ranges ranges
    */
-  public static CommonFacetBuilder create(
+  public static CommonFacetBuilder forLongRanges(
       String dimension, MultiLongValuesSource valuesSource, LongRange... ranges) {
     return new CommonFacetBuilder(
             dimension,
             LongRangeFacetCutter.create(valuesSource, ranges),
+            new RangeOrdToLabel(ranges))
+        .withSortByOrdinal();
+  }
+
+  /** Request double range facets for numeric field by name. */
+  public static CommonFacetBuilder forDoubleRanges(String field, DoubleRange... ranges) {
+    return forDoubleRanges(field, MultiDoubleValuesSource.fromDoubleField(field), ranges);
+  }
+
+  /**
+   * Request double range facets for provided {@link MultiDoubleValuesSource} by default sorted in
+   * original ranges order.
+   *
+   * @param dimension dimension to return in results to match {@link
+   *     org.apache.lucene.facet.range.DoubleRangeFacetCounts#getTopChildren} results
+   * @param valuesSource value source
+   * @param ranges ranges
+   */
+  public static CommonFacetBuilder forDoubleRanges(
+      String dimension, MultiDoubleValuesSource valuesSource, DoubleRange... ranges) {
+    return new CommonFacetBuilder(
+            dimension,
+            new DoubleRangeFacetCutter(valuesSource, ranges),
             new RangeOrdToLabel(ranges))
         .withSortByOrdinal();
   }

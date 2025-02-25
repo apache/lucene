@@ -199,7 +199,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
     return counts;
   }
 
-  IndexSearcher getNewSearcherForDrillSideways(IndexReader reader) {
+  protected IndexSearcher getNewSearcherForDrillSideways(IndexReader reader) {
     // Do not wrap with an asserting searcher, since DrillSidewaysQuery doesn't
     // implement all the required components like Weight#scorer.
     IndexSearcher searcher = newSearcher(reader, true, false, Concurrency.INTER_SEGMENT);

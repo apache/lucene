@@ -36,6 +36,7 @@ public final class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBu
   private final FacetsConfig.DimConfig dimConfig;
   private final TaxonomyReader taxonomyReader;
   private final String indexFieldName;
+  private final CollectionKey collectionKey;
 
   // Post-collection vars
   private TaxonomyOrdLabelBiMap taxoOrdLabels;
@@ -54,19 +55,22 @@ public final class TaxonomyFacetBuilder extends BaseFacetBuilder<TaxonomyFacetBu
           "Dimension config for "
               + dimension
               + " is required."
-              + "Call one of the FacetsConfig's setter with a default value.");
+              + " Call one of the FacetsConfig's setter with a default value.");
     }
     this.facetsConfig = facetsConfig;
     this.taxonomyReader = taxonomyReader;
     this.dimConfig = facetsConfig.getDimConfig(dimension);
     this.indexFieldName = dimConfig.indexFieldName;
+    this.collectionKey = new CollectionKey(indexFieldName);
     // For taxo facets we sort by count by default
     this.withSortByCount();
   }
 
+  private record CollectionKey(String indexFieldName) {}
+
   @Override
   Object collectionKey() {
-    return indexFieldName;
+    return collectionKey;
   }
 
   @Override
