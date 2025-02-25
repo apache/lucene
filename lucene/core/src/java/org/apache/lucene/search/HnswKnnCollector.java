@@ -29,5 +29,4 @@ public abstract class HnswKnnCollector extends KnnCollector.Decorator {
 
   /** Indicates exploration of the next HNSW candidate graph node. */
   public void nextCandidate() {}
-
 }
