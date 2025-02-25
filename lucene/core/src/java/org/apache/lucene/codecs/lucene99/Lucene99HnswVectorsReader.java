@@ -314,9 +314,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       return;
     }
     final RandomVectorScorer scorer = scorerSupplier.get();
-    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    final Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs);
     HnswGraph graph = getGraph(fieldEntry);
     boolean doHnsw = knnCollector.k() < scorer.maxOrd();
     // Take into account if quantized? E.g. some scorer cost?
