@@ -48,7 +48,11 @@ public abstract class DocIdSet implements Accountable {
         }
       };
 
-  /** A {@code DocIdSet} that matches all doc ids up to a specified doc (exclusive). */
+  /**
+   * A {@code DocIdSet} that matches all doc ids up to a specified doc (exclusive).
+   * @deprecated no longer needed since Query and Filter were merged
+   */
+  @Deprecated
   public static DocIdSet all(int maxDoc) {
     return new DocIdSet() {
       @Override
