@@ -62,6 +62,11 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
   final MergeStrategy mergeStrategy;
   final CuVSVectorsWriter.IndexType indexType; // the index type to build, when writing
 
+  /**
+   * Creates a CuVSVectorsFormat, with default values.
+   *
+   * @throws LibraryException if the native library fails to load
+   */
   public CuVSVectorsFormat() {
     this(
         DEFAULT_WRITER_THREADS,
@@ -71,13 +76,17 @@ public class CuVSVectorsFormat extends KnnVectorsFormat {
         DEFAULT_INDEX_TYPE);
   }
 
+  /**
+   * Creates a CuVSVectorsFormat, with the given threads, graph degree, etc.
+   *
+   * @throws LibraryException if the native library fails to load
+   */
   public CuVSVectorsFormat(
       int cuvsWriterThreads,
       int intGraphDegree,
       int graphDegree,
       MergeStrategy mergeStrategy,
-      IndexType indexType)
-      throws LibraryException {
+      IndexType indexType) {
     super("CuVSVectorsFormat");
     this.mergeStrategy = mergeStrategy;
     this.cuvsWriterThreads = cuvsWriterThreads;
