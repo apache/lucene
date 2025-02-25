@@ -55,7 +55,7 @@ final class IntArrayDocIdSet extends DocIdSet {
   }
 
   @Override
-  public DocIdSetIterator iterator() throws IOException {
+  public DocIdSetIterator iterator() {
     return new IntArrayDocIdSetIterator(docs, length);
   }
 
