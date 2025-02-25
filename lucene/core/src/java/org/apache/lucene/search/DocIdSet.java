@@ -97,7 +97,9 @@ public abstract class DocIdSet implements Accountable {
    *     IOException}). This is generally true for bit sets like {@link
    *     org.apache.lucene.util.FixedBitSet}, which return itself if they are used as {@code
    *     DocIdSet}.
+   * @deprecated this method is redundant and will be removed.
    */
+  @Deprecated
   public Bits bits() throws IOException {
     return null;
   }
