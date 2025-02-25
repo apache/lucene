@@ -341,11 +341,10 @@ public abstract class PointRangeQuery extends Query {
 
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
-          return new ScorerSupplier() {
+          return new ConstantScoreScorerSupplier(score(), scoreMode, reader.maxDoc()) {
             @Override
-            public Scorer get(long leadCost) {
-              return new ConstantScoreScorer(
-                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+            public DocIdSetIterator iterator(long leadCost) {
+              return DocIdSetIterator.all(reader.maxDoc());
             }
 
             @Override
@@ -354,14 +353,14 @@ public abstract class PointRangeQuery extends Query {
             }
           };
         } else {
-          return new ScorerSupplier() {
+          return new ConstantScoreScorerSupplier(score(), scoreMode, reader.maxDoc()) {
 
             final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 
             @Override
-            public Scorer get(long leadCost) throws IOException {
+            public DocIdSetIterator iterator(long leadCost) throws IOException {
               if (values.getDocCount() == reader.maxDoc()
                   && values.getDocCount() == values.size()
                   && cost() > reader.maxDoc() / 2) {
@@ -372,13 +371,11 @@ public abstract class PointRangeQuery extends Query {
                 result.set(0, reader.maxDoc());
                 long[] cost = new long[] {reader.maxDoc()};
                 values.intersect(getInverseIntersectVisitor(result, cost));
-                final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-                return new ConstantScoreScorer(score(), scoreMode, iterator);
+                return new BitSetIterator(result, cost[0]);
               }
 
               values.intersect(visitor);
-              DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(score(), scoreMode, iterator);
+              return result.build().iterator();
             }
 
             @Override
