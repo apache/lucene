@@ -299,7 +299,7 @@ public class ContainsPrefixTreeQuery extends AbstractPrefixTreeQuery {
     }
 
     @Override
-    public DocIdSetIterator iterator() throws IOException {
+    public DocIdSetIterator iterator() {
       if (size() == 0) return null;
       // copy the unsorted values to a new array then sort them
       int d = 0;
@@ -329,7 +329,7 @@ public class ContainsPrefixTreeQuery extends AbstractPrefixTreeQuery {
         }
 
         @Override
-        public int nextDoc() throws IOException {
+        public int nextDoc() {
           if (++idx < size) return docs[idx];
           return NO_MORE_DOCS;
         }
