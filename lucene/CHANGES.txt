@@ -68,6 +68,8 @@ New Features
   histogram of the distribution of the values of a field, for documents
   matching a given query. (Adrien Grand)
 
+* GITHUB#14094: New KNN query that early terminates when HNSW nearest neighbor queue saturates (Tommaso Teofili)
+
 Improvements
 ---------------------
 
@@ -134,8 +136,6 @@ Optimizations
 * GITHUB#14269: Implement #intoBitset for DocIdSetIterator#all and DocIdSetIterator#range. (Guo Feng)
 
 * GITHUB#14272: Use DocIdSetIterator#range for continuous-id BKD leaves. (Guo Feng)
-
-* GITHUB#14094: Early terminate when HNSW nearest neighbor queue saturates (Tommaso Teofili)
 
 Bug Fixes
 ---------------------
