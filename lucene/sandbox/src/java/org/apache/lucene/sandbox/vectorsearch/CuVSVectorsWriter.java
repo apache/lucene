@@ -57,6 +57,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.Sorter.DocMap;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
@@ -306,13 +307,16 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
   }
 
   private void writeFieldInternal(FieldInfo fieldInfo, float[][] vectors) throws IOException {
+    if (vectors.length == 0) {
+      writeEmpty(fieldInfo);
+      return;
+    }
     long cagraIndexOffset, cagraIndexLength = 0L;
     long bruteForceIndexOffset, bruteForceIndexLength = 0L;
     long hnswIndexOffset, hnswIndexLength = 0L;
-    assert vectors.length > 0;
 
     // workaround for the minimum number of vectors for Cagra
-    final IndexType indexType =
+    IndexType indexType =
         this.indexType.cagra() && vectors.length < MIN_CAGRA_INDEX_SIZE
             ? IndexType.BRUTE_FORCE
             : this.indexType;
@@ -325,6 +329,8 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
           writeCagraIndex(cagraIndexOutputStream, vectors);
         } catch (Throwable t) {
           handleThrowableWithIgnore(t, CANNOT_GENERATE_CAGRA);
+          // workaround for cuVS issue
+          indexType = IndexType.BRUTE_FORCE;
         }
         cagraIndexLength = cuvsIndex.getFilePointer() - cagraIndexOffset;
       }
@@ -370,6 +376,10 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
     } catch (Throwable t) {
       handleThrowable(t);
     }
+  }
+
+  private void writeEmpty(FieldInfo fieldInfo) throws IOException {
+    writeMeta(fieldInfo, 0, 0L, 0L, 0L, 0L, 0L, 0L);
   }
 
   private void writeMeta(
@@ -429,7 +439,8 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
     }
   }
 
-  private static DocsWithFieldSet getVectorData(FloatVectorValues floatVectorValues, float[][] dst)
+  /** Copies the vector values into dst. Returns the actual number of vectors copied. */
+  private static int getVectorData(FloatVectorValues floatVectorValues, float[][] dst)
       throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     int count = 0;
@@ -440,7 +451,7 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
       docsWithField.add(docV);
       count++;
     }
-    return docsWithField;
+    return docsWithField.cardinality();
   }
 
   @Override
@@ -455,7 +466,10 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
           };
 
       float[][] vectors = new float[mergedVectorValues.size()][mergedVectorValues.dimension()];
-      getVectorData(mergedVectorValues, vectors);
+      int ret = getVectorData(mergedVectorValues, vectors);
+      if (ret < vectors.length) {
+        vectors = ArrayUtil.copyOfSubArray(vectors, 0, ret);
+      }
       writeFieldInternal(fieldInfo, vectors);
     } catch (Throwable t) {
       handleThrowable(t);
