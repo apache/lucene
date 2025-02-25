@@ -310,19 +310,21 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
     long bruteForceIndexOffset, bruteForceIndexLength = 0L;
     long hnswIndexOffset, hnswIndexLength = 0L;
     assert vectors.length > 0;
+
+    // workaround for the minimum number of vectors for Cagra
+    final IndexType indexType =
+        this.indexType.cagra() && vectors.length < MIN_CAGRA_INDEX_SIZE
+            ? IndexType.BRUTE_FORCE
+            : this.indexType;
+
     try {
       cagraIndexOffset = cuvsIndex.getFilePointer();
       if (indexType.cagra()) {
-        if (vectors.length > MIN_CAGRA_INDEX_SIZE) {
-          try {
-            var cagraIndexOutputStream = new IndexOutputOutputStream(cuvsIndex);
-            writeCagraIndex(cagraIndexOutputStream, vectors);
-          } catch (Throwable t) {
-            handleThrowableWithIgnore(t, CANNOT_GENERATE_CAGRA);
-          }
-        } else {
-          // well, no index will be written at all
-          assert indexType.bruteForce || indexType.hnsw();
+        try {
+          var cagraIndexOutputStream = new IndexOutputOutputStream(cuvsIndex);
+          writeCagraIndex(cagraIndexOutputStream, vectors);
+        } catch (Throwable t) {
+          handleThrowableWithIgnore(t, CANNOT_GENERATE_CAGRA);
         }
         cagraIndexLength = cuvsIndex.getFilePointer() - cagraIndexOffset;
       }
