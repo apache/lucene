@@ -14,22 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.tests.search;
+package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collections;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.search.BulkScorer;
-import org.apache.lucene.search.ConstantScoreScorer;
-import org.apache.lucene.search.ConstantScoreWeight;
-import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryVisitor;
-import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.ScorerSupplier;
-import org.apache.lucene.search.Weight;
 
 /**
  * Query that matches all docs by returning a DenseConjunctionBulkScorer over a single clause. This
