@@ -6,7 +6,7 @@ on:
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   ISSUE: ${{ github.event.issue.html_url }}
-  SKIP_CHANGELOG_LABEL: ${{ '"skip changelog"' }}
+  SKIP_CHANGELOG_CHECK_LABEL: ${{ '"skip-changelog-check"' }}
   CHANGE_LOG_FILE: ${{ 'lucene/CHANGES.txt' }}
 
 jobs:
@@ -27,12 +27,12 @@ jobs:
           mapfile -t labels < <(gh pr view ${{ github.event.number }} --json labels -q '.labels[].name')
           IFS=','; echo "${labels[*]}"
           for label in "${labels[@]}"; do
-            if [[ $label == ${{ env.SKIP_CHANGELOG_LABEL }} ]]; then
-              echo "Skipping github action workflow as label: ${SKIP_CHANGELOG_LABEL} is found in the PR."
+            if [[ $label == ${{ env.SKIP_CHANGELOG_CHECK_LABEL }} ]]; then
+              echo "Skipping github action workflow as label: ${SKIP_CHANGELOG_CHECK_LABEL} is found in the PR."
               exit 0
             fi
           done
-          echo "${{ env.SKIP_CHANGELOG_LABEL }} not found in the PR. Proceeding with next steps."
+          echo "${{ env.SKIP_CHANGELOG_CHECK_LABEL }} not found in the PR. Proceeding with next steps."
           
           echo -e "\n"
           echo "################## STEP 2 ##################"
