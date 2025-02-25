@@ -18,6 +18,8 @@ API Changes
 
 * GITHUB#14288: The unused public static DocIdSet#all method has been removed. (Luca Cavanna)
 
+* GITHUB#14237: Add utils for sandbox facets module for the most common tasks. (Egor Potemkin)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
