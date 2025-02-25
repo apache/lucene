@@ -16,6 +16,8 @@ API Changes
 
 * GITHUB#14284: Remove IOException from DocIdSet#iterator signature (Luca Cavanna)
 
+* GITHUB#14288: The unused public static DocIdSet#all method has been removed. (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -59,6 +61,9 @@ API Changes
 
 * GITHUB#14282: Remove redundant field argument from the DocIdSetBuilder constructor that takes a
   PointValues instance. (Luca Cavanna)
+
+* GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
+  (Luca Cavanna)
 
 New Features
 ---------------------
