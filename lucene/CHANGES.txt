@@ -25,6 +25,8 @@ API Changes
 * GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
   (Luca Cavanna)
 
+* GITHUB#14292: The redundant DocIdSet#bits method has been deprecated. (Luca Cavanna)
+
 New Features
 ---------------------
 
