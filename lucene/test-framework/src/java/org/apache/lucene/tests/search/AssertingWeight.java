@@ -106,7 +106,7 @@ class AssertingWeight extends FilterWeight {
       }
 
       @Override
-      public void setTopLevelScoringClause() throws IOException {
+      public void setTopLevelScoringClause() {
         assert getCalled == false;
         topLevelScoringClause = true;
         inScorerSupplier.setTopLevelScoringClause();

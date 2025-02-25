@@ -88,7 +88,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
   }
 
   @Override
-  public void setTopLevelScoringClause() throws IOException {
+  public void setTopLevelScoringClause() {
     topLevelScoringClause = true;
     if (subs.get(Occur.SHOULD).size() + subs.get(Occur.MUST).size() == 1) {
       // If there is a single scoring clause, propagate the call.
