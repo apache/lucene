@@ -71,6 +71,7 @@ public class CreateIndexDialogFactory implements DialogOpener.DialogFactory {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static CreateIndexDialogFactory instance;
 
   private final Preferences prefs;

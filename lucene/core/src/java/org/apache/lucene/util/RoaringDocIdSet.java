@@ -167,7 +167,7 @@ public class RoaringDocIdSet extends DocIdSet {
     }
 
     @Override
-    public DocIdSetIterator iterator() throws IOException {
+    public DocIdSetIterator iterator() {
       return new DocIdSetIterator() {
 
         int i = -1; // this is the index of the current document in the array
@@ -178,7 +178,7 @@ public class RoaringDocIdSet extends DocIdSet {
         }
 
         @Override
-        public int nextDoc() throws IOException {
+        public int nextDoc() {
           if (++i >= docIDs.length) {
             return doc = NO_MORE_DOCS;
           }
@@ -196,7 +196,7 @@ public class RoaringDocIdSet extends DocIdSet {
         }
 
         @Override
-        public int advance(int target) throws IOException {
+        public int advance(int target) {
           // binary search
           int lo = i + 1;
           int hi = docIDs.length - 1;
@@ -219,7 +219,7 @@ public class RoaringDocIdSet extends DocIdSet {
         }
 
         @Override
-        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
           if (doc >= upTo) {
             return;
           }
@@ -257,7 +257,7 @@ public class RoaringDocIdSet extends DocIdSet {
   }
 
   @Override
-  public DocIdSetIterator iterator() throws IOException {
+  public DocIdSetIterator iterator() {
     if (cardinality == 0) {
       return null;
     }
@@ -270,7 +270,7 @@ public class RoaringDocIdSet extends DocIdSet {
     DocIdSetIterator sub;
     int doc;
 
-    Iterator() throws IOException {
+    Iterator() {
       doc = -1;
       block = -1;
       sub = DocIdSetIterator.empty();
