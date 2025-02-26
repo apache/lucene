@@ -38,6 +38,7 @@ public abstract class DocIdSet implements Accountable {
         // we explicitly provide no random access, as this filter is 100% sparse and iterator exits
         // faster
         @Override
+        @Deprecated
         public Bits bits() {
           return null;
         }
@@ -62,6 +63,7 @@ public abstract class DocIdSet implements Accountable {
       }
 
       @Override
+      @Deprecated
       public Bits bits() throws IOException {
         return new Bits.MatchAllBits(maxDoc);
       }

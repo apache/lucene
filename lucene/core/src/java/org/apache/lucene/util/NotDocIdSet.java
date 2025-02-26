@@ -41,6 +41,7 @@ public final class NotDocIdSet extends DocIdSet {
   }
 
   @Override
+  @Deprecated
   public Bits bits() throws IOException {
     final Bits inBits = in.bits();
     if (inBits == null) {
