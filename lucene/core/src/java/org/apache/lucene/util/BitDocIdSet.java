@@ -58,6 +58,7 @@ public class BitDocIdSet extends DocIdSet {
   }
 
   @Override
+  @Deprecated
   public BitSet bits() {
     return set;
   }

@@ -292,6 +292,7 @@ public class ContainsPrefixTreeQuery extends AbstractPrefixTreeQuery {
     }
 
     @Override
+    @Deprecated
     public Bits bits() throws IOException {
       // if the # of docids is super small, return null since iteration is going
       // to be faster
