@@ -25,21 +25,17 @@ import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.ReaderUtil;
-import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /** A {@link BitSetProducer} that wraps a query and caches matching {@link BitSet}s per segment. */
 public class QueryBitSetProducer implements BitSetProducer {
   private final Query query;
-  final Map<IndexReader.CacheKey, BitSet> cache =
-      Collections.synchronizedMap(new WeakHashMap<>());
+  final Map<IndexReader.CacheKey, BitSet> cache = Collections.synchronizedMap(new WeakHashMap<>());
 
   private static final BitSet SENTINEL = new FixedBitSet(0);
 
