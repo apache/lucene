@@ -32,12 +32,16 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /** A {@link BitSetProducer} that wraps a query and caches matching {@link BitSet}s per segment. */
 public class QueryBitSetProducer implements BitSetProducer {
   private final Query query;
-  final Map<IndexReader.CacheKey, DocIdSet> cache =
+  final Map<IndexReader.CacheKey, BitSet> cache =
       Collections.synchronizedMap(new WeakHashMap<>());
+
+  private static final BitSet SENTINEL = new FixedBitSet(0);
 
   /**
    * Wraps another query's result and caches it into bitsets.
@@ -62,11 +66,11 @@ public class QueryBitSetProducer implements BitSetProducer {
     final LeafReader reader = context.reader();
     final IndexReader.CacheHelper cacheHelper = reader.getCoreCacheHelper();
 
-    DocIdSet docIdSet = null;
+    BitSet bitSet = null;
     if (cacheHelper != null) {
-      docIdSet = cache.get(cacheHelper.getKey());
+      bitSet = cache.get(cacheHelper.getKey());
     }
-    if (docIdSet == null) {
+    if (bitSet == null) {
       final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(context);
       final IndexSearcher searcher = new IndexSearcher(topLevelContext);
       searcher.setQueryCache(null);
@@ -77,15 +81,15 @@ public class QueryBitSetProducer implements BitSetProducer {
       final Scorer s = weight.scorer(context);
 
       if (s == null) {
-        docIdSet = DocIdSet.EMPTY;
+        bitSet = SENTINEL;
       } else {
-        docIdSet = new BitDocIdSet(BitSet.of(s.iterator(), context.reader().maxDoc()));
+        bitSet = BitSet.of(s.iterator(), context.reader().maxDoc());
       }
       if (cacheHelper != null) {
-        cache.put(cacheHelper.getKey(), docIdSet);
+        cache.put(cacheHelper.getKey(), bitSet);
       }
     }
-    return docIdSet == DocIdSet.EMPTY ? null : ((BitDocIdSet) docIdSet).bits();
+    return bitSet == SENTINEL ? null : bitSet;
   }
 
   @Override
