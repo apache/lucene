@@ -86,7 +86,7 @@ public class TestScorerUtil extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(w)) {
         LeafReader leafReader = reader.leaves().get(0).reader();
         TermsEnum te = leafReader.terms("field").iterator();
-        assertTrue(te.seekExact(new BytesRef("value")) == false);
+        assertTrue(te.seekExact(new BytesRef("value")));
         ImpactsEnum ie = te.impacts(PostingsEnum.FREQS);
         assertSame(ie, ScorerUtil.likelyImpactsEnum(ie));
       }
