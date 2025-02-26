@@ -32,11 +32,6 @@ Bug Fixes
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
-Changes in Runtime Behavior
----------------------
-* GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
-  LogByteSizeMergePolicy. (Adrien Grand)
-
 Other
 ---------------------
 (No changes)
@@ -103,6 +98,11 @@ Bug Fixes
 
 * GITHUB#14126: Avoid overflow in index input slices invariant checks
   (Chris Hegarty)
+
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
+  LogByteSizeMergePolicy. (Adrien Grand)
 
 Other
 ---------------------
