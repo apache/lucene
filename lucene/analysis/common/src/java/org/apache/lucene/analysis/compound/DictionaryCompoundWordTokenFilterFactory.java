@@ -51,7 +51,7 @@ public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
   private final int minSubwordSize;
   private final int maxSubwordSize;
   private final boolean onlyLongestMatch;
-
+  private final int subtokenPositionIncrement;
   /** Creates a new DictionaryCompoundWordTokenFilterFactory */
   public DictionaryCompoundWordTokenFilterFactory(Map<String, String> args) {
     super(args);
@@ -62,6 +62,7 @@ public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
     maxSubwordSize =
         getInt(args, "maxSubwordSize", CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE);
     onlyLongestMatch = getBoolean(args, "onlyLongestMatch", true);
+    subtokenPositionIncrement = getInt(args, "subtokenPositionIncrement", 0);
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -84,6 +85,12 @@ public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
       return input;
     }
     return new DictionaryCompoundWordTokenFilter(
-        input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
+        input,
+        dictionary,
+        minWordSize,
+        minSubwordSize,
+        maxSubwordSize,
+        onlyLongestMatch,
+        subtokenPositionIncrement);
   }
 }

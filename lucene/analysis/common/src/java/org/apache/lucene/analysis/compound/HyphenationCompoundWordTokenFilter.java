@@ -113,7 +113,7 @@ public class HyphenationCompoundWordTokenFilter extends CompoundWordTokenFilterB
       boolean onlyLongestMatch,
       boolean noSubMatches,
       boolean noOverlappingMatches) {
-    super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
+    super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch, 0);
 
     this.hyphenator = Objects.requireNonNull(hyphenator, "hyphenator");
     this.noSubMatches = noSubMatches;
