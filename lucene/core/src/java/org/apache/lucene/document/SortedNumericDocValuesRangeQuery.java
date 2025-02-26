@@ -31,6 +31,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllScorerSupplier;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -125,8 +126,8 @@ final class SortedNumericDocValuesRangeQuery extends Query {
           if (skipper.docCount() == maxDoc
               && skipper.minValue() >= lowerValue
               && skipper.maxValue() <= upperValue) {
-            return ConstantScoreScorerSupplier.fromIterator(
-                DocIdSetIterator.all(maxDoc), score(), scoreMode, maxDoc);
+
+            return new MatchAllScorerSupplier(score(), scoreMode, maxDoc);
           }
         }
 

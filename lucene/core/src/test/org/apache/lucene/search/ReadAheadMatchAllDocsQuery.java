@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
@@ -27,8 +29,12 @@ import org.apache.lucene.index.LeafReaderContext;
  */
 public final class ReadAheadMatchAllDocsQuery extends Query {
 
+  private final Random random;
+
   /** Sole constructor */
-  public ReadAheadMatchAllDocsQuery() {}
+  public ReadAheadMatchAllDocsQuery(Random random) {
+    this.random = new Random(random.nextLong());
+  }
 
   @Override
   public String toString(String field) {
@@ -74,10 +80,14 @@ public final class ReadAheadMatchAllDocsQuery extends Query {
 
           @Override
           public BulkScorer bulkScorer() throws IOException {
-            return new DenseConjunctionBulkScorer(
-                Collections.singletonList(DocIdSetIterator.all(context.reader().maxDoc())),
-                context.reader().maxDoc(),
-                score());
+            List<DocIdSetIterator> clauses;
+            if (random.nextBoolean()) {
+              clauses = Collections.emptyList();
+            } else {
+              clauses = Collections.singletonList(DocIdSetIterator.all(context.reader().maxDoc()));
+            }
+
+            return new DenseConjunctionBulkScorer(clauses, context.reader().maxDoc(), score());
           }
 
           @Override

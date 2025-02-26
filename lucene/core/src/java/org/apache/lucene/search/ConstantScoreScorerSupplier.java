@@ -20,9 +20,14 @@ import java.io.IOException;
 import java.util.Collections;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
 
-/** Specialization of {@link ScorerSupplier} for queries that produce constant scores. */
+/**
+ * Specialization of {@link ScorerSupplier} for queries that produce constant scores.
+ *
+ * @lucene.internal
+ */
 public abstract class ConstantScoreScorerSupplier extends ScorerSupplier {
 
+  /** Create a {@link ConstantScoreScorerSupplier} for the given iterator. */
   public static ConstantScoreScorerSupplier fromIterator(
       DocIdSetIterator iterator, float score, ScoreMode scoreMode, int maxDoc) {
     return new ConstantScoreScorerSupplier(score, scoreMode, maxDoc) {
