@@ -60,11 +60,8 @@ public class AllowLeadingWildcardProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof WildcardQueryNode) {
-      WildcardQueryNode wildcardNode = (WildcardQueryNode) node;
-
-      if (wildcardNode.getText().length() > 0) {
-
+    if (node instanceof WildcardQueryNode wildcardNode) {
+      if (!wildcardNode.getText().isEmpty()) {
         // Validate if the wildcard was escaped
         if (UnescapedCharSequence.wasEscaped(wildcardNode.getText(), 0)) return node;
 

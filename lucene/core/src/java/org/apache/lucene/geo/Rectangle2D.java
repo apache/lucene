@@ -291,8 +291,8 @@ final class Rectangle2D implements Component2D {
     return new Rectangle2D(rectangle.minX, rectangle.maxX, rectangle.minY, rectangle.maxY);
   }
 
-  private static double MIN_LON_INCL_QUANTIZE = decodeLongitude(MIN_LON_ENCODED);
-  private static double MAX_LON_INCL_QUANTIZE = decodeLongitude(MAX_LON_ENCODED);
+  private static final double MIN_LON_INCL_QUANTIZE = decodeLongitude(MIN_LON_ENCODED);
+  private static final double MAX_LON_INCL_QUANTIZE = decodeLongitude(MAX_LON_ENCODED);
 
   /** create a component2D from the provided LatLon rectangle */
   static Component2D create(Rectangle rectangle) {

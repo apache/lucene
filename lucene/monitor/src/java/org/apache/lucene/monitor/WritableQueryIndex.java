@@ -242,7 +242,7 @@ class WritableQueryIndex extends QueryIndex {
   }
 
   @Override
-  /**
+  /*
    * Remove unused queries from the query cache.
    *
    * <p>This is normally called from a background thread at a rate set by configurePurgeFrequency().

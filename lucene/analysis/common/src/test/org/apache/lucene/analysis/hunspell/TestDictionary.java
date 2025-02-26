@@ -188,6 +188,17 @@ public class TestDictionary extends LuceneTestCase {
     loadForgivingDictionary("forgivable-errors-num.aff", "single-word.dic");
   }
 
+  /** simple tests for dictionary problems seen in the wild */
+  public void testCommonForgivableErrors() throws Exception {
+    Dictionary dictionary = loadForgivingDictionary("common-errors.aff", "common-errors.dic");
+    // try to ensure we still parsed the affixes correctly, despite the problems
+    String expectedSuffixes[] = {"ing", "ed"};
+    for (String suffix : expectedSuffixes) {
+      char reversed[] = new StringBuilder(suffix).reverse().toString().toCharArray();
+      assertNotNull("checking for " + suffix, dictionary.lookupSuffix(reversed));
+    }
+  }
+
   private Dictionary loadDictionary(String aff, String dic) throws IOException, ParseException {
     try (InputStream affixStream = getClass().getResourceAsStream(aff);
         InputStream dicStream = getClass().getResourceAsStream(dic);

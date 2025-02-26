@@ -44,6 +44,7 @@ public class LukeMain {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static JFrame frame;
 
   public static JFrame getOwnerFrame() {

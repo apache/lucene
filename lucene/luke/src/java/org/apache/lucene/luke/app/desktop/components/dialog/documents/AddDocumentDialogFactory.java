@@ -102,6 +102,7 @@ public final class AddDocumentDialogFactory
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static AddDocumentDialogFactory instance;
 
   private static final int ROW_COUNT = 50;

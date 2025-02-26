@@ -70,8 +70,7 @@ public class StatePair {
    */
   @Override
   public boolean equals(Object obj) {
-    if (obj instanceof StatePair) {
-      StatePair p = (StatePair) obj;
+    if (obj instanceof StatePair p) {
       return p.s1 == s1 && p.s2 == s2;
     } else {
       return false;
