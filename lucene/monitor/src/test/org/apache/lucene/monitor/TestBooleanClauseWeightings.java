@@ -30,7 +30,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestBooleanClauseWeightings extends LuceneTestCase {
 
-  private static QueryAnalyzer treeBuilder = new QueryAnalyzer();
+  private static final QueryAnalyzer treeBuilder = new QueryAnalyzer();
 
   public void testExactClausesPreferred() {
     Query bq =

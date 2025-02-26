@@ -47,6 +47,7 @@ import org.apache.lucene.luke.models.documents.TermVectorEntry;
 /** Factory of term vector dialog */
 public final class TermVectorDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static TermVectorDialogFactory instance;
 
   private final Preferences prefs;

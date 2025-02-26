@@ -39,7 +39,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
  */
 public class TestMultiAnalyzerQPHelper extends LuceneTestCase {
 
-  private static int multiToken = 0;
+  private int multiToken = 0;
 
   public void testMultiAnalyzer() throws QueryNodeException {
 
@@ -135,7 +135,7 @@ public class TestMultiAnalyzerQPHelper extends LuceneTestCase {
    * Expands "multi" to "multi" and "multi2", both at the same position, and expands "triplemulti"
    * to "triplemulti", "multi3", and "multi2".
    */
-  private static class MultiAnalyzer extends Analyzer {
+  private class MultiAnalyzer extends Analyzer {
 
     @Override
     public TokenStreamComponents createComponents(String fieldName) {
@@ -144,7 +144,7 @@ public class TestMultiAnalyzerQPHelper extends LuceneTestCase {
     }
   }
 
-  private static final class TestFilter extends TokenFilter {
+  private final class TestFilter extends TokenFilter {
 
     private String prevType;
     private int prevStartOffset;
@@ -161,7 +161,7 @@ public class TestMultiAnalyzerQPHelper extends LuceneTestCase {
     }
 
     @Override
-    public final boolean incrementToken() throws java.io.IOException {
+    public boolean incrementToken() throws java.io.IOException {
       if (multiToken > 0) {
         termAtt.setEmpty().append("multi" + (multiToken + 1));
         offsetAtt.setOffset(prevStartOffset, prevEndOffset);

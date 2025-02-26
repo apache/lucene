@@ -45,6 +45,7 @@ import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 /** Factory of stored values dialog */
 public final class StoredValueDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static StoredValueDialogFactory instance;
 
   private final Preferences prefs;
