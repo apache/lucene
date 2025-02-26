@@ -88,6 +88,8 @@ New Features
   `longestMatch = true`. The value can be set to false to reduce the number of extracted subwords. For example,
   if the word "schwein" is extracted, the sub-word "wein" is not extracted anymore. (Renato Haeberli)
 
+* GITHUB#XXXXX: Add support JDK 24 to the Panama Vectorization Provider. (Chris Hegarty)
+
 Improvements
 ---------------------
 
