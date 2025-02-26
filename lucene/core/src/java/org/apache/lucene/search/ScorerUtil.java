@@ -130,7 +130,7 @@ class ScorerUtil {
     }
   }
 
-  static class FilterBits implements Bits {
+  private static class FilterBits implements Bits {
 
     private final Bits in;
 
