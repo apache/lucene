@@ -242,6 +242,7 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
     info("Cagra index created in " + elapsedMillis + "ms, with " + vectors.length + " vectors");
     Path tmpFile = Files.createTempFile(resources.tempDirectory(), "tmpindex", "cag");
     index.serialize(os, tmpFile);
+    index.destroyIndex();
   }
 
   private void writeBruteForceIndex(OutputStream os, float[][] vectors) throws Throwable {
@@ -255,6 +256,7 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
     long elapsedMillis = nanosToMillis(System.nanoTime() - startTime);
     info("bf index created in " + elapsedMillis + "ms, with " + vectors.length + " vectors");
     index.serialize(os);
+    index.destroyIndex();
   }
 
   private void writeHNSWIndex(OutputStream os, float[][] vectors) throws Throwable {
@@ -269,6 +271,7 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
     info("HNSW index created in " + elapsedMillis + "ms, with " + vectors.length + " vectors");
     Path tmpFile = Files.createTempFile("tmpindex", "hnsw");
     index.serializeToHNSW(os, tmpFile);
+    index.destroyIndex();
   }
 
   @Override
