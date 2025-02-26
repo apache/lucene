@@ -18,6 +18,8 @@ API Changes
 
 * GITHUB#14288: The unused public static DocIdSet#all method has been removed. (Luca Cavanna)
 
+* GITHUB#14290: Remove redundant bits method from DocIdSet. (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -64,6 +66,8 @@ API Changes
 
 * GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
   (Luca Cavanna)
+
+* GITHUB#14292: The redundant DocIdSet#bits method has been deprecated. (Luca Cavanna)
 
 New Features
 ---------------------

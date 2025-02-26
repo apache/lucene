@@ -41,26 +41,6 @@ public final class NotDocIdSet extends DocIdSet {
   }
 
   @Override
-  public Bits bits() throws IOException {
-    final Bits inBits = in.bits();
-    if (inBits == null) {
-      return null;
-    }
-    return new Bits() {
-
-      @Override
-      public boolean get(int index) {
-        return !inBits.get(index);
-      }
-
-      @Override
-      public int length() {
-        return inBits.length();
-      }
-    };
-  }
-
-  @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES_USED + in.ramBytesUsed();
   }
