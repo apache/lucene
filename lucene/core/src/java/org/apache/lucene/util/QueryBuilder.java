@@ -36,7 +36,6 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.CombinedFieldQuery;
-import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.MultiPhraseQuery;
 import org.apache.lucene.search.PhraseQuery;
@@ -67,34 +66,6 @@ import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
  * queries can be customized.
  */
 public class QueryBuilder {
-
-  /** Approaches for scoring against multiple fields. */
-  public enum MultiFieldScoreMode {
-    /**
-     * Queries against multiple fields as if the fields had been indexed in a single combined field.
-     * This works by aggregating term and document statistics before feeding them to the scoring
-     * logic. This is called BM25F in the literature and is implemented via {@link
-     * CombinedFieldQuery}.
-     *
-     * <p>Field boosts are interpreted as multipliers to the term frequency and length normalization
-     * factor.
-     *
-     * <p>This should be considered the best approach scoring-wise, but this requires all queried
-     * fields to share the same analyzer, the same similarity and that either all fields have norms
-     * or none have norms. Note that Lucene makes no effort at validating this.
-     */
-    PER_TERM_COMBINED,
-    /**
-     * Queries against multiple fields by searching each field independently and then returning the
-     * maximum score across fields.
-     *
-     * <p>Field boosts are interpreted as multipliers to the score on these fields.
-     *
-     * <p>This is a poor approach, but it has the benefit of making no assumption about the way that
-     * fields are indexed.
-     */
-    GLOBAL_MAX;
-  }
 
   protected Analyzer analyzer;
   protected boolean enablePositionIncrements = true;
@@ -150,52 +121,36 @@ public class QueryBuilder {
   /**
    * Creates a boolean query from the query text against multiple fields.
    *
+   * <p>Terms get scored as if the fields had been indexed in a single combined field. This works by
+   * aggregating term and document statistics before feeding them to the scoring logic. This is
+   * called BM25F in the literature and is implemented via {@link CombinedFieldQuery}.
+   *
+   * <p>Field boosts are interpreted as multipliers to the term frequency and length normalization
+   * factor.
+   *
+   * <p><b>NOTE</b> This requires all queried fields to share the same analyzer, the same similarity
+   * and that either all fields have norms or none have norms. Note that Lucene makes no effort at
+   * validating this.
+   *
    * @param fields fields to query with their respective boosts
    * @param queryText text to be passed to the analyzer
    * @param operator operator used for clauses between analyzer tokens.
    * @return {@code TermQuery} or {@code BooleanQuery}, based on the analysis of {@code queryText}
    */
   public Query createBooleanQuery(
-      Map<String, Float> fields,
-      String queryText,
-      MultiFieldScoreMode scoreMode,
-      BooleanClause.Occur operator) {
+      Map<String, Float> fields, String queryText, BooleanClause.Occur operator) {
     if (operator != BooleanClause.Occur.SHOULD && operator != BooleanClause.Occur.MUST) {
       throw new IllegalArgumentException("invalid operator: only SHOULD or MUST are allowed");
     }
     if (fields.isEmpty()) {
       return new MatchNoDocsQuery("No fields to query");
     }
-    switch (scoreMode) {
-      case GLOBAL_MAX:
-        List<Query> disjuncts = new ArrayList<>();
-        for (Map.Entry<String, Float> entry : fields.entrySet()) {
-          String field = entry.getKey();
-          float boost = entry.getValue();
-          Query query = createFieldQuery(analyzer, operator, field, queryText, false, 0);
-          if (query != null) {
-            if (boost != 1f) {
-              query = new BoostQuery(query, boost);
-            }
-            disjuncts.add(query);
-          }
-        }
-        if (disjuncts.isEmpty()) {
-          return null;
-        } else if (disjuncts.size() == 1) {
-          return disjuncts.get(0);
-        }
-        return new DisjunctionMaxQuery(disjuncts, 0f);
-      case PER_TERM_COMBINED:
-        // All fields must share the same analyzer so pick any field.
-        String anyField = fields.keySet().iterator().next();
-        try (TokenStream source = analyzer.tokenStream(anyField, queryText)) {
-          return createFieldQuery(source, operator, fields);
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
-        }
-      default:
-        throw new AssertionError();
+    // All fields must share the same analyzer so pick any field.
+    String anyField = fields.keySet().iterator().next();
+    try (TokenStream source = analyzer.tokenStream(anyField, queryText)) {
+      return createFieldQuery(source, operator, fields);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 

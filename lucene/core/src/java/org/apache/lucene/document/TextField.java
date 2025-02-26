@@ -28,7 +28,6 @@ import org.apache.lucene.util.QueryBuilder;
  * <p>To create queries on {@link TextField}, see {@link QueryBuilder} and more specifically {@link
  * QueryBuilder#createBooleanQuery(String, String, org.apache.lucene.search.BooleanClause.Occur)} to
  * query against a single field or {@link QueryBuilder#createBooleanQuery(java.util.Map, String,
- * org.apache.lucene.util.QueryBuilder.MultiFieldScoreMode,
  * org.apache.lucene.search.BooleanClause.Occur)} to query against several fields.
  */
 public final class TextField extends Field {
