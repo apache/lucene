@@ -292,13 +292,6 @@ public class ContainsPrefixTreeQuery extends AbstractPrefixTreeQuery {
     }
 
     @Override
-    public Bits bits() throws IOException {
-      // if the # of docids is super small, return null since iteration is going
-      // to be faster
-      return size() > 4 ? this : null;
-    }
-
-    @Override
     public DocIdSetIterator iterator() {
       if (size() == 0) return null;
       // copy the unsorted values to a new array then sort them
