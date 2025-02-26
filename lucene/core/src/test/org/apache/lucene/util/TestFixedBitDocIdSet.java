@@ -16,9 +16,7 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
 import java.util.BitSet;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 
 public class TestFixedBitDocIdSet extends BaseDocIdSetTestCase<BitDocIdSet> {
@@ -30,26 +28,5 @@ public class TestFixedBitDocIdSet extends BaseDocIdSetTestCase<BitDocIdSet> {
       set.set(doc);
     }
     return new BitDocIdSet(set);
-  }
-
-  @Override
-  public void assertEquals(int numBits, BitSet ds1, BitDocIdSet ds2) throws IOException {
-    super.assertEquals(numBits, ds1, ds2);
-    // bits()
-    final Bits bits = ds2.bits();
-    if (bits != null) {
-      // test consistency between bits and iterator
-      DocIdSetIterator it2 = ds2.iterator();
-      for (int previousDoc = -1, doc = it2.nextDoc(); ; previousDoc = doc, doc = it2.nextDoc()) {
-        final int max = doc == DocIdSetIterator.NO_MORE_DOCS ? bits.length() : doc;
-        for (int i = previousDoc + 1; i < max; ++i) {
-          assertFalse(bits.get(i));
-        }
-        if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-          break;
-        }
-        assertTrue(bits.get(doc));
-      }
-    }
   }
 }
