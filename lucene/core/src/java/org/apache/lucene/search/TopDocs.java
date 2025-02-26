@@ -379,18 +379,13 @@ public class TopDocs {
       throw new IllegalArgumentException("k must be >= 1, got " + k);
     }
 
-    boolean shardIndexSet = false;
-    outer:
-    for (TopDocs topDocs : hits) {
-      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-        shardIndexSet = scoreDoc.shardIndex != -1;
-        break outer;
-      }
-    }
+    Boolean shardIndexSet = null;
     for (TopDocs topDocs : hits) {
       for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
         boolean thisShardIndexSet = scoreDoc.shardIndex != -1;
-        if (shardIndexSet != thisShardIndexSet) {
+        if (shardIndexSet == null) {
+          shardIndexSet = thisShardIndexSet;
+        } else if (shardIndexSet.booleanValue() != thisShardIndexSet) {
           throw new IllegalArgumentException(
               "All hits must either have their ScoreDoc#shardIndex set, or unset (-1), not a mix of both.");
         }
