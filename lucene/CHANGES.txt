@@ -20,6 +20,8 @@ API Changes
 
 * GITHUB#14290: Remove redundant bits method from DocIdSet. (Luca Cavanna)
 
+* GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
