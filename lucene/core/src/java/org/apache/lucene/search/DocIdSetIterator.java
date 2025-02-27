@@ -97,6 +97,11 @@ public abstract class DocIdSetIterator {
           advance(upTo);
         }
       }
+
+      @Override
+      public int peekNextNonMatchingDocID() throws IOException {
+        return maxDoc;
+      }
     };
   }
 
@@ -257,5 +262,24 @@ public abstract class DocIdSetIterator {
     for (int doc = docID(); doc < upTo; doc = nextDoc()) {
       bitSet.set(doc - offset);
     }
+  }
+
+  /**
+   * Returns the next doc ID that may not be a match. This API provides the following guarantees:
+   *
+   * <ol>
+   *   <li>The returned doc is greater than {@link #docID()}.
+   *   <li>All docs in range {@code [docID() + 1, peekNextNonMatchingDocID())} match this iterator.
+   *   <li>The current position of this iterator is not affected by calling {@link
+   *       #peekNextNonMatchingDocID()}.
+   * </ol>
+   *
+   * <p><b>Note</b>: After the iterator has exhausted you should not call this method, as it may
+   * result in unpredicted behavior.
+   *
+   * <p>The default implementation returns #docID() + 1.
+   */
+  public int peekNextNonMatchingDocID() throws IOException {
+    return docID() + 1;
   }
 }
