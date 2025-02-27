@@ -34,7 +34,7 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
             new Term(fieldName, regexp),
             RegExp.NONE,
             0,
-            name -> null,
+            _ -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             new DocValuesRewriteMethod());
 
@@ -43,7 +43,7 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
             new Term(fieldName, regexp),
             RegExp.NONE,
             0,
-            name -> null,
+            _ -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             MultiTermQuery.CONSTANT_SCORE_REWRITE);
 
@@ -52,7 +52,7 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
             new Term(fieldName, regexp),
             RegExp.NONE,
             0,
-            name -> null,
+            _ -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
 
@@ -80,7 +80,7 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
               new Term(fieldName, "[aA]"),
               RegExp.NONE,
               0,
-              name -> null,
+              _ -> null,
               Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
               new DocValuesRewriteMethod());
       RegexpQuery a2 =
@@ -88,7 +88,7 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
               new Term(fieldName, "[aA]"),
               RegExp.NONE,
               0,
-              name -> null,
+              _ -> null,
               Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
               new DocValuesRewriteMethod());
       RegexpQuery b =
@@ -96,7 +96,7 @@ public class TestFieldCacheRewriteMethod extends TestRegexpRandom2 {
               new Term(fieldName, "[bB]"),
               RegExp.NONE,
               0,
-              name -> null,
+              _ -> null,
               Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
               new DocValuesRewriteMethod());
       assertEquals(a1, a2);

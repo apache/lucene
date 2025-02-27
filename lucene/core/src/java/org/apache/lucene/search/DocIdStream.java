@@ -39,7 +39,7 @@ public abstract class DocIdStream {
   /** Count the number of entries in this stream. This is a terminal operation. */
   public int count() throws IOException {
     int[] count = new int[1];
-    forEach(doc -> count[0]++);
+    forEach(_ -> count[0]++);
     return count[0];
   }
 }
