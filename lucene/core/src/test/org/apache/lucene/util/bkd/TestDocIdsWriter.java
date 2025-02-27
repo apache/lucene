@@ -36,6 +36,9 @@ import org.apache.lucene.util.Constants;
 
 public class TestDocIdsWriter extends LuceneTestCase {
 
+  private static final int[] VERSIONS =
+      new int[] {BKDWriter.VERSION_META_FILE, BKDWriter.VERSION_CURRENT};
+
   public void testRandom() throws Exception {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
@@ -113,7 +116,9 @@ public class TestDocIdsWriter extends LuceneTestCase {
 
   private void test(Directory dir, int[] ints) throws Exception {
     final long len;
-    DocIdsWriter docIdsWriter = new DocIdsWriter(ints.length);
+    // It is hard to get BPV24-encoded docs in TextLuceneXXPointsFormat, test bwc here as well.
+    final int version = VERSIONS[random().nextInt(VERSIONS.length)];
+    DocIdsWriter docIdsWriter = new DocIdsWriter(ints.length, version);
     try (IndexOutput out = dir.createOutput("tmp", IOContext.DEFAULT)) {
       docIdsWriter.writeDocIds(ints, 0, ints.length, out);
       len = out.getFilePointer();
@@ -149,7 +154,8 @@ public class TestDocIdsWriter extends LuceneTestCase {
             public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               throw new UnsupportedOperationException();
             }
-          });
+          },
+          new int[ints.length]);
       assertArrayEquals(ints, read);
       assertEquals(len, in.getFilePointer());
     }
