@@ -39,7 +39,7 @@ import zipfile
 from collections import namedtuple
 import scriptutil
 
-BASE_JAVA_VERSION = "21"
+BASE_JAVA_VERSION = "23"
 
 # This tool expects to find /lucene off the base URL.  You
 # must have a working gpg, tar, unzip in your path.  This has been

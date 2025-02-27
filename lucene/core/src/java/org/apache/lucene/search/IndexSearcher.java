@@ -852,7 +852,7 @@ public class IndexSearcher {
       }
       try {
         // Optimize for the case when live docs are stored in a FixedBitSet.
-        Bits acceptDocs = ScorerUtil.likelyFixedBitSet(ctx.reader().getLiveDocs());
+        Bits acceptDocs = ScorerUtil.likelyLiveDocs(ctx.reader().getLiveDocs());
         scorer.score(leafCollector, acceptDocs, minDocId, maxDocId);
       } catch (
           @SuppressWarnings("unused")
