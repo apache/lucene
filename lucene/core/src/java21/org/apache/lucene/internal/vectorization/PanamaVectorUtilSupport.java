@@ -829,7 +829,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // complete the tail normally
     correction +=
-        new DefaultVectorUtilSupport.ScalarQuantizer(scale, alpha, minQuantile, maxQuantile)
+        new DefaultVectorUtilSupport.ScalarQuantizer(alpha, scale, minQuantile, maxQuantile)
             .quantize(vector, dest, i);
 
     return correction;
@@ -868,7 +868,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     // complete the tail normally
     correction +=
-        new DefaultVectorUtilSupport.ScalarQuantizer(scale, alpha, minQuantile, maxQuantile)
+        new DefaultVectorUtilSupport.ScalarQuantizer(alpha, scale, minQuantile, maxQuantile)
             .recalculateOffset(vector, i, oldAlpha, oldMinQuantile);
 
     return correction;

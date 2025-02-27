@@ -17,7 +17,10 @@
 package org.apache.lucene.internal.vectorization;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.stream.IntStream;
@@ -140,6 +143,45 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
       packed[i] = (byte) (unpacked[i] << 4 | unpacked[packed.length + i]);
     }
     return packed;
+  }
+
+  public void testQuantize() {
+    Random r = random();
+    float min = r.nextFloat() * r.nextInt(1000);
+    float max = min + r.nextFloat() * r.nextInt(1000);
+    float divisor = (float) ((1 << 7) - 1); // 7 bits quantization here
+
+    float scale = divisor / (max - min);
+    float alpha = (max - min) / divisor;
+
+    float[] vector = new float[size];
+    for (int i = 0; i < vector.length; i++) {
+      vector[i] = (r.nextFloat() * (max - min)) + min;
+    }
+
+    List<byte[]> outputs = new ArrayList<>();
+    assertFloatReturningProviders(
+        p -> {
+          byte[] output = new byte[size];
+          outputs.add(output);
+          return p.quantize(vector, output, scale, alpha, min, max);
+        });
+
+    // check the outputs are identical
+    for (int o = 1; o < outputs.size(); o++) {
+      assertArrayEquals(outputs.getFirst(), outputs.get(o));
+    }
+
+    // check recalculation too
+    float newMax = max * 2;
+    float newMin = min / 2;
+    float newScale = divisor / (newMax - newMin);
+    float newAlpha = (newMax - newMin) / divisor;
+
+    assertFloatReturningProviders(
+        p ->
+            p.recalculateOffset(
+                outputs.getFirst(), alpha, min, newScale, newAlpha, newMin, newMax));
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
