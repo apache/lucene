@@ -30,6 +30,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.ExitableIndexReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
@@ -78,7 +79,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
         new StringDocValuesReaderState(searcher.getIndexReader(), "field");
     checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
 
-    IOUtils.close(searcher.getIndexReader(), dir);
+    IndexReader r = searcher.getIndexReader();
+    if (r instanceof ExitableIndexReader) {
+      r = r.getContext().reader();
+    }
+    IOUtils.close(r, dir);
   }
 
   private void assertEmptyFacetResult(FacetResult result) {
@@ -165,7 +170,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
           new LabelAndValue("bar", 1), new LabelAndValue("foo", 1),
         });
 
-    IOUtils.close(searcher.getIndexReader(), dir);
+    IndexReader r = searcher.getIndexReader();
+    if (r instanceof ExitableIndexReader) {
+      r = r.getContext().reader();
+    }
+    IOUtils.close(r, dir);
   }
 
   public void testBasicSingleValuedUsingSortedDoc() throws Exception {
@@ -205,7 +214,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
     checkAllChildrenFacetResult(expectedCounts, expectedTotalDocCount, searcher, state);
 
-    IOUtils.close(searcher.getIndexReader(), dir);
+    IndexReader r = searcher.getIndexReader();
+    if (r instanceof ExitableIndexReader) {
+      r = r.getContext().reader();
+    }
+    IOUtils.close(r, dir);
   }
 
   public void testBasicMultiValued() throws Exception {
@@ -239,7 +252,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
     checkAllChildrenFacetResult(expectedCounts, expectedTotalDocCount, searcher, state);
 
-    IOUtils.close(searcher.getIndexReader(), dir);
+    IndexReader r = searcher.getIndexReader();
+    if (r instanceof ExitableIndexReader) {
+      r = r.getContext().reader();
+    }
+    IOUtils.close(r, dir);
   }
 
   public void testSparseMultiSegmentCase() throws Exception {
@@ -277,7 +294,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     checkTopNFacetResult(expectedValueCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
     checkAllChildrenFacetResult(expectedValueCounts, expectedTotalDocCount, searcher, state);
 
-    IOUtils.close(searcher.getIndexReader(), dir);
+    IndexReader r = searcher.getIndexReader();
+    if (r instanceof ExitableIndexReader) {
+      r = r.getContext().reader();
+    }
+    IOUtils.close(r, dir);
   }
 
   public void testMissingSegment() throws Exception {
@@ -313,7 +334,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
     checkAllChildrenFacetResult(expectedCounts, expectedTotalDocCount, searcher, state);
 
-    IOUtils.close(searcher.getIndexReader(), dir);
+    IndexReader r = searcher.getIndexReader();
+    if (r instanceof ExitableIndexReader) {
+      r = r.getContext().reader();
+    }
+    IOUtils.close(r, dir);
   }
 
   public void testStaleState() throws Exception {
@@ -339,8 +364,11 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
     // using a stale state
     expectThrows(IllegalStateException.class, () -> new StringValueFacetCounts(state, c));
-
-    IOUtils.close(reader, searcher.getIndexReader(), dir);
+    IndexReader r = searcher.getIndexReader();
+    if (r instanceof ExitableIndexReader) {
+      r = r.getContext().reader();
+    }
+    IOUtils.close(reader, r, dir);
   }
 
   public void testRandom() throws Exception {
@@ -396,14 +424,15 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       for (int i = 0; i < iterations; i++) {
         topNs[i] = atLeast(1);
       }
-
-      StringDocValuesReaderState state =
-          new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+      IndexReader indexReader = searcher.getIndexReader();
+      StringDocValuesReaderState state = new StringDocValuesReaderState(indexReader, "field");
 
       checkTopNFacetResult(expected, expectedTotalDocCount, searcher, state, topNs);
       checkAllChildrenFacetResult(expected, expectedTotalDocCount, searcher, state);
-
-      IOUtils.close(searcher.getIndexReader(), dir);
+      if (indexReader instanceof ExitableIndexReader) {
+        indexReader = indexReader.getContext().reader();
+      }
+      IOUtils.close(indexReader, dir);
     }
   }
 
