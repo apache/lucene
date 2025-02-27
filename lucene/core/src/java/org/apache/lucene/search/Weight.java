@@ -307,12 +307,10 @@ public abstract class Weight implements SegmentCacheable {
         TwoPhaseIterator twoPhase,
         int max)
         throws IOException {
-      for (int doc = iterator.docID(); doc < max; ) {
+      for (int doc = iterator.docID(); doc < max; doc = iterator.nextDoc()) {
         if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
           collector.collect(doc);
         }
-
-        doc = iterator.nextDoc();
       }
     }
 
