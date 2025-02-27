@@ -18,7 +18,11 @@ package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.stream.Collectors;
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.runner.JUnitCore;
