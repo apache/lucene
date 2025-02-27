@@ -155,6 +155,8 @@ Optimizations
 
 * GITHUB#14272: Use DocIdSetIterator#range for continuous-id BKD leaves. (Guo Feng)
 
+* GITHUB#14301: Avoid unnecessary evaluations and skipping documents. (hanbj)
+
 Bug Fixes
 ---------------------
 
