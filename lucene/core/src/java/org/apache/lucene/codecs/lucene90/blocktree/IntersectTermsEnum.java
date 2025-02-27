@@ -177,6 +177,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     f.fp = f.fpOrig = currentFrame.lastSubFP;
     f.prefix = currentFrame.prefix + currentFrame.suffix;
     f.setState(state);
+    f.matchAllSuffix = false;
 
     // Walk the arc through the index -- we only
     // "bother" with this so we can get the floor data
@@ -390,10 +391,28 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
     nextTerm:
     while (true) {
+      // Match sub block's entry directly.
+      if (currentFrame.matchAllSuffix) {
+        while (true) {
+          // There is no need to set currentTransition, state, etc.
+          // It will be reset properly on the next recursion.
+          if (isSubBlock) {
+            copyTerm();
+            currentFrame = pushFrame(currentFrame.state);
+            currentFrame.matchAllSuffix = true;
+            isSubBlock = popPushNext();
+          } else {
+            copyTerm();
+            return term;
+          }
+        }
+      }
+
       assert currentFrame.transition == currentTransition;
 
       int state;
       int lastState;
+      boolean matchAllSuffix = false;
 
       // NOTE: suffix == 0 can only happen on the first term in a block, when
       // there is a term exactly matching a prefix in the index.  If we
@@ -523,6 +542,9 @@ final class IntersectTermsEnum extends BaseTermsEnum {
             // No match
             isSubBlock = popPushNext();
             continue nextTerm;
+          } else if (runAutomaton.isAccept(state) && runAutomaton.isMatchAllSuffix(state)) {
+            matchAllSuffix = true;
+            break;
           }
         }
       } else {
@@ -534,6 +556,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
         // Match!  Recurse:
         copyTerm();
         currentFrame = pushFrame(state);
+        currentFrame.matchAllSuffix = matchAllSuffix;
         currentTransition = currentFrame.transition;
         currentFrame.lastState = lastState;
       } else if (runAutomaton.isAccept(state)) {
