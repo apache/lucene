@@ -46,6 +46,9 @@ New Features
 
 * GITHUB#14300: Add support JDK 24 to the Panama Vectorization Provider. (Chris Hegarty)
 
+* GITHUB#13470: Added `TopDocs#rrf` to combine multiple TopDocs instances using
+  reciprocal rank fusion. (Haren Lin, Adrien Grand)
+
 Improvements
 ---------------------
 
