@@ -176,7 +176,7 @@ public class TermQuery extends Query {
         }
 
         @Override
-        public void setTopLevelScoringClause() throws IOException {
+        public void setTopLevelScoringClause() {
           topLevelScoringClause = true;
         }
       };

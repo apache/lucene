@@ -6,7 +6,7 @@ name: Prepare Lucene build
 inputs:
    java-version:
      required: false
-     default: 21
+     default: 23
      description: "The default JDK version to set up."
 
    java-distribution:

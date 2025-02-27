@@ -18,6 +18,7 @@ package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.stream.Collectors;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -30,6 +31,11 @@ import org.junit.runner.Result;
 public class TestSysoutsLimits extends WithNestedTests {
   public TestSysoutsLimits() {
     super(false);
+
+    // vectorization provider may print a warning during initialization,
+    // and we count sysout/syserr bytes exactly so bootstrap any
+    // initializations early.
+    VectorizationProvider.getInstance();
   }
 
   public static class ParentNestedTest extends LuceneTestCase

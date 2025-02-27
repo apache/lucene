@@ -16,6 +16,12 @@ API Changes
 
 * GITHUB#14284: Remove IOException from DocIdSet#iterator signature (Luca Cavanna)
 
+* GITHUB#14288: The unused public static DocIdSet#all method has been removed. (Luca Cavanna)
+
+* GITHUB#14290: Remove redundant bits method from DocIdSet. (Luca Cavanna)
+
+* GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -39,7 +45,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#14229: Bump minimum required Java version to 25
 
 ======================= Lucene 10.2.0 =======================
 
@@ -60,6 +67,11 @@ API Changes
 * GITHUB#14282: Remove redundant field argument from the DocIdSetBuilder constructor that takes a
   PointValues instance. (Luca Cavanna)
 
+* GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
+  (Luca Cavanna)
+
+* GITHUB#14292: The redundant DocIdSet#bits method has been deprecated. (Luca Cavanna)
+
 New Features
 ---------------------
 
@@ -72,6 +84,12 @@ New Features
 * GITHUB#14204: Added HistogramCollectorManager to efficiently compute a
   histogram of the distribution of the values of a field, for documents
   matching a given query. (Adrien Grand)
+
+* GITHUB#14278: Added `reuseChars` option to DictionaryCompoundWordTokenFilter, for use with
+  `longestMatch = true`. The value can be set to false to reduce the number of extracted subwords. For example,
+  if the word "schwein" is extracted, the sub-word "wein" is not extracted anymore. (Renato Haeberli)
+
+* GITHUB#14300: Add support JDK 24 to the Panama Vectorization Provider. (Chris Hegarty)
 
 Improvements
 ---------------------
