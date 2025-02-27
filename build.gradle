@@ -81,7 +81,11 @@ ext {
   minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
 
   // also change this in extractor tool: ExtractForeignAPI
-  vectorIncubatorJavaVersions = [ JavaVersion.VERSION_21, JavaVersion.VERSION_22, JavaVersion.VERSION_23 ] as Set
+  vectorIncubatorJavaVersions = [
+    JavaVersion.VERSION_21,
+    JavaVersion.VERSION_22,
+    JavaVersion.VERSION_23,
+    JavaVersion.VERSION_24 ] as Set
 
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
