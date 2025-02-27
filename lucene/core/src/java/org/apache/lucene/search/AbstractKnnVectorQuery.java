@@ -151,8 +151,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, timeLimitingKnnCollectorManager);
     if ((results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
             // We know that there are more than `k` available docs, if we didn't even get `k`
-            // something weird
-            // happened, and we need to drop to exact search
+            // something weird happened, and we need to drop to exact search
             && results.scoreDocs.length >= k)
         // Return partial results only when timeout is met
         || (queryTimeout != null && queryTimeout.shouldExit())) {
