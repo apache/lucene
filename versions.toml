@@ -21,7 +21,7 @@ junit = "4.13.1"
 # @keep Minimum gradle version to run the build
 minGradle = "8.10"
 # @keep This is the minimum required Java version.
-minJava = "21"
+minJava = "23"
 morfologik = "2.1.9"
 morfologik-ukrainian = "4.9.1"
 nekohtml = "1.9.17"
