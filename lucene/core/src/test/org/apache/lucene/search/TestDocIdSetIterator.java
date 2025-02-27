@@ -19,6 +19,8 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.IOException;
+
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -114,5 +116,15 @@ public class TestDocIdSetIterator extends LuceneTestCase {
         doc = expectedDisi.docID();
       }
     }
+  }
+
+  public void testPeekNonMatchingDocID() throws IOException {
+    DocIdSetIterator it = DocIdSetIterator.all(13);
+    assertEquals(13, it.peekNextNonMatchingDocID());
+    assertEquals(0, it.nextDoc());
+    assertEquals(13, it.peekNextNonMatchingDocID());
+    assertEquals(10, it.advance(10));
+    assertEquals(13, it.peekNextNonMatchingDocID());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(13));
   }
 }
