@@ -46,7 +46,7 @@ Bug Fixes
 Other
 ---------------------
 
-* GITHUB#99999: Bump minimum required Java version to 23
+* GITHUB#14229: Bump minimum required Java version to 25
 
 ======================= Lucene 10.2.0 =======================
 
