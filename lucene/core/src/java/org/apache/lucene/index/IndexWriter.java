@@ -4676,8 +4676,7 @@ public class IndexWriter
       deleteNewFiles(merge.info.files());
     }
 
-    try (@SuppressWarnings("unused")
-        Closeable finalizer = this::checkpoint) {
+    try (Closeable _ = this::checkpoint) {
       // Must close before checkpoint, otherwise IFD won't be
       // able to delete the held-open files from the merge
       // readers:
