@@ -234,12 +234,13 @@ public abstract class Weight implements SegmentCacheable {
 
     /** Sole constructor. */
     public DefaultBulkScorer(Scorer scorer) {
-      if (scorer == null) {
-        throw new NullPointerException();
-      }
-      this.scorer = scorer;
-      this.iterator = scorer.iterator();
+      this.scorer = Objects.requireNonNull(scorer);
       this.twoPhase = scorer.twoPhaseIterator();
+      if (twoPhase == null) {
+        this.iterator = scorer.iterator();
+      } else {
+        this.iterator = twoPhase.approximation();
+      }
     }
 
     @Override
@@ -251,35 +252,7 @@ public abstract class Weight implements SegmentCacheable {
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {
       collector.setScorer(scorer);
-      DocIdSetIterator scorerIterator = twoPhase == null ? iterator : twoPhase.approximation();
       DocIdSetIterator competitiveIterator = collector.competitiveIterator();
-
-      if (competitiveIterator == null
-          && scorerIterator.docID() == -1
-          && min == 0
-          && max == DocIdSetIterator.NO_MORE_DOCS) {
-        scoreAll(collector, scorerIterator, twoPhase, acceptDocs);
-        return DocIdSetIterator.NO_MORE_DOCS;
-      } else {
-        return scoreRange(
-            collector, scorerIterator, twoPhase, competitiveIterator, acceptDocs, min, max);
-      }
-    }
-
-    /**
-     * Specialized method to bulk-score a range of hits; we separate this from {@link #scoreAll} to
-     * help out hotspot. See <a
-     * href="https://issues.apache.org/jira/browse/LUCENE-5487">LUCENE-5487</a>
-     */
-    static int scoreRange(
-        LeafCollector collector,
-        DocIdSetIterator iterator,
-        TwoPhaseIterator twoPhase,
-        DocIdSetIterator competitiveIterator,
-        Bits acceptDocs,
-        int min,
-        int max)
-        throws IOException {
 
       if (competitiveIterator != null) {
         if (competitiveIterator.docID() > min) {
@@ -289,75 +262,106 @@ public abstract class Weight implements SegmentCacheable {
         }
       }
 
-      int doc = iterator.docID();
-      if (doc < min) {
-        if (doc == min - 1) {
-          doc = iterator.nextDoc();
+      if (iterator.docID() < min) {
+        if (iterator.docID() == min - 1) {
+          iterator.nextDoc();
         } else {
-          doc = iterator.advance(min);
+          iterator.advance(min);
         }
       }
 
+      // These various specializations help save some null checks in a hot loop, but as importantly
+      // if not more importantly, they help reduce the polymorphism of calls sites to nextDoc() and
+      // collect() because only a subset of collectors produce a competitive iterator, and the set
+      // of implementing classes for two-phase approximations is smaller than the set of doc id set
+      // iterator implementations.
       if (twoPhase == null && competitiveIterator == null) {
         // Optimize simple iterators with collectors that can't skip
-        while (doc < max) {
-          if (acceptDocs == null || acceptDocs.get(doc)) {
-            collector.collect(doc);
-          }
-          doc = iterator.nextDoc();
-        }
+        scoreIterator(collector, acceptDocs, iterator, max);
+      } else if (competitiveIterator == null) {
+        scoreTwoPhaseIterator(collector, acceptDocs, iterator, twoPhase, max);
+      } else if (twoPhase == null) {
+        scoreCompetitiveIterator(collector, acceptDocs, iterator, competitiveIterator, max);
       } else {
-        while (doc < max) {
-          if (competitiveIterator != null) {
-            assert competitiveIterator.docID() <= doc;
-            if (competitiveIterator.docID() < doc) {
-              competitiveIterator.advance(doc);
-            }
-            if (competitiveIterator.docID() != doc) {
-              doc = iterator.advance(competitiveIterator.docID());
-              continue;
-            }
-          }
-
-          if ((acceptDocs == null || acceptDocs.get(doc))
-              && (twoPhase == null || twoPhase.matches())) {
-            collector.collect(doc);
-          }
-          doc = iterator.nextDoc();
-        }
+        scoreTwoPhaseOrCompetitiveIterator(
+            collector, acceptDocs, iterator, twoPhase, competitiveIterator, max);
       }
 
-      return doc;
+      return iterator.docID();
     }
 
-    /**
-     * Specialized method to bulk-score all hits; we separate this from {@link #scoreRange} to help
-     * out hotspot. See <a href="https://issues.apache.org/jira/browse/LUCENE-5487">LUCENE-5487</a>
-     */
-    static void scoreAll(
+    private static void scoreIterator(
+        LeafCollector collector, Bits acceptDocs, DocIdSetIterator iterator, int max)
+        throws IOException {
+      for (int doc = iterator.docID(); doc < max; doc = iterator.nextDoc()) {
+        if (acceptDocs == null || acceptDocs.get(doc)) {
+          collector.collect(doc);
+        }
+      }
+    }
+
+    private static void scoreTwoPhaseIterator(
         LeafCollector collector,
+        Bits acceptDocs,
         DocIdSetIterator iterator,
         TwoPhaseIterator twoPhase,
-        Bits acceptDocs)
+        int max)
         throws IOException {
-      if (twoPhase == null) {
-        for (int doc = iterator.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = iterator.nextDoc()) {
-          if (acceptDocs == null || acceptDocs.get(doc)) {
-            collector.collect(doc);
+      for (int doc = iterator.docID(); doc < max; doc = iterator.nextDoc()) {
+        if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
+          collector.collect(doc);
+        }
+      }
+    }
+
+    private static void scoreCompetitiveIterator(
+        LeafCollector collector,
+        Bits acceptDocs,
+        DocIdSetIterator iterator,
+        DocIdSetIterator competitiveIterator,
+        int max)
+        throws IOException {
+      for (int doc = iterator.docID(); doc < max; ) {
+        assert competitiveIterator.docID() <= doc; // invariant
+        if (competitiveIterator.docID() < doc) {
+          int competitiveNext = competitiveIterator.advance(doc);
+          if (competitiveNext != doc) {
+            doc = iterator.advance(competitiveNext);
+            continue;
           }
         }
-      } else {
-        // The scorer has an approximation, so run the approximation first, then check acceptDocs,
-        // then confirm
-        for (int doc = iterator.nextDoc();
-            doc != DocIdSetIterator.NO_MORE_DOCS;
-            doc = iterator.nextDoc()) {
-          if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
-            collector.collect(doc);
+
+        if ((acceptDocs == null || acceptDocs.get(doc))) {
+          collector.collect(doc);
+        }
+
+        doc = iterator.nextDoc();
+      }
+    }
+
+    private static void scoreTwoPhaseOrCompetitiveIterator(
+        LeafCollector collector,
+        Bits acceptDocs,
+        DocIdSetIterator iterator,
+        TwoPhaseIterator twoPhase,
+        DocIdSetIterator competitiveIterator,
+        int max)
+        throws IOException {
+      for (int doc = iterator.docID(); doc < max; ) {
+        assert competitiveIterator.docID() <= doc; // invariant
+        if (competitiveIterator.docID() < doc) {
+          int competitiveNext = competitiveIterator.advance(doc);
+          if (competitiveNext != doc) {
+            doc = iterator.advance(competitiveNext);
+            continue;
           }
         }
+
+        if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
+          collector.collect(doc);
+        }
+
+        doc = iterator.nextDoc();
       }
     }
   }
