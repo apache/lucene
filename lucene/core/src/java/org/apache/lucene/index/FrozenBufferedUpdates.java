@@ -86,7 +86,7 @@ final class FrozenBufferedUpdates {
         : "segment private packet should only have del queries";
 
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
-    updates.deleteTerms.forEachOrdered((term, doc) -> builder.add(term));
+    updates.deleteTerms.forEachOrdered((term, _) -> builder.add(term));
     deleteTerms = builder.finish();
 
     deleteQueries = new Query[updates.deleteQueries.size()];

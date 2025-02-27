@@ -152,7 +152,7 @@ public final class AddDocumentDialogFactory
     this.indexOptionsDialogFactory = IndexOptionsDialogFactory.getInstance();
     this.helpDialogFactory = HelpDialogFactory.getInstance();
     this.newFieldList =
-        IntStream.range(0, ROW_COUNT).mapToObj(i -> NewField.newInstance()).toList();
+        IntStream.range(0, ROW_COUNT).mapToObj(_ -> NewField.newInstance()).toList();
 
     operatorRegistry.register(AddDocumentDialogOperator.class, this);
     indexHandler.addObserver(new Observer());
@@ -168,7 +168,7 @@ public final class AddDocumentDialogFactory
 
     closeBtn.setText(MessageUtils.getLocalizedMessage("button.cancel"));
     closeBtn.setMargin(new Insets(3, 3, 3, 3));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
 
     infoTA.setRows(3);
     infoTA.setLineWrap(true);
@@ -260,8 +260,7 @@ public final class AddDocumentDialogFactory
         80);
     fieldsTable.setShowGrid(true);
     JComboBox<Class<? extends IndexableField>> typesCombo = new JComboBox<>(presetFieldClasses);
-    typesCombo.setRenderer(
-        (list, value, index, isSelected, cellHasFocus) -> new JLabel(value.getSimpleName()));
+    typesCombo.setRenderer((_, value, _, _, _) -> new JLabel(value.getSimpleName()));
     fieldsTable
         .getColumnModel()
         .getColumn(FieldsTableModel.Column.TYPE.getIndex())
@@ -321,7 +320,7 @@ public final class AddDocumentDialogFactory
     JComboBox<String> typeCombo = new JComboBox<>(typeList);
     typeCombo.setSelectedItem(typeList[0]);
     typeCombo.addActionListener(
-        e -> {
+        _ -> {
           String selected = (String) typeCombo.getSelectedItem();
           descTA.setText(MessageUtils.getLocalizedMessage("help.fieldtype." + selected));
         });

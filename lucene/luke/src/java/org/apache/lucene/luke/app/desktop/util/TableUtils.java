@@ -83,7 +83,7 @@ public class TableUtils {
   public static <T extends TableColumnInfo> TreeMap<Integer, T> columnMap(T[] columns) {
     return Arrays.stream(columns)
         .collect(
-            Collectors.toMap(T::getIndex, UnaryOperator.identity(), (e1, e2) -> e1, TreeMap::new));
+            Collectors.toMap(T::getIndex, UnaryOperator.identity(), (e1, _) -> e1, TreeMap::new));
   }
 
   private TableUtils() {}

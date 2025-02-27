@@ -342,7 +342,7 @@ public class TestPassageSelector extends LuceneTestCase {
           p -> {
             assertNotEquals(p.from, p.to);
             p.markers.forEach(
-                r -> {
+                _ -> {
                   assertNotEquals(p.from, p.to);
                 });
           });
