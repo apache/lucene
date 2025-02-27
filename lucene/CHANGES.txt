@@ -46,7 +46,7 @@ Bug Fixes
 Other
 ---------------------
 
-* GITHUB#99999: Bump minimum required Java version to 23
+* GITHUB#14229: Bump minimum required Java version to 25
 
 ======================= Lucene 10.2.0 =======================
 
@@ -90,6 +90,9 @@ New Features
   if the word "schwein" is extracted, the sub-word "wein" is not extracted anymore. (Renato Haeberli)
 
 * GITHUB#14300: Add support JDK 24 to the Panama Vectorization Provider. (Chris Hegarty)
+
+* GITHUB#13470: Added `TopDocs#rrf` to combine multiple TopDocs instances using
+  reciprocal rank fusion. (Haren Lin, Adrien Grand)
 
 Improvements
 ---------------------
@@ -136,6 +139,10 @@ Optimizations
 * GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
   conjunctions. (Adrien Grand)
 
+* GITHUB#14293: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up
+  intersection of dense queries with live docs and/or collectors' competitive
+  iterators. (Adrien Grand)
+
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
 
@@ -170,6 +177,11 @@ Bug Fixes
   (Chris Hegarty)
 
 * GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
+
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
+  LogByteSizeMergePolicy. (Adrien Grand)
 
 Other
 ---------------------
