@@ -18,7 +18,7 @@ package org.apache.lucene.search;
 
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.codecs.lucene101.Lucene101PostingsReader;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -28,7 +28,7 @@ import org.apache.lucene.util.PriorityQueue;
 class ScorerUtil {
 
   private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS =
-      Lucene101PostingsReader.BlockPostingsEnum.class;
+      Lucene101PostingsFormat.getImpactsEnumImpl();
   private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS =
       new FixedBitSet(1).asReadOnlyBits().getClass();
 

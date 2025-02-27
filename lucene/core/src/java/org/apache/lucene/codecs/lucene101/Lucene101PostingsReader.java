@@ -293,8 +293,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     return res;
   }
 
-  // public for access from ScorerUtil
-  public final class BlockPostingsEnum extends ImpactsEnum {
+  final class BlockPostingsEnum extends ImpactsEnum {
 
     private enum DeltaEncoding {
       /**
@@ -425,7 +424,8 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     // true if we shallow-advanced to a new block that we have not decoded yet
     private boolean needsRefilling;
 
-    BlockPostingsEnum(FieldInfo fieldInfo, int flags, boolean needsImpacts) throws IOException {
+    public BlockPostingsEnum(FieldInfo fieldInfo, int flags, boolean needsImpacts)
+        throws IOException {
       options = fieldInfo.getIndexOptions();
       indexHasFreq = options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
       indexHasPos = options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
