@@ -32,9 +32,12 @@ import com.nvidia.cuvs.CuVSResources;
 import com.nvidia.cuvs.HnswIndex;
 import com.nvidia.cuvs.HnswIndexParams;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -276,7 +279,15 @@ public class CuVSVectorsReader extends KnnVectorsReader {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(flatVectorsReader, cuvsIndexInput);
+    var closeableStream =
+        Stream.concat(
+            Stream.of(flatVectorsReader, cuvsIndexInput),
+            stream(cuvsIndices.values().iterator()).map(cursor -> cursor.value));
+    IOUtils.close(closeableStream::iterator);
+  }
+
+  static <T> Stream<T> stream(Iterator<T> iterator) {
+    return StreamSupport.stream(((Iterable<T>) () -> iterator).spliterator(), false);
   }
 
   @Override

@@ -16,13 +16,17 @@
  */
 package org.apache.lucene.sandbox.vectorsearch;
 
+import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsReader.handleThrowable;
+
 import com.nvidia.cuvs.BruteForceIndex;
 import com.nvidia.cuvs.CagraIndex;
 import com.nvidia.cuvs.HnswIndex;
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Objects;
 
 /** This class holds references to the actual CuVS Index (Cagra, Brute force, etc.) */
-public class CuVSIndex {
+public class CuVSIndex implements Closeable {
   private final CagraIndex cagraIndex;
   private final BruteForceIndex bruteforceIndex;
   private final HnswIndex hnswIndex;
@@ -30,6 +34,7 @@ public class CuVSIndex {
   private int maxDocs;
   private String fieldName;
   private String segmentName;
+  private volatile boolean closed;
 
   public CuVSIndex(
       String segmentName,
@@ -55,14 +60,17 @@ public class CuVSIndex {
   }
 
   public CagraIndex getCagraIndex() {
+    ensureOpen();
     return cagraIndex;
   }
 
   public BruteForceIndex getBruteforceIndex() {
+    ensureOpen();
     return bruteforceIndex;
   }
 
   public HnswIndex getHNSWIndex() {
+    ensureOpen();
     return hnswIndex;
   }
 
@@ -76,5 +84,36 @@ public class CuVSIndex {
 
   public int getMaxDocs() {
     return maxDocs;
+  }
+
+  private void ensureOpen() {
+    if (closed) {
+      throw new IllegalStateException("index is closed");
+    }
+  }
+
+  @Override
+  public void close() throws IOException {
+    if (closed) {
+      return;
+    }
+    closed = true;
+    destroyIndices();
+  }
+
+  private void destroyIndices() throws IOException {
+    try {
+      if (cagraIndex != null) {
+        cagraIndex.destroyIndex();
+      }
+      if (bruteforceIndex != null) {
+        bruteforceIndex.destroyIndex();
+      }
+      if (hnswIndex != null) {
+        hnswIndex.destroyIndex();
+      }
+    } catch (Throwable t) {
+      handleThrowable(t);
+    }
   }
 }

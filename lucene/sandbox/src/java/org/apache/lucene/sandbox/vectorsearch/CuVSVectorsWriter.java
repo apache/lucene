@@ -23,6 +23,7 @@ import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_INDE
 import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_META_CODEC_EXT;
 import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.CUVS_META_CODEC_NAME;
 import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsFormat.VERSION_CURRENT;
+import static org.apache.lucene.sandbox.vectorsearch.CuVSVectorsReader.handleThrowable;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
 
@@ -431,15 +432,6 @@ public class CuVSVectorsWriter extends KnnVectorsWriter {
       return;
     }
     handleThrowable(t);
-  }
-
-  static void handleThrowable(Throwable t) throws IOException {
-    switch (t) {
-      case IOException ioe -> throw ioe;
-      case Error error -> throw error;
-      case RuntimeException re -> throw re;
-      case null, default -> throw new RuntimeException("UNEXPECTED: exception type", t);
-    }
   }
 
   /** Copies the vector values into dst. Returns the actual number of vectors copied. */
