@@ -350,6 +350,41 @@
  *
  * <a id="customQueriesExpert"></a>
  *
+ * <h3>Multi-stage retrieval pipelines</h3>
+ *
+ * <p>The above explains how to influence the score when evaluating all matches of the query. This
+ * is expensive by design since it applies to all matches of the query, which could be millions. In
+ * order to apply more sophisticated ranking logic, a good approach consists of having a retrieval
+ * pipeline that runs a simple candidate retrieval stage that retrieves e.g. 1,000 hits, followed by
+ * a more sophisticated reranking stage that reranks these 1,000 hits to select the best 100 hits
+ * among them. Since the number of hits that this retrieval stage needs to operate on is bounded, it
+ * allows it to be more sophisticated.
+ *
+ * <p>Lucene exposes reranking via the {@link org.apache.lucene.search.Rescorer} abstract class,
+ * which has two main sub-classes:
+ *
+ * <ul>
+ *   <li>{@link org.apache.lucene.search.QueryRescorer}, to rescore using a query. For instance, the
+ *       query string could be parsed as phrase query using {@link
+ *       org.apache.lucene.util.QueryBuilder#createPhraseQuery} instead of a boolean query in order
+ *       to help boost hits which also match the query string as a phrase.
+ *   <li>{@link org.apache.lucene.search.SortRescorer}, to rescore using a {@link
+ *       org.apache.lucene.search.Sort}. For instance, the best 1,000 hits by BM25 score may be
+ *       sorted by descending popularity in order to compute the final top-100 hits.
+ * </ul>
+ *
+ * <h3>Top hits fusion</h3>
+ *
+ * <p>Sometimes, multiple retrieval pipelines may make sense, having their own pros and cons. A
+ * typical example would be a lexical retrieval pipeline, matching exactly what the user requested,
+ * and a semantic retrieval pipeline, matching documents that are closest to the user's query from a
+ * semantic perspective. Combining scores is hazardous as different retrieval pipelines often
+ * produce scores that not only have different ranges, but also different distributions within this
+ * range. A robust way of combining multiple retrieval pipelines consists of combining the top hits
+ * that they produce through their ranks rather than through their scores using reciprocal rank
+ * fusion. This is exposed via {@link org.apache.lucene.search.TopDocs#rrf(int topN, int k,
+ * TopDocs[] hits)}.
+ *
  * <h2>Custom Queries &mdash; Expert Level</h2>
  *
  * <p>Custom queries are an expert level task, so tread carefully and be prepared to share your code
