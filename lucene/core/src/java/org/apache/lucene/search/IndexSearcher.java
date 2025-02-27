@@ -883,7 +883,9 @@ public class IndexSearcher {
         rewrittenQuery = query.rewrite(this)) {
       query = rewrittenQuery;
     }
-    query.visit(getNumClausesCheckVisitor());
+    if (maxClauseCount > -1) {
+      query.visit(getNumClausesCheckVisitor());
+    }
     return query;
   }
 
