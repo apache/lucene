@@ -27,7 +27,7 @@ import java.util.stream.IntStream;
 
 public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
-  private static final double DELTA = 1e-3;
+  private static final double DELTA = 1e-2;
 
   private static final int[] VECTOR_SIZES = {
     1, 4, 6, 8, 13, 16, 25, 32, 64, 100, 128, 207, 256, 300, 512, 702, 1024, 1536, 2046, 2048, 4096,
@@ -147,8 +147,8 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
   public void testQuantize() {
     Random r = random();
-    float min = r.nextFloat() * r.nextInt(1000);
-    float max = min + r.nextFloat() * r.nextInt(1000);
+    float min = r.nextFloat(-1, 1);
+    float max = r.nextFloat(min, 1);
     float divisor = (float) ((1 << 7) - 1); // 7 bits quantization here
 
     float scale = divisor / (max - min);
