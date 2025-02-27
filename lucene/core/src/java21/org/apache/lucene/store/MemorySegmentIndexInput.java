@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOConsumer;
 
@@ -336,8 +337,6 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
     ensureOpen();
 
-    Objects.checkFromIndexSize(offset, length, length());
-
     if (BitUtil.isZeroOrPowerOfTwo(consecutivePrefetchHitCount++) == false) {
       // We've had enough consecutive hits on the page cache that this number is neither zero nor a
       // power of two. There is a good chance that a good chunk of this index input is cached in
@@ -380,8 +379,6 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
     ensureOpen();
 
-    Objects.checkFromIndexSize(offset, length, length());
-
     final NativeAccess nativeAccess = NATIVE_ACCESS.get();
 
     try {
@@ -422,12 +419,20 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
   @Override
   public Optional<Boolean> isLoaded() {
+    boolean isLoaded = true;
     for (MemorySegment seg : segments) {
       if (seg.isLoaded() == false) {
-        return Optional.of(Boolean.FALSE);
+        isLoaded = false;
+        break;
       }
     }
-    return Optional.of(Boolean.TRUE);
+
+    if (Constants.WINDOWS && isLoaded == false) {
+      // see https://github.com/apache/lucene/issues/14050
+      return Optional.empty();
+    }
+
+    return Optional.of(isLoaded);
   }
 
   @Override
@@ -592,7 +597,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
    */
   @Override
   public final MemorySegmentIndexInput slice(String sliceDescription, long offset, long length) {
-    if (offset < 0 || length < 0 || offset + length > this.length) {
+    if ((length | offset) < 0 || length > this.length - offset) {
       throw new IllegalArgumentException(
           "slice() "
               + sliceDescription
@@ -809,6 +814,12 @@ abstract class MemorySegmentIndexInput extends IndexInput
         throw handlePositionalIOOBE(e, "segmentSliceOrNull", pos);
       }
     }
+
+    @Override
+    public void prefetch(long offset, long length) throws IOException {
+      Objects.checkFromIndexSize(offset, length, this.length);
+      super.prefetch(offset, length);
+    }
   }
 
   /** This class adds offset support to MemorySegmentIndexInput, which is needed for slices. */
@@ -893,6 +904,12 @@ abstract class MemorySegmentIndexInput extends IndexInput
     @Override
     MemorySegmentIndexInput buildSlice(String sliceDescription, long ofs, long length) {
       return super.buildSlice(sliceDescription, this.offset + ofs, length);
+    }
+
+    @Override
+    public void prefetch(long offset, long length) throws IOException {
+      Objects.checkFromIndexSize(offset, length, this.length);
+      super.prefetch(this.offset + offset, length);
     }
   }
 }

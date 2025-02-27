@@ -50,7 +50,8 @@ public class SpatialDocMaker extends DocMaker {
   public static final String SPATIAL_FIELD = "spatial";
 
   // cache spatialStrategy by round number
-  private static IntObjectHashMap<SpatialStrategy> spatialStrategyCache = new IntObjectHashMap<>();
+  private static final IntObjectHashMap<SpatialStrategy> spatialStrategyCache =
+      new IntObjectHashMap<>();
 
   private SpatialStrategy strategy;
   private ShapeConverter shapeConverter;
@@ -172,8 +173,7 @@ public class SpatialDocMaker extends DocMaker {
     return new ShapeConverter() {
       @Override
       public Shape convert(Shape shape) {
-        if (shape instanceof Point && (radiusDegrees != 0.0 || plusMinus != 0.0)) {
-          Point point = (Point) shape;
+        if (shape instanceof Point point && (radiusDegrees != 0.0 || plusMinus != 0.0)) {
           double radius = radiusDegrees;
           if (plusMinus > 0.0) {
             Random random =

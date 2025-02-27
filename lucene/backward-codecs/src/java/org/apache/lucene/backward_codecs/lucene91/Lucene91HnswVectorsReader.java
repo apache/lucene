@@ -493,6 +493,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final int entryNode;
     final int size;
     final long bytesForConns;
+    final int maxConn;
 
     int arcCount;
     int arcUpTo;
@@ -506,6 +507,17 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
       this.bytesForConns = Math.multiplyExact(Math.addExact(entry.maxConn, 1L), Integer.BYTES);
+      this.maxConn = entry.maxConn;
+    }
+
+    @Override
+    public int maxConn() {
+      return maxConn;
+    }
+
+    @Override
+    public int neighborCount() {
+      return arcCount;
     }
 
     @Override

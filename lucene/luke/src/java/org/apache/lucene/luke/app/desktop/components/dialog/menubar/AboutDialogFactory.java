@@ -54,6 +54,7 @@ import org.apache.lucene.util.Version;
 /** Factory of about dialog */
 public final class AboutDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static AboutDialogFactory instance;
 
   private final Preferences prefs;

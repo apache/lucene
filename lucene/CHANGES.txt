@@ -9,26 +9,180 @@ API Changes
 ---------------------
 * GITHUB#11023: Removing deprecated parameters from CheckIndex. (Jakub Slowinski)
 
+* GITHUB#14165: TieredMergePolicy's maxMergeAtOnce parameter was removed. (Adrien Grand)
+
+* GITHUB#14160: Adjusts the default HNSW search behavior so that filter optimized search is enabled
+  when 60% or less of vectors pass the pre-filter. (Ben Chaplin, Ben Trent)
+
+* GITHUB#14284: Remove IOException from DocIdSet#iterator signature (Luca Cavanna)
+
+* GITHUB#14288: The unused public static DocIdSet#all method has been removed. (Luca Cavanna)
+
+* GITHUB#14290: Remove redundant bits method from DocIdSet. (Luca Cavanna)
+
+* GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
+
 New Features
 ---------------------
-(No changes)
+* GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 Improvements
 ---------------------
 
-* GITHUB#266: TieredMergePolicy's maxMergeAtOnce default value was changed from 10 to 30. (Adrien Grand)
+(No changes)
 
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
+* GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
+  when all values are identical. (Mike Sokolov)
+
+* GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
 Other
 ---------------------
 (No changes)
+
+======================= Lucene 10.2.0 =======================
+
+API Changes
+---------------------
+* GITHUB#14069: Added DocIdSetIterator#intoBitSet API to let implementations
+  optimize loading doc IDs into a bit set. (Adrien Grand)
+
+* GITHUB#14134: Added Bits#applyMask API to help apply live docs as a mask on a
+  bit set of matches. (Adrien Grand)
+
+* GITHUB#14209: Deprecate Operations.union(Automaton,Automaton) and
+  concatenate(Automaton,Automaton) in favor of the methods taking List.  (Robert Muir)
+
+* GITHUB#14236: CombinedFieldQuery moved from lucene-sandbox to lucene-core.
+  (Adrien Grand)
+
+* GITHUB#14282: Remove redundant field argument from the DocIdSetBuilder constructor that takes a
+  PointValues instance. (Luca Cavanna)
+
+* GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
+  (Luca Cavanna)
+
+* GITHUB#14292: The redundant DocIdSet#bits method has been deprecated. (Luca Cavanna)
+
+New Features
+---------------------
+
+* GITHUB#14084, GITHUB#13635, GITHUB#13634, GITHUB#14170: Adds new `SeededKnnVectorQuery` query.
+  These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
+  the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
+
+* GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
+
+* GITHUB#14204: Added HistogramCollectorManager to efficiently compute a
+  histogram of the distribution of the values of a field, for documents
+  matching a given query. (Adrien Grand)
+
+* GITHUB#14278: Added `reuseChars` option to DictionaryCompoundWordTokenFilter, for use with
+  `longestMatch = true`. The value can be set to false to reduce the number of extracted subwords. For example,
+  if the word "schwein" is extracted, the sub-word "wein" is not extracted anymore. (Renato Haeberli)
+
+* GITHUB#14300: Add support JDK 24 to the Panama Vectorization Provider. (Chris Hegarty)
+
+Improvements
+---------------------
+
+* GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
+  (Robert Muir)
+* GITHUB#13984: Add HNSW graph checks and stats to CheckIndex
+
+* GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
+
+* GITHUB#14138: Implement IntersectVisitor#visit(IntsRef) in  many of the current implementations and add
+  BulkAdder#add(IntsRef) method. They should provide better performance due to less virtual method calls and
+  more efficient bulk processing. (Ignacio Vera)
+
+* GITHUB#14107, GITHUB#14124, GITHUB#14103: Optimize DirectIOIndexInput; add
+  individual and bulk data retrieval overloads; avoid double buffering with
+  slices. (Chris Hegarty)
+
+* GITHUB#14166: Log(ByteSize|Doc)MergePolicy now allow merging more than
+  mergeFactor segments together when the merge is below the min merge size.
+  (Adrien Grand)
+
+* GITHUB#14154: Add UnwrappingReuseStrategy for AnalyzerWrapper that consults
+  the wrapped analyzer's strategy to decide if components can be reused or need
+  to be updated. (Mayya Sharipova)
+
+* GITHUB#14192: Added support for RegExp to handle case insensitive matching
+  across the full set of Unicode characters. (John Wagster)
+
+* GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
+  improved to tolerate more instances of this problem.  (Robert Muir)
+
+
+* GITHUB#14238: Improve test coverage of Dynamic Range Faceting. (John Houser)
+
+* GITHUB#14213: Allowing indexing stored-only StoredField directly from DataInput. (Tim Brooks)
+
+
+Optimizations
+---------------------
+
+* GITHUB#14052: Speed up DisjunctionDISIApproximation#advance. (Adrien Grand)
+
+* GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
+  conjunctions. (Adrien Grand)
+
+* GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
+  (Adrien Grand)
+
+* GITHUB#14169: Optimize ContextQuery with big number of contexts. (Mayya Sharipova)
+
+* GITHUB#14181: Add updateable random scorer interface for knn vector index building. This allows
+  for fewer objects to be created during indexing and simplifies internally used iterfaces.
+  (Ben Trent)
+
+* GITHUB#14160: Adds new filtered HNSW search heuristic based on ACORN-1 algorithm. This improves runtime of filtered HNSW
+  searches as much as 5x. By default this new heuristic isn't used, but is available via the new experimental
+  KnnSearchStrategy interface in knn queries (Ben Chaplin, Ben Trent)
+
+* GITHUB#14193: Add Automata.makeCharSet() and makeCharClass() that return minimal DFA
+  for lists of characters and ranges. Use them in RegExp parser.  (Robert Muir)
+
+* GITHUB#14176: Reduce virtual call when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
+
+* GITHUB#14269: Implement #intoBitset for DocIdSetIterator#all and DocIdSetIterator#range. (Guo Feng)
+
+* GITHUB#14272: Use DocIdSetIterator#range for continuous-id BKD leaves. (Guo Feng)
+
+Bug Fixes
+---------------------
+
+* GITHUB#14109: prefetch may select the wrong memory segment for
+  multi-segment slices. (Chris Hegarty)
+
+* GITHUB#14123: SortingCodecReader NPE when segment has no (points, vectors, etc...) (Mike Sokolov)
+
+* GITHUB#14126: Avoid overflow in index input slices invariant checks
+  (Chris Hegarty)
+
+* GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
+
+Other
+---------------------
+
+* GITHUB#14081: Fix urls describing why NIOFS is not recommended for Windows (Marcel Yeonghyeon Ko)
+
+* GITHUB#14116 Use CDL to block threads to avoid flaky tests. (Ao Li)
+
+* GITHUB#14091: Cover all DataType. (Lu Xugang)
+
+* GITHUB#14130: Upgrade OpenNLP from 2.3.2 to 2.5.3, which transitively upgrades Slf4j
+  from 1.7.36 to 2.0.16. (Michael Froh)
+
+* GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
 
 ======================= Lucene 10.1.0 =======================
 
@@ -130,6 +284,9 @@ Optimizations
 * GITHUB#14032: Speed up PostingsEnum when positions are requested.
   (Adrien Grand)
 
+* GITHUB#14040: Specialized top-level DisjunctionMaxQuery evaluation when the
+  tie break multiplier is 0. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#13832: Fixed an issue where the DefaultPassageFormatter.format method did not format passages as intended
@@ -142,6 +299,11 @@ Bug Fixes
   in valid polygons. (Ignacio Vera)
 * GITHUB#13990: Added filter to the toString() method of Knn[Float|Byte]VectorQuery
   and DiversifyingChildren[Float|Byte]KnnVectorQuery. (Viswanath Kuchibhotla)
+* GITHUB#13819: Prevent flattening of ordered and unordered interval sources (Jim Ferenczi)
+* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
+  their corresponding ordinals. (Paul King)
+* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
+* GITHUB#14271: Stop closing index input when loading NRTSuggester (Luca Cavanna)
 
 Build
 ---------------------
@@ -151,16 +313,6 @@ Build
 Other
 ---------------------
 * GITHUB#13982: Remove duplicate test code. (Lu Xugang)
-
-======================== Lucene 10.0.1 =======================
-
-Bug Fixes
----------------------
-
-* GITHUB#14008: Counts provided by taxonomy facets in addition to another aggregation are now returned together with
-  their corresponding ordinals. (Paul King)
-
-* GITHUB#14027: Make SegmentInfos#readCommit(Directory, String, int) public (Luca Cavanna)
 
 ======================= Lucene 10.0.0 =======================
 

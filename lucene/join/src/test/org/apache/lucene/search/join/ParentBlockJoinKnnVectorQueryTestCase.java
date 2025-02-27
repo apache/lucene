@@ -50,6 +50,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
@@ -185,7 +186,10 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     try (Directory d = newDirectory()) {
       try (IndexWriter w =
           new IndexWriter(
-              d, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
+              d,
+              newIndexWriterConfig()
+                  .setCodec(TestUtil.getDefaultCodec())
+                  .setMergePolicy(newMergePolicy(random(), false)))) {
         List<Document> toAdd = new ArrayList<>();
         for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
@@ -240,7 +244,8 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
      * randomly fail to find one).
      */
     try (Directory d = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+      try (IndexWriter w =
+          new IndexWriter(d, new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec()))) {
         int r = 0;
         for (int i = 0; i < 5; i++) {
           for (int j = 0; j < 5; j++) {

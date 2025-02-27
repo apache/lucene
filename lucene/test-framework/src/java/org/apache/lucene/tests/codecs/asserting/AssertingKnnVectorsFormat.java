@@ -62,6 +62,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     return KnnVectorsFormat.DEFAULT_MAX_DIMENSIONS;
   }
 
+  @Override
+  public String toString() {
+    return "AssertingKnnVectorsFormat{" + "delegate=" + delegate + '}';
+  }
+
   static class AssertingKnnVectorsWriter extends KnnVectorsWriter {
     final KnnVectorsWriter delegate;
 
@@ -223,7 +228,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public HnswGraph getGraph(String field) throws IOException {
-      return ((HnswGraphProvider) delegate).getGraph(field);
+      if (delegate instanceof HnswGraphProvider) {
+        return ((HnswGraphProvider) delegate).getGraph(field);
+      } else {
+        return null;
+      }
     }
   }
 }

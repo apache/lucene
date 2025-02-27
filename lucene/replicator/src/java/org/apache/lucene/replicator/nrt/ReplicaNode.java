@@ -869,7 +869,7 @@ public abstract class ReplicaNode extends Node {
     if (Arrays.equals(destMetaData.header(), srcMetaData.header()) == false
         || Arrays.equals(destMetaData.footer(), srcMetaData.footer()) == false) {
       // Segment name was reused!  This is rare but possible and otherwise devastating:
-      if (Node.VERBOSE_FILES) {
+      if (isVerboseFiles()) {
         message("file " + fileName + ": will copy [header/footer is different]");
       }
       return false;

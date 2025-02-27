@@ -64,7 +64,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
       allScorers[i++] = w;
     }
     this.cost = cost;
-    essentialQueue = new DisiPriorityQueue(allScorers.length);
+    essentialQueue = DisiPriorityQueue.ofMaxSize(allScorers.length);
     maxScoreSums = new double[allScorers.length];
   }
 
@@ -170,8 +170,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     DisiWrapper top = essentialQueue.top();
     assert top.doc < max;
-    if (top.doc < filter.doc) {
+    while (top.doc < filter.doc) {
       top.doc = top.approximation.advance(filter.doc);
+      top = essentialQueue.updateTop();
     }
 
     // Only score an inner window, after that we'll check if the min competitive score has increased

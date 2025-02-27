@@ -63,6 +63,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
@@ -770,6 +771,12 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
             slice.slice("slice3sub", 1, len / 2);
           });
 
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> {
+            i.slice("slice4", Long.MAX_VALUE - 1, 10);
+          });
+
       i.close();
     }
   }
@@ -1199,6 +1206,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         slice1.seek(TestUtil.nextLong(random(), 0, slice1.length()));
         for (int j = 0; j < slice1.length(); j += 16) {
           IndexInput slice2 = slice1.slice("slice2", j, num - i - j);
+          if (random().nextBoolean()) {
+            slice2 = slice2.clone(); // clone shouldn't impact slice data
+          }
           assertEquals(0, slice2.getFilePointer());
           assertEquals(num - i - j, slice2.length());
           byte[] data = new byte[num];
@@ -1667,7 +1677,10 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           in = orig.slice("slice", startOffset, totalLength - startOffset);
         }
         var loaded = in.isLoaded();
-        if (FilterDirectory.unwrap(dir) instanceof MMapDirectory
+
+        if (Constants.WINDOWS) {
+          // On Windows, we temporarily don't care until this is fixed: #14050
+        } else if (FilterDirectory.unwrap(dir) instanceof MMapDirectory
             // direct IO wraps MMap but does not support isLoaded
             && !(dir.getClass().getName().contains("DirectIO"))) {
           assertTrue(loaded.isPresent());

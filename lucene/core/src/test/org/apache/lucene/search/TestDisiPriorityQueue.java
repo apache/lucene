@@ -21,10 +21,47 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PrimitiveIterator.OfInt;
 import java.util.Random;
+import java.util.function.IntSupplier;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDisiPriorityQueue extends LuceneTestCase {
+
+  public void testDisiPriorityQueue2() throws IOException {
+    Random r = random();
+    DisiWrapper w1 = wrapper(randomDisi(r));
+    DisiWrapper w2 = wrapper(randomDisi(r));
+    DisiWrapper w3 = wrapper(randomDisi(r));
+
+    DisiPriorityQueue pq = DisiPriorityQueue.ofMaxSize(2);
+    w1.doc = 1;
+    w2.doc = 0;
+    assertNull(pq.top());
+    assertEquals(0, pq.size());
+    assertSame(w1, pq.add(w1));
+    assertSame(w1, pq.top());
+    assertEquals(1, pq.size());
+    assertSame(w2, pq.add(w2));
+    assertSame(w2, pq.top());
+    assertEquals(2, pq.size());
+    expectThrows(IllegalStateException.class, () -> pq.add(w3));
+
+    w2.doc = 1;
+    assertSame(w2, pq.updateTop());
+    DisiWrapper topList = pq.topList();
+    assertSame(w1, topList);
+    assertSame(w2, topList.next);
+    assertNull(topList.next.next);
+
+    w2.doc = 2;
+    assertSame(w1, pq.updateTop());
+    topList = pq.topList();
+    assertSame(w1, topList);
+    assertNull(topList.next);
+
+    assertSame(w1, pq.pop());
+    assertSame(w2, pq.top());
+  }
 
   public void testRandom() throws Exception {
     Random r = random();
@@ -37,7 +74,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
       all[i] = w;
     }
 
-    DisiPriorityQueue pq = new DisiPriorityQueue(size);
+    DisiPriorityQueue pq = DisiPriorityQueue.ofMaxSize(size);
     if (r.nextBoolean()) {
       for (DisiWrapper w : all) {
         pq.add(w);
@@ -110,12 +147,20 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
   }
 
   private static class DummyQuery extends Query {
-    private static int COUNTER = 0;
+    private static final IntSupplier COUNTER =
+        new IntSupplier() {
+          int counter = 0;
+
+          @Override
+          public int getAsInt() {
+            return counter++;
+          }
+        };
     private final int id;
     private final DocIdSetIterator disi;
 
     DummyQuery(DocIdSetIterator disi) {
-      id = COUNTER++;
+      id = COUNTER.getAsInt();
       this.disi = disi;
     }
 

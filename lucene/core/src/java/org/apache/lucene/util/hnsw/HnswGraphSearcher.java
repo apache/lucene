@@ -22,6 +22,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopKnnCollector;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -31,14 +32,14 @@ import org.apache.lucene.util.SparseFixedBitSet;
  * Searches an HNSW graph to find nearest neighbors to a query vector. For more background on the
  * search algorithm, see {@link HnswGraph}.
  */
-public class HnswGraphSearcher {
+public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   /**
    * Scratch data structures that are used in each {@link #searchLevel} call. These can be expensive
    * to allocate, so they're cleared and reused across calls.
    */
-  private final NeighborQueue candidates;
+  protected final NeighborQueue candidates;
 
-  private BitSet visited;
+  protected BitSet visited;
 
   /**
    * Creates a new graph searcher.
@@ -52,10 +53,10 @@ public class HnswGraphSearcher {
   }
 
   /**
-   * Searches HNSW graph for the nearest neighbors of a query vector.
+   * See {@link HnswGraphSearcher#search(RandomVectorScorer, KnnCollector, HnswGraph, Bits, int)}
    *
    * @param scorer the scorer to compare the query with the nodes
-   * @param knnCollector a collector of top knn results to be returned
+   * @param knnCollector a hnsw knn collector of top knn results to be returned
    * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
    *     graph.
    * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
@@ -64,10 +65,71 @@ public class HnswGraphSearcher {
   public static void search(
       RandomVectorScorer scorer, KnnCollector knnCollector, HnswGraph graph, Bits acceptOrds)
       throws IOException {
-    HnswGraphSearcher graphSearcher =
-        new HnswGraphSearcher(
-            new NeighborQueue(knnCollector.k(), true), new SparseFixedBitSet(getGraphSize(graph)));
-    search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
+    int filteredDocCount = 0;
+    if (acceptOrds instanceof BitSet bitSet) {
+      // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
+      // size as that is illogical
+      filteredDocCount = Math.min(bitSet.approximateCardinality(), graph.size());
+    }
+    search(scorer, knnCollector, graph, acceptOrds, filteredDocCount);
+  }
+
+  /**
+   * Searches the HNSW graph for the nearest neighbors of a query vector. If entry points are
+   * directly provided via the knnCollector, then the search will be initialized at those points.
+   * Otherwise, the search will discover the best entry point per the normal HNSW search algorithm.
+   *
+   * @param scorer the scorer to compare the query with the nodes
+   * @param knnCollector a hnsw knn collector of top knn results to be returned
+   * @param graph the graph values. May represent the entire graph, or a level in a hierarchical
+   *     graph.
+   * @param acceptOrds {@link Bits} that represents the allowed document ordinals to match, or
+   *     {@code null} if they are all allowed to match.
+   * @param filteredDocCount the number of docs that pass the filter
+   */
+  public static void search(
+      RandomVectorScorer scorer,
+      KnnCollector knnCollector,
+      HnswGraph graph,
+      Bits acceptOrds,
+      int filteredDocCount)
+      throws IOException {
+    assert filteredDocCount >= 0 && filteredDocCount <= graph.size();
+    KnnSearchStrategy.Hnsw hnswStrategy;
+    if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Hnsw hnsw) {
+      hnswStrategy = hnsw;
+    } else if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded
+        && seeded.originalStrategy() instanceof KnnSearchStrategy.Hnsw hnsw) {
+      hnswStrategy = hnsw;
+    } else {
+      hnswStrategy = KnnSearchStrategy.Hnsw.DEFAULT;
+    }
+    final AbstractHnswGraphSearcher innerSearcher;
+    // First, check if we should use a filtered searcher
+    if (acceptOrds != null
+        // We can only use filtered search if we know the maxConn
+        && graph.maxConn() != HnswGraph.UNKNOWN_MAX_CONN
+        && filteredDocCount > 0
+        && hnswStrategy.useFilteredSearch((float) filteredDocCount / graph.size())) {
+      innerSearcher =
+          FilteredHnswGraphSearcher.create(knnCollector.k(), graph, filteredDocCount, acceptOrds);
+    } else {
+      innerSearcher =
+          new HnswGraphSearcher(
+              new NeighborQueue(knnCollector.k(), true),
+              new SparseFixedBitSet(getGraphSize(graph)));
+    }
+    // Then, check if we the search strategy is seeded
+    final AbstractHnswGraphSearcher graphSearcher;
+    if (knnCollector.getSearchStrategy() instanceof KnnSearchStrategy.Seeded seeded
+        && seeded.numberOfEntryPoints() > 0) {
+      graphSearcher =
+          SeededHnswGraphSearcher.fromEntryPoints(
+              innerSearcher, seeded.numberOfEntryPoints(), seeded.entryPoints(), graph.size());
+    } else {
+      graphSearcher = innerSearcher;
+    }
+    graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
   }
 
   /**
@@ -85,25 +147,12 @@ public class HnswGraphSearcher {
   public static KnnCollector search(
       RandomVectorScorer scorer, int topK, OnHeapHnswGraph graph, Bits acceptOrds, int visitedLimit)
       throws IOException {
-    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit);
+    KnnCollector knnCollector = new TopKnnCollector(topK, visitedLimit, null);
     OnHeapHnswGraphSearcher graphSearcher =
         new OnHeapHnswGraphSearcher(
             new NeighborQueue(topK, true), new SparseFixedBitSet(getGraphSize(graph)));
-    search(scorer, knnCollector, graph, graphSearcher, acceptOrds);
+    graphSearcher.search(knnCollector, scorer, graph, acceptOrds);
     return knnCollector;
-  }
-
-  private static void search(
-      RandomVectorScorer scorer,
-      KnnCollector knnCollector,
-      HnswGraph graph,
-      HnswGraphSearcher graphSearcher,
-      Bits acceptOrds)
-      throws IOException {
-    int ep = graphSearcher.findBestEntryPoint(scorer, graph, knnCollector);
-    if (ep != -1) {
-      graphSearcher.searchLevel(knnCollector, scorer, 0, new int[] {ep}, graph, acceptOrds);
-    }
   }
 
   /**
@@ -139,11 +188,12 @@ public class HnswGraphSearcher {
    *     exceeded
    * @throws IOException When accessing the vector fails
    */
-  private int findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
+  @Override
+  int[] findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector)
       throws IOException {
     int currentEp = graph.entryNode();
     if (currentEp == -1 || graph.numLevels() == 1) {
-      return currentEp;
+      return new int[] {currentEp};
     }
     int size = getGraphSize(graph);
     prepareScratchState(size);
@@ -164,7 +214,7 @@ public class HnswGraphSearcher {
             continue;
           }
           if (collector.earlyTerminated()) {
-            return -1;
+            return new int[] {UNK_EP};
           }
           float friendSimilarity = scorer.score(friendOrd);
           collector.incVisitedCount(1);
@@ -176,7 +226,7 @@ public class HnswGraphSearcher {
         }
       }
     }
-    return collector.earlyTerminated() ? -1 : currentEp;
+    return collector.earlyTerminated() ? new int[] {UNK_EP} : new int[] {currentEp};
   }
 
   /**
@@ -185,6 +235,7 @@ public class HnswGraphSearcher {
    * score/comparison value, will be at the top of the heap, while the closest neighbor will be the
    * last to be popped.
    */
+  @Override
   void searchLevel(
       KnnCollector results,
       RandomVectorScorer scorer,
@@ -214,7 +265,7 @@ public class HnswGraphSearcher {
 
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
-    float minAcceptedSimilarity = results.minCompetitiveSimilarity();
+    float minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
@@ -236,11 +287,11 @@ public class HnswGraphSearcher {
         }
         float friendSimilarity = scorer.score(friendOrd);
         results.incVisitedCount(1);
-        if (friendSimilarity > minAcceptedSimilarity) {
+        if (friendSimilarity >= minAcceptedSimilarity) {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             if (results.collect(friendOrd, friendSimilarity)) {
-              minAcceptedSimilarity = results.minCompetitiveSimilarity();
+              minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
             }
           }
         }
@@ -278,7 +329,7 @@ public class HnswGraphSearcher {
     return graph.nextNeighbor();
   }
 
-  private static int getGraphSize(HnswGraph graph) {
+  static int getGraphSize(HnswGraph graph) {
     return graph.maxNodeId() + 1;
   }
 

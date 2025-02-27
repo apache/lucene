@@ -275,6 +275,9 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setUseCompoundFile(false)
             .setMergePolicy(mp);
+    if (VERBOSE) {
+      cfg.setInfoStream(System.out);
+    }
     IndexWriter w = new IndexWriter(dir, cfg);
     final int numDocs = atLeast(500);
     for (int i = 0; i < numDocs; ++i) {
@@ -591,6 +594,9 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           break;
         case BINARY:
           consumer.writeField(field, value.getBinaryValue());
+          break;
+        case DATA_INPUT:
+          consumer.writeField(field, value.getDataInputValue());
           break;
         case STRING:
           consumer.writeField(field, value.getStringValue());

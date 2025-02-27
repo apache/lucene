@@ -405,10 +405,18 @@ public class Dictionary {
       } else if ("TRY".equals(firstWord)) {
         tryChars = firstArgument(reader, line);
       } else if ("REP".equals(firstWord)) {
-        int count = parseNum(reader, line);
-        for (int i = 0; i < count; i++) {
-          String[] parts = splitBySpace(reader, reader.readLine(), 3, Integer.MAX_VALUE);
-          repTable.add(new RepEntry(parts[1], parts[2]));
+        if (tolerateRepRuleCountMismatches()) {
+          String[] parts = splitBySpace(reader, line, 2, Integer.MAX_VALUE);
+          // ignore REP N, as actual N may be incorrect
+          if (parts.length >= 3) {
+            repTable.add(new RepEntry(parts[1], parts[2]));
+          }
+        } else {
+          int count = parseNum(reader, line);
+          for (int i = 0; i < count; i++) {
+            String[] parts = splitBySpace(reader, reader.readLine(), 3, Integer.MAX_VALUE);
+            repTable.add(new RepEntry(parts[1], parts[2]));
+          }
         }
       } else if ("MAP".equals(firstWord)) {
         int count = parseNum(reader, line);
@@ -700,8 +708,15 @@ public class Dictionary {
     affixData = ArrayUtil.grow(affixData, currentAffix * 4 + numLines * 4);
 
     for (int i = 0; i < numLines; i++) {
+      if (tolerateAffixRuleCountMismatches()) {
+        // push back line if counts are wrong, with a limit: forgiveness is finite.
+        reader.mark(256);
+      }
       String line = reader.readLine();
       if (line == null) {
+        if (tolerateAffixRuleCountMismatches()) {
+          return; // can happen due to rule count mismatches, EOF
+        }
         throw new ParseException("Premature end of rules for " + header, reader.getLineNumber());
       }
 
@@ -709,6 +724,10 @@ public class Dictionary {
       String[] ruleArgs = splitBySpace(reader, line, 4, Integer.MAX_VALUE);
 
       if (!ruleArgs[1].equals(args[1])) {
+        if (tolerateAffixRuleCountMismatches()) {
+          reader.reset(); // can happen due to count mismatch: push back what we found
+          return;
+        }
         throw new ParseException(
             "Affix rule mismatch. Header: " + header + "; rule: " + line, reader.getLineNumber());
       }
@@ -1165,6 +1184,14 @@ public class Dictionary {
    * ParseException} will happen.
    */
   protected boolean tolerateAffixRuleCountMismatches() {
+    return false;
+  }
+
+  /**
+   * Whether incorrect REP rule counts will be silently ignored. False by default: a {@link
+   * ParseException} will happen.
+   */
+  protected boolean tolerateRepRuleCountMismatches() {
     return false;
   }
 

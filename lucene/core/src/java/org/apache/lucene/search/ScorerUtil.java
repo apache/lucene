@@ -30,13 +30,16 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Util class for Scorer related methods */
 class ScorerUtil {
 
   private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS;
+  private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS;
 
   static {
     try (Directory dir = new ByteBuffersDirectory();
@@ -56,6 +59,8 @@ class ScorerUtil {
     } catch (IOException e) {
       throw new Error(e);
     }
+
+    DEFAULT_ACCEPT_DOCS_CLASS = new FixedBitSet(1).asReadOnlyBits().getClass();
   }
 
   static long costWithMinShouldMatch(LongStream costs, int numScorers, int minShouldMatch) {
@@ -107,5 +112,40 @@ class ScorerUtil {
       scorable = new FilterScorable(scorable);
     }
     return scorable;
+  }
+
+  /**
+   * Optimize {@link Bits} representing the set of accepted documents for the case when it is likely
+   * implemented as live docs. This helps make calls to {@link Bits#get(int)} inlinable, which
+   * in-turn helps speed up query evaluation. This is especially helpful as inlining will sometimes
+   * enable auto-vectorizing shifts and masks that are done in {@link FixedBitSet#get(int)}.
+   */
+  static Bits likelyLiveDocs(Bits acceptDocs) {
+    if (acceptDocs == null) {
+      return acceptDocs;
+    } else if (acceptDocs.getClass() == DEFAULT_ACCEPT_DOCS_CLASS) {
+      return acceptDocs;
+    } else {
+      return new FilterBits(acceptDocs);
+    }
+  }
+
+  private static class FilterBits implements Bits {
+
+    private final Bits in;
+
+    FilterBits(Bits in) {
+      this.in = in;
+    }
+
+    @Override
+    public boolean get(int index) {
+      return in.get(index);
+    }
+
+    @Override
+    public int length() {
+      return in.length();
+    }
   }
 }

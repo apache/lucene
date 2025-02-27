@@ -42,7 +42,7 @@ package org.apache.lucene.analysis.en;
 class KStemData6 {
   private KStemData6() {}
 
-  static String[] data = {
+  static final String[] data = {
     "pedant", "pedantic", "pedantry", "peddle", "peddler",
     "pederast", "pederasty", "pedestal", "pedestrian", "pediatrician",
     "pediatrics", "pedicab", "pedicel", "pedicure", "pedigree",

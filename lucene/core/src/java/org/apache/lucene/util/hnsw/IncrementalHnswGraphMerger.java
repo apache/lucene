@@ -21,7 +21,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -63,33 +62,30 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
 
   /**
    * Adds a reader to the graph merger if it meets the following criteria: 1. Does not contain any
-   * deleted docs 2. Is a HnswGraphProvider/PerFieldKnnVectorReader 3. Has the most docs of any
-   * previous reader that met the above criteria
+   * deleted docs 2. Is a HnswGraphProvider 3. Has the most docs of any previous reader that met the
+   * above criteria
    */
   @Override
   public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
-    KnnVectorsReader currKnnVectorsReader = reader;
-    if (reader instanceof PerFieldKnnVectorsFormat.FieldsReader candidateReader) {
-      currKnnVectorsReader = candidateReader.getFieldReader(fieldInfo.name);
-    }
-
-    if (!(currKnnVectorsReader instanceof HnswGraphProvider) || !noDeletes(liveDocs)) {
+    if (hasDeletes(liveDocs) || !(reader instanceof HnswGraphProvider)) {
       return this;
     }
-
+    HnswGraph graph = ((HnswGraphProvider) reader).getGraph(fieldInfo.name);
+    if (graph == null || graph.size() == 0) {
+      return this;
+    }
     int candidateVectorCount = 0;
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> {
-        ByteVectorValues byteVectorValues =
-            currKnnVectorsReader.getByteVectorValues(fieldInfo.name);
+        ByteVectorValues byteVectorValues = reader.getByteVectorValues(fieldInfo.name);
         if (byteVectorValues == null) {
           return this;
         }
         candidateVectorCount = byteVectorValues.size();
       }
       case FLOAT32 -> {
-        FloatVectorValues vectorValues = currKnnVectorsReader.getFloatVectorValues(fieldInfo.name);
+        FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldInfo.name);
         if (vectorValues == null) {
           return this;
         }
@@ -97,7 +93,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
       }
     }
     if (candidateVectorCount > initGraphSize) {
-      initReader = currKnnVectorsReader;
+      initReader = reader;
       initDocMap = docMap;
       initGraphSize = candidateVectorCount;
     }
@@ -130,7 +126,6 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorValues, initializedNodes);
     return InitializedHnswGraphBuilder.fromGraph(
         scorerSupplier,
-        M,
         beamWidth,
         HnswGraphBuilder.randSeed,
         initializerGraph,
@@ -194,16 +189,16 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     return oldToNewOrdinalMap;
   }
 
-  private static boolean noDeletes(Bits liveDocs) {
+  private static boolean hasDeletes(Bits liveDocs) {
     if (liveDocs == null) {
-      return true;
+      return false;
     }
 
     for (int i = 0; i < liveDocs.length(); i++) {
       if (!liveDocs.get(i)) {
-        return false;
+        return true;
       }
     }
-    return true;
+    return false;
   }
 }

@@ -188,9 +188,7 @@ public abstract class PointRangeQuery extends Query {
 
           @Override
           public void visit(IntsRef ref) {
-            for (int i = ref.offset; i < ref.offset + ref.length; i++) {
-              adder.add(ref.ints[i]);
-            }
+            adder.add(ref);
           }
 
           @Override
@@ -235,7 +233,7 @@ public abstract class PointRangeQuery extends Query {
             for (int i = ref.offset; i < ref.offset + ref.length; i++) {
               result.clear(ref.ints[i]);
             }
-            cost[0] -= ref.length;
+            cost[0] = Math.max(0, cost[0] - ref.length);
           }
 
           @Override
@@ -358,7 +356,7 @@ public abstract class PointRangeQuery extends Query {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 

@@ -352,7 +352,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     }
   }
 
-  private static String CRASH_FAIL_MESSAGE = "I'm experiencing problems";
+  private static final String CRASH_FAIL_MESSAGE = "I'm experiencing problems";
 
   private static class CrashingFilter extends TokenFilter {
     String fieldName;
@@ -1772,6 +1772,35 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     dir.close();
   }
 
+  /** test a null data input value doesn't abort the entire segment */
+  public void testNullStoredDataInputField() throws Exception {
+    Directory dir = newDirectory();
+    Analyzer analyzer = new MockAnalyzer(random());
+    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(analyzer));
+    // add good document
+    Document doc = new Document();
+    iw.addDocument(doc);
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          // set to null value
+          StoredFieldDataInput v = null;
+          Field theField = new StoredField("foo", v);
+          doc.add(theField);
+          iw.addDocument(doc);
+          fail("didn't get expected exception");
+        });
+
+    assertNull(iw.getTragicException());
+    iw.close();
+    // make sure we see our good doc
+    DirectoryReader r = DirectoryReader.open(dir);
+    assertEquals(1, r.numDocs());
+    r.close();
+    dir.close();
+  }
+
   public void testCrazyPositionIncrementGap() throws Exception {
     Directory dir = newDirectory();
     Analyzer analyzer =
@@ -2140,8 +2169,7 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
 
     IndexWriterConfig iwc = newIndexWriterConfig();
     MergePolicy mp = iwc.getMergePolicy();
-    if (mp instanceof TieredMergePolicy) {
-      TieredMergePolicy tmp = (TieredMergePolicy) mp;
+    if (mp instanceof TieredMergePolicy tmp) {
       if (tmp.getMaxMergedSegmentMB() < 0.2) {
         tmp.setMaxMergedSegmentMB(0.2);
       }
