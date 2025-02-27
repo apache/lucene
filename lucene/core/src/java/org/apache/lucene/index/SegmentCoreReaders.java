@@ -168,7 +168,8 @@ final class SegmentCoreReaders {
   @SuppressWarnings("try")
   void decRef() throws IOException {
     if (ref.decrementAndGet() == 0) {
-      try (Closeable finalizer = this::notifyCoreClosedListeners) {
+      try (@SuppressWarnings("unused")
+          Closeable finalizer = this::notifyCoreClosedListeners) {
         IOUtils.close(
             fields,
             termVectorsReaderOrig,

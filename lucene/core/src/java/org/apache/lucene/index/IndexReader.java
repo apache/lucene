@@ -253,8 +253,10 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
     final int rc = refCount.decrementAndGet();
     if (rc == 0) {
       closed = true;
-      try (Closeable finalizer = this::reportCloseToParentReaders;
-          Closeable finalizer1 = this::notifyReaderClosedListeners) {
+      try (@SuppressWarnings("unused")
+              Closeable finalizer = this::reportCloseToParentReaders;
+          @SuppressWarnings("unused")
+              Closeable finalizer1 = this::notifyReaderClosedListeners) {
         doClose();
       }
     } else if (rc < 0) {

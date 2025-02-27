@@ -2633,7 +2633,8 @@ public class IndexWriter
      */
     try {
       synchronized (fullFlushLock) {
-        try (Closeable finalizer = docWriter.lockAndAbortAll()) {
+        try (@SuppressWarnings("unused")
+            Closeable finalizer = docWriter.lockAndAbortAll()) {
           processEvents(false);
           synchronized (this) {
             try {
@@ -4675,7 +4676,8 @@ public class IndexWriter
       deleteNewFiles(merge.info.files());
     }
 
-    try (Closeable finalizer = this::checkpoint) {
+    try (@SuppressWarnings("unused")
+        Closeable finalizer = this::checkpoint) {
       // Must close before checkpoint, otherwise IFD won't be
       // able to delete the held-open files from the merge
       // readers:
