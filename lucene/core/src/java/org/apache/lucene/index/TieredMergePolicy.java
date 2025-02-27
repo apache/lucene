@@ -89,7 +89,7 @@ public class TieredMergePolicy extends MergePolicy {
   private int maxMergeAtOnce = 10;
   private long maxMergedSegmentBytes = 5 * 1024 * 1024 * 1024L;
 
-  private long floorSegmentBytes = 2 * 1024 * 1024L;
+  private long floorSegmentBytes = 16 * 1024 * 1024L;
   private double segsPerTier = 10.0;
   private double forceMergeDeletesPctAllowed = 10.0;
   private double deletesPctAllowed = 20.0;
@@ -194,7 +194,7 @@ public class TieredMergePolicy extends MergePolicy {
    * </ul>
    *
    * In both cases, this helps prevent frequent flushing of tiny segments to create a long tail of
-   * small segments in the index. Default is 2MB.
+   * small segments in the index. Default is 16MB.
    */
   public TieredMergePolicy setFloorSegmentMB(double v) {
     if (v <= 0.0) {

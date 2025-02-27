@@ -132,6 +132,11 @@ Bug Fixes
 
 * GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
 
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
+  LogByteSizeMergePolicy. (Adrien Grand)
+
 Other
 ---------------------
 
