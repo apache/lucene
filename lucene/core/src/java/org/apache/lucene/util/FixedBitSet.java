@@ -749,7 +749,7 @@ public final class FixedBitSet extends BitSet {
   public static FixedBitSet copyOf(Bits bits) {
     if (bits instanceof FixedBits fixedBits) {
       // restore the original FixedBitSet
-      bits = new FixedBitSet(fixedBits.bits, fixedBits.length);
+      bits = fixedBits.bitSet;
     }
 
     if (bits instanceof FixedBitSet) {
