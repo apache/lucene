@@ -93,6 +93,10 @@ Optimizations
 * GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
   conjunctions. (Adrien Grand)
 
+* GITHUB#14293: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up
+  intersection of dense queries with live docs and/or collectors' competitive
+  iterators. (Adrien Grand)
+
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
 
