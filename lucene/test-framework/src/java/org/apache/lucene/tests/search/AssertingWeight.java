@@ -95,7 +95,7 @@ class AssertingWeight extends FilterWeight {
         }
 
         return AssertingBulkScorer.wrap(
-            new Random(random.nextLong()), inScorer, context.reader().maxDoc(), scoreMode);
+            new Random(random.nextLong()), inScorer, context.reader().maxDoc());
       }
 
       @Override

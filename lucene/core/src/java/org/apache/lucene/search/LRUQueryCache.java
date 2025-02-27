@@ -757,6 +757,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
         readLock.unlock();
       }
 
+      int maxDoc = context.reader().maxDoc();
       if (cached == null) {
         if (policy.shouldCache(in.getQuery())) {
           final ScorerSupplier supplier = in.scorerSupplier(context);
@@ -766,15 +767,15 @@ public class LRUQueryCache implements QueryCache, Accountable {
           }
 
           final long cost = supplier.cost();
-          return new ScorerSupplier() {
+          return new ConstantScoreScorerSupplier(0f, ScoreMode.COMPLETE_NO_SCORES, maxDoc) {
             @Override
-            public Scorer get(long leadCost) throws IOException {
+            public DocIdSetIterator iterator(long leadCost) throws IOException {
               // skip cache operation which would slow query down too much
               if (cost / skipCacheFactor > leadCost) {
-                return supplier.get(leadCost);
+                return supplier.get(leadCost).iterator();
               }
 
-              CacheAndCount cached = cacheImpl(supplier.bulkScorer(), context.reader().maxDoc());
+              CacheAndCount cached = cacheImpl(supplier.bulkScorer(), maxDoc);
               putIfAbsent(in.getQuery(), cached, cacheHelper);
               DocIdSetIterator disi = cached.iterator();
               if (disi == null) {
@@ -783,7 +784,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
                 disi = DocIdSetIterator.empty();
               }
 
-              return new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, disi);
+              return disi;
             }
 
             @Override
@@ -805,17 +806,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
         return null;
       }
 
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long LeadCost) throws IOException {
-          return new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, disi);
-        }
-
-        @Override
-        public long cost() {
-          return disi.cost();
-        }
-      };
+      return ConstantScoreScorerSupplier.fromIterator(
+          disi, 0f, ScoreMode.COMPLETE_NO_SCORES, maxDoc);
     }
 
     @Override

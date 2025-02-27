@@ -34,6 +34,7 @@ import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -523,6 +524,27 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           top = disjunction.updateTop();
         }
         return doc = top.postings.docID();
+      }
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (upTo <= doc) {
+        return;
+      }
+      // Optimize the case when intersecting the competitive iterator is expensive, which is when it
+      // hasn't nailed down a disjunction of competitive terms yet.
+      if (disjunction == null) {
+        if (docsWithField != null) {
+          docsWithField.intoBitSet(upTo, bitSet, offset);
+          doc = docsWithField.docID();
+        } else {
+          upTo = Math.min(upTo, maxDoc);
+          bitSet.set(doc - offset, upTo - offset);
+          doc = upTo;
+        }
+      } else {
+        super.intoBitSet(upTo, bitSet, offset);
       }
     }
 

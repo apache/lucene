@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
+import org.apache.lucene.tests.search.AssertingBulkScorer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
@@ -34,12 +36,16 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
       clause2.set(i);
       clause3.set(i);
     }
-    DenseConjunctionBulkScorer scorer =
+    BulkScorer scorer =
         new DenseConjunctionBulkScorer(
             Arrays.asList(
                 new BitSetIterator(clause1, clause1.approximateCardinality()),
                 new BitSetIterator(clause2, clause2.approximateCardinality()),
-                new BitSetIterator(clause3, clause3.approximateCardinality())));
+                new BitSetIterator(clause3, clause3.approximateCardinality())),
+            maxDoc,
+            0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
         new LeafCollector() {
@@ -56,6 +62,19 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
         DocIdSetIterator.NO_MORE_DOCS);
 
     assertEquals(clause1, result);
+
+    // Now exercise DocIdStream.count()
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality()),
+                new BitSetIterator(clause3, clause3.approximateCardinality())),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(clause1.cardinality(), collector.count);
   }
 
   public void testApplyAcceptDocs() throws IOException {
@@ -68,11 +87,15 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     for (int i = 0; i < maxDoc; i += 2) {
       acceptDocs.set(i);
     }
-    DenseConjunctionBulkScorer scorer =
+    BulkScorer scorer =
         new DenseConjunctionBulkScorer(
             Arrays.asList(
                 new BitSetIterator(clause1, clause1.approximateCardinality()),
-                new BitSetIterator(clause2, clause2.approximateCardinality())));
+                new BitSetIterator(clause2, clause2.approximateCardinality())),
+            maxDoc,
+            0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
         new LeafCollector() {
@@ -89,6 +112,18 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
         DocIdSetIterator.NO_MORE_DOCS);
 
     assertEquals(acceptDocs, result);
+
+    // Now exercise DocIdStream.count()
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality())),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(acceptDocs.cardinality(), collector.count);
   }
 
   public void testEmptyIntersection() throws IOException {
@@ -99,11 +134,15 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
       clause1.set(i);
       clause2.set(i + 1);
     }
-    DenseConjunctionBulkScorer scorer =
+    BulkScorer scorer =
         new DenseConjunctionBulkScorer(
             Arrays.asList(
                 new BitSetIterator(clause1, clause1.approximateCardinality()),
-                new BitSetIterator(clause2, clause2.approximateCardinality())));
+                new BitSetIterator(clause2, clause2.approximateCardinality())),
+            maxDoc,
+            0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
         new LeafCollector() {
@@ -120,6 +159,18 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
         DocIdSetIterator.NO_MORE_DOCS);
 
     assertTrue(result.scanIsEmpty());
+
+    // Now exercise DocIdStream.count()
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality())),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(0, collector.count);
   }
 
   public void testClustered() throws IOException {
@@ -130,12 +181,16 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     clause1.set(10_000, 90_000);
     clause2.set(0, 80_000);
     clause3.set(20_000, 100_000);
-    DenseConjunctionBulkScorer scorer =
+    BulkScorer scorer =
         new DenseConjunctionBulkScorer(
             Arrays.asList(
                 new BitSetIterator(clause1, clause1.approximateCardinality()),
                 new BitSetIterator(clause2, clause2.approximateCardinality()),
-                new BitSetIterator(clause3, clause3.approximateCardinality())));
+                new BitSetIterator(clause3, clause3.approximateCardinality())),
+            maxDoc,
+            0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
         new LeafCollector() {
@@ -155,6 +210,19 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     expected.set(20_000, 80_000);
     assertArrayEquals(expected.getBits(), result.getBits());
     assertEquals(expected, result);
+
+    // Now exercise DocIdStream.count()
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality()),
+                new BitSetIterator(clause3, clause3.approximateCardinality())),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(expected.cardinality(), collector.count);
   }
 
   public void testSparseAfter2ndClause() throws IOException {
@@ -174,12 +242,16 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     for (int i = 0; i < maxDoc; i += 19) {
       clause3.set(i);
     }
-    DenseConjunctionBulkScorer scorer =
+    BulkScorer scorer =
         new DenseConjunctionBulkScorer(
             Arrays.asList(
                 new BitSetIterator(clause1, clause1.approximateCardinality()),
                 new BitSetIterator(clause2, clause2.approximateCardinality()),
-                new BitSetIterator(clause3, clause3.approximateCardinality())));
+                new BitSetIterator(clause3, clause3.approximateCardinality())),
+            maxDoc,
+            0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
         new LeafCollector() {
@@ -200,5 +272,240 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
       expected.set(i);
     }
     assertEquals(expected, result);
+
+    // Now exercise DocIdStream.count()
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality()),
+                new BitSetIterator(clause3, clause3.approximateCardinality())),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(expected.cardinality(), collector.count);
+  }
+
+  public void testZeroClauseNoLiveDocs() throws IOException {
+    int maxDoc = 100_000;
+    BulkScorer scorer = new DenseConjunctionBulkScorer(Collections.emptyList(), maxDoc, 0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+
+    result.flip(0, maxDoc);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, result.nextSetBit(0));
+
+    // Now exercise DocIdStream.count()
+    scorer = new DenseConjunctionBulkScorer(Collections.emptyList(), maxDoc, 0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(maxDoc, collector.count);
+  }
+
+  public void testZeroClauseWithLiveDocs() throws IOException {
+    int maxDoc = 100_000;
+    BulkScorer scorer = new DenseConjunctionBulkScorer(Collections.emptyList(), maxDoc, 0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
+    FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
+    acceptDocs.set(10_000, 20_000);
+    for (int i = 30_000; i < maxDoc; i += 3) {
+      acceptDocs.set(i);
+    }
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        acceptDocs,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+
+    assertEquals(acceptDocs, result);
+
+    // Now exercise DocIdStream.count()
+    scorer = new DenseConjunctionBulkScorer(Collections.emptyList(), maxDoc, 0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(acceptDocs.cardinality(), collector.count);
+  }
+
+  public void testOneClauseNoLiveDocs() throws IOException {
+    int maxDoc = 100_000;
+    FixedBitSet clause1 = new FixedBitSet(maxDoc);
+    for (int i = 0; i < maxDoc; i += 2) {
+      clause1.set(i);
+    }
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(
+                new BitSetIterator(clause1, clause1.approximateCardinality())),
+            maxDoc,
+            0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+
+    assertEquals(clause1, result);
+
+    // Now exercise DocIdStream.count()
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(
+                new BitSetIterator(clause1, clause1.approximateCardinality())),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(clause1.cardinality(), collector.count);
+  }
+
+  public void testOneClauseWithLiveDocs() throws IOException {
+    int maxDoc = 100_000;
+    FixedBitSet clause1 = new FixedBitSet(maxDoc);
+    for (int i = 0; i < maxDoc; i += 2) {
+      clause1.set(i);
+    }
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(
+                new BitSetIterator(clause1, clause1.approximateCardinality())),
+            maxDoc,
+            0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
+    FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
+    acceptDocs.set(10_000, 20_000);
+    for (int i = 30_000; i < maxDoc; i += 3) {
+      acceptDocs.set(i);
+    }
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        acceptDocs,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+
+    FixedBitSet expected = new FixedBitSet(maxDoc);
+    expected.or(acceptDocs);
+    expected.and(clause1);
+    assertEquals(expected, result);
+
+    // Now exercise DocIdStream.count()
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(
+                new BitSetIterator(clause1, clause1.approximateCardinality())),
+            maxDoc,
+            0f);
+    CountingLeafCollector collector = new CountingLeafCollector();
+    scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(expected.cardinality(), collector.count);
+  }
+
+  public void testStopOnMinCompetitiveScore() throws IOException {
+    int maxDoc = 100_000;
+    FixedBitSet clause1 = new FixedBitSet(maxDoc);
+    FixedBitSet clause2 = new FixedBitSet(maxDoc);
+    for (int i = 0; i < maxDoc; i += 2) {
+      clause1.set(i);
+    }
+    for (int i = 0; i < maxDoc; i += 5) {
+      clause2.set(i);
+    }
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Arrays.asList(
+                new BitSetIterator(clause1, clause1.approximateCardinality()),
+                new BitSetIterator(clause2, clause2.approximateCardinality())),
+            maxDoc,
+            0f);
+    // AssertingBulkScorer randomly splits the scored range into smaller ranges
+    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+
+          private Scorable scorable;
+
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {
+            this.scorable = scorer;
+          }
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+            if (doc == 50_000) {
+              scorable.setMinCompetitiveScore(Float.MIN_VALUE);
+            }
+            // It should never go above the doc when setMinCompetitiveScore was called, plus the
+            // window size
+            assertTrue(doc < 50_000 + DenseConjunctionBulkScorer.WINDOW_SIZE);
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+  }
+
+  private static class CountingLeafCollector implements LeafCollector {
+
+    int count;
+
+    @Override
+    public void setScorer(Scorable scorer) throws IOException {}
+
+    @Override
+    public void collect(int doc) throws IOException {
+      count++;
+    }
+
+    @Override
+    public void collect(DocIdStream stream) throws IOException {
+      count += stream.count();
+    }
   }
 }
