@@ -381,7 +381,7 @@
  * semantic perspective. Combining scores is hazardous as different retrieval pipelines often
  * produce scores that not only have different ranges, but also different distributions within this
  * range. A robust way of combining multiple retrieval pipelines consists of combining the top hits
- * that they produce through their ranks rather thank through their scores using reciprocal rank
+ * that they produce through their ranks rather than through their scores using reciprocal rank
  * fusion. This is exposed via {@link org.apache.lucene.search.TopDocs#rrf(int, int, TopDocs[])}.
  *
  * <h2>Custom Queries &mdash; Expert Level</h2>
