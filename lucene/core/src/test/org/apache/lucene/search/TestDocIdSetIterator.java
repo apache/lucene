@@ -20,7 +20,6 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.FixedBitSet;
 
