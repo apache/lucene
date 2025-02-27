@@ -40,7 +40,7 @@ comprehensive documentation, visit:
 
 ### Basic steps:
   
-1. Install OpenJDK 21.
+1. Install OpenJDK 23.
 2. Clone Lucene's git repository (or download the source distribution).
 3. Run gradle launcher script (`gradlew`).
 

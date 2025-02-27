@@ -29,7 +29,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java: [ '21' ]
+        java: [ '23' ]
 
     runs-on: ${{ matrix.os }}
 
@@ -53,7 +53,7 @@ jobs:
       matrix:
         # Operating systems to run on.
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        java: [ '21' ]
+        java: [ '23' ]
 
     runs-on: ${{ matrix.os }}
 
