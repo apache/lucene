@@ -207,7 +207,6 @@ public class TestRuleLimitSysouts extends TestRuleAdapter {
       checkCaptureStreams();
     }
     resetCaptureState();
-    var bef = bytesWritten.get();
     applyClassAnnotations();
   }
 
