@@ -49,9 +49,9 @@ public final class DrillSidewaysFacetOrchestrator {
     //       manager map instead of a list so that we can be sure that we use the right
     //       collector for the right dimension.
     //       but I think we should do it in a separate PR as it requires changing existing API.
-    int dimIndex = dimToIndex.computeIfAbsent(dim, (x) -> dimToIndex.size());
+    int dimIndex = dimToIndex.computeIfAbsent(dim, (_) -> dimToIndex.size());
     drillSidewaysFacetBuilders
-        .computeIfAbsent(dimIndex, (x) -> new ArrayList<>())
+        .computeIfAbsent(dimIndex, (_) -> new ArrayList<>())
         .add(facetBuilder);
     return this;
   }

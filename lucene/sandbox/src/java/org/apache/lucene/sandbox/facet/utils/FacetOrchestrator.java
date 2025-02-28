@@ -88,7 +88,7 @@ public final class FacetOrchestrator {
     Map<Object, FacetBuilder> buildersUniqueForCollection = new HashMap<>();
     for (FacetBuilder builder : facetBuilders) {
       buildersUniqueForCollection.compute(
-          builder.collectionKey(), (k, v) -> builder.initOrReuseCollector(v));
+          builder.collectionKey(), (_, v) -> builder.initOrReuseCollector(v));
     }
     List<FacetFieldCollectorManager<?>> managers = new ArrayList<>();
     for (FacetBuilder c : buildersUniqueForCollection.values()) {
