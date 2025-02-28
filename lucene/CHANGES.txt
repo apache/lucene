@@ -197,6 +197,8 @@ Other
 
 * GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
 
+* GITHUB#14279 : Add github action to verify changelog entry and set milestone to PRs. (Amir Raza)
+
 ======================= Lucene 10.1.0 =======================
 
 API Changes
