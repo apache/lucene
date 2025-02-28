@@ -118,12 +118,12 @@ public class LockStressTest {
       }
 
       for (int i = 0; i < count; i++) {
-        try (final Lock l = verifyLF.obtainLock(lockDir, LOCK_FILE_NAME)) {
+        try (var _ = verifyLF.obtainLock(lockDir, LOCK_FILE_NAME)) {
           if (rnd.nextInt(10) == 0) {
             if (rnd.nextBoolean()) {
               verifyLF = new VerifyingLockFactory(getNewLockFactory(lockFactoryClassName), in, out);
             }
-            try (final Lock secondLock = verifyLF.obtainLock(lockDir, LOCK_FILE_NAME)) {
+            try (var _ = verifyLF.obtainLock(lockDir, LOCK_FILE_NAME)) {
               throw new IOException("Double obtain");
             } catch (
                 @SuppressWarnings("unused")

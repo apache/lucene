@@ -75,7 +75,7 @@ public class TestLowercaseAsciiCompression extends LuceneTestCase {
 
   public void testFarAwayExceptions() throws Exception {
     String s =
-        "01W" + IntStream.range(0, 300).mapToObj(i -> "a").collect(Collectors.joining()) + "W.";
+        "01W" + IntStream.range(0, 300).mapToObj(_ -> "a").collect(Collectors.joining()) + "W.";
     assertTrue(doTestCompress(s.getBytes(StandardCharsets.UTF_8)));
   }
 

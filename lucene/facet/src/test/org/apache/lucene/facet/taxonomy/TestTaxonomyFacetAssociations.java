@@ -126,7 +126,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
           String path = paths[random().nextInt(3)];
           if (random().nextBoolean()) { // maybe index an int association with the dim
             int nextInt = atLeast(1);
-            randomIntValues.computeIfAbsent(path, k -> new ArrayList<>()).add(nextInt);
+            randomIntValues.computeIfAbsent(path, _ -> new ArrayList<>()).add(nextInt);
             doc.add(new IntAssociationFacetField(nextInt, "int_random", path));
           }
           if (random().nextBoolean()) { // maybe index a float association with the dim
@@ -139,7 +139,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
         String path = paths[random().nextInt(3)];
         if (random().nextBoolean()) {
           int nextInt = atLeast(1);
-          randomIntSingleValued.computeIfAbsent(path, k -> new ArrayList<>()).add(nextInt);
+          randomIntSingleValued.computeIfAbsent(path, _ -> new ArrayList<>()).add(nextInt);
           doc.add(new IntAssociationFacetField(nextInt, "int_single_valued", path));
         }
         if (random().nextBoolean()) {
@@ -187,9 +187,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
           String dim = label.components[0];
           String child = label.components[1];
           if ("float_random".equals(dim)) {
-            randomFloatValues.computeIfAbsent(child, k -> new ArrayList<>()).add(value);
+            randomFloatValues.computeIfAbsent(child, _ -> new ArrayList<>()).add(value);
           } else if ("float_single_valued".equals(dim)) {
-            randomFloatSingleValued.computeIfAbsent(child, k -> new ArrayList<>()).add(value);
+            randomFloatSingleValued.computeIfAbsent(child, _ -> new ArrayList<>()).add(value);
           }
         }
       }

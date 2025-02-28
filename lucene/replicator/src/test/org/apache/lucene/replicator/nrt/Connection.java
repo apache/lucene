@@ -45,9 +45,6 @@ class Connection implements Closeable {
     this.in = new InputStreamDataInput(sockIn);
     this.bos = new BufferedOutputStream(s.getOutputStream());
     this.out = new OutputStreamDataOutput(bos);
-    if (Node.VERBOSE_CONNECTIONS) {
-      System.out.println("make new client Connection socket=" + this.s + " destPort=" + tcpPort);
-    }
   }
 
   public void flush() throws IOException {

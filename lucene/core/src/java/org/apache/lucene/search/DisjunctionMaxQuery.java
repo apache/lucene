@@ -183,7 +183,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
           }
 
           @Override
-          public void setTopLevelScoringClause() throws IOException {
+          public void setTopLevelScoringClause() {
             if (tieBreakerMultiplier == 0) {
               for (ScorerSupplier ss : scorerSuppliers) {
                 // sub scorers need to be able to skip too as calls to setMinCompetitiveScore get

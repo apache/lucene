@@ -544,6 +544,7 @@ public abstract class LuceneTestCase extends Assert {
   static final TestRuleSetupAndRestoreClassEnv classEnvRule;
 
   /** Suite failure marker (any error in the test or suite scope). */
+  @SuppressWarnings("NonFinalStaticField")
   protected static TestRuleMarkFailure suiteFailureMarker;
 
   /** Temporary files cleanup rule. */
@@ -608,7 +609,7 @@ public abstract class LuceneTestCase extends Assert {
    * This controls how suite-level rules are nested. It is important that _all_ rules declared in
    * {@link LuceneTestCase} are executed in proper order if they depend on each other.
    */
-  @ClassRule public static TestRule classRules;
+  @ClassRule public static final TestRule classRules;
 
   static {
     RuleChain r =
@@ -679,6 +680,7 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /** Set by TestRuleSetupAndRestoreClassEnv */
+  @SuppressWarnings("NonFinalStaticField")
   static LiveIWCFlushMode liveIWCFlushMode;
 
   static void setLiveIWCFlushMode(LiveIWCFlushMode flushMode) {
@@ -1847,7 +1849,7 @@ public abstract class LuceneTestCase extends Assert {
     // we need to reset the query cache in an @BeforeClass so that tests that
     // instantiate an IndexSearcher in an @BeforeClass method use a fresh new cache
     IndexSearcher.setDefaultQueryCache(
-        new LRUQueryCache(10000, 1 << 25, context -> true, Float.POSITIVE_INFINITY));
+        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY));
     IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
   }
 

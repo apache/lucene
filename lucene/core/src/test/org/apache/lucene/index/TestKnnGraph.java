@@ -64,6 +64,7 @@ public class TestKnnGraph extends LuceneTestCase {
 
   private static final String KNN_GRAPH_FIELD = "vector";
 
+  @SuppressWarnings("NonFinalStaticField")
   private static int M = HnswGraphBuilder.DEFAULT_MAX_CONN;
 
   private Codec codec;

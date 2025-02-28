@@ -129,7 +129,7 @@ public final class AnalysisImpl implements Analysis {
       AttributeImpl att = itr.next();
       Map<String, String> attValues = new LinkedHashMap<>();
       att.reflectWith(
-          (attClass, key, value) -> {
+          (_, key, value) -> {
             if (value != null) attValues.put(key, value.toString());
           });
       attributes.add(new TokenAttribute(att.getClass().getSimpleName(), attValues));

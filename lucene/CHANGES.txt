@@ -14,6 +14,14 @@ API Changes
 * GITHUB#14160: Adjusts the default HNSW search behavior so that filter optimized search is enabled
   when 60% or less of vectors pass the pre-filter. (Ben Chaplin, Ben Trent)
 
+* GITHUB#14284: Remove IOException from DocIdSet#iterator signature (Luca Cavanna)
+
+* GITHUB#14288: The unused public static DocIdSet#all method has been removed. (Luca Cavanna)
+
+* GITHUB#14290: Remove redundant bits method from DocIdSet. (Luca Cavanna)
+
+* GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -37,7 +45,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#14229: Bump minimum required Java version to 25
 
 ======================= Lucene 10.2.0 =======================
 
@@ -55,6 +64,14 @@ API Changes
 * GITHUB#14236: CombinedFieldQuery moved from lucene-sandbox to lucene-core.
   (Adrien Grand)
 
+* GITHUB#14282: Remove redundant field argument from the DocIdSetBuilder constructor that takes a
+  PointValues instance. (Luca Cavanna)
+
+* GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
+  (Luca Cavanna)
+
+* GITHUB#14292: The redundant DocIdSet#bits method has been deprecated. (Luca Cavanna)
+
 New Features
 ---------------------
 
@@ -71,6 +88,11 @@ New Features
 * GITHUB#14278: Added `reuseChars` option to DictionaryCompoundWordTokenFilter, for use with
   `longestMatch = true`. The value can be set to false to reduce the number of extracted subwords. For example,
   if the word "schwein" is extracted, the sub-word "wein" is not extracted anymore. (Renato Haeberli)
+
+* GITHUB#14300: Add support JDK 24 to the Panama Vectorization Provider. (Chris Hegarty)
+
+* GITHUB#13470: Added `TopDocs#rrf` to combine multiple TopDocs instances using
+  reciprocal rank fusion. (Haren Lin, Adrien Grand)
 
 Improvements
 ---------------------
@@ -117,6 +139,10 @@ Optimizations
 * GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
   conjunctions. (Adrien Grand)
 
+* GITHUB#14293: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up
+  intersection of dense queries with live docs and/or collectors' competitive
+  iterators. (Adrien Grand)
+
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
 
@@ -133,9 +159,11 @@ Optimizations
 * GITHUB#14193: Add Automata.makeCharSet() and makeCharClass() that return minimal DFA
   for lists of characters and ranges. Use them in RegExp parser.  (Robert Muir)
 
-* GITHUB#14176: Reduce when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
+* GITHUB#14176: Reduce virtual call when visiting bpv24-encoded doc ids in BKD leaves. (Guo Feng)
 
 * GITHUB#14269: Implement #intoBitset for DocIdSetIterator#all and DocIdSetIterator#range. (Guo Feng)
+
+* GITHUB#14272: Use DocIdSetIterator#range for continuous-id BKD leaves. (Guo Feng)
 
 Bug Fixes
 ---------------------
@@ -150,6 +178,11 @@ Bug Fixes
 
 * GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
 
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
+  LogByteSizeMergePolicy. (Adrien Grand)
+
 Other
 ---------------------
 
@@ -163,6 +196,8 @@ Other
   from 1.7.36 to 2.0.16. (Michael Froh)
 
 * GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
+
+* GITHUB#14279 : Add github action to verify changelog entry and set milestone to PRs. (Amir Raza)
 
 ======================= Lucene 10.1.0 =======================
 

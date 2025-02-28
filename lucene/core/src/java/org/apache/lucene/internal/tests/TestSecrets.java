@@ -52,10 +52,19 @@ public final class TestSecrets {
     ensureInitialized.accept(FilterIndexInput.class);
   }
 
+  @SuppressWarnings("NonFinalStaticField")
   private static IndexPackageAccess indexPackageAccess;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static ConcurrentMergeSchedulerAccess cmsAccess;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static SegmentReaderAccess segmentReaderAccess;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static IndexWriterAccess indexWriterAccess;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static FilterIndexInputAccess filterIndexInputAccess;
 
   private TestSecrets() {}
