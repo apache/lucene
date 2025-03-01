@@ -20,7 +20,8 @@ import sys
 import os
 from enum import Enum
 import time
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.error
 import urllib.parse
 
 class Version(object):

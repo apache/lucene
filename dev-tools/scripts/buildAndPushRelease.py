@@ -24,7 +24,9 @@ import sys
 import subprocess
 from subprocess import TimeoutExpired
 import textwrap
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.error
+import urllib.parse
 import xml.etree.ElementTree as ET
 
 import scriptutil
