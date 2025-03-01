@@ -1,0 +1,48 @@
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+# TODO: improve!
+# typeCheckingMode = "strict"
+typeCheckingMode = "basic"
+# TODO: we should fix these
+reportArgumentType = "none"
+reportAttributeAccessIssue = "none"
+reportCallIssue = "none"
+reportInvalidStringEscapeSequence = "none"
+reportOperatorIssue = "none"
+reportOptionalIterable = "none"
+reportOptionalMemberAccess = "none"
+reportOptionalSubscript = "none"
+reportUndefinedVariable = "none"
+
+[tool.ruff]
+line-length = 200
+indent-width = 2
+
+[tool.ruff.lint]
+# TODO: improve!
+# select = ["ALL"]
+
+# disabling/enabling of rules
+ignore = [
+  # we should fix these
+  "E401",  # multiple imports on one line
+  "E701",  # multiple statements on one line
+  "E711",  # comparison should be "is not None"
+  "E703",  # unnecessary semicolon
+  "E713",  # test for membership should be "not in"
+  "E714",  # test for object identity should be "is not"
+  "E722",  # do not use bare except
+  "E741",  # ambiguous variable name
+  "F401",  # unused import
+  "F403",  # unable to detect undefined names due to star imports
+  "F405",  # undefined name or defined from star imports
+  "F811",  # redefinition of unused
+  "F821",  # undefined name
+  "F841",  # local variable assigned but never used
+
+  # These rules are always disabled: conflict with the formatter
+  # don't enable! https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+  "W191", "E111", "E114", "E117", "D206", "D300", "Q000", "Q001",
+  "Q002", "Q003", "COM812", "COM819", "ISC001", "ISC002", "E501",
+]
