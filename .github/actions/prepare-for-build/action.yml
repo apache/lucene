@@ -2,11 +2,12 @@
 # for java, gradle, caches, etc.
 
 name: Prepare Lucene build
+description: Creates a shared setup for other workflows
 
 inputs:
    java-version:
      required: false
-     default: 21
+     default: "21"
      description: "The default JDK version to set up."
 
    java-distribution:
