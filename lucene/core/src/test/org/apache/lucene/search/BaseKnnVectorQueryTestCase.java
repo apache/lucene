@@ -69,8 +69,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
 
+  /** Ensures that query throws an exception when an exact search is executed */
   abstract AbstractKnnVectorQuery getThrowingKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
+
+  /**
+   * Ensures that an approximate query returns at most maxResults results, and throws an exception
+   * when an exact search is executed
+   */
+  abstract AbstractKnnVectorQuery getCappedResultsThrowingKnnVectorQuery(
+      String field, float[] vec, int k, Query query, int maxResults);
 
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k) {
     return getKnnVectorQuery(field, query, k, null);
@@ -646,6 +654,24 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
                   searcher.search(
                       getThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4),
                       numDocs));
+
+          // Test a filter with cost slightly more than k, and check we use exact search as k
+          // results are not retrieved from approximate search
+          Query filter5 = IntPoint.newRangeQuery("tag", lower, lower + 11);
+          results =
+              searcher.search(
+                  getKnnVectorQuery("field", randomVector(dimension), 10, filter5), numDocs);
+          assertEquals(10, results.totalHits.value());
+          assertEquals(results.totalHits.value(), results.scoreDocs.length);
+          expectThrows(
+              UnsupportedOperationException.class,
+              () ->
+                  searcher.search(
+                      getCappedResultsThrowingKnnVectorQuery(
+                          "field", randomVector(dimension), 10, filter5, 5),
+                      numDocs));
+          assertEquals(10, results.totalHits.value());
+          assertEquals(results.totalHits.value(), results.scoreDocs.length);
         }
       }
     }
