@@ -27,6 +27,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.ReadAdvice;
 
 /**
  * Lucene 9.9 flat vector format, which encodes numeric vector values
@@ -78,21 +79,23 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
 
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
   private final FlatVectorsScorer vectorsScorer;
+  private final ReadAdvice readAdvice;
 
   /** Constructs a format */
-  public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer) {
+  public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer, ReadAdvice readAdvice) {
     super(NAME);
     this.vectorsScorer = vectorsScorer;
+    this.readAdvice = readAdvice;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene99FlatVectorsWriter(state, vectorsScorer);
+    return new Lucene99FlatVectorsWriter(state, vectorsScorer, readAdvice);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene99FlatVectorsReader(state, vectorsScorer);
+    return new Lucene99FlatVectorsReader(state, vectorsScorer, readAdvice);
   }
 
   @Override

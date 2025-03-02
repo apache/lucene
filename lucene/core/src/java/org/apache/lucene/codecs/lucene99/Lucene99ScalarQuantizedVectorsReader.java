@@ -64,7 +64,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   private final FieldInfos fieldInfos;
 
   public Lucene99ScalarQuantizedVectorsReader(
-      SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer)
+      SegmentReadState state,
+      FlatVectorsReader rawVectorsReader,
+      FlatVectorsScorer scorer,
+      ReadAdvice readAdvice)
       throws IOException {
     super(scorer);
     this.rawVectorsReader = rawVectorsReader;
@@ -99,9 +102,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               versionMeta,
               Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
               Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-              // graph.
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
+              state.context.withReadAdvice(readAdvice));
       success = true;
     } finally {
       if (success == false) {
