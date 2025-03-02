@@ -20,8 +20,10 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import org.apache.lucene.internal.hppc.IntFloatHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -33,10 +35,13 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
 
   private final AbstractHnswGraphSearcher delegate;
   private final int[] seedOrds;
+  private final IntFloatHashMap scoreMap;
 
   static SeededHnswGraphSearcher fromEntryPoints(
-      AbstractHnswGraphSearcher delegate, int numEps, DocIdSetIterator eps, int graphSize)
+      AbstractHnswGraphSearcher delegate, KnnSearchStrategy.Seeded seeded, int graphSize)
       throws IOException {
+    int numEps = seeded.numberOfEntryPoints();
+    DocIdSetIterator eps = seeded.entryPoints();
     if (numEps <= 0) {
       throw new IllegalArgumentException("The number of entry points must be > 0");
     }
@@ -55,8 +60,21 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
   }
 
   SeededHnswGraphSearcher(AbstractHnswGraphSearcher delegate, int[] seedOrds) {
+    this(delegate, seedOrds, null);
+  }
+
+  SeededHnswGraphSearcher(AbstractHnswGraphSearcher delegate, int[] seedOrds, float[] scores) {
     this.delegate = delegate;
     this.seedOrds = seedOrds;
+    if (scores != null) {
+      assert seedOrds.length == scores.length;
+      scoreMap = new IntFloatHashMap();
+      for (int i = 0; i < seedOrds.length; i++) {
+        scoreMap.put(seedOrds[i], scores[i]);
+      }
+    } else {
+      scoreMap = null;
+    }
   }
 
   @Override
@@ -68,11 +86,49 @@ final class SeededHnswGraphSearcher extends AbstractHnswGraphSearcher {
       HnswGraph graph,
       Bits acceptOrds)
       throws IOException {
+    if (scoreMap != null) {
+      delegate.searchLevel(
+          results, new SeededRandomVectorScorer(scorer), level, eps, graph, acceptOrds);
+    }
     delegate.searchLevel(results, scorer, level, eps, graph, acceptOrds);
   }
 
   @Override
   int[] findBestEntryPoint(RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector) {
     return seedOrds;
+  }
+
+  private class SeededRandomVectorScorer implements RandomVectorScorer {
+
+    private final RandomVectorScorer delegate;
+
+    SeededRandomVectorScorer(RandomVectorScorer delegate) {
+      assert scoreMap != null;
+      this.delegate = delegate;
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      int index = scoreMap.indexOf(node);
+      if (index >= 0) {
+        return scoreMap.indexGet(index);
+      }
+      return delegate.score(node);
+    }
+
+    @Override
+    public int maxOrd() {
+      return delegate.maxOrd();
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return delegate.ordToDoc(ord);
+    }
+
+    @Override
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      return delegate.getAcceptOrds(acceptDocs);
+    }
   }
 }
