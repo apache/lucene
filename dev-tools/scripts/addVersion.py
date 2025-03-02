@@ -18,12 +18,10 @@
 import os
 import sys
 sys.path.append(os.path.dirname(__file__))
-from scriptutil import *
-
+from scriptutil import find_branch_type, find_current_version, run, update_file, Version
 import argparse
 import re
 from configparser import ConfigParser, ExtendedInterpolation
-from textwrap import dedent
 
 def update_changes(filename, new_version, init_changes, headers):
   print('  adding new section to %s...' % filename, end='', flush=True)
@@ -55,7 +53,7 @@ def add_constant(new_version, deprecate):
     if last.strip() != '@Deprecated':
       spaces = ' ' * (len(last) - len(last.lstrip()) - 1)
       del buffer[-1] # Remove comment closer line
-      if (len(buffer) >= 4 and re.search('for Lucene.\s*$', buffer[-1]) != None):
+      if (len(buffer) >= 4 and re.search('for Lucene.\s*$', buffer[-1]) is not None):
         del buffer[-3:] # drop the trailing lines '<p> / Use this to get the latest ... / ... for Lucene.'
       buffer.append(( '{0} * @deprecated ({1}) Use latest\n'
                     + '{0} */\n'

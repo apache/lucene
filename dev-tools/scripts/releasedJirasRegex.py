@@ -18,7 +18,7 @@
 import sys
 import os
 sys.path.append(os.path.dirname(__file__))
-from scriptutil import *
+from scriptutil import Version
 import argparse
 import re
 

@@ -51,15 +51,10 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 
-try:
-    import holidays
-    import yaml
-    from ics import Calendar, Event
-    from jinja2 import Environment
-except:
-    print("You lack some of the module dependencies to run this script.")
-    print("Please run 'pip3 install -r requirements.txt' and try again.")
-    sys.exit(1)
+import holidays
+import yaml
+from ics import Calendar, Event
+from jinja2 import Environment
 
 import scriptutil
 from consolemenu import ConsoleMenu
@@ -173,26 +168,26 @@ def check_prerequisites(todo=None):
         sys.exit("Script requires Python v3.4 or later")
     try:
         gpg_ver = run("gpg --version").splitlines()[0]
-    except:
+    except Exception:
         sys.exit("You will need gpg installed")
-    if not 'GPG_TTY' in os.environ:
+    if 'GPG_TTY' not in os.environ:
         print("WARNING: GPG_TTY environment variable is not set, GPG signing may not work correctly (try 'export GPG_TTY=$(tty)'")
-    if not 'JAVA11_HOME' in os.environ:
+    if 'JAVA11_HOME' not in os.environ:
         sys.exit("Please set environment variables JAVA11_HOME")
     try:
         asciidoc_ver = run("asciidoctor -V").splitlines()[0]
-    except:
+    except Exception:
         asciidoc_ver = ""
         print("WARNING: In order to export asciidoc version to HTML, you will need asciidoctor installed")
     try:
         git_ver = run("git --version").splitlines()[0]
-    except:
+    except Exception:
         sys.exit("You will need git installed")
     try:
         run("svn --version").splitlines()[0]
-    except:
+    except Exception:
         sys.exit("You will need svn installed")
-    if not 'EDITOR' in os.environ:
+    if 'EDITOR' not in os.environ:
         print("WARNING: Environment variable $EDITOR not set, using %s" % get_editor())
 
     if todo:
@@ -285,7 +280,7 @@ class ReleaseState:
         self.mirrored_versions = None
         try:
             self.script_branch_type = scriptutil.find_branch_type()
-        except:
+        except Exception:
             print("WARNING: This script shold (ideally) run from the release branch, not a feature branch (%s)" % self.script_branch)
             self.script_branch_type = 'feature'
         self.set_release_version(release_version)
@@ -510,7 +505,7 @@ class ReleaseState:
     def get_current_git_rev(self):
         try:
             return run("git rev-parse HEAD", cwd=self.get_git_checkout_folder()).strip()
-        except:
+        except Exception:
             return "<git-rev>"
 
     def get_group_by_id(self, id):
@@ -717,7 +712,7 @@ class Todo(SecretYamlObject):
         if self.types:
             self.types = ensure_list(self.types)
             for t in self.types:
-                if not t in ['minor', 'major', 'bugfix']:
+                if t not in ['minor', 'major', 'bugfix']:
                     sys.exit("Wrong Todo config for '%s'. Type needs to be either 'minor', 'major' or 'bugfix'" % self.id)
         if commands:
             self.commands.todo_id = self.id
@@ -867,7 +862,7 @@ def get_release_version():
     v = str(input("Which version are you releasing? (x.y.z) "))
     try:
         version = Version.parse(v)
-    except:
+    except Exception:
         print("Not a valid version %s" % v)
         return get_release_version()
 
@@ -1011,8 +1006,8 @@ def generate_asciidoc():
                 fh.write("\n%s\n\n" % todo.get_post_description())
             if todo.links:
                 fh.write("Links:\n\n")
-                for l in todo.links:
-                    fh.write("* %s\n" % expand_jinja(l))
+                for link in todo.links:
+                    fh.write("* %s\n" % expand_jinja(link))
                 fh.write("\n")
 
     fh.close()
@@ -1031,7 +1026,7 @@ def load_rc():
     try:
         with open(lucenerc, 'r') as fp:
             return json.load(fp)
-    except:
+    except Exception:
         return None
 
 
@@ -1160,7 +1155,7 @@ def configure_pgp(gpg_todo):
                 print("Please either generate a strong key or reconfigure your client")
                 return False
         print("Validated that your key is of type RSA and has a length >= 2048 (%s)" % length)
-    except:
+    except Exception:
         print(textwrap.dedent("""\
             Key not found on your private gpg keychain. In order to sign the release you'll
             need to fix this, then try again"""))
@@ -1170,14 +1165,14 @@ def configure_pgp(gpg_todo):
         sigs = 0
         apache_sigs = 0
         for line in lines:
-            if line.startswith("sig") and not gpg_id in line:
+            if line.startswith("sig") and gpg_id not in line:
                 sigs += 1
                 if '@apache.org' in line:
                     apache_sigs += 1
         print("Your key has %s signatures, of which %s are by committers (@apache.org address)" % (sigs, apache_sigs))
         if apache_sigs < 1:
             print(textwrap.dedent("""\
-                Your key is not signed by any other committer. 
+                Your key is not signed by any other committer.
                 Please review https://infra.apache.org/openpgp.html#apache-wot
                 and make sure to get your key signed until next time.
                 You may want to run 'gpg --refresh-keys' to refresh your keychain."""))
@@ -1220,7 +1215,7 @@ def configure_pgp(gpg_todo):
     print(textwrap.dedent("""\
             You need the passphrase to sign the release.
             This script can prompt you securely for your passphrase (will not be stored) and pass it on to
-            buildAndPushRelease in a secure way. However, you can also configure your passphrase in advance 
+            buildAndPushRelease in a secure way. However, you can also configure your passphrase in advance
             and avoid having to type it in the terminal. This can be done with either a gpg-agent (for gpg tool)
             or in gradle.properties or an ENV.var (for gradle), See ./gradlew helpPublishing for details."""))
     gpg_state['prompt_pass'] = ask_yes_no("Do you want this wizard to prompt you for your gpg password? ")
@@ -1251,7 +1246,7 @@ def main():
 
     try:
       ConsoleMenu(clear_screen=True)
-    except Exception as e:
+    except Exception:
       sys.exit("You need to install 'consolemenu' package version 0.7.1 for the Wizard to function. Please run 'pip "
                "install -r requirements.txt'")
 
@@ -1264,7 +1259,6 @@ def main():
     release_root = os.path.expanduser("~/.lucene-releases")
     if not load_rc() or c.init:
         print("Initializing")
-        dir_ok = False
         root = str(input("Choose root folder: [~/.lucene-releases] "))
         if os.path.exists(root) and (not os.path.isdir(root) or not os.access(root, os.W_OK)):
             sys.exit("Root %s exists but is not a directory or is not writable" % root)
@@ -1552,8 +1546,8 @@ class Commands(SecretYamlObject):
             for line in cmd.display_cmd():
                 print("  %s" % line)
         print()
-        confirm_each = (not self.confirm_each_command is False) and len(commands) > 1
-        if not self.enable_execute is False:
+        confirm_each = (self.confirm_each_command is not False) and len(commands) > 1
+        if self.enable_execute is not False:
             if self.run_text:
                 print("\n%s\n" % self.get_run_text())
             if confirm_each:
@@ -1825,7 +1819,7 @@ class UserInput(SecretYamlObject):
             return result
 
 
-def create_ical(todo): # pylint: disable=unused-argument
+def create_ical(_todo): # pylint: disable=unused-argument
     if ask_yes_no("Do you want to add a Calendar reminder for the close vote time?"):
         c = Calendar()
         e = Event()
@@ -1872,7 +1866,7 @@ def vote_close_72h_holidays():
     return holidays if len(holidays) > 0 else None
 
 
-def prepare_announce_lucene(todo): # pylint: disable=unused-argument
+def prepare_announce_lucene(_todo): # pylint: disable=unused-argument
     if not os.path.exists(lucene_news_file):
         lucene_text = expand_jinja("(( template=announce_lucene ))")
         with open(lucene_news_file, 'w') as fp:
@@ -1883,7 +1877,7 @@ def prepare_announce_lucene(todo): # pylint: disable=unused-argument
     return True
 
 
-def check_artifacts_available(todo): # pylint: disable=unused-argument
+def check_artifacts_available(_todo): # pylint: disable=unused-argument
   try:
     cdnUrl = expand_jinja("https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc")
     load(cdnUrl)
