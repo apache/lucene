@@ -28,13 +28,7 @@ import json
 import re
 from github import Github
 from jira import JIRA
-from datetime import datetime
-from time import strftime
-try:
-  from jinja2 import Environment, BaseLoader
-  can_do_html = True
-except:
-  can_do_html = False
+from jinja2 import Environment, BaseLoader
 
 def read_config():
   parser = argparse.ArgumentParser(description='Find open Pull Requests that need attention')
@@ -51,9 +45,6 @@ def out(text):
     print(text)
 
 def make_html(dict):
-  if not can_do_html:
-    print ("ERROR: Cannot generate HTML. Please install jinja2")
-    sys.exit(1)
   global conf
   template = Environment(loader=BaseLoader).from_string("""
   <h1>Lucene Github PR report</h1>
