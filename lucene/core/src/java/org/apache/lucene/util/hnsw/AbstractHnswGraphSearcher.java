@@ -27,7 +27,15 @@ import org.apache.lucene.util.Bits;
  */
 abstract class AbstractHnswGraphSearcher {
 
-  static final int UNK_EP = -1;
+  /**
+   * Graph entry points, with optional scores
+   *
+   * @param ordinals the vector ordinals for the entry point
+   * @param scores the scores
+   */
+  record EntryPoints(int[] ordinals, float[] scores) {}
+
+  static final EntryPoints UNK_EP = new EntryPoints(new int[] {}, new float[] {});
 
   /**
    * Search a given level of the graph starting at the given entry points.
@@ -36,6 +44,8 @@ abstract class AbstractHnswGraphSearcher {
    * @param scorer the scorer to compare the query with the nodes
    * @param level the level of the graph to search
    * @param eps the entry points to start the search from
+   * @param scores the scores of the individual entry points, can be null
+   * @param epCount the entry point count
    * @param graph the HNSWGraph
    * @param acceptOrds the ordinals to accept for the results
    */
@@ -44,9 +54,34 @@ abstract class AbstractHnswGraphSearcher {
       RandomVectorScorer scorer,
       int level,
       final int[] eps,
+      final float[] scores,
+      int epCount,
       HnswGraph graph,
       Bits acceptOrds)
       throws IOException;
+
+  /**
+   * Search a given level of the graph starting at the given entry points.
+   *
+   * @param results the collector to collect the results
+   * @param scorer the scorer to compare the query with the nodes
+   * @param level the level of the graph to search
+   * @param eps the entry points to start the search from
+   * @param scores the scores of the individual entry points, can be null
+   * @param graph the HNSWGraph
+   * @param acceptOrds the ordinals to accept for the results
+   */
+  final void searchLevel(
+      KnnCollector results,
+      RandomVectorScorer scorer,
+      int level,
+      final int[] eps,
+      final float[] scores,
+      HnswGraph graph,
+      Bits acceptOrds)
+      throws IOException {
+    searchLevel(results, scorer, level, eps, scores, eps.length, graph, acceptOrds);
+  }
 
   /**
    * Function to find the best entry point from which to search the zeroth graph layer.
@@ -58,7 +93,7 @@ abstract class AbstractHnswGraphSearcher {
    *     exceeded
    * @throws IOException When accessing the vectors or graph fails
    */
-  abstract int[] findBestEntryPoint(
+  abstract EntryPoints findBestEntryPoint(
       RandomVectorScorer scorer, HnswGraph graph, KnnCollector collector) throws IOException;
 
   /**
@@ -74,11 +109,11 @@ abstract class AbstractHnswGraphSearcher {
   public void search(
       KnnCollector results, RandomVectorScorer scorer, HnswGraph graph, Bits acceptOrds)
       throws IOException {
-    int[] eps = findBestEntryPoint(scorer, graph, results);
-    assert eps != null && eps.length > 0;
-    if (eps[0] == UNK_EP) {
+    EntryPoints eps = findBestEntryPoint(scorer, graph, results);
+    assert eps != null;
+    if (eps == UNK_EP) {
       return;
     }
-    searchLevel(results, scorer, 0, eps, graph, acceptOrds);
+    searchLevel(results, scorer, 0, eps.ordinals, eps.scores, graph, acceptOrds);
   }
 }
