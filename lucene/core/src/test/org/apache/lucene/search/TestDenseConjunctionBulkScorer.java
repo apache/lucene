@@ -287,9 +287,11 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     assertEquals(expected.cardinality(), collector.count);
   }
 
-  public void testZeroClauseNoLiveDocs() throws IOException {
+  public void testMatchAllNoLiveDocs() throws IOException {
     int maxDoc = 100_000;
-    BulkScorer scorer = new DenseConjunctionBulkScorer(Collections.emptyList(), maxDoc, 0f);
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(DocIdSetIterator.all(maxDoc)), maxDoc, 0f);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
@@ -311,15 +313,19 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, result.nextSetBit(0));
 
     // Now exercise DocIdStream.count()
-    scorer = new DenseConjunctionBulkScorer(Collections.emptyList(), maxDoc, 0f);
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(DocIdSetIterator.all(maxDoc)), maxDoc, 0f);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(maxDoc, collector.count);
   }
 
-  public void testZeroClauseWithLiveDocs() throws IOException {
+  public void testMatchAllWithLiveDocs() throws IOException {
     int maxDoc = 100_000;
-    BulkScorer scorer = new DenseConjunctionBulkScorer(Collections.emptyList(), maxDoc, 0f);
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(DocIdSetIterator.all(maxDoc)), maxDoc, 0f);
     // AssertingBulkScorer randomly splits the scored range into smaller ranges
     scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
@@ -345,7 +351,9 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     assertEquals(acceptDocs, result);
 
     // Now exercise DocIdStream.count()
-    scorer = new DenseConjunctionBulkScorer(Collections.emptyList(), maxDoc, 0f);
+    scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(DocIdSetIterator.all(maxDoc)), maxDoc, 0f);
     CountingLeafCollector collector = new CountingLeafCollector();
     scorer.score(collector, acceptDocs, 0, DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(acceptDocs.cardinality(), collector.count);
