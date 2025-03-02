@@ -143,7 +143,7 @@ public class OptimisticKnnVectorQuery extends KnnFloatVectorQuery {
   @Override
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
     KnnCollectorManager manager =
-        (visitedLimit, strategy, context) -> {
+        (visitedLimit, _, context) -> {
           @SuppressWarnings("resource")
           float leafProportion =
               context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
@@ -224,6 +224,10 @@ public class OptimisticKnnVectorQuery extends KnnFloatVectorQuery {
     ReentrantDocAndScoreQuery(DocAndScoreQuery dasq, int reentryCount) {
       super(dasq);
       this.reentryCount = reentryCount;
+    }
+
+    int reentryCount() {
+      return reentryCount;
     }
   }
 }

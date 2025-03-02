@@ -505,6 +505,10 @@ abstract class AbstractKnnVectorQuery extends Query {
       visitor.visitLeaf(this);
     }
 
+    public long visited() {
+      return visited;
+    }
+
     @Override
     public boolean equals(Object obj) {
       if (sameClassAs(obj) == false) {
