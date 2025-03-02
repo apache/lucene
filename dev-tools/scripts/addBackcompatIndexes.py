@@ -17,7 +17,7 @@
 
 
 # For usage information, see:
-# 
+#
 #   http://wiki.apache.org/lucene-java/ReleaseTodo#Generate_Backcompat_Indexes
 
 
@@ -49,7 +49,7 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
     filename = '%s.%s-%s.zip' % (prefix, index_version, indextype)
   else:
     filename = '%s.%s.zip' % (prefix, index_version)
-  
+
   print('  creating %s...' % filename, end='', flush=True)
   module = 'backward-codecs'
   index_dir = os.path.join('lucene', module, 'src/test/org/apache/lucene/backward_index')
@@ -76,7 +76,7 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
   ])
   base_dir = os.getcwd()
   bc_index_file = os.path.join(temp_dir, filename)
-  
+
   if os.path.exists(bc_index_file):
     print('alreadyexists')
   else:
@@ -85,7 +85,7 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
     if not os.path.exists(bc_index_file):
       raise Exception("Expected file can't be found: %s" %bc_index_file)
     print('done')
-  
+
   print('  adding %s...' % filename, end='', flush=True)
   scriptutil.run('cp %s %s' % (bc_index_file, os.path.join(base_dir, index_dir)))
   os.chdir(base_dir)
@@ -125,7 +125,7 @@ def update_backcompat_tests(index_version, current_version):
       buffer.append('\n')
     buffer.append(('%s\n') % index_version)
     return True
-        
+
   changed = scriptutil.update_file(filename, re.compile(r'.*'), edit, append)
   print('done' if changed else 'uptodate')
 
@@ -139,7 +139,7 @@ def download_from_cdn(version, remotename, localname):
   try:
     urllib.request.urlretrieve(url, localname)
     return True
-  except urllib.error.URLError as e:
+  except urllib.error.HTTPError as e:
     if e.code == 404:
       return False
     raise e
@@ -149,14 +149,14 @@ def download_from_archives(version, remotename, localname):
   try:
     urllib.request.urlretrieve(url, localname)
     return True
-  except urllib.error.URLError as e:
+  except urllib.error.HTTPError as e:
     if e.code == 404:
       return False
     raise e
 
 def download_release(version, temp_dir, force):
   print('  downloading %s source release...' % version, end='', flush=True)
-  source = os.path.join(temp_dir, 'lucene-%s' % version) 
+  source = os.path.join(temp_dir, 'lucene-%s' % version)
   if os.path.exists(source):
     if force:
       shutil.rmtree(source)
@@ -173,7 +173,7 @@ def download_release(version, temp_dir, force):
   olddir = os.getcwd()
   os.chdir(temp_dir)
   scriptutil.run('tar -xvzf %s' % source_tgz)
-  os.chdir(olddir) 
+  os.chdir(olddir)
   print('done')
   return source
 
@@ -195,9 +195,9 @@ http://wiki.apache.org/lucene-java/ReleaseTodo#Generate_Backcompat_Indexes
   c = parser.parse_args()
 
   return c
-  
+
 def main():
-  c = read_config() 
+  c = read_config()
   if not os.path.exists(c.temp_dir):
     os.makedirs(c.temp_dir)
 
@@ -216,7 +216,7 @@ def main():
     create_and_add_index(source, 'dvupdates', c.version, current_version, c.temp_dir)
     create_and_add_index(source, 'emptyIndex', c.version, current_version, c.temp_dir)
     print ('\nMANUAL UPDATE REQUIRED: edit TestGenerateBwcIndices to enable moreterms, dvupdates, and empty index testing')
-    
+
   print('\nAdding backwards compatibility tests')
   update_backcompat_tests(c.version, current_version)
 
