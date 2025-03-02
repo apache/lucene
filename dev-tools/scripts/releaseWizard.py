@@ -45,13 +45,14 @@ import subprocess
 import sys
 import textwrap
 import time
-import urllib
+import urllib.request
 from collections import OrderedDict
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
+from typing import cast
 
-import holidays
+from holidays import country_holidays
 import yaml
 from ics import Calendar, Event
 from jinja2 import Environment
@@ -135,12 +136,11 @@ def expand_jinja(text, vars=None):
 def replace_templates(text):
     tpl_lines = []
     for line in text.splitlines():
-        if line.startswith("(( template="):
-            match = re.search(r"^\(\( template=(.+?) \)\)", line)
-            name = match.group(1)
-            tpl_lines.append(replace_templates(templates[name].strip()))
-        else:
-            tpl_lines.append(line)
+      if match := re.search(r"^\(\( template=(.+?) \)\)", line):
+        name = match.group(1)
+        tpl_lines.append(replace_templates(templates[name].strip()))
+      else:
+        tpl_lines.append(line)
     return "\n".join(tpl_lines)
 
 def getScriptVersion():
@@ -270,8 +270,8 @@ class ReleaseState:
     def __init__(self, config_path, release_version, script_version):
         self.script_version = script_version
         self.config_path = config_path
-        self.todo_groups = None
-        self.todos = None
+        self.todo_groups: list[TodoGroup] = []
+        self.todos: dict[str,Todo] = {}
         self.latest_version = None
         self.previous_rcs = {}
         self.rc_number = 1
@@ -301,10 +301,13 @@ class ReleaseState:
             self.release_type = 'bugfix'
 
     def is_released(self):
-        return self.get_todo_by_id('announce_lucene').is_done()
+        todo = self.get_todo_by_id('announce_lucene')
+        assert todo
+        return todo.is_done()
 
     def get_gpg_key(self):
         gpg_task = self.get_todo_by_id('gpg')
+        assert gpg_task
         if gpg_task.is_done():
             return gpg_task.get_state()['gpg_key']
         else:
@@ -312,6 +315,7 @@ class ReleaseState:
 
     def get_release_date(self):
         publish_task = self.get_todo_by_id('publish_maven')
+        assert publish_task
         if publish_task.is_done():
             return unix_to_datetime(publish_task.get_state()['done_date'])
         else:
@@ -587,7 +591,7 @@ class ReleaseState:
         java_ver = java_versions[v.major]
         java_home_var = "JAVA%s_HOME" % java_ver
         if java_home_var in os.environ:
-            return os.environ.get(java_home_var)
+            return os.environ[java_home_var]
         else:
             raise Exception("Script needs environment variable %s" % java_home_var )
 
@@ -674,7 +678,7 @@ class TodoGroup(SecretYamlObject):
         else:
             return None
 
-    def get_subtitle(self):
+    def get_subtitle(self) -> str:
         if self.depends:
             ret_str = ""
             for dep in ensure_list(self.depends):
@@ -684,7 +688,7 @@ class TodoGroup(SecretYamlObject):
                 if g and not g.is_done():
                     ret_str += "NOTE: Please first complete '%s'\n" % g.title
                     return ret_str.strip()
-        return None
+        return ""
 
 
 class Todo(SecretYamlObject):
@@ -714,9 +718,9 @@ class Todo(SecretYamlObject):
             for t in self.types:
                 if t not in ['minor', 'major', 'bugfix']:
                     sys.exit("Wrong Todo config for '%s'. Type needs to be either 'minor', 'major' or 'bugfix'" % self.id)
-        if commands:
+        if self.commands:
             self.commands.todo_id = self.id
-            for c in commands.commands:
+            for c in self.commands.commands:
                 c.todo_id = self.id
 
     @classmethod
@@ -766,6 +770,7 @@ class Todo(SecretYamlObject):
                     g = state.get_group_by_id(dep)
                     if not g:
                         g = state.get_todo_by_id(dep)
+                    assert g
                     if not g.is_done():
                         print("This step depends on '%s'. Please complete that first\n" % g.title)
                         return
@@ -815,7 +820,7 @@ class Todo(SecretYamlObject):
             print("ERROR while executing todo %s (%s)" % (self.get_title(), e))
 
     def get_menu_item(self):
-        return FunctionItem(self.get_title, self.display_and_confirm)
+        return FunctionItem(self.get_title(), self.display_and_confirm)
 
     def clone(self):
         clone = Todo(self.id, self.title, description=self.description)
@@ -937,7 +942,7 @@ def unix_to_datetime(unix_stamp):
 def generate_asciidoc():
     base_filename = os.path.join(state.get_release_folder(),
                                  "lucene_release_%s"
-                                 % (state.release_version.replace("\.", "_")))
+                                 % (state.release_version.replace(r"\.", "_")))
 
     filename_adoc = "%s.adoc" % base_filename
     filename_html = "%s.html" % base_filename
@@ -1027,7 +1032,7 @@ def load_rc():
         with open(lucenerc, 'r') as fp:
             return json.load(fp)
     except Exception:
-        return None
+        return {}
 
 
 def store_rc(release_root, release_version=None):
@@ -1061,7 +1066,7 @@ def keys_downloaded():
 def dump_yaml():
     file = open(os.path.join(script_path, "releaseWizard.yaml"), "w")
     yaml.add_representer(str, str_presenter)
-    yaml.Dumper.ignore_aliases = lambda *args : True
+    yaml.Dumper.ignore_aliases = lambda self, data : True
     dump_obj = {'templates': templates,
                 'groups': state.todo_groups}
     yaml.dump(dump_obj, width=180, stream=file, sort_keys=False, default_flow_style=False)
@@ -1230,7 +1235,7 @@ def pause(fun=None):
 
 
 class CustomExitItem(ExitItem):
-    def show(self, index):
+    def show(self, index, available_width=None):
         return super(CustomExitItem, self).show(index)
 
     def get_return(self):
@@ -1277,7 +1282,7 @@ def main():
     else:
         conf = load_rc()
         release_root = conf['root']
-        if 'release_version' in conf:
+        if conf and 'release_version' in conf:
             release_version = conf['release_version']
         else:
             release_version = get_release_version()
@@ -1326,7 +1331,7 @@ def main():
             todo_menu.append_item(menu_item)
 
     main_menu.append_item(SubmenuItem(get_todo_menuitem_title, todo_menu, menu=main_menu))
-    main_menu.append_item(FunctionItem(get_start_new_rc_menu_title, start_new_rc))
+    main_menu.append_item(FunctionItem(get_start_new_rc_menu_title(), start_new_rc))
     main_menu.append_item(FunctionItem('Clear and restart current RC', state.clear_rc))
     main_menu.append_item(FunctionItem("Clear all state, restart the %s release" % state.release_version, reset_state))
     main_menu.append_item(FunctionItem('Start release for a different version', release_other_version))
@@ -1425,9 +1430,11 @@ def run_follow(command, cwd=None, fh=sys.stdout, tee=False, live=False, shell=No
                                universal_newlines=True, bufsize=0, close_fds=True, shell=doShell)
     lines_written = 0
 
+    assert process.stdout
     fl = fcntl.fcntl(process.stdout, fcntl.F_GETFL)
     fcntl.fcntl(process.stdout, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
+    assert process.stderr
     flerr = fcntl.fcntl(process.stderr, fcntl.F_GETFL)
     fcntl.fcntl(process.stderr, fcntl.F_SETFL, flerr | os.O_NONBLOCK)
 
@@ -1506,7 +1513,7 @@ class Commands(SecretYamlObject):
     yaml_tag = u'!Commands'
     hidden_fields = ['todo_id']
     cmd_continuation_char = "^" if is_windows() else "\\"
-    def __init__(self, root_folder, commands_text=None, commands=None, logs_prefix=None, run_text=None, enable_execute=None,
+    def __init__(self, root_folder, commands_text=None, commands=[], logs_prefix=None, run_text=None, enable_execute=None,
                  confirm_each_command=None, env=None, vars=None, todo_id=None, remove_files=None):
         self.root_folder = root_folder
         self.commands_text = commands_text
@@ -1535,7 +1542,7 @@ class Commands(SecretYamlObject):
         if self.env:
             for key in self.env:
                 val = self.jinjaify(self.env[key])
-                os.environ[key] = val
+                os.environ[key] = str(val)
                 if is_windows():
                     print("\n  SET %s=%s" % (key, val))
                 else:
@@ -1646,7 +1653,7 @@ class Commands(SecretYamlObject):
             return success
 
     def get_root_folder(self):
-        return self.jinjaify(self.root_folder)
+        return cast(str, self.jinjaify(self.root_folder))
 
     def get_commands_text(self):
         return self.jinjaify(self.commands_text)
@@ -1673,7 +1680,9 @@ class Commands(SecretYamlObject):
             return None
         v = self.get_vars()
         if self.todo_id:
-            v.update(state.get_todo_by_id(self.todo_id).get_vars())
+            todo = state.get_todo_by_id(self.todo_id)
+            assert todo
+            v.update(todo.get_vars())
         if isinstance(data, list):
             if join:
                 return expand_jinja(" ".join(data), v)
@@ -1693,7 +1702,7 @@ def abbreviate_homedir(line):
         elif 'USERPROFILE' in os.environ:
             return re.sub(r'([^/]|\b)%s' % os.path.expanduser('~'), "\\1%USERPROFILE%", line)
         else:
-            return None
+            return line
     else:
         return re.sub(r'([^/]|\b)%s' % os.path.expanduser('~'), "\\1~", line)
 
@@ -1741,7 +1750,7 @@ class Command(SecretYamlObject):
         return self.jinjaify(self.redirect)
 
     def get_cmd(self):
-        return self.jinjaify(self.cmd, join=True)
+        return cast(str, self.jinjaify(self.cmd, join=True))
 
     def get_vars(self):
         myvars = {}
@@ -1760,7 +1769,9 @@ class Command(SecretYamlObject):
     def jinjaify(self, data, join=False):
         v = self.get_vars()
         if self.todo_id:
-            v.update(state.get_todo_by_id(self.todo_id).get_vars())
+            todo = state.get_todo_by_id(self.todo_id)
+            assert todo
+            v.update(todo.get_vars())
         if isinstance(data, list):
             if join:
                 return expand_jinja(" ".join(data), v)
@@ -1821,15 +1832,16 @@ class UserInput(SecretYamlObject):
 
 def create_ical(_todo): # pylint: disable=unused-argument
     if ask_yes_no("Do you want to add a Calendar reminder for the close vote time?"):
-        c = Calendar()
-        e = Event()
+        # TODO: this library has broken typing and seems unmaintained, replace?
+        c = Calendar() # pyright: ignore[reportArgumentType]
+        e = Event() # pyright: ignore[reportArgumentType]
         e.name = "Lucene %s vote ends" % state.release_version
         e.begin = vote_close_72h_date()
         e.description = "Remember to sum up votes and continue release :)"
         c.events.add(e)
         ics_file = os.path.join(state.get_rc_folder(), 'vote_end.ics')
         with open(ics_file, 'w') as my_file:
-            my_file.writelines(c)
+            my_file.writelines(c) # pyright: ignore[reportArgumentType]
         open_file(ics_file)
     return True
 
@@ -1838,8 +1850,8 @@ today = datetime.now(tz=timezone.utc).date()
 sundays = {(today + timedelta(days=x)): 'Sunday' for x in range(10) if (today + timedelta(days=x)).weekday() == 6}
 y = datetime.now(tz=timezone.utc).year
 years = [y, y+1]
-non_working = holidays.CA(years=years) + holidays.US(years=years) + holidays.UK(years=years) \
-              + holidays.DE(years=years) + holidays.NO(years=years) + holidays.IN(years=years) + holidays.RU(years=years)
+non_working = country_holidays('CA', years=years) + country_holidays('US', years=years) + country_holidays('UK', years=years) \
+              + country_holidays('DE', years=years) + country_holidays('NO', years=years) + country_holidays('IN', years=years) + country_holidays('RU', years=years)
 
 
 def vote_close_72h_date():
@@ -1878,16 +1890,16 @@ def prepare_announce_lucene(_todo): # pylint: disable=unused-argument
 
 
 def check_artifacts_available(_todo): # pylint: disable=unused-argument
+  cdnUrl = expand_jinja("https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc")
   try:
-    cdnUrl = expand_jinja("https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc")
     load(cdnUrl)
     print("Found %s" % cdnUrl)
   except Exception as e:
     print("Could not fetch %s (%s)" % (cdnUrl, e))
     return False
 
+  mavenUrl = expand_jinja("https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.jar.asc")
   try:
-    mavenUrl = expand_jinja("https://repo1.maven.org/maven2/org/apache/lucene/lucene-core/{{ release_version }}/lucene-core-{{ release_version }}.jar.asc")
     load(mavenUrl)
     print("Found %s" % mavenUrl)
   except Exception as e:

@@ -37,7 +37,7 @@ def update_changes(filename, new_version, init_changes, headers):
         buffer.append('%s\n---------------------\n(No changes)\n\n' % header)
     buffer.append(line)
     return match is not None
-     
+
   changed = update_file(filename, matcher, edit)
   print('done' if changed else 'uptodate')
 
@@ -53,7 +53,7 @@ def add_constant(new_version, deprecate):
     if last.strip() != '@Deprecated':
       spaces = ' ' * (len(last) - len(last.lstrip()) - 1)
       del buffer[-1] # Remove comment closer line
-      if (len(buffer) >= 4 and re.search('for Lucene.\s*$', buffer[-1]) is not None):
+      if (len(buffer) >= 4 and re.search(r'for Lucene.\s*$', buffer[-1]) is not None):
         del buffer[-3:] # drop the trailing lines '<p> / Use this to get the latest ... / ... for Lucene.'
       buffer.append(( '{0} * @deprecated ({1}) Use latest\n'
                     + '{0} */\n'
@@ -73,7 +73,7 @@ def add_constant(new_version, deprecate):
       buffer.append('%s@Deprecated\n' % spaces)
     buffer.append('{0}public static final Version {1} = new Version({2}, {3}, {4});\n'.format
                   (spaces, new_version.constant, new_version.major, new_version.minor, new_version.bugfix))
-  
+
   class Edit(object):
     found = -1
     def __call__(self, buffer, match, line):
@@ -97,14 +97,14 @@ def add_constant(new_version, deprecate):
 
       buffer.append(line)
       return False
-  
+
   changed = update_file(filename, matcher, Edit())
   print('done' if changed else 'uptodate')
 
 def update_build_version(new_version):
   print('  changing baseVersion...', end='', flush=True)
   filename = 'build.gradle'
-  def edit(buffer, match, line):
+  def edit(buffer, _, line):
     if new_version.dot in line:
       return None
     buffer.append('  String baseVersion = \'' + new_version.dot + '\'\n')
@@ -118,7 +118,7 @@ def update_latest_constant(new_version):
   print('  changing Version.LATEST to %s...' % new_version.constant, end='', flush=True)
   filename = 'lucene/core/src/java/org/apache/lucene/util/Version.java'
   matcher = re.compile('public static final Version LATEST')
-  def edit(buffer, match, line):
+  def edit(buffer, _, line):
     if new_version.constant in line:
       return None
     buffer.append(line.rpartition('=')[0] + ('= %s;\n' % new_version.constant))

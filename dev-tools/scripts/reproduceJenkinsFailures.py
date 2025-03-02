@@ -187,6 +187,7 @@ def groupTestsByModule(tests):
         test = match.group(1)
         if test in tests:
           match = reModule.match(dir)
+          assert match
           module = match.group(1)
           if module not in modules:
             modules[module] = set()
@@ -251,6 +252,7 @@ def getLocalGitBranch():
 def main():
   config = readConfig()
   tests = fetchAndParseJenkinsLog(config.url, numRetries = 2)
+  localGitBranch = None
   if config.useGit:
     localGitBranch = getLocalGitBranch()
 

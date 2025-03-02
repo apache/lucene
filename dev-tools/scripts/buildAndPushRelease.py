@@ -51,6 +51,8 @@ def runAndSendGPGPassword(command, password):
   p = subprocess.Popen(command, shell=True, bufsize=0, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
   f = open(LOG, 'ab')
   while True:
+    assert p.stdout
+    assert p.stdin
     p.stdout.flush()
     line = p.stdout.readline()
     if len(line) == 0:
@@ -176,8 +178,7 @@ def checkDOAPfiles(version):
     treeRoot = ET.parse(doapFile).getroot()
     doapRevisions = set()
     for revision in treeRoot.findall(xpathRevision):
-      match = reDoapRevision.match(revision.text)
-      if (match is not None):
+      if (revision.text and (match := reDoapRevision.match(revision.text))):
         if (match.group(1) not in ('0', '1', '2')): # Ignore 0.X, 1.X and 2.X revisions
           doapRevisions.add(normalizeVersion(match.groups()))
       else:
@@ -412,6 +413,7 @@ def main():
     print('Next run the smoker tester:')
     p = re.compile(".*/")
     m = p.match(sys.argv[0])
+    assert m
     if not c.sign:
       signed = "--not-signed"
     else:

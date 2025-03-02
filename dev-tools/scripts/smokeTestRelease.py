@@ -506,6 +506,7 @@ def getDirEntries(urlString):
     for i, (text, _) in enumerate(links):
       if text == 'Parent Directory' or text == '..':
         return links[(i+1):]
+    raise RuntimeError('could not enumerate %s' % (urlString))
 
 
 def unpackAndVerify(java, tmpDir, artifact, gitRevision, version, testArgs):
@@ -675,7 +676,7 @@ def testDemo(run_java, isSrc, version, jdk):
 
   run_java(indexFilesCmd, 'index.log')
   run_java(searchFilesCmd, 'search.log')
-  reMatchingDocs = re.compile('(\d+) total matching documents')
+  reMatchingDocs = re.compile(r'(\d+) total matching documents')
   m = reMatchingDocs.search(open('search.log', encoding='UTF-8').read())
   if m is None:
     raise RuntimeError('lucene demo\'s SearchFiles found no results')
@@ -928,7 +929,9 @@ def make_java_config(parser, alt_java_homes):
     s = subprocess.check_output('%s; java -version' % cmd_prefix,
                                 shell=True, stderr=subprocess.STDOUT).decode('utf-8')
 
-    actual_version = re.search(r'version "([1-9][0-9]*)', s).group(1)
+    match = re.search(r'version "([1-9][0-9]*)', s)
+    assert match
+    actual_version = match.group(1)
     print('Java %s JAVA_HOME=%s' % (actual_version, java_home))
 
     # validate Java version
@@ -1059,7 +1062,9 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
   reIndexName = re.compile(r'^[^.]*.(.*?)-cfs.zip')
   for name in testedIndicesPaths:
     basename = os.path.basename(name)
-    version = reIndexName.fullmatch(basename).group(1)
+    match = reIndexName.fullmatch(basename)
+    assert match
+    version = match.group(1)
     tup = tuple(version.split('.'))
     if len(tup) == 3:
       # ok
@@ -1123,7 +1128,9 @@ def main():
   c = parse_config()
 
   # Pick <major>.<minor> part of version and require script to be from same branch
-  scriptVersion = re.search(r'((\d+).(\d+)).(\d+)', scriptutil.find_current_version()).group(1).strip()
+  match = re.search(r'((\d+).(\d+)).(\d+)', scriptutil.find_current_version())
+  assert match
+  scriptVersion = match.group(1).strip()
   if not c.version.startswith(scriptVersion + '.'):
     raise RuntimeError('smokeTestRelease.py for %s.X is incompatible with a %s release.' % (scriptVersion, c.version))
 

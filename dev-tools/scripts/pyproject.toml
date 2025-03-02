@@ -4,16 +4,7 @@ venv = ".venv"
 # TODO: improve!
 # typeCheckingMode = "strict"
 reportUnnecessaryTypeIgnoreComment = "error"
-typeCheckingMode = "basic"
-# TODO: we should fix these
-reportArgumentType = "none"
-reportAttributeAccessIssue = "none"
-reportCallIssue = "none"
-reportInvalidStringEscapeSequence = "none"
-reportOperatorIssue = "none"
-reportOptionalIterable = "none"
-reportOptionalMemberAccess = "none"
-reportOptionalSubscript = "none"
+typeCheckingMode = "standard"
 
 [tool.ruff]
 line-length = 200
