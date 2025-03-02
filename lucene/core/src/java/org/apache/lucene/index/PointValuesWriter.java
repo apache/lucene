@@ -224,6 +224,7 @@ class PointValuesWriter {
           @Override
           public void close() {}
         };
+    writer.setDocCount(getNumDocs());
     writer.writeField(fieldInfo, reader);
   }
 
