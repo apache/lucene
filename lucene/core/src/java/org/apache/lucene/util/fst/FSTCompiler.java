@@ -165,7 +165,8 @@ public class FSTCompiler<T> {
       boolean allowFixedLengthArcs,
       DataOutput dataOutput,
       float directAddressingMaxOversizingFactor,
-      int version) {
+      int version,
+      int initLength) {
     this.allowFixedLengthArcs = allowFixedLengthArcs;
     this.directAddressingMaxOversizingFactor = directAddressingMaxOversizingFactor;
     this.version = version;
@@ -186,7 +187,7 @@ public class FSTCompiler<T> {
     NO_OUTPUT = outputs.getNoOutput();
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    final UnCompiledNode<T>[] f = (UnCompiledNode<T>[]) new UnCompiledNode[10];
+    final UnCompiledNode<T>[] f = (UnCompiledNode<T>[]) new UnCompiledNode[initLength];
     frontier = f;
     for (int idx = 0; idx < frontier.length; idx++) {
       frontier[idx] = new UnCompiledNode<>(this, idx);
@@ -248,6 +249,7 @@ public class FSTCompiler<T> {
     private DataOutput dataOutput;
     private float directAddressingMaxOversizingFactor = DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR;
     private int version = FST.VERSION_CURRENT;
+    private int initLength = 10;
 
     /**
      * @param inputType The input type (transition labels). Can be anything from {@link INPUT_TYPE}
@@ -347,6 +349,11 @@ public class FSTCompiler<T> {
       return this;
     }
 
+    public Builder<T> setInitLength(int initLength) {
+      this.initLength = initLength;
+      return this;
+    }
+
     /** Creates a new {@link FSTCompiler}. */
     public FSTCompiler<T> build() {
       // create a default DataOutput if not specified
@@ -360,7 +367,8 @@ public class FSTCompiler<T> {
           allowFixedLengthArcs,
           dataOutput,
           directAddressingMaxOversizingFactor,
-          version);
+          version,
+          initLength);
     }
   }
 
