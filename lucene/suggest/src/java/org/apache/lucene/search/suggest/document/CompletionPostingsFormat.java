@@ -104,6 +104,15 @@ public abstract class CompletionPostingsFormat extends PostingsFormat {
   static final String INDEX_EXTENSION = "cmp";
   static final String DICT_EXTENSION = "lkp";
 
+  /** Default way of loading FSTs when reading a completion field */
+  public static final FSTLoadMode DEFAULT_FST_LOAD_MODE = FSTLoadMode.ON_HEAP;
+
+  /**
+   * The {@link FSTLoadMode} that drives how {@link CompletionPostingsFormat} subclasses load their
+   * FSTs, used whenever a completion field is read.
+   */
+  public static FSTLoadMode FST_LOAD_MODE = DEFAULT_FST_LOAD_MODE;
+
   /** An enum that allows to control if suggester FSTs are loaded into memory or read off-heap */
   public enum FSTLoadMode {
     /**
@@ -122,18 +131,13 @@ public abstract class CompletionPostingsFormat extends PostingsFormat {
 
   private final FSTLoadMode fstLoadMode;
 
-  /** Used only by core Lucene at read-time via Service Provider instantiation */
-  public CompletionPostingsFormat(String name) {
-    this(name, FSTLoadMode.ON_HEAP);
-  }
-
   /**
    * Creates a {@link CompletionPostingsFormat} that will use the provided <code>fstLoadMode</code>
    * to determine if the completion FST should be loaded on or off heap.
    */
-  public CompletionPostingsFormat(String name, FSTLoadMode fstLoadMode) {
+  protected CompletionPostingsFormat(String name) {
     super(name);
-    this.fstLoadMode = fstLoadMode;
+    this.fstLoadMode = FST_LOAD_MODE;
   }
 
   /** Concrete implementation should specify the delegating postings format */
