@@ -1581,7 +1581,7 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /** Time zone IDs that cause a deprecation warning in JDK 25. */
-  private static Set<String> DEPRECATED_TIME_ZONE_IDS_JDK25 =
+  private static final Set<String> DEPRECATED_TIME_ZONE_IDS_JDK25 =
       Set.of(
           "ACT", "AET", "AGT", "ART", "AST", "BET", "BST", "CAT", "CNT", "CST", "CTT", "EAT", "ECT",
           "EST", "HST", "IET", "IST", "JST", "MIT", "MST", "NET", "NST", "PLT", "PNT", "PRT", "PST",
