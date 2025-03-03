@@ -43,8 +43,7 @@ import org.apache.lucene.store.IndexInput;
  */
 public abstract class Node implements Closeable {
 
-  public static boolean VERBOSE_FILES = true;
-  public static boolean VERBOSE_CONNECTIONS = false;
+  private boolean verboseFiles = true;
 
   // Keys we store into IndexWriter's commit user data:
 
@@ -52,13 +51,13 @@ public abstract class Node implements Closeable {
    * Key to store the primary gen in the commit data, which increments every time we promote a new
    * primary, so replicas can detect when the primary they were talking to is changed
    */
-  public static String PRIMARY_GEN_KEY = "__primaryGen";
+  public static final String PRIMARY_GEN_KEY = "__primaryGen";
 
   /**
    * Key to store the version in the commit data, which increments every time we open a new NRT
    * reader
    */
-  public static String VERSION_KEY = "__version";
+  public static final String VERSION_KEY = "__version";
 
   /** Compact ordinal for this node */
   protected final int id;
@@ -75,6 +74,7 @@ public abstract class Node implements Closeable {
    * Startup time of original test, carefully propagated to all nodes to produce consistent "seconds
    * since start time" in messages
    */
+  @SuppressWarnings("NonFinalStaticField")
   public static long globalStartNS;
 
   /** When this node was started */
@@ -221,16 +221,16 @@ public abstract class Node implements Closeable {
           // corrupting an un-fsync'd file.  On init we try
           // to delete such unreferenced files, but virus checker can block that, leaving this bad
           // file.
-          if (VERBOSE_FILES) {
+          if (verboseFiles) {
             message("file " + fileName + ": will copy [existing file is corrupt]");
           }
           return null;
         }
-        if (VERBOSE_FILES) {
+        if (verboseFiles) {
           message("file " + fileName + " has length=" + bytesToString(length));
         }
       } catch (@SuppressWarnings("unused") FileNotFoundException | NoSuchFileException e) {
-        if (VERBOSE_FILES) {
+        if (verboseFiles) {
           message("file " + fileName + ": will copy [file does not exist]");
         }
         return null;
@@ -243,5 +243,13 @@ public abstract class Node implements Closeable {
     }
 
     return result;
+  }
+
+  public boolean isVerboseFiles() {
+    return verboseFiles;
+  }
+
+  public void setVerboseFiles(boolean verboseFiles) {
+    this.verboseFiles = verboseFiles;
   }
 }

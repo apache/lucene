@@ -42,8 +42,10 @@ def get_changes_url(branch_name):
   return url
 
 def extract_release_section(changes_txt, release_name):
-  return re.search(f'=======+ Lucene {re.escape(release_name)} =======+(.*?)=======+ Lucene .*? =======+$',
-                   changes_txt.decode('utf-8'), re.MULTILINE | re.DOTALL).group(1).encode('utf-8')
+  match = re.search(f'=======+ Lucene {re.escape(release_name)} =======+(.*?)=======+ Lucene .*? =======+$',
+                   changes_txt.decode('utf-8'), re.MULTILINE | re.DOTALL)
+  assert match
+  return match.group(1).encode('utf-8')
 
 def main():
   if len(sys.argv) < 3 or len(sys.argv) > 5:

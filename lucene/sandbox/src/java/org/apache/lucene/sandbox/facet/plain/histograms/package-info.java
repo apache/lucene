@@ -14,15 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search.knn;
 
-import org.apache.lucene.search.DocIdSetIterator;
-
-/** Provides entry points for the kNN search */
-public interface EntryPointProvider {
-  /** Iterator of valid entry points for the kNN search */
-  DocIdSetIterator entryPoints();
-
-  /** Number of valid entry points for the kNN search */
-  int numberOfEntryPoints();
-}
+/** Provides histotgram faceting capabilities. */
+package org.apache.lucene.sandbox.facet.plain.histograms;

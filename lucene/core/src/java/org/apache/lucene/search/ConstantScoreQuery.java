@@ -196,7 +196,7 @@ public final class ConstantScoreQuery extends Query {
 
   @Override
   public String toString(String field) {
-    return new StringBuilder("ConstantScore(").append(query.toString(field)).append(')').toString();
+    return "ConstantScore(" + query.toString(field) + ')';
   }
 
   @Override

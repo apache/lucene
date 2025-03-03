@@ -55,6 +55,10 @@ import org.junit.Ignore;
  * property and prints their memory usage. All *.aff files are traversed recursively inside the
  * given directory. Each *.aff file must have a same-named sibling *.dic file. For examples of such
  * directories, refer to the {@link org.apache.lucene.analysis.hunspell package documentation}.
+ *
+ * <p>The build contains tasks that automatically download certain public dictionary files and test
+ * against them. Take a look at github workflows under {@code .github/workflows} to see how these
+ * tests are launched if you'd like to repeat locally.
  */
 @SuppressSysoutChecks(bugUrl = "prints important memory utilization stats per dictionary")
 public class TestAllDictionaries extends LuceneTestCase {
@@ -117,8 +121,8 @@ public class TestAllDictionaries extends LuceneTestCase {
               switch (firstWord) {
                 case "SET":
                 case "FLAG":
-                  local.computeIfAbsent(firstWord, (k) -> new ArrayList<>()).add(is.position());
-                  global.computeIfAbsent(firstWord, (k) -> new ArrayList<>()).add(is.position());
+                  local.computeIfAbsent(firstWord, (_) -> new ArrayList<>()).add(is.position());
+                  global.computeIfAbsent(firstWord, (_) -> new ArrayList<>()).add(is.position());
                   break;
               }
             }

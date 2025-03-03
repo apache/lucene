@@ -22,6 +22,7 @@ import java.io.IOException;
 /** Factory of {@link Preferences} */
 public class PreferencesFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static Preferences prefs;
 
   public static synchronized Preferences getInstance() throws IOException {

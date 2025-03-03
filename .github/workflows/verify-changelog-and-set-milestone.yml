@@ -1,0 +1,103 @@
+name: "Change Log Entry Verifier and Milestone Setter"
+run-name: Change log entry verifier and milestone setter
+on:
+  - pull_request_target
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ISSUE: ${{ github.event.issue.html_url }}
+  SKIP_CHANGELOG_CHECK_LABEL: ${{ '"skip-changelog-check"' }}
+  CHANGE_LOG_FILE: ${{ 'lucene/CHANGES.txt' }}
+
+jobs:
+  changelog-verifier-and-milestone-setter:
+    name: Verify Change Log Entry and Set Milestone
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: ChangeLog Entry Verifier and Milestone Setter
+        run: |
+          echo "################## STEP 1 ##################"
+          echo "Get all labels from PR #${{ github.event.number }}"
+          mapfile -t labels < <(gh pr view ${{ github.event.number }} --json labels -q '.labels[].name')
+          IFS=','; echo "${labels[*]}"
+          for label in "${labels[@]}"; do
+            if [[ $label == ${{ env.SKIP_CHANGELOG_CHECK_LABEL }} ]]; then
+              echo "Skipping github action workflow as label: ${SKIP_CHANGELOG_CHECK_LABEL} is found in the PR."
+              exit 0
+            fi
+          done
+          echo "${{ env.SKIP_CHANGELOG_CHECK_LABEL }} not found in the PR. Proceeding with next steps."
+          
+          echo -e "\n"
+          echo "################## STEP 2 ##################"
+          echo "Checking for change log entry in ${{ env.CHANGE_LOG_FILE }}"
+          git log  --pretty=oneline | tail -n 2 | cat
+          echo "merge base sha: ${{ github.event.pull_request.base.sha }}, merge head sha: ${{ github.event.pull_request.head.sha }}"
+          if ! git diff ${{ github.event.pull_request.base.sha }} --name-only | grep -q "${{ env.CHANGE_LOG_FILE }}"; then
+            echo "Change log file:${{ env.CHANGE_LOG_FILE }} does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
+            exit 0
+          else
+            echo "${{ env.CHANGE_LOG_FILE }} contains change log entry. Proceeding with next steps."
+          fi
+
+
+          echo -e "\n"
+          echo "################## STEP 3 ##################"
+          echo "Extracting Lucene version from change log entry"
+          # git diff header pattern -> "@@ -15,0 +16,4 @@" 
+          # try to extract the line number at which new entry is added, here it's line number 16
+          diff=$(git diff ${{ github.event.pull_request.base.sha }} --unified=0 -- ${{ env.CHANGE_LOG_FILE }})
+          lucene_version=""
+          diff_header_pattern="@@ -[0-9]+,?[0-9]* \+([0-9]*),?[0-9]* @@"
+          if [[ $diff =~ $diff_header_pattern ]]; then
+            echo "Match found: ${BASH_REMATCH[0]}"
+            new_entry_line_number=$((BASH_REMATCH[1]))
+            echo "Found introduced change log entry at line number:${new_entry_line_number}"
+            lucene_version_regex="=+ ?Lucene ?([0-9.]*) ?=+"
+            current_line_number=0
+            while IFS="" read -r line; do
+              current_line_number=$((current_line_number+1))
+                if [[ $line =~ $lucene_version_regex ]]; then
+                  lucene_version="${BASH_REMATCH[1]}"
+                fi
+                if [[ $current_line_number -ge $new_entry_line_number ]]; then
+                  echo "Reached the line number at which new entry is added in ${{ env.CHANGE_LOG_FILE }}"
+                  break
+                fi
+            done < ${{ env.CHANGE_LOG_FILE }}
+            if [[ -z $lucene_version ]]; then
+              echo "Could not find Lucene version in the change log entry. Please add the Lucene version in the change log entry."
+              exit 0
+            fi
+            echo "Found corresponding Lucene version: ${lucene_version} based on change log entry. Proceeding with next steps."
+          else
+            echo "Could not find the line number at which new entry is added in ${{ env.CHANGE_LOG_FILE }}"
+            exit 0
+          fi
+
+
+          echo -e "\n"
+          echo "################## STEP 4 ##################"
+          echo "Adding/Updating milestone for the PR"
+          mapfile -t milestones < <(gh repo view --json milestones -q '.milestones[].title')
+          IFS=','; echo "${milestones[*]}"
+          milestone_exists=false
+          for milestone in "${milestones[@]}"; do
+            if [[ $milestone == "$lucene_version" ]]; then
+              milestone_exists=true
+              break
+            fi
+          done
+          if [[ $milestone_exists == false ]]; then
+            echo "Milestone:${lucene_version} does not exist. Please create the milestone and run the workflow again."
+            exit 0
+          fi
+          # Will uncomment this line after we ensure it runs perfectly in production.
+          # gh pr edit ${{ github.event.number }} --milestone "${lucene_version}"
+          echo "Adding/Updating milestone for the PR to:${lucene_version}"

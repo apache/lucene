@@ -26,15 +26,11 @@ sys.path.append(os.path.dirname(__file__))
 import argparse
 import json
 import re
+from typing import cast
 from github import Github
-from jira import JIRA
-from datetime import datetime
-from time import strftime
-try:
-  from jinja2 import Environment, BaseLoader
-  can_do_html = True
-except:
-  can_do_html = False
+from jira import JIRA, Issue
+from jira.client import ResultList
+from jinja2 import Environment, BaseLoader
 
 def read_config():
   parser = argparse.ArgumentParser(description='Find open Pull Requests that need attention')
@@ -51,11 +47,8 @@ def out(text):
     print(text)
 
 def make_html(dict):
-  if not can_do_html:
-    print ("ERROR: Cannot generate HTML. Please install jinja2")
-    sys.exit(1)
   global conf
-  template = Environment(loader=BaseLoader).from_string("""
+  template = Environment(loader=BaseLoader()).from_string("""
   <h1>Lucene Github PR report</h1>
 
   <p>Number of open Pull Requests: {{ open_count }}</p>
@@ -84,7 +77,7 @@ def main():
     gh = Github(token)
   else:
     gh = Github()
-  jira = JIRA('https://issues.apache.org/jira')
+  jira = JIRA('https://issues.apache.org/jira') # this ctor has broken types in jira library. # pyright: ignore[reportArgumentType]
   result = {}
   repo = gh.get_repo('apache/lucene')
   open_prs = repo.get_pulls(state='open')
@@ -109,19 +102,22 @@ def main():
   issue_ids = []
   issue_to_pr = {}
   for pr in has_jira:
-    jira_issue_str = re.match(r'.*\b((LUCENE)-\d{3,6})\b', pr.title).group(1)
+    match = re.match(r'.*\b((LUCENE)-\d{3,6})\b', pr.title)
+    assert match
+    jira_issue_str = match.group(1)
     issue_ids.append(jira_issue_str)
     issue_to_pr[jira_issue_str] = pr
 
-  resolved_jiras = jira.search_issues(jql_str="key in (%s) AND status in ('Closed', 'Resolved')" % ", ".join(issue_ids))
+  resolved_jiras = cast(ResultList[Issue], jira.search_issues(jql_str="key in (%s) AND status in ('Closed', 'Resolved')" % ", ".join(issue_ids)))
   closed_jiras = []
   for issue in resolved_jiras:
     pr_title = issue_to_pr[issue.key].title
     pr_number = issue_to_pr[issue.key].number
     assignee = issue.fields.assignee.name if issue.fields.assignee else None
+    resolution = issue.fields.resolution.name if issue.fields.resolution else None
     closed_jiras.append({ 'issue_key': issue.key,
                            'status': issue.fields.status.name,
-                           'resolution': issue.fields.resolution.name,
+                           'resolution': resolution,
                            'resolution_date': issue.fields.resolutiondate[:10],
                            'pr_number': pr_number,
                            'pr_title': pr_title,

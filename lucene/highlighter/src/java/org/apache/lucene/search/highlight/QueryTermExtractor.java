@@ -97,7 +97,7 @@ public final class QueryTermExtractor {
    */
   public static WeightedTerm[] getTerms(Query query, boolean prohibited, String fieldName) {
     HashSet<WeightedTerm> terms = new HashSet<>();
-    Predicate<String> fieldSelector = fieldName == null ? f -> true : fieldName::equals;
+    Predicate<String> fieldSelector = fieldName == null ? _ -> true : fieldName::equals;
     query.visit(new BoostedTermExtractor(1, terms, prohibited, fieldSelector));
     return terms.toArray(new WeightedTerm[0]);
   }

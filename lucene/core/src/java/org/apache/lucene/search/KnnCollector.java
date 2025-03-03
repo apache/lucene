@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search;
 
+import org.apache.lucene.search.knn.KnnSearchStrategy;
+
 /**
  * KnnCollector is a knn collector used for gathering kNN results and providing topDocs from the
  * gathered neighbors
@@ -87,13 +89,18 @@ public interface KnnCollector {
   TopDocs topDocs();
 
   /**
+   * @return the search strategy used by this collector, can be null
+   */
+  KnnSearchStrategy getSearchStrategy();
+
+  /**
    * KnnCollector.Decorator is the base class for decorators of KnnCollector objects, which extend
    * the object with new behaviors.
    *
    * @lucene.experimental
    */
   abstract class Decorator implements KnnCollector {
-    private final KnnCollector collector;
+    protected final KnnCollector collector;
 
     public Decorator(KnnCollector collector) {
       this.collector = collector;
@@ -137,6 +144,11 @@ public interface KnnCollector {
     @Override
     public TopDocs topDocs() {
       return collector.topDocs();
+    }
+
+    @Override
+    public KnnSearchStrategy getSearchStrategy() {
+      return collector.getSearchStrategy();
     }
   }
 }

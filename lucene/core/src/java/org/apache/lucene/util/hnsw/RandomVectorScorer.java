@@ -21,7 +21,10 @@ import java.io.IOException;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.util.Bits;
 
-/** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
+/**
+ * A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. This
+ * class isn't thread-safe and should be used by a single thread.
+ */
 public interface RandomVectorScorer {
   /**
    * Returns the score between the query and the provided node.

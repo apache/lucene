@@ -76,7 +76,9 @@ allprojects {
           [propName: 'tests.asserts', value: "true", description: "Enables or disables assertions mode."],
           [propName: 'tests.infostream', value: false, description: "Enables or disables infostream logs."],
           [propName: 'tests.leaveTemporary', value: false, description: "Leave temporary directories after tests complete."],
-          [propName: 'tests.useSecurityManager', value: true, description: "Control security manager in tests.", buildOnly: true],
+          [propName: 'tests.useSecurityManager',
+           value: { -> rootProject.ext.runtimeJavaVersion <= JavaVersion.VERSION_23 ? 'true' : 'false' },
+           description: "Control security manager in tests.", buildOnly: true],
           // component randomization
           [propName: 'tests.codec', value: "random", description: "Sets the codec tests should run with."],
           [propName: 'tests.directory', value: "random", description: "Sets the Directory implementation tests should run with."],

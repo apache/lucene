@@ -36,7 +36,7 @@ public final class FixedBitSet extends BitSet {
 
   // An array that is small enough to use reasonable amounts of RAM and large enough to allow
   // Arrays#mismatch to use SIMD instructions and multiple registers under the hood.
-  private static long[] ZEROES = new long[32];
+  private static final long[] ZEROES = new long[32];
 
   private final long[] bits; // Array of longs holding the bits
   private final int numBits; // The number of bits in use
@@ -747,10 +747,9 @@ public final class FixedBitSet extends BitSet {
 
   /** Make a copy of the given bits. */
   public static FixedBitSet copyOf(Bits bits) {
-    if (bits instanceof FixedBits) {
+    if (bits instanceof FixedBits fixedBits) {
       // restore the original FixedBitSet
-      FixedBits fixedBits = (FixedBits) bits;
-      bits = new FixedBitSet(fixedBits.bits, fixedBits.length);
+      bits = fixedBits.bitSet;
     }
 
     if (bits instanceof FixedBitSet) {
