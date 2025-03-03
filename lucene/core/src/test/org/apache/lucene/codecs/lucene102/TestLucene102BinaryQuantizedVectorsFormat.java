@@ -101,10 +101,15 @@ public class TestLucene102BinaryQuantizedVectorsFormat extends BaseKnnVectorsFor
         "Lucene102BinaryQuantizedVectorsFormat("
             + "name=Lucene102BinaryQuantizedVectorsFormat, "
             + "flatVectorScorer=Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=%s()), "
-            + "rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=DefaultFlatVectorScorer()))";
-    var defaultScorer = format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer");
+            + "rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
+    var defaultScorer =
+        format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer", "DefaultFlatVectorScorer");
     var memSegScorer =
-        format(Locale.ROOT, expectedPattern, "Lucene99MemorySegmentFlatVectorsScorer");
+        format(
+            Locale.ROOT,
+            expectedPattern,
+            "Lucene99MemorySegmentFlatVectorsScorer",
+            "Lucene99MemorySegmentFlatVectorsScorer");
     assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
   }
 
