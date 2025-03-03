@@ -179,6 +179,8 @@ Bug Fixes
 
 * GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
 
+* GITHUB#14320: Fix DirectIOIndexInput seek to not read when position is within buffer (Chris Hegarty)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
