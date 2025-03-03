@@ -19,8 +19,12 @@ package org.apache.lucene.tests.util;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.stream.Collectors;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.RuleChain;
+import org.junit.rules.TestRule;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Result;
 
@@ -32,16 +36,30 @@ public class TestSysoutsLimits extends WithNestedTests {
     super(false);
   }
 
-  public static class ParentNestedTest extends LuceneTestCase
+  @TestRuleLimitSysouts.Limit(
+      bytes = TestRuleLimitSysouts.DEFAULT_LIMIT,
+      hardLimit = TestRuleLimitSysouts.DEFAULT_HARD_LIMIT)
+  public static class ParentNestedTest extends RandomizedTest
       implements TestRuleIgnoreTestSuites.NestedTestSuite {
+    @ClassRule public static final TestRule classRules;
+
+    static {
+      var suiteFailureMarker = new TestRuleMarkFailure();
+      classRules =
+          RuleChain.outerRule(new TestRuleIgnoreTestSuites())
+              .around(suiteFailureMarker)
+              .around(new TestRuleLimitSysouts(suiteFailureMarker));
+    }
+
     @BeforeClass
     public static void onlyWhenNested() {
-      assumeTrue("Only runs when nested", TestRuleIgnoreTestSuites.isRunningNested());
+      Assume.assumeTrue("Only runs when nested", TestRuleIgnoreTestSuites.isRunningNested());
     }
   }
 
   @TestRuleLimitSysouts.Limit(bytes = 10)
   public static class OverSoftLimit extends ParentNestedTest {
+    @Test
     public void testWrite() {
       System.out.print(RandomizedTest.randomAsciiLettersOfLength(10));
     }
@@ -62,6 +80,7 @@ public class TestSysoutsLimits extends WithNestedTests {
 
   @TestRuleLimitSysouts.Limit(bytes = 10)
   public static class UnderLimit extends ParentNestedTest {
+    @Test
     public void testWrite() {
       System.out.print(RandomizedTest.randomAsciiLettersOfLength(9));
     }
@@ -82,6 +101,7 @@ public class TestSysoutsLimits extends WithNestedTests {
 
   @TestRuleLimitSysouts.Limit(bytes = 10, hardLimit = 20)
   public static class OverHardLimit extends ParentNestedTest {
+    @Test
     public void testWrite() {
       System.out.print("1234567890");
       System.out.print("-marker1-");

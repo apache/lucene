@@ -2633,7 +2633,8 @@ public class IndexWriter
      */
     try {
       synchronized (fullFlushLock) {
-        try (Closeable finalizer = docWriter.lockAndAbortAll()) {
+        try (@SuppressWarnings("unused")
+            Closeable finalizer = docWriter.lockAndAbortAll()) {
           processEvents(false);
           synchronized (this) {
             try {
@@ -3332,7 +3333,7 @@ public class IndexWriter
                 infoStream.message("IW", "now abort pending addIndexes merge");
               }
               merge.setAborted();
-              merge.close(false, false, mr -> {});
+              merge.close(false, false, _ -> {});
               onMergeFinished(merge);
             });
         pendingAddIndexesMerges.clear();
@@ -3349,7 +3350,7 @@ public class IndexWriter
         handleMergeException(t, merge);
       } finally {
         synchronized (IndexWriter.this) {
-          merge.close(success, false, mr -> {});
+          merge.close(success, false, _ -> {});
           onMergeFinished(merge);
         }
       }
@@ -3730,7 +3731,7 @@ public class IndexWriter
                 // necessary files to disk and checkpointed them.
                 pointInTimeMerges =
                     preparePointInTimeMerge(
-                        toCommit, stopAddingMergedSegments::get, MergeTrigger.COMMIT, sci -> {});
+                        toCommit, stopAddingMergedSegments::get, MergeTrigger.COMMIT, _ -> {});
               }
             }
             success = true;
@@ -4675,7 +4676,7 @@ public class IndexWriter
       deleteNewFiles(merge.info.files());
     }
 
-    try (Closeable finalizer = this::checkpoint) {
+    try (Closeable _ = this::checkpoint) {
       // Must close before checkpoint, otherwise IFD won't be
       // able to delete the held-open files from the merge
       // readers:

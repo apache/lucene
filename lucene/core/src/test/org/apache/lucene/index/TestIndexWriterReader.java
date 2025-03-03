@@ -647,7 +647,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(2)
                 .setMaxFullFlushMergeWaitMillis(0)
-                .setMergedSegmentWarmer((leafReader) -> warmCount.incrementAndGet())
+                .setMergedSegmentWarmer((_) -> warmCount.incrementAndGet())
                 .setMergeScheduler(new ConcurrentMergeScheduler())
                 .setMergePolicy(newLogMergePolicy()));
 
