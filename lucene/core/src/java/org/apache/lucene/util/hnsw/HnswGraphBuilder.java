@@ -199,7 +199,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     for (int node = minOrd; node < maxOrd; node++) {
       scorer.setScoringOrdinal(node);
-      addGraphNode(node, scorer, null);
+      addGraphNode(node, scorer);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
         t = printGraphBuildStatus(node, start, t);
       }
@@ -210,7 +210,12 @@ public class HnswGraphBuilder implements HnswBuilder {
     addVectors(0, maxOrd);
   }
 
-  public void addGraphNode(int node, UpdateableRandomVectorScorer scorer, Set<Integer> eps0) throws IOException {
+  public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
+    addGraphNodeInternal(node, scorer, null);
+  }
+
+  private void addGraphNodeInternal(
+      int node, UpdateableRandomVectorScorer scorer, Set<Integer> eps0) throws IOException {
     if (frozen) {
       throw new IllegalStateException("Graph builder is already frozen");
     }
@@ -313,13 +318,13 @@ public class HnswGraphBuilder implements HnswBuilder {
     */
     UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     scorer.setScoringOrdinal(node);
-    addGraphNode(node, scorer, null);
+    addGraphNodeInternal(node, scorer, null);
   }
 
   public void addGraphNodeWithCandidates(int node, Set<Integer> eps0) throws IOException {
     UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     scorer.setScoringOrdinal(node);
-    addGraphNode(node, scorer, null);
+    addGraphNodeInternal(node, scorer, eps0);
   }
 
   private long printGraphBuildStatus(int node, long start, long t) {
