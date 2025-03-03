@@ -85,8 +85,8 @@ def runOutput(cmd):
   print('[repro] %s' % cmd)
   try:
     return subprocess.check_output(cmd.split(' '), universal_newlines=True).strip()
-  except CalledProcessError as e:
-    raise RuntimeError("ERROR: Cmd '%s' failed with exit code %d and the following output:\n%s" 
+  except subprocess.CalledProcessError as e:
+    raise RuntimeError("ERROR: Cmd '%s' failed with exit code %d and the following output:\n%s"
                        % (cmd, e.returncode, e.output))
 
 # Remembers non-zero exit code in lastFailureCode unless rememberFailure==False
@@ -142,10 +142,10 @@ def fetchAndParseJenkinsLog(url, numRetries):
       print('[repro] Encountered IncompleteRead exception, aborting after too many retries.')
       raise RuntimeError('ERROR: fetching %s : %s' % (url, e))
 
-  if revisionFromLog == None:
+  if revisionFromLog is None:
     if reJenkinsURLWithoutConsoleText.match(url):
       print('[repro] Not a Jenkins log. Appending "/consoleText" and retrying ...\n')
-      return fetchAndParseJenkinsLog(url + '/consoleText', numRetries)                                                        
+      return fetchAndParseJenkinsLog(url + '/consoleText', numRetries)
     else:
       raise RuntimeError('ERROR: %s does not appear to be a Jenkins log.' % url)
   if 0 == len(tests):
@@ -173,7 +173,7 @@ def prepareWorkspace(useGit, gitRef):
         raise RuntimeError('ERROR: "%s" failed.  See above.' % checkoutBranchCmd)
     gitCheckoutSucceeded = True
     run('git merge --ff-only', rememberFailure=False) # Ignore failure on non-branch ref
-  
+
   code = run('ant clean')
   if 0 != code:
     raise RuntimeError('ERROR: "ant clean" failed.  See above.')
@@ -187,6 +187,7 @@ def groupTestsByModule(tests):
         test = match.group(1)
         if test in tests:
           match = reModule.match(dir)
+          assert match
           module = match.group(1)
           if module not in modules:
             modules[module] = set()
@@ -204,7 +205,7 @@ def runTests(testIters, modules, tests):
   for module in modules:
     moduleTests = list(modules[module])
     testList = '|'.join(map(lambda t: '*.%s' % t, moduleTests))
-    numTests = len(moduleTests)   
+    numTests = len(moduleTests)
     params = tests[moduleTests[0]] # Assumption: all tests in this module have the same cmdline params
     os.chdir(module)
     code = run('ant compile-test')
@@ -214,7 +215,7 @@ def runTests(testIters, modules, tests):
       run(testCmdline % (testIters, testIters * numTests, testList, antOptions, params))
     finally:
       os.chdir(cwd)
-      
+
 def printAndMoveReports(testIters, newSubDir, location):
   failures = {}
   for start in ('lucene/build', 'solr/build'):
@@ -237,7 +238,7 @@ def printAndMoveReports(testIters, newSubDir, location):
           os.makedirs(newDirPath, exist_ok=True)
           os.rename(filePath, os.path.join(newDirPath, file))
   print("[repro] Failures%s:" % location)
-  for testcase in sorted(failures, key=lambda t: (failures[t],t)): # sort by failure count, then by testcase 
+  for testcase in sorted(failures, key=lambda t: (failures[t],t)): # sort by failure count, then by testcase
     print("[repro]   %d/%d failed: %s" % (failures[testcase], testIters, testcase))
   return failures
 
@@ -251,6 +252,7 @@ def getLocalGitBranch():
 def main():
   config = readConfig()
   tests = fetchAndParseJenkinsLog(config.url, numRetries = 2)
+  localGitBranch = None
   if config.useGit:
     localGitBranch = getLocalGitBranch()
 
@@ -258,15 +260,15 @@ def main():
     # have to play nice with ant clean, so printAndMoveReports will move all the junit XML files here...
     print('[repro] JUnit rest result XML files will be moved to: ./repro-reports')
     if os.path.isdir('repro-reports'):
-      print('[repro]   Deleting old ./repro-reports');
+      print('[repro]   Deleting old ./repro-reports')
       shutil.rmtree('repro-reports')
     prepareWorkspace(config.useGit, revisionFromLog)
     modules = groupTestsByModule(tests)
     runTests(config.testIters, modules, tests)
     failures = printAndMoveReports(config.testIters, 'orig',
                                    ' w/original seeds' + (' at %s' % revisionFromLog if config.useGit else ''))
-                                  
-    
+
+
     if config.useGit:
       # Retest 100% failures at the tip of the branch
       oldTests = tests
@@ -282,7 +284,7 @@ def main():
         runTests(config.testIters, modules, tests)
         failures = printAndMoveReports(config.testIters, 'branch-tip',
                                        ' original seeds at the tip of %s' % branchFromLog)
-      
+
         # Retest 100% tip-of-branch failures without a seed
         oldTests = tests
         tests = {}
@@ -297,7 +299,7 @@ def main():
           runTests(config.testIters, modules, tests)
           printAndMoveReports(config.testIters, 'branch-tip-no-seed',
                               ' at the tip of %s without a seed' % branchFromLog)
-  except Exception as e:
+  except Exception:
     print('[repro] %s' % traceback.format_exc())
     sys.exit(1)
   finally:

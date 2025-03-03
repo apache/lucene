@@ -143,7 +143,7 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
     }
     SegmentInfos infos = new SegmentInfos(Version.LATEST.major);
     try (Directory directory = newDirectory()) {
-      MergePolicy.MergeContext context = new MockMergeContext(s -> 0);
+      MergePolicy.MergeContext context = new MockMergeContext(_ -> 0);
       int numSegs = random().nextInt(10);
       for (int i = 0; i < numSegs; i++) {
         SegmentInfo info =

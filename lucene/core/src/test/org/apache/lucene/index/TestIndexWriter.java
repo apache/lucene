@@ -4264,7 +4264,7 @@ public class TestIndexWriter extends LuceneTestCase {
       t.join();
       assertEquals(4, executed.get());
       expectThrows(AlreadyClosedException.class, () -> queue.processEvents());
-      expectThrows(AlreadyClosedException.class, () -> queue.add(w -> {}));
+      expectThrows(AlreadyClosedException.class, () -> queue.add(_ -> {}));
     }
   }
 

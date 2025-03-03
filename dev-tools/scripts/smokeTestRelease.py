@@ -32,7 +32,6 @@ import textwrap
 import traceback
 import urllib.error
 import urllib.parse
-import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
@@ -195,7 +194,7 @@ def normSlashes(path):
 
 def checkAllJARs(topDir, gitRevision, version):
   print('    verify JAR metadata/identity/no javax.* or java.* classes...')
-  for root, dirs, files in os.walk(topDir):
+  for root, _, files in os.walk(topDir):
 
     normRoot = normSlashes(root)
 
@@ -327,7 +326,7 @@ def testChanges(version, changesURLString):
 
 def testChangesText(dir, version):
   "Checks all CHANGES.txt under this dir."
-  for root, dirs, files in os.walk(dir):
+  for root, _, files in os.walk(dir):
 
     # NOTE: O(N) but N should be smallish:
     if 'CHANGES.txt' in files:
@@ -415,9 +414,12 @@ reUnixPath = re.compile(r'\b[a-zA-Z_]+=(?:"(?:\\"|[^"])*"' + '|(?:\\\\.|[^"\'\\s
 
 
 def unix2win(matchobj):
-  if matchobj.group(1) is not None: return cygwinWindowsRoot + matchobj.group()
-  if matchobj.group(2) is not None: return '"%s%s' % (cygwinWindowsRoot, matchobj.group().lstrip('"'))
-  if matchobj.group(3) is not None: return "'%s%s" % (cygwinWindowsRoot, matchobj.group().lstrip("'"))
+  if matchobj.group(1) is not None:
+    return cygwinWindowsRoot + matchobj.group()
+  if matchobj.group(2) is not None:
+    return '"%s%s' % (cygwinWindowsRoot, matchobj.group().lstrip('"'))
+  if matchobj.group(3) is not None:
+    return "'%s%s" % (cygwinWindowsRoot, matchobj.group().lstrip("'"))
   return matchobj.group()
 
 
@@ -427,7 +429,8 @@ def cygwinifyPaths(command):
   # values are automatically converted, so only paths outside of
   # environment variable values should be converted to Windows paths.
   # Assumption: all paths will be absolute.
-  if '; gradlew ' in command: command = reUnixPath.sub(unix2win, command)
+  if '; gradlew ' in command:
+    command = reUnixPath.sub(unix2win, command)
   return command
 
 
@@ -450,7 +453,8 @@ def printFileContents(fileName):
 
 
 def run(command, logFile):
-  if cygwin: command = cygwinifyPaths(command)
+  if cygwin:
+    command = cygwinifyPaths(command)
   if os.system('%s > %s 2>&1' % (command, logFile)):
     logPath = os.path.abspath(logFile)
     print('\ncommand "%s" failed:' % command)
@@ -488,20 +492,21 @@ def getDirEntries(urlString):
       path = path[:-1]
     if cygwin: # Convert Windows path to Cygwin path
       path = re.sub(r'^/([A-Za-z]):/', r'/cygdrive/\1/', path)
-    l = []
+    files = []
     for ent in os.listdir(path):
       entPath = '%s/%s' % (path, ent)
       if os.path.isdir(entPath):
         entPath += '/'
         ent += '/'
-      l.append((ent, 'file://%s' % entPath))
-    l.sort()
-    return l
+      files.append((ent, 'file://%s' % entPath))
+    files.sort()
+    return files
   else:
     links = getHREFs(urlString)
-    for i, (text, subURL) in enumerate(links):
+    for i, (text, _) in enumerate(links):
       if text == 'Parent Directory' or text == '..':
         return links[(i+1):]
+    raise RuntimeError('could not enumerate %s' % (urlString))
 
 
 def unpackAndVerify(java, tmpDir, artifact, gitRevision, version, testArgs):
@@ -518,10 +523,10 @@ def unpackAndVerify(java, tmpDir, artifact, gitRevision, version, testArgs):
     run('unzip %s/%s' % (tmpDir, artifact), unpackLogFile)
 
   # make sure it unpacks to proper subdir
-  l = os.listdir(destDir)
+  files = os.listdir(destDir)
   expected = 'lucene-%s' % version
-  if l != [expected]:
-    raise RuntimeError('unpack produced entries %s; expected only %s' % (l, expected))
+  if files != [expected]:
+    raise RuntimeError('unpack produced entries %s; expected only %s' % (files, expected))
 
   unpackPath = '%s/%s' % (destDir, expected)
   verifyUnpacked(java, artifact, unpackPath, gitRevision, version, testArgs)
@@ -671,7 +676,7 @@ def testDemo(run_java, isSrc, version, jdk):
 
   run_java(indexFilesCmd, 'index.log')
   run_java(searchFilesCmd, 'search.log')
-  reMatchingDocs = re.compile('(\d+) total matching documents')
+  reMatchingDocs = re.compile(r'(\d+) total matching documents')
   m = reMatchingDocs.search(open('search.log', encoding='UTF-8').read())
   if m is None:
     raise RuntimeError('lucene demo\'s SearchFiles found no results')
@@ -733,7 +738,7 @@ def getBinaryDistFiles(tmpDir, version, baseURL):
   unpackLogFile = '%s/unpack-%s-getBinaryDistFiles.log' % (tmpDir, distribution)
   run('tar xzf %s/%s' % (tmpDir, distribution), unpackLogFile)
   distributionFiles = []
-  for root, dirs, files in os.walk(destDir):
+  for root, _, files in os.walk(destDir):
     distributionFiles.extend([os.path.join(root, file) for file in files])
   return distributionFiles
 
@@ -924,7 +929,9 @@ def make_java_config(parser, alt_java_homes):
     s = subprocess.check_output('%s; java -version' % cmd_prefix,
                                 shell=True, stderr=subprocess.STDOUT).decode('utf-8')
 
-    actual_version = re.search(r'version "([1-9][0-9]*)', s).group(1)
+    match = re.search(r'version "([1-9][0-9]*)', s)
+    assert match
+    actual_version = match.group(1)
     print('Java %s JAVA_HOME=%s' % (actual_version, java_home))
 
     # validate Java version
@@ -1037,9 +1044,9 @@ def getAllLuceneReleases():
         raise RuntimeError('failed to parse version: %s' % tup[-1])
       releases.add(tuple(int(x) for x in tup))
 
-  l = list(releases)
-  l.sort()
-  return l
+  releaseList = list(releases)
+  releaseList.sort()
+  return releaseList
 
 
 def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
@@ -1055,7 +1062,9 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
   reIndexName = re.compile(r'^[^.]*.(.*?)-cfs.zip')
   for name in testedIndicesPaths:
     basename = os.path.basename(name)
-    version = reIndexName.fullmatch(basename).group(1)
+    match = reIndexName.fullmatch(basename)
+    assert match
+    version = match.group(1)
     tup = tuple(version.split('.'))
     if len(tup) == 3:
       # ok
@@ -1077,10 +1086,10 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
 
     testedIndices.add(tup)
 
-  l = list(testedIndices)
-  l.sort()
   if False:
-    for release in l:
+    indexList = list(testedIndices)
+    indexList.sort()
+    for release in indexList:
       print('  %s' % '.'.join(str(x) for x in release))
 
   allReleases = set(allReleases)
@@ -1108,7 +1117,6 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
   if len(notTested) > 0:
     notTested.sort()
     print('Releases that don\'t seem to be tested:')
-    failed = True
     for x in notTested:
       print('  %s' % '.'.join(str(y) for y in x))
     raise RuntimeError('some releases are not tested by TestBackwardsCompatibility?')
@@ -1120,7 +1128,9 @@ def main():
   c = parse_config()
 
   # Pick <major>.<minor> part of version and require script to be from same branch
-  scriptVersion = re.search(r'((\d+).(\d+)).(\d+)', scriptutil.find_current_version()).group(1).strip()
+  match = re.search(r'((\d+).(\d+)).(\d+)', scriptutil.find_current_version())
+  assert match
+  scriptVersion = match.group(1).strip()
   if not c.version.startswith(scriptVersion + '.'):
     raise RuntimeError('smokeTestRelease.py for %s.X is incompatible with a %s release.' % (scriptVersion, c.version))
 

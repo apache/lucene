@@ -104,7 +104,7 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
   }
 
   public void testReadPastEOFShouldThrowEOFExceptionWithEmptyFile() throws Exception {
-    // fileSize needs to be 0 to test this condition. Do not randomized.
+    // fileSize needs to be 0 to test this condition. Do not randomize.
     final int fileSize = 0;
     try (Directory dir = getDirectory(createTempDir("testReadPastEOF"))) {
       try (IndexOutput o = dir.createOutput("out", newIOContext(random()))) {

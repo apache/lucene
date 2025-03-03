@@ -79,7 +79,8 @@ New Features
   These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
-* GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
+* GITHUB#13974,GITHUB#14276: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox.
+  (Mikhail Khludnev)
 
 * GITHUB#14204: Added HistogramCollectorManager to efficiently compute a
   histogram of the distribution of the values of a field, for documents
@@ -90,6 +91,9 @@ New Features
   if the word "schwein" is extracted, the sub-word "wein" is not extracted anymore. (Renato Haeberli)
 
 * GITHUB#14300: Add support JDK 24 to the Panama Vectorization Provider. (Chris Hegarty)
+
+* GITHUB#13470: Added `TopDocs#rrf` to combine multiple TopDocs instances using
+  reciprocal rank fusion. (Haren Lin, Adrien Grand)
 
 Improvements
 ---------------------
@@ -136,6 +140,10 @@ Optimizations
 * GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
   conjunctions. (Adrien Grand)
 
+* GITHUB#14293: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up
+  intersection of dense queries with live docs and/or collectors' competitive
+  iterators. (Adrien Grand)
+
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
 
@@ -173,6 +181,11 @@ Bug Fixes
 
 * GITHUB#14320: Fix DirectIOIndexInput seek to not read when position is within buffer (Chris Hegarty)
 
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
+  LogByteSizeMergePolicy. (Adrien Grand)
+
 Other
 ---------------------
 
@@ -186,6 +199,8 @@ Other
   from 1.7.36 to 2.0.16. (Michael Froh)
 
 * GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
+
+* GITHUB#14279 : Add github action to verify changelog entry and set milestone to PRs. (Amir Raza)
 
 ======================= Lucene 10.1.0 =======================
 

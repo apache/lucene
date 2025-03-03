@@ -3333,7 +3333,7 @@ public class IndexWriter
                 infoStream.message("IW", "now abort pending addIndexes merge");
               }
               merge.setAborted();
-              merge.close(false, false, mr -> {});
+              merge.close(false, false, _ -> {});
               onMergeFinished(merge);
             });
         pendingAddIndexesMerges.clear();
@@ -3350,7 +3350,7 @@ public class IndexWriter
         handleMergeException(t, merge);
       } finally {
         synchronized (IndexWriter.this) {
-          merge.close(success, false, mr -> {});
+          merge.close(success, false, _ -> {});
           onMergeFinished(merge);
         }
       }
@@ -3731,7 +3731,7 @@ public class IndexWriter
                 // necessary files to disk and checkpointed them.
                 pointInTimeMerges =
                     preparePointInTimeMerge(
-                        toCommit, stopAddingMergedSegments::get, MergeTrigger.COMMIT, sci -> {});
+                        toCommit, stopAddingMergedSegments::get, MergeTrigger.COMMIT, _ -> {});
               }
             }
             success = true;

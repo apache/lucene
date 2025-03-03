@@ -16,52 +16,21 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.FeatureField;
-import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.ByteBuffersDirectory;
-import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Util class for Scorer related methods */
 class ScorerUtil {
 
-  private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS;
-  private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS;
-
-  static {
-    try (Directory dir = new ByteBuffersDirectory();
-        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
-      Document doc = new Document();
-      doc.add(new FeatureField("field", "value", 1f));
-      w.addDocument(doc);
-      try (DirectoryReader reader = DirectoryReader.open(w)) {
-        LeafReader leafReader = reader.leaves().get(0).reader();
-        TermsEnum te = leafReader.terms("field").iterator();
-        if (te.seekExact(new BytesRef("value")) == false) {
-          throw new Error();
-        }
-        ImpactsEnum ie = te.impacts(PostingsEnum.FREQS);
-        DEFAULT_IMPACTS_ENUM_CLASS = ie.getClass();
-      }
-    } catch (IOException e) {
-      throw new Error(e);
-    }
-
-    DEFAULT_ACCEPT_DOCS_CLASS = new FixedBitSet(1).asReadOnlyBits().getClass();
-  }
+  private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS =
+      Lucene101PostingsFormat.getImpactsEnumImpl();
+  private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS =
+      new FixedBitSet(1).asReadOnlyBits().getClass();
 
   static long costWithMinShouldMatch(LongStream costs, int numScorers, int minShouldMatch) {
     // the idea here is the following: a boolean query c1,c2,...cn with minShouldMatch=m
