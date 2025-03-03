@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 /**
- * Wraps <a href="https://github.com/facebookresearch/faiss">Faiss</a> to create and search vector
- * indexes via {@link org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormatProvider}.
+ * Provides a Faiss-based vector codec via {@link
+ * org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat}.
+ *
+ * @lucene.experimental
  */
 package org.apache.lucene.sandbox.codecs.faiss;

@@ -20,7 +20,6 @@ module org.apache.lucene.sandbox {
   requires org.apache.lucene.core;
   requires org.apache.lucene.queries;
   requires org.apache.lucene.facet;
-  requires java.logging;
 
   exports org.apache.lucene.payloads;
   exports org.apache.lucene.sandbox.codecs.faiss;
@@ -42,5 +41,5 @@ module org.apache.lucene.sandbox {
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
-      org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormatProvider;
+      org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat;
 }

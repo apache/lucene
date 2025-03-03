@@ -20,6 +20,7 @@ import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -45,6 +46,15 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
+/**
+ * Utility class to wrap necessary functions of the native C_API of Faiss using <a
+ * href="https://openjdk.org/projects/panama">Project Panama</a> (library {@value
+ * LibFaissC#LIBRARY_NAME}, version {@value LibFaissC#LIBRARY_VERSION}, build using <a
+ * href="https://github.com/facebookresearch/faiss/blob/main/c_api/INSTALL.md">this guide</a> and
+ * add to runtime along with all dependencies).
+ *
+ * @lucene.experimental
+ */
 public final class LibFaissC {
   /*
    * TODO: Requires some changes to Faiss
@@ -57,15 +67,7 @@ public final class LibFaissC {
   public static final String LIBRARY_VERSION = "1.10.0";
 
   static {
-    try {
-      System.loadLibrary(LIBRARY_NAME);
-    } catch (UnsatisfiedLinkError e) {
-      throw new RuntimeException(
-          "Shared library not found, build the Faiss C_API from https://github.com/facebookresearch/faiss/blob/main/c_api/INSTALL.md "
-              + "and link it (along with all dependencies) to the library path "
-              + "(-Djava.library.path JVM argument or $LD_LIBRARY_PATH environment variable)",
-          e);
-    }
+    System.loadLibrary(LIBRARY_NAME);
     checkLibraryVersion();
   }
 
@@ -183,7 +185,8 @@ public final class LibFaissC {
           switch (function) {
             case DOT_PRODUCT -> 0;
             case EUCLIDEAN -> 1;
-            default -> throw new UnsupportedOperationException("Metric type not supported");
+            case COSINE, MAXIMUM_INNER_PRODUCT ->
+                throw new UnsupportedOperationException("Metric type not supported");
           };
 
       // Create an index
@@ -214,9 +217,9 @@ public final class LibFaissC {
       LongBuffer idsBuffer = ids.asByteBuffer().order(ByteOrder.nativeOrder()).asLongBuffer();
 
       KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
-      for (int i = 0; i < size; i++) {
-        idsBuffer.put(oldToNewDocId.apply(iterator.nextDoc()));
-        docsBuffer.put(floatVectorValues.vectorValue(i));
+      for (int i = iterator.nextDoc(); i != NO_MORE_DOCS; i = iterator.nextDoc()) {
+        idsBuffer.put(oldToNewDocId.apply(i));
+        docsBuffer.put(floatVectorValues.vectorValue(iterator.index()));
       }
 
       // Train index
@@ -231,6 +234,7 @@ public final class LibFaissC {
     }
   }
 
+  @SuppressWarnings("unused") // called using a MethodHandle
   private static int writeBytes(
       IndexOutput output, MemorySegment inputPointer, int itemSize, int numItems)
       throws IOException {
@@ -242,6 +246,7 @@ public final class LibFaissC {
     return numItems;
   }
 
+  @SuppressWarnings("unused") // called using a MethodHandle
   private static int readBytes(
       IndexInput input, MemorySegment outputPointer, int itemSize, int numItems)
       throws IOException {
@@ -348,7 +353,12 @@ public final class LibFaissC {
           ADDRESS);
 
   public static void indexSearch(
-      MemorySegment indexPointer, float[] query, KnnCollector knnCollector, Bits acceptDocs) {
+      MemorySegment indexPointer,
+      VectorSimilarityFunction function,
+      float[] query,
+      KnnCollector knnCollector,
+      Bits acceptDocs) {
+
     try (Arena temp = Arena.ofConfined()) {
       FixedBitSet fixedBitSet =
           switch (acceptDocs) {
@@ -416,7 +426,23 @@ public final class LibFaissC {
 
       // Record hits
       for (int i = 0; i < k; i++) {
-        knnCollector.collect((int) ids[i], distances[i]);
+
+        // Scale Faiss distances to Lucene scores, see VectorSimilarityFunction.java
+        float score =
+            switch (function) {
+              case DOT_PRODUCT ->
+                  // distance in Faiss === dotProduct in Lucene
+                  Math.max((1 + distances[i]) / 2, 0);
+
+              case EUCLIDEAN ->
+                  // distance in Faiss === squareDistance in Lucene
+                  1 / (1 + distances[i]);
+
+              case COSINE, MAXIMUM_INNER_PRODUCT ->
+                  throw new UnsupportedOperationException("Metric type not supported");
+            };
+
+        knnCollector.collect((int) ids[i], score);
       }
     }
   }
@@ -449,6 +475,11 @@ public final class LibFaissC {
     }
   }
 
+  /**
+   * Exception used to rethrow handled Faiss errors in native code.
+   *
+   * @lucene.experimental
+   */
   public static class FaissException extends RuntimeException {
     public FaissException(String message) {
       super(message);

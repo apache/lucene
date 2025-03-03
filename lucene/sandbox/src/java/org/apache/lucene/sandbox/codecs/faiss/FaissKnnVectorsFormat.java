@@ -27,6 +27,21 @@ import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 
+/**
+ * A format which uses <a href="https://github.com/facebookresearch/faiss">Faiss</a> to create and
+ * search vector indexes, using {@link LibFaissC} to interact with the native library.
+ *
+ * <p>A separate Faiss index is created per-segment, and uses the following files:
+ *
+ * <ul>
+ *   <li><code>.faissm</code> (metadata file): stores field number, offset and length of actual
+ *       Faiss index in data file.
+ *   <li><code>.faissd</code> (data file): stores concatenated Faiss indexes for all fields.
+ *   <li>All files required by {@link Lucene99FlatVectorsFormat} for storing raw vectors.
+ * </ul>
+ *
+ * @lucene.experimental
+ */
 public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
   public static final String NAME = FaissKnnVectorsFormat.class.getSimpleName();
   static final int VERSION_START = 0;
@@ -40,7 +55,6 @@ public final class FaissKnnVectorsFormat extends KnnVectorsFormat {
   private final String indexParams;
   private final FlatVectorsFormat rawVectorsFormat;
 
-  @SuppressWarnings("unused")
   public FaissKnnVectorsFormat() {
     this("IDMap,HNSW32", "efConstruction=200");
   }

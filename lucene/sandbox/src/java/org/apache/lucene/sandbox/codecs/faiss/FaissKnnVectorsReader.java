@@ -38,6 +38,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -45,17 +46,24 @@ import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
+/**
+ * Read per-segment Faiss indexes and associated metadata.
+ *
+ * @lucene.experimental
+ */
 public final class FaissKnnVectorsReader extends KnnVectorsReader {
   private final FlatVectorsReader rawVectorsReader;
   private final IndexInput meta, data;
-  private final Map<String, MemorySegment> indexMap;
+  private final Map<String, IndexEntry> indexMap;
   private final Arena arena;
+  private boolean closed;
 
   public FaissKnnVectorsReader(SegmentReadState state, FlatVectorsReader rawVectorsReader)
       throws IOException {
     this.rawVectorsReader = rawVectorsReader;
     this.indexMap = new HashMap<>();
-    this.arena = Arena.ofConfined();
+    this.arena = Arena.ofShared();
+    this.closed = false;
 
     boolean failure = true;
     try {
@@ -76,7 +84,7 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
               VERSION_CURRENT,
               state.context.withReadAdvice(ReadAdvice.RANDOM));
 
-      Map.Entry<String, MemorySegment> entry;
+      Map.Entry<String, IndexEntry> entry;
       while ((entry = parseNextField(state)) != null) {
         this.indexMap.put(entry.getKey(), entry.getValue());
       }
@@ -107,8 +115,7 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
     return input;
   }
 
-  private Map.Entry<String, MemorySegment> parseNextField(SegmentReadState state)
-      throws IOException {
+  private Map.Entry<String, IndexEntry> parseNextField(SegmentReadState state) throws IOException {
     int fieldNumber = meta.readInt();
     if (fieldNumber == -1) {
       return null;
@@ -131,7 +138,8 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
             // Ensure timely cleanup
             .reinterpret(arena, LibFaissC::freeIndex);
 
-    return Map.entry(fieldInfo.name, indexPointer);
+    return Map.entry(
+        fieldInfo.name, new IndexEntry(indexPointer, fieldInfo.getVectorSimilarityFunction()));
   }
 
   @Override
@@ -155,9 +163,9 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
 
   @Override
   public void search(String field, float[] vector, KnnCollector knnCollector, Bits acceptDocs) {
-    MemorySegment entry = indexMap.get(field);
+    IndexEntry entry = indexMap.get(field);
     if (entry != null) {
-      indexSearch(entry, vector, knnCollector, acceptDocs);
+      indexSearch(entry.indexPointer, entry.function, vector, knnCollector, acceptDocs);
     }
   }
 
@@ -170,13 +178,11 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
 
   @Override
   public void close() throws IOException {
-    rawVectorsReader.close();
-    arena.close();
-    if (meta != null) {
-      meta.close();
-    }
-    if (data != null) {
-      data.close();
+    if (closed == false) {
+      IOUtils.close(rawVectorsReader, arena::close, meta, data);
+      closed = true;
     }
   }
+
+  private record IndexEntry(MemorySegment indexPointer, VectorSimilarityFunction function) {}
 }

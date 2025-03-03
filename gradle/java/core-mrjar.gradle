@@ -17,10 +17,7 @@
 
 // Produce an MR-JAR with Java 19+ foreign and vector implementations
 
-configure([
-        project(":lucene:core"),
-        project(":lucene:sandbox")
-]) {
+configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {
     mrjarJavaVersions.each { jdkVersion ->
       sourceSets.create("main${jdkVersion}") {

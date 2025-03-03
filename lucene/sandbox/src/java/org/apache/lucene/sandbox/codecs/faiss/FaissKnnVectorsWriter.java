@@ -25,7 +25,6 @@ import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.createIndex;
 import static org.apache.lucene.sandbox.codecs.faiss.LibFaissC.indexWrite;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.HashMap;
@@ -48,6 +47,11 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
+/**
+ * Write per-segment Faiss indexes and associated metadata.
+ *
+ * @lucene.experimental
+ */
 public final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   private final String description, indexParams;
   private final FlatVectorsWriter rawVectorsWriter;
@@ -184,13 +188,7 @@ public final class FaissKnnVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void close() throws IOException {
-    rawVectorsWriter.close();
-    if (meta != null) {
-      meta.close();
-    }
-    if (data != null) {
-      data.close();
-    }
+    IOUtils.close(rawVectorsWriter, meta, data);
   }
 
   @Override
@@ -232,11 +230,7 @@ public final class FaissKnnVectorsWriter extends KnnVectorsWriter {
 
     @Override
     public DocIndexIterator iterator() {
-      try {
-        return fromDISI(docIdSet.iterator());
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
+      return fromDISI(docIdSet.iterator());
     }
   }
 }
