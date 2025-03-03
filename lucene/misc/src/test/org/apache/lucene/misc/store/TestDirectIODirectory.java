@@ -214,7 +214,6 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
   // The test should complete within sub-second times, not minutes.
   public void testSeekSmall() throws IOException {
     Path tmpDir = createTempDir("testSeekSmall");
-    int blockSize = Math.toIntExact(Files.getFileStore(tmpDir).getBlockSize());
     try (Directory dir = getDirectory(tmpDir)) {
       int len = atLeast(100);
       try (IndexOutput o = dir.createOutput("out", newIOContext(random()))) {
