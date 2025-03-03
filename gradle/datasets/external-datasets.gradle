@@ -98,15 +98,12 @@ configure(project(":lucene:benchmark")) {
     //       and then compress with: bzip2 -9 -k file_random.txt
     ext {
       name = "geonames_20130921_randomOrder_allCountries.txt"
-      src = "https://home.apache.org/~dsmiley/data/${name}.bz2"
+      src = "https://s3.amazonaws.com/lucene-testdata/geonames/${name}.bz2"
       intermediate = file("${dataDir}/${name}.bz2")
       dst = file("${dataDir}/${name}")
     }
 
     outputs.file ext.dst
-
-    // TODO: dataset gone. https://github.com/apache/lucene/issues/13647
-    onlyIf { false }
 
     src ext.src
     dest ext.intermediate
