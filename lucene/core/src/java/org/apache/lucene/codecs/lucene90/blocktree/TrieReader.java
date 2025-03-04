@@ -89,26 +89,6 @@ class TrieReader {
           parent.childrenStrategy.lookup(targetLabel, arcsIn, positionBytesFp, positionBytes, minLabel);
     }
 
-//        System.out.println();
-//        System.out.println(" lookup: " + target);
-//        System.out.println(" parent info: ");
-//        System.out.println(" parent label: " + parent.label);
-//        System.out.println(" parent fp: " + parent.fp);
-//        System.out.println(" parent min child label: " + parent.minChildrenLabel);
-//        System.out.println(" parent strategy: " + parent.childrenStrategy);
-//        System.out.println(" parent position bytes: " + parent.positionBytes);
-//        arcsIn.seek(positionBytesFp);
-//        System.out.println(" parent position bytes info: ");
-//        IntStream.range(0, parent.positionBytes).forEach(i -> {
-//          try {
-//            System.out.print((arcsIn.readByte() & 0xFF) + ", ");
-//          } catch (IOException e) {
-//            throw new RuntimeException(e);
-//          }
-//        });
-//        System.out.println();
-//        System.out.println(" child position: " + position);
-
     if (position < 0) {
       return null;
     }
@@ -121,7 +101,6 @@ class TrieReader {
     child.label = targetLabel;
     load(child, code, parent);
 
-    //    System.out.println(" child code: " + code);
     return child;
   }
 }

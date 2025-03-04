@@ -143,21 +143,7 @@ class Trie {
     assert positionStrategy != null;
 
     assert positionBytes >= 0 && positionBytes <= 32;
-//    System.out.println(
-//        "label: "
-//            + node.label
-//            + ", position bytes: "
-//            + positionBytes
-//            + ", strategy: "
-//            + positionStrategy
-//            + ", children num: "
-//            + childrenNum
-//            + ", min child label: "
-//            + minLabel
-//            + ", fp: "
-//            + fp
-//            + ", codes: "
-//            + Arrays.toString(ArrayUtil.copyOfSubArray(codeBuffer, 0, childrenNum)));
+
     int sign =
         (positionStrategy.priority << 14) // 2bit
             | (positionBytes << 8) // 6 bit
