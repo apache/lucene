@@ -16,14 +16,11 @@
  */
 package org.apache.lucene.codecs.lucene90.blocktree;
 
-import static org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader.VERSION_MSB_VLONG_OUTPUT;
-
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
