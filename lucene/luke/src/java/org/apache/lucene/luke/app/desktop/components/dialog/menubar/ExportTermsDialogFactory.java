@@ -200,7 +200,7 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
     execButtons.add(exportBtn);
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setMargin(new Insets(3, 0, 3, 0));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     execButtons.add(closeBtn);
     return execButtons;
   }

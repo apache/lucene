@@ -221,11 +221,11 @@ public final class IndexOptionsDialogFactory implements DialogOpener.DialogFacto
     panel.setOpaque(false);
     JButton okBtn = new JButton(MessageUtils.getLocalizedMessage("button.ok"));
     okBtn.setMargin(new Insets(3, 3, 3, 3));
-    okBtn.addActionListener(e -> saveOptions());
+    okBtn.addActionListener(_ -> saveOptions());
     panel.add(okBtn);
     JButton cancelBtn = new JButton(MessageUtils.getLocalizedMessage("button.cancel"));
     cancelBtn.setMargin(new Insets(3, 3, 3, 3));
-    cancelBtn.addActionListener(e -> dialog.dispose());
+    cancelBtn.addActionListener(_ -> dialog.dispose());
     panel.add(cancelBtn);
 
     return panel;

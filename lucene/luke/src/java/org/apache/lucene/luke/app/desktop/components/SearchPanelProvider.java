@@ -678,7 +678,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
     JMenuItem item1 =
         new JMenuItem(MessageUtils.getLocalizedMessage("search.results.menu.explain"));
     item1.addActionListener(
-        e -> {
+        _ -> {
           int docid =
               (int)
                   resultsTable
@@ -703,7 +703,7 @@ public final class SearchPanelProvider implements SearchTabOperator {
     JMenuItem item2 =
         new JMenuItem(MessageUtils.getLocalizedMessage("search.results.menu.showdoc"));
     item2.addActionListener(
-        e -> {
+        _ -> {
           int docid =
               (int)
                   resultsTable

@@ -20,7 +20,8 @@ import sys
 import os
 from enum import Enum
 import time
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.error
 import urllib.parse
 
 class Version(object):
@@ -30,12 +31,12 @@ class Version(object):
     self.bugfix = bugfix
     self.prerelease = prerelease
     self.previous_dot_matcher = self.make_previous_matcher()
-    self.dot = '%d.%d.%d' % (self.major, self.minor, self.bugfix) 
+    self.dot = '%d.%d.%d' % (self.major, self.minor, self.bugfix)
     self.constant = 'LUCENE_%d_%d_%d' % (self.major, self.minor, self.bugfix)
 
   @classmethod
   def parse(cls, value):
-    match = re.search(r'(\d+)\.(\d+).(\d+)(.1|.2)?', value) 
+    match = re.search(r'(\d+)\.(\d+).(\d+)(.1|.2)?', value)
     if match is None:
       raise argparse.ArgumentTypeError('Version argument must be of format x.y.z(.1|.2)?')
     parts = [int(v) for v in match.groups()[:-1]]
@@ -86,12 +87,12 @@ def run(cmd, cwd=None):
   except subprocess.CalledProcessError as e:
     print(e.output.decode('utf-8'))
     raise e
-  return output.decode('utf-8') 
+  return output.decode('utf-8')
 
 def update_file(filename, line_re, edit, append=None):
   infile = open(filename, 'r')
-  buffer = [] 
-  
+  buffer = []
+
   changed = False
   for line in infile:
     if not changed:
@@ -181,7 +182,9 @@ version_prop_re = re.compile(r'baseVersion\s*=\s*([\'"])(.*)\1')
 def find_current_version():
   script_path = os.path.dirname(os.path.realpath(__file__))
   top_level_dir = os.path.join(os.path.abspath("%s/" % script_path), os.path.pardir, os.path.pardir)
-  return version_prop_re.search(open('%s/build.gradle' % top_level_dir).read()).group(2).strip()
+  match = version_prop_re.search(open('%s/build.gradle' % top_level_dir).read())
+  assert match
+  return match.group(2).strip()
 
 if __name__ == '__main__':
   print('This is only a support module, it cannot be run')

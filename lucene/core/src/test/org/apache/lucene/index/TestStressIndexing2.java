@@ -812,7 +812,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
         FieldType fieldType =
             fieldTypes.computeIfAbsent(
                 fieldName,
-                fn -> {
+                _ -> {
                   FieldType ft = new FieldType();
                   switch (nextInt(4)) {
                     case 0:

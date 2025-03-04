@@ -1200,7 +1200,7 @@ public class TestQPHelper extends LuceneTestCase {
             new Term("field", "[a-z][123]"),
             RegExp.ALL,
             0,
-            name -> null,
+            _ -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertEquals(new BoostQuery(q, 0.5f), qp.parse("/[A-Z][123]/^0.5", df));
