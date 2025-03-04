@@ -315,7 +315,7 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
-      return null;
+      return new Bits.MatchNoBits(0);
     }
 
     @Override
