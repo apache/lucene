@@ -124,7 +124,8 @@ public final class TaxonomyFacetsCutter implements FacetCutter {
       Map.Entry<String, FacetsConfig.DimConfig> ent = dimensions.next();
       String dim = ent.getKey();
       FacetsConfig.DimConfig ft = ent.getValue();
-      if (ft.hierarchical && ft.multiValued == false && ft.indexFieldName.equals(indexFieldName)) {
+      if (ft.multiValued == false && ft.indexFieldName.equals(indexFieldName)) {
+        // ft.hierarchical is ignored - rollup even if path length is only two
         dimsToRollup.add(new FacetLabel(dim));
       }
     }

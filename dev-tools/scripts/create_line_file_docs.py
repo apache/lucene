@@ -61,7 +61,7 @@ def compress_with_seek_points(file_name_in, file_name_out, num_seek_points):
         break
 
       bytes_in_chunk += len(line)
-      f_out.write(line)
+      f_out.write(line) # false positive in python's crazy typing # pyright: ignore[reportArgumentType]
 
       if bytes_in_chunk > bytes_per_chunk and chunk_count < num_seek_points:
         f_out.close()
@@ -72,12 +72,12 @@ def compress_with_seek_points(file_name_in, file_name_out, num_seek_points):
     for seek_point in seek_points:
       f_out.write('%d\n' % seek_point)
 
-re_tag = re.compile('<[^>]+?>')
-re_newlines = re.compile('\n+')
-re_space = re.compile('\s')
+re_tag = re.compile(r'<[^>]+?>')
+re_newlines = re.compile(r'\n+')
+re_space = re.compile(r'\s')
 
 # used to find word break, for splitting docs into ~1 KB sized smaller docs:
-re_next_non_word_character = re.compile('\W', re.U)
+re_next_non_word_character = re.compile(r'\W', re.U)
 
 EUROPARL_V7_URL = 'https://www.statmt.org/europarl/v7/europarl.tgz'
 
@@ -101,7 +101,7 @@ def split_docs(all_out, title_string, date_string, body_string):
       char_count = len(body_string)
 
     body_string_fragment = body_string[:char_count].strip()
-    
+
     #print('write title %d, body %d' % (len(title_string), len(body_string_fragment)))
     all_out.write('%s\t%s\t%s\n' % (title_string, date_string, body_string_fragment))
     body_string = body_string[char_count:]
@@ -143,7 +143,7 @@ def sample_europarl():
     next_print_time = start_time + 3
     # normalize text a bit and concatenate all lines into single file, counting total lines/bytes
     with open(all_txt_file_name, 'w', encoding='utf-8') as all_out:
-      for dir_path, dir_names, file_names in os.walk('%s/txt' % tmp_dir_path):
+      for dir_path, _, file_names in os.walk('%s/txt' % tmp_dir_path):
         for file_name in file_names:
           if file_name.endswith('.txt'):
             file_count += 1
@@ -155,7 +155,7 @@ def sample_europarl():
               year = 2000 + year
 
             date_string = '%04d-%02d-%02d' % (year, month, day)
-            
+
             # unfortunately we need errors='ignore' since in Europarl v7, one file (pl/ep-09-10-22-009.txt) has invalid utf-8:
             chapter_count = 0
             with open('%s/%s' % (dir_path, file_name), 'r', encoding='utf-8', errors='ignore') as f_in:
@@ -176,7 +176,7 @@ def sample_europarl():
                       doc_count += split_docs(all_out, last_title, date_string, s)
                     else:
                       skip_count += 1
-                      
+
                     last_text = []
                     chapter_count += 1
                   while True:
@@ -248,7 +248,7 @@ def sample_europarl():
       compress_with_seek_points(file_name_out,
                                 file_name_out + '.gz',
                                 mb)
-            
+
   finally:
     print('Removing tmp dir "%s"...' % tmp_dir_path)
     if not DEBUG:

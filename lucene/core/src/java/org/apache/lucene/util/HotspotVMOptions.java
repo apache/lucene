@@ -43,7 +43,7 @@ final class HotspotVMOptions {
 
   static {
     boolean isHotspot = false;
-    Function<String, Optional<String>> accessor = name -> Optional.empty();
+    Function<String, Optional<String>> accessor = _ -> Optional.empty();
     try {
       final Class<?> beanClazz = Class.forName(HOTSPOT_BEAN_CLASS);
       // we use reflection for this, because the management factory is not part

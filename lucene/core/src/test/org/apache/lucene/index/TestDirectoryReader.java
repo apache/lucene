@@ -38,6 +38,7 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.DocHelper;
@@ -366,7 +367,8 @@ public class TestDirectoryReader extends LuceneTestCase {
 
   public void testBinaryFields() throws IOException {
     Directory dir = newDirectory();
-    byte[] bin = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    byte[] bin1 = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    byte[] bin2 = new byte[] {10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
 
     IndexWriter writer =
         new IndexWriter(
@@ -387,7 +389,8 @@ public class TestDirectoryReader extends LuceneTestCase {
                 .setOpenMode(OpenMode.APPEND)
                 .setMergePolicy(newLogMergePolicy()));
     Document doc = new Document();
-    doc.add(new StoredField("bin1", bin));
+    doc.add(new StoredField("bin1", bin1));
+    doc.add(new StoredField("bin2", new StoredFieldDataInput(new ByteArrayDataInput(bin2))));
     doc.add(new TextField("junk", "junk text", Field.Store.NO));
     writer.addDocument(doc);
     writer.close();
@@ -398,11 +401,22 @@ public class TestDirectoryReader extends LuceneTestCase {
     assertEquals(1, fields.length);
     IndexableField b1 = fields[0];
     assertTrue(b1.binaryValue() != null);
-    BytesRef bytesRef = b1.binaryValue();
-    assertEquals(bin.length, bytesRef.length);
-    for (int i = 0; i < bin.length; i++) {
-      assertEquals(bin[i], bytesRef.bytes[i + bytesRef.offset]);
+    BytesRef bytesRef1 = b1.binaryValue();
+    assertEquals(bin1.length, bytesRef1.length);
+    for (int i = 0; i < bin1.length; i++) {
+      assertEquals(bin1[i], bytesRef1.bytes[i + bytesRef1.offset]);
     }
+    fields = doc2.getFields("bin2");
+    assertNotNull(fields);
+    assertEquals(1, fields.length);
+    IndexableField b2 = fields[0];
+    assertTrue(b2.binaryValue() != null);
+    BytesRef bytesRef2 = b2.binaryValue();
+    assertEquals(bin2.length, bytesRef2.length);
+    for (int i = 0; i < bin2.length; i++) {
+      assertEquals(bin2[i], bytesRef2.bytes[i + bytesRef2.offset]);
+    }
+
     reader.close();
     // force merge
 
@@ -421,10 +435,19 @@ public class TestDirectoryReader extends LuceneTestCase {
     assertEquals(1, fields.length);
     b1 = fields[0];
     assertTrue(b1.binaryValue() != null);
-    bytesRef = b1.binaryValue();
-    assertEquals(bin.length, bytesRef.length);
-    for (int i = 0; i < bin.length; i++) {
-      assertEquals(bin[i], bytesRef.bytes[i + bytesRef.offset]);
+    bytesRef1 = b1.binaryValue();
+    assertEquals(bin1.length, bytesRef1.length);
+    for (int i = 0; i < bin1.length; i++) {
+      assertEquals(bin1[i], bytesRef1.bytes[i + bytesRef1.offset]);
+    }
+    fields = doc2.getFields("bin2");
+    assertNotNull(fields);
+    assertEquals(1, fields.length);
+    b2 = fields[0];
+    bytesRef2 = b2.binaryValue();
+    assertEquals(bin2.length, bytesRef2.length);
+    for (int i = 0; i < bin2.length; i++) {
+      assertEquals(bin2[i], bytesRef2.bytes[i + bytesRef2.offset]);
     }
     reader.close();
     dir.close();
@@ -961,7 +984,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.commit();
     final DirectoryReader reader = DirectoryReader.open(writer);
     final int[] closeCount = new int[1];
-    final IndexReader.ClosedListener listener = key -> closeCount[0]++;
+    final IndexReader.ClosedListener listener = _ -> closeCount[0]++;
 
     reader.getReaderCacheHelper().addClosedListener(listener);
 

@@ -708,8 +708,15 @@ public class Dictionary {
     affixData = ArrayUtil.grow(affixData, currentAffix * 4 + numLines * 4);
 
     for (int i = 0; i < numLines; i++) {
+      if (tolerateAffixRuleCountMismatches()) {
+        // push back line if counts are wrong, with a limit: forgiveness is finite.
+        reader.mark(256);
+      }
       String line = reader.readLine();
       if (line == null) {
+        if (tolerateAffixRuleCountMismatches()) {
+          return; // can happen due to rule count mismatches, EOF
+        }
         throw new ParseException("Premature end of rules for " + header, reader.getLineNumber());
       }
 
@@ -717,6 +724,10 @@ public class Dictionary {
       String[] ruleArgs = splitBySpace(reader, line, 4, Integer.MAX_VALUE);
 
       if (!ruleArgs[1].equals(args[1])) {
+        if (tolerateAffixRuleCountMismatches()) {
+          reader.reset(); // can happen due to count mismatch: push back what we found
+          return;
+        }
         throw new ParseException(
             "Affix rule mismatch. Header: " + header + "; rule: " + line, reader.getLineNumber());
       }
@@ -801,7 +812,7 @@ public class Dictionary {
         affixArg = new StringBuilder(affixArg).reverse().toString();
       }
 
-      affixes.computeIfAbsent(affixArg, __ -> new IntArrayList()).add(currentAffix);
+      affixes.computeIfAbsent(affixArg, _ -> new IntArrayList()).add(currentAffix);
       currentAffix++;
     }
   }

@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java-version: [ '21', '22', '23-ea' ]
+        java-version: [ '23', '24-ea' ]
 
     runs-on: ${{ matrix.os }}
 
@@ -37,7 +37,7 @@ jobs:
           # This intentionally lists two versions, the last one is used as the system default (for running gradle).
           java-version: |
             ${{ matrix.java-version }}
-            21
+            23
 
       - name: Echo diagnostic paths and locations
         run: |

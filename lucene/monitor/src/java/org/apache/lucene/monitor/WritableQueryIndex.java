@@ -152,7 +152,7 @@ class WritableQueryIndex extends QueryIndex {
     purgeCache(
         newCache ->
             scan(
-                (id, cacheEntry, dataValues) -> {
+                (id, _, dataValues) -> {
                   if (ids.contains(id)) {
                     // this is a branch of a query that has already been reconstructed, but
                     // then split by decomposition - we don't need to parse it again
@@ -234,7 +234,7 @@ class WritableQueryIndex extends QueryIndex {
     purgeCache(
         newCache ->
             scan(
-                (id, query, dataValues) -> {
+                (_, query, _) -> {
                   if (query != null) newCache.put(query.cacheId, query);
                 }));
     lastPurged = System.nanoTime();
@@ -242,7 +242,7 @@ class WritableQueryIndex extends QueryIndex {
   }
 
   @Override
-  /**
+  /*
    * Remove unused queries from the query cache.
    *
    * <p>This is normally called from a background thread at a rate set by configurePurgeFrequency().

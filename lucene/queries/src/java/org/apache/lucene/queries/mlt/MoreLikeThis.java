@@ -767,7 +767,7 @@ public final class MoreLikeThis {
       Map<String, Map<String, Int>> field2termFreqMap, Terms vector, String fieldName)
       throws IOException {
     Map<String, Int> termFreqMap =
-        field2termFreqMap.computeIfAbsent(fieldName, k -> new HashMap<>());
+        field2termFreqMap.computeIfAbsent(fieldName, _ -> new HashMap<>());
     final TermsEnum termsEnum = vector.iterator();
     final CharsRefBuilder spare = new CharsRefBuilder();
     BytesRef text;
@@ -806,7 +806,7 @@ public final class MoreLikeThis {
           "To use MoreLikeThis without " + "term vectors, you must provide an Analyzer");
     }
     Map<String, Int> termFreqMap =
-        perFieldTermFrequencies.computeIfAbsent(fieldName, k -> new HashMap<>());
+        perFieldTermFrequencies.computeIfAbsent(fieldName, _ -> new HashMap<>());
     try (TokenStream ts = analyzer.tokenStream(fieldName, r)) {
       int tokenCount = 0;
       // for every token

@@ -53,6 +53,7 @@ import org.apache.lucene.luke.app.desktop.util.lang.Callable;
 /** Factory of edit filters dialog */
 public final class EditFiltersDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static EditFiltersDialogFactory instance;
 
   private final Preferences prefs;
@@ -141,7 +142,7 @@ public final class EditFiltersDialogFactory implements DialogOpener.DialogFactor
     footer.setOpaque(false);
     JButton okBtn = new JButton(MessageUtils.getLocalizedMessage("button.ok"));
     okBtn.addActionListener(
-        e -> {
+        _ -> {
           List<Integer> deletedIndexes = new ArrayList<>();
           for (int i = 0; i < filtersTable.getRowCount(); i++) {
             boolean deleted =
@@ -168,7 +169,7 @@ public final class EditFiltersDialogFactory implements DialogOpener.DialogFactor
         });
     footer.add(okBtn);
     JButton cancelBtn = new JButton(MessageUtils.getLocalizedMessage("button.cancel"));
-    cancelBtn.addActionListener(e -> dialog.dispose());
+    cancelBtn.addActionListener(_ -> dialog.dispose());
     footer.add(cancelBtn);
     panel.add(footer, BorderLayout.PAGE_END);
 

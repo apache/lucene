@@ -1218,7 +1218,7 @@ public class RandomPostingsTester {
       if (fieldInfo.hasNorms()) {
         docToNorm = DOC_TO_NORM;
       } else {
-        docToNorm = doc -> 1L;
+        docToNorm = _ -> 1L;
       }
 
       // First check impacts and block uptos

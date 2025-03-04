@@ -36,17 +36,17 @@ public class SorterBenchmark {
   private enum SorterFactory {
     INTRO_SORTER(
         "IntroSorter",
-        (arr, s) -> {
+        (arr, _) -> {
           return new ArrayIntroSorter<>(arr, Entry::compareTo);
         }),
     TIM_SORTER(
         "TimSorter",
-        (arr, s) -> {
+        (arr, _) -> {
           return new ArrayTimSorter<>(arr, Entry::compareTo, arr.length / 64);
         }),
     MERGE_SORTER(
         "MergeSorter",
-        (arr, s) -> {
+        (arr, _) -> {
           return new ArrayInPlaceMergeSorter<>(arr, Entry::compareTo);
         }),
     ;

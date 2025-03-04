@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.PrimitiveIterator.OfInt;
 import java.util.Random;
+import java.util.function.IntSupplier;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -146,12 +147,20 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
   }
 
   private static class DummyQuery extends Query {
-    private static int COUNTER = 0;
+    private static final IntSupplier COUNTER =
+        new IntSupplier() {
+          int counter = 0;
+
+          @Override
+          public int getAsInt() {
+            return counter++;
+          }
+        };
     private final int id;
     private final DocIdSetIterator disi;
 
     DummyQuery(DocIdSetIterator disi) {
-      id = COUNTER++;
+      id = COUNTER.getAsInt();
       this.disi = disi;
     }
 
