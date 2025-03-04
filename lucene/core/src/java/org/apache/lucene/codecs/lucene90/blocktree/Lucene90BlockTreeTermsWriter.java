@@ -1202,7 +1202,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             : "pending.size()=" + pending.size() + " pending=" + pending;
         final PendingBlock root = (PendingBlock) pending.get(0);
         assert root.prefix.length == 0;
-        final BytesRef rootCode = root.index.getEmptyOutput();
+//        final BytesRef rootCode = root.index.getEmptyOutput();
+        final BytesRef rootCode = root.indexTrie.getEmptyOutput();
         assert rootCode != null;
 
         ByteBuffersDataOutput metaOut = new ByteBuffersDataOutput();
@@ -1222,8 +1223,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
         metaOut.writeVLong(indexOut.getFilePointer());
         // Write FST to index
-//        assertEquals(root.index, root.indexTrie);
-        root.index.save(metaOut, indexOut);
+        assertEquals(root.index, root.indexTrie);
+//        root.index.save(metaOut, indexOut);
         root.indexTrie.save(metaOut, indexOut);
 
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);

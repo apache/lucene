@@ -115,7 +115,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   final PostingsReaderBase postingsReader;
 
   private final FieldInfos fieldInfos;
-  private final IntObjectHashMap<FieldReader> fieldMap;
+  private final IntObjectHashMap<TrieFieldReader> fieldMap;
   private final List<String> fieldList;
 
   final String segment;
@@ -159,7 +159,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       // Read per-field details
       String metaName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_META_EXTENSION);
-      IntObjectHashMap<FieldReader> fieldMap = null;
+      IntObjectHashMap<TrieFieldReader> fieldMap = null;
       Throwable priorE = null;
       long indexLength = -1, termsLength = -1;
       try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName)) {
@@ -221,10 +221,10 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
                   metaIn);
             }
             final long indexStartFP = metaIn.readVLong();
-            FieldReader previous =
+            TrieFieldReader previous =
                 fieldMap.put(
                     fieldInfo.number,
-                    new FieldReader(
+                    new TrieFieldReader(
                         this,
                         fieldInfo,
                         numTerms,
@@ -283,7 +283,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   }
 
   private static List<String> sortFieldNames(
-      IntObjectHashMap<FieldReader> fieldMap, FieldInfos fieldInfos) {
+      IntObjectHashMap<TrieFieldReader> fieldMap, FieldInfos fieldInfos) {
     List<String> fieldNames = new ArrayList<>(fieldMap.size());
     for (IntCursor fieldNumber : fieldMap.keys()) {
       fieldNames.add(fieldInfos.fieldInfo(fieldNumber.value).name);

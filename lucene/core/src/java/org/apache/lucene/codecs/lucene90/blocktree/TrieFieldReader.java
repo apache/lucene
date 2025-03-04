@@ -37,7 +37,7 @@ import org.apache.lucene.util.fst.OffHeapFSTStore;
  *
  * @lucene.internal
  */
-public class FieldReader extends Terms {
+public final class TrieFieldReader extends Terms {
 
   // private final boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
@@ -51,12 +51,12 @@ public class FieldReader extends Terms {
   final BytesRef minTerm;
   final BytesRef maxTerm;
   final Lucene90BlockTreeTermsReader parent;
-
-  final FST<BytesRef> index;
+  final TrieReader trieReader;
+//  final FST<BytesRef> index;
 
   // private boolean DEBUG;
 
-  FieldReader(
+  TrieFieldReader(
       Lucene90BlockTreeTermsReader parent,
       FieldInfo fieldInfo,
       long numTerms,
@@ -80,16 +80,22 @@ public class FieldReader extends Terms {
     this.docCount = docCount;
     this.minTerm = minTerm;
     this.maxTerm = maxTerm;
+
     // if (DEBUG) {
     //   System.out.println("BTTR: seg=" + segment + " field=" + fieldInfo.name + " rootBlockCode="
     // + rootCode + " divisor=" + indexDivisor);
     // }
+
+    this.trieReader = new TrieReader(metaIn, indexIn);
+    this.rootCode = rootCode;
+
     rootBlockFP =
-        readVLongOutput(new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
+        readVLongOutput(trieReader.root.output(trieReader))
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
-    // Initialize FST always off-heap.
-    var metadata = FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
-    index = FST.fromFSTReader(metadata, new OffHeapFSTStore(indexIn, indexStartFP, metadata));
+//    // Initialize FST always off-heap.
+//    var metadata = FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
+//    index = FST.fromFSTReader(metadata, new OffHeapFSTStore(indexIn, indexStartFP, metadata));
+
     /*
      if (false) {
      final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
@@ -99,14 +105,14 @@ public class FieldReader extends Terms {
      w.close();
      }
     */
-    BytesRef emptyOutput = metadata.getEmptyOutput();
-    if (rootCode.equals(emptyOutput) == false) {
-      // TODO: this branch is never taken
-      assert false;
-      this.rootCode = rootCode;
-    } else {
-      this.rootCode = emptyOutput;
-    }
+//    BytesRef emptyOutput = metadata.getEmptyOutput();
+//    if (rootCode.equals(emptyOutput) == false) {
+//      // TODO: this branch is never taken
+//      assert false;
+//      this.rootCode = rootCode;
+//    } else {
+//      this.rootCode = emptyOutput;
+//    }
   }
 
   long readVLongOutput(DataInput in) throws IOException {
@@ -158,7 +164,8 @@ public class FieldReader extends Terms {
   /** For debugging -- used by CheckIndex too */
   @Override
   public Stats getStats() throws IOException {
-    return new SegmentTermsEnum(this).computeBlockStats();
+    // NO COMMIT
+    return new Stats(parent.segment, fieldInfo.name);
   }
 
   @Override
@@ -169,8 +176,8 @@ public class FieldReader extends Terms {
   @Override
   public boolean hasOffsets() {
     return fieldInfo
-            .getIndexOptions()
-            .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
+        .getIndexOptions()
+        .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
         >= 0;
   }
 
@@ -186,7 +193,7 @@ public class FieldReader extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    return new SegmentTermsEnum(this);
+    return new TrieSegmentTermsEnum(this);
   }
 
   @Override
@@ -219,12 +226,13 @@ public class FieldReader extends Terms {
     if (compiled.type != CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
       throw new IllegalArgumentException("please use CompiledAutomaton.getTermsEnum instead");
     }
-    return new IntersectTermsEnum(
+    return new TrieIntersectTermsEnum(
         this,
         compiled.getTransitionAccessor(),
         compiled.getByteRunnable(),
         compiled.commonSuffixRef,
         startTerm);
+
   }
 
   @Override

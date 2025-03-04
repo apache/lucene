@@ -17,9 +17,13 @@
 package org.apache.lucene.codecs.lucene101;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.lucene101.Lucene101PostingsReader.MutableImpactList;
@@ -27,19 +31,27 @@ import org.apache.lucene.codecs.lucene90.blocktree.FieldReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Stats;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.BasePostingsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
 public class TestLucene101PostingsFormat extends BasePostingsFormatTestCase {
 
@@ -71,6 +83,35 @@ public class TestLucene101PostingsFormat extends BasePostingsFormatTestCase {
       in.reset(bytes, 0, out.getPosition());
       assertEquals(i, Lucene101PostingsReader.readVLong15(in));
       assertEquals(out.getPosition(), in.getPosition());
+    }
+  }
+
+  public void testSimple() throws Exception {
+    try (Directory directory = newFSDirectory(createTempDir("abc"))) {
+      Set<BytesRef> bytesRefs = new HashSet<>();
+      try (IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig())) {
+        for (int i = 0; i < 9999; i++) {
+          Document doc1 = new Document();
+          byte[] bytes = new byte[random().nextInt(1000)];
+          random().nextBytes(bytes);
+          BytesRef bytesRef = new BytesRef(bytes);
+          doc1.add(new StringField("a", BytesRef.deepCopyOf(bytesRef), Field.Store.NO));
+          bytesRefs.add(BytesRef.deepCopyOf(bytesRef));
+          writer.addDocument(doc1);
+        }
+        writer.flush();
+        writer.commit();
+      }
+      List<BytesRef> bytesRefList = new ArrayList<>(bytesRefs);
+      Collections.sort(bytesRefList);
+      try (IndexReader indexReader = DirectoryReader.open(directory)) {
+        LeafReader leafReader = indexReader.leaves().get(0).reader();
+        TermsEnum termsEnum = leafReader.terms("a").iterator();
+        int i = 0;
+        for (BytesRef term : bytesRefList) {
+          assertTrue(term.toString(), termsEnum.seekCeil(term) == TermsEnum.SeekStatus.FOUND);
+        }
+      }
     }
   }
 

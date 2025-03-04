@@ -138,10 +138,14 @@ class Trie {
       }
     }
 
-    final long fp = index.getFilePointer();
+    long fp = index.getFilePointer();
+    if (fp == startFP) {
+      // relative fp == 0 has special meaning.
+      index.writeByte((byte) 0);
+      fp = index.getFilePointer();
+    }
 
     assert positionStrategy != null;
-
     assert positionBytes >= 0 && positionBytes <= 32;
 
     int sign =
