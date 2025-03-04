@@ -20,9 +20,7 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -129,24 +127,9 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
 
   /** Merge the smaller graph into the larger graph. */
   private void updateGraph(HnswGraph gS, int[] ordMapS) throws IOException {
-    HnswGraph.NodesIterator it = gS.getNodesOnLevel(0);
-    List<List<Integer>> nodesNs = new ArrayList<>(it.size());
-    // load graph into heap
-    int i = 0;
-    while (it.hasNext()) {
-      int v = it.nextInt();
-      assert (v == i);
-      gS.seek(0, v);
-      List<Integer> ns = new ArrayList<>();
-      for (int u = gS.nextNeighbor(); u != NO_MORE_DOCS; u = gS.nextNeighbor()) {
-        ns.add(u);
-      }
-      nodesNs.add(ns);
-      i++;
-    }
-
+    int size = gS.size();
     long start = System.nanoTime();
-    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(nodesNs);
+    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(gS);
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       long now = System.nanoTime();
       infoStream.message(
@@ -168,14 +151,14 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     // form the candidate set for the node
     // by joining the node's neighbours in gS with
     // the node's neighbours' neighbours in gL
-    for (int u = 0; u < it.size; u++) {
+    for (int u = 0; u < size; u++) {
       if (j.contains(u)) {
         continue;
       }
       int newu = ordMapS[u];
       Set<Integer> w = new HashSet<>();
-      List<Integer> nsU = nodesNs.get(u);
-      for (int v : nsU) {
+      gS.seek(0, u);
+      for (int v = gS.nextNeighbor(); v != NO_MORE_DOCS; v = gS.nextNeighbor()) {
         // if u's neighbour v is in the join set, or already added to gL (v < u),
         // then we add v's neighbours from gL to the candidate list
         if (v < u || j.contains(v)) {

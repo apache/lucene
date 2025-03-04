@@ -20,7 +20,6 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,22 +39,66 @@ public class UpdateGraphsUtils {
    * @return a set of nodes that best cover the graph
    */
   public static Set<Integer> computeJoinSet(HnswGraph graph) throws IOException {
-    HnswGraph.NodesIterator it = graph.getNodesOnLevel(0);
-    List<List<Integer>> nodesNs = new ArrayList<>(it.size());
-    // load graph into heap
-    int i = 0;
-    while (it.hasNext()) {
-      int v = it.nextInt();
-      assert (v == i);
+    int k; // coverage for the current node
+    int size = graph.size();
+    LongHeap heap = new LongHeap(size);
+    Set<Integer> j = new HashSet<>();
+    boolean[] stale = new boolean[size];
+    short[] counts = new short[size];
+    long gExit = 0L;
+    for (int v = 0; v < size; v++) {
       graph.seek(0, v);
-      List<Integer> ns = new ArrayList<>();
-      for (int u = graph.nextNeighbor(); u != NO_MORE_DOCS; u = graph.nextNeighbor()) {
-        ns.add(u);
-      }
-      nodesNs.add(ns);
-      i++;
+      int degree = graph.neighborCount();
+      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+      gExit += k;
+      int gain = k + degree;
+      heap.push(encode(gain, v));
     }
-    return UpdateGraphsUtils.computeJoinSet(nodesNs);
+
+    long gTot = 0L;
+    while (gTot < gExit) {
+      long el = heap.pop();
+      int gain = decodeValue1(el);
+      int v = decodeValue2(el);
+      graph.seek(0, v);
+      int degree = graph.neighborCount();
+      int[] ns = new int[degree];
+      int i = 0;
+      for (int u = graph.nextNeighbor(); u != NO_MORE_DOCS; u = graph.nextNeighbor()) {
+        ns[i++] = u;
+      }
+      k = degree < 9 ? 2 : Math.ceilDiv(degree, 4);
+      if (stale[v]) { // if stale, recalculate gain
+        int newGain = Math.max(0, k - counts[v]);
+        for (int u : ns) {
+          if (counts[u] < k && j.contains(u) == false) {
+            newGain += 1;
+          }
+        }
+        if (newGain > 0) {
+          heap.push(encode(newGain, v));
+          stale[v] = false;
+        }
+      } else {
+        j.add(v);
+        gTot += gain;
+        boolean markNeighboursStale = counts[v] < k;
+        for (int u : ns) {
+          if (markNeighboursStale) {
+            stale[u] = true;
+          }
+          if (counts[u] < (k - 1)) {
+            // make neighbours of u stale
+            graph.seek(0, u);
+            for (int uu = graph.nextNeighbor(); uu != NO_MORE_DOCS; uu = graph.nextNeighbor()) {
+              stale[uu] = true;
+            }
+          }
+          counts[u] += 1;
+        }
+      }
+    }
+    return j;
   }
 
   /**
@@ -65,7 +108,7 @@ public class UpdateGraphsUtils {
    *
    * @return a set of nodes that best cover the graph
    */
-  public static Set<Integer> computeJoinSet(List<List<Integer>> nodesNs) {
+  public static Set<Integer> computeJoinSet2(List<List<Integer>> nodesNs) {
     int k; // coverage for the current node
     int size = nodesNs.size();
     LongHeap heap = new LongHeap(size);
