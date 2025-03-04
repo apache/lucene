@@ -122,8 +122,8 @@ class Trie {
       maxCode = Math.max(maxCode, codeBuffer[i]);
     }
 
-    final int minLabel = node.children.get(0).label;
-    final int maxLabel = node.children.get(node.children.size() - 1).label;
+    final int minLabel = node.children.getFirst().label;
+    final int maxLabel = node.children.getLast().label;
     PositionStrategy positionStrategy = null;
     int positionBytes = Integer.MAX_VALUE;
     for (PositionStrategy strategy : PositionStrategy.values()) {
@@ -280,7 +280,7 @@ class Trie {
           throws IOException {
         byte presenceBits = 1; // The first arc is always present.
         int presenceIndex = 0;
-        int previousLabel = children.get(0).label;
+        int previousLabel = children.getFirst().label;
         for (int arcIdx = 1; arcIdx < children.size(); arcIdx++) {
           int label = children.get(arcIdx).label;
           assert label > previousLabel;
@@ -294,8 +294,7 @@ class Trie {
           presenceBits |= 1 << presenceIndex;
           previousLabel = label;
         }
-        assert presenceIndex
-            == (children.get(children.size() - 1).label - children.get(0).label) % 8;
+        assert presenceIndex == (children.getLast().label - children.getFirst().label) % 8;
         assert presenceBits != 0; // The last byte is not 0.
         assert (presenceBits & (1 << presenceIndex)) != 0; // The last arc is always present.
         output.writeByte(presenceBits);

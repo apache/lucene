@@ -77,11 +77,11 @@ public class TestTrie extends LuceneTestCase {
           long rootFP = metaIn.readVLong();
           long arcInEnd = metaIn.readVLong();
           long outputEnd = metaIn.readVLong();
-          TrieReader reader =  new TrieReader(
-              indexIn.randomAccessSlice(arcInStart, arcInEnd - arcInStart),
-              indexIn.slice("outputs", arcInEnd, outputEnd - arcInEnd),
-              rootFP
-          );
+          TrieReader reader =
+              new TrieReader(
+                  indexIn.randomAccessSlice(arcInStart, arcInEnd - arcInStart),
+                  indexIn.slice("outputs", arcInEnd, outputEnd - arcInEnd),
+                  rootFP);
 
           for (var entry : expected.entrySet()) {
             assertResult(reader, entry.getKey(), entry.getValue());

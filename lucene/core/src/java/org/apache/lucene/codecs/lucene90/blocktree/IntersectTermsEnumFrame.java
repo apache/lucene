@@ -22,10 +22,9 @@ import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Transition;
-import org.apache.lucene.util.fst.FST;
 
 // TODO: can we share this with the frame in STE?
 final class IntersectTermsEnumFrame {
@@ -55,7 +54,8 @@ final class IntersectTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
-  final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
+  long floorDataPos;
+  IndexInput floorDataReader;
 
   // Length of prefix shared by all terms in this block
   int prefix;
@@ -80,7 +80,7 @@ final class IntersectTermsEnumFrame {
   int transitionIndex;
   int transitionCount;
 
-  FST.Arc<BytesRef> arc;
+  TrieReader.Node node;
 
   final BlockTermState termState;
 
@@ -88,8 +88,6 @@ final class IntersectTermsEnumFrame {
   byte[] bytes = new byte[32];
 
   final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
-
-  int outputNum;
 
   int startBytePos;
   int suffix;
@@ -108,6 +106,7 @@ final class IntersectTermsEnumFrame {
   void loadNextFloorBlock() throws IOException {
     assert numFollowFloorBlocks > 0 : "nextFloorLabel=" + nextFloorLabel;
 
+    floorDataReader.seek(floorDataPos);
     do {
       fp = fpOrig + (floorDataReader.readVLong() >>> 1);
       numFollowFloorBlocks--;
@@ -117,8 +116,8 @@ final class IntersectTermsEnumFrame {
         nextFloorLabel = 256;
       }
     } while (numFollowFloorBlocks != 0 && nextFloorLabel <= transition.min);
-
     load((Long) null);
+    floorDataPos = floorDataReader.getFilePointer();
   }
 
   public void setState(int state) {
@@ -139,16 +138,11 @@ final class IntersectTermsEnumFrame {
     }
   }
 
-  void load(BytesRef frameIndexData) throws IOException {
-    floorDataReader.reset(frameIndexData.bytes, frameIndexData.offset, frameIndexData.length);
-    load(ite.fr.readVLongOutput(floorDataReader));
-  }
-
-  void load(SegmentTermsEnum.OutputAccumulator outputAccumulator) throws IOException {
-    outputAccumulator.prepareRead();
-    long code = ite.fr.readVLongOutput(outputAccumulator);
-    outputAccumulator.setFloorData(floorDataReader);
+  void load(TrieReader.Node node) throws IOException {
+    floorDataReader = node.output(ite.trieReader);
+    long code = ite.fr.readVLongOutput(floorDataReader);
     load(code);
+    floorDataPos = floorDataReader.getFilePointer();
   }
 
   void load(Long blockCode) throws IOException {

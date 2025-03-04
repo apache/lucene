@@ -1,8 +1,6 @@
 package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
-
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 
@@ -33,12 +31,12 @@ class TrieReader {
     }
   }
 
-  final RandomAccessInput arcsIn;
+  final RandomAccessInput nodesIn;
   final IndexInput outputsIn;
   final Node root;
 
-  TrieReader(RandomAccessInput arcsIn, IndexInput outputsIn, long rootFP) throws IOException {
-    this.arcsIn = arcsIn;
+  TrieReader(RandomAccessInput nodesIn, IndexInput outputsIn, long rootFP) throws IOException {
+    this.nodesIn = nodesIn;
     this.outputsIn = outputsIn;
     this.root = new Node();
     load(root, rootFP, null);
@@ -61,7 +59,7 @@ class TrieReader {
     }
 
     node.isLeaf = false;
-    int sign = arcsIn.readInt(node.fp);
+    int sign = nodesIn.readInt(node.fp);
     node.childrenCodesBytes = (sign >>> 16) & 0xFF;
     node.childrenStrategy = Trie.PositionStrategy.byCode((sign >>> 14) & 0x03);
     node.positionBytes = (sign >>> 8) & 0x3F;
@@ -85,7 +83,7 @@ class TrieReader {
     } else {
       position =
           parent.childrenStrategy.lookup(
-              targetLabel, arcsIn, positionBytesStartFp, positionBytes, minLabel);
+              targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
     }
 
     if (position < 0) {
@@ -95,7 +93,7 @@ class TrieReader {
     final long codeBytes = parent.childrenCodesBytes;
     final long pos = positionBytesStartFp + positionBytes + codeBytes * position;
     final long mask = (1L << (codeBytes << 3)) - 1;
-    final long code = arcsIn.readLong(pos) & mask;
+    final long code = nodesIn.readLong(pos) & mask;
     child.label = targetLabel;
     load(child, code, parent);
 

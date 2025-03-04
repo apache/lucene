@@ -23,21 +23,17 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.fst.ByteSequenceOutputs;
-import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.OffHeapFSTStore;
 
 /**
  * BlockTree's implementation of {@link Terms}.
  *
  * @lucene.internal
  */
-public class FieldReader extends Terms {
+public final class FieldReader extends Terms {
 
   // private final boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
@@ -50,9 +46,14 @@ public class FieldReader extends Terms {
   final BytesRef rootCode;
   final BytesRef minTerm;
   final BytesRef maxTerm;
+  final long nodeInStart;
+  final long rootFP;
+  final long nodeInEnd;
+  final long outputEnd;
   final Lucene90BlockTreeTermsReader parent;
+  final IndexInput indexIn;
 
-  final FST<BytesRef> index;
+  //  final FST<BytesRef> index;
 
   // private boolean DEBUG;
 
@@ -80,33 +81,30 @@ public class FieldReader extends Terms {
     this.docCount = docCount;
     this.minTerm = minTerm;
     this.maxTerm = maxTerm;
+
     // if (DEBUG) {
     //   System.out.println("BTTR: seg=" + segment + " field=" + fieldInfo.name + " rootBlockCode="
     // + rootCode + " divisor=" + indexDivisor);
     // }
-    rootBlockFP =
-        readVLongOutput(new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
+
+    this.nodeInStart = metaIn.readVLong();
+    this.rootFP = metaIn.readVLong();
+    this.nodeInEnd = metaIn.readVLong();
+    this.outputEnd = metaIn.readVLong();
+    this.indexIn = indexIn;
+    this.rootCode = rootCode;
+
+    TrieReader trieReader = newReader();
+    this.rootBlockFP =
+        readVLongOutput(trieReader.root.output(trieReader))
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
-    // Initialize FST always off-heap.
-    var metadata = FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
-    index = FST.fromFSTReader(metadata, new OffHeapFSTStore(indexIn, indexStartFP, metadata));
-    /*
-     if (false) {
-     final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
-     Writer w = new OutputStreamWriter(new FileOutputStream(dotFileName));
-     Util.toDot(index, w, false, false);
-     System.out.println("FST INDEX: SAVED to " + dotFileName);
-     w.close();
-     }
-    */
-    BytesRef emptyOutput = metadata.getEmptyOutput();
-    if (rootCode.equals(emptyOutput) == false) {
-      // TODO: this branch is never taken
-      assert false;
-      this.rootCode = rootCode;
-    } else {
-      this.rootCode = emptyOutput;
-    }
+  }
+
+  private TrieReader newReader() throws IOException {
+    return new TrieReader(
+        indexIn.randomAccessSlice(nodeInStart, nodeInEnd - nodeInStart),
+        indexIn.slice("outputs", nodeInEnd, outputEnd - nodeInEnd),
+        rootFP);
   }
 
   long readVLongOutput(DataInput in) throws IOException {
@@ -158,7 +156,8 @@ public class FieldReader extends Terms {
   /** For debugging -- used by CheckIndex too */
   @Override
   public Stats getStats() throws IOException {
-    return new SegmentTermsEnum(this).computeBlockStats();
+    // NO COMMIT
+    return new SegmentTermsEnum(this, newReader()).computeBlockStats();
   }
 
   @Override
@@ -186,7 +185,7 @@ public class FieldReader extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    return new SegmentTermsEnum(this);
+    return new SegmentTermsEnum(this, newReader());
   }
 
   @Override
@@ -221,6 +220,7 @@ public class FieldReader extends Terms {
     }
     return new IntersectTermsEnum(
         this,
+        newReader(),
         compiled.getTransitionAccessor(),
         compiled.getByteRunnable(),
         compiled.commonSuffixRef,
