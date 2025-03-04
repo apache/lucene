@@ -22,21 +22,24 @@ issue number in title, and the ones where the linked JIRA is already closed
 
 import os
 import sys
+
 sys.path.append(os.path.dirname(__file__))
 import argparse
 import json
 import re
 from typing import cast
+
 from github import Github
+from jinja2 import BaseLoader, Environment
 from jira import JIRA, Issue
 from jira.client import ResultList
-from jinja2 import Environment, BaseLoader
+
 
 def read_config():
-  parser = argparse.ArgumentParser(description='Find open Pull Requests that need attention')
-  parser.add_argument('--json', action='store_true', default=False, help='Output as json')
-  parser.add_argument('--html', action='store_true', default=False, help='Output as html')
-  parser.add_argument('--token', help='Github access token in case you query too often anonymously')
+  parser = argparse.ArgumentParser(description="Find open Pull Requests that need attention")
+  parser.add_argument("--json", action="store_true", default=False, help="Output as json")
+  parser.add_argument("--html", action="store_true", default=False, help="Output as html")
+  parser.add_argument("--token", help="Github access token in case you query too often anonymously")
   newconf = parser.parse_args()
   return newconf
 
@@ -45,6 +48,7 @@ def out(text):
   global conf
   if not (conf.json or conf.html):
     print(text)
+
 
 def make_html(dict):
   global conf
@@ -69,6 +73,7 @@ def make_html(dict):
   """)
   return template.render(dict)
 
+
 def main():
   global conf
   conf = read_config()
@@ -77,32 +82,32 @@ def main():
     gh = Github(token)
   else:
     gh = Github()
-  jira = JIRA('https://issues.apache.org/jira') # this ctor has broken types in jira library. # pyright: ignore[reportArgumentType]
+  jira = JIRA("https://issues.apache.org/jira")  # this ctor has broken types in jira library. # pyright: ignore[reportArgumentType]
   result = {}
-  repo = gh.get_repo('apache/lucene')
-  open_prs = repo.get_pulls(state='open')
+  repo = gh.get_repo("apache/lucene")
+  open_prs = repo.get_pulls(state="open")
   out("Lucene Github PR report")
   out("============================")
   out("Number of open Pull Requests: %s" % open_prs.totalCount)
-  result['open_count'] = open_prs.totalCount
+  result["open_count"] = open_prs.totalCount
 
-  lack_jira = list(filter(lambda x: not re.match(r'.*\b(LUCENE)-\d{3,6}\b', x.title), open_prs))
-  result['no_jira_count'] = len(lack_jira)
+  lack_jira = list(filter(lambda x: not re.match(r".*\b(LUCENE)-\d{3,6}\b", x.title), open_prs))
+  result["no_jira_count"] = len(lack_jira)
   lack_jira_list = []
   for pr in lack_jira:
-    lack_jira_list.append({'title': pr.title, 'number': pr.number, 'user': pr.user.login, 'created': pr.created_at.strftime("%Y-%m-%d")})
-  result['no_jira'] = lack_jira_list
+    lack_jira_list.append({"title": pr.title, "number": pr.number, "user": pr.user.login, "created": pr.created_at.strftime("%Y-%m-%d")})
+  result["no_jira"] = lack_jira_list
   out("\nPRs lacking JIRA reference in title")
   for pr in lack_jira_list:
-    out("  #%s: %s %s (%s)" % (pr['number'], pr['created'], pr['title'], pr['user'] ))
+    out("  #%s: %s %s (%s)" % (pr["number"], pr["created"], pr["title"], pr["user"]))
 
   out("\nOpen PRs with a resolved JIRA")
-  has_jira = list(filter(lambda x: re.match(r'.*\b(LUCENE)-\d{3,6}\b', x.title), open_prs))
+  has_jira = list(filter(lambda x: re.match(r".*\b(LUCENE)-\d{3,6}\b", x.title), open_prs))
 
   issue_ids = []
   issue_to_pr = {}
   for pr in has_jira:
-    match = re.match(r'.*\b((LUCENE)-\d{3,6})\b', pr.title)
+    match = re.match(r".*\b((LUCENE)-\d{3,6})\b", pr.title)
     assert match
     jira_issue_str = match.group(1)
     issue_ids.append(jira_issue_str)
@@ -115,26 +120,24 @@ def main():
     pr_number = issue_to_pr[issue.key].number
     assignee = issue.fields.assignee.name if issue.fields.assignee else None
     resolution = issue.fields.resolution.name if issue.fields.resolution else None
-    closed_jiras.append({ 'issue_key': issue.key,
-                           'status': issue.fields.status.name,
-                           'resolution': resolution,
-                           'resolution_date': issue.fields.resolutiondate[:10],
-                           'pr_number': pr_number,
-                           'pr_title': pr_title,
-                           'issue_summary': issue.fields.summary,
-                           'assignee': assignee})
+    closed_jiras.append(
+      {
+        "issue_key": issue.key,
+        "status": issue.fields.status.name,
+        "resolution": resolution,
+        "resolution_date": issue.fields.resolutiondate[:10],
+        "pr_number": pr_number,
+        "pr_title": pr_title,
+        "issue_summary": issue.fields.summary,
+        "assignee": assignee,
+      }
+    )
 
-  closed_jiras.sort(key=lambda r: r['pr_number'], reverse=True)
+  closed_jiras.sort(key=lambda r: r["pr_number"], reverse=True)
   for issue in closed_jiras:
-    out("  #%s: %s %s %s: %s (%s)" % (issue['pr_number'],
-                                  issue['status'],
-                                  issue['resolution_date'],
-                                  issue['issue_key'],
-                                  issue['issue_summary'],
-                                  issue['assignee'])
-        )
-  result['closed_jira_count'] = len(resolved_jiras)
-  result['closed_jira'] = closed_jiras
+    out("  #%s: %s %s %s: %s (%s)" % (issue["pr_number"], issue["status"], issue["resolution_date"], issue["issue_key"], issue["issue_summary"], issue["assignee"]))
+  result["closed_jira_count"] = len(resolved_jiras)
+  result["closed_jira"] = closed_jiras
 
   if conf.json:
     print(json.dumps(result, indent=4))
@@ -142,8 +145,9 @@ def main():
   if conf.html:
     print(make_html(result))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
   try:
     main()
   except KeyboardInterrupt:
-    print('\nReceived Ctrl-C, exiting early')
+    print("\nReceived Ctrl-C, exiting early")
