@@ -98,6 +98,14 @@ class AssertingLeafCollector extends FilterLeafCollector {
         in.intoBitSet(upTo, bitSet, offset);
         assert in.docID() >= upTo;
       }
+
+      @Override
+      public int peekNextNonMatchingDocID() throws IOException {
+        assert docID() != NO_MORE_DOCS;
+        int nextNonMatchingDocID = in.peekNextNonMatchingDocID();
+        assert nextNonMatchingDocID > docID();
+        return nextNonMatchingDocID;
+      }
     };
   }
 

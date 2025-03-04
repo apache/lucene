@@ -341,7 +341,7 @@ public abstract class PointRangeQuery extends Query {
 
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
-          return new MatchAllScorerSupplier(score(), scoreMode, reader.maxDoc());
+          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, reader.maxDoc());
         } else {
           return new ConstantScoreScorerSupplier(score(), scoreMode, reader.maxDoc()) {
 
