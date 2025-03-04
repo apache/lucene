@@ -2,6 +2,7 @@ package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
 
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 
@@ -45,6 +46,12 @@ class TrieReader {
     outputsIn = index.slice("outputs", arcInEnd, outputEnd - arcInEnd);
     root = new Node();
     load(root, rootFP, null);
+  }
+
+  private TrieReader(RandomAccessInput arcsIn, IndexInput outputsIn, Node root) {
+    this.arcsIn = arcsIn;
+    this.outputsIn = outputsIn;
+    this.root = root;
   }
 
   private void load(Node node, long code, Node parent) throws IOException {
@@ -102,5 +109,10 @@ class TrieReader {
     load(child, code, parent);
 
     return child;
+  }
+
+  @Override
+  public TrieReader clone() {
+    return new TrieReader(arcsIn, outputsIn.clone(), root);
   }
 }

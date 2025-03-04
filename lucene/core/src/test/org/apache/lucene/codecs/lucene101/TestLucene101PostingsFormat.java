@@ -90,9 +90,9 @@ public class TestLucene101PostingsFormat extends BasePostingsFormatTestCase {
     try (Directory directory = newFSDirectory(createTempDir("abc"))) {
       Set<BytesRef> bytesRefs = new HashSet<>();
       try (IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig())) {
-        for (int i = 0; i < 9999; i++) {
+        for (int i = 0; i < 100000; i++) {
           Document doc1 = new Document();
-          byte[] bytes = new byte[random().nextInt(1000)];
+          byte[] bytes = new byte[random().nextInt(10)];
           random().nextBytes(bytes);
           BytesRef bytesRef = new BytesRef(bytes);
           doc1.add(new StringField("a", BytesRef.deepCopyOf(bytesRef), Field.Store.NO));
@@ -108,8 +108,8 @@ public class TestLucene101PostingsFormat extends BasePostingsFormatTestCase {
         LeafReader leafReader = indexReader.leaves().get(0).reader();
         TermsEnum termsEnum = leafReader.terms("a").iterator();
         int i = 0;
-        for (BytesRef term : bytesRefList) {
-          assertTrue(term.toString(), termsEnum.seekCeil(term) == TermsEnum.SeekStatus.FOUND);
+        for (BytesRef term : bytesRefs) {
+          assertTrue(term.toString(), termsEnum.seekExact(term));
         }
       }
     }

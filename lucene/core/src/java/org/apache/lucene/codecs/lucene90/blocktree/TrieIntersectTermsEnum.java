@@ -59,7 +59,7 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
 
   private final BytesRef term = new BytesRef();
 
-  private final TrieReader  trieReader;
+  final TrieReader trieReader;
 
   final TrieFieldReader fr;
 
@@ -69,6 +69,7 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
   // regexp foo*bar must be at least length 6 bytes
   public TrieIntersectTermsEnum(
       TrieFieldReader fr,
+      TrieReader trieReader,
       TransitionAccessor automaton,
       ByteRunnable runAutomaton,
       BytesRef commonSuffix,
@@ -92,7 +93,7 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
       nodes[nodeIdx] = new TrieReader.Node();
     }
 
-    trieReader = fr.trieReader;
+    this.trieReader = trieReader;
 
     // TODO: if the automaton is "smallish" we really
     // should use the terms index to seek at least to

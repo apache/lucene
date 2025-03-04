@@ -57,11 +57,11 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
   private final TrieReader trieReader;
   private TrieReader.Node[] nodes = new TrieReader.Node[1];
 
-  public TrieSegmentTermsEnum(TrieFieldReader fr) throws IOException {
+  public TrieSegmentTermsEnum(TrieFieldReader fr, TrieReader reader) throws IOException {
     this.fr = fr;
     // Used to hold seek by TermState, or cached seek
     staticFrame = new TrieSegmentTermsEnumFrame(this, -1);
-    trieReader = fr.trieReader;
+    trieReader = reader;
     currentFrame = staticFrame;
     nodes[0] = trieReader.root;
     
@@ -395,7 +395,7 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
     } else {
 
       targetBeforeCurrentLength = -1;
-      node = fr.trieReader.root;
+      node = trieReader.root;
 
       // Empty string prefix must have an output (block) in the index!
       assert node.hasOutput();
@@ -425,7 +425,7 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
       final int targetLabel = target.bytes[target.offset + targetUpto] & 0xFF;
 
       final TrieReader.Node nextNode =
-          fr.trieReader.lookupChild(targetLabel, node, getNode(1 + targetUpto));
+          trieReader.lookupChild(targetLabel, node, getNode(1 + targetUpto));
 
       if (nextNode == null) {
 
@@ -545,10 +545,6 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
 
   @Override
   public SeekStatus seekCeil(BytesRef target) throws IOException {
-
-    if (fr.trieReader == null) {
-      throw new IllegalStateException("terms index was not loaded");
-    }
 
     term.grow(1 + target.length);
 
@@ -700,7 +696,7 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
       final int targetLabel = target.bytes[target.offset + targetUpto] & 0xFF;
 
       final TrieReader.Node nextNode =
-          fr.trieReader.lookupChild(targetLabel, node, getNode(1 + targetUpto));
+          trieReader.lookupChild(targetLabel, node, getNode(1 + targetUpto));
 
       if (nextNode == null) {
 

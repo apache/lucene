@@ -51,7 +51,7 @@ public final class TrieFieldReader extends Terms {
   final BytesRef minTerm;
   final BytesRef maxTerm;
   final Lucene90BlockTreeTermsReader parent;
-  final TrieReader trieReader;
+  private final TrieReader trieReader;
 //  final FST<BytesRef> index;
 
   // private boolean DEBUG;
@@ -193,7 +193,7 @@ public final class TrieFieldReader extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    return new TrieSegmentTermsEnum(this);
+    return new TrieSegmentTermsEnum(this, trieReader.clone());
   }
 
   @Override
@@ -228,6 +228,7 @@ public final class TrieFieldReader extends Terms {
     }
     return new TrieIntersectTermsEnum(
         this,
+        trieReader.clone(),
         compiled.getTransitionAccessor(),
         compiled.getByteRunnable(),
         compiled.commonSuffixRef,
