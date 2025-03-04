@@ -506,7 +506,7 @@ public abstract class LuceneTestCase extends Assert {
 
   /** Filesystem-based {@link Directory} implementations. */
   private static final List<String> FS_DIRECTORIES =
-      Arrays.asList("NIOFSDirectory", "MMapDirectory");
+      Arrays.asList("NIOFSDirectory");
 
   /** All {@link Directory} implementations. */
   private static final List<String> CORE_DIRECTORIES;
