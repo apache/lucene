@@ -96,7 +96,7 @@ class Trie {
     ByteBuffersDataOutput outputBuffer = new ByteBuffersDataOutput();
     meta.writeVLong(index.getFilePointer()); // index start fp
     meta.writeVLong(saveArcs(root, index, outputBuffer, index.getFilePointer())); // root code
-    index.writeLong(0L); // additional 8 bytes for probably over-read in BIT strategy
+    index.writeLong(0L); // additional 8 bytes for over-reading
     meta.writeVLong(index.getFilePointer()); // index end, output start fp
     outputBuffer.copyTo(index);
     meta.writeVLong(index.getFilePointer()); // output end fp

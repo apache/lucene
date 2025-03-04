@@ -46,7 +46,6 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
 
   TrieIntersectTermsEnumFrame[] stack;
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
   private TrieReader.Node[] nodes = new TrieReader.Node[5];
 
   final ByteRunnable runAutomaton;
@@ -111,7 +110,7 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
     f.prefix = 0;
     f.setState(0);
     f.node = node;
-    f.load(trieReader.root);
+    f.load(node);
 
     // for assert:
     assert setSavedStartTerm(startTerm);
@@ -153,7 +152,6 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
 
   private TrieReader.Node getNode(int ord) {
     if (ord >= nodes.length) {
-      @SuppressWarnings({"rawtypes", "unchecked"})
       final TrieReader.Node[] next =
           new TrieReader.Node[ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(nodes, 0, next, 0, nodes.length);
@@ -187,7 +185,8 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
       // TODO: we could be more efficient for the next()
       // case by using current node as starting point,
       // passed to findTargetNode
-      node = trieReader.lookupChild(target, node, getNode(1 + idx));
+      TrieReader.Node parent = node;
+      node = trieReader.lookupChild(target, parent, getNode(1 + idx));
       assert node != null;
       idx++;
     }

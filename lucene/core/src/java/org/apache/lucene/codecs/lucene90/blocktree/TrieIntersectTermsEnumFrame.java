@@ -116,8 +116,8 @@ final class TrieIntersectTermsEnumFrame {
         nextFloorLabel = 256;
       }
     } while (numFollowFloorBlocks != 0 && nextFloorLabel <= transition.min);
-
     load((Long) null);
+    floorDataPos = floorDataReader.getFilePointer();
   }
 
   public void setState(int state) {
@@ -142,6 +142,7 @@ final class TrieIntersectTermsEnumFrame {
     floorDataReader = node.output(ite.trieReader);
     long code = ite.fr.readVLongOutput(floorDataReader);
     load(code);
+    floorDataPos = floorDataReader.getFilePointer();
   }
 
   void load(Long blockCode) throws IOException {
@@ -170,7 +171,6 @@ final class TrieIntersectTermsEnumFrame {
         }
       }
     }
-    floorDataPos = floorDataReader.getFilePointer();
 
     ite.in.seek(fp);
     int code = ite.in.readVInt();

@@ -46,8 +46,12 @@ public final class TrieFieldReader extends Terms {
   final BytesRef rootCode;
   final BytesRef minTerm;
   final BytesRef maxTerm;
+  final long arcInStart;
+  final long rootFP;
+  final long arcInEnd;
+  final long outputEnd;
   final Lucene90BlockTreeTermsReader parent;
-  private final TrieReader trieReader;
+  final IndexInput indexIn;
 
   //  final FST<BytesRef> index;
 
@@ -83,33 +87,25 @@ public final class TrieFieldReader extends Terms {
     // + rootCode + " divisor=" + indexDivisor);
     // }
 
-    this.trieReader = new TrieReader(metaIn, indexIn);
+    this.arcInStart = metaIn.readVLong();
+    this.rootFP = metaIn.readVLong();
+    this.arcInEnd = metaIn.readVLong();
+    this.outputEnd = metaIn.readVLong();
+    this.indexIn = indexIn;
     this.rootCode = rootCode;
 
-    rootBlockFP =
+    TrieReader trieReader = newReader();
+    this.rootBlockFP =
         readVLongOutput(trieReader.root.output(trieReader))
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
-    //    // Initialize FST always off-heap.
-    //    var metadata = FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
-    //    index = FST.fromFSTReader(metadata, new OffHeapFSTStore(indexIn, indexStartFP, metadata));
+  }
 
-    /*
-     if (false) {
-     final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
-     Writer w = new OutputStreamWriter(new FileOutputStream(dotFileName));
-     Util.toDot(index, w, false, false);
-     System.out.println("FST INDEX: SAVED to " + dotFileName);
-     w.close();
-     }
-    */
-    //    BytesRef emptyOutput = metadata.getEmptyOutput();
-    //    if (rootCode.equals(emptyOutput) == false) {
-    //      // TODO: this branch is never taken
-    //      assert false;
-    //      this.rootCode = rootCode;
-    //    } else {
-    //      this.rootCode = emptyOutput;
-    //    }
+  private TrieReader newReader() throws IOException {
+    return new TrieReader(
+        indexIn.randomAccessSlice(arcInStart, arcInEnd - arcInStart),
+        indexIn.slice("outputs", arcInEnd, outputEnd - arcInEnd),
+        rootFP
+    );
   }
 
   long readVLongOutput(DataInput in) throws IOException {
@@ -190,7 +186,7 @@ public final class TrieFieldReader extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    return new TrieSegmentTermsEnum(this, trieReader.clone());
+    return new TrieSegmentTermsEnum(this, newReader());
   }
 
   @Override
@@ -225,7 +221,7 @@ public final class TrieFieldReader extends Terms {
     }
     return new TrieIntersectTermsEnum(
         this,
-        trieReader.clone(),
+        newReader(),
         compiled.getTransitionAccessor(),
         compiled.getByteRunnable(),
         compiled.commonSuffixRef,

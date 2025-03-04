@@ -112,6 +112,7 @@ public class TestLucene101PostingsFormat extends BasePostingsFormatTestCase {
   }
 
   /** Make sure the final sub-block(s) are not skipped. */
+
   public void testFinalBlock() throws Exception {
     Directory d = newDirectory();
     IndexWriter w = new IndexWriter(d, new IndexWriterConfig(new MockAnalyzer(random())));
