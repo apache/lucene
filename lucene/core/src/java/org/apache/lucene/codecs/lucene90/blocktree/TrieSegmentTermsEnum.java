@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.Arrays;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.index.BaseTermsEnum;
@@ -44,7 +43,7 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
   private int targetBeforeCurrentLength;
 
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
-  
+
   // What prefix of the current term was present in the index; when we only next() through the
   // index, this stays at 0.  It's only set when
   // we seekCeil/Exact:
@@ -64,7 +63,7 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
     trieReader = reader;
     currentFrame = staticFrame;
     nodes[0] = trieReader.root;
-    
+
     // currentFrame = pushFrame(arc, rootCode, 0);
     // currentFrame.loadBlock();
     validIndexPrefix = 0;
@@ -85,92 +84,92 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
   }
 
   /** Runs next() through the entire terms dict, computing aggregate statistics. */
-//  public Stats computeBlockStats() throws IOException {
-//
-//    Stats stats = new Stats(fr.parent.segment, fr.fieldInfo.name);
-//    if (fr.trieReader != null) {
-//      stats.indexNumBytes = fr.trieReader.ramBytesUsed();
-//    }
-//
-//    currentFrame = staticFrame;
-//    TrieReader.Node node;
-//    if (fr.trieReader != null) {
-//      node = fr.trieReader.getFirstNode(nodes[0]);
-//      // Empty string prefix must have an output in the index!
-//      assert node.hasOutput();
-//    } else {
-//      node = null;
-//    }
-//
-//    // Empty string prefix must have an output in the
-//    // index!
-//    currentFrame = pushFrame(node, fr.rootCode, 0);
-//    currentFrame.fpOrig = currentFrame.fp;
-//    currentFrame.loadBlock();
-//    validIndexPrefix = 0;
-//
-//    stats.startBlock(currentFrame, !currentFrame.isLastInFloor);
-//
-//    allTerms:
-//    while (true) {
-//
-//      // Pop finished blocks
-//      while (currentFrame.nextEnt == currentFrame.entCount) {
-//        stats.endBlock(currentFrame);
-//        if (!currentFrame.isLastInFloor) {
-//          // Advance to next floor block
-//          currentFrame.loadNextFloorBlock();
-//          stats.startBlock(currentFrame, true);
-//          break;
-//        } else {
-//          if (currentFrame.ord == 0) {
-//            break allTerms;
-//          }
-//          final long lastFP = currentFrame.fpOrig;
-//          currentFrame = stack[currentFrame.ord - 1];
-//          assert lastFP == currentFrame.lastSubFP;
-//          // if (DEBUG) {
-//          //   System.out.println("  reset validIndexPrefix=" + validIndexPrefix);
-//          // }
-//        }
-//      }
-//
-//      while (true) {
-//        if (currentFrame.next()) {
-//          // Push to new block:
-//          currentFrame = pushFrame(null, currentFrame.lastSubFP, term.length());
-//          currentFrame.fpOrig = currentFrame.fp;
-//          // This is a "next" frame -- even if it's
-//          // floor'd we must pretend it isn't so we don't
-//          // try to scan to the right floor frame:
-//          currentFrame.loadBlock();
-//          stats.startBlock(currentFrame, !currentFrame.isLastInFloor);
-//        } else {
-//          stats.term(term.get());
-//          break;
-//        }
-//      }
-//    }
-//
-//    stats.finish();
-//
-//    // Put root frame back:
-//    currentFrame = staticFrame;
-//    if (fr.trieReader != null) {
-//      node = fr.trieReader.getFirstNode(nodes[0]);
-//      // Empty string prefix must have an output in the index!
-//      assert node.hasOutput();
-//    } else {
-//      node = null;
-//    }
-//    currentFrame = pushFrame(node, fr.rootCode, 0);
-//    currentFrame.rewind();
-//    currentFrame.loadBlock();
-//    validIndexPrefix = 0;
-//    term.clear();
-//
-//    return stats;
-//  }
+  //  public Stats computeBlockStats() throws IOException {
+  //
+  //    Stats stats = new Stats(fr.parent.segment, fr.fieldInfo.name);
+  //    if (fr.trieReader != null) {
+  //      stats.indexNumBytes = fr.trieReader.ramBytesUsed();
+  //    }
+  //
+  //    currentFrame = staticFrame;
+  //    TrieReader.Node node;
+  //    if (fr.trieReader != null) {
+  //      node = fr.trieReader.getFirstNode(nodes[0]);
+  //      // Empty string prefix must have an output in the index!
+  //      assert node.hasOutput();
+  //    } else {
+  //      node = null;
+  //    }
+  //
+  //    // Empty string prefix must have an output in the
+  //    // index!
+  //    currentFrame = pushFrame(node, fr.rootCode, 0);
+  //    currentFrame.fpOrig = currentFrame.fp;
+  //    currentFrame.loadBlock();
+  //    validIndexPrefix = 0;
+  //
+  //    stats.startBlock(currentFrame, !currentFrame.isLastInFloor);
+  //
+  //    allTerms:
+  //    while (true) {
+  //
+  //      // Pop finished blocks
+  //      while (currentFrame.nextEnt == currentFrame.entCount) {
+  //        stats.endBlock(currentFrame);
+  //        if (!currentFrame.isLastInFloor) {
+  //          // Advance to next floor block
+  //          currentFrame.loadNextFloorBlock();
+  //          stats.startBlock(currentFrame, true);
+  //          break;
+  //        } else {
+  //          if (currentFrame.ord == 0) {
+  //            break allTerms;
+  //          }
+  //          final long lastFP = currentFrame.fpOrig;
+  //          currentFrame = stack[currentFrame.ord - 1];
+  //          assert lastFP == currentFrame.lastSubFP;
+  //          // if (DEBUG) {
+  //          //   System.out.println("  reset validIndexPrefix=" + validIndexPrefix);
+  //          // }
+  //        }
+  //      }
+  //
+  //      while (true) {
+  //        if (currentFrame.next()) {
+  //          // Push to new block:
+  //          currentFrame = pushFrame(null, currentFrame.lastSubFP, term.length());
+  //          currentFrame.fpOrig = currentFrame.fp;
+  //          // This is a "next" frame -- even if it's
+  //          // floor'd we must pretend it isn't so we don't
+  //          // try to scan to the right floor frame:
+  //          currentFrame.loadBlock();
+  //          stats.startBlock(currentFrame, !currentFrame.isLastInFloor);
+  //        } else {
+  //          stats.term(term.get());
+  //          break;
+  //        }
+  //      }
+  //    }
+  //
+  //    stats.finish();
+  //
+  //    // Put root frame back:
+  //    currentFrame = staticFrame;
+  //    if (fr.trieReader != null) {
+  //      node = fr.trieReader.getFirstNode(nodes[0]);
+  //      // Empty string prefix must have an output in the index!
+  //      assert node.hasOutput();
+  //    } else {
+  //      node = null;
+  //    }
+  //    currentFrame = pushFrame(node, fr.rootCode, 0);
+  //    currentFrame.rewind();
+  //    currentFrame.loadBlock();
+  //    validIndexPrefix = 0;
+  //    term.clear();
+  //
+  //    return stats;
+  //  }
 
   private TrieSegmentTermsEnumFrame getFrame(int ord) throws IOException {
     if (ord >= stack.length) {
@@ -219,7 +218,8 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
 
   // Pushes next'd frame or seek'd frame; we later
   // lazy-load the frame only when needed
-  TrieSegmentTermsEnumFrame pushFrame(TrieReader.Node node, long fp, int length) throws IOException {
+  TrieSegmentTermsEnumFrame pushFrame(TrieReader.Node node, long fp, int length)
+      throws IOException {
     final TrieSegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
     f.node = node;
     if (f.fpOrig == fp && f.nextEnt != -1) {
@@ -318,7 +318,8 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
         // if (DEBUG) {
         //    System.out.println("    cycle targetUpto=" + targetUpto + " (vs limit=" + targetLimit
         // + ") cmp=" + cmp + " (targetLabel=" + (char) (target.bytes[target.offset + targetUpto]) +
-        // " vs termLabel=" + (char) (term.bytes[targetUpto]) + ")"   + " node.output=" + node.output
+        // " vs termLabel=" + (char) (term.bytes[targetUpto]) + ")"   + " node.output=" +
+        // node.output
         // + " output=" + output);
         // }
         if (cmp != 0) {
@@ -327,9 +328,9 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
         node = nodes[1 + targetUpto];
         assert node.label == (target.bytes[target.offset + targetUpto] & 0xFF)
             : "node.label="
-            + (char) node.label
-            + " targetLabel="
-            + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
+                + (char) node.label
+                + " targetLabel="
+                + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
 
         if (node.hasOutput()) {
           lastFrame = stack[1 + lastFrame.ord];
@@ -404,7 +405,6 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
       //   System.out.println("    no seek state; push root frame");
       // }
 
-
       currentFrame = staticFrame;
 
       // term.length = 0;
@@ -476,7 +476,6 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
         node = nextNode;
         term.setByteAt(targetUpto, (byte) targetLabel);
         // Aggregate output as we go:
-        
 
         // if (DEBUG) {
         //   System.out.println("    index: follow label=" + toHex(target.bytes[target.offset +
@@ -593,7 +592,8 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
         // if (DEBUG) {
         // System.out.println("    cycle targetUpto=" + targetUpto + " (vs limit=" + targetLimit +
         // ") cmp=" + cmp + " (targetLabel=" + (char) (target.bytes[target.offset + targetUpto]) +
-        // " vs termLabel=" + (char) (term.byteAt(targetUpto)) + ")"   + " node.output=" + node.output
+        // " vs termLabel=" + (char) (term.byteAt(targetUpto)) + ")"   + " node.output=" +
+        // node.output
         // + " output=" + output);
         // }
         if (cmp != 0) {
@@ -602,9 +602,9 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
         node = nodes[1 + targetUpto];
         assert node.label == (target.bytes[target.offset + targetUpto] & 0xFF)
             : "node.label="
-            + (char) node.label
-            + " targetLabel="
-            + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
+                + (char) node.label
+                + " targetLabel="
+                + (char) (target.bytes[target.offset + targetUpto] & 0xFF);
 
         if (node.hasOutput()) {
           lastFrame = stack[1 + lastFrame.ord];
@@ -674,7 +674,6 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
       // if (DEBUG) {
       // System.out.println("    no seek state; push root frame");
       // }
-
 
       currentFrame = staticFrame;
 
@@ -786,123 +785,124 @@ final class TrieSegmentTermsEnum extends BaseTermsEnum {
     }
   }
 
-//  @SuppressWarnings("unused")
-//  private void printSeekState(PrintStream out) throws IOException {
-//    if (currentFrame == staticFrame) {
-//      out.println("  no prior seek");
-//    } else {
-//      out.println("  prior seek state:");
-//      int ord = 0;
-//      boolean isSeekFrame = true;
-//      while (true) {
-//        TrieSegmentTermsEnumFrame f = getFrame(ord);
-//        assert f != null;
-//        final BytesRef prefix = new BytesRef(term.get().bytes, 0, f.prefixLength);
-//        if (f.nextEnt == -1) {
-//          out.println(
-//              "    frame "
-//                  + (isSeekFrame ? "(seek)" : "(next)")
-//                  + " ord="
-//                  + ord
-//                  + " fp="
-//                  + f.fp
-//                  + (f.isFloor ? (" (fpOrig=" + f.fpOrig + ")") : "")
-//                  + " prefixLen="
-//                  + f.prefixLength
-//                  + " prefix="
-//                  + prefix
-//                  + (f.nextEnt == -1 ? "" : (" (of " + f.entCount + ")"))
-//                  + " hasTerms="
-//                  + f.hasTerms
-//                  + " isFloor="
-//                  + f.isFloor
-//                  + " code="
-//                  + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
-//                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-//                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
-//                  + " isLastInFloor="
-//                  + f.isLastInFloor
-//                  + " mdUpto="
-//                  + f.metaDataUpto
-//                  + " tbOrd="
-//                  + f.getTermBlockOrd());
-//        } else {
-//          out.println(
-//              "    frame "
-//                  + (isSeekFrame ? "(seek, loaded)" : "(next, loaded)")
-//                  + " ord="
-//                  + ord
-//                  + " fp="
-//                  + f.fp
-//                  + (f.isFloor ? (" (fpOrig=" + f.fpOrig + ")") : "")
-//                  + " prefixLen="
-//                  + f.prefixLength
-//                  + " prefix="
-//                  + prefix
-//                  + " nextEnt="
-//                  + f.nextEnt
-//                  + (f.nextEnt == -1 ? "" : (" (of " + f.entCount + ")"))
-//                  + " hasTerms="
-//                  + f.hasTerms
-//                  + " isFloor="
-//                  + f.isFloor
-//                  + " code="
-//                  + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
-//                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-//                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
-//                  + " lastSubFP="
-//                  + f.lastSubFP
-//                  + " isLastInFloor="
-//                  + f.isLastInFloor
-//                  + " mdUpto="
-//                  + f.metaDataUpto
-//                  + " tbOrd="
-//                  + f.getTermBlockOrd());
-//        }
-//        if (fr.trieReader != null) {
-//          assert !isSeekFrame || f.node != null : "isSeekFrame=" + isSeekFrame + " f.node=" + f.node;
-//          if (f.prefixLength > 0
-//              && isSeekFrame
-//              && f.node.label != (term.byteAt(f.prefixLength - 1) & 0xFF)) {
-//            out.println(
-//                "      broken seek state: node.label="
-//                    + (char) f.node.label
-//                    + " vs term byte="
-//                    + (char) (term.byteAt(f.prefixLength - 1) & 0xFF));
-//            throw new RuntimeException("seek state is broken");
-//          }
-//          BytesRef output = Util.get(fr.trieReader, prefix);
-//          if (output == null) {
-//            out.println("      broken seek state: prefix is not final in index");
-//            throw new RuntimeException("seek state is broken");
-//          } else if (isSeekFrame && !f.isFloor) {
-//            final ByteArrayDataInput reader =
-//                new ByteArrayDataInput(output.bytes, output.offset, output.length);
-//            final long codeOrig = fr.readVLongOutput(reader);
-//            final long code =
-//                (f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
-//                    | (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-//                    | (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0);
-//            if (codeOrig != code) {
-//              out.println(
-//                  "      broken seek state: output code="
-//                      + codeOrig
-//                      + " doesn't match frame code="
-//                      + code);
-//              throw new RuntimeException("seek state is broken");
-//            }
-//          }
-//        }
-//        if (f == currentFrame) {
-//          break;
-//        }
-//        if (f.prefixLength == validIndexPrefix) {
-//          isSeekFrame = false;
-//        }
-//        ord++;
-//      }
-//    }
-//  }
+  //  @SuppressWarnings("unused")
+  //  private void printSeekState(PrintStream out) throws IOException {
+  //    if (currentFrame == staticFrame) {
+  //      out.println("  no prior seek");
+  //    } else {
+  //      out.println("  prior seek state:");
+  //      int ord = 0;
+  //      boolean isSeekFrame = true;
+  //      while (true) {
+  //        TrieSegmentTermsEnumFrame f = getFrame(ord);
+  //        assert f != null;
+  //        final BytesRef prefix = new BytesRef(term.get().bytes, 0, f.prefixLength);
+  //        if (f.nextEnt == -1) {
+  //          out.println(
+  //              "    frame "
+  //                  + (isSeekFrame ? "(seek)" : "(next)")
+  //                  + " ord="
+  //                  + ord
+  //                  + " fp="
+  //                  + f.fp
+  //                  + (f.isFloor ? (" (fpOrig=" + f.fpOrig + ")") : "")
+  //                  + " prefixLen="
+  //                  + f.prefixLength
+  //                  + " prefix="
+  //                  + prefix
+  //                  + (f.nextEnt == -1 ? "" : (" (of " + f.entCount + ")"))
+  //                  + " hasTerms="
+  //                  + f.hasTerms
+  //                  + " isFloor="
+  //                  + f.isFloor
+  //                  + " code="
+  //                  + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
+  //                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
+  //                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
+  //                  + " isLastInFloor="
+  //                  + f.isLastInFloor
+  //                  + " mdUpto="
+  //                  + f.metaDataUpto
+  //                  + " tbOrd="
+  //                  + f.getTermBlockOrd());
+  //        } else {
+  //          out.println(
+  //              "    frame "
+  //                  + (isSeekFrame ? "(seek, loaded)" : "(next, loaded)")
+  //                  + " ord="
+  //                  + ord
+  //                  + " fp="
+  //                  + f.fp
+  //                  + (f.isFloor ? (" (fpOrig=" + f.fpOrig + ")") : "")
+  //                  + " prefixLen="
+  //                  + f.prefixLength
+  //                  + " prefix="
+  //                  + prefix
+  //                  + " nextEnt="
+  //                  + f.nextEnt
+  //                  + (f.nextEnt == -1 ? "" : (" (of " + f.entCount + ")"))
+  //                  + " hasTerms="
+  //                  + f.hasTerms
+  //                  + " isFloor="
+  //                  + f.isFloor
+  //                  + " code="
+  //                  + ((f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
+  //                  + (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
+  //                  + (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0))
+  //                  + " lastSubFP="
+  //                  + f.lastSubFP
+  //                  + " isLastInFloor="
+  //                  + f.isLastInFloor
+  //                  + " mdUpto="
+  //                  + f.metaDataUpto
+  //                  + " tbOrd="
+  //                  + f.getTermBlockOrd());
+  //        }
+  //        if (fr.trieReader != null) {
+  //          assert !isSeekFrame || f.node != null : "isSeekFrame=" + isSeekFrame + " f.node=" +
+  // f.node;
+  //          if (f.prefixLength > 0
+  //              && isSeekFrame
+  //              && f.node.label != (term.byteAt(f.prefixLength - 1) & 0xFF)) {
+  //            out.println(
+  //                "      broken seek state: node.label="
+  //                    + (char) f.node.label
+  //                    + " vs term byte="
+  //                    + (char) (term.byteAt(f.prefixLength - 1) & 0xFF));
+  //            throw new RuntimeException("seek state is broken");
+  //          }
+  //          BytesRef output = Util.get(fr.trieReader, prefix);
+  //          if (output == null) {
+  //            out.println("      broken seek state: prefix is not final in index");
+  //            throw new RuntimeException("seek state is broken");
+  //          } else if (isSeekFrame && !f.isFloor) {
+  //            final ByteArrayDataInput reader =
+  //                new ByteArrayDataInput(output.bytes, output.offset, output.length);
+  //            final long codeOrig = fr.readVLongOutput(reader);
+  //            final long code =
+  //                (f.fp << Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS)
+  //                    | (f.hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
+  //                    | (f.isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0);
+  //            if (codeOrig != code) {
+  //              out.println(
+  //                  "      broken seek state: output code="
+  //                      + codeOrig
+  //                      + " doesn't match frame code="
+  //                      + code);
+  //              throw new RuntimeException("seek state is broken");
+  //            }
+  //          }
+  //        }
+  //        if (f == currentFrame) {
+  //          break;
+  //        }
+  //        if (f.prefixLength == validIndexPrefix) {
+  //          isSeekFrame = false;
+  //        }
+  //        ord++;
+  //      }
+  //    }
+  //  }
 
   /* Decodes only the term bytes of the next term.  If caller then asks for
   metadata, ie docFreq, totalTermFreq or pulls a D/&PEnum, we then (lazily)

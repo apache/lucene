@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
-
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -52,7 +51,7 @@ public class TestTrie extends LuceneTestCase {
 
   public void testTrieLookup() throws IOException {
 
-    for (int iter = 1; iter <= 12; iter ++) {
+    for (int iter = 1; iter <= 12; iter++) {
       Map<BytesRef, BytesRef> expected = new TreeMap<>();
 
       expected.put(new BytesRef(""), new BytesRef("emptyOutput"));
@@ -68,12 +67,12 @@ public class TestTrie extends LuceneTestCase {
 
       try (Directory directory = newDirectory()) {
         try (IndexOutput index = directory.createOutput("index", IOContext.DEFAULT);
-             IndexOutput meta = directory.createOutput("meta", IOContext.DEFAULT)) {
+            IndexOutput meta = directory.createOutput("meta", IOContext.DEFAULT)) {
           trie.save(meta, index);
         }
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
-             IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
+            IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
           TrieReader reader = new TrieReader(metaIn, indexIn);
 
           for (var entry : expected.entrySet()) {
@@ -90,10 +89,22 @@ public class TestTrie extends LuceneTestCase {
             for (BytesRef k : expected.keySet()) {
               if (k.compareTo(key) > 0) {
                 assert lastK.compareTo(key) < 0;
-                int mismatch1 = Arrays.mismatch(lastK.bytes, lastK.offset, lastK.offset + lastK.length,
-                    key.bytes, key.offset, key.offset + key.length);
-                int mismatch2 = Arrays.mismatch(k.bytes, k.offset, k.offset + k.length,
-                    key.bytes, key.offset, key.offset + key.length);
+                int mismatch1 =
+                    Arrays.mismatch(
+                        lastK.bytes,
+                        lastK.offset,
+                        lastK.offset + lastK.length,
+                        key.bytes,
+                        key.offset,
+                        key.offset + key.length);
+                int mismatch2 =
+                    Arrays.mismatch(
+                        k.bytes,
+                        k.offset,
+                        k.offset + k.length,
+                        key.bytes,
+                        key.offset,
+                        key.offset + key.length);
                 assertNotFoundOnLevelN(reader, key, Math.max(mismatch1, mismatch2));
                 break;
               }
@@ -121,7 +132,8 @@ public class TestTrie extends LuceneTestCase {
     for (int i = 0; i < term.length; i++) {
       TrieReader.Node found = reader.lookupChild(term.bytes[i + term.offset] & 0xFF, parent, child);
       chain[i] = parent.childrenStrategy.name();
-      Assert.assertNotNull(Arrays.toString(ArrayUtil.copyOfSubArray(chain, 0, i + 1)) + " look up failed.", found);
+      Assert.assertNotNull(
+          Arrays.toString(ArrayUtil.copyOfSubArray(chain, 0, i + 1)) + " look up failed.", found);
       parent = child;
       child = new TrieReader.Node();
     }
@@ -146,10 +158,13 @@ public class TestTrie extends LuceneTestCase {
         chain[i] = parent.childrenStrategy.name();
       }
       if (i == n) {
-        assertNull(Arrays.toString(ArrayUtil.copyOfSubArray(chain, 0, i + 1)) + " should not found.", found);
+        assertNull(
+            Arrays.toString(ArrayUtil.copyOfSubArray(chain, 0, i + 1)) + " should not found.",
+            found);
         break;
       }
-      Assert.assertNotNull(Arrays.toString(ArrayUtil.copyOfSubArray(chain, 0, i + 1)) + " look up failed.", found);
+      Assert.assertNotNull(
+          Arrays.toString(ArrayUtil.copyOfSubArray(chain, 0, i + 1)) + " look up failed.", found);
       parent = child;
       child = new TrieReader.Node();
     }

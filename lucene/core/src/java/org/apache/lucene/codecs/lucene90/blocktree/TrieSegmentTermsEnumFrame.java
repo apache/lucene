@@ -26,7 +26,6 @@ import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.fst.FST;
 
 final class TrieSegmentTermsEnumFrame {
   // Our index in stack[]:

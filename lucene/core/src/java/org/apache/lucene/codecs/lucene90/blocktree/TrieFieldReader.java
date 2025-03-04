@@ -23,14 +23,10 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.fst.ByteSequenceOutputs;
-import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.OffHeapFSTStore;
 
 /**
  * BlockTree's implementation of {@link Terms}.
@@ -52,7 +48,8 @@ public final class TrieFieldReader extends Terms {
   final BytesRef maxTerm;
   final Lucene90BlockTreeTermsReader parent;
   private final TrieReader trieReader;
-//  final FST<BytesRef> index;
+
+  //  final FST<BytesRef> index;
 
   // private boolean DEBUG;
 
@@ -92,9 +89,9 @@ public final class TrieFieldReader extends Terms {
     rootBlockFP =
         readVLongOutput(trieReader.root.output(trieReader))
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
-//    // Initialize FST always off-heap.
-//    var metadata = FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
-//    index = FST.fromFSTReader(metadata, new OffHeapFSTStore(indexIn, indexStartFP, metadata));
+    //    // Initialize FST always off-heap.
+    //    var metadata = FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
+    //    index = FST.fromFSTReader(metadata, new OffHeapFSTStore(indexIn, indexStartFP, metadata));
 
     /*
      if (false) {
@@ -105,14 +102,14 @@ public final class TrieFieldReader extends Terms {
      w.close();
      }
     */
-//    BytesRef emptyOutput = metadata.getEmptyOutput();
-//    if (rootCode.equals(emptyOutput) == false) {
-//      // TODO: this branch is never taken
-//      assert false;
-//      this.rootCode = rootCode;
-//    } else {
-//      this.rootCode = emptyOutput;
-//    }
+    //    BytesRef emptyOutput = metadata.getEmptyOutput();
+    //    if (rootCode.equals(emptyOutput) == false) {
+    //      // TODO: this branch is never taken
+    //      assert false;
+    //      this.rootCode = rootCode;
+    //    } else {
+    //      this.rootCode = emptyOutput;
+    //    }
   }
 
   long readVLongOutput(DataInput in) throws IOException {
@@ -176,8 +173,8 @@ public final class TrieFieldReader extends Terms {
   @Override
   public boolean hasOffsets() {
     return fieldInfo
-        .getIndexOptions()
-        .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
+            .getIndexOptions()
+            .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
         >= 0;
   }
 
@@ -233,7 +230,6 @@ public final class TrieFieldReader extends Terms {
         compiled.getByteRunnable(),
         compiled.commonSuffixRef,
         startTerm);
-
   }
 
   @Override

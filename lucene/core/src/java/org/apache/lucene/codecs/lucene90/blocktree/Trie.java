@@ -199,7 +199,9 @@ class Trie {
       }
 
       @Override
-      int lookup(int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel) throws IOException {
+      int lookup(
+          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+          throws IOException {
         int low = 0;
         int high = positionBytes - 1;
         while (low <= high) {
@@ -238,7 +240,9 @@ class Trie {
       }
 
       @Override
-      int lookup(int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel) throws IOException {
+      int lookup(
+          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+          throws IOException {
         int maxLabel = in.readByte(offset++) & 0xFF;
         if (targetLabel >= maxLabel) {
           return targetLabel == maxLabel ? maxLabel - minLabel - positionBytes + 1 : -1;
@@ -298,7 +302,9 @@ class Trie {
       }
 
       @Override
-      int lookup(int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel) throws IOException {
+      int lookup(
+          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+          throws IOException {
         int bitIndex = targetLabel - minLabel;
         if (bitIndex >= (positionBytes << 3)) {
           return -1;
@@ -338,7 +344,8 @@ class Trie {
     abstract void save(List<Node> children, int labelCnt, int positionBytes, IndexOutput output)
         throws IOException;
 
-    abstract int lookup(int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+    abstract int lookup(
+        int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
         throws IOException;
 
     static PositionStrategy byCode(int code) {

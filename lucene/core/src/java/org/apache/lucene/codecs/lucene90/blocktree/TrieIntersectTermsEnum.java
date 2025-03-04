@@ -30,7 +30,6 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.Transition;
 import org.apache.lucene.util.automaton.TransitionAccessor;
-import org.apache.lucene.util.fst.FST;
 
 /**
  * This is used to implement efficient {@link Terms#intersect} for block-tree. Note that it cannot
@@ -45,16 +44,16 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
 
   final IndexInput in;
 
-  TrieIntersectTermsEnumFrame [] stack;
+  TrieIntersectTermsEnumFrame[] stack;
 
   @SuppressWarnings({"rawtypes", "unchecked"})
-  private TrieReader.Node [] nodes = new TrieReader.Node [5];
+  private TrieReader.Node[] nodes = new TrieReader.Node[5];
 
   final ByteRunnable runAutomaton;
   final TransitionAccessor automaton;
   final BytesRef commonSuffix;
 
-  private TrieIntersectTermsEnumFrame  currentFrame;
+  private TrieIntersectTermsEnumFrame currentFrame;
   private Transition currentTransition;
 
   private final BytesRef term = new BytesRef();
@@ -85,9 +84,9 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
     this.commonSuffix = commonSuffix;
 
     in = fr.parent.termsIn.clone();
-    stack = new TrieIntersectTermsEnumFrame [5];
+    stack = new TrieIntersectTermsEnumFrame[5];
     for (int idx = 0; idx < stack.length; idx++) {
-      stack[idx] = new TrieIntersectTermsEnumFrame (this, idx);
+      stack[idx] = new TrieIntersectTermsEnumFrame(this, idx);
     }
     for (int nodeIdx = 0; nodeIdx < nodes.length; nodeIdx++) {
       nodes[nodeIdx] = new TrieReader.Node();
@@ -107,7 +106,7 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
     assert node.hasOutput();
 
     // Special pushFrame since it's the first one:
-    final TrieIntersectTermsEnumFrame  f = stack[0];
+    final TrieIntersectTermsEnumFrame f = stack[0];
     f.fp = f.fpOrig = fr.rootBlockFP;
     f.prefix = 0;
     f.setState(0);
@@ -137,14 +136,14 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
     return currentFrame.termState.clone();
   }
 
-  private TrieIntersectTermsEnumFrame  getFrame(int ord) throws IOException {
+  private TrieIntersectTermsEnumFrame getFrame(int ord) throws IOException {
     if (ord >= stack.length) {
-      final TrieIntersectTermsEnumFrame [] next =
-          new TrieIntersectTermsEnumFrame 
+      final TrieIntersectTermsEnumFrame[] next =
+          new TrieIntersectTermsEnumFrame
               [ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(stack, 0, next, 0, stack.length);
       for (int stackOrd = stack.length; stackOrd < next.length; stackOrd++) {
-        next[stackOrd] = new TrieIntersectTermsEnumFrame (this, stackOrd);
+        next[stackOrd] = new TrieIntersectTermsEnumFrame(this, stackOrd);
       }
       stack = next;
     }
@@ -152,11 +151,11 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
     return stack[ord];
   }
 
-  private TrieReader.Node  getNode(int ord) {
+  private TrieReader.Node getNode(int ord) {
     if (ord >= nodes.length) {
       @SuppressWarnings({"rawtypes", "unchecked"})
-      final TrieReader.Node [] next =
-          new TrieReader.Node [ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
+      final TrieReader.Node[] next =
+          new TrieReader.Node[ArrayUtil.oversize(1 + ord, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(nodes, 0, next, 0, nodes.length);
       for (int nodeOrd = nodes.length; nodeOrd < next.length; nodeOrd++) {
         next[nodeOrd] = new TrieReader.Node();
@@ -166,10 +165,10 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
     return nodes[ord];
   }
 
-  private TrieIntersectTermsEnumFrame  pushFrame(int state) throws IOException {
+  private TrieIntersectTermsEnumFrame pushFrame(int state) throws IOException {
     assert currentFrame != null;
 
-    final TrieIntersectTermsEnumFrame  f = getFrame(currentFrame == null ? 0 : 1 + currentFrame.ord);
+    final TrieIntersectTermsEnumFrame f = getFrame(currentFrame == null ? 0 : 1 + currentFrame.ord);
 
     f.fp = f.fpOrig = currentFrame.lastSubFP;
     f.prefix = currentFrame.prefix + currentFrame.suffix;
@@ -179,7 +178,7 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
     // "bother" with this so we can get the floor data
     // from the index and skip floor blocks when
     // possible:
-    TrieReader.Node  node = currentFrame.node;
+    TrieReader.Node node = currentFrame.node;
     int idx = currentFrame.prefix;
     assert currentFrame.suffix > 0;
 
@@ -248,7 +247,7 @@ final class TrieIntersectTermsEnum extends BaseTermsEnum {
     if (term.length < target.length) {
       term.bytes = ArrayUtil.grow(term.bytes, target.length);
     }
-    TrieReader.Node  node = nodes[0];
+    TrieReader.Node node = nodes[0];
     assert node == currentFrame.node;
 
     for (int idx = 0; idx <= target.length; idx++) {

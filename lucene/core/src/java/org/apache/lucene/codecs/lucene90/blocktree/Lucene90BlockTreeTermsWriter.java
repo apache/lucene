@@ -569,7 +569,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
           block.subIndices = null;
         }
         if (block.subIndicesTrie != null) {
-          for (Trie subIndex: block.subIndicesTrie) {
+          for (Trie subIndex : block.subIndicesTrie) {
             trie.putAll(subIndex);
           }
           block.subIndicesTrie = null;
@@ -607,25 +607,24 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     }
   }
 
-  private void assertEquals(FST<BytesRef> fst, Trie trie)
-      throws IOException {
+  private void assertEquals(FST<BytesRef> fst, Trie trie) throws IOException {
     final BytesRefFSTEnum<BytesRef> subIndexEnum = new BytesRefFSTEnum<>(fst);
-    trie.forEach((k, v) -> {
-      try {
-        BytesRefFSTEnum.InputOutput<BytesRef> indexEnt = subIndexEnum.next();
-        boolean equal = indexEnt.input.equals(k) && indexEnt.output.equals(v);
-        if (equal == false) {
-          throw new IllegalStateException(" trie error !!");
-        }
-      } catch (Exception e) {
-        throw new RuntimeException();
-      }
-    });
+    trie.forEach(
+        (k, v) -> {
+          try {
+            BytesRefFSTEnum.InputOutput<BytesRef> indexEnt = subIndexEnum.next();
+            boolean equal = indexEnt.input.equals(k) && indexEnt.output.equals(v);
+            if (equal == false) {
+              throw new IllegalStateException(" trie error !!");
+            }
+          } catch (Exception e) {
+            throw new RuntimeException();
+          }
+        });
     if (subIndexEnum.next() != null) {
       throw new IllegalStateException(" trie error !!");
     }
   }
-
 
   private final ByteBuffersDataOutput scratchBytes = ByteBuffersDataOutput.newResettableInstance();
   private final IntsRefBuilder scratchIntsRef = new IntsRefBuilder();
@@ -1093,7 +1092,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         prefix.bytes[prefix.length++] = (byte) floorLeadLabel;
       }
 
-      return new PendingBlock(prefix, startFP, hasTerms, isFloor, floorLeadLabel, subIndices, subIndicesTrie);
+      return new PendingBlock(
+          prefix, startFP, hasTerms, isFloor, floorLeadLabel, subIndices, subIndicesTrie);
     }
 
     TermsWriter(FieldInfo fieldInfo) {
@@ -1202,7 +1202,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             : "pending.size()=" + pending.size() + " pending=" + pending;
         final PendingBlock root = (PendingBlock) pending.get(0);
         assert root.prefix.length == 0;
-//        final BytesRef rootCode = root.index.getEmptyOutput();
+        //        final BytesRef rootCode = root.index.getEmptyOutput();
         final BytesRef rootCode = root.indexTrie.getEmptyOutput();
         assert rootCode != null;
 
@@ -1224,7 +1224,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         metaOut.writeVLong(indexOut.getFilePointer());
         // Write FST to index
         assertEquals(root.index, root.indexTrie);
-//        root.index.save(metaOut, indexOut);
+        //        root.index.save(metaOut, indexOut);
         root.indexTrie.save(metaOut, indexOut);
 
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);

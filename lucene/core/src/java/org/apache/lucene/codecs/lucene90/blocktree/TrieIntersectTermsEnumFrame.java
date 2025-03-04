@@ -24,9 +24,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Transition;
-import org.apache.lucene.util.fst.FST;
 
 // TODO: can we share this with the frame in STE?
 final class TrieIntersectTermsEnumFrame {
@@ -82,7 +80,7 @@ final class TrieIntersectTermsEnumFrame {
   int transitionIndex;
   int transitionCount;
 
-  TrieReader.Node node ;
+  TrieReader.Node node;
 
   final BlockTermState termState;
 

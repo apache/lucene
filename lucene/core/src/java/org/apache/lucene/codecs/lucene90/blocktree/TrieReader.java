@@ -1,8 +1,6 @@
 package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
-
-import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 
@@ -71,7 +69,8 @@ class TrieReader {
     }
 
     int sign = arcsIn.readInt(node.fp);
-    node.childrenCodesBytes = (sign >>> 16) & 0xFF;;
+    node.childrenCodesBytes = (sign >>> 16) & 0xFF;
+    ;
     node.childrenStrategy = Trie.PositionStrategy.byCode((sign >>> 14) & 0x03);
     node.positionBytes = (sign >>> 8) & 0x3F;
     node.minChildrenLabel = sign & 0xFF;
@@ -93,7 +92,8 @@ class TrieReader {
       position = 0;
     } else {
       position =
-          parent.childrenStrategy.lookup(targetLabel, arcsIn, positionBytesFp, positionBytes, minLabel);
+          parent.childrenStrategy.lookup(
+              targetLabel, arcsIn, positionBytesFp, positionBytes, minLabel);
     }
 
     if (position < 0) {
