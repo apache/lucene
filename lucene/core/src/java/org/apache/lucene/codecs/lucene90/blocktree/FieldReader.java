@@ -96,7 +96,7 @@ public final class FieldReader extends Terms {
 
     TrieReader trieReader = newReader();
     this.rootBlockFP =
-        readVLongOutput(trieReader.root.output(trieReader))
+        trieReader.root.output(trieReader).readVLong()
             >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
   }
 
@@ -105,32 +105,6 @@ public final class FieldReader extends Terms {
         indexIn.randomAccessSlice(nodeInStart, nodeInEnd - nodeInStart),
         indexIn.slice("outputs", nodeInEnd, outputEnd - nodeInEnd),
         rootFP);
-  }
-
-  long readVLongOutput(DataInput in) throws IOException {
-    if (parent.version >= VERSION_MSB_VLONG_OUTPUT) {
-      return readMSBVLong(in);
-    } else {
-      return in.readVLong();
-    }
-  }
-
-  /**
-   * Decodes a variable length byte[] in MSB order back to long, as written by {@link
-   * Lucene90BlockTreeTermsWriter#writeMSBVLong}.
-   *
-   * <p>Package private for testing.
-   */
-  static long readMSBVLong(DataInput in) throws IOException {
-    long l = 0L;
-    while (true) {
-      byte b = in.readByte();
-      l = (l << 7) | (b & 0x7FL);
-      if ((b & 0x80) == 0) {
-        break;
-      }
-    }
-    return l;
   }
 
   @Override

@@ -140,7 +140,7 @@ final class IntersectTermsEnumFrame {
 
   void load(TrieReader.Node node) throws IOException {
     floorDataReader = node.output(ite.trieReader);
-    long code = ite.fr.readVLongOutput(floorDataReader);
+    long code = floorDataReader.readVLong();
     load(code);
     floorDataPos = floorDataReader.getFilePointer();
   }
