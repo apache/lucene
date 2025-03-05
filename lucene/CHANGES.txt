@@ -72,6 +72,8 @@ API Changes
 
 * GITHUB#14292: The redundant DocIdSet#bits method has been deprecated. (Luca Cavanna)
 
+* GITHUB#14237: Add utils for sandbox facets module for the most common tasks. (Egor Potemkin)
+
 New Features
 ---------------------
 
@@ -178,6 +180,8 @@ Bug Fixes
   (Chris Hegarty)
 
 * GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
+
+* GITHUB#14320: Fix DirectIOIndexInput seek to not read when position is within buffer (Chris Hegarty)
 
 Changes in Runtime Behavior
 ---------------------
