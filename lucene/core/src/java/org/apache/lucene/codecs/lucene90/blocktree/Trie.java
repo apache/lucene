@@ -150,6 +150,9 @@ class Trie {
     index.writeShort((short) sign);
 
     int codeBytes = bytesRequired(maxCode - minCode);
+    if (codeBytes == bytesRequired(maxCode)) {
+      minCode = 0L;
+    }
     int fpBytes = bytesRequired(Math.max(minCode, outputsBuffer.size()));
     int header = (fpBytes << 3) | codeBytes;
     if (node.output == null) {
