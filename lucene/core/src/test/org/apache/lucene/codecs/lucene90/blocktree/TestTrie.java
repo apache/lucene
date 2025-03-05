@@ -136,12 +136,9 @@ public class TestTrie extends LuceneTestCase {
       throws IOException {
     TrieReader.Node parent = reader.root;
     TrieReader.Node child = new TrieReader.Node();
-    String[] chain = new String[term.length];
     for (int i = 0; i < term.length; i++) {
       TrieReader.Node found = reader.lookupChild(term.bytes[i + term.offset] & 0xFF, parent, child);
-      chain[i] = parent.childrenStrategy.name();
-      Assert.assertNotNull(
-          Arrays.toString(ArrayUtil.copyOfSubArray(chain, 0, i + 1)) + " look up failed.", found);
+      Assert.assertNotNull(found);
       parent = child;
       child = new TrieReader.Node();
     }
@@ -157,22 +154,13 @@ public class TestTrie extends LuceneTestCase {
       throws IOException {
     TrieReader.Node parent = reader.root;
     TrieReader.Node child = new TrieReader.Node();
-    String[] chain = new String[term.length];
     for (int i = 0; i < term.length; i++) {
       TrieReader.Node found = reader.lookupChild(term.bytes[i + term.offset] & 0xFF, parent, child);
-      if (parent.isLeaf) {
-        chain[i] = "parentLeaf";
-      } else {
-        chain[i] = parent.childrenStrategy.name();
-      }
       if (i == n) {
-        assertNull(
-            Arrays.toString(ArrayUtil.copyOfSubArray(chain, 0, i + 1)) + " should not found.",
-            found);
+        assertNull(found);
         break;
       }
-      Assert.assertNotNull(
-          Arrays.toString(ArrayUtil.copyOfSubArray(chain, 0, i + 1)) + " look up failed.", found);
+      Assert.assertNotNull(found);
       parent = child;
       child = new TrieReader.Node();
     }

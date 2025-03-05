@@ -10,15 +10,15 @@ class TrieReader {
   private static final long NO_OUTPUT = -1;
 
   static class Node {
-    Node parent;
-    long positionFp;
-    long outputFp;
+    private long positionFp;
+    private long outputFp;
+    private boolean isLeaf;
+    private int childrenStrategy;
+    private int positionBytes;
+    private int minChildrenLabel;
+    private int childrenCodesBytes;
+
     int label;
-    boolean isLeaf;
-    Trie.PositionStrategy childrenStrategy;
-    int positionBytes;
-    int minChildrenLabel;
-    int childrenCodesBytes;
 
     boolean hasOutput() {
       return outputFp != NO_OUTPUT;
@@ -39,11 +39,10 @@ class TrieReader {
     this.nodesIn = nodesIn;
     this.outputsIn = outputsIn;
     this.root = new Node();
-    load(root, rootFP, null);
+    load(root, rootFP);
   }
 
-  private void load(Node node, long code, Node parent) throws IOException {
-    node.parent = parent;
+  private void load(Node node, long code) throws IOException {
     long tail = code & 0x3L;
     if (tail == 0x1L) {
       node.isLeaf = true;
@@ -56,7 +55,7 @@ class TrieReader {
     final int sign = nodesIn.readInt(fp);
     final int bytes = sign >>> 16;
     node.childrenCodesBytes = bytes & 0x7;
-    node.childrenStrategy = Trie.PositionStrategy.byCode((sign >>> 14) & 0x03);
+    node.childrenStrategy = (sign >>> 14) & 0x03;
     node.positionBytes = (sign >>> 8) & 0x3F;
     node.minChildrenLabel = sign & 0xFF;
     fp += META_BYTES;
@@ -86,9 +85,22 @@ class TrieReader {
     } else if (targetLabel == minLabel) {
       position = 0;
     } else {
-      position =
-          parent.childrenStrategy.lookup(
-              targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
+      int strategy = parent.childrenStrategy;
+      // Use if else here - we do not want to introduce a virtual call.
+      if (strategy == 0) {
+        position =
+            Trie.PositionStrategy.BITS.lookup(
+                targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
+      } else if (strategy == 2) {
+        position =
+            Trie.PositionStrategy.ARRAY.lookup(
+                targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
+      } else {
+        assert strategy == Trie.PositionStrategy.REVERSE_ARRAY.priority;
+        position =
+            Trie.PositionStrategy.REVERSE_ARRAY.lookup(
+                targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
+      }
     }
 
     if (position < 0) {
@@ -100,7 +112,7 @@ class TrieReader {
     final long mask = (1L << (codeBytes << 3)) - 1L;
     final long code = nodesIn.readLong(pos) & mask;
     child.label = targetLabel;
-    load(child, code, parent);
+    load(child, code);
 
     return child;
   }
