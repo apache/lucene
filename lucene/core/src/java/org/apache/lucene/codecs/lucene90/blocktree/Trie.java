@@ -108,8 +108,7 @@ class Trie {
 
     if (childrenNum == 0) {
       assert node.output != null;
-      long code = (outputsBuffer.size() << 1) | 1L;
-      outputsBuffer.writeVLong(0L);
+      long code = (outputsBuffer.size() << 2) | 0x1L;
       outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
       return code;
     }
@@ -138,12 +137,7 @@ class Trie {
       }
     }
 
-    long fp = index.getFilePointer();
-    if (fp == startFP) {
-      // relative fp == 0 has special meaning.
-      index.writeByte((byte) 0);
-      fp = index.getFilePointer();
-    }
+    final long fp = index.getFilePointer() - startFP;
 
     assert positionStrategy != null;
     assert positionBytes >= 0 && positionBytes <= 32;
@@ -152,17 +146,33 @@ class Trie {
         (positionStrategy.priority << 14) // 2bit
             | (positionBytes << 8) // 6 bit
             | minLabel; // 8bit
-
     index.writeShort((short) sign);
+
     int codeBytes = Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(maxCode) >>> 3));
-    index.writeByte((byte) codeBytes);
+    long result;
+    if (node.output == null) {
+      index.writeByte((byte) codeBytes);
+      result = fp << 2;
+    } else {
+      long outputFp = outputsBuffer.size();
+      int outputFpBytes = Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(outputFp) >>> 3));
+      index.writeByte((byte) ((outputFpBytes << 3) | codeBytes));
+      for (int j = 0; j < outputFpBytes; j++) {
+        index.writeByte((byte) outputFp);
+        outputFp >>= 8;
+      }
+      outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
+      result = (fp << 2) | 0x3L;
+    }
+
+    long positionStartFp = index.getFilePointer();
     positionStrategy.save(node.children, childrenNum, positionBytes, index);
-    assert index.getFilePointer() == fp + positionBytes + 3
+    assert index.getFilePointer() == positionStartFp + positionBytes
         : positionStrategy.name()
             + " position bytes compute error, computed: "
             + positionBytes
             + " actual: "
-            + (index.getFilePointer() - fp - 3);
+            + (index.getFilePointer() - positionStartFp);
 
     for (int i = 0; i < childrenNum; i++) {
       long code = codeBuffer[i];
@@ -172,15 +182,7 @@ class Trie {
       }
     }
 
-    long relativeFP = fp - startFP;
-    if (node.output == null) {
-      return relativeFP << 1;
-    } else {
-      long code = (outputsBuffer.size() << 1) | 1L;
-      outputsBuffer.writeVLong(relativeFP);
-      outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
-      return code;
-    }
+    return result;
   }
 
   enum PositionStrategy {

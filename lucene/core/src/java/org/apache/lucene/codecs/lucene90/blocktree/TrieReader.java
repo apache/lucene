@@ -11,7 +11,7 @@ class TrieReader {
 
   static class Node {
     Node parent;
-    long fp;
+    long positionFp;
     long outputFp;
     int label;
     boolean isLeaf;
@@ -44,26 +44,31 @@ class TrieReader {
 
   private void load(Node node, long code, Node parent) throws IOException {
     node.parent = parent;
-    if ((code & 0x1) == 0) {
-      node.fp = code >>> 1;
-      node.outputFp = NO_OUTPUT;
-    } else {
-      long outputFP = code >>> 1;
-      outputsIn.seek(outputFP);
-      node.fp = outputsIn.readVLong();
-      node.outputFp = outputsIn.getFilePointer();
-      if (node.fp == 0) {
-        node.isLeaf = true;
-        return;
-      }
+    long tail = code & 0x3L;
+    if (tail == 0x1L) {
+      node.isLeaf = true;
+      node.outputFp = code >>> 2;
+      return;
     }
 
     node.isLeaf = false;
-    int sign = nodesIn.readInt(node.fp);
-    node.childrenCodesBytes = (sign >>> 16) & 0xFF;
+    long fp = code >>> 2;
+    final int sign = nodesIn.readInt(fp);
+    final int bytes = sign >>> 16;
+    node.childrenCodesBytes = bytes & 0x7;
     node.childrenStrategy = Trie.PositionStrategy.byCode((sign >>> 14) & 0x03);
     node.positionBytes = (sign >>> 8) & 0x3F;
     node.minChildrenLabel = sign & 0xFF;
+    fp += META_BYTES;
+    if (tail == 0x3L) {
+      int shift = bytes & 0x38;
+      long mask = (1L << shift) - 1L;
+      node.outputFp = nodesIn.readLong(fp) & mask;
+      node.positionFp = fp + (shift >> 3);
+    } else {
+      node.outputFp = NO_OUTPUT;
+      node.positionFp = fp;
+    }
   }
 
   Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {
@@ -71,7 +76,7 @@ class TrieReader {
       return null;
     }
 
-    final long positionBytesStartFp = parent.fp + META_BYTES;
+    final long positionBytesStartFp = parent.positionFp;
     final int minLabel = parent.minChildrenLabel;
     final int positionBytes = parent.positionBytes;
 
@@ -92,7 +97,7 @@ class TrieReader {
 
     final long codeBytes = parent.childrenCodesBytes;
     final long pos = positionBytesStartFp + positionBytes + codeBytes * position;
-    final long mask = (1L << (codeBytes << 3)) - 1;
+    final long mask = (1L << (codeBytes << 3)) - 1L;
     final long code = nodesIn.readLong(pos) & mask;
     child.label = targetLabel;
     load(child, code, parent);
