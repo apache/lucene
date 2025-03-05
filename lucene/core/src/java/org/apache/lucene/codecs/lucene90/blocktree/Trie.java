@@ -108,7 +108,7 @@ class Trie {
 
     if (childrenNum == 0) {
       assert node.output != null;
-      long code = (outputsBuffer.size() << 2) | 0x1L;
+      long code = (outputsBuffer.size() << 1) | 0x1L;
       outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
       return code;
     }
@@ -149,10 +149,9 @@ class Trie {
     index.writeShort((short) sign);
 
     int codeBytes = Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(maxCode) >>> 3));
-    long result;
+
     if (node.output == null) {
       index.writeByte((byte) codeBytes);
-      result = fp << 2;
     } else {
       long outputFp = outputsBuffer.size();
       int outputFpBytes = Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(outputFp) >>> 3));
@@ -162,7 +161,6 @@ class Trie {
         outputFp >>= 8;
       }
       outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
-      result = (fp << 2) | 0x3L;
     }
 
     long positionStartFp = index.getFilePointer();
@@ -182,7 +180,7 @@ class Trie {
       }
     }
 
-    return result;
+    return fp << 1;
   }
 
   enum PositionStrategy {

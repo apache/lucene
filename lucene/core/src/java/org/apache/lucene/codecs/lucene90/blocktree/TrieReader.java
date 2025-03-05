@@ -45,29 +45,28 @@ class TrieReader {
   }
 
   private void load(Node node, long code) throws IOException {
-    long tail = code & 0x3L;
-    if (tail == 0x1L) {
+    long tail = code & 0x01L;
+    if (tail == 0x01L) {
       node.isLeaf = true;
-      node.outputFp = code >>> 2;
+      node.outputFp = code >>> 1;
       return;
     }
 
     node.isLeaf = false;
-    long fp = code >>> 2;
+    long fp = code >>> 1;
     final int sign = nodesIn.readInt(fp);
     final int bytes = sign >>> 16;
-    node.childrenCodesBytes = bytes & 0x7;
+    node.childrenCodesBytes = bytes & 0x07;
     node.childrenStrategy = (sign >>> 14) & 0x03;
     node.positionBytes = (sign >>> 8) & 0x3F;
     node.minChildrenLabel = sign & 0xFF;
     fp += META_BYTES;
-    if (tail == 0x3L) {
-      int shift = bytes & 0x38;
+    final int shift = bytes & 0x38;
+    if (shift != 0) {
       long mask = (1L << shift) - 1L;
       node.outputFp = nodesIn.readLong(fp) & mask;
       node.positionFp = fp + (shift >> 3);
     } else {
-      assert tail == 0x0L;
       node.outputFp = NO_OUTPUT;
       node.positionFp = fp;
     }
