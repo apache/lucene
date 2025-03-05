@@ -794,6 +794,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return to;
   }
 
+  @Override
   public long int4BitDotProduct(byte[] q, byte[] d) {
     assert q.length == d.length * 4;
     // 128 / 8 == 16

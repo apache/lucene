@@ -209,6 +209,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     return to;
   }
 
+  @Override
   public long int4BitDotProduct(byte[] int4Quantized, byte[] binaryQuantized) {
     return int4BitDotProductImpl(int4Quantized, binaryQuantized);
   }
