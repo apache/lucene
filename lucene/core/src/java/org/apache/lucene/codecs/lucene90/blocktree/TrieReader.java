@@ -1,6 +1,8 @@
 package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
+
+import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 
@@ -65,6 +67,7 @@ class TrieReader {
       node.outputFp = nodesIn.readLong(fp) & mask;
       node.positionFp = fp + (shift >> 3);
     } else {
+      assert tail == 0x0L;
       node.outputFp = NO_OUTPUT;
       node.positionFp = fp;
     }
@@ -86,7 +89,7 @@ class TrieReader {
       position = 0;
     } else {
       int strategy = parent.childrenStrategy;
-      // Use if else here - we do not want to introduce a virtual call.
+      // Use if else here - avoiding virtual call seems help performance
       if (strategy == 0) {
         position =
             Trie.PositionStrategy.BITS.lookup(
@@ -95,11 +98,12 @@ class TrieReader {
         position =
             Trie.PositionStrategy.ARRAY.lookup(
                 targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
-      } else {
-        assert strategy == Trie.PositionStrategy.REVERSE_ARRAY.priority;
+      } else if (strategy == 1){
         position =
             Trie.PositionStrategy.REVERSE_ARRAY.lookup(
                 targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
+      } else {
+        throw new CorruptIndexException("unknown strategy: " + strategy, "trie nodesIn");
       }
     }
 
