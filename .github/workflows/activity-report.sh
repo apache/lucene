@@ -16,6 +16,7 @@ UNTIL_TS=$(date -u -d "$UNTIL" +"%Y-%m-%d")
 
 # https://cli.github.com/manual/gh_help_environment
 export GH_FORCE_TTY=160
+export NO_COLOR=true
 
 echo "# Repository Activity Report ($REPO)"
 echo "Date range covered by this report: $SINCE_TS .. $UNTIL_TS"
