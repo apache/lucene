@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene90.blocktree;
 
-import static org.apache.lucene.util.fst.FSTCompiler.getOnHeapReaderWriter;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,12 +48,12 @@ import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.ToStringUtils;
 import org.apache.lucene.util.compress.LZ4;
 import org.apache.lucene.util.compress.LowercaseAsciiCompression;
-import org.apache.lucene.util.fst.ByteSequenceOutputs;
-import org.apache.lucene.util.fst.BytesRefFSTEnum;
-import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.FSTCompiler;
-import org.apache.lucene.util.fst.Util;
-import org.apache.lucene.util.packed.PackedInts;
+
+// import org.apache.lucene.util.fst.ByteSequenceOutputs;
+// import org.apache.lucene.util.fst.BytesRefFSTEnum;
+// import org.apache.lucene.util.fst.FST;
+// import org.apache.lucene.util.fst.FSTCompiler;
+// import org.apache.lucene.util.fst.Util;
 
 /*
   TODO:
@@ -190,14 +188,6 @@ import org.apache.lucene.util.packed.PackedInts;
  * <p>The .tip file contains an index into the term dictionary, so that it can be accessed randomly.
  * The index is also used to determine when a given term cannot exist on disk (in the .tim file),
  * saving a disk seek.
- *
- * <ul>
- *   <li>TermsIndex (.tip) --&gt; Header, FSTIndex<sup>NumFields</sup>Footer
- *   <li>Header --&gt; {@link CodecUtil#writeHeader CodecHeader}
- *       <!-- TODO: better describe FST output here -->
- *   <li>FSTIndex --&gt; {@link FST FST&lt;byte[]&gt;}
- *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
- * </ul>
  *
  * <p>Notes:
  *
@@ -441,8 +431,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
   private final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
     public final long fp;
-    public FST<BytesRef> index;
-    public List<FST<BytesRef>> subIndices;
+    //    public FST<BytesRef> index;
+    //    public List<FST<BytesRef>> subIndices;
     public Trie indexTrie;
     public List<Trie> subIndicesTrie;
     public final boolean hasTerms;
@@ -455,7 +445,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         boolean hasTerms,
         boolean isFloor,
         int floorLeadByte,
-        List<FST<BytesRef>> subIndices,
+        //        List<FST<BytesRef>> subIndices,
         List<Trie> subIndicesTrie) {
       super(false);
       this.prefix = prefix;
@@ -463,7 +453,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       this.hasTerms = hasTerms;
       this.isFloor = isFloor;
       this.floorLeadByte = floorLeadByte;
-      this.subIndices = subIndices;
+      //      this.subIndices = subIndices;
       this.subIndicesTrie = subIndicesTrie;
     }
 
@@ -503,50 +493,52 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         }
       }
 
-      long estimateSize = prefix.length;
-      for (PendingBlock block : blocks) {
-        if (block.subIndices != null) {
-          for (FST<BytesRef> subIndex : block.subIndices) {
-            estimateSize += subIndex.numBytes();
-          }
-        }
-      }
-      int estimateBitsRequired = PackedInts.bitsRequired(estimateSize);
-      int pageBits = Math.min(15, Math.max(6, estimateBitsRequired));
-
-      final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
-      final int fstVersion;
-      if (version >= Lucene90BlockTreeTermsReader.VERSION_CURRENT) {
-        fstVersion = FST.VERSION_CURRENT;
-      } else {
-        fstVersion = FST.VERSION_90;
-      }
-      final FSTCompiler<BytesRef> fstCompiler =
-          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
-              // Disable suffixes sharing for block tree index because suffixes are mostly dropped
-              // from the FST index and left in the term blocks.
-              .suffixRAMLimitMB(0d)
-              .dataOutput(getOnHeapReaderWriter(pageBits))
-              .setVersion(fstVersion)
-              .build();
+      //      long estimateSize = prefix.length;
+      //      for (PendingBlock block : blocks) {
+      //        if (block.subIndices != null) {
+      //          for (FST<BytesRef> subIndex : block.subIndices) {
+      //            estimateSize += subIndex.numBytes();
+      //          }
+      //        }
+      //      }
+      //      int estimateBitsRequired = PackedInts.bitsRequired(estimateSize);
+      //      int pageBits = Math.min(15, Math.max(6, estimateBitsRequired));
+      //
+      //      final ByteSequenceOutputs outputs = ByteSequenceOutputs.getSingleton();
+      //      final int fstVersion;
+      //      if (version >= Lucene90BlockTreeTermsReader.VERSION_CURRENT) {
+      //        fstVersion = FST.VERSION_CURRENT;
+      //      } else {
+      //        fstVersion = FST.VERSION_90;
+      //      }
+      //      final FSTCompiler<BytesRef> fstCompiler =
+      //          new FSTCompiler.Builder<>(FST.INPUT_TYPE.BYTE1, outputs)
+      //              // Disable suffixes sharing for block tree index because suffixes are mostly
+      // dropped
+      //              // from the FST index and left in the term blocks.
+      //              .suffixRAMLimitMB(0d)
+      //              .dataOutput(getOnHeapReaderWriter(pageBits))
+      //              .setVersion(fstVersion)
+      //              .build();
       // if (DEBUG) {
       //  System.out.println("  compile index for prefix=" + prefix);
       // }
       // indexBuilder.DEBUG = false;
       final byte[] bytes = scratchBytes.toArrayCopy();
       assert bytes.length > 0;
-      fstCompiler.add(Util.toIntsRef(prefix, scratchIntsRef), new BytesRef(bytes, 0, bytes.length));
+      //      fstCompiler.add(Util.toIntsRef(prefix, scratchIntsRef), new BytesRef(bytes, 0,
+      // bytes.length));
       Trie trie = new Trie(prefix, new BytesRef(bytes, 0, bytes.length));
       scratchBytes.reset();
 
       // Copy over index for all sub-blocks
       for (PendingBlock block : blocks) {
-        if (block.subIndices != null) {
-          for (FST<BytesRef> subIndex : block.subIndices) {
-            append(fstCompiler, subIndex, scratchIntsRef);
-          }
-          block.subIndices = null;
-        }
+        //        if (block.subIndices != null) {
+        //          for (FST<BytesRef> subIndex : block.subIndices) {
+        //            append(fstCompiler, subIndex, scratchIntsRef);
+        //          }
+        //          block.subIndices = null;
+        //        }
         if (block.subIndicesTrie != null) {
           for (Trie subIndex : block.subIndicesTrie) {
             trie.putAll(subIndex);
@@ -555,10 +547,10 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         }
       }
 
-      index = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
+      //      index = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
       indexTrie = trie;
 
-      assert subIndices == null;
+      //      assert subIndices == null;
 
       /*
       Writer w = new OutputStreamWriter(new FileOutputStream("out.dot"));
@@ -571,38 +563,40 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     // TODO: maybe we could add bulk-add method to
     // Builder?  Takes FST and unions it w/ current
     // FST.
-    private void append(
-        FSTCompiler<BytesRef> fstCompiler, FST<BytesRef> subIndex, IntsRefBuilder scratchIntsRef)
-        throws IOException {
-      final BytesRefFSTEnum<BytesRef> subIndexEnum = new BytesRefFSTEnum<>(subIndex);
-      BytesRefFSTEnum.InputOutput<BytesRef> indexEnt;
-      while ((indexEnt = subIndexEnum.next()) != null) {
-        // if (DEBUG) {
-        //  System.out.println("      add sub=" + indexEnt.input + " " + indexEnt.input + " output="
-        // + indexEnt.output);
-        // }
-        fstCompiler.add(Util.toIntsRef(indexEnt.input, scratchIntsRef), indexEnt.output);
-      }
-    }
-  }
+    //    private void append(
+    //        FSTCompiler<BytesRef> fstCompiler, FST<BytesRef> subIndex, IntsRefBuilder
+    // scratchIntsRef)
+    //        throws IOException {
+    //      final BytesRefFSTEnum<BytesRef> subIndexEnum = new BytesRefFSTEnum<>(subIndex);
+    //      BytesRefFSTEnum.InputOutput<BytesRef> indexEnt;
+    //      while ((indexEnt = subIndexEnum.next()) != null) {
+    //        // if (DEBUG) {
+    //        //  System.out.println("      add sub=" + indexEnt.input + " " + indexEnt.input + "
+    // output="
+    //        // + indexEnt.output);
+    //        // }
+    //        fstCompiler.add(Util.toIntsRef(indexEnt.input, scratchIntsRef), indexEnt.output);
+    //      }
+    //    }
+    //  }
 
-  private void assertEquals(FST<BytesRef> fst, Trie trie) throws IOException {
-    final BytesRefFSTEnum<BytesRef> subIndexEnum = new BytesRefFSTEnum<>(fst);
-    trie.forEach(
-        (k, v) -> {
-          try {
-            BytesRefFSTEnum.InputOutput<BytesRef> indexEnt = subIndexEnum.next();
-            boolean equal = indexEnt.input.equals(k) && indexEnt.output.equals(v);
-            if (equal == false) {
-              throw new IllegalStateException(" trie error !!");
-            }
-          } catch (Exception e) {
-            throw new RuntimeException();
-          }
-        });
-    if (subIndexEnum.next() != null) {
-      throw new IllegalStateException(" trie error !!");
-    }
+    //  private void assertEquals(FST<BytesRef> fst, Trie trie) throws IOException {
+    //    final BytesRefFSTEnum<BytesRef> subIndexEnum = new BytesRefFSTEnum<>(fst);
+    //    trie.forEach(
+    //        (k, v) -> {
+    //          try {
+    //            BytesRefFSTEnum.InputOutput<BytesRef> indexEnt = subIndexEnum.next();
+    //            boolean equal = indexEnt.input.equals(k) && indexEnt.output.equals(v);
+    //            if (equal == false) {
+    //              throw new IllegalStateException(" trie error !!");
+    //            }
+    //          } catch (Exception e) {
+    //            throw new RuntimeException();
+    //          }
+    //        });
+    //    if (subIndexEnum.next() != null) {
+    //      throw new IllegalStateException(" trie error !!");
+    //    }
   }
 
   private final ByteBuffersDataOutput scratchBytes = ByteBuffersDataOutput.newResettableInstance();
@@ -860,14 +854,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       // System.out.println("  isLeaf=" + isLeafBlock);
 
-      final List<FST<BytesRef>> subIndices;
+      //      final List<FST<BytesRef>> subIndices;
       final List<Trie> subIndicesTrie;
 
       boolean absolute = true;
 
       if (isLeafBlock) {
         // Block contains only ordinary terms:
-        subIndices = null;
+        //        subIndices = null;
         subIndicesTrie = null;
         StatsWriter statsWriter =
             new StatsWriter(this.statsWriter, fieldInfo.getIndexOptions() != IndexOptions.DOCS);
@@ -903,7 +897,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         statsWriter.finish();
       } else {
         // Block has at least one prefix term or a sub block:
-        subIndices = new ArrayList<>();
+        //        subIndices = new ArrayList<>();
         subIndicesTrie = new ArrayList<>();
         StatsWriter statsWriter =
             new StatsWriter(this.statsWriter, fieldInfo.getIndexOptions() != IndexOptions.DOCS);
@@ -976,13 +970,13 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             assert block.fp < startFP;
 
             suffixLengthsWriter.writeVLong(startFP - block.fp);
-            subIndices.add(block.index);
+            //            subIndices.add(block.index);
             subIndicesTrie.add(block.indexTrie);
           }
         }
         statsWriter.finish();
 
-        assert subIndices.size() != 0;
+        //        assert subIndices.size() != 0;
         assert subIndicesTrie.size() != 0;
       }
 
@@ -1072,7 +1066,13 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       }
 
       return new PendingBlock(
-          prefix, startFP, hasTerms, isFloor, floorLeadLabel, subIndices, subIndicesTrie);
+          prefix,
+          startFP,
+          hasTerms,
+          isFloor,
+          floorLeadLabel,
+          //          subIndices,
+          subIndicesTrie);
     }
 
     TermsWriter(FieldInfo fieldInfo) {
@@ -1202,7 +1202,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
         metaOut.writeVLong(indexOut.getFilePointer());
         // Write FST to index
-        assertEquals(root.index, root.indexTrie);
+        //        assertEquals(root.index, root.indexTrie);
         //        root.index.save(metaOut, indexOut);
         root.indexTrie.save(metaOut, indexOut);
 
