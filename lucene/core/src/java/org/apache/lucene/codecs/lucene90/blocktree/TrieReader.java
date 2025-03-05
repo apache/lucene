@@ -1,7 +1,10 @@
 package org.apache.lucene.codecs.lucene90.blocktree;
 
-import java.io.IOException;
+import static org.apache.lucene.codecs.lucene90.blocktree.Trie.PositionStrategy.ARRAY;
+import static org.apache.lucene.codecs.lucene90.blocktree.Trie.PositionStrategy.BITS;
+import static org.apache.lucene.codecs.lucene90.blocktree.Trie.PositionStrategy.REVERSE_ARRAY;
 
+import java.io.IOException;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -19,6 +22,7 @@ class TrieReader {
     private int positionBytes;
     private int minChildrenLabel;
     private int childrenCodesBytes;
+    private long minChildrenCode;
 
     int label;
 
@@ -55,17 +59,22 @@ class TrieReader {
     node.isLeaf = false;
     long fp = code >>> 1;
     final int sign = nodesIn.readInt(fp);
-    final int bytes = sign >>> 16;
-    node.childrenCodesBytes = bytes & 0x07;
+    final int header = sign >>> 16;
+    node.childrenCodesBytes = header & 0x07;
     node.childrenStrategy = (sign >>> 14) & 0x03;
     node.positionBytes = (sign >>> 8) & 0x3F;
     node.minChildrenLabel = sign & 0xFF;
     fp += META_BYTES;
-    final int shift = bytes & 0x38;
-    if (shift != 0) {
-      long mask = (1L << shift) - 1L;
+
+    final int fpBits = header & 0x38;
+    final long mask = (1L << fpBits) - 1L;
+    node.minChildrenCode = nodesIn.readLong(fp) & mask;
+    final int fpBytes = fpBits >>> 3;
+    fp += fpBytes;
+
+    if ((header & (1 << 6)) != 0) {
       node.outputFp = nodesIn.readLong(fp) & mask;
-      node.positionFp = fp + (shift >> 3);
+      node.positionFp = fp + fpBytes;
     } else {
       node.outputFp = NO_OUTPUT;
       node.positionFp = fp;
@@ -89,17 +98,14 @@ class TrieReader {
     } else {
       int strategy = parent.childrenStrategy;
       // Use if else here - avoiding virtual call seems help performance
-      if (strategy == 0) {
+      if (strategy == BITS.priority) {
+        position = BITS.lookup(targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
+      } else if (strategy == ARRAY.priority) {
         position =
-            Trie.PositionStrategy.BITS.lookup(
-                targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
-      } else if (strategy == 2) {
+            ARRAY.lookup(targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
+      } else if (strategy == REVERSE_ARRAY.priority) {
         position =
-            Trie.PositionStrategy.ARRAY.lookup(
-                targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
-      } else if (strategy == 1){
-        position =
-            Trie.PositionStrategy.REVERSE_ARRAY.lookup(
+            REVERSE_ARRAY.lookup(
                 targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
       } else {
         throw new CorruptIndexException("unknown strategy: " + strategy, "trie nodesIn");
@@ -113,7 +119,7 @@ class TrieReader {
     final long codeBytes = parent.childrenCodesBytes;
     final long pos = positionBytesStartFp + positionBytes + codeBytes * position;
     final long mask = (1L << (codeBytes << 3)) - 1L;
-    final long code = nodesIn.readLong(pos) & mask;
+    final long code = (nodesIn.readLong(pos) & mask) + parent.minChildrenCode;
     child.label = targetLabel;
     load(child, code);
 

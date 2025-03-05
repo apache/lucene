@@ -114,12 +114,15 @@ class Trie {
     }
 
     long[] codeBuffer = new long[childrenNum];
-    long maxCode = 0;
+    long maxCode = 0, minCode = Long.MAX_VALUE;
     for (int i = 0; i < childrenNum; i++) {
       Node child = node.children.get(i);
       codeBuffer[i] = saveArcs(child, index, outputsBuffer, startFP);
       maxCode = Math.max(maxCode, codeBuffer[i]);
+      minCode = Math.min(minCode, codeBuffer[i]);
     }
+
+    final long fp = index.getFilePointer() - startFP;
 
     final int minLabel = node.children.getFirst().label;
     final int maxLabel = node.children.getLast().label;
@@ -137,8 +140,6 @@ class Trie {
       }
     }
 
-    final long fp = index.getFilePointer() - startFP;
-
     assert positionStrategy != null;
     assert positionBytes >= 0 && positionBytes <= 32;
 
@@ -148,18 +149,16 @@ class Trie {
             | minLabel; // 8bit
     index.writeShort((short) sign);
 
-    int codeBytes = Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(maxCode) >>> 3));
-
+    int codeBytes = bytesRequired(maxCode - minCode);
+    int fpBytes = bytesRequired(Math.max(minCode, outputsBuffer.size()));
+    int header = (fpBytes << 3) | codeBytes;
     if (node.output == null) {
-      index.writeByte((byte) codeBytes);
+      index.writeByte((byte) header);
+      writeLongNBytes(minCode, fpBytes, index);
     } else {
-      long outputFp = outputsBuffer.size();
-      int outputFpBytes = Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(outputFp) >>> 3));
-      index.writeByte((byte) ((outputFpBytes << 3) | codeBytes));
-      for (int j = 0; j < outputFpBytes; j++) {
-        index.writeByte((byte) outputFp);
-        outputFp >>= 8;
-      }
+      index.writeByte((byte) ((1 << 6) | header));
+      writeLongNBytes(minCode, fpBytes, index);
+      writeLongNBytes(outputsBuffer.size(), fpBytes, index);
       outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
     }
 
@@ -173,102 +172,25 @@ class Trie {
             + (index.getFilePointer() - positionStartFp);
 
     for (int i = 0; i < childrenNum; i++) {
-      long code = codeBuffer[i];
-      for (int j = 0; j < codeBytes; j++) {
-        index.writeByte((byte) code);
-        code >>= 8;
-      }
+      writeLongNBytes(codeBuffer[i] - minCode, codeBytes, index);
     }
-
     return fp << 1;
   }
 
+  private static int bytesRequired(long v) {
+    return Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(v) >>> 3));
+  }
+
+  private static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
+    assert bytesRequired(v) <= n;
+    for (int j = 0; j < n; j++) {
+      out.writeByte((byte) v);
+      v >>= 8;
+    }
+  }
+
   enum PositionStrategy {
-    ARRAY(2) {
-      @Override
-      int positionBytes(int minLabel, int maxLabel, int labelCnt) {
-        return labelCnt - 1; // min label saved
-      }
-
-      @Override
-      void save(List<Node> children, int labelCnt, int positionBytes, IndexOutput output)
-          throws IOException {
-        for (int i = 1; i < labelCnt; i++) {
-          output.writeByte((byte) children.get(i).label);
-        }
-      }
-
-      @Override
-      int lookup(
-          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
-          throws IOException {
-        int low = 0;
-        int high = positionBytes - 1;
-        while (low <= high) {
-          int mid = (low + high) >>> 1;
-          int midLabel = in.readByte(offset + mid) & 0xFF;
-          if (midLabel < targetLabel) {
-            low = mid + 1;
-          } else if (midLabel > targetLabel) {
-            high = mid - 1;
-          } else {
-            return mid + 1; // min label not included, plus 1
-          }
-        }
-        return -1;
-      }
-    },
-
-    REVERSE_ARRAY(1) {
-      @Override
-      int positionBytes(int minLabel, int maxLabel, int labelCnt) {
-        int byteDistance = maxLabel - minLabel + 1;
-        return byteDistance - labelCnt + 1;
-      }
-
-      @Override
-      void save(List<Node> children, int labelCnt, int positionBytes, IndexOutput output)
-          throws IOException {
-        output.writeByte((byte) children.getLast().label);
-        int lastLabel = children.getFirst().label;
-        for (int i = 1; i < labelCnt; i++) {
-          Node node = children.get(i);
-          while (++lastLabel < node.label) {
-            output.writeByte((byte) lastLabel);
-          }
-        }
-      }
-
-      @Override
-      int lookup(
-          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
-          throws IOException {
-        int maxLabel = in.readByte(offset++) & 0xFF;
-        if (targetLabel >= maxLabel) {
-          return targetLabel == maxLabel ? maxLabel - minLabel - positionBytes + 1 : -1;
-        }
-        if (positionBytes == 1) {
-          return targetLabel - minLabel;
-        }
-
-        int low = 0;
-        int high = positionBytes - 2;
-        while (low <= high) {
-          int mid = (low + high) >>> 1;
-          int midLabel = in.readByte(offset + mid) & 0xFF;
-          if (midLabel < targetLabel) {
-            low = mid + 1;
-          } else if (midLabel > targetLabel) {
-            high = mid - 1;
-          } else {
-            return -1;
-          }
-        }
-        return targetLabel - minLabel - low;
-      }
-    },
-
-    BITS(0) {
+    BITS(2) {
       @Override
       int positionBytes(int minLabel, int maxLabel, int labelCnt) {
         int byteDistance = maxLabel - minLabel + 1;
@@ -321,6 +243,90 @@ class Trie {
         }
         pos += Long.bitCount(word & (mask - 1));
         return pos;
+      }
+    },
+    ARRAY(1) {
+      @Override
+      int positionBytes(int minLabel, int maxLabel, int labelCnt) {
+        return labelCnt - 1; // min label saved
+      }
+
+      @Override
+      void save(List<Node> children, int labelCnt, int positionBytes, IndexOutput output)
+          throws IOException {
+        for (int i = 1; i < labelCnt; i++) {
+          output.writeByte((byte) children.get(i).label);
+        }
+      }
+
+      @Override
+      int lookup(
+          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+          throws IOException {
+        int low = 0;
+        int high = positionBytes - 1;
+        while (low <= high) {
+          int mid = (low + high) >>> 1;
+          int midLabel = in.readByte(offset + mid) & 0xFF;
+          if (midLabel < targetLabel) {
+            low = mid + 1;
+          } else if (midLabel > targetLabel) {
+            high = mid - 1;
+          } else {
+            return mid + 1; // min label not included, plus 1
+          }
+        }
+        return -1;
+      }
+    },
+
+    REVERSE_ARRAY(0) {
+
+      @Override
+      int positionBytes(int minLabel, int maxLabel, int labelCnt) {
+        int byteDistance = maxLabel - minLabel + 1;
+        return byteDistance - labelCnt + 1;
+      }
+
+      @Override
+      void save(List<Node> children, int labelCnt, int positionBytes, IndexOutput output)
+          throws IOException {
+        output.writeByte((byte) children.getLast().label);
+        int lastLabel = children.getFirst().label;
+        for (int i = 1; i < labelCnt; i++) {
+          Node node = children.get(i);
+          while (++lastLabel < node.label) {
+            output.writeByte((byte) lastLabel);
+          }
+        }
+      }
+
+      @Override
+      int lookup(
+          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+          throws IOException {
+        int maxLabel = in.readByte(offset++) & 0xFF;
+        if (targetLabel >= maxLabel) {
+          return targetLabel == maxLabel ? maxLabel - minLabel - positionBytes + 1 : -1;
+        }
+        if (positionBytes == 1) {
+          return targetLabel - minLabel;
+        }
+
+        int low = 0;
+        int high = positionBytes - 2;
+        while (low <= high) {
+          int mid = (low + high) >>> 1;
+          int midLabel = in.readByte(offset + mid) & 0xFF;
+          if (midLabel < targetLabel) {
+            low = mid + 1;
+          } else if (midLabel > targetLabel) {
+            high = mid - 1;
+          } else {
+            return -1;
+          }
+        }
+        return targetLabel - minLabel - low;
       }
     };
 
