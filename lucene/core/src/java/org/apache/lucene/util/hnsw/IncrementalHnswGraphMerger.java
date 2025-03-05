@@ -66,9 +66,8 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   }
 
   /**
-   * Adds a reader to the graph merger if it meets the following criteria: 1. Does not contain any
-   * deleted docs 2. Is a HnswGraphProvider 3. Has the most docs of any previous reader that met the
-   * above criteria
+   * Adds a reader to the graph merger if it meets the following criteria: 1. does not contain any
+   * deleted docs 2. is a HnswGraphProvider
    */
   @Override
   public IncrementalHnswGraphMerger addReader(
@@ -104,8 +103,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   }
 
   /**
-   * Builds a new HnswGraphBuilder using the biggest graph from the merge state as a starting point.
-   * If no valid readers were added to the merge state, a new graph is created.
+   * Builds a new HnswGraphBuilder
    *
    * @param mergedVectorValues vector values in the merged segment
    * @param maxOrd max num of vectors that will be merged into the graph
@@ -144,10 +142,10 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
 
   protected final int[][] getNewOrdMapping(
       KnnVectorValues mergedVectorValues, BitSet initializedNodes) throws IOException {
-    final int counts = graphReaders.size();
-    IntIntHashMap[] newDocIdToOldOrdinals = new IntIntHashMap[counts];
-    final int[][] oldToNewOrdinalMap = new int[counts][];
-    for (int i = 0; i < counts; i++) {
+    final int numGraphs = graphReaders.size();
+    IntIntHashMap[] newDocIdToOldOrdinals = new IntIntHashMap[numGraphs];
+    final int[][] oldToNewOrdinalMap = new int[numGraphs][];
+    for (int i = 0; i < numGraphs; i++) {
       KnnVectorValues.DocIndexIterator vectorsIter = null;
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
@@ -172,8 +170,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         docId < NO_MORE_DOCS;
         docId = mergedVectorIterator.nextDoc()) {
       int newOrd = mergedVectorIterator.index();
-
-      for (int i = 0; i < counts; i++) {
+      for (int i = 0; i < numGraphs; i++) {
         int oldOrd = newDocIdToOldOrdinals[i].getOrDefault(docId, -1);
         if (oldOrd != -1) {
           oldToNewOrdinalMap[i][oldOrd] = newOrd;
@@ -193,59 +190,6 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
     HnswBuilder builder = createBuilder(mergedVectorValues, maxOrd);
     builder.setInfoStream(infoStream);
     return builder.build(maxOrd);
-  }
-
-  /**
-   * Creates a new mapping from old ordinals to new ordinals and returns the total number of vectors
-   * in the newly merged segment.
-   *
-   * @param mergedVectorValues vector values in the merged segment
-   * @param initializedNodes track what nodes have been initialized
-   * @return the mapping from old ordinals to new ordinals
-   * @throws IOException If an error occurs while reading from the merge state
-   */
-  protected static final int[] getNewOrdMapping(
-      FieldInfo fieldInfo,
-      KnnVectorsReader initReader,
-      MergeState.DocMap initDocMap,
-      int initGraphSize,
-      KnnVectorValues mergedVectorValues,
-      BitSet initializedNodes)
-      throws IOException {
-    KnnVectorValues.DocIndexIterator initializerIterator = null;
-
-    switch (fieldInfo.getVectorEncoding()) {
-      case BYTE -> initializerIterator = initReader.getByteVectorValues(fieldInfo.name).iterator();
-      case FLOAT32 ->
-          initializerIterator = initReader.getFloatVectorValues(fieldInfo.name).iterator();
-    }
-
-    IntIntHashMap newIdToOldOrdinal = new IntIntHashMap(initGraphSize);
-    int maxNewDocID = -1;
-    for (int docId = initializerIterator.nextDoc();
-        docId != NO_MORE_DOCS;
-        docId = initializerIterator.nextDoc()) {
-      int newId = initDocMap.get(docId);
-      maxNewDocID = Math.max(newId, maxNewDocID);
-      newIdToOldOrdinal.put(newId, initializerIterator.index());
-    }
-
-    if (maxNewDocID == -1) {
-      return new int[0];
-    }
-    final int[] oldToNewOrdinalMap = new int[initGraphSize];
-    KnnVectorValues.DocIndexIterator mergedVectorIterator = mergedVectorValues.iterator();
-    for (int newDocId = mergedVectorIterator.nextDoc();
-        newDocId <= maxNewDocID;
-        newDocId = mergedVectorIterator.nextDoc()) {
-      int hashDocIndex = newIdToOldOrdinal.indexOf(newDocId);
-      if (newIdToOldOrdinal.indexExists(hashDocIndex)) {
-        int newOrd = mergedVectorIterator.index();
-        initializedNodes.set(newOrd);
-        oldToNewOrdinalMap[newIdToOldOrdinal.indexGet(hashDocIndex)] = newOrd;
-      }
-    }
-    return oldToNewOrdinalMap;
   }
 
   private static boolean hasDeletes(Bits liveDocs) {

@@ -21,13 +21,11 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.BitSet;
 
 /**
- * A graph builder used during segments' merging.
+ * A graph builder that is used during segments' merging.
  *
  * <p>This builder uses a smart algorithm to merge multiple graphs into a single graph. The
  * algorithm is based on the idea if we know where we want to insert a node, we have a good idea of
@@ -42,6 +40,37 @@ import org.apache.lucene.util.BitSet;
  *
  * <p>We expect the size of join set `j` to be small, 1/5-1/2 of size gS. And for the rest of the
  * nodes of gS, we expect savings by not doing extra search in gL.
+ *
+ * @lucene.experimental
+ */
+
+/**
+ * A graph builder that is used during segments' merging.
+ *
+ * <p>This builder uses a smart algorithm to merge multiple graphs into a single graph. The
+ * algorithm is based on the idea that if we know where we want to insert a node, we have a good
+ * idea of where we want to insert its neighbors.
+ *
+ * <p>The algorithm is based on the following steps:
+ *
+ * <ul>
+ *   <li>Get all graphs that don't have deletions and sort them by size desc.
+ *   <li>Copy the largest graph to the new graph (gL).
+ *   <li>For each remaining small graph (gS):
+ *       <ul>
+ *         <li>Find the nodes that best cover gS: join set `j`. These nodes will be inserted into gL
+ *             as usual: by searching gL to find the best candidates `w` to which connect the nodes.
+ *         <li>For each remaining node in gS:
+ *             <ul>
+ *               <li>We provide eps to search in gL. We form `eps` by the union of the node's
+ *                   neighbors in gS and the node's neighbors' neighbors in gL. We also limit
+ *                   beamWidth (efConstruction to M*2)
+ *             </ul>
+ *       </ul>
+ * </ul>
+ *
+ * <p>We expect the size of join set `j` to be small, around 1/5 to 1/2 of the size of gS. For the
+ * rest of the nodes in gS, we expect savings by performing lighter searches in gL.
  *
  * @lucene.experimental
  */
@@ -71,8 +100,11 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
    * @param scorerSupplier the scorer to use for vectors
    * @param beamWidth the number of nodes to explore in the search
    * @param seed the seed for the random number generator
+   * @param graphs the graphs to merge
+   * @param ordMaps the ordinal maps for the graphs
    * @param totalNumberOfVectors the total number of vectors in the new graph, this should include
    *     all vectors expected to be added to the graph in the future
+   * @param initializedNodes the nodes will be initialized through the merging
    * @return a new HnswGraphBuilder that is initialized with the provided HnswGraph
    * @throws IOException when reading the graph fails
    */
@@ -114,6 +146,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       updateGraph(graphs[i], ordMaps[i]);
     }
 
+    // TODO: optimize to iterate only over unset bits in initializedNodes
     if (initializedNodes != null) {
       for (int node = 0; node < maxOrd; node++) {
         if (initializedNodes.get(node) == false) {
@@ -125,22 +158,10 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     return getCompletedGraph();
   }
 
-  /** Merge the smaller graph into the larger graph. */
+  /** Merge the smaller graph into the current larger graph. */
   private void updateGraph(HnswGraph gS, int[] ordMapS) throws IOException {
     int size = gS.size();
-    long start = System.nanoTime();
     Set<Integer> j = UpdateGraphsUtils.computeJoinSet(gS);
-    if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      long now = System.nanoTime();
-      infoStream.message(
-          HNSW_COMPONENT,
-          String.format(
-              Locale.ROOT,
-              "built join set of size [%d] from graph size of [%d] in [%d] ms",
-              j.size(),
-              gS.size(),
-              TimeUnit.NANOSECONDS.toMillis(now - start)));
-    }
 
     // for nodes that in the join set, add them directly to the graph
     for (int node : j) {
@@ -148,31 +169,30 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
     }
 
     // for each node outside of j set:
-    // form the candidate set for the node
+    // form the entry points set for the node
     // by joining the node's neighbours in gS with
     // the node's neighbours' neighbours in gL
     for (int u = 0; u < size; u++) {
       if (j.contains(u)) {
         continue;
       }
-      int newu = ordMapS[u];
-      Set<Integer> w = new HashSet<>();
+      Set<Integer> eps = new HashSet<>();
       gS.seek(0, u);
       for (int v = gS.nextNeighbor(); v != NO_MORE_DOCS; v = gS.nextNeighbor()) {
         // if u's neighbour v is in the join set, or already added to gL (v < u),
         // then we add v's neighbours from gL to the candidate list
         if (v < u || j.contains(v)) {
           int newv = ordMapS[v];
-          w.add(newv);
+          eps.add(newv);
 
           hnsw.seek(0, newv);
           int friendOrd;
           while ((friendOrd = hnsw.nextNeighbor()) != NO_MORE_DOCS) {
-            w.add(friendOrd);
+            eps.add(friendOrd);
           }
         }
       }
-      addGraphNodeWithCandidates(newu, w);
+      addGraphNodeWithEps(ordMapS[u], eps);
     }
   }
 }

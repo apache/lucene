@@ -321,7 +321,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     addGraphNodeInternal(node, scorer, null);
   }
 
-  public void addGraphNodeWithCandidates(int node, Set<Integer> eps0) throws IOException {
+  public void addGraphNodeWithEps(int node, Set<Integer> eps0) throws IOException {
     UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     scorer.setScoringOrdinal(node);
     addGraphNodeInternal(node, scorer, eps0);

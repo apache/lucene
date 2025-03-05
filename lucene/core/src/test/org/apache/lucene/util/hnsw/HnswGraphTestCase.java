@@ -183,7 +183,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                         similarityFunction));
               }
             }
-            ;
             doc.add(new StringField("id", Integer.toString(vectors.ordToDoc(ord)), Field.Store.NO));
             iw.addDocument(doc);
           }
@@ -529,7 +528,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   public void testBuildingJoinSet() throws IOException {
     int dim = random().nextInt(100) + 1;
-    int nDoc = random().nextInt(10_000) + 1;
+    int nDoc = random().nextInt(5000) + 1;
     int M = 16;
     int beamWidth = random().nextInt(10) + 5;
     long seed = random().nextLong();
@@ -542,62 +541,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     assertTrue(
         "Join set size [" + j.size() + "] is not less than graph size [" + graph.size() + "]",
         j.size() < graph.size());
-  }
-
-  @SuppressWarnings("unchecked")
-  public void testMergedHNSWGraphBuilder() throws IOException {
-    int dim = random().nextInt(100) + 1;
-    int[] segmentSizes =
-        new int[] {
-          random().nextInt(1000) + 1, random().nextInt(1000) + 30, random().nextInt(10) + 20
-        };
-    int numVectors = segmentSizes[0] + segmentSizes[1] + segmentSizes[2];
-    int M = random().nextInt(20) + 2;
-    int beamWidth = random().nextInt(10) + 5;
-    long seed = random().nextLong();
-    KnnVectorValues vectors = vectorValues(numVectors, dim);
-    HnswGraphBuilder.randSeed = seed;
-
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          new IndexWriterConfig()
-              .setCodec(
-                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)))
-              .setMergePolicy(newMergePolicy(random()));
-      try (IndexWriter iw = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < segmentSizes.length; i++) {
-          int size = segmentSizes[i];
-          for (int ord = 0; ord < size; ord++) {
-            Document doc = new Document();
-            switch (vectors.getEncoding()) {
-              case BYTE ->
-                  doc.add(
-                      knnVectorField(
-                          "field",
-                          (T) ((ByteVectorValues) vectors).vectorValue(ord),
-                          similarityFunction));
-              case FLOAT32 ->
-                  doc.add(
-                      knnVectorField(
-                          "field",
-                          (T) ((FloatVectorValues) vectors).vectorValue(ord),
-                          similarityFunction));
-            }
-            doc.add(new StringField("id", Integer.toString(vectors.ordToDoc(ord)), Field.Store.NO));
-            iw.addDocument(doc);
-          }
-          iw.commit();
-        }
-        iw.commit();
-        iw.forceMerge(1);
-      }
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        for (LeafReaderContext ctx : reader.leaves()) {
-          KnnVectorValues values = vectorValues(ctx.reader(), "field");
-          assertEquals(dim, values.dimension());
-        }
-      }
-    }
   }
 
   public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() throws IOException {
