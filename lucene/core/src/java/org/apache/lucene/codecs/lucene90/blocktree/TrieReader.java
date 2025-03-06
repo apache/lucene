@@ -13,6 +13,8 @@ class TrieReader {
 
   private static final long META_BYTES = 3L;
   private static final long NO_OUTPUT = -1;
+  static final int HAS_OUTPUT = 1 << 6;
+  static final int SINGLE_CHILD = 1 << 7;
 
   static class Node {
     private long positionFp;
@@ -58,26 +60,49 @@ class TrieReader {
 
     node.isLeaf = false;
     long fp = code >>> 1;
-    final int sign = nodesIn.readInt(fp);
-    final int header = sign >>> 16;
+    final int header = nodesIn.readInt(fp);
+    if ((header & SINGLE_CHILD) != 0) {
+      node.childrenCodesBytes = header & 0x07;
+      node.childrenStrategy = ARRAY.priority;
+      node.positionBytes = 0;
+      node.minChildrenLabel = (header >>> 8) & 0xFF;
+      node.minChildrenCode = 0L;
+      fp += 2;
+      if ((header & HAS_OUTPUT) != 0) {
+        int fpBits = header & 0x38;
+        long mask = (1L << fpBits) - 1L;
+        node.outputFp = nodesIn.readLong(fp) & mask;
+        node.positionFp = fp + (fpBits >> 3);
+      } else {
+        node.outputFp = NO_OUTPUT;
+        node.positionFp = fp;
+      }
+      return;
+    }
+
     node.childrenCodesBytes = header & 0x07;
-    node.childrenStrategy = (sign >>> 14) & 0x03;
-    node.positionBytes = (sign >>> 8) & 0x3F;
-    node.minChildrenLabel = sign & 0xFF;
-    fp += META_BYTES;
+    node.childrenStrategy = (header >>> 22) & 0x03;
+    node.positionBytes = (header >>> 16) & 0x3F;
+    node.minChildrenLabel = (header >>> 8) & 0xFF;
+    fp += 3;
 
     final int fpBits = header & 0x38;
-    final long mask = (1L << fpBits) - 1L;
-    node.minChildrenCode = nodesIn.readLong(fp) & mask;
-    final int fpBytes = fpBits >>> 3;
-    fp += fpBytes;
-
-    if ((header & (1 << 6)) != 0) {
-      node.outputFp = nodesIn.readLong(fp) & mask;
-      node.positionFp = fp + fpBytes;
-    } else {
+    if (fpBits == 0) {
+      node.minChildrenCode = 0L;
       node.outputFp = NO_OUTPUT;
       node.positionFp = fp;
+    } else {
+      long mask = (1L << fpBits) - 1L;
+      node.minChildrenCode = nodesIn.readLong(fp) & mask;
+      int fpBytes = fpBits >>> 3;
+      fp += fpBytes;
+      if ((header & HAS_OUTPUT) != 0) {
+        node.outputFp = nodesIn.readLong(fp) & mask;
+        node.positionFp = fp + fpBytes;
+      } else {
+        node.outputFp = NO_OUTPUT;
+        node.positionFp = fp;
+      }
     }
   }
 

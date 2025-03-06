@@ -124,6 +124,23 @@ class Trie {
 
     final long fp = index.getFilePointer() - startFP;
 
+    if (childrenNum == 1) {
+      int codeBytes = bytesRequired(codeBuffer[0]);
+      int fpBytes = bytesRequired(outputsBuffer.size());
+      int header = TrieReader.SINGLE_CHILD | (fpBytes << 3) | codeBytes;
+      if (node.output == null) {
+        index.writeByte((byte) header);
+        index.writeByte((byte) node.children.getFirst().label);
+      } else {
+        index.writeByte((byte) (TrieReader.HAS_OUTPUT | header));
+        index.writeByte((byte) node.children.getFirst().label);
+        writeLongNBytes(outputsBuffer.size(), fpBytes, index);
+        outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
+      }
+      writeLongNBytes(codeBuffer[0], codeBytes, index);
+      return fp << 1;
+    }
+
     final int minLabel = node.children.getFirst().label;
     final int maxLabel = node.children.getLast().label;
     PositionStrategy positionStrategy = null;
@@ -141,25 +158,28 @@ class Trie {
     }
 
     assert positionStrategy != null;
-    assert positionBytes >= 0 && positionBytes <= 32;
+    assert positionBytes > 0 && positionBytes <= 32;
 
-    int sign =
-        (positionStrategy.priority << 14) // 2bit
-            | (positionBytes << 8) // 6 bit
-            | minLabel; // 8bit
-    index.writeShort((short) sign);
-
-    int codeBytes = bytesRequired(maxCode - minCode);
-    if (codeBytes == bytesRequired(maxCode)) {
+    if (bytesRequired(maxCode - minCode) == bytesRequired(maxCode)) {
       minCode = 0L;
     }
+    int codeBytes = bytesRequired(maxCode - minCode);
     int fpBytes = bytesRequired(Math.max(minCode, outputsBuffer.size()));
-    int header = (fpBytes << 3) | codeBytes;
+    if (minCode == 0L && node.output == null) {
+      fpBytes = 0;
+    }
+    int header =
+        (positionStrategy.priority << 22) // 2bit
+            | (positionBytes << 16) // 6bit
+            | (minLabel << 8) // 8bit
+            | (fpBytes << 3) // 3bit
+            | codeBytes; // 3bit
+
     if (node.output == null) {
-      index.writeByte((byte) header);
+      writeLongNBytes(header, 3, index);
       writeLongNBytes(minCode, fpBytes, index);
     } else {
-      index.writeByte((byte) ((1 << 6) | header));
+      writeLongNBytes(header | TrieReader.HAS_OUTPUT, 3, index);
       writeLongNBytes(minCode, fpBytes, index);
       writeLongNBytes(outputsBuffer.size(), fpBytes, index);
       outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
@@ -185,8 +205,7 @@ class Trie {
   }
 
   private static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
-    assert bytesRequired(v) <= n;
-    for (int j = 0; j < n; j++) {
+    for (int i = 0; i < n; i++) {
       out.writeByte((byte) v);
       v >>= 8;
     }
