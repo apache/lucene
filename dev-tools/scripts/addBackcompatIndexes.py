@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -34,7 +33,7 @@ import urllib.request
 import scriptutil
 
 
-def create_and_add_index(source, indextype, index_version, current_version, temp_dir):
+def create_and_add_index(source: str, indextype: str, index_version: scriptutil.Version, current_version: scriptutil.Version, temp_dir: str):
   if not current_version.is_back_compat_with(index_version):
     prefix = "unsupported"
   else:
@@ -79,7 +78,7 @@ def create_and_add_index(source, indextype, index_version, current_version, temp
   print("done")
 
 
-def update_backcompat_tests(index_version, current_version):
+def update_backcompat_tests(index_version: scriptutil.Version, current_version: scriptutil.Version):
   print("  adding new indexes to backcompat tests...", end="", flush=True)
   module = "lucene/backward-codecs"
 
@@ -91,12 +90,12 @@ def update_backcompat_tests(index_version, current_version):
 
   strip_dash_suffix_re = re.compile(r"-.*")
 
-  def find_version(x):
+  def find_version(x: str):
     x = x.strip()
     x = re.sub(strip_dash_suffix_re, "", x)  # remove the -suffix if any
     return scriptutil.Version.parse(x)
 
-  def edit(buffer, match, line):
+  def edit(buffer: list[str], _match: re.Match[str], line: str):
     v = find_version(line)
     changed = False
     if v.on_or_after(index_version):
@@ -106,7 +105,7 @@ def update_backcompat_tests(index_version, current_version):
     buffer.append(line)
     return changed
 
-  def append(buffer, changed):
+  def append(buffer: list[str], changed: bool):
     if changed:
       return changed
     if not buffer[len(buffer) - 1].endswith("\n"):
@@ -124,7 +123,7 @@ def check_backcompat_tests():
   print("ok")
 
 
-def download_from_cdn(version, remotename, localname):
+def download_from_cdn(version: scriptutil.Version, remotename: str, localname: str):
   url = "http://dlcdn.apache.org/lucene/java/%s/%s" % (version, remotename)
   try:
     urllib.request.urlretrieve(url, localname)
@@ -135,7 +134,7 @@ def download_from_cdn(version, remotename, localname):
     raise e
 
 
-def download_from_archives(version, remotename, localname):
+def download_from_archives(version: scriptutil.Version, remotename: str, localname: str):
   url = "http://archive.apache.org/dist/lucene/java/%s/%s" % (version, remotename)
   try:
     urllib.request.urlretrieve(url, localname)
@@ -146,7 +145,7 @@ def download_from_archives(version, remotename, localname):
     raise e
 
 
-def download_release(version, temp_dir, force):
+def download_release(version: scriptutil.Version, temp_dir: str, force: bool):
   print("  downloading %s source release..." % version, end="", flush=True)
   source = os.path.join(temp_dir, "lucene-%s" % version)
   if os.path.exists(source):
