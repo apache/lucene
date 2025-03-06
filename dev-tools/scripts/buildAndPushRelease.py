@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -35,13 +34,13 @@ LOG = "/tmp/release.log"
 dev_mode = False
 
 
-def log(msg):
+def log(msg: str):
   f = open(LOG, mode="ab")
   f.write(msg.encode("utf-8"))
   f.close()
 
 
-def run(command):
+def run(command: str):
   log("\n\n%s: RUN: %s\n" % (datetime.datetime.now(), command))
   if os.system("%s >> %s 2>&1" % (command, LOG)):
     msg = "    FAILED: %s [see log %s]" % (command, LOG)
@@ -49,7 +48,7 @@ def run(command):
     raise RuntimeError(msg)
 
 
-def runAndSendGPGPassword(command, password):
+def runAndSendGPGPassword(command: str, password: str):
   p = subprocess.Popen(command, shell=True, bufsize=0, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
   f = open(LOG, "ab")
   while True:
@@ -63,7 +62,7 @@ def runAndSendGPGPassword(command, password):
     if line.find(b"Enter GPG keystore password:") != -1:
       time.sleep(1.0)
       p.stdin.write((password + "\n").encode("UTF-8"))
-      p.stdin.write("\n".encode("UTF-8"))
+      p.stdin.write(b"\n")
 
   try:
     result = p.wait(timeout=120)
@@ -77,7 +76,7 @@ def runAndSendGPGPassword(command, password):
     raise RuntimeError(msg)
 
 
-def load(urlString, encoding="utf-8"):
+def load(urlString: str, encoding: str = "utf-8"):
   try:
     content = urllib.request.urlopen(urlString).read().decode(encoding)
   except Exception as e:
@@ -99,7 +98,7 @@ def getGitRev():
   return os.popen("git rev-parse HEAD").read().strip()
 
 
-def prepare(root, version, pause_before_sign, gpg_key_id, gpg_password, gpg_home=None, sign_gradle=False):
+def prepare(root: str, version: str, pause_before_sign: bool, gpg_key_id: str | None, gpg_password: str | None, gpg_home: str | None = None, sign_gradle: bool = False):
   print()
   print("Prepare release...")
   if os.path.exists(LOG):
@@ -166,30 +165,30 @@ reVersion2 = re.compile(r"-(\d+)\.(\d+)\.(\d+)(-alpha|-beta)?\.zip<", re.IGNOREC
 reDoapRevision = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?(-alpha|-beta)?", re.IGNORECASE)
 
 
-def checkDOAPfiles(version):
+def checkDOAPfiles(version: str):
   # In Lucene DOAP file, verify presence of all releases less than the one being produced.
-  errorMessages = []
+  errorMessages: list[str] = []
   for product in ["lucene"]:
     url = "https://archive.apache.org/dist/lucene/%s" % ("java" if product == "lucene" else product)
     distpage = load(url)
-    releases = set()
+    releases: set[str] = set()
     for regex in reVersion1, reVersion2:
       for tup in regex.findall(distpage):
         if tup[0] in ("1", "2"):  # Ignore 1.X and 2.X releases
           continue
         releases.add(normalizeVersion(tup))
     doapNS = "{http://usefulinc.com/ns/doap#}"
-    xpathRevision = "{0}Project/{0}release/{0}Version/{0}revision".format(doapNS)
+    xpathRevision = f"{doapNS}Project/{doapNS}release/{doapNS}Version/{doapNS}revision"
     doapFile = "dev-tools/doap/%s.rdf" % product
     treeRoot = ET.parse(doapFile).getroot()
-    doapRevisions = set()
+    doapRevisions: set[str] = set()
     for revision in treeRoot.findall(xpathRevision):
       if revision.text and (match := reDoapRevision.match(revision.text)):
         if match.group(1) not in ("0", "1", "2"):  # Ignore 0.X, 1.X and 2.X revisions
           doapRevisions.add(normalizeVersion(match.groups()))
       else:
         errorMessages.append("ERROR: Failed to parse revision: %s in %s" % (revision.text, doapFile))
-    missingDoapRevisions = set()
+    missingDoapRevisions: set[str] = set()
     for release in releases:
       if release not in doapRevisions and release < version:  # Ignore releases greater than the one being produced
         missingDoapRevisions.add(release)
@@ -199,7 +198,7 @@ def checkDOAPfiles(version):
     raise RuntimeError("\n%s\n(Hint: copy/paste from the stable branch version of the file(s).)" % "\n".join(errorMessages))
 
 
-def normalizeVersion(tup):
+def normalizeVersion(tup: tuple[str, ...]):
   suffix = ""
   if tup[-1] is not None and tup[-1].lower() == "-alpha":
     tup = tup[: (len(tup) - 1)]
@@ -214,7 +213,7 @@ def normalizeVersion(tup):
   return ".".join(tup) + suffix
 
 
-def pushLocal(version, root, rcNum, localDir):
+def pushLocal(version: str, root: str, rcNum: int, localDir: str):
   print("Push local [%s]..." % localDir)
   os.makedirs(localDir)
 
@@ -243,7 +242,7 @@ def pushLocal(version, root, rcNum, localDir):
   return "file://%s/%s" % (os.path.abspath(localDir), dir)
 
 
-def read_version(path):
+def read_version(_path: str):
   return scriptutil.find_current_version()
 
 
@@ -271,9 +270,9 @@ def parse_config():
     dest="gpg_pass_noprompt",
     default=False,
     action="store_true",
-    help="Do not prompt for gpg passphrase. For the default gnupg method, this means your gpg-agent"
-    " needs a non-TTY pin-entry program. For gradle signing method, passphrase must be provided"
-    " in gradle.properties or by env.var/sysprop. See ./gradlew helpPublishing for more info",
+    help="""Do not prompt for gpg passphrase. For the default gnupg method, this means your gpg-agent
+     needs a non-TTY pin-entry program. For gradle signing method, passphrase must be provided
+     in gradle.properties or by env.var/sysprop. See ./gradlew helpPublishing for more info""",
   )
   parser.add_argument("--gpg-home", metavar="PATH", help="Path to gpg home containing your secring.gpg Optional, will use $HOME/.gnupg/secring.gpg by default")
   parser.add_argument("--rc-num", metavar="NUM", type=int, default=1, help="Release Candidate number.  Default: 1")
@@ -301,7 +300,7 @@ def parse_config():
   cwd = os.getcwd()
   os.chdir(config.root)
   config.root = os.getcwd()  # Absolutize root dir
-  if os.system("git rev-parse") or 2 != len([d for d in ("dev-tools", "lucene") if os.path.isdir(d)]):
+  if os.system("git rev-parse") or len([d for d in ("dev-tools", "lucene") if os.path.isdir(d)]) != 2:
     parser.error('Root path "%s" is not a valid lucene checkout' % config.root)
   os.chdir(cwd)
   global LOG
@@ -320,7 +319,7 @@ def check_cmdline_tools():  # Fail fast if there are cmdline tool problems
     raise RuntimeError('"git --version" returned a non-zero exit code.')
 
 
-def check_key_in_keys(gpgKeyID, local_keys):
+def check_key_in_keys(gpgKeyID: str | None, local_keys: str | None):
   if gpgKeyID is not None:
     print("  Verify your gpg key is in the main KEYS file")
     if local_keys is not None:

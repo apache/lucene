@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -24,16 +23,17 @@ import subprocess
 import tempfile
 import time
 import urllib.request
+from io import TextIOWrapper
 
 DEBUG = False
 
 TARGET_DOC_CHARS = 1024
 
 
-def compress_with_seek_points(file_name_in, file_name_out, num_seek_points):
+def compress_with_seek_points(file_name_in: str, file_name_out: str, num_seek_points: int):
   bytes_per_chunk = os.path.getsize(file_name_in) / num_seek_points
 
-  seek_points = []
+  seek_points: list[int] = []
 
   if os.path.exists(file_name_out):
     os.remove(file_name_out)
@@ -60,7 +60,7 @@ def compress_with_seek_points(file_name_in, file_name_out, num_seek_points):
         break
 
       bytes_in_chunk += len(line)
-      f_out.write(line)  # false positive in python's crazy typing # pyright: ignore[reportArgumentType]
+      f_out.write(line)
 
       if bytes_in_chunk > bytes_per_chunk and chunk_count < num_seek_points:
         f_out.close()
@@ -77,16 +77,13 @@ re_newlines = re.compile(r"\n+")
 re_space = re.compile(r"\s")
 
 # used to find word break, for splitting docs into ~1 KB sized smaller docs:
-re_next_non_word_character = re.compile(r"\W", re.U)
+re_next_non_word_character = re.compile(r"\W", re.UNICODE)
 
 EUROPARL_V7_URL = "https://www.statmt.org/europarl/v7/europarl.tgz"
 
 
-def split_docs(all_out, title_string, date_string, body_string):
-  """
-  Splits docs into smallish (~1 KB) sized docs, repeating same title and date
-  """
-
+def split_docs(all_out: TextIOWrapper, title_string: str, date_string: str, body_string: str):
+  """Splits docs into smallish (~1 KB) sized docs, repeating same title and date"""
   doc_count = 0
   while len(body_string) > 0:
     char_count = int(random.gauss(TARGET_DOC_CHARS, TARGET_DOC_CHARS / 4))
@@ -129,7 +126,7 @@ def sample_europarl():
     if not DEBUG:
       cmd = "tar xzf %s -C %s" % (file_name, tmp_dir_path)
       print("Run: %s" % cmd)
-      subprocess.run(cmd, shell=True)
+      subprocess.run(cmd, shell=True, check=False)
 
     doc_count = 0
     skip_count = 0
@@ -158,8 +155,8 @@ def sample_europarl():
 
             # unfortunately we need errors='ignore' since in Europarl v7, one file (pl/ep-09-10-22-009.txt) has invalid utf-8:
             chapter_count = 0
-            with open("%s/%s" % (dir_path, file_name), "r", encoding="utf-8", errors="ignore") as f_in:
-              last_text = []
+            with open("%s/%s" % (dir_path, file_name), encoding="utf-8", errors="ignore") as f_in:
+              last_text: list[str] = []
               last_title = None
               while True:
                 line = f_in.readline()
@@ -188,8 +185,7 @@ def sample_europarl():
                     if len(last_title) > 0:
                       break
                   continue
-                else:
-                  last_text.append(line)
+                last_text.append(line)
 
               if last_title is not None:
                 s = " ".join(last_text)
@@ -232,7 +228,7 @@ def sample_europarl():
     )
 
     print("Shuffle...")
-    subprocess.run("shuf %s > %s.shuffled" % (all_txt_file_name, all_txt_file_name), shell=True)
+    subprocess.run("shuf %s > %s.shuffled" % (all_txt_file_name, all_txt_file_name), shell=True, check=False)
 
     for mb in (20, 200, 2000):
       print("Sample %d MB file..." % mb)
@@ -240,7 +236,7 @@ def sample_europarl():
       with open(file_name_out, "w", encoding="utf-8") as f_out:
         chance = mb / total_mb
 
-        with open(all_txt_file_name + ".shuffled", "r", encoding="utf-8") as f:
+        with open(all_txt_file_name + ".shuffled", encoding="utf-8") as f:
           while True:
             line = f.readline()
             if len(line) == 0:
