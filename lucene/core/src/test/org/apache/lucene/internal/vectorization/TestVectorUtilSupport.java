@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.hamcrest.Matchers.closeTo;
+
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,17 +30,18 @@ import java.util.stream.IntStream;
 
 public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
-  private static final double DELTA = 1e-2;
-
   private static final int[] VECTOR_SIZES = {
     1, 4, 6, 8, 13, 16, 25, 32, 64, 100, 128, 207, 256, 300, 512, 702, 1024, 1536, 2046, 2048, 4096,
     4098
   };
 
   private final int size;
+  private final double delta;
 
   public TestVectorUtilSupport(int size) {
     this.size = size;
+    // scale the delta with the size
+    this.delta = 1e-6 * size;
   }
 
   @ParametersFactory
@@ -207,10 +210,9 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
-    assertEquals(
-        func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
+    assertThat(
         func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
-        DELTA);
+        closeTo(func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()), delta));
   }
 
   private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {
