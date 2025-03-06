@@ -223,7 +223,7 @@ PARSER_END(QueryParser)
 | <RANGEIN_END:  "]"> : DEFAULT
 | <RANGEEX_END:  "}"> : DEFAULT
 | <RANGE_QUOTED: "\"" (~["\""] | "\\\"")+ "\"">
-| <RANGE_GOOP:   (~[ " ", "]", "}" ])+ >
+| <RANGE_GOOP:   (~[ "\\", " ", "]", "}" ] | "\\" ~[])+ >
 }
 
 // *   Query  ::= ( Clause )*
