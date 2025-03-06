@@ -99,8 +99,8 @@ public final class FaissKnnVectorsWriter extends KnnVectorsWriter {
     rawVectorsWriter.mergeOneField(fieldInfo, mergeState);
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE ->
-          // TODO: Support using SQ8 quantization, see
-          // https://github.com/opensearch-project/k-NN/pull/2425
+          // TODO: Support using SQ8 quantization, see:
+          //  - https://github.com/opensearch-project/k-NN/pull/2425
           throw new UnsupportedOperationException("Byte vectors not supported");
       case FLOAT32 -> {
         FloatVectorValues merged =
@@ -124,8 +124,8 @@ public final class FaissKnnVectorsWriter extends KnnVectorsWriter {
       FieldInfo fieldInfo = entry.getKey();
       switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
-            // TODO: Support using SQ8 quantization, see
-            // https://github.com/opensearch-project/k-NN/pull/2425
+            // TODO: Support using SQ8 quantization, see:
+            //  - https://github.com/opensearch-project/k-NN/pull/2425
             throw new UnsupportedOperationException("Byte vectors not supported");
 
         case FLOAT32 -> {

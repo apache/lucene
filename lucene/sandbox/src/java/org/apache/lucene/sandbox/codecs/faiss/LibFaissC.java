@@ -57,7 +57,7 @@ import org.apache.lucene.util.hnsw.IntToIntFunction;
  */
 public final class LibFaissC {
   /*
-   * TODO: Requires some changes to Faiss
+   * TODO: Requires some changes to Faiss, see:
    *  - https://github.com/facebookresearch/faiss/pull/4158 (merged in main, to be released in v1.11.0)
    *  - https://github.com/facebookresearch/faiss/pull/4167 (merged in main, to be released in v1.11.0)
    *  - https://github.com/facebookresearch/faiss/pull/4180 (in progress)
@@ -207,6 +207,10 @@ public final class LibFaissC {
           parameterSpacePointer,
           indexPointer,
           temp.allocateFrom(indexParams));
+
+      // TODO: Improve memory usage (with a tradeoff in performance) by batched indexing, see:
+      //  - https://github.com/opensearch-project/k-NN/issues/1506
+      //  - https://github.com/opensearch-project/k-NN/issues/1938
 
       // Allocate docs in native memory
       MemorySegment docs = temp.allocate(JAVA_FLOAT, (long) size * dimension);

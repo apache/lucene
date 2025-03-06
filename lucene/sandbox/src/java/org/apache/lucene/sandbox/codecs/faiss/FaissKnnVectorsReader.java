@@ -156,8 +156,8 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
 
   @Override
   public ByteVectorValues getByteVectorValues(String field) {
-    // TODO: Support using SQ8 quantization, see
-    // https://github.com/opensearch-project/k-NN/pull/2425
+    // TODO: Support using SQ8 quantization, see:
+    //  - https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
   }
 
@@ -171,8 +171,8 @@ public final class FaissKnnVectorsReader extends KnnVectorsReader {
 
   @Override
   public void search(String field, byte[] vector, KnnCollector knnCollector, Bits acceptDocs) {
-    // TODO: Support using SQ8 quantization, see
-    // https://github.com/opensearch-project/k-NN/pull/2425
+    // TODO: Support using SQ8 quantization, see:
+    //  - https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
   }
 
