@@ -23,9 +23,7 @@ VENV=${PWD}/.venv
 SOURCES=$(wildcard *.py)
 
 # check formatting, linting, and types
-# TODO: enable this when we're ready to reformat all code
-# lint: format ruff pyright
-lint: ruff pyright
+lint: format ruff pyright
 
 # check all formatting
 format: env
