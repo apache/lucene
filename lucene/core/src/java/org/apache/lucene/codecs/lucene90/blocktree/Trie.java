@@ -66,7 +66,7 @@ class Trie {
   private static void putAll(Node n, Node add) {
     assert n.label == add.label;
     if (add.output != null) {
-      n.output = BytesRef.deepCopyOf(add.output);
+      n.output = add.output;
     }
     ListIterator<Node> iter = n.children.listIterator();
     outer:
