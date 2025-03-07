@@ -1077,17 +1077,13 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             : "pending.size()=" + pending.size() + " pending=" + pending;
         final PendingBlock root = (PendingBlock) pending.get(0);
         assert root.prefix.length == 0;
-        //        final BytesRef rootCode = root.index.getEmptyOutput();
-        final Trie.Output rootCode = root.index.getEmptyOutput();
-        assert rootCode != null;
+        assert root.index.getEmptyOutput() != null;
 
         ByteBuffersDataOutput metaOut = new ByteBuffersDataOutput();
         fields.add(metaOut);
 
         metaOut.writeVInt(fieldInfo.number);
         metaOut.writeVLong(numTerms);
-        //        metaOut.writeVInt(rootCode.length);
-        //        metaOut.writeBytes(rootCode.bytes, rootCode.offset, rootCode.length);
         assert fieldInfo.getIndexOptions() != IndexOptions.NONE;
         if (fieldInfo.getIndexOptions() != IndexOptions.DOCS) {
           metaOut.writeVLong(sumTotalTermFreq);
@@ -1098,7 +1094,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
         metaOut.writeVLong(indexOut.getFilePointer());
         root.index.save(metaOut, indexOut);
-
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);
 
         /*

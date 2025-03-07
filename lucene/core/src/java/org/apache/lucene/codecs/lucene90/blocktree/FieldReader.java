@@ -48,15 +48,12 @@ public final class FieldReader extends Terms {
   final Lucene90BlockTreeTermsReader parent;
   final IndexInput indexIn;
 
-  //  final FST<BytesRef> index;
-
   // private boolean DEBUG;
 
   FieldReader(
       Lucene90BlockTreeTermsReader parent,
       FieldInfo fieldInfo,
       long numTerms,
-      //      BytesRef rootCode,
       long sumTotalTermFreq,
       long sumDocFreq,
       int docCount,
@@ -118,7 +115,6 @@ public final class FieldReader extends Terms {
   /** For debugging -- used by CheckIndex too */
   @Override
   public Stats getStats() throws IOException {
-    // NO COMMIT
     return new SegmentTermsEnum(this, newReader()).computeBlockStats();
   }
 
