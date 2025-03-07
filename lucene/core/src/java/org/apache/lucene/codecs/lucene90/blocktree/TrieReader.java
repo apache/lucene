@@ -83,13 +83,12 @@ class TrieReader {
 
       // [n bytes] floor data
       // [n bytes] output fp
-      // [1bit] nothing | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes  | [2bit]
+      // [1bit] nothing | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit]
       // sign
 
       node.childrenNum = 0;
       int fpBytes = (term >>> 2) & 0x07;
-      node.outputFp =
-          (termLong >>> 8) & bytesAsMask(fpBytes); // assumption fp for tip less than 56 bit
+      node.outputFp = (termLong >>> 8) & bytesAsMask(fpBytes);
       node.hasTerms = (term & 0x20) != 0;
       if ((term & 0x40) != 0) {
         node.floorDataFp = fp + 1 + fpBytes;
@@ -104,13 +103,13 @@ class TrieReader {
 
       // [n bytes] floor data
       // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
-      // [3bit] encoded output fp bytes | [3bit] child fp bytes | | [2bit] sign
+      // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
       node.childrenNum = 1;
       int childFpBytes = (term >>> 2) & 0x07;
       int encodedOutputFpBytes = (term >>> 5) & 0x07;
-      node.childFp =
-          (termLong >>> 16) & bytesAsMask(childFpBytes); // assumption fp for tip less than 48 bit
+      long l = childFpBytes <= 6 ? termLong >>> 16 : access.readLong(fp + 2);
+      node.childFp = l & bytesAsMask(childFpBytes);
       node.minChildrenLabel = (term >>> 8) & 0xFF;
 
       if (encodedOutputFpBytes == 0) {

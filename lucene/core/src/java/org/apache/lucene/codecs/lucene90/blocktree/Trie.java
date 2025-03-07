@@ -142,7 +142,7 @@ class Trie {
               | (output.hasTerms ? (1 << 5) : 0)
               | (output.floorData != null ? (1 << 6) : 0);
       index.writeByte(((byte) header));
-      writeLongNBytes(output.fp, outputFpBytes, index);
+      writeFpNBytes(output.fp, outputFpBytes, index);
       if (output.floorData != null) {
         index.writeBytes(output.floorData.bytes, output.floorData.offset, output.floorData.length);
       }
@@ -173,14 +173,14 @@ class Trie {
       int header = SIGN_SINGLE_CHILDREN | (childFpBytes << 2) | (encodedOutputFpBytes << 5);
       index.writeByte((byte) header);
       index.writeByte((byte) node.children.getFirst().label);
-      writeLongNBytes(fpBuffer[0], childFpBytes, index);
+      writeFpNBytes(fpBuffer[0], childFpBytes, index);
       if (node.output != null) {
         Output output = node.output;
         long encodedFp =
             (output.floorData != null ? 0x01L : 0)
                 | (output.hasTerms ? 0x02L : 0)
                 | (output.fp << 2);
-        writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
+        writeFpNBytes(encodedFp, encodedOutputFpBytes, index);
         if (output.floorData != null) {
           index.writeBytes(
               output.floorData.bytes, output.floorData.offset, output.floorData.length);
@@ -231,7 +231,7 @@ class Trie {
       Output output = node.output;
       long encodedFp =
           (output.floorData != null ? 0x01L : 0) | (output.hasTerms ? 0x02L : 0) | (output.fp << 2);
-      writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
+      writeFpNBytes(encodedFp, encodedOutputFpBytes, index);
     }
 
     long positionStartFp = index.getFilePointer();
@@ -244,7 +244,7 @@ class Trie {
             + (index.getFilePointer() - positionStartFp);
 
     for (int i = 0; i < childrenNum; i++) {
-      writeLongNBytes(fpBuffer[i], childrenFpBytes, index);
+      writeFpNBytes(fpBuffer[i], childrenFpBytes, index);
     }
 
     if (node.output != null && node.output.floorData != null) {
@@ -259,7 +259,11 @@ class Trie {
     return Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(v) >>> 3));
   }
 
-  private static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
+  private static void writeFpNBytes(long v, int n, DataOutput out) throws IOException {
+    if (n > 7) {
+      throw new IllegalArgumentException(
+          "term dictionary can not have file pointers bigger than 2^56, got: " + v);
+    }
     for (int i = 0; i < n; i++) {
       out.writeByte((byte) v);
       v >>= 8;

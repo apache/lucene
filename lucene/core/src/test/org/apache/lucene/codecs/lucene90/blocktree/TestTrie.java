@@ -42,9 +42,7 @@ public class TestTrie extends LuceneTestCase {
       BytesRef key = new BytesRef(randomBytes());
       Trie.Output value =
           new Trie.Output(
-              random().nextLong(Integer.MAX_VALUE),
-              random().nextBoolean(),
-              new BytesRef(randomBytes()));
+              random().nextLong(1L << 50), random().nextBoolean(), new BytesRef(randomBytes()));
       expected.put(key, value);
       trie.putAll(new Trie(key, value));
     }
@@ -66,7 +64,7 @@ public class TestTrie extends LuceneTestCase {
         BytesRef key = new BytesRef(randomBytes());
         Trie.Output value =
             new Trie.Output(
-                random().nextLong(Integer.MAX_VALUE),
+                random().nextLong(1L << 50),
                 random().nextBoolean(),
                 random().nextBoolean() ? null : new BytesRef(randomBytes()));
         expected.put(key, value);
