@@ -193,7 +193,7 @@ class Trie {
     // [n bytes] children fps | [n bytes] position data
     // [n bytes] encoded output fp | [1 byte] children count | [1 byte] label
     // [6bit] position bytes | 2bit children strategy
-    // [3bit] encoded output fp bytes | [3bit] children fp bytes | | [2bit] sign
+    // [3bit] encoded output fp bytes | [3bit] children fp bytes | [2bit] sign
 
     final int minLabel = node.children.getFirst().label;
     final int maxLabel = node.children.getLast().label;
