@@ -185,7 +185,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
               throw new CorruptIndexException(
                   "Illegal numTerms for field number: " + field, metaIn);
             }
-            final BytesRef rootCode = readBytesRef(metaIn);
+            //            final BytesRef rootCode = readBytesRef(metaIn);
             final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(field);
             if (fieldInfo == null) {
               throw new CorruptIndexException("invalid field number: " + field, metaIn);
@@ -228,7 +228,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
                         this,
                         fieldInfo,
                         numTerms,
-                        rootCode,
+                        //                        rootCode,
                         sumTotalTermFreq,
                         sumDocFreq,
                         docCount,

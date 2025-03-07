@@ -21,7 +21,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.function.BiConsumer;
-import org.apache.lucene.store.ByteBuffersDataOutput;
+import java.util.stream.IntStream;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -30,12 +30,18 @@ import org.apache.lucene.util.BytesRefBuilder;
 
 class Trie {
 
-  static class Node {
+  static final int SIGN_NO_CHILDREN = 0x00;
+  static final int SIGN_SINGLE_CHILDREN = 0x01;
+  static final int SIGN_MULTI_CHILDREN = 0x02;
+
+  record Output(long fp, boolean hasTerms, BytesRef floorData) {}
+
+  private static class Node {
     final int label;
     final LinkedList<Node> children;
-    BytesRef output;
+    Output output;
 
-    Node(int label, BytesRef output, LinkedList<Node> children) {
+    Node(int label, Output output, LinkedList<Node> children) {
       this.label = label;
       this.output = output;
       this.children = children;
@@ -44,7 +50,7 @@ class Trie {
 
   final Node root = new Node(0, null, new LinkedList<>());
 
-  Trie(BytesRef k, BytesRef v) {
+  Trie(BytesRef k, Output v) {
     if (k.length == 0) {
       root.output = v;
       return;
@@ -52,7 +58,7 @@ class Trie {
     Node parent = root;
     for (int i = 0; i < k.length; i++) {
       int b = k.bytes[i + k.offset] & 0xFF;
-      BytesRef output = i == k.length - 1 ? v : null;
+      Output output = i == k.length - 1 ? v : null;
       Node node = new Node(b, output, new LinkedList<>());
       parent.children.add(node);
       parent = node;
@@ -87,11 +93,11 @@ class Trie {
     }
   }
 
-  BytesRef getEmptyOutput() {
+  Output getEmptyOutput() {
     return root.output;
   }
 
-  void forEach(BiConsumer<BytesRef, BytesRef> consumer) {
+  void forEach(BiConsumer<BytesRef, Output> consumer) {
     if (root.output != null) {
       consumer.accept(new BytesRef(), root.output);
     }
@@ -99,7 +105,7 @@ class Trie {
   }
 
   private void intersect(
-      List<Node> nodes, BytesRefBuilder key, BiConsumer<BytesRef, BytesRef> consumer) {
+      List<Node> nodes, BytesRefBuilder key, BiConsumer<BytesRef, Output> consumer) {
     for (Node node : nodes) {
       key.append((byte) node.label);
       if (node.output != null) consumer.accept(key.toBytesRef(), node.output);
@@ -109,53 +115,85 @@ class Trie {
   }
 
   void save(DataOutput meta, IndexOutput index) throws IOException {
-    ByteBuffersDataOutput outputBuffer = new ByteBuffersDataOutput();
-    meta.writeVLong(index.getFilePointer()); // index start fp
-    meta.writeVLong(saveArcs(root, index, outputBuffer, index.getFilePointer())); // root code
+    meta.writeVLong(index.getFilePointer());
+    long rootFp = saveArcs(root, index, index.getFilePointer());
+    meta.writeVLong(rootFp);
     index.writeLong(0L); // additional 8 bytes for over-reading
-    meta.writeVLong(index.getFilePointer()); // index end, output start fp
-    outputBuffer.copyTo(index);
-    meta.writeVLong(index.getFilePointer()); // output end fp
+    meta.writeVLong(index.getFilePointer());
   }
 
-  long saveArcs(Node node, IndexOutput index, ByteBuffersDataOutput outputsBuffer, long startFP)
-      throws IOException {
+  long saveArcs(Node node, IndexOutput index, long startFP) throws IOException {
     final int childrenNum = node.children.size();
 
     if (childrenNum == 0) {
       assert node.output != null;
-      long code = (outputsBuffer.size() << 1) | 0x1L;
-      outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
-      return code;
+      final long fp = index.getFilePointer() - startFP;
+
+      // [n bytes] floor data
+      // [n bytes] output fp
+      // [1bit] nothing | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes  | [2bit]
+      // sign
+
+      Output output = node.output;
+      int outputFpBytes = bytesRequired(output.fp);
+      int header =
+          SIGN_NO_CHILDREN
+              | (outputFpBytes << 2)
+              | (output.hasTerms ? (1 << 5) : 0)
+              | (output.floorData != null ? (1 << 6) : 0);
+      index.writeByte(((byte) header));
+      writeLongNBytes(output.fp, outputFpBytes, index);
+      if (output.floorData != null) {
+        index.writeBytes(output.floorData.bytes, output.floorData.offset, output.floorData.length);
+      }
+      return fp;
     }
 
-    long[] codeBuffer = new long[childrenNum];
-    long maxCode = 0, minCode = Long.MAX_VALUE;
+    long[] fpBuffer = new long[childrenNum];
     for (int i = 0; i < childrenNum; i++) {
       Node child = node.children.get(i);
-      codeBuffer[i] = saveArcs(child, index, outputsBuffer, startFP);
-      maxCode = Math.max(maxCode, codeBuffer[i]);
-      minCode = Math.min(minCode, codeBuffer[i]);
+      fpBuffer[i] = saveArcs(child, index, startFP);
     }
+    assert IntStream.range(0, childrenNum - 1).allMatch(i -> fpBuffer[i + 1] > fpBuffer[i]);
 
     final long fp = index.getFilePointer() - startFP;
+    for (int i = 0; i < childrenNum; i++) {
+      assert fp > fpBuffer[i];
+      fpBuffer[i] = fp - fpBuffer[i];
+    }
 
     if (childrenNum == 1) {
-      int codeBytes = bytesRequired(codeBuffer[0]);
-      int fpBytes = bytesRequired(outputsBuffer.size());
-      int header = TrieReader.SINGLE_CHILD | (fpBytes << 3) | codeBytes;
-      if (node.output == null) {
-        index.writeByte((byte) header);
-        index.writeByte((byte) node.children.getFirst().label);
-      } else {
-        index.writeByte((byte) (TrieReader.HAS_OUTPUT | header));
-        index.writeByte((byte) node.children.getFirst().label);
-        writeLongNBytes(outputsBuffer.size(), fpBytes, index);
-        outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
+
+      // [n bytes] floor data
+      // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
+      // [3bit] encoded output fp bytes | [3bit] child fp bytes | | [2bit] sign
+
+      int childFpBytes = bytesRequired(fpBuffer[0]);
+      int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
+      int header = SIGN_SINGLE_CHILDREN | (childFpBytes << 2) | (encodedOutputFpBytes << 5);
+      index.writeByte((byte) header);
+      index.writeByte((byte) node.children.getFirst().label);
+      writeLongNBytes(fpBuffer[0], childFpBytes, index);
+      if (node.output != null) {
+        Output output = node.output;
+        long encodedFp =
+            (output.floorData != null ? 0x01L : 0)
+                | (output.hasTerms ? 0x02L : 0)
+                | (output.fp << 2);
+        writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
+        if (output.floorData != null) {
+          index.writeBytes(
+              output.floorData.bytes, output.floorData.offset, output.floorData.length);
+        }
       }
-      writeLongNBytes(codeBuffer[0], codeBytes, index);
-      return fp << 1;
+      return fp;
     }
+
+    // [n bytes] floor data
+    // [n bytes] children fps | [n bytes] position data
+    // [n bytes] encoded output fp | [1 byte] children count | [1 byte] label
+    // [6bit] position bytes | 2bit children strategy
+    // [3bit] encoded output fp bytes | [3bit] children fp bytes | | [2bit] sign
 
     final int minLabel = node.children.getFirst().label;
     final int maxLabel = node.children.getLast().label;
@@ -176,29 +214,24 @@ class Trie {
     assert positionStrategy != null;
     assert positionBytes > 0 && positionBytes <= 32;
 
-    if (bytesRequired(maxCode - minCode) == bytesRequired(maxCode)) {
-      minCode = 0L;
-    }
-    int codeBytes = bytesRequired(maxCode - minCode);
-    int fpBytes = bytesRequired(Math.max(minCode, outputsBuffer.size()));
-    if (minCode == 0L && node.output == null) {
-      fpBytes = 0;
-    }
+    int childrenFpBytes = bytesRequired(fpBuffer[0]);
+    int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
     int header =
-        (positionStrategy.priority << 22) // 2bit
-            | (positionBytes << 16) // 6bit
-            | (minLabel << 8) // 8bit
-            | (fpBytes << 3) // 3bit
-            | codeBytes; // 3bit
+        SIGN_MULTI_CHILDREN
+            | (childrenFpBytes << 2)
+            | (encodedOutputFpBytes << 5)
+            | (positionStrategy.priority << 8)
+            | (positionBytes << 10)
+            | (minLabel << 16)
+            | (childrenNum << 24);
 
-    if (node.output == null) {
-      writeLongNBytes(header, 3, index);
-      writeLongNBytes(minCode, fpBytes, index);
-    } else {
-      writeLongNBytes(header | TrieReader.HAS_OUTPUT, 3, index);
-      writeLongNBytes(minCode, fpBytes, index);
-      writeLongNBytes(outputsBuffer.size(), fpBytes, index);
-      outputsBuffer.writeBytes(node.output.bytes, node.output.offset, node.output.length);
+    index.writeInt(header);
+
+    if (node.output != null) {
+      Output output = node.output;
+      long encodedFp =
+          (output.floorData != null ? 0x01L : 0) | (output.hasTerms ? 0x02L : 0) | (output.fp << 2);
+      writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
     }
 
     long positionStartFp = index.getFilePointer();
@@ -211,9 +244,15 @@ class Trie {
             + (index.getFilePointer() - positionStartFp);
 
     for (int i = 0; i < childrenNum; i++) {
-      writeLongNBytes(codeBuffer[i] - minCode, codeBytes, index);
+      writeLongNBytes(fpBuffer[i], childrenFpBytes, index);
     }
-    return fp << 1;
+
+    if (node.output != null && node.output.floorData != null) {
+      index.writeBytes(
+          node.output.floorData.bytes, node.output.floorData.offset, node.output.floorData.length);
+    }
+
+    return fp;
   }
 
   private static int bytesRequired(long v) {

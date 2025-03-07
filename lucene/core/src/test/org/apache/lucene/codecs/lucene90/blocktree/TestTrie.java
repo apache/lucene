@@ -25,23 +25,26 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.junit.Assert;
 
 public class TestTrie extends LuceneTestCase {
 
   public void testTrie() {
-    Map<BytesRef, BytesRef> actual = new TreeMap<>();
-    Map<BytesRef, BytesRef> expected = new TreeMap<>();
+    Map<BytesRef, Trie.Output> actual = new TreeMap<>();
+    Map<BytesRef, Trie.Output> expected = new TreeMap<>();
 
-    expected.put(new BytesRef(""), new BytesRef("emptyOutput"));
-    Trie trie = new Trie(new BytesRef(""), new BytesRef("emptyOutput"));
+    expected.put(new BytesRef(""), new Trie.Output(0L, false, new BytesRef("emptyOutput")));
+    Trie trie = new Trie(new BytesRef(""), new Trie.Output(0L, false, new BytesRef("emptyOutput")));
 
     int n = random().nextInt(10000);
     for (int i = 0; i < n; i++) {
       BytesRef key = new BytesRef(randomBytes());
-      BytesRef value = new BytesRef(randomBytes());
+      Trie.Output value =
+          new Trie.Output(
+              random().nextLong(Integer.MAX_VALUE),
+              random().nextBoolean(),
+              new BytesRef(randomBytes()));
       expected.put(key, value);
       trie.putAll(new Trie(key, value));
     }
@@ -52,15 +55,20 @@ public class TestTrie extends LuceneTestCase {
   public void testTrieLookup() throws IOException {
 
     for (int iter = 1; iter <= 12; iter++) {
-      Map<BytesRef, BytesRef> expected = new TreeMap<>();
+      Map<BytesRef, Trie.Output> expected = new TreeMap<>();
 
-      expected.put(new BytesRef(""), new BytesRef("emptyOutput"));
-      Trie trie = new Trie(new BytesRef(""), new BytesRef("emptyOutput"));
+      expected.put(new BytesRef(""), new Trie.Output(0L, false, new BytesRef("emptyOutput")));
+      Trie trie =
+          new Trie(new BytesRef(""), new Trie.Output(0L, false, new BytesRef("emptyOutput")));
 
       int n = 1 << iter;
       for (int i = 0; i < n; i++) {
         BytesRef key = new BytesRef(randomBytes());
-        BytesRef value = new BytesRef(randomBytes());
+        Trie.Output value =
+            new Trie.Output(
+                random().nextLong(Integer.MAX_VALUE),
+                random().nextBoolean(),
+                random().nextBoolean() ? null : new BytesRef(randomBytes()));
         expected.put(key, value);
         trie.putAll(new Trie(key, value));
       }
@@ -73,17 +81,12 @@ public class TestTrie extends LuceneTestCase {
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
             IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
-          long arcInStart = metaIn.readVLong();
+          long start = metaIn.readVLong();
           long rootFP = metaIn.readVLong();
-          long arcInEnd = metaIn.readVLong();
-          long outputEnd = metaIn.readVLong();
-          TrieReader reader =
-              new TrieReader(
-                  indexIn.randomAccessSlice(arcInStart, arcInEnd - arcInStart),
-                  indexIn.slice("outputs", arcInEnd, outputEnd - arcInEnd),
-                  rootFP);
+          long end = metaIn.readVLong();
+          TrieReader reader = new TrieReader(indexIn.slice("outputs", start, end - start), rootFP);
 
-          for (var entry : expected.entrySet()) {
+          for (Map.Entry<BytesRef, Trie.Output> entry : expected.entrySet()) {
             assertResult(reader, entry.getKey(), entry.getValue());
           }
 
@@ -132,7 +135,7 @@ public class TestTrie extends LuceneTestCase {
     return bytes;
   }
 
-  private static void assertResult(TrieReader reader, BytesRef term, BytesRef expected)
+  private static void assertResult(TrieReader reader, BytesRef term, Trie.Output expected)
       throws IOException {
     TrieReader.Node parent = reader.root;
     TrieReader.Node child = new TrieReader.Node();
@@ -143,11 +146,15 @@ public class TestTrie extends LuceneTestCase {
       child = new TrieReader.Node();
     }
     assertTrue(parent.hasOutput());
-    IndexInput in = parent.output(reader);
-    byte[] bytes = new byte[expected.length];
-    in.readBytes(bytes, 0, bytes.length);
-    assertArrayEquals(
-        ArrayUtil.copyOfSubArray(expected.bytes, expected.offset, expected.length), bytes);
+    assertEquals(term.toString(), expected.fp(), parent.outputFp);
+    assertEquals(term.toString(), expected.hasTerms(), parent.hasTerms);
+    if (expected.floorData() == null) {
+      assertFalse(parent.isFloor());
+    } else {
+      byte[] bytes = new byte[expected.floorData().length];
+      parent.floorData(reader).readBytes(bytes, 0, bytes.length);
+      assertArrayEquals(BytesRef.deepCopyOf(expected.floorData()).bytes, bytes);
+    }
   }
 
   private static void assertNotFoundOnLevelN(TrieReader reader, BytesRef term, int n)

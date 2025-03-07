@@ -116,7 +116,7 @@ final class IntersectTermsEnumFrame {
         nextFloorLabel = 256;
       }
     } while (numFollowFloorBlocks != 0 && nextFloorLabel <= transition.min);
-    load((Long) null);
+    load(null);
     floorDataPos = floorDataReader.getFilePointer();
   }
 
@@ -139,17 +139,11 @@ final class IntersectTermsEnumFrame {
   }
 
   void load(TrieReader.Node node) throws IOException {
-    floorDataReader = node.output(ite.trieReader);
-    long code = floorDataReader.readVLong();
-    load(code);
-    floorDataPos = floorDataReader.getFilePointer();
-  }
-
-  void load(Long blockCode) throws IOException {
-    if (blockCode != null) {
+    if (node != null) {
       // This block is the first one in a possible sequence of floor blocks corresponding to a
       // single seek point from the FST terms index
-      if ((blockCode & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0) {
+      if (node.isFloor()) {
+        floorDataReader = node.floorData(ite.trieReader);
         // Floor frame
         numFollowFloorBlocks = floorDataReader.readVInt();
         nextFloorLabel = floorDataReader.readByte() & 0xff;
@@ -169,6 +163,7 @@ final class IntersectTermsEnumFrame {
             }
           }
         }
+        floorDataPos = floorDataReader.getFilePointer();
       }
     }
 

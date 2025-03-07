@@ -40,13 +40,11 @@ public final class FieldReader extends Terms {
   final long sumDocFreq;
   final int docCount;
   final long rootBlockFP;
-  final BytesRef rootCode;
   final BytesRef minTerm;
   final BytesRef maxTerm;
-  final long nodeInStart;
+  final long indexStart;
   final long rootFP;
-  final long nodeInEnd;
-  final long outputEnd;
+  final long indexEnd;
   final Lucene90BlockTreeTermsReader parent;
   final IndexInput indexIn;
 
@@ -58,7 +56,7 @@ public final class FieldReader extends Terms {
       Lucene90BlockTreeTermsReader parent,
       FieldInfo fieldInfo,
       long numTerms,
-      BytesRef rootCode,
+      //      BytesRef rootCode,
       long sumTotalTermFreq,
       long sumDocFreq,
       int docCount,
@@ -84,24 +82,17 @@ public final class FieldReader extends Terms {
     // + rootCode + " divisor=" + indexDivisor);
     // }
 
-    this.nodeInStart = metaIn.readVLong();
+    this.indexStart = metaIn.readVLong();
     this.rootFP = metaIn.readVLong();
-    this.nodeInEnd = metaIn.readVLong();
-    this.outputEnd = metaIn.readVLong();
+    this.indexEnd = metaIn.readVLong();
     this.indexIn = indexIn;
-    this.rootCode = rootCode;
 
     TrieReader trieReader = newReader();
-    this.rootBlockFP =
-        trieReader.root.output(trieReader).readVLong()
-            >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
+    this.rootBlockFP = trieReader.root.outputFp;
   }
 
   private TrieReader newReader() throws IOException {
-    return new TrieReader(
-        indexIn.randomAccessSlice(nodeInStart, nodeInEnd - nodeInStart),
-        indexIn.slice("outputs", nodeInEnd, outputEnd - nodeInEnd),
-        rootFP);
+    return new TrieReader(indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP);
   }
 
   @Override

@@ -16,114 +16,168 @@
  */
 package org.apache.lucene.codecs.lucene90.blocktree;
 
-import static org.apache.lucene.codecs.lucene90.blocktree.Trie.PositionStrategy.ARRAY;
-import static org.apache.lucene.codecs.lucene90.blocktree.Trie.PositionStrategy.BITS;
-import static org.apache.lucene.codecs.lucene90.blocktree.Trie.PositionStrategy.REVERSE_ARRAY;
-
 import java.io.IOException;
-import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 
 class TrieReader {
 
   private static final long NO_OUTPUT = -1;
-  static final int HAS_OUTPUT = 1 << 6;
-  static final int SINGLE_CHILD = 1 << 7;
+  private static final long NO_FLOOR_DATA = -1;
 
   static class Node {
+
+    // single child
+    private long childFp;
+
+    // multi children
     private long positionFp;
-    private long outputFp;
-    private boolean isLeaf;
     private int childrenStrategy;
     private int positionBytes;
-    private int minChildrenLabel;
-    private int childrenCodesBytes;
-    private long minChildrenCode;
+    private int childrenFpBytes;
 
+    // common vars
+    private long fp;
+    private int childrenNum;
+    private int minChildrenLabel;
     int label;
+
+    // output vars
+    long outputFp;
+    boolean hasTerms;
+    long floorDataFp; // only makes sense when outputFp != NO_OUTPUT;
 
     boolean hasOutput() {
       return outputFp != NO_OUTPUT;
     }
 
-    IndexInput output(TrieReader reader) throws IOException {
-      assert hasOutput();
-      reader.outputsIn.seek(outputFp);
-      return reader.outputsIn;
+    boolean isFloor() {
+      return floorDataFp != NO_FLOOR_DATA;
+    }
+
+    IndexInput floorData(TrieReader r) throws IOException {
+      assert isFloor();
+      r.in.seek(floorDataFp);
+      return r.in;
     }
   }
 
   final RandomAccessInput nodesIn;
-  final IndexInput outputsIn;
+  final IndexInput in;
   final Node root;
 
-  TrieReader(RandomAccessInput nodesIn, IndexInput outputsIn, long rootFP) throws IOException {
-    this.nodesIn = nodesIn;
-    this.outputsIn = outputsIn;
+  TrieReader(IndexInput in, long rootFP) throws IOException {
+    this.nodesIn = in.randomAccessSlice(0, in.length());
+    this.in = in;
     this.root = new Node();
     load(root, rootFP);
   }
 
-  private void load(Node node, long code) throws IOException {
-    long tail = code & 0x01L;
-    if (tail == 0x01L) {
-      node.isLeaf = true;
-      node.outputFp = code >>> 1;
+  private void load(Node node, long fp) throws IOException {
+    node.fp = fp;
+    long termLong = nodesIn.readLong(fp);
+    int term = (int) termLong;
+    int sign = term & 0x03;
+
+    if (sign == Trie.SIGN_NO_CHILDREN) {
+
+      // [n bytes] floor data
+      // [n bytes] output fp
+      // [1bit] nothing | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes  | [2bit]
+      // sign
+
+      node.childrenNum = 0;
+      int fpBytes = (term >>> 2) & 0x07;
+      node.outputFp =
+          (termLong >>> 8) & bytesAsMask(fpBytes); // assumption fp for tip less than 56 bit
+      node.hasTerms = (term & 0x20) != 0;
+      if ((term & 0x40) != 0) {
+        node.floorDataFp = fp + 1 + fpBytes;
+      } else {
+        node.floorDataFp = NO_FLOOR_DATA;
+      }
+
       return;
     }
 
-    node.isLeaf = false;
-    long fp = code >>> 1;
-    final int header = nodesIn.readInt(fp);
-    if ((header & SINGLE_CHILD) != 0) {
-      node.childrenCodesBytes = header & 0x07;
-      node.childrenStrategy = ARRAY.priority;
-      node.positionBytes = 0;
-      node.minChildrenLabel = (header >>> 8) & 0xFF;
-      node.minChildrenCode = 0L;
-      fp += 2;
-      if ((header & HAS_OUTPUT) != 0) {
-        int fpBits = header & 0x38;
-        long mask = (1L << fpBits) - 1L;
-        node.outputFp = nodesIn.readLong(fp) & mask;
-        node.positionFp = fp + (fpBits >> 3);
-      } else {
+    if (sign == Trie.SIGN_SINGLE_CHILDREN) {
+
+      // [n bytes] floor data
+      // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
+      // [3bit] encoded output fp bytes | [3bit] child fp bytes | | [2bit] sign
+
+      node.childrenNum = 1;
+      int childFpBytes = (term >>> 2) & 0x07;
+      int encodedOutputFpBytes = (term >>> 5) & 0x07;
+      node.childFp =
+          (termLong >>> 16) & bytesAsMask(childFpBytes); // assumption fp for tip less than 48 bit
+      node.minChildrenLabel = (term >>> 8) & 0xFF;
+
+      if (encodedOutputFpBytes == 0) {
         node.outputFp = NO_OUTPUT;
-        node.positionFp = fp;
+      } else {
+        long offset = fp + childFpBytes + 2;
+        long encodedFp = nodesIn.readLong(offset) & bytesAsMask(encodedOutputFpBytes);
+        node.outputFp = encodedFp >>> 2;
+        node.hasTerms = (encodedFp & 0x02L) != 0;
+        if ((encodedFp & 0x01L) != 0) {
+          node.floorDataFp = offset + encodedOutputFpBytes;
+        } else {
+          node.floorDataFp = NO_FLOOR_DATA;
+        }
       }
       return;
     }
 
-    node.childrenCodesBytes = header & 0x07;
-    node.childrenStrategy = (header >>> 22) & 0x03;
-    node.positionBytes = (header >>> 16) & 0x3F;
-    node.minChildrenLabel = (header >>> 8) & 0xFF;
-    fp += 3;
+    assert sign == Trie.SIGN_MULTI_CHILDREN;
 
-    final int fpBits = header & 0x38;
-    if (fpBits == 0) {
-      node.minChildrenCode = 0L;
+    // [n bytes] floor data
+    // [n bytes] children fps | [n bytes] position data
+    // [n bytes] encoded output fp | [1 byte] children count | [1 byte] label
+    // [6bit] position bytes | 2bit children strategy
+    // [3bit] encoded output fp bytes | [3bit] children fp bytes | | [2bit] sign
+
+    node.childrenFpBytes = (term >>> 2) & 0x07;
+    int encodedOutputFpBytes = (term >>> 5) & 0x07;
+    node.childrenStrategy = (term >>> 8) & 0x03;
+    node.positionBytes = (term >>> 10) & 0x3F;
+    node.minChildrenLabel = (term >>> 16) & 0xFF;
+    node.childrenNum = (term >>> 24) & 0xFF;
+    node.positionFp = fp + 4 + encodedOutputFpBytes;
+
+    if (encodedOutputFpBytes == 0) {
       node.outputFp = NO_OUTPUT;
-      node.positionFp = fp;
     } else {
-      long mask = (1L << fpBits) - 1L;
-      node.minChildrenCode = nodesIn.readLong(fp) & mask;
-      int fpBytes = fpBits >>> 3;
-      fp += fpBytes;
-      if ((header & HAS_OUTPUT) != 0) {
-        node.outputFp = nodesIn.readLong(fp) & mask;
-        node.positionFp = fp + fpBytes;
+      long l = encodedOutputFpBytes <= 4 ? termLong >>> 32 : nodesIn.readLong(fp + 4);
+      long encodedFp = l & bytesAsMask(encodedOutputFpBytes);
+      node.outputFp = encodedFp >>> 2;
+      node.hasTerms = (encodedFp & 0x02L) != 0;
+      if ((encodedFp & 0x01L) != 0) {
+        node.floorDataFp =
+            node.positionFp + node.positionBytes + (long) node.childrenNum * node.childrenFpBytes;
       } else {
-        node.outputFp = NO_OUTPUT;
-        node.positionFp = fp;
+        node.floorDataFp = NO_FLOOR_DATA;
       }
     }
   }
 
+  private static long bytesAsMask(int bytes) {
+    assert bytes > 0 && bytes <= 8 : "" + bytes;
+    return (1L << (bytes << 3)) - 1;
+  }
+
   Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {
-    if (parent.isLeaf) {
+    if (parent.childrenNum == 0) {
       return null;
+    }
+
+    if (parent.childrenNum == 1) {
+      if (targetLabel != parent.minChildrenLabel) {
+        return null;
+      }
+      child.label = targetLabel;
+      load(child, parent.fp - parent.childFp);
+      return child;
     }
 
     final long positionBytesStartFp = parent.positionFp;
@@ -136,32 +190,21 @@ class TrieReader {
     } else if (targetLabel == minLabel) {
       position = 0;
     } else {
-      int strategy = parent.childrenStrategy;
-      // Use if else here - avoiding virtual call seems help performance
-      if (strategy == BITS.priority) {
-        position = BITS.lookup(targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
-      } else if (strategy == ARRAY.priority) {
-        position =
-            ARRAY.lookup(targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
-      } else if (strategy == REVERSE_ARRAY.priority) {
-        position =
-            REVERSE_ARRAY.lookup(
-                targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
-      } else {
-        throw new CorruptIndexException("unknown strategy: " + strategy, "trie nodesIn");
-      }
+      position =
+          Trie.PositionStrategy.byCode(parent.childrenStrategy)
+              .lookup(targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
     }
 
     if (position < 0) {
       return null;
     }
 
-    final long codeBytes = parent.childrenCodesBytes;
+    final long codeBytes = parent.childrenFpBytes;
     final long pos = positionBytesStartFp + positionBytes + codeBytes * position;
     final long mask = (1L << (codeBytes << 3)) - 1L;
-    final long code = (nodesIn.readLong(pos) & mask) + parent.minChildrenCode;
+    final long fp = parent.fp - (nodesIn.readLong(pos) & mask);
     child.label = targetLabel;
-    load(child, code);
+    load(child, fp);
 
     return child;
   }

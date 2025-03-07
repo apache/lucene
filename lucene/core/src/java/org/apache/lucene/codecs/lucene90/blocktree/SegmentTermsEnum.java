@@ -188,17 +188,14 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   // Pushes a frame we seek'd to
   SegmentTermsEnumFrame pushFrame(TrieReader.Node node, int length) throws IOException {
-    final IndexInput output = node.output(trieReader);
-    final long code = output.readVLong();
-    final long fpSeek = code >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
     final SegmentTermsEnumFrame f = getFrame(1 + currentFrame.ord);
-    f.hasTerms = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS) != 0;
+    f.hasTerms = node.hasTerms;
     f.hasTermsOrig = f.hasTerms;
-    f.isFloor = (code & Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR) != 0;
+    f.isFloor = node.isFloor();
     if (f.isFloor) {
-      f.setFloorData(output);
+      f.setFloorData(node.floorData(trieReader));
     }
-    pushFrame(node, fpSeek, length);
+    pushFrame(node, node.outputFp, length);
 
     return f;
   }
