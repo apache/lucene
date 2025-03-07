@@ -322,6 +322,22 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     // process of stopping (ie have an active merge):
     final List<MergeThread> activeMerges = new ArrayList<>();
 
+    // Track number of active IndexWriters
+    private static final AtomicInteger activeIndexWriters = new AtomicInteger(0);
+
+    // Call this when IndexWriter starts using ConcurrentMergeScheduler
+    public void startIndexWriter() {
+        activeIndexWriters.incrementAndGet();
+    }
+
+    // Call this when IndexWriter is closed
+    public void stopIndexWriter() {
+        activeIndexWriters.decrementAndGet();
+    }
+
+    int numActiveWriters = Math.max(1, activeIndexWriters.get()); // At least 1 writer
+    int adjustedMaxThreadCount = Math.max(1, maxThreadCount / numActiveWriters);
+
     int threadIdx = 0;
     while (threadIdx < mergeThreads.size()) {
       final MergeThread mergeThread = mergeThreads.get(threadIdx);
@@ -383,7 +399,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // Don't rate limit small merges:
         newMBPerSec = Double.POSITIVE_INFINITY;
       } else {
-        newMBPerSec = targetMBPerSec;
+        newMBPerSec = targetMBPerSec / numActiveWriters; // Distribute MB/sec across active writers
       }
 
       MergeRateLimiter rateLimiter = mergeThread.rateLimiter;
