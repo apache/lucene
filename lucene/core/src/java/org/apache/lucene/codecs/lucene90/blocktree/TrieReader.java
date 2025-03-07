@@ -57,25 +57,25 @@ class TrieReader {
 
     IndexInput floorData(TrieReader r) throws IOException {
       assert isFloor();
-      r.in.seek(floorDataFp);
-      return r.in;
+      r.input.seek(floorDataFp);
+      return r.input;
     }
   }
 
-  final RandomAccessInput nodesIn;
-  final IndexInput in;
+  final RandomAccessInput access;
+  final IndexInput input;
   final Node root;
 
-  TrieReader(IndexInput in, long rootFP) throws IOException {
-    this.nodesIn = in.randomAccessSlice(0, in.length());
-    this.in = in;
+  TrieReader(IndexInput input, long rootFP) throws IOException {
+    this.access = input.randomAccessSlice(0, input.length());
+    this.input = input;
     this.root = new Node();
     load(root, rootFP);
   }
 
   private void load(Node node, long fp) throws IOException {
     node.fp = fp;
-    long termLong = nodesIn.readLong(fp);
+    long termLong = access.readLong(fp);
     int term = (int) termLong;
     int sign = term & 0x03;
 
@@ -117,7 +117,7 @@ class TrieReader {
         node.outputFp = NO_OUTPUT;
       } else {
         long offset = fp + childFpBytes + 2;
-        long encodedFp = nodesIn.readLong(offset) & bytesAsMask(encodedOutputFpBytes);
+        long encodedFp = access.readLong(offset) & bytesAsMask(encodedOutputFpBytes);
         node.outputFp = encodedFp >>> 2;
         node.hasTerms = (encodedFp & 0x02L) != 0;
         if ((encodedFp & 0x01L) != 0) {
@@ -126,6 +126,7 @@ class TrieReader {
           node.floorDataFp = NO_FLOOR_DATA;
         }
       }
+
       return;
     }
 
@@ -148,7 +149,7 @@ class TrieReader {
     if (encodedOutputFpBytes == 0) {
       node.outputFp = NO_OUTPUT;
     } else {
-      long l = encodedOutputFpBytes <= 4 ? termLong >>> 32 : nodesIn.readLong(fp + 4);
+      long l = encodedOutputFpBytes <= 4 ? termLong >>> 32 : access.readLong(fp + 4);
       long encodedFp = l & bytesAsMask(encodedOutputFpBytes);
       node.outputFp = encodedFp >>> 2;
       node.hasTerms = (encodedFp & 0x02L) != 0;
@@ -192,7 +193,7 @@ class TrieReader {
     } else {
       position =
           Trie.PositionStrategy.byCode(parent.childrenStrategy)
-              .lookup(targetLabel, nodesIn, positionBytesStartFp, positionBytes, minLabel);
+              .lookup(targetLabel, access, positionBytesStartFp, positionBytes, minLabel);
     }
 
     if (position < 0) {
@@ -202,7 +203,7 @@ class TrieReader {
     final long codeBytes = parent.childrenFpBytes;
     final long pos = positionBytesStartFp + positionBytes + codeBytes * position;
     final long mask = (1L << (codeBytes << 3)) - 1L;
-    final long fp = parent.fp - (nodesIn.readLong(pos) & mask);
+    final long fp = parent.fp - (access.readLong(pos) & mask);
     child.label = targetLabel;
     load(child, fp);
 

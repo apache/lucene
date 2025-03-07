@@ -374,7 +374,7 @@ final class SegmentTermsEnumFrame {
     }
   }
 
-  // TODO: make this array'd so we can do bin senodeh?
+  // TODO: make this array'd so we can do bin search?
   // likely not worth it?  need to measure how many
   // floor blocks we "typically" get
   public void scanToFloorFrame(BytesRef target) throws IOException {
@@ -548,7 +548,7 @@ final class SegmentTermsEnumFrame {
   public SeekStatus scanToTerm(BytesRef target, boolean exactOnly) throws IOException {
     if (isLeafBlock) {
       if (allEqual) {
-        return binarySenodehTermLeaf(target, exactOnly);
+        return binarySearchTermLeaf(target, exactOnly);
       } else {
         return scanToTermLeaf(target, exactOnly);
       }
@@ -658,9 +658,9 @@ final class SegmentTermsEnumFrame {
 
   // Target's prefix matches this block's prefix;
   // And all suffixes have the same length in this block,
-  // we binary senodeh the entries to check if the suffix matches.
-  public SeekStatus binarySenodehTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
-    // if (DEBUG) System.out.println("    binarySenodehTermLeaf: block fp=" + fp + " prefix=" +
+  // we binary search the entries to check if the suffix matches.
+  public SeekStatus binarySearchTermLeaf(BytesRef target, boolean exactOnly) throws IOException {
+    // if (DEBUG) System.out.println("    binarySearchTermLeaf: block fp=" + fp + " prefix=" +
     // prefix + "
     // nextEnt=" + nextEnt + " (of " + entCount + ") target=" + brToString(target) + " term=" +
     // brToString(term));
@@ -684,7 +684,7 @@ final class SegmentTermsEnumFrame {
     // But we need to keep the same status with scanToTermLeaf.
     int start = nextEnt;
     int end = entCount - 1;
-    // Binary senodeh the entries (terms) in this leaf block:
+    // Binary search the entries (terms) in this leaf block:
     int cmp = 0;
     while (start <= end) {
       int mid = (start + end) >>> 1;
@@ -714,7 +714,7 @@ final class SegmentTermsEnumFrame {
     }
 
     // It is possible (and OK) that terms index pointed us
-    // at this block, but, we senodehed the entire block and
+    // at this block, but, we searched the entire block and
     // did not find the term to position to.  This happens
     // when the target is after the last term in the block
     // (but, before the next term in the index).  EG
@@ -726,7 +726,7 @@ final class SegmentTermsEnumFrame {
     SeekStatus seekStatus;
     if (end < entCount - 1) {
       seekStatus = SeekStatus.NOT_FOUND;
-      // If binary senodeh ended at the less term, and greater term exists.
+      // If binary search ended at the less term, and greater term exists.
       // We need to advance to the greater term.
       if (cmp < 0) {
         startBytePos += suffixLength;
