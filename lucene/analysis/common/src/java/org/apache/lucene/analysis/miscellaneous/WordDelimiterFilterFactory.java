@@ -154,13 +154,13 @@ public class WordDelimiterFilterFactory extends TokenFilterFactory implements Re
   }
 
   // source => type
-  private static Pattern typePattern = Pattern.compile("(.*)\\s*=>\\s*(.*)\\s*$");
+  private static final Pattern TYPE_PATTERN = Pattern.compile("(.*)\\s*=>\\s*(.*)\\s*$");
 
   // parses a list of MappingCharFilter style rules into a custom byte[] type table
   private byte[] parseTypes(List<String> rules) {
     SortedMap<Character, Byte> typeMap = new TreeMap<>();
     for (String rule : rules) {
-      Matcher m = typePattern.matcher(rule);
+      Matcher m = TYPE_PATTERN.matcher(rule);
       if (!m.find()) throw new IllegalArgumentException("Invalid Mapping Rule : [" + rule + "]");
       String lhs = parseString(m.group(1).trim());
       Byte rhs = parseType(m.group(2).trim());

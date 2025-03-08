@@ -16,14 +16,13 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
 import java.util.BitSet;
 import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 
 public class TestFixedBitDocIdSet extends BaseDocIdSetTestCase<BitDocIdSet> {
 
   @Override
-  public BitDocIdSet copyOf(BitSet bs, int length) throws IOException {
+  public BitDocIdSet copyOf(BitSet bs, int length) {
     final FixedBitSet set = new FixedBitSet(length);
     for (int doc = bs.nextSetBit(0); doc != -1; doc = bs.nextSetBit(doc + 1)) {
       set.set(doc);

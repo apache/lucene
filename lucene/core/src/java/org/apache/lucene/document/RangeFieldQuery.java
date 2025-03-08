@@ -38,6 +38,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Query class for searching {@code RangeField} types by a defined {@link Relation}.
@@ -401,7 +402,12 @@ public abstract class RangeFieldQuery extends Query {
           }
 
           @Override
-          public void visit(int docID) throws IOException {
+          public void visit(IntsRef ref) {
+            adder.add(ref);
+          }
+
+          @Override
+          public void visit(int docID) {
             adder.add(docID);
           }
 
@@ -411,7 +417,7 @@ public abstract class RangeFieldQuery extends Query {
           }
 
           @Override
-          public void visit(int docID, byte[] leaf) throws IOException {
+          public void visit(int docID, byte[] leaf) {
             if (queryType.matches(ranges, leaf, numDims, bytesPerDim, comparator)) {
               visit(docID);
             }
@@ -475,7 +481,7 @@ public abstract class RangeFieldQuery extends Query {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 

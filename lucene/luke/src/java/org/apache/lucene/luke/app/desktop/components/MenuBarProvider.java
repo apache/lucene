@@ -196,20 +196,12 @@ public final class MenuBarProvider {
 
     void showOpenIndexDialog(ActionEvent e) {
       new DialogOpener<>(openIndexDialogFactory)
-          .open(
-              MessageUtils.getLocalizedMessage("openindex.dialog.title"),
-              600,
-              420,
-              (factory) -> {});
+          .open(MessageUtils.getLocalizedMessage("openindex.dialog.title"), 600, 420, (_) -> {});
     }
 
     void showCreateIndexDialog(ActionEvent e) {
       new DialogOpener<>(createIndexDialogFactory)
-          .open(
-              MessageUtils.getLocalizedMessage("createindex.dialog.title"),
-              600,
-              360,
-              (factory) -> {});
+          .open(MessageUtils.getLocalizedMessage("createindex.dialog.title"), 600, 360, (_) -> {});
     }
 
     void reopenIndex(ActionEvent e) {
@@ -258,21 +250,20 @@ public final class MenuBarProvider {
     }
 
     void showOptimizeIndexDialog(ActionEvent e) {
-      new DialogOpener<>(optimizeIndexDialogFactory)
-          .open("Optimize index", 600, 600, factory -> {});
+      new DialogOpener<>(optimizeIndexDialogFactory).open("Optimize index", 600, 600, _ -> {});
     }
 
     void showCheckIndexDialog(ActionEvent e) {
-      new DialogOpener<>(checkIndexDialogFactory).open("Check index", 600, 600, factory -> {});
+      new DialogOpener<>(checkIndexDialogFactory).open("Check index", 600, 600, _ -> {});
     }
 
     void showAboutDialog(ActionEvent e) {
       final String title = "About Luke v" + Version.LATEST.toString();
-      new DialogOpener<>(aboutDialogFactory).open(title, 800, 480, factory -> {});
+      new DialogOpener<>(aboutDialogFactory).open(title, 800, 480, _ -> {});
     }
 
     void showExportTermsDialog(ActionEvent e) {
-      new DialogOpener<>(exportTermsDialogFactory).open("Export terms", 600, 450, factory -> {});
+      new DialogOpener<>(exportTermsDialogFactory).open("Export terms", 600, 450, _ -> {});
     }
   }
 

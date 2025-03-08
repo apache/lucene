@@ -17,11 +17,10 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.List;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -33,7 +32,7 @@ import org.apache.lucene.util.FixedBitSet;
 public final class DisjunctionDISIApproximation extends DocIdSetIterator {
 
   public static DisjunctionDISIApproximation of(
-      Collection<DisiWrapper> subIterators, long leadCost) {
+      Collection<? extends DisiWrapper> subIterators, long leadCost) {
 
     return new DisjunctionDISIApproximation(subIterators, leadCost);
   }
@@ -46,7 +45,8 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
   private DisiWrapper leadTop;
   private int minOtherDoc;
 
-  public DisjunctionDISIApproximation(Collection<DisiWrapper> subIterators, long leadCost) {
+  public DisjunctionDISIApproximation(
+      Collection<? extends DisiWrapper> subIterators, long leadCost) {
     // Using a heap to store disjunctive clauses is great for exhaustive evaluation, when a single
     // clause needs to move through the heap on every iteration on average. However, when
     // intersecting with a selective filter, it is possible that all clauses need advancing, which
@@ -57,47 +57,52 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
     // leadCost) <= 1.5, or Σ min(leadCost, cost) <= 1.5 * leadCost. Other clauses are checked
     // linearly.
 
-    List<DisiWrapper> wrappers = new ArrayList<>(subIterators);
+    DisiWrapper[] wrappers = subIterators.toArray(DisiWrapper[]::new);
     // Sort by descending cost.
-    wrappers.sort(Comparator.<DisiWrapper>comparingLong(w -> w.cost).reversed());
-
-    leadIterators = new DisiPriorityQueue(subIterators.size());
+    Arrays.sort(wrappers, Comparator.<DisiWrapper>comparingLong(w -> w.cost).reversed());
 
     long reorderThreshold = leadCost + (leadCost >> 1);
     if (reorderThreshold < 0) { // overflow
       reorderThreshold = Long.MAX_VALUE;
     }
+
+    long cost = 0; // track total cost
+    // Split `wrappers` into those that will remain out of the PQ, and those that will go in
+    // (PQ entries at the end). `lastIdx` is the last index of the wrappers that will remain out.
     long reorderCost = 0;
-    while (wrappers.isEmpty() == false) {
-      DisiWrapper last = wrappers.getLast();
-      long inc = Math.min(last.cost, leadCost);
+    int lastIdx = wrappers.length - 1;
+    for (; lastIdx >= 0; lastIdx--) {
+      long lastCost = wrappers[lastIdx].cost;
+      long inc = Math.min(lastCost, leadCost);
       if (reorderCost + inc < 0 || reorderCost + inc > reorderThreshold) {
         break;
       }
-      leadIterators.add(wrappers.removeLast());
       reorderCost += inc;
+      cost += lastCost;
     }
 
     // Make leadIterators not empty. This helps save conditionals in the implementation which are
     // rarely tested.
-    if (leadIterators.size() == 0) {
-      leadIterators.add(wrappers.removeLast());
+    if (lastIdx == wrappers.length - 1) {
+      cost += wrappers[lastIdx].cost;
+      lastIdx--;
     }
 
-    otherIterators = wrappers.toArray(DisiWrapper[]::new);
+    // Build the PQ:
+    assert lastIdx >= -1 && lastIdx < wrappers.length - 1;
+    int pqLen = wrappers.length - lastIdx - 1;
+    leadIterators = DisiPriorityQueue.ofMaxSize(pqLen);
+    leadIterators.addAll(wrappers, lastIdx + 1, pqLen);
 
-    long cost = 0;
-    for (DisiWrapper w : leadIterators) {
-      cost += w.cost;
-    }
-    for (DisiWrapper w : otherIterators) {
-      cost += w.cost;
-    }
-    this.cost = cost;
+    // Build the non-PQ list:
+    otherIterators = ArrayUtil.copyOfSubArray(wrappers, 0, lastIdx + 1);
     minOtherDoc = Integer.MAX_VALUE;
     for (DisiWrapper w : otherIterators) {
+      cost += w.cost;
       minOtherDoc = Math.min(minOtherDoc, w.doc);
     }
+
+    this.cost = cost;
     leadTop = leadIterators.top();
   }
 
@@ -144,17 +149,16 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
   }
 
   @Override
-  public void intoBitSet(Bits acceptDocs, int upTo, FixedBitSet bitSet, int offset)
-      throws IOException {
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     while (leadTop.doc < upTo) {
-      leadTop.approximation.intoBitSet(acceptDocs, upTo, bitSet, offset);
+      leadTop.approximation.intoBitSet(upTo, bitSet, offset);
       leadTop.doc = leadTop.approximation.docID();
       leadTop = leadIterators.updateTop();
     }
 
     minOtherDoc = Integer.MAX_VALUE;
     for (DisiWrapper w : otherIterators) {
-      w.approximation.intoBitSet(acceptDocs, upTo, bitSet, offset);
+      w.approximation.intoBitSet(upTo, bitSet, offset);
       w.doc = w.approximation.docID();
       minOtherDoc = Math.min(minOtherDoc, w.doc);
     }

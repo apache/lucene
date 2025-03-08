@@ -13,7 +13,7 @@ on:
       - 'branch_10x'
 
 env:
-  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 # We split the workflow into two parallel jobs for efficiency:
 # one is running all validation checks without tests,
@@ -29,7 +29,7 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java: [ '21' ]
+        java: [ '23' ]
 
     runs-on: ${{ matrix.os }}
 
@@ -53,7 +53,7 @@ jobs:
       matrix:
         # Operating systems to run on.
         os: [ ubuntu-latest, windows-latest, macos-latest ]
-        java: [ '21' ]
+        java: [ '23' ]
 
     runs-on: ${{ matrix.os }}
 

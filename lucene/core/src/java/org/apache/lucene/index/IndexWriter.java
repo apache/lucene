@@ -209,6 +209,7 @@ public class IndexWriter
 
   // Use package-private instance var to enforce the limit so testing
   // can use less electricity:
+  @SuppressWarnings("NonFinalStaticField")
   private static int actualMaxDocs = MAX_DOCS;
 
   /** Used only for testing. */
@@ -2632,7 +2633,8 @@ public class IndexWriter
      */
     try {
       synchronized (fullFlushLock) {
-        try (Closeable finalizer = docWriter.lockAndAbortAll()) {
+        try (@SuppressWarnings("unused")
+            Closeable finalizer = docWriter.lockAndAbortAll()) {
           processEvents(false);
           synchronized (this) {
             try {
@@ -2979,7 +2981,7 @@ public class IndexWriter
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    * @throws IllegalArgumentException if addIndexes would cause the index to exceed {@link
-   *     #MAX_DOCS}, or if the indoming index sort does not match this index's index sort
+   *     #MAX_DOCS}, or if the incoming index sort does not match this index's index sort
    */
   public long addIndexes(Directory... dirs) throws IOException {
     ensureOpen();
@@ -3331,7 +3333,7 @@ public class IndexWriter
                 infoStream.message("IW", "now abort pending addIndexes merge");
               }
               merge.setAborted();
-              merge.close(false, false, mr -> {});
+              merge.close(false, false, _ -> {});
               onMergeFinished(merge);
             });
         pendingAddIndexesMerges.clear();
@@ -3348,7 +3350,7 @@ public class IndexWriter
         handleMergeException(t, merge);
       } finally {
         synchronized (IndexWriter.this) {
-          merge.close(success, false, mr -> {});
+          merge.close(success, false, _ -> {});
           onMergeFinished(merge);
         }
       }
@@ -3729,7 +3731,7 @@ public class IndexWriter
                 // necessary files to disk and checkpointed them.
                 pointInTimeMerges =
                     preparePointInTimeMerge(
-                        toCommit, stopAddingMergedSegments::get, MergeTrigger.COMMIT, sci -> {});
+                        toCommit, stopAddingMergedSegments::get, MergeTrigger.COMMIT, _ -> {});
               }
             }
             success = true;
@@ -4674,7 +4676,7 @@ public class IndexWriter
       deleteNewFiles(merge.info.files());
     }
 
-    try (Closeable finalizer = this::checkpoint) {
+    try (Closeable _ = this::checkpoint) {
       // Must close before checkpoint, otherwise IFD won't be
       // able to delete the held-open files from the merge
       // readers:
@@ -6029,7 +6031,7 @@ public class IndexWriter
   /**
    * Interface for internal atomic events. See {@link DocumentsWriter} for details. Events are
    * executed concurrently and no order is guaranteed. Each event should only rely on the
-   * serializeability within its process method. All actions that must happen before or after a
+   * serializability within its process method. All actions that must happen before or after a
    * certain action must be encoded inside the {@link #process(IndexWriter)} method.
    */
   @FunctionalInterface

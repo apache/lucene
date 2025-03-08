@@ -60,11 +60,10 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
       } else {
         initializedNodes = new FixedBitSet(maxOrd);
         int[] oldToNewOrdinalMap = getNewOrdMapping(mergedVectorValues, initializedNodes);
-        graph =
-            InitializedHnswGraphBuilder.initGraph(M, initializerGraph, oldToNewOrdinalMap, maxOrd);
+        graph = InitializedHnswGraphBuilder.initGraph(initializerGraph, oldToNewOrdinalMap, maxOrd);
       }
     }
     return new HnswConcurrentMergeBuilder(
-        taskExecutor, numWorker, scorerSupplier, M, beamWidth, graph, initializedNodes);
+        taskExecutor, numWorker, scorerSupplier, beamWidth, graph, initializedNodes);
   }
 }

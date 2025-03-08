@@ -29,8 +29,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestStressIndexing extends LuceneTestCase {
   private abstract static class TimedThread extends Thread {
     volatile boolean failed;
-    private static int RUN_ITERATIONS = TEST_NIGHTLY ? atLeast(100) : atLeast(20);
-    private TimedThread[] allThreads;
+    private static final int RUN_ITERATIONS = TEST_NIGHTLY ? atLeast(100) : atLeast(20);
+    private final TimedThread[] allThreads;
 
     public abstract void doWork() throws Throwable;
 
@@ -54,13 +54,14 @@ public class TestStressIndexing extends LuceneTestCase {
     }
 
     private boolean anyErrors() {
-      for (int i = 0; i < allThreads.length; i++)
-        if (allThreads[i] != null && allThreads[i].failed) return true;
+      for (TimedThread thread : allThreads) {
+        if (thread != null && thread.failed) return true;
+      }
       return false;
     }
   }
 
-  private class IndexerThread extends TimedThread {
+  private static class IndexerThread extends TimedThread {
     IndexWriter writer;
     int nextID;
 
@@ -90,7 +91,7 @@ public class TestStressIndexing extends LuceneTestCase {
   }
 
   private static class SearcherThread extends TimedThread {
-    private Directory directory;
+    private final Directory directory;
 
     public SearcherThread(Directory directory, TimedThread[] threads) {
       super(threads);
@@ -148,7 +149,7 @@ public class TestStressIndexing extends LuceneTestCase {
 
     modifier.close();
 
-    for (int i = 0; i < numThread; i++) assertTrue(!threads[i].failed);
+    for (int i = 0; i < numThread; i++) assertFalse(threads[i].failed);
 
     // System.out.println("    Writer: " + indexerThread.count + " iterations");
     // System.out.println("Searcher 1: " + searcherThread1.count + " searchers created");

@@ -23,6 +23,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
@@ -40,7 +41,9 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
@@ -184,8 +187,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertMatches(searcher, kvq, 2);
       ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
       assertEquals(scoreDocs.length, 2);
-      assertIdMatches(reader, "id2", scoreDocs[0]);
-      assertIdMatches(reader, "id0", scoreDocs[1]);
+      assertTopIdsMatches(reader, Set.of("id2", "id0"), scoreDocs);
     }
   }
 
@@ -482,6 +484,62 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   /** Tests with random vectors, number of documents, etc. Uses RandomIndexWriter. */
+  public void testRandomConsistencySingleThreaded() throws IOException {
+    assertRandomConsistency(false);
+  }
+
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/14180")
+  public void testRandomConsistencyMultiThreaded() throws IOException {
+    assertRandomConsistency(true);
+  }
+
+  private void assertRandomConsistency(boolean multiThreaded) throws IOException {
+    int numDocs = 100;
+    int dimension = 4;
+    int numIters = 10;
+    boolean everyDocHasAVector = random().nextBoolean();
+    Random r = random();
+    try (Directory d = newDirectoryForTest()) {
+      // To ensure consistency between seeded runs, remove some randomness
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setMergeScheduler(new SerialMergeScheduler());
+      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+      iwc.setMaxBufferedDocs(numDocs);
+      iwc.setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+      try (IndexWriter w = new IndexWriter(d, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          if (everyDocHasAVector || random().nextInt(10) != 2) {
+            doc.add(getKnnVectorField("field", randomVector(dimension)));
+          }
+          w.addDocument(doc);
+          if (r.nextBoolean() && i % 50 == 0) {
+            w.flush();
+          }
+        }
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = newSearcher(reader, true, true, multiThreaded);
+        // first get the initial set of docs, and we expect all future queries to be exactly the
+        // same
+        int k = random().nextInt(80) + 1;
+        AbstractKnnVectorQuery query = getKnnVectorQuery("field", randomVector(dimension), k);
+        int n = random().nextInt(100) + 1;
+        TopDocs expectedResults = searcher.search(query, n);
+        for (int i = 0; i < numIters; i++) {
+          TopDocs results = searcher.search(query, n);
+          assertEquals(expectedResults.totalHits.value(), results.totalHits.value());
+          assertEquals(expectedResults.scoreDocs.length, results.scoreDocs.length);
+          for (int j = 0; j < results.scoreDocs.length; j++) {
+            assertEquals(expectedResults.scoreDocs[j].doc, results.scoreDocs[j].doc);
+            assertEquals(expectedResults.scoreDocs[j].score, results.scoreDocs[j].score, EPSILON);
+          }
+        }
+      }
+    }
+  }
+
+  /** Tests with random vectors, number of documents, etc. Uses RandomIndexWriter. */
   public void testRandom() throws IOException {
     int numDocs = atLeast(100);
     int dimension = atLeast(5);
@@ -562,20 +620,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
                       getThrowingKnnVectorQuery("field", randomVector(dimension), 10, filter1),
                       numDocs));
 
-          // Test a restrictive filter and check we use exact search
-          Query filter2 = IntPoint.newRangeQuery("tag", lower, lower + 6);
-          results =
-              searcher.search(
-                  getKnnVectorQuery("field", randomVector(dimension), 5, filter2), numDocs);
-          assertEquals(5, results.totalHits.value());
-          assertEquals(results.totalHits.value(), results.scoreDocs.length);
-          expectThrows(
-              UnsupportedOperationException.class,
-              () ->
-                  searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter2),
-                      numDocs));
-
           // Test an unrestrictive filter and check we use approximate search
           Query filter3 = IntPoint.newRangeQuery("tag", lower, numDocs);
           results =
@@ -593,16 +637,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             int tag = (int) fieldDoc.fields[0];
             assertTrue(lower <= tag && tag <= numDocs);
           }
-
-          // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
-          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
-          expectThrows(
-              UnsupportedOperationException.class,
-              () ->
-                  searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4),
-                      numDocs));
         }
+        // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
+        // due to extreme edge cases, removing the randomness
+        float[] vector = new float[dimension];
+        for (int i = 0; i < dimension; i++) {
+          vector[i] = i % 2 == 0 ? 42 : 7;
+        }
+        Query filter4 = IntPoint.newRangeQuery("tag", 250, 256);
+        expectThrows(
+            UnsupportedOperationException.class,
+            () -> searcher.search(getThrowingKnnVectorQuery("field", vector, 1, filter4), numDocs));
       }
     }
   }
@@ -826,7 +871,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager noTimeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, null);
       KnnCollector noTimeoutCollector =
-          noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
+          noTimeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a normal collector is created without timeout
       assertFalse(
@@ -843,7 +888,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager timeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, () -> true);
       KnnCollector timeoutCollector =
-          timeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
+          timeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a time limiting collector is created, which returns partial results
       assertFalse(timeoutCollector instanceof TopKnnCollector);
@@ -965,6 +1010,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       throws IOException {
     String actualId = reader.storedFields().document(scoreDoc.doc).get("id");
     assertEquals(expectedId, actualId);
+  }
+
+  void assertTopIdsMatches(IndexReader reader, Set<String> expectedIds, ScoreDoc[] scoreDocs)
+      throws IOException {
+    Set<String> actualIds = new HashSet<>();
+    for (ScoreDoc scoreDoc : scoreDocs) {
+      actualIds.add(reader.storedFields().document(scoreDoc.doc).get("id"));
+    }
+    assertEquals(expectedIds.size(), actualIds.size());
+    assertEquals(expectedIds, actualIds);
   }
 
   void assertDocScoreQueryToString(Query query) {

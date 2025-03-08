@@ -776,7 +776,7 @@ public class TestAddIndexes extends LuceneTestCase {
           break;
         }
         if (mergesTriggered >= mergesToDo) {
-          merge.close(false, false, mr -> {});
+          merge.close(false, false, _ -> {});
           mergeSource.onMergeFinished(merge);
         } else {
           mergeSource.merge(merge);

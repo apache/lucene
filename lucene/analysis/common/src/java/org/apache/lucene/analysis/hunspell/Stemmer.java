@@ -68,7 +68,7 @@ final class Stemmer {
     analyze(
         word,
         length,
-        (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
+        (stem, _, morphDataId, _, _, _, _) -> {
           list.add(newStem(stem, morphDataId));
           return true;
         });
@@ -98,7 +98,7 @@ final class Stemmer {
     WordCase wordCase = caseOf(word, length);
     if (wordCase == WordCase.UPPER || wordCase == WordCase.TITLE) {
       CaseVariationProcessor variationProcessor =
-          (variant, varLength, originalCase) ->
+          (variant, varLength, _) ->
               doStem(variant, 0, varLength, WordContext.SIMPLE_WORD, processor);
       varyCase(word, length, wordCase, variationProcessor);
     }

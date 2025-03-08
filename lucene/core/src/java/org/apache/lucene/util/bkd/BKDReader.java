@@ -24,6 +24,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.MathUtil;
 
 /**
@@ -144,6 +145,19 @@ public class BKDReader extends PointValues {
           @Override
           public void visit(int docID) {
             count[0]++;
+          }
+
+          @Override
+          public void visit(DocIdSetIterator iterator) throws IOException {
+            int docID;
+            while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+              visit(docID);
+            }
+          }
+
+          @Override
+          public void visit(IntsRef ref) {
+            count[0] += ref.length;
           }
 
           @Override

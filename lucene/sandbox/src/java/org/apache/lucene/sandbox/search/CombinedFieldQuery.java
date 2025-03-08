@@ -92,7 +92,9 @@ import org.apache.lucene.util.SmallFloat;
  * org.apache.lucene.search.similarities.BM25Similarity}.
  *
  * @lucene.experimental
+ * @deprecated Use {@link org.apache.lucene.search.CombinedFieldQuery} instead.
  */
+@Deprecated
 public final class CombinedFieldQuery extends Query implements Accountable {
   private static final long BASE_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(CombinedFieldQuery.class);
@@ -203,7 +205,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       if (pos++ != 0) {
         builder.append(" ");
       }
-      builder.append(term.utf8ToString());
+      builder.append(Term.toString(term));
     }
     builder.append("))");
     return builder.toString();

@@ -53,14 +53,14 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
   /**
    * Creates a new DisjunctionMaxQuery
    *
-   * @param disjuncts a {@code Collection<Query>} of all the disjuncts to add
+   * @param disjuncts a collection of all the disjunct queries to add
    * @param tieBreakerMultiplier the score of each non-maximum disjunct for a document is multiplied
    *     by this weight and added into the final score. If non-zero, the value should be small, on
    *     the order of 0.1, which says that 10 occurrences of word in a lower-scored field that is
    *     also in a higher scored field is just as good as a unique word in the lower scored field
    *     (i.e., one that is not in any higher scored field.
    */
-  public DisjunctionMaxQuery(Collection<Query> disjuncts, float tieBreakerMultiplier) {
+  public DisjunctionMaxQuery(Collection<? extends Query> disjuncts, float tieBreakerMultiplier) {
     Objects.requireNonNull(disjuncts, "Collection of Querys must not be null");
     if (tieBreakerMultiplier < 0 || tieBreakerMultiplier > 1) {
       throw new IllegalArgumentException("tieBreakerMultiplier must be in [0, 1]");
@@ -183,7 +183,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
           }
 
           @Override
-          public void setTopLevelScoringClause() throws IOException {
+          public void setTopLevelScoringClause() {
             if (tieBreakerMultiplier == 0) {
               for (ScorerSupplier ss : scorerSuppliers) {
                 // sub scorers need to be able to skip too as calls to setMinCompetitiveScore get

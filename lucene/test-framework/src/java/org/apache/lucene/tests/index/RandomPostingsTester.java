@@ -1218,7 +1218,7 @@ public class RandomPostingsTester {
       if (fieldInfo.hasNorms()) {
         docToNorm = DOC_TO_NORM;
       } else {
-        docToNorm = doc -> 1L;
+        docToNorm = _ -> 1L;
       }
 
       // First check impacts and block uptos
@@ -1388,10 +1388,6 @@ public class RandomPostingsTester {
       PostingsEnum pe2 = termsEnum.postings(null, flags);
       FixedBitSet set1 = new FixedBitSet(1024);
       FixedBitSet set2 = new FixedBitSet(1024);
-      FixedBitSet acceptDocs = new FixedBitSet(maxDoc);
-      for (int i = 0; i < maxDoc; i += 2) {
-        acceptDocs.set(i);
-      }
 
       while (true) {
         pe1.nextDoc();
@@ -1400,11 +1396,9 @@ public class RandomPostingsTester {
         int offset =
             TestUtil.nextInt(random, Math.max(0, pe1.docID() - set1.length()), pe1.docID());
         int upTo = offset + random.nextInt(set1.length());
-        pe1.intoBitSet(acceptDocs, upTo, set1, offset);
+        pe1.intoBitSet(upTo, set1, offset);
         for (int d = pe2.docID(); d < upTo; d = pe2.nextDoc()) {
-          if (acceptDocs.get(d)) {
-            set2.set(d - offset);
-          }
+          set2.set(d - offset);
         }
 
         assertEquals(set1, set2);

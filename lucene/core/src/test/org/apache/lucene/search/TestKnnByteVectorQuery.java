@@ -25,6 +25,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.TestVectorUtil;
 
@@ -61,7 +62,7 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     return new KnnByteVectorField(name, floatToBytes(vector), VectorSimilarityFunction.EUCLIDEAN);
   }
 
-  private static byte[] floatToBytes(float[] query) {
+  static byte[] floatToBytes(float[] query) {
     byte[] bytes = new byte[query.length];
     for (int i = 0; i < query.length; i++) {
       assert query[i] <= Byte.MAX_VALUE && query[i] >= Byte.MIN_VALUE && (query[i] % 1) == 0
@@ -109,10 +110,10 @@ public class TestKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-  private static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
+  static class ThrowingKnnVectorQuery extends KnnByteVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, byte[] target, int k, Query filter) {
-      super(field, target, k, filter);
+      super(field, target, k, filter, new KnnSearchStrategy.Hnsw(0));
     }
 
     @Override

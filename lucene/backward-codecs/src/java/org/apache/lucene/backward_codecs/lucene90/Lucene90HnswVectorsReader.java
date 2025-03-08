@@ -464,8 +464,18 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int maxConn() {
+      return UNKNOWN_MAX_CONN;
+    }
+
+    @Override
     public int size() {
       return entry.size();
+    }
+
+    @Override
+    public int neighborCount() {
+      return arcCount;
     }
 
     @Override

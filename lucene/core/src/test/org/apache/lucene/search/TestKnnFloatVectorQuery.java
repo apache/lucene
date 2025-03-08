@@ -37,6 +37,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -259,10 +260,10 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
     }
   }
 
-  private static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
+  static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
-      super(field, target, k, filter);
+      super(field, target, k, filter, new KnnSearchStrategy.Hnsw(0));
     }
 
     @Override

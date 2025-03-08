@@ -39,7 +39,7 @@ public final class EmojiTokenizationTestUnicode_12_1 {
     }
   }
 
-  private static String[] TESTS =
+  private static final String[] TESTS =
       new String[] {
         "1F600                                      ; fully-qualified     # 😀 E2.0 grinning face",
         "\uD83D\uDE00",

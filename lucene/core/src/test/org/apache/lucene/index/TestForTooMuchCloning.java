@@ -36,12 +36,14 @@ public class TestForTooMuchCloning extends LuceneTestCase {
   public void test() throws Exception {
     final MockDirectoryWrapper dir = newMockDirectory();
     final TieredMergePolicy tmp = new TieredMergePolicy();
-    tmp.setMaxMergeAtOnce(2);
+    tmp.setSegmentsPerTier(2);
     final RandomIndexWriter w =
         new RandomIndexWriter(
             random(),
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
+                // to reduce flakiness on merge clone count
+                .setMergeScheduler(new SerialMergeScheduler())
                 .setMaxBufferedDocs(2)
                 // use a FilterMP otherwise RIW will randomly reconfigure
                 // the MP while the test runs
@@ -62,7 +64,7 @@ public class TestForTooMuchCloning extends LuceneTestCase {
     // System.out.println("merge clone count=" + cloneCount);
     assertTrue(
         "too many calls to IndexInput.clone during merging: " + dir.getInputCloneCount(),
-        dir.getInputCloneCount() < 500);
+        dir.getInputCloneCount() < 600);
 
     final IndexSearcher s = newSearcher(r);
     // important: set this after newSearcher, it might have run checkindex

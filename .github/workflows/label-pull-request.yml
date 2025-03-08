@@ -1,0 +1,23 @@
+# This file defines the workflow for labeling pull requests with module tags based on the changed files in the PR.
+# It uses the `actions/labeler` GitHub Action to achieve the same.
+#
+# The workflow is triggered on the `pull_request_target` event which ensures workflow is only run from the master branch.
+# The job `labeler` runs on `ubuntu-latest` and has permissions to read contents and write pull requests.
+#
+# For more information on the `actions/labeler` GitHub Action, refer to https://github.com/actions/labeler
+
+name: "Pull Request Labeler"
+run-name: Labelling pull request with module tags based on changed files in the PR
+on:
+  - pull_request_target
+
+jobs:
+  labeler:
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          sync-labels: true

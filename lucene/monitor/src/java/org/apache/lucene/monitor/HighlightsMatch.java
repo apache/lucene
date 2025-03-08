@@ -143,7 +143,7 @@ public class HighlightsMatch extends QueryMatch {
     HighlightsMatch newMatch = new HighlightsMatch(queryId);
     for (HighlightsMatch match : matches) {
       for (String field : match.getFields()) {
-        Set<Hit> hitSet = newMatch.hits.computeIfAbsent(field, f -> new TreeSet<>());
+        Set<Hit> hitSet = newMatch.hits.computeIfAbsent(field, _ -> new TreeSet<>());
         hitSet.addAll(match.getHits(field));
       }
     }
@@ -176,7 +176,7 @@ public class HighlightsMatch extends QueryMatch {
   }
 
   void addHit(String field, int startPos, int endPos, int startOffset, int endOffset) {
-    Set<Hit> hitSet = hits.computeIfAbsent(field, f -> new TreeSet<>());
+    Set<Hit> hitSet = hits.computeIfAbsent(field, _ -> new TreeSet<>());
     hitSet.add(new Hit(startPos, startOffset, endPos, endOffset));
   }
 
