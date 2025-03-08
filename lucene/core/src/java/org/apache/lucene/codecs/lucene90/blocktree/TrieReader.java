@@ -95,8 +95,7 @@ class TrieReader {
 
       // [n bytes] floor data
       // [n bytes] output fp
-      // [1bit] nothing | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit]
-      // sign
+      // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
 
       node.childrenNum = 0;
       int fpBytes = ((term >>> 2) & 0x07) + 1;
