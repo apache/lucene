@@ -87,8 +87,9 @@ class TrieReader {
       // sign
 
       node.childrenNum = 0;
-      int fpBytes = (term >>> 2) & 0x07;
-      node.outputFp = (termLong >>> 8) & bytesAsMask(fpBytes);
+      int fpBytes = ((term >>> 2) & 0x07) + 1;
+      node.outputFp =
+          fpBytes <= 7 ? (termLong >>> 8) & bytesAsMask(fpBytes) : access.readLong(fp + 1);
       node.hasTerms = (term & 0x20) != 0;
       if ((term & 0x40) != 0) {
         node.floorDataFp = fp + 1 + fpBytes;
@@ -99,20 +100,21 @@ class TrieReader {
       return;
     }
 
-    if (sign == Trie.SIGN_SINGLE_CHILDREN) {
+    if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT
+        || sign == Trie.SIGN_SINGLE_CHILDREN_WITH_OUTPUT) {
 
       // [n bytes] floor data
       // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
       // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
       node.childrenNum = 1;
-      int childFpBytes = (term >>> 2) & 0x07;
-      int encodedOutputFpBytes = (term >>> 5) & 0x07;
+      int childFpBytes = ((term >>> 2) & 0x07) + 1;
+      int encodedOutputFpBytes = ((term >>> 5) & 0x07) + 1;
       long l = childFpBytes <= 6 ? termLong >>> 16 : access.readLong(fp + 2);
       node.childFp = l & bytesAsMask(childFpBytes);
       node.minChildrenLabel = (term >>> 8) & 0xFF;
 
-      if (encodedOutputFpBytes == 0) {
+      if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
         node.outputFp = NO_OUTPUT;
       } else {
         long offset = fp + childFpBytes + 2;
@@ -134,36 +136,38 @@ class TrieReader {
     // [n bytes] floor data
     // [n bytes] children fps | [n bytes] position data
     // [n bytes] encoded output fp | [1 byte] children count | [1 byte] label
-    // [6bit] position bytes | 2bit children strategy
-    // [3bit] encoded output fp bytes | [3bit] children fp bytes | | [2bit] sign
+    // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
+    // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
-    node.childrenFpBytes = (term >>> 2) & 0x07;
-    int encodedOutputFpBytes = (term >>> 5) & 0x07;
-    node.childrenStrategy = (term >>> 8) & 0x03;
-    node.positionBytes = (term >>> 10) & 0x3F;
+    node.childrenFpBytes = ((term >>> 2) & 0x07) + 1;
+    boolean hasOutput = (term & 0x20) > 0;
+    node.childrenStrategy = (term >>> 9) & 0x03;
+    node.positionBytes = ((term >>> 11) & 0x1F) + 1;
     node.minChildrenLabel = (term >>> 16) & 0xFF;
-    node.childrenNum = (term >>> 24) & 0xFF;
-    node.positionFp = fp + 4 + encodedOutputFpBytes;
+    node.childrenNum = ((term >>> 24) & 0xFF) + 1;
 
-    if (encodedOutputFpBytes == 0) {
-      node.outputFp = NO_OUTPUT;
-    } else {
+    if (hasOutput) {
+      int encodedOutputFpBytes = ((term >>> 6) & 0x07) + 1;
       long l = encodedOutputFpBytes <= 4 ? termLong >>> 32 : access.readLong(fp + 4);
       long encodedFp = l & bytesAsMask(encodedOutputFpBytes);
       node.outputFp = encodedFp >>> 2;
       node.hasTerms = (encodedFp & 0x02L) != 0;
+      node.positionFp = fp + 4 + encodedOutputFpBytes;
       if ((encodedFp & 0x01L) != 0) {
         node.floorDataFp =
             node.positionFp + node.positionBytes + (long) node.childrenNum * node.childrenFpBytes;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
       }
+    } else {
+      node.outputFp = NO_OUTPUT;
+      node.positionFp = fp + 4;
     }
   }
 
   private static long bytesAsMask(int bytes) {
     assert bytes > 0 && bytes <= 8 : "" + bytes;
-    return (1L << (bytes << 3)) - 1;
+    return bytes != 8 ? (1L << (bytes << 3)) - 1 : -1L;
   }
 
   Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {

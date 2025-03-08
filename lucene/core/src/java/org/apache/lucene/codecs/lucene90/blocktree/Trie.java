@@ -31,8 +31,9 @@ import org.apache.lucene.util.BytesRefBuilder;
 class Trie {
 
   static final int SIGN_NO_CHILDREN = 0x00;
-  static final int SIGN_SINGLE_CHILDREN = 0x01;
-  static final int SIGN_MULTI_CHILDREN = 0x02;
+  static final int SIGN_SINGLE_CHILDREN_WITH_OUTPUT = 0x01;
+  static final int SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT = 0x02;
+  static final int SIGN_MULTI_CHILDREN = 0x03;
 
   record Output(long fp, boolean hasTerms, BytesRef floorData) {}
 
@@ -131,16 +132,15 @@ class Trie {
 
       // [n bytes] floor data
       // [n bytes] output fp
-      // [1bit] nothing | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes  | [2bit]
-      // sign
+      // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
 
       Output output = node.output;
       int outputFpBytes = bytesRequired(output.fp);
       int header =
           SIGN_NO_CHILDREN
-              | (outputFpBytes << 2)
-              | (output.hasTerms ? (1 << 5) : 0)
-              | (output.floorData != null ? (1 << 6) : 0);
+              | ((outputFpBytes - 1) << 2)
+              | ((output.hasTerms ? 1 : 0) << 5)
+              | ((output.floorData != null ? 1 : 0) << 6);
       index.writeByte(((byte) header));
       writeFpNBytes(output.fp, outputFpBytes, index);
       if (output.floorData != null) {
@@ -170,7 +170,12 @@ class Trie {
 
       int childFpBytes = bytesRequired(fpBuffer[0]);
       int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
-      int header = SIGN_SINGLE_CHILDREN | (childFpBytes << 2) | (encodedOutputFpBytes << 5);
+      // TODO if we have only one child and no output, we can store child nodes labels in this node.
+      int sign =
+          node.output != null
+              ? SIGN_SINGLE_CHILDREN_WITH_OUTPUT
+              : SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT;
+      int header = sign | ((childFpBytes - 1) << 2) | ((encodedOutputFpBytes - 1) << 5);
       index.writeByte((byte) header);
       index.writeByte((byte) node.children.getFirst().label);
       writeFpNBytes(fpBuffer[0], childFpBytes, index);
@@ -192,8 +197,8 @@ class Trie {
     // [n bytes] floor data
     // [n bytes] children fps | [n bytes] position data
     // [n bytes] encoded output fp | [1 byte] children count | [1 byte] label
-    // [6bit] position bytes | 2bit children strategy
-    // [3bit] encoded output fp bytes | [3bit] children fp bytes | [2bit] sign
+    // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
+    // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
     final int minLabel = node.children.getFirst().label;
     final int maxLabel = node.children.getLast().label;
@@ -215,15 +220,16 @@ class Trie {
     assert positionBytes > 0 && positionBytes <= 32;
 
     int childrenFpBytes = bytesRequired(fpBuffer[0]);
-    int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
+    int encodedOutputFpBytes = node.output == null ? 1 : bytesRequired(node.output.fp << 2);
     int header =
         SIGN_MULTI_CHILDREN
-            | (childrenFpBytes << 2)
-            | (encodedOutputFpBytes << 5)
-            | (positionStrategy.priority << 8)
-            | (positionBytes << 10)
+            | ((childrenFpBytes - 1) << 2)
+            | ((node.output != null ? 1 : 0) << 5)
+            | ((encodedOutputFpBytes - 1) << 6)
+            | (positionStrategy.priority << 9)
+            | ((positionBytes - 1) << 11)
             | (minLabel << 16)
-            | (childrenNum << 24);
+            | ((childrenNum - 1) << 24);
 
     index.writeInt(header);
 
@@ -260,10 +266,6 @@ class Trie {
   }
 
   private static void writeFpNBytes(long v, int n, DataOutput out) throws IOException {
-    if (n > 7) {
-      throw new IllegalArgumentException(
-          "term dictionary can not have file pointers bigger than 2^56, got: " + v);
-    }
     for (int i = 0; i < n; i++) {
       out.writeByte((byte) v);
       v >>= 8;
