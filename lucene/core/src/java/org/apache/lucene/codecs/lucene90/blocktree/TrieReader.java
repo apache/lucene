@@ -24,6 +24,18 @@ class TrieReader {
 
   private static final long NO_OUTPUT = -1;
   private static final long NO_FLOOR_DATA = -1;
+  private static final long[] BYTES_MASK =
+      new long[] {
+        0L,
+        0xFFL,
+        0xFFFFL,
+        0xFFFFFFL,
+        0xFFFFFFFFL,
+        0xFFFFFFFFFFL,
+        0xFFFFFFFFFFFFL,
+        0xFFFFFFFFFFFFFFL,
+        0xFFFFFFFFFFFFFFFFL
+      };
 
   static class Node {
 
@@ -167,7 +179,7 @@ class TrieReader {
 
   private static long bytesAsMask(int bytes) {
     assert bytes > 0 && bytes <= 8 : "" + bytes;
-    return bytes != 8 ? (1L << (bytes << 3)) - 1 : -1L;
+    return BYTES_MASK[bytes];
   }
 
   Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {
@@ -203,10 +215,9 @@ class TrieReader {
       return null;
     }
 
-    final long codeBytes = parent.childrenFpBytes;
-    final long pos = positionBytesStartFp + positionBytes + codeBytes * position;
-    final long mask = (1L << (codeBytes << 3)) - 1L;
-    final long fp = parent.fp - (access.readLong(pos) & mask);
+    final int codeBytes = parent.childrenFpBytes;
+    final long pos = positionBytesStartFp + positionBytes + (long) codeBytes * position;
+    final long fp = parent.fp - (access.readLong(pos) & bytesAsMask(codeBytes));
     child.label = targetLabel;
     load(child, fp);
 
