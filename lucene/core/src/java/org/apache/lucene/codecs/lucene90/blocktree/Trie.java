@@ -166,7 +166,7 @@ class Trie {
 
       // [n bytes] floor data
       // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
-      // [3bit] encoded output fp bytes | [3bit] child fp bytes | | [2bit] sign
+      // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
       int childFpBytes = bytesRequired(fpBuffer[0]);
       int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
