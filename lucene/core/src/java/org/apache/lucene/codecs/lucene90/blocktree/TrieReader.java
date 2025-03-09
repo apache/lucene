@@ -178,7 +178,7 @@ class TrieReader {
   }
 
   private static long bytesMinus1Mask(int bytesMinus1) {
-    assert bytesMinus1 >= 0 && bytesMinus1 <= 8 : "" + bytesMinus1;
+    assert bytesMinus1 >= 0 && bytesMinus1 < 8 : "" + bytesMinus1;
     return BYTES_MINUS_1_MASK[bytesMinus1];
   }
 
