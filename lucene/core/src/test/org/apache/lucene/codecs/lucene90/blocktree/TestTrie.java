@@ -64,7 +64,7 @@ public class TestTrie extends LuceneTestCase {
         BytesRef key = new BytesRef(randomBytes());
         Trie.Output value =
             new Trie.Output(
-                random().nextLong(1L << 55),
+                random().nextLong(1L << 62),
                 random().nextBoolean(),
                 random().nextBoolean() ? null : new BytesRef(randomBytes()));
         expected.put(key, value);

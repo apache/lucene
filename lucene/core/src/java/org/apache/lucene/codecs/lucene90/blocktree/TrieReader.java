@@ -24,9 +24,8 @@ class TrieReader {
 
   private static final long NO_OUTPUT = -1;
   private static final long NO_FLOOR_DATA = -1;
-  private static final long[] BYTES_MASK =
+  private static final long[] BYTES_MINUS_1_MASK =
       new long[] {
-        0L,
         0xFFL,
         0xFFFFL,
         0xFFFFFFL,
@@ -98,12 +97,14 @@ class TrieReader {
       // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
 
       node.childrenNum = 0;
-      int fpBytes = ((term >>> 2) & 0x07) + 1;
+      int fpBytesMinus1 = (term >>> 2) & 0x07;
       node.outputFp =
-          fpBytes <= 7 ? (termLong >>> 8) & bytesAsMask(fpBytes) : access.readLong(fp + 1);
+          fpBytesMinus1 <= 6
+              ? (termLong >>> 8) & bytesMinus1Mask(fpBytesMinus1)
+              : access.readLong(fp + 1);
       node.hasTerms = (term & 0x20) != 0;
       if ((term & 0x40) != 0) {
-        node.floorDataFp = fp + 1 + fpBytes;
+        node.floorDataFp = fp + 2 + fpBytesMinus1;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
       }
@@ -119,21 +120,21 @@ class TrieReader {
       // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
       node.childrenNum = 1;
-      int childFpBytes = ((term >>> 2) & 0x07) + 1;
-      int encodedOutputFpBytes = ((term >>> 5) & 0x07) + 1;
-      long l = childFpBytes <= 6 ? termLong >>> 16 : access.readLong(fp + 2);
-      node.childFp = l & bytesAsMask(childFpBytes);
+      int childFpBytesMinus1 = (term >>> 2) & 0x07;
+      int encodedOutputFpBytesMinus1 = (term >>> 5) & 0x07;
+      long l = childFpBytesMinus1 <= 5 ? termLong >>> 16 : access.readLong(fp + 2);
+      node.childFp = l & bytesMinus1Mask(childFpBytesMinus1);
       node.minChildrenLabel = (term >>> 8) & 0xFF;
 
       if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
         node.outputFp = NO_OUTPUT;
       } else {
-        long offset = fp + childFpBytes + 2;
-        long encodedFp = access.readLong(offset) & bytesAsMask(encodedOutputFpBytes);
+        long offset = fp + childFpBytesMinus1 + 3;
+        long encodedFp = access.readLong(offset) & bytesMinus1Mask(encodedOutputFpBytesMinus1);
         node.outputFp = encodedFp >>> 2;
         node.hasTerms = (encodedFp & 0x02L) != 0;
         if ((encodedFp & 0x01L) != 0) {
-          node.floorDataFp = offset + encodedOutputFpBytes;
+          node.floorDataFp = offset + encodedOutputFpBytesMinus1 + 1;
         } else {
           node.floorDataFp = NO_FLOOR_DATA;
         }
@@ -151,19 +152,19 @@ class TrieReader {
     // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
     node.childrenFpBytes = ((term >>> 2) & 0x07) + 1;
-    boolean hasOutput = (term & 0x20) > 0;
+    boolean hasOutput = (term & 0x20) != 0;
     node.childrenStrategy = (term >>> 9) & 0x03;
     node.positionBytes = ((term >>> 11) & 0x1F) + 1;
     node.minChildrenLabel = (term >>> 16) & 0xFF;
     node.childrenNum = ((term >>> 24) & 0xFF) + 1;
 
     if (hasOutput) {
-      int encodedOutputFpBytes = ((term >>> 6) & 0x07) + 1;
-      long l = encodedOutputFpBytes <= 4 ? termLong >>> 32 : access.readLong(fp + 4);
-      long encodedFp = l & bytesAsMask(encodedOutputFpBytes);
+      int encodedOutputFpBytesMinus1 = (term >>> 6) & 0x07;
+      long l = encodedOutputFpBytesMinus1 <= 3 ? termLong >>> 32 : access.readLong(fp + 4);
+      long encodedFp = l & bytesMinus1Mask(encodedOutputFpBytesMinus1);
       node.outputFp = encodedFp >>> 2;
       node.hasTerms = (encodedFp & 0x02L) != 0;
-      node.positionFp = fp + 4 + encodedOutputFpBytes;
+      node.positionFp = fp + 5 + encodedOutputFpBytesMinus1;
       if ((encodedFp & 0x01L) != 0) {
         node.floorDataFp =
             node.positionFp + node.positionBytes + (long) node.childrenNum * node.childrenFpBytes;
@@ -176,9 +177,9 @@ class TrieReader {
     }
   }
 
-  private static long bytesAsMask(int bytes) {
-    assert bytes > 0 && bytes <= 8 : "" + bytes;
-    return BYTES_MASK[bytes];
+  private static long bytesMinus1Mask(int bytesMinus1) {
+    assert bytesMinus1 >= 0 && bytesMinus1 <= 8 : "" + bytesMinus1;
+    return BYTES_MINUS_1_MASK[bytesMinus1];
   }
 
   Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {
@@ -216,7 +217,7 @@ class TrieReader {
 
     final int codeBytes = parent.childrenFpBytes;
     final long pos = positionBytesStartFp + positionBytes + (long) codeBytes * position;
-    final long fp = parent.fp - (access.readLong(pos) & bytesAsMask(codeBytes));
+    final long fp = parent.fp - (access.readLong(pos) & bytesMinus1Mask(codeBytes - 1));
     child.label = targetLabel;
     load(child, fp);
 
