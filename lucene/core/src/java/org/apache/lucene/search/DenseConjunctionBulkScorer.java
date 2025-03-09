@@ -121,35 +121,34 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     int bitsetWindowMax = (int) Math.min(max, (long) min + WINDOW_SIZE);
 
     if (acceptDocs == null) {
-      int minNextNonMatchingDocID = max;
+      int minDocIDRunEnd = max;
       for (DocIdSetIterator iterator : iterators) {
         if (iterator.docID() > min) {
-          minNextNonMatchingDocID = min;
+          minDocIDRunEnd = min;
           break;
         } else {
-          minNextNonMatchingDocID =
-              Math.min(minNextNonMatchingDocID, iterator.peekNextNonMatchingDocID());
+          minDocIDRunEnd = Math.min(minDocIDRunEnd, iterator.docIDRunEnd());
         }
       }
 
-      if (minNextNonMatchingDocID >= bitsetWindowMax) {
-        // We have a range of doc IDs that all match.
+      if (minDocIDRunEnd >= bitsetWindowMax) {
+        // We have a large range of doc IDs that all match.
         rangeDocIdStream.from = min;
-        rangeDocIdStream.to = minNextNonMatchingDocID;
+        rangeDocIdStream.to = minDocIDRunEnd;
         collector.collect(rangeDocIdStream);
-        return minNextNonMatchingDocID;
+        return minDocIDRunEnd;
       }
     }
 
     for (DocIdSetIterator it : iterators) {
-      if (it.docID() > min || it.peekNextNonMatchingDocID() < bitsetWindowMax) {
+      if (it.docID() > min || it.docIDRunEnd() < bitsetWindowMax) {
         windowIterators.add(it);
       }
     }
     DocIdSetIterator competitiveIterator = collector.competitiveIterator();
     if (competitiveIterator != null
         && (competitiveIterator.docID() > min
-            || competitiveIterator.peekNextNonMatchingDocID() < bitsetWindowMax)) {
+            || competitiveIterator.docIDRunEnd() < bitsetWindowMax)) {
       windowIterators.add(competitiveIterator);
     }
 

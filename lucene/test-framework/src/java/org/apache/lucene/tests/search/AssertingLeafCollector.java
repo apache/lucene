@@ -100,9 +100,10 @@ class AssertingLeafCollector extends FilterLeafCollector {
       }
 
       @Override
-      public int peekNextNonMatchingDocID() throws IOException {
+      public int docIDRunEnd() throws IOException {
+        assert docID() != -1;
         assert docID() != NO_MORE_DOCS;
-        int nextNonMatchingDocID = in.peekNextNonMatchingDocID();
+        int nextNonMatchingDocID = in.docIDRunEnd();
         assert nextNonMatchingDocID > docID();
         return nextNonMatchingDocID;
       }

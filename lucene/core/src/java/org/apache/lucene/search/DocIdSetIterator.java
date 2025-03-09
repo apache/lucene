@@ -99,7 +99,7 @@ public abstract class DocIdSetIterator {
       }
 
       @Override
-      public int peekNextNonMatchingDocID() throws IOException {
+      public int docIDRunEnd() throws IOException {
         return maxDoc;
       }
     };
@@ -158,7 +158,7 @@ public abstract class DocIdSetIterator {
       }
 
       @Override
-      public int peekNextNonMatchingDocID() throws IOException {
+      public int docIDRunEnd() throws IOException {
         return maxDoc;
       }
     };
@@ -270,21 +270,22 @@ public abstract class DocIdSetIterator {
   }
 
   /**
-   * Returns the next doc ID that may not be a match. This API provides the following guarantees:
+   * Returns the end of the run of consecutive doc IDs that match this {@link DocIdSetIterator} and
+   * that contains the current {@link #docID()}, that is: one plus the last doc ID of the run.
    *
    * <ol>
    *   <li>The returned doc is greater than {@link #docID()}.
-   *   <li>All docs in range {@code [docID() + 1, peekNextNonMatchingDocID())} match this iterator.
-   *   <li>The current position of this iterator is not affected by calling {@link
-   *       #peekNextNonMatchingDocID()}.
+   *   <li>All docs in range {@code [docID(), docIDRunEnd())} match this iterator.
+   *   <li>The current position of this iterator is not affected by calling {@link #docIDRunEnd()}.
    * </ol>
    *
-   * <p><b>Note</b>: After the iterator has exhausted you should not call this method, as it may
-   * result in unpredicted behavior.
+   * <p><b>Note</b>: It is illegal to call this method when the iterator is exhausted or not
+   * positioned.
    *
-   * <p>The default implementation returns #docID() + 1.
+   * <p>The default implementation assumes runs of a single doc ID and returns {@link #docID()}) +
+   * 1.
    */
-  public int peekNextNonMatchingDocID() throws IOException {
+  public int docIDRunEnd() throws IOException {
     return docID() + 1;
   }
 }

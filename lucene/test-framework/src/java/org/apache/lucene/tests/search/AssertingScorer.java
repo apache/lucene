@@ -203,9 +203,9 @@ public class AssertingScorer extends Scorer {
       }
 
       @Override
-      public int peekNextNonMatchingDocID() throws IOException {
-        assert state != IteratorState.FINISHED;
-        int nextNonMatchingDocID = in.peekNextNonMatchingDocID();
+      public int docIDRunEnd() throws IOException {
+        assert state == IteratorState.ITERATING;
+        int nextNonMatchingDocID = in.docIDRunEnd();
         assert nextNonMatchingDocID > docID();
         return nextNonMatchingDocID;
       }

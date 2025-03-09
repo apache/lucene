@@ -117,13 +117,21 @@ public class TestDocIdSetIterator extends LuceneTestCase {
     }
   }
 
-  public void testPeekNonMatchingDocID() throws IOException {
+  public void testDocIDRunEnd() throws IOException {
     DocIdSetIterator it = DocIdSetIterator.all(13);
-    assertEquals(13, it.peekNextNonMatchingDocID());
     assertEquals(0, it.nextDoc());
-    assertEquals(13, it.peekNextNonMatchingDocID());
+    assertEquals(13, it.docIDRunEnd());
     assertEquals(10, it.advance(10));
-    assertEquals(13, it.peekNextNonMatchingDocID());
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(13));
+  }
+
+  public void testDocIDRunEndRange() throws IOException {
+    DocIdSetIterator it = DocIdSetIterator.range(4, 13);
+    assertEquals(4, it.nextDoc());
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(10, it.advance(10));
+    assertEquals(13, it.docIDRunEnd());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(13));
   }
 }
