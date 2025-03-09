@@ -156,6 +156,11 @@ public abstract class DocIdSetIterator {
           advance(upTo);
         }
       }
+
+      @Override
+      public int peekNextNonMatchingDocID() throws IOException {
+        return maxDoc;
+      }
     };
   }
 
