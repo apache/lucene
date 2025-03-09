@@ -91,59 +91,63 @@ class TrieReader {
     int sign = term & 0x03;
 
     if (sign == Trie.SIGN_NO_CHILDREN) {
+      loadLeafNode(fp, term, termLong, node);
+    } else if (sign == Trie.SIGN_MULTI_CHILDREN) {
+      loadMultiChildNode(fp, term, termLong, node);
+    } else {
+      loadSingleChildNode(fp, sign, term, termLong, node);
+    }
+  }
 
-      // [n bytes] floor data
-      // [n bytes] output fp
-      // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
+  private void loadLeafNode(long fp, int term, long termLong, Node node) throws IOException {
 
-      node.childrenNum = 0;
-      int fpBytesMinus1 = (term >>> 2) & 0x07;
-      node.outputFp =
-          fpBytesMinus1 <= 6
-              ? (termLong >>> 8) & BYTES_MINUS_1_MASK[fpBytesMinus1]
-              : access.readLong(fp + 1);
-      node.hasTerms = (term & 0x20) != 0;
-      if ((term & 0x40) != 0) {
-        node.floorDataFp = fp + 2 + fpBytesMinus1;
+    // [n bytes] floor data
+    // [n bytes] output fp
+    // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
+
+    node.childrenNum = 0;
+    int fpBytesMinus1 = (term >>> 2) & 0x07;
+    node.outputFp =
+        fpBytesMinus1 <= 6
+            ? (termLong >>> 8) & BYTES_MINUS_1_MASK[fpBytesMinus1]
+            : access.readLong(fp + 1);
+    node.hasTerms = (term & 0x20) != 0;
+    if ((term & 0x40) != 0) {
+      node.floorDataFp = fp + 2 + fpBytesMinus1;
+    } else {
+      node.floorDataFp = NO_FLOOR_DATA;
+    }
+  }
+
+  private void loadSingleChildNode(long fp, int sign, int term, long termLong, Node node) throws IOException {
+
+    // [n bytes] floor data
+    // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
+    // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
+
+    node.childrenNum = 1;
+    int childFpBytesMinus1 = (term >>> 2) & 0x07;
+    int encodedOutputFpBytesMinus1 = (term >>> 5) & 0x07;
+    long l = childFpBytesMinus1 <= 5 ? termLong >>> 16 : access.readLong(fp + 2);
+    node.childFp = l & BYTES_MINUS_1_MASK[childFpBytesMinus1];
+    node.minChildrenLabel = (term >>> 8) & 0xFF;
+
+    if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
+      node.outputFp = NO_OUTPUT;
+    } else {
+      long offset = fp + childFpBytesMinus1 + 3;
+      long encodedFp = access.readLong(offset) & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
+      node.outputFp = encodedFp >>> 2;
+      node.hasTerms = (encodedFp & 0x02L) != 0;
+      if ((encodedFp & 0x01L) != 0) {
+        node.floorDataFp = offset + encodedOutputFpBytesMinus1 + 1;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
       }
-
-      return;
     }
+  }
 
-    if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT
-        || sign == Trie.SIGN_SINGLE_CHILDREN_WITH_OUTPUT) {
-
-      // [n bytes] floor data
-      // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
-      // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
-
-      node.childrenNum = 1;
-      int childFpBytesMinus1 = (term >>> 2) & 0x07;
-      int encodedOutputFpBytesMinus1 = (term >>> 5) & 0x07;
-      long l = childFpBytesMinus1 <= 5 ? termLong >>> 16 : access.readLong(fp + 2);
-      node.childFp = l & BYTES_MINUS_1_MASK[childFpBytesMinus1];
-      node.minChildrenLabel = (term >>> 8) & 0xFF;
-
-      if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
-        node.outputFp = NO_OUTPUT;
-      } else {
-        long offset = fp + childFpBytesMinus1 + 3;
-        long encodedFp = access.readLong(offset) & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
-        node.outputFp = encodedFp >>> 2;
-        node.hasTerms = (encodedFp & 0x02L) != 0;
-        if ((encodedFp & 0x01L) != 0) {
-          node.floorDataFp = offset + encodedOutputFpBytesMinus1 + 1;
-        } else {
-          node.floorDataFp = NO_FLOOR_DATA;
-        }
-      }
-
-      return;
-    }
-
-    assert sign == Trie.SIGN_MULTI_CHILDREN;
+  private void loadMultiChildNode(long fp, int term, long termLong, Node node) throws IOException {
 
     // [n bytes] floor data
     // [n bytes] children fps | [n bytes] position data
