@@ -23,9 +23,9 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.fst.FST;
 
 final class SegmentTermsEnumFrame {
   // Our index in stack[]:
@@ -35,7 +35,7 @@ final class SegmentTermsEnumFrame {
   boolean hasTermsOrig;
   boolean isFloor;
 
-  FST.Arc<BytesRef> arc;
+  TrieReader.Node node;
 
   // static boolean DEBUG = BlockTreeTermsWriter.DEBUG;
 
@@ -55,8 +55,10 @@ final class SegmentTermsEnumFrame {
   int statsSingletonRunLength = 0;
   final ByteArrayDataInput statsReader = new ByteArrayDataInput();
 
-  int rewindPos;
-  final ByteArrayDataInput floorDataReader = new ByteArrayDataInput();
+  long rewindPos;
+
+  long floorDataPos;
+  IndexInput floorDataReader;
 
   // Length of prefix shared by all terms in this block
   int prefixLength;
@@ -107,11 +109,12 @@ final class SegmentTermsEnumFrame {
     suffixLengthsReader = new ByteArrayDataInput();
   }
 
-  public void setFloorData(SegmentTermsEnum.OutputAccumulator outputAccumulator) {
-    outputAccumulator.setFloorData(floorDataReader);
-    rewindPos = floorDataReader.getPosition();
-    numFollowFloorBlocks = floorDataReader.readVInt();
-    nextFloorLabel = floorDataReader.readByte() & 0xff;
+  public void setFloorData(IndexInput in) throws IOException {
+    floorDataReader = in;
+    rewindPos = in.getFilePointer();
+    numFollowFloorBlocks = in.readVInt();
+    nextFloorLabel = in.readByte() & 0xff;
+    floorDataPos = in.getFilePointer();
     // if (DEBUG) {
     // System.out.println("    setFloorData fpOrig=" + fpOrig + " bytes=" + new
     // BytesRef(source.bytes, source.offset + in.getPosition(), numBytes) + " numFollowFloorBlocks="
@@ -127,7 +130,7 @@ final class SegmentTermsEnumFrame {
     // if (DEBUG) {
     // System.out.println("    loadNextFloorBlock fp=" + fp + " fpEnd=" + fpEnd);
     // }
-    assert arc == null || isFloor : "arc=" + arc + " isFloor=" + isFloor;
+    assert node == null || isFloor : "node=" + node + " isFloor=" + isFloor;
     fp = fpEnd;
     nextEnt = -1;
     loadBlock();
@@ -176,11 +179,11 @@ final class SegmentTermsEnumFrame {
     assert entCount > 0;
     isLastInFloor = (code & 1) != 0;
 
-    assert arc == null || (isLastInFloor || isFloor)
-        : "fp=" + fp + " arc=" + arc + " isFloor=" + isFloor + " isLastInFloor=" + isLastInFloor;
+    assert node == null || (isLastInFloor || isFloor)
+        : "fp=" + fp + " node=" + node + " isFloor=" + isFloor + " isLastInFloor=" + isLastInFloor;
 
     // TODO: if suffixes were stored in random-access
-    // array structure, then we could do binary search
+    // array structure, then we could do binary senodeh
     // instead of linear scan to find target term; eg
     // we could have simple array of offsets
 
@@ -215,7 +218,7 @@ final class SegmentTermsEnumFrame {
     totalSuffixBytes = ste.in.getFilePointer() - startSuffixFP;
 
     /*if (DEBUG) {
-    if (arc == null) {
+    if (node == null) {
     System.out.println("    loadBlock (next) fp=" + fp + " entCount=" + entCount + " prefixLen=" + prefix + " isLastInFloor=" + isLastInFloor + " leaf?=" + isLeafBlock);
     } else {
     System.out.println("    loadBlock (seek) fp=" + fp + " entCount=" + entCount + " prefixLen=" + prefix + " hasTerms?=" + hasTerms + " isFloor?=" + isFloor + " isLastInFloor=" + isLastInFloor + " leaf?=" + isLeafBlock);
@@ -254,17 +257,18 @@ final class SegmentTermsEnumFrame {
     // }
   }
 
-  void rewind() {
+  void rewind() throws IOException {
 
     // Force reload:
     fp = fpOrig;
     nextEnt = -1;
     hasTerms = hasTermsOrig;
     if (isFloor) {
-      floorDataReader.setPosition(rewindPos);
+      floorDataReader.seek(rewindPos);
       numFollowFloorBlocks = floorDataReader.readVInt();
       assert numFollowFloorBlocks > 0;
       nextFloorLabel = floorDataReader.readByte() & 0xff;
+      floorDataPos = floorDataReader.getFilePointer();
     }
 
     /*
@@ -331,7 +335,7 @@ final class SegmentTermsEnumFrame {
     // + entCount + " fp=" + suffixesReader.getPosition());
     while (true) {
       if (nextEnt == entCount) {
-        assert arc == null || (isFloor && isLastInFloor == false)
+        assert node == null || (isFloor && isLastInFloor == false)
             : "isFloor=" + isFloor + " isLastInFloor=" + isLastInFloor;
         loadNextFloorBlock();
         if (isLeafBlock) {
@@ -373,7 +377,7 @@ final class SegmentTermsEnumFrame {
   // TODO: make this array'd so we can do bin search?
   // likely not worth it?  need to measure how many
   // floor blocks we "typically" get
-  public void scanToFloorFrame(BytesRef target) {
+  public void scanToFloorFrame(BytesRef target) throws IOException {
 
     if (!isFloor || target.length <= prefixLength) {
       // if (DEBUG) {
@@ -401,6 +405,7 @@ final class SegmentTermsEnumFrame {
     assert numFollowFloorBlocks != 0;
 
     long newFP = fpOrig;
+    floorDataReader.seek(floorDataPos);
     while (true) {
       final long code = floorDataReader.readVLong();
       newFP = fpOrig + (code >>> 1);
@@ -430,7 +435,7 @@ final class SegmentTermsEnumFrame {
         }
       }
     }
-
+    floorDataPos = floorDataReader.getFilePointer();
     if (newFP != fp) {
       // Force re-load of the block:
       // if (DEBUG) {
