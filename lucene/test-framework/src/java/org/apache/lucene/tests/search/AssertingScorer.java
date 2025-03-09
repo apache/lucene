@@ -201,6 +201,14 @@ public class AssertingScorer extends Scorer {
         in.intoBitSet(upTo, bitSet, offset);
         assert docID() >= upTo;
       }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        assert state == IteratorState.ITERATING;
+        int nextNonMatchingDocID = in.docIDRunEnd();
+        assert nextNonMatchingDocID > docID();
+        return nextNonMatchingDocID;
+      }
     };
   }
 
