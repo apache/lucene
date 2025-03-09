@@ -66,6 +66,12 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
 
+    List<DocIdSetIterator> iterators = this.iterators;
+    if (collector.competitiveIterator() != null) {
+      iterators = new ArrayList<>(iterators);
+      iterators.add(collector.competitiveIterator());
+    }
+
     for (DocIdSetIterator it : iterators) {
       min = Math.max(min, it.docID());
     }
@@ -81,7 +87,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       if (scorable.minCompetitiveScore > scorable.score) {
         return DocIdSetIterator.NO_MORE_DOCS;
       }
-      min = scoreWindow(collector, acceptDocs, min, max);
+      min = scoreWindow(collector, acceptDocs, iterators, min, max);
     }
 
     if (lead.docID() > max) {
@@ -101,7 +107,8 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     }
   }
 
-  private int scoreWindow(LeafCollector collector, Bits acceptDocs, int min, int max)
+  private int scoreWindow(
+      LeafCollector collector, Bits acceptDocs, List<DocIdSetIterator> iterators, int min, int max)
       throws IOException {
 
     // Advance all iterators to the first doc that is greater than or equal to min. This is
@@ -144,12 +151,6 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       if (it.docID() > min || it.docIDRunEnd() < bitsetWindowMax) {
         windowIterators.add(it);
       }
-    }
-    DocIdSetIterator competitiveIterator = collector.competitiveIterator();
-    if (competitiveIterator != null
-        && (competitiveIterator.docID() > min
-            || competitiveIterator.docIDRunEnd() < bitsetWindowMax)) {
-      windowIterators.add(competitiveIterator);
     }
 
     if (acceptDocs == null && windowIterators.size() == 1) {
