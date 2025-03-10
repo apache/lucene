@@ -132,9 +132,9 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
   private final int beamWidth;
 
   /**
-   * Defines the format used for storing, reading, and merging vectors on disk. Flat formats enable
-   * random access to vectors based on their node ID, as recorded in the HNSW graph. To ensure
-   * consistent access, the {@link ReadAdvice#RANDOM} read advice is used.
+   * Specifies the format used for storing, reading, and merging vectors on disk.
+   * Since these vectors are primarily accessed randomly via the HSNW graph,
+   * we use {@link ReadAdvice#RANDOM} when opening the underlying file.
    */
   private static final FlatVectorsFormat flatVectorsFormat =
       new Lucene99FlatVectorsFormat(

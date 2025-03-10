@@ -52,9 +52,9 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "veq";
 
   /**
-   * Defines the format used for storing, reading, and merging raw vectors on disk. For this format,
-   * the {@link ReadAdvice#SEQUENTIAL} read advice is employed, as nearest neighbors are retrieved
-   * exclusively using a brute-force approach.
+   * Specifies the format used for storing, reading, and merging raw vectors on disk.
+   * Since these vectors are rarely accessed, we optimize for merge operations by using
+   * {@link ReadAdvice#SEQUENTIAL} when opening the underlying file.
    */
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(

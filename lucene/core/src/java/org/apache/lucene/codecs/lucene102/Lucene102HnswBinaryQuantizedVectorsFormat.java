@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
@@ -57,9 +58,13 @@ public class Lucene102HnswBinaryQuantizedVectorsFormat extends KnnVectorsFormat 
    */
   private final int beamWidth;
 
-  /** The format for storing, reading, merging vectors on disk */
+  /**
+   * Specifies the format used for storing, reading, and merging vectors on disk.
+   * Since these vectors are primarily accessed randomly via the HSNW graph,
+   * we use {@link ReadAdvice#RANDOM} when opening the underlying file.
+   */
   private static final FlatVectorsFormat flatVectorsFormat =
-      new Lucene102BinaryQuantizedVectorsFormat();
+      new Lucene102BinaryQuantizedVectorsFormat(ReadAdvice.RANDOM);
 
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
