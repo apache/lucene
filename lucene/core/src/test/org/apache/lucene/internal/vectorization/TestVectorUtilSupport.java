@@ -170,7 +170,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     return packed;
   }
 
-  public void testQuantize() {
+  public void testMinMaxScalarQuantize() {
     Random r = random();
     float min = r.nextFloat(-1, 1);
     float max = r.nextFloat(min, 1);
@@ -189,7 +189,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
         p -> {
           byte[] output = new byte[size];
           outputs.add(output);
-          return p.quantize(vector, output, scale, alpha, min, max);
+          return p.minMaxScalarQuantize(vector, output, scale, alpha, min, max);
         });
 
     // check the outputs are identical
@@ -205,7 +205,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
     assertFloatReturningProviders(
         p ->
-            p.recalculateOffset(
+            p.recalculateScalarQuantizationOffset(
                 outputs.getFirst(), alpha, min, newScale, newAlpha, newMin, newMax));
   }
 

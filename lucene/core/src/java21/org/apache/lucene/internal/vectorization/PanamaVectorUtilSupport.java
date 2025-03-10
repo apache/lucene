@@ -909,12 +909,14 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float quantize(
+  public float minMaxScalarQuantize(
       float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
     float correction = 0;
     int i = 0;
     // only vectorize if we have a viable BYTE_SPECIES we can use for output
     if (VECTOR_BITSIZE >= 256) {
+      FloatVector sum = FloatVector.zero(FLOAT_SPECIES);
+
       for (; i < FLOAT_SPECIES.loopBound(vector.length); i += FLOAT_SPECIES.length()) {
         FloatVector v = FloatVector.fromArray(FLOAT_SPECIES, vector, i);
 
@@ -930,18 +932,20 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         ((ByteVector) roundedDxs.castShape(BYTE_SPECIES, 0)).intoArray(dest, i);
         // We multiply by `alpha` here to get the quantized value back into the original range
         // to aid in calculating the corrective offset
-        Vector<Float> dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
+        FloatVector dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
         // Calculate the corrective offset that needs to be applied to the score
         // in addition to the `byte * minQuantile * alpha` term in the equation
         // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized value
         // will be rounded to the nearest whole number and lose some accuracy
         // Additionally, we account for the global correction of `minQuantile^2` in the equation
-        correction +=
+        sum =
             v.sub(minQuantile / 2f)
                 .mul(minQuantile)
                 .add(v.sub(minQuantile).sub(dxq).mul(dxq))
-                .reduceLanes(VectorOperators.ADD);
+                .add(sum);
       }
+
+      correction = sum.reduceLanes(VectorOperators.ADD);
     }
 
     // complete the tail normally
@@ -953,7 +957,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float recalculateOffset(
+  public float recalculateScalarQuantizationOffset(
       byte[] vector,
       float oldAlpha,
       float oldMinQuantile,
@@ -965,6 +969,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     int i = 0;
     // only vectorize if we have a viable BYTE_SPECIES that we can use
     if (VECTOR_BITSIZE >= 256) {
+      FloatVector sum = FloatVector.zero(FLOAT_SPECIES);
+
       for (; i < BYTE_SPECIES.loopBound(vector.length); i += BYTE_SPECIES.length()) {
         ByteVector bv = ByteVector.fromArray(BYTE_SPECIES, vector, i);
         // undo the old quantization
@@ -974,13 +980,15 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         // same operations as in quantize above
         FloatVector dxc = v.min(maxQuantile).max(minQuantile).sub(minQuantile);
         Vector<Integer> roundedDxs = dxc.mul(scale).add(0.5f).convert(VectorOperators.F2I, 0);
-        Vector<Float> dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
-        correction +=
+        FloatVector dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
+        sum =
             v.sub(minQuantile / 2f)
                 .mul(minQuantile)
                 .add(v.sub(minQuantile).sub(dxq).mul(dxq))
-                .reduceLanes(VectorOperators.ADD);
+                .add(sum);
       }
+
+      correction = sum.reduceLanes(VectorOperators.ADD);
     }
 
     // complete the tail normally

@@ -236,13 +236,13 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public float quantize(
+  public float minMaxScalarQuantize(
       float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
     return new ScalarQuantizer(alpha, scale, minQuantile, maxQuantile).quantize(vector, dest, 0);
   }
 
   @Override
-  public float recalculateOffset(
+  public float recalculateScalarQuantizationOffset(
       byte[] vector,
       float oldAlpha,
       float oldMinQuantile,

@@ -77,7 +77,7 @@ public interface VectorUtilSupport {
    * @param maxQuantile the upper quantile of the distribution
    * @return the corrective offset that needs to be applied to the score
    */
-  float quantize(
+  float minMaxScalarQuantize(
       float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile);
 
   /**
@@ -92,7 +92,7 @@ public interface VectorUtilSupport {
    * @param maxQuantile the upper quantile of the distribution
    * @return the new corrective offset
    */
-  float recalculateOffset(
+  float recalculateScalarQuantizationOffset(
       byte[] vector,
       float oldAlpha,
       float oldMinQuantile,

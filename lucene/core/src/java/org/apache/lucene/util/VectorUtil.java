@@ -349,7 +349,7 @@ public final class VectorUtil {
   public static float quantize(
       float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
     assert vector.length == dest.length;
-    return IMPL.quantize(vector, dest, scale, alpha, minQuantile, maxQuantile);
+    return IMPL.minMaxScalarQuantize(vector, dest, scale, alpha, minQuantile, maxQuantile);
   }
 
   /**
@@ -372,7 +372,7 @@ public final class VectorUtil {
       float alpha,
       float minQuantile,
       float maxQuantile) {
-    return IMPL.recalculateOffset(
+    return IMPL.recalculateScalarQuantizationOffset(
         vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile);
   }
 }
