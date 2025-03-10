@@ -17,6 +17,8 @@
 
 package org.apache.lucene.util.bkd;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -37,6 +39,17 @@ public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxP
 
   /** Maximum number of index dimensions */
   public static final int MAX_INDEX_DIMS = 8;
+
+  static List<BKDConfig> DEFAULT_CONFIGS = new ArrayList<>(2);
+
+  static {
+    // config for int / float
+    DEFAULT_CONFIGS.add(new BKDConfig(1, 1, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE));
+    // config for long / double
+    DEFAULT_CONFIGS.add(new BKDConfig(1, 1, 8, DEFAULT_MAX_POINTS_IN_LEAF_NODE));
+    // config for 2D points
+    DEFAULT_CONFIGS.add(new BKDConfig(2, 2, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE));
+  }
 
   public BKDConfig {
     // Check inputs are on bounds
@@ -65,6 +78,16 @@ public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxP
               + ArrayUtil.MAX_ARRAY_LENGTH
               + "); got "
               + maxPointsInLeafNode);
+    }
+  }
+
+  static BKDConfig create(int numDims, int numIndexDims, int bytesPerDim, int maxPointsInLeafNode) {
+    final BKDConfig config = new BKDConfig(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
+    int defaultConfigIndex = BKDConfig.DEFAULT_CONFIGS.indexOf(config);
+    if (defaultConfigIndex != -1) {
+      return BKDConfig.DEFAULT_CONFIGS.get(defaultConfigIndex);
+    } else {
+      return config;
     }
   }
 
