@@ -84,7 +84,7 @@ public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxP
 
   static BKDConfig create(int numDims, int numIndexDims, int bytesPerDim, int maxPointsInLeafNode) {
     final BKDConfig config = new BKDConfig(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
-    int defaultConfigIndex = BKDConfig.DEFAULT_CONFIGS.indexOf(config);
+    final int defaultConfigIndex = BKDConfig.DEFAULT_CONFIGS.indexOf(config);
     if (defaultConfigIndex != -1) {
       return BKDConfig.DEFAULT_CONFIGS.get(defaultConfigIndex);
     } else {
