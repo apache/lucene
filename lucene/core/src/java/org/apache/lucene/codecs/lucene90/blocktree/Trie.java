@@ -196,7 +196,7 @@ class Trie {
 
     // [n bytes] floor data
     // [n bytes] children fps | [n bytes] position data
-    // [n bytes] encoded output fp | [1 byte] children count | [1 byte] label
+    // [1 byte] children count (if floor data) | [n bytes] encoded output fp | [1 byte] label
     // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
     // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
