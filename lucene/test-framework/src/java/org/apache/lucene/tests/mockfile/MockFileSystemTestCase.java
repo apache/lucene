@@ -38,6 +38,7 @@ public abstract class MockFileSystemTestCase extends LuceneTestCase {
   protected abstract Path wrap(Path path);
 
   /** Test that Path.hashcode/equals are sane */
+  @SuppressWarnings("SelfAssertion")
   public void testHashCodeEquals() throws IOException {
     Path dir = wrap(createTempDir());
 

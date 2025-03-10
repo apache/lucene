@@ -44,6 +44,7 @@ public class LukeMain {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static JFrame frame;
 
   public static JFrame getOwnerFrame() {
@@ -57,7 +58,7 @@ public class LukeMain {
     // uncaught error handler
     MessageBroker messageBroker = MessageBroker.getInstance();
     try {
-      Thread.setDefaultUncaughtExceptionHandler((thread, cause) -> handle(cause, messageBroker));
+      Thread.setDefaultUncaughtExceptionHandler((_, cause) -> handle(cause, messageBroker));
 
       frame = new LukeWindowProvider().get();
       frame.setLocation(200, 100);
@@ -106,7 +107,7 @@ public class LukeMain {
                     MessageUtils.getLocalizedMessage("openindex.dialog.title"),
                     600,
                     420,
-                    (factory) -> {});
+                    (_) -> {});
 
             long _end = System.nanoTime() / 1_000_000;
             log.info(

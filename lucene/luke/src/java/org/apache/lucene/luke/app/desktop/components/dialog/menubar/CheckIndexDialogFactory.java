@@ -65,6 +65,7 @@ public final class CheckIndexDialogFactory implements DialogOpener.DialogFactory
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static CheckIndexDialogFactory instance;
 
   private final Preferences prefs;
@@ -184,7 +185,7 @@ public final class CheckIndexDialogFactory implements DialogOpener.DialogFactory
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setFont(StyleConstants.FONT_BUTTON_LARGE);
     closeBtn.setMargin(new Insets(3, 0, 3, 0));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     execButtons.add(closeBtn);
     panel.add(execButtons);
 

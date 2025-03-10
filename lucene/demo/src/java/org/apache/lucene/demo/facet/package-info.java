@@ -41,6 +41,8 @@
  *         <li><a href="#drill_down">Drill-Down with Regular Facets</a>
  *         <li><a href="#multi-category_list">Multiple Category Lists</a>
  *         <li><a href="#sampling">Sampling</a>
+ *         <li><a href="#drf">Dynamic Range Facets</a>
+ *         <li><a href="#faceting_during_collection">Faceting During Collection</a>
  *       </ol>
  *   <li><a href="#concurrent_indexing_search">Concurrent Indexing and Search</a>
  *   <li><a href="#demo">All demo packages and classes</a>
@@ -390,6 +392,15 @@
  * We can build ranges over numeric fields and count the number of values falling in each range. The
  * values can be weighted and the number of desired ranges can be specified. To see an example,
  * check {@link org.apache.lucene.demo.facet.DynamicRangeFacetsExample}.
+ *
+ * <h3 id="faceting_during_collection">Faceting During Collection</h3>
+ *
+ * Facets collection described in the document requires two stages. During first stage matching
+ * document IDs are collected by FacetCollector. During second stage, Facets go through matching doc
+ * IDs to aggregate results. There is an experimental module that does it in a single stage by
+ * computing aggregations during collection. The module also enables different aggregation types
+ * (e.g. multiple Long aggregations per path) for all facet types (e.g. taxonomy or range facets).
+ * To see examples, check {@link org.apache.lucene.demo.facet.SandboxFacetsExample}.
  *
  * <h2 id="concurrent_indexing_search">Concurrent Indexing and Search</h2>
  *

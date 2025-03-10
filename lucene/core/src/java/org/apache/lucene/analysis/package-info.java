@@ -343,7 +343,7 @@
  *       undefined as long as they both leave from the same position. As result, all synonyms of a
  *       token would be considered to appear in exactly the same position as that token, and so
  *       would they be seen by phrase and proximity searches. For multi-token synonyms to work
- *       correctly, you should use {@code SynoymGraphFilter} at search time only.
+ *       correctly, you should use {@code SynonymGraphFilter} at search time only.
  * </ol>
  *
  * <h3>Token Position Length</h3>

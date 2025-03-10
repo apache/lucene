@@ -16,47 +16,21 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.FeatureField;
-import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.ByteBuffersDirectory;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Util class for Scorer related methods */
 class ScorerUtil {
 
-  private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS;
-
-  static {
-    try (Directory dir = new ByteBuffersDirectory();
-        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
-      Document doc = new Document();
-      doc.add(new FeatureField("field", "value", 1f));
-      w.addDocument(doc);
-      try (DirectoryReader reader = DirectoryReader.open(w)) {
-        LeafReader leafReader = reader.leaves().get(0).reader();
-        TermsEnum te = leafReader.terms("field").iterator();
-        if (te.seekExact(new BytesRef("value")) == false) {
-          throw new Error();
-        }
-        ImpactsEnum ie = te.impacts(PostingsEnum.FREQS);
-        DEFAULT_IMPACTS_ENUM_CLASS = ie.getClass();
-      }
-    } catch (IOException e) {
-      throw new Error(e);
-    }
-  }
+  private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS =
+      Lucene101PostingsFormat.getImpactsEnumImpl();
+  private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS =
+      new FixedBitSet(1).asReadOnlyBits().getClass();
 
   static long costWithMinShouldMatch(LongStream costs, int numScorers, int minShouldMatch) {
     // the idea here is the following: a boolean query c1,c2,...cn with minShouldMatch=m
@@ -107,5 +81,40 @@ class ScorerUtil {
       scorable = new FilterScorable(scorable);
     }
     return scorable;
+  }
+
+  /**
+   * Optimize {@link Bits} representing the set of accepted documents for the case when it is likely
+   * implemented as live docs. This helps make calls to {@link Bits#get(int)} inlinable, which
+   * in-turn helps speed up query evaluation. This is especially helpful as inlining will sometimes
+   * enable auto-vectorizing shifts and masks that are done in {@link FixedBitSet#get(int)}.
+   */
+  static Bits likelyLiveDocs(Bits acceptDocs) {
+    if (acceptDocs == null) {
+      return acceptDocs;
+    } else if (acceptDocs.getClass() == DEFAULT_ACCEPT_DOCS_CLASS) {
+      return acceptDocs;
+    } else {
+      return new FilterBits(acceptDocs);
+    }
+  }
+
+  private static class FilterBits implements Bits {
+
+    private final Bits in;
+
+    FilterBits(Bits in) {
+      this.in = in;
+    }
+
+    @Override
+    public boolean get(int index) {
+      return in.get(index);
+    }
+
+    @Override
+    public int length() {
+      return in.length();
+    }
   }
 }

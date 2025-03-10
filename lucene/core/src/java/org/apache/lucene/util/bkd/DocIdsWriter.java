@@ -324,12 +324,7 @@ final class DocIdsWriter {
   private static void readContinuousIds(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
     int start = in.readVInt();
-    int extra = start & 63;
-    int offset = start - extra;
-    int numBits = count + extra;
-    FixedBitSet bitSet = new FixedBitSet(numBits);
-    bitSet.set(extra, numBits);
-    visitor.visit(new DocBaseBitSetIterator(bitSet, count, offset));
+    visitor.visit(DocIdSetIterator.range(start, start + count));
   }
 
   private static void readLegacyDeltaVInts(IndexInput in, int count, IntersectVisitor visitor)
@@ -348,25 +343,11 @@ final class DocIdsWriter {
     visitor.visit(scratchIntsRef);
   }
 
-  private static void readInts24(IndexInput in, int count, IntersectVisitor visitor)
-      throws IOException {
-    int i;
-    for (i = 0; i < count - 7; i += 8) {
-      long l1 = in.readLong();
-      long l2 = in.readLong();
-      long l3 = in.readLong();
-      visitor.visit((int) (l1 >>> 40));
-      visitor.visit((int) (l1 >>> 16) & 0xffffff);
-      visitor.visit((int) (((l1 & 0xffff) << 8) | (l2 >>> 56)));
-      visitor.visit((int) (l2 >>> 32) & 0xffffff);
-      visitor.visit((int) (l2 >>> 8) & 0xffffff);
-      visitor.visit((int) (((l2 & 0xff) << 16) | (l3 >>> 48)));
-      visitor.visit((int) (l3 >>> 24) & 0xffffff);
-      visitor.visit((int) l3 & 0xffffff);
-    }
-    for (; i < count; ++i) {
-      visitor.visit((Short.toUnsignedInt(in.readShort()) << 8) | Byte.toUnsignedInt(in.readByte()));
-    }
+  private void readInts24(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
+    readInts24(in, count, scratch);
+    scratchIntsRef.ints = scratch;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
   }
 
   private void readInts32(IndexInput in, int count, IntersectVisitor visitor) throws IOException {

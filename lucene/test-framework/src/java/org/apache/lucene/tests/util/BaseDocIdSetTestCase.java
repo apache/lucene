@@ -23,7 +23,7 @@ import java.util.BitSet;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Base test class for {@link DocIdSet}s. */
 public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTestCase {
@@ -161,23 +161,6 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
         }
       }
     }
-
-    // bits()
-    final Bits bits = ds2.bits();
-    if (bits != null) {
-      // test consistency between bits and iterator
-      it2 = ds2.iterator();
-      for (int previousDoc = -1, doc = it2.nextDoc(); ; previousDoc = doc, doc = it2.nextDoc()) {
-        final int max = doc == DocIdSetIterator.NO_MORE_DOCS ? bits.length() : doc;
-        for (int i = previousDoc + 1; i < max; ++i) {
-          assertEquals(false, bits.get(i));
-        }
-        if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-          break;
-        }
-        assertEquals(true, bits.get(doc));
-      }
-    }
   }
 
   private static class Dummy {
@@ -195,5 +178,72 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
     dummy.o2 = null;
     long bytes2 = RamUsageTester.ramUsed(dummy);
     return bytes1 - bytes2;
+  }
+
+  public void testIntoBitSet() throws IOException {
+    Random random = random();
+    final int numBits = TestUtil.nextInt(random, 100, 1 << 20);
+    // test various random sets with various load factors
+    for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {
+      final BitSet set = randomSet(numBits, percentSet);
+      final T copy = copyOf(set, numBits);
+      int from = TestUtil.nextInt(random(), 0, numBits - 1);
+      int to = TestUtil.nextInt(random(), from, numBits + 5);
+      FixedBitSet actual = new FixedBitSet(to - from);
+      DocIdSetIterator it1 = copy.iterator();
+      if (it1 == null) {
+        continue;
+      }
+      int fromDoc = it1.advance(from);
+      // No docs to set
+      it1.intoBitSet(from, actual, from);
+      assertTrue(actual.scanIsEmpty());
+      assertEquals(fromDoc, it1.docID());
+
+      // Now actually set some bits
+      it1.intoBitSet(to, actual, from);
+      FixedBitSet expected = new FixedBitSet(to - from);
+      DocIdSetIterator it2 = copy.iterator();
+      for (int doc = it2.advance(from); doc < to; doc = it2.nextDoc()) {
+        expected.set(doc - from);
+      }
+      assertEquals(expected, actual);
+      // Check if docID() / nextDoc() return the same value after #intoBitSet has been called.
+      assertEquals(it2.docID(), it1.docID());
+      if (it2.docID() != DocIdSetIterator.NO_MORE_DOCS) {
+        assertEquals(it2.nextDoc(), it1.nextDoc());
+      }
+    }
+  }
+
+  public void testIntoBitSetBoundChecks() throws IOException {
+    final BitSet set = new BitSet();
+    set.set(20);
+    set.set(42);
+    final T copy = copyOf(set, 256);
+    int from = TestUtil.nextInt(random(), 0, 20);
+    int to = TestUtil.nextInt(random(), 43, 256);
+    int offset = TestUtil.nextInt(random(), 0, from);
+    FixedBitSet dest1 = new FixedBitSet(42 - offset + 1);
+    DocIdSetIterator it1 = copy.iterator();
+    it1.advance(from);
+    // This call is legal, since all "set" bits are in the range
+    it1.intoBitSet(to, dest1, offset);
+    for (int i = 0; i < dest1.length(); ++i) {
+      assertEquals(offset + i == 20 || offset + i == 42, dest1.get(i));
+    }
+
+    FixedBitSet dest2 = new FixedBitSet(42 - offset);
+    DocIdSetIterator it2 = copy.iterator();
+    it2.advance(from);
+    // This call is not legal, since there is one bit that is set beyond the end of the target bit
+    // set
+    expectThrows(Throwable.class, () -> it2.intoBitSet(to, dest2, offset));
+
+    FixedBitSet dest3 = new FixedBitSet(42 - offset + 1);
+    DocIdSetIterator it3 = copy.iterator();
+    it3.advance(from);
+    // This call is not legal, since offset is greater than the current doc
+    expectThrows(Throwable.class, () -> it3.intoBitSet(to, dest3, 21));
   }
 }

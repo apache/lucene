@@ -47,7 +47,7 @@ configure(project(":lucene:benchmark")) {
   task getEnWiki(type: Download) {
     ext {
       name = "enwiki-20070527-pages-articles.xml"
-      src = "https://home.apache.org/~dsmiley/data/${name}.bz2"
+      src = "https://s3.amazonaws.com/lucene-testdata/wikipedia/${name}.zst"
       intermediate = file("${dataDir}/${name}.bz2")
       dst = file("${dataDir}/${name}")
     }
@@ -61,14 +61,14 @@ configure(project(":lucene:benchmark")) {
 
     doLast {
       logger.lifecycle("Decompressing ${ext.name}...")
-      ant.bunzip2(src: ext.intermediate, dest: ext.dst)
+      unzstd(ext.intermediate.toPath(), ext.dst.toPath())
     }
   }
 
   task getEnWikiRandomLines(type: Download) {
     ext {
       name = "enwiki.random.lines.txt"
-      src = "https://home.apache.org/~mikemccand/${name}.zst"
+      src = "https://s3.amazonaws.com/lucene-testdata/wikipedia/${name}.zst"
       intermediate = file("${dataDir}/${name}.zst")
       dst = file("${dataDir}/${name}")
     }
@@ -92,7 +92,7 @@ configure(project(":lucene:benchmark")) {
     //       and then compress with: bzip2 -9 -k file_random.txt
     ext {
       name = "geonames_20130921_randomOrder_allCountries.txt"
-      src = "https://home.apache.org/~dsmiley/data/${name}.bz2"
+      src = "https://s3.amazonaws.com/lucene-testdata/geonames/${name}.bz2"
       intermediate = file("${dataDir}/${name}.bz2")
       dst = file("${dataDir}/${name}")
     }
@@ -113,7 +113,7 @@ configure(project(":lucene:benchmark")) {
   task getTop100kWikiWordFiles(type: Download) {
     ext {
       name = "top.100k.words.de.en.fr.uk.wikipedia.2009-11"
-      src = "https://home.apache.org/~rmuir/wikipedia/${name}.tar.bz2"
+      src = "https://s3.amazonaws.com/lucene-testdata/wikipedia/${name}.tar.bz2"
       intermediate = file("${dataDir}/${name}.bz2")
       dst = file("${dataDir}/${name}")
     }
