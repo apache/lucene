@@ -927,7 +927,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         // Scale the value to the range [0, 127], this is our quantized value
         // scale = 127/(maxQuantile - minQuantile)
         // Math.round rounds to positive infinity, so do the same by +0.5 then truncating to int
-        Vector<Integer> roundedDxs = dxc.mul(scale).add(0.5f).convert(VectorOperators.F2I, 0);
+        Vector<Integer> roundedDxs = fma(dxc, dxc.broadcast(scale), dxc.broadcast(0.5f)).convert(VectorOperators.F2I, 0);
         // output this to the array
         ((ByteVector) roundedDxs.castShape(BYTE_SPECIES, 0)).intoArray(dest, i);
         // We multiply by `alpha` here to get the quantized value back into the original range
@@ -938,11 +938,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized value
         // will be rounded to the nearest whole number and lose some accuracy
         // Additionally, we account for the global correction of `minQuantile^2` in the equation
-        sum =
-            v.sub(minQuantile / 2f)
-                .mul(minQuantile)
-                .add(v.sub(minQuantile).sub(dxq).mul(dxq))
-                .add(sum);
+        sum = fma(v.sub(minQuantile / 2f), v.broadcast(minQuantile), fma(v.sub(minQuantile).sub(dxq), dxq, sum));
       }
 
       correction = sum.reduceLanes(VectorOperators.ADD);
@@ -972,20 +968,17 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       FloatVector sum = FloatVector.zero(FLOAT_SPECIES);
 
       for (; i < BYTE_SPECIES.loopBound(vector.length); i += BYTE_SPECIES.length()) {
-        ByteVector bv = ByteVector.fromArray(BYTE_SPECIES, vector, i);
+        FloatVector fv = (FloatVector) ByteVector.fromArray(BYTE_SPECIES, vector, i).castShape(FLOAT_SPECIES, 0);
         // undo the old quantization
         FloatVector v =
-            ((FloatVector) bv.castShape(FLOAT_SPECIES, 0)).mul(oldAlpha).add(oldMinQuantile);
+            fma(fv, fv.broadcast(oldAlpha), fv.broadcast(oldMinQuantile));
 
         // same operations as in quantize above
         FloatVector dxc = v.min(maxQuantile).max(minQuantile).sub(minQuantile);
-        Vector<Integer> roundedDxs = dxc.mul(scale).add(0.5f).convert(VectorOperators.F2I, 0);
+        Vector<Integer> roundedDxs = fma(dxc, dxc.broadcast(scale), dxc.broadcast(0.5f)).convert(VectorOperators.F2I, 0);
         FloatVector dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
         sum =
-            v.sub(minQuantile / 2f)
-                .mul(minQuantile)
-                .add(v.sub(minQuantile).sub(dxq).mul(dxq))
-                .add(sum);
+            fma(v.sub(minQuantile / 2f), v.broadcast(minQuantile), fma(v.sub(minQuantile).sub(dxq), dxq, sum));
       }
 
       correction = sum.reduceLanes(VectorOperators.ADD);
