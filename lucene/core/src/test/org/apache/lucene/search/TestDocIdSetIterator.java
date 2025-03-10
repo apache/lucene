@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -114,5 +115,23 @@ public class TestDocIdSetIterator extends LuceneTestCase {
         doc = expectedDisi.docID();
       }
     }
+  }
+
+  public void testDocIDRunEnd() throws IOException {
+    DocIdSetIterator it = DocIdSetIterator.all(13);
+    assertEquals(0, it.nextDoc());
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(10, it.advance(10));
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(13));
+  }
+
+  public void testDocIDRunEndRange() throws IOException {
+    DocIdSetIterator it = DocIdSetIterator.range(4, 13);
+    assertEquals(4, it.nextDoc());
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(10, it.advance(10));
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(13));
   }
 }

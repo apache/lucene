@@ -27,8 +27,6 @@ import org.apache.lucene.util.FixedBitSet;
  * BulkScorer implementation of {@link ConjunctionScorer} that is specialized for dense clauses.
  * Whenever sensible, it intersects clauses by loading their matches into a bit set and computing
  * the intersection of clauses by and-ing these bit sets.
- *
- * <p>An empty set of iterators is interpreted as meaning that all docs in [0, maxDoc) match.
  */
 final class DenseConjunctionBulkScorer extends BulkScorer {
 
@@ -46,12 +44,16 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
 
   private final FixedBitSet windowMatches = new FixedBitSet(WINDOW_SIZE);
   private final FixedBitSet clauseWindowMatches = new FixedBitSet(WINDOW_SIZE);
+  private final List<DocIdSetIterator> windowIterators = new ArrayList<>();
   private final DocIdStreamView docIdStreamView = new DocIdStreamView();
   private final RangeDocIdStream rangeDocIdStream = new RangeDocIdStream();
   private final SingleIteratorDocIdStream singleIteratorDocIdStream =
       new SingleIteratorDocIdStream();
 
   DenseConjunctionBulkScorer(List<DocIdSetIterator> iterators, int maxDoc, float constantScore) {
+    if (iterators.isEmpty()) {
+      throw new IllegalArgumentException("Expected one or more iterators, got 0");
+    }
     this.maxDoc = maxDoc;
     iterators = new ArrayList<>(iterators);
     iterators.sort(Comparator.comparingLong(DocIdSetIterator::cost));
@@ -63,6 +65,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
+
     List<DocIdSetIterator> iterators = this.iterators;
     if (collector.competitiveIterator() != null) {
       iterators = new ArrayList<>(iterators);
@@ -75,37 +78,24 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
 
     max = Math.min(max, maxDoc);
 
-    DocIdSetIterator lead = null;
-    if (iterators.isEmpty() == false) {
-      lead = iterators.get(0);
-      if (lead.docID() < min) {
-        min = lead.advance(min);
-      }
+    DocIdSetIterator lead = iterators.get(0);
+    if (lead.docID() < min) {
+      min = lead.advance(min);
     }
 
-    if (min >= max) {
-      return min >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : min;
-    }
-
-    int windowMax = min;
-    do {
+    while (min < max) {
       if (scorable.minCompetitiveScore > scorable.score) {
         return DocIdSetIterator.NO_MORE_DOCS;
       }
+      min = scoreWindow(collector, acceptDocs, iterators, min, max);
+    }
 
-      int windowBase = lead == null ? windowMax : lead.docID();
-      windowMax = (int) Math.min(max, (long) windowBase + WINDOW_SIZE);
-      if (windowMax > windowBase) {
-        scoreWindowUsingBitSet(collector, acceptDocs, iterators, windowBase, windowMax);
-      }
-    } while (windowMax < max);
-
-    if (lead != null) {
+    if (lead.docID() > max) {
       return lead.docID();
-    } else if (windowMax >= maxDoc) {
+    } else if (max >= maxDoc) {
       return DocIdSetIterator.NO_MORE_DOCS;
     } else {
-      return windowMax;
+      return max;
     }
   }
 
@@ -115,6 +105,65 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     } else {
       return set.nextSetBit(i);
     }
+  }
+
+  private int scoreWindow(
+      LeafCollector collector, Bits acceptDocs, List<DocIdSetIterator> iterators, int min, int max)
+      throws IOException {
+
+    // Advance all iterators to the first doc that is greater than or equal to min. This is
+    // important as this is the only place where we can take advantage of a large gap between
+    // consecutive matches in any clause.
+    for (DocIdSetIterator iterator : iterators) {
+      if (iterator.docID() >= min) {
+        min = iterator.docID();
+      } else {
+        min = iterator.advance(min);
+      }
+    }
+    if (min >= max) {
+      return min;
+    }
+
+    if (acceptDocs == null) {
+      int minDocIDRunEnd = max;
+      for (DocIdSetIterator iterator : iterators) {
+        if (iterator.docID() > min) {
+          minDocIDRunEnd = min;
+          break;
+        } else {
+          minDocIDRunEnd = Math.min(minDocIDRunEnd, iterator.docIDRunEnd());
+        }
+      }
+
+      if (minDocIDRunEnd - min >= WINDOW_SIZE / 2) {
+        // We have a large range of doc IDs that all match.
+        rangeDocIdStream.from = min;
+        rangeDocIdStream.to = minDocIDRunEnd;
+        collector.collect(rangeDocIdStream);
+        return minDocIDRunEnd;
+      }
+    }
+
+    int bitsetWindowMax = (int) Math.min(max, (long) min + WINDOW_SIZE);
+
+    for (DocIdSetIterator it : iterators) {
+      if (it.docID() > min || it.docIDRunEnd() < bitsetWindowMax) {
+        windowIterators.add(it);
+      }
+    }
+
+    if (acceptDocs == null && windowIterators.size() == 1) {
+      // We have a range of doc IDs where all matches of an iterator are matches of the conjunction.
+      singleIteratorDocIdStream.iterator = windowIterators.get(0);
+      singleIteratorDocIdStream.from = min;
+      singleIteratorDocIdStream.to = bitsetWindowMax;
+      collector.collect(singleIteratorDocIdStream);
+    } else {
+      scoreWindowUsingBitSet(collector, acceptDocs, windowIterators, min, bitsetWindowMax);
+    }
+    windowIterators.clear();
+    return bitsetWindowMax;
   }
 
   private void scoreWindowUsingBitSet(
@@ -128,26 +177,14 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     assert windowMatches.scanIsEmpty();
     assert clauseWindowMatches.scanIsEmpty();
 
-    if (acceptDocs == null) {
-      if (iterators.isEmpty()) {
-        // All docs in the range match.
-        rangeDocIdStream.from = windowBase;
-        rangeDocIdStream.to = windowMax;
-        collector.collect(rangeDocIdStream);
-        return;
-      } else if (iterators.size() == 1) {
-        singleIteratorDocIdStream.iterator = iterators.get(0);
-        singleIteratorDocIdStream.from = windowBase;
-        singleIteratorDocIdStream.to = windowMax;
-        collector.collect(singleIteratorDocIdStream);
-        return;
-      }
-    }
-
     if (iterators.isEmpty()) {
+      // This happens if all clauses fully matched the window and there are deleted docs.
       windowMatches.set(0, windowMax - windowBase);
     } else {
       DocIdSetIterator lead = iterators.get(0);
+      if (lead.docID() < windowBase) {
+        lead.advance(windowBase);
+      }
       lead.intoBitSet(windowMax, windowMatches, windowBase);
     }
 
@@ -199,28 +236,11 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     docIdStreamView.windowBase = windowBase;
     collector.collect(docIdStreamView);
     windowMatches.clear();
-
-    // If another clause is more advanced than the leading clause then advance the leading clause,
-    // it's important to take advantage of large gaps in the postings lists of other clauses.
-    if (iterators.size() >= 2) {
-      DocIdSetIterator lead = iterators.get(0);
-      int maxOtherDocID = -1;
-      for (int i = 1; i < iterators.size(); ++i) {
-        maxOtherDocID = Math.max(maxOtherDocID, iterators.get(i).docID());
-      }
-      if (lead.docID() < maxOtherDocID) {
-        lead.advance(maxOtherDocID);
-      }
-    }
   }
 
   @Override
   public long cost() {
-    if (iterators.isEmpty()) {
-      return maxDoc;
-    } else {
-      return iterators.get(0).cost();
-    }
+    return iterators.get(0).cost();
   }
 
   final class DocIdStreamView extends DocIdStream {
@@ -287,6 +307,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       // If the collector is just interested in the count, loading in a bit set and counting bits is
       // often faster than incrementing a counter on every call to nextDoc().
       assert windowMatches.scanIsEmpty();
+      if (iterator.docID() < from) {
+        iterator.advance(from);
+      }
       iterator.intoBitSet(to, clauseWindowMatches, from);
       int count = clauseWindowMatches.cardinality();
       clauseWindowMatches.clear();
