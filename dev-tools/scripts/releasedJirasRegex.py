@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -33,7 +32,7 @@ from scriptutil import Version
 # does not find Bugzilla bugs or JIRAs not mentioned at the beginning of
 # bullets or numbered entries.
 #
-def print_released_jiras_regex(version, filename):
+def print_released_jiras_regex(version: str, filename: str):
   release_boundary_re = re.compile(r"\s*====*\s+(.*)\s+===")
   version_re = re.compile(r"%s(?:$|[^-])" % version)
   bullet_re = re.compile(r"\s*(?:[-*]|\d+\.(?=(?:\s|(?:LUCENE)-)))(.*)")
@@ -45,28 +44,26 @@ def print_released_jiras_regex(version, filename):
   under_requested_version = False
   requested_version_found = False
   more_jiras_on_next_line = False
-  lucene_jiras = []
-  with open(filename, "r") as changes:
+  lucene_jiras: list[str] = []
+  with open(filename) as changes:
     for line in changes:
       version_boundary = release_boundary_re.match(line)
       if version_boundary is not None:
         if under_requested_version:
           break  # No longer under the requested version - stop looking for JIRAs
-        else:
-          if version_re.search(version_boundary.group(1)):
-            under_requested_version = True  # Start looking for JIRAs
-            requested_version_found = True
-      else:
-        if under_requested_version:
-          bullet_match = bullet_re.match(line)
-          if more_jiras_on_next_line or bullet_match is not None:
-            content = line if bullet_match is None else bullet_match.group(1)
-            jira_list_match = jira_list_re.match(content)
-            if jira_list_match is not None:
-              jira_match = jira_re.findall(jira_list_match.group(0))
-              for jira in jira_match:
-                lucene_jiras.append(jira.rsplit("-", 1)[-1])
-            more_jiras_on_next_line = more_jiras_on_next_line_re.match(content)
+        if version_re.search(version_boundary.group(1)):
+          under_requested_version = True  # Start looking for JIRAs
+          requested_version_found = True
+      elif under_requested_version:
+        bullet_match = bullet_re.match(line)
+        if more_jiras_on_next_line or bullet_match is not None:
+          content = line if bullet_match is None else bullet_match.group(1)
+          jira_list_match = jira_list_re.match(content)
+          if jira_list_match is not None:
+            jira_match = jira_re.findall(jira_list_match.group(0))
+            for jira in jira_match:
+              lucene_jiras.append(jira.rsplit("-", 1)[-1])
+          more_jiras_on_next_line = more_jiras_on_next_line_re.match(content)
   if not requested_version_found:
     raise Exception("Could not find %s in %s" % (version, filename))
   print()

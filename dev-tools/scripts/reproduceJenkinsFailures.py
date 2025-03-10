@@ -79,7 +79,7 @@ def readConfig():
   return parser.parse_args()
 
 
-def runOutput(cmd):
+def runOutput(cmd: str):
   print("[repro] %s" % cmd)
   try:
     return subprocess.check_output(cmd.split(" "), universal_newlines=True).strip()
@@ -88,23 +88,23 @@ def runOutput(cmd):
 
 
 # Remembers non-zero exit code in lastFailureCode unless rememberFailure==False
-def run(cmd, rememberFailure=True):
+def run(cmd: str, rememberFailure: bool = True):
   global lastFailureCode
   print("[repro] %s" % cmd)
   code = os.system(cmd)
-  if 0 != code and rememberFailure:
+  if code != 0 and rememberFailure:
     print("\n[repro] Setting last failure code to %d\n" % code)
     lastFailureCode = code
   return code
 
 
-def fetchAndParseJenkinsLog(url, numRetries):
+def fetchAndParseJenkinsLog(url: str, numRetries: int) -> dict[str, str]:
   global revisionFromLog
   global branchFromLog
   global antOptions
   revisionFromLog = None
   antOptions = ""
-  tests = {}
+  tests: dict[str, str] = {}
   print("[repro] Jenkins log URL: %s\n" % url)
   try:
     # HTTPS fails at certificate validation, see LUCENE-9412, PEP-476
@@ -137,50 +137,48 @@ def fetchAndParseJenkinsLog(url, numRetries):
       print("[repro] Encountered IncompleteRead exception, pausing and then retrying...")
       time.sleep(2)  # pause for 2 seconds
       return fetchAndParseJenkinsLog(url, numRetries - 1)
-    else:
-      print("[repro] Encountered IncompleteRead exception, aborting after too many retries.")
-      raise RuntimeError("ERROR: fetching %s : %s" % (url, e))
+    print("[repro] Encountered IncompleteRead exception, aborting after too many retries.")
+    raise RuntimeError("ERROR: fetching %s : %s" % (url, e))
 
   if revisionFromLog is None:
     if reJenkinsURLWithoutConsoleText.match(url):
       print('[repro] Not a Jenkins log. Appending "/consoleText" and retrying ...\n')
       return fetchAndParseJenkinsLog(url + "/consoleText", numRetries)
-    else:
-      raise RuntimeError("ERROR: %s does not appear to be a Jenkins log." % url)
-  if 0 == len(tests):
+    raise RuntimeError("ERROR: %s does not appear to be a Jenkins log." % url)
+  if len(tests) == 0:
     print('[repro] No "reproduce with" lines found; exiting.')
     sys.exit(0)
   return tests
 
 
-def prepareWorkspace(useGit, gitRef):
+def prepareWorkspace(useGit: bool, gitRef: str | None):
   global gitCheckoutSucceeded
   if useGit:
     code = run("git fetch")
-    if 0 != code:
+    if code != 0:
       raise RuntimeError('ERROR: "git fetch" failed.  See above.')
     checkoutCmd = "git checkout %s" % gitRef
     code = run(checkoutCmd)
-    if 0 != code:
+    if code != 0:
       addWantedBranchCmd = "git remote set-branches --add origin %s" % gitRef
       checkoutBranchCmd = "git checkout -t -b %s origin/%s" % (gitRef, gitRef)  # Checkout remote branch as new local branch
       print('"%s" failed. Trying "%s" and "%s".' % (checkoutCmd, addWantedBranchCmd, checkoutBranchCmd))
       code = run(addWantedBranchCmd)
-      if 0 != code:
+      if code != 0:
         raise RuntimeError('ERROR: "%s" failed.  See above.' % addWantedBranchCmd)
       code = run(checkoutBranchCmd)
-      if 0 != code:
+      if code != 0:
         raise RuntimeError('ERROR: "%s" failed.  See above.' % checkoutBranchCmd)
     gitCheckoutSucceeded = True
     run("git merge --ff-only", rememberFailure=False)  # Ignore failure on non-branch ref
 
   code = run("ant clean")
-  if 0 != code:
+  if code != 0:
     raise RuntimeError('ERROR: "ant clean" failed.  See above.')
 
 
-def groupTestsByModule(tests):
-  modules = {}
+def groupTestsByModule(tests: dict[str, str]):
+  modules: dict[str, set[str]] = {}
   for dir, _, files in os.walk("."):
     for file in files:
       match = reJavaFile.search(file)
@@ -201,7 +199,7 @@ def groupTestsByModule(tests):
   return modules
 
 
-def runTests(testIters, modules, tests):
+def runTests(testIters: int, modules: dict[str, set[str]], tests: dict[str, str]):
   cwd = os.getcwd()
   testCmdline = 'ant test-nocompile -Dtests.dups=%d -Dtests.maxfailures=%d -Dtests.class="%s" -Dtests.showOutput=onerror %s %s'
   for module in modules:
@@ -212,15 +210,15 @@ def runTests(testIters, modules, tests):
     os.chdir(module)
     code = run("ant compile-test")
     try:
-      if 0 != code:
+      if code != 0:
         raise RuntimeError("ERROR: Compile failed in %s/ with code %d.  See above." % (module, code))
       run(testCmdline % (testIters, testIters * numTests, testList, antOptions, params))
     finally:
       os.chdir(cwd)
 
 
-def printAndMoveReports(testIters, newSubDir, location):
-  failures = {}
+def printAndMoveReports(testIters: int, newSubDir: str, location: str):
+  failures: dict[str, int] = {}
   for start in ("lucene/build", "solr/build"):
     for dir, _, files in os.walk(start):
       for file in files:
@@ -275,7 +273,7 @@ def main():
     if config.useGit:
       # Retest 100% failures at the tip of the branch
       oldTests = tests
-      tests = {}
+      tests: dict[str, str] = {}
       for fullClass in failures:
         testcase = fullClass[(fullClass.rindex(".") + 1) :]
         if failures[fullClass] == config.testIters:
