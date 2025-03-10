@@ -71,7 +71,7 @@ import org.apache.lucene.search.TotalHits;
   @Override
   @SuppressWarnings("cast")
   public boolean collect(int docId, float similarity) {
-    scoreDocs.add(new ScoreDoc(docId, 1f / (float) (similarity)));
+    scoreDocs.add(new ScoreDoc(docId, similarity));
     return true;
   }
 
