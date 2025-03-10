@@ -120,9 +120,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       } else {
         min = iterator.advance(min);
       }
-    }
-    if (min >= max) {
-      return min;
+      if (min >= max) {
+        return min;
+      }
     }
 
     if (acceptDocs == null) {
