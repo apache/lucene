@@ -1092,7 +1092,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         metaOut.writeVInt(docsSeen.cardinality());
         writeBytesRef(metaOut, new BytesRef(firstPendingTerm.termBytes));
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
-        metaOut.writeVLong(indexOut.getFilePointer());
         root.index.save(metaOut, indexOut);
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);
 

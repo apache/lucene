@@ -57,7 +57,6 @@ public final class FieldReader extends Terms {
       long sumTotalTermFreq,
       long sumDocFreq,
       int docCount,
-      long indexStartFP,
       IndexInput metaIn,
       IndexInput indexIn,
       BytesRef minTerm,

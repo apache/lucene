@@ -219,7 +219,6 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
                   "invalid sumTotalTermFreq: " + sumTotalTermFreq + " sumDocFreq: " + sumDocFreq,
                   metaIn);
             }
-            final long indexStartFP = metaIn.readVLong();
             FieldReader previous =
                 fieldMap.put(
                     fieldInfo.number,
@@ -230,7 +229,6 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
                         sumTotalTermFreq,
                         sumDocFreq,
                         docCount,
-                        indexStartFP,
                         metaIn,
                         indexIn,
                         minTerm,
