@@ -188,8 +188,8 @@ class TrieReader {
       return null;
     }
 
-    if (sign == Trie.SIGN_SINGLE_CHILDREN_WITH_OUTPUT
-        || sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
+    if (sign != Trie.SIGN_MULTI_CHILDREN) {
+      // single child
       if (targetLabel != parent.minChildrenLabel) {
         return null;
       }
@@ -202,12 +202,10 @@ class TrieReader {
     final int minLabel = parent.minChildrenLabel;
     final int positionBytes = parent.positionBytes;
 
-    int position;
-    if (targetLabel < minLabel) {
-      position = -1;
-    } else if (targetLabel == minLabel) {
+    int position = -1;
+    if (targetLabel == minLabel) {
       position = 0;
-    } else {
+    } else if (targetLabel > minLabel) {
       position =
           Trie.PositionStrategy.byCode(parent.childrenStrategy)
               .lookup(targetLabel, access, positionBytesStartFp, positionBytes, minLabel);
