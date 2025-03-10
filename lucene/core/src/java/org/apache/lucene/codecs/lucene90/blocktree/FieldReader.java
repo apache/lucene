@@ -16,21 +16,14 @@
  */
 package org.apache.lucene.codecs.lucene90.blocktree;
 
-import static org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader.VERSION_MSB_VLONG_OUTPUT;
-
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.fst.ByteSequenceOutputs;
-import org.apache.lucene.util.fst.FST;
-import org.apache.lucene.util.fst.OffHeapFSTStore;
 
 /**
  * BlockTree's implementation of {@link Terms}.
@@ -47,12 +40,13 @@ public final class FieldReader extends Terms {
   final long sumDocFreq;
   final int docCount;
   final long rootBlockFP;
-  final BytesRef rootCode;
   final BytesRef minTerm;
   final BytesRef maxTerm;
+  final long indexStart;
+  final long rootFP;
+  final long indexEnd;
   final Lucene90BlockTreeTermsReader parent;
-
-  final FST<BytesRef> index;
+  final IndexInput indexIn;
 
   // private boolean DEBUG;
 
@@ -60,11 +54,9 @@ public final class FieldReader extends Terms {
       Lucene90BlockTreeTermsReader parent,
       FieldInfo fieldInfo,
       long numTerms,
-      BytesRef rootCode,
       long sumTotalTermFreq,
       long sumDocFreq,
       int docCount,
-      long indexStartFP,
       IndexInput metaIn,
       IndexInput indexIn,
       BytesRef minTerm,
@@ -80,59 +72,23 @@ public final class FieldReader extends Terms {
     this.docCount = docCount;
     this.minTerm = minTerm;
     this.maxTerm = maxTerm;
+
     // if (DEBUG) {
     //   System.out.println("BTTR: seg=" + segment + " field=" + fieldInfo.name + " rootBlockCode="
     // + rootCode + " divisor=" + indexDivisor);
     // }
-    rootBlockFP =
-        readVLongOutput(new ByteArrayDataInput(rootCode.bytes, rootCode.offset, rootCode.length))
-            >>> Lucene90BlockTreeTermsReader.OUTPUT_FLAGS_NUM_BITS;
-    // Initialize FST always off-heap.
-    var metadata = FST.readMetadata(metaIn, ByteSequenceOutputs.getSingleton());
-    index = FST.fromFSTReader(metadata, new OffHeapFSTStore(indexIn, indexStartFP, metadata));
-    /*
-     if (false) {
-     final String dotFileName = segment + "_" + fieldInfo.name + ".dot";
-     Writer w = new OutputStreamWriter(new FileOutputStream(dotFileName));
-     Util.toDot(index, w, false, false);
-     System.out.println("FST INDEX: SAVED to " + dotFileName);
-     w.close();
-     }
-    */
-    BytesRef emptyOutput = metadata.getEmptyOutput();
-    if (rootCode.equals(emptyOutput) == false) {
-      // TODO: this branch is never taken
-      assert false;
-      this.rootCode = rootCode;
-    } else {
-      this.rootCode = emptyOutput;
-    }
+
+    this.indexStart = metaIn.readVLong();
+    this.rootFP = metaIn.readVLong();
+    this.indexEnd = metaIn.readVLong();
+    this.indexIn = indexIn;
+
+    TrieReader trieReader = newReader();
+    this.rootBlockFP = trieReader.root.outputFp;
   }
 
-  long readVLongOutput(DataInput in) throws IOException {
-    if (parent.version >= VERSION_MSB_VLONG_OUTPUT) {
-      return readMSBVLong(in);
-    } else {
-      return in.readVLong();
-    }
-  }
-
-  /**
-   * Decodes a variable length byte[] in MSB order back to long, as written by {@link
-   * Lucene90BlockTreeTermsWriter#writeMSBVLong}.
-   *
-   * <p>Package private for testing.
-   */
-  static long readMSBVLong(DataInput in) throws IOException {
-    long l = 0L;
-    while (true) {
-      byte b = in.readByte();
-      l = (l << 7) | (b & 0x7FL);
-      if ((b & 0x80) == 0) {
-        break;
-      }
-    }
-    return l;
+  private TrieReader newReader() throws IOException {
+    return new TrieReader(indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP);
   }
 
   @Override
@@ -158,7 +114,7 @@ public final class FieldReader extends Terms {
   /** For debugging -- used by CheckIndex too */
   @Override
   public Stats getStats() throws IOException {
-    return new SegmentTermsEnum(this).computeBlockStats();
+    return new SegmentTermsEnum(this, newReader()).computeBlockStats();
   }
 
   @Override
@@ -186,7 +142,7 @@ public final class FieldReader extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    return new SegmentTermsEnum(this);
+    return new SegmentTermsEnum(this, newReader());
   }
 
   @Override
@@ -221,6 +177,7 @@ public final class FieldReader extends Terms {
     }
     return new IntersectTermsEnum(
         this,
+        newReader(),
         compiled.getTransitionAccessor(),
         compiled.getByteRunnable(),
         compiled.commonSuffixRef,

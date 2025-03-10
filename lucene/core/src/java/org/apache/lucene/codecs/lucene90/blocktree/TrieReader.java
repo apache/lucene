@@ -1,0 +1,226 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.codecs.lucene90.blocktree;
+
+import java.io.IOException;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.RandomAccessInput;
+
+class TrieReader {
+
+  private static final long NO_OUTPUT = -1;
+  private static final long NO_FLOOR_DATA = -1;
+  private static final long[] BYTES_MINUS_1_MASK =
+      new long[] {
+        0xFFL,
+        0xFFFFL,
+        0xFFFFFFL,
+        0xFFFFFFFFL,
+        0xFFFFFFFFFFL,
+        0xFFFFFFFFFFFFL,
+        0xFFFFFFFFFFFFFFL,
+        0xFFFFFFFFFFFFFFFFL
+      };
+
+  static class Node {
+
+    // single child
+    private long childFp;
+
+    // multi children
+    private long positionFp;
+    private int childrenStrategy;
+    private int positionBytes;
+    private int childrenFpBytes;
+
+    // common vars
+    private long fp;
+    private int minChildrenLabel;
+    int label;
+
+    // output vars
+    private int sign;
+    long outputFp;
+    boolean hasTerms;
+    long floorDataFp; // only makes sense when outputFp != NO_OUTPUT;
+
+    boolean hasOutput() {
+      return outputFp != NO_OUTPUT;
+    }
+
+    boolean isFloor() {
+      return floorDataFp != NO_FLOOR_DATA;
+    }
+
+    IndexInput floorData(TrieReader r) throws IOException {
+      assert isFloor();
+      r.input.seek(floorDataFp);
+      return r.input;
+    }
+  }
+
+  final RandomAccessInput access;
+  final IndexInput input;
+  final Node root;
+
+  TrieReader(IndexInput input, long rootFP) throws IOException {
+    this.access = input.randomAccessSlice(0, input.length());
+    this.input = input;
+    this.root = new Node();
+    load(root, rootFP);
+  }
+
+  private void load(Node node, long fp) throws IOException {
+    node.fp = fp;
+    long termLong = access.readLong(fp);
+    int term = (int) termLong;
+    int sign = node.sign = term & 0x03;
+
+    if (sign == Trie.SIGN_NO_CHILDREN) {
+      loadLeafNode(fp, term, termLong, node);
+    } else if (sign == Trie.SIGN_MULTI_CHILDREN) {
+      loadMultiChildNode(fp, term, termLong, node);
+    } else {
+      loadSingleChildNode(fp, sign, term, termLong, node);
+    }
+  }
+
+  private void loadLeafNode(long fp, int term, long termLong, Node node) throws IOException {
+
+    // [n bytes] floor data
+    // [n bytes] output fp
+    // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
+
+    int fpBytesMinus1 = (term >>> 2) & 0x07;
+    node.outputFp =
+        fpBytesMinus1 <= 6
+            ? (termLong >>> 8) & BYTES_MINUS_1_MASK[fpBytesMinus1]
+            : access.readLong(fp + 1);
+    node.hasTerms = (term & 0x20) != 0;
+    if ((term & 0x40) != 0) { // has floor
+      node.floorDataFp = fp + 2 + fpBytesMinus1;
+    } else {
+      node.floorDataFp = NO_FLOOR_DATA;
+    }
+  }
+
+  private void loadSingleChildNode(long fp, int sign, int term, long termLong, Node node)
+      throws IOException {
+
+    // [n bytes] floor data
+    // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
+    // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
+
+    int childFpBytesMinus1 = (term >>> 2) & 0x07;
+    long l = childFpBytesMinus1 <= 5 ? termLong >>> 16 : access.readLong(fp + 2);
+    node.childFp = l & BYTES_MINUS_1_MASK[childFpBytesMinus1];
+    node.minChildrenLabel = (term >>> 8) & 0xFF;
+
+    if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
+      node.outputFp = NO_OUTPUT;
+    } else { // has output
+      int encodedOutputFpBytesMinus1 = (term >>> 5) & 0x07;
+      long offset = fp + childFpBytesMinus1 + 3;
+      long encodedFp = access.readLong(offset) & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
+      node.outputFp = encodedFp >>> 2;
+      node.hasTerms = (encodedFp & 0x02L) != 0;
+      if ((encodedFp & 0x01L) != 0) { // has floor
+        node.floorDataFp = offset + encodedOutputFpBytesMinus1 + 1;
+      } else {
+        node.floorDataFp = NO_FLOOR_DATA;
+      }
+    }
+  }
+
+  private void loadMultiChildNode(long fp, int term, long termLong, Node node) throws IOException {
+
+    // [n bytes] floor data
+    // [n bytes] children fps | [n bytes] position data
+    // [1 byte] children count (if floor data) | [n bytes] encoded output fp | [1 byte] label
+    // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
+    // [1bit] has output | [3bit] children fp bytes | [2bit] sign
+
+    node.childrenFpBytes = ((term >>> 2) & 0x07) + 1;
+    node.childrenStrategy = (term >>> 9) & 0x03;
+    node.positionBytes = ((term >>> 11) & 0x1F) + 1;
+    node.minChildrenLabel = (term >>> 16) & 0xFF;
+
+    if ((term & 0x20) != 0) { // has output
+      int encodedOutputFpBytesMinus1 = (term >>> 6) & 0x07;
+      long l = encodedOutputFpBytesMinus1 <= 4 ? termLong >>> 24 : access.readLong(fp + 3);
+      long encodedFp = l & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
+      node.outputFp = encodedFp >>> 2;
+      node.hasTerms = (encodedFp & 0x02L) != 0;
+
+      if ((encodedFp & 0x01L) != 0) { // has floor
+        long offset = fp + 4 + encodedOutputFpBytesMinus1;
+        long childrenNum = (access.readByte(offset) & 0xFFL) + 1L;
+        node.positionFp = offset + 1L;
+        node.floorDataFp =
+            node.positionFp + node.positionBytes + childrenNum * node.childrenFpBytes;
+      } else {
+        node.floorDataFp = NO_FLOOR_DATA;
+        node.positionFp = fp + 4 + encodedOutputFpBytesMinus1;
+      }
+    } else {
+      node.outputFp = NO_OUTPUT;
+      node.positionFp = fp + 3;
+    }
+  }
+
+  Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {
+    int sign = parent.sign;
+    if (sign == Trie.SIGN_NO_CHILDREN) {
+      return null;
+    }
+
+    if (sign != Trie.SIGN_MULTI_CHILDREN) {
+      // single child
+      if (targetLabel != parent.minChildrenLabel) {
+        return null;
+      }
+      child.label = targetLabel;
+      load(child, parent.fp - parent.childFp);
+      return child;
+    }
+
+    final long positionBytesStartFp = parent.positionFp;
+    final int minLabel = parent.minChildrenLabel;
+    final int positionBytes = parent.positionBytes;
+
+    int position = -1;
+    if (targetLabel == minLabel) {
+      position = 0;
+    } else if (targetLabel > minLabel) {
+      position =
+          Trie.PositionStrategy.byCode(parent.childrenStrategy)
+              .lookup(targetLabel, access, positionBytesStartFp, positionBytes, minLabel);
+    }
+
+    if (position < 0) {
+      return null;
+    }
+
+    final int codeBytes = parent.childrenFpBytes;
+    final long pos = positionBytesStartFp + positionBytes + (long) codeBytes * position;
+    final long fp = parent.fp - (access.readLong(pos) & BYTES_MINUS_1_MASK[codeBytes - 1]);
+    child.label = targetLabel;
+    load(child, fp);
+
+    return child;
+  }
+}
