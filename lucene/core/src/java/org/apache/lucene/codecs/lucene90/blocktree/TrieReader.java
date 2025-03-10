@@ -166,14 +166,13 @@ class TrieReader {
       long encodedFp = l & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
       node.outputFp = encodedFp >>> 2;
       node.hasTerms = (encodedFp & 0x02L) != 0;
+
       if ((encodedFp & 0x01L) != 0) { // has floor
-        long childrenNumMinus1 =
-            encodedOutputFpBytesMinus1 <= 3
-                ? (termLong >>> ((encodedOutputFpBytesMinus1 + 4) << 3)) & 0xFFL
-                : access.readByte(fp + 4 + encodedOutputFpBytesMinus1) & 0xFFL;
-        node.positionFp = fp + 5 + encodedOutputFpBytesMinus1;
+        long offset = fp + 4 + encodedOutputFpBytesMinus1;
+        long childrenNum = (access.readByte(offset) & 0xFFL) + 1L;
+        node.positionFp = offset + 1L;
         node.floorDataFp =
-            node.positionFp + node.positionBytes + (childrenNumMinus1 + 1L) * node.childrenFpBytes;
+            node.positionFp + node.positionBytes + childrenNum * node.childrenFpBytes;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
         node.positionFp = fp + 4 + encodedOutputFpBytesMinus1;
