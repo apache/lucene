@@ -125,6 +125,7 @@ class Trie {
     meta.writeVLong(index.getFilePointer());
   }
 
+  /** NO-COMMIT might hit StackOverflowError if terms are long, need to avoid recursive */
   long saveNodes(Node node, IndexOutput index, long startFP) throws IOException {
     final int childrenNum = node.children.size();
 
