@@ -142,7 +142,7 @@ class Trie {
               | ((output.hasTerms ? 1 : 0) << 5)
               | ((output.floorData != null ? 1 : 0) << 6);
       index.writeByte(((byte) header));
-      writeFpNBytes(output.fp, outputFpBytes, index);
+      writeLongNBytes(output.fp, outputFpBytes, index);
       if (output.floorData != null) {
         index.writeBytes(output.floorData.bytes, output.floorData.offset, output.floorData.length);
       }
@@ -178,14 +178,14 @@ class Trie {
       int header = sign | ((childFpBytes - 1) << 2) | ((encodedOutputFpBytes - 1) << 5);
       index.writeByte((byte) header);
       index.writeByte((byte) node.children.getFirst().label);
-      writeFpNBytes(fpBuffer[0], childFpBytes, index);
+      writeLongNBytes(fpBuffer[0], childFpBytes, index);
       if (node.output != null) {
         Output output = node.output;
         long encodedFp =
             (output.floorData != null ? 0x01L : 0)
                 | (output.hasTerms ? 0x02L : 0)
                 | (output.fp << 2);
-        writeFpNBytes(encodedFp, encodedOutputFpBytes, index);
+        writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
         if (output.floorData != null) {
           index.writeBytes(
               output.floorData.bytes, output.floorData.offset, output.floorData.length);
@@ -228,16 +228,18 @@ class Trie {
             | ((encodedOutputFpBytes - 1) << 6)
             | (positionStrategy.priority << 9)
             | ((positionBytes - 1) << 11)
-            | (minLabel << 16)
-            | ((childrenNum - 1) << 24);
+            | (minLabel << 16);
 
-    index.writeInt(header);
+    writeLongNBytes(header, 3, index);
 
     if (node.output != null) {
       Output output = node.output;
       long encodedFp =
           (output.floorData != null ? 0x01L : 0) | (output.hasTerms ? 0x02L : 0) | (output.fp << 2);
-      writeFpNBytes(encodedFp, encodedOutputFpBytes, index);
+      writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
+      if (output.floorData != null) {
+        index.writeByte((byte) (childrenNum - 1));
+      }
     }
 
     long positionStartFp = index.getFilePointer();
@@ -250,7 +252,7 @@ class Trie {
             + (index.getFilePointer() - positionStartFp);
 
     for (int i = 0; i < childrenNum; i++) {
-      writeFpNBytes(fpBuffer[i], childrenFpBytes, index);
+      writeLongNBytes(fpBuffer[i], childrenFpBytes, index);
     }
 
     if (node.output != null && node.output.floorData != null) {
@@ -265,7 +267,7 @@ class Trie {
     return Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(v) >>> 3));
   }
 
-  private static void writeFpNBytes(long v, int n, DataOutput out) throws IOException {
+  private static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
     for (int i = 0; i < n; i++) {
       out.writeByte((byte) v);
       v >>= 8;

@@ -49,11 +49,11 @@ class TrieReader {
 
     // common vars
     private long fp;
-    private int childrenNum;
     private int minChildrenLabel;
     int label;
 
     // output vars
+    private int sign;
     long outputFp;
     boolean hasTerms;
     long floorDataFp; // only makes sense when outputFp != NO_OUTPUT;
@@ -88,7 +88,7 @@ class TrieReader {
     node.fp = fp;
     long termLong = access.readLong(fp);
     int term = (int) termLong;
-    int sign = term & 0x03;
+    int sign = node.sign = term & 0x03;
 
     if (sign == Trie.SIGN_NO_CHILDREN) {
       loadLeafNode(fp, term, termLong, node);
@@ -105,7 +105,6 @@ class TrieReader {
     // [n bytes] output fp
     // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
 
-    node.childrenNum = 0;
     int fpBytesMinus1 = (term >>> 2) & 0x07;
     node.outputFp =
         fpBytesMinus1 <= 6
@@ -119,13 +118,13 @@ class TrieReader {
     }
   }
 
-  private void loadSingleChildNode(long fp, int sign, int term, long termLong, Node node) throws IOException {
+  private void loadSingleChildNode(long fp, int sign, int term, long termLong, Node node)
+      throws IOException {
 
     // [n bytes] floor data
     // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
     // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
-    node.childrenNum = 1;
     int childFpBytesMinus1 = (term >>> 2) & 0x07;
     int encodedOutputFpBytesMinus1 = (term >>> 5) & 0x07;
     long l = childFpBytesMinus1 <= 5 ? termLong >>> 16 : access.readLong(fp + 2);
@@ -151,7 +150,7 @@ class TrieReader {
 
     // [n bytes] floor data
     // [n bytes] children fps | [n bytes] position data
-    // [n bytes] encoded output fp | [1 byte] children count | [1 byte] label
+    // [1 byte] children count (if floor data) | [n bytes] encoded output fp | [1 byte] label
     // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
     // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
@@ -160,33 +159,38 @@ class TrieReader {
     node.childrenStrategy = (term >>> 9) & 0x03;
     node.positionBytes = ((term >>> 11) & 0x1F) + 1;
     node.minChildrenLabel = (term >>> 16) & 0xFF;
-    node.childrenNum = ((term >>> 24) & 0xFF) + 1;
 
     if (hasOutput) {
       int encodedOutputFpBytesMinus1 = (term >>> 6) & 0x07;
-      long l = encodedOutputFpBytesMinus1 <= 3 ? termLong >>> 32 : access.readLong(fp + 4);
+      long l = encodedOutputFpBytesMinus1 <= 4 ? termLong >>> 24 : access.readLong(fp + 3);
       long encodedFp = l & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
       node.outputFp = encodedFp >>> 2;
       node.hasTerms = (encodedFp & 0x02L) != 0;
-      node.positionFp = fp + 5 + encodedOutputFpBytesMinus1;
-      if ((encodedFp & 0x01L) != 0) {
+      if ((encodedFp & 0x01L) != 0) { // has floor
+        long childrenNumMinus1 =
+            encodedOutputFpBytesMinus1 <= 3
+                ? (termLong >>> ((encodedOutputFpBytesMinus1 + 4) << 3)) & 0xFFL
+                : access.readByte(fp + 4 + encodedOutputFpBytesMinus1) & 0xFFL;
+        node.positionFp = fp + 5 + encodedOutputFpBytesMinus1;
         node.floorDataFp =
-            node.positionFp + node.positionBytes + (long) node.childrenNum * node.childrenFpBytes;
+            node.positionFp + node.positionBytes + (childrenNumMinus1 + 1L) * node.childrenFpBytes;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
+        node.positionFp = fp + 4 + encodedOutputFpBytesMinus1;
       }
     } else {
       node.outputFp = NO_OUTPUT;
-      node.positionFp = fp + 4;
+      node.positionFp = fp + 3;
     }
   }
 
   Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {
-    if (parent.childrenNum == 0) {
+    if (parent.sign == Trie.SIGN_NO_CHILDREN) {
       return null;
     }
 
-    if (parent.childrenNum == 1) {
+    if (parent.sign == Trie.SIGN_SINGLE_CHILDREN_WITH_OUTPUT
+        || parent.sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
       if (targetLabel != parent.minChildrenLabel) {
         return null;
       }
