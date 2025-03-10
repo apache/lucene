@@ -17,6 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
@@ -73,8 +74,8 @@ public class BKDReader extends PointValues {
     numLeaves = metaIn.readVInt();
     assert numLeaves > 0;
 
-    minPackedValue = new byte[config.packedIndexBytesLength()];
-    maxPackedValue = new byte[config.packedIndexBytesLength()];
+    byte[] minPackedValue = new byte[config.packedIndexBytesLength()];
+    byte[] maxPackedValue = new byte[config.packedIndexBytesLength()];
 
     metaIn.readBytes(minPackedValue, 0, config.packedIndexBytesLength());
     metaIn.readBytes(maxPackedValue, 0, config.packedIndexBytesLength());
@@ -96,6 +97,13 @@ public class BKDReader extends PointValues {
                 + dim,
             metaIn);
       }
+    }
+    this.minPackedValue = minPackedValue;
+    if (Arrays.equals(maxPackedValue, minPackedValue)) {
+      // save heap for edge case of only a single value
+      this.maxPackedValue = minPackedValue;
+    } else {
+      this.maxPackedValue = maxPackedValue;
     }
 
     pointCount = metaIn.readVLong();
