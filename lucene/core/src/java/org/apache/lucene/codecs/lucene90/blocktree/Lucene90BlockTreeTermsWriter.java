@@ -389,13 +389,6 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     }
   }
 
-  static long encodeOutput(long fp, boolean hasTerms, boolean isFloor) {
-    assert fp < (1L << 62);
-    return (fp << 2)
-        | (hasTerms ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_HAS_TERMS : 0)
-        | (isFloor ? Lucene90BlockTreeTermsReader.OUTPUT_FLAG_IS_FLOOR : 0);
-  }
-
   private static class PendingEntry {
     public final boolean isTerm;
 

@@ -28,6 +28,7 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 
+/** TODO make it a more memory efficient structure */
 class Trie {
 
   static final int SIGN_NO_CHILDREN = 0x00;
@@ -76,6 +77,7 @@ class Trie {
       n.output = add.output;
     }
     ListIterator<Node> iter = n.children.listIterator();
+    // TODO we can do more efficient if there's no intersection
     outer:
     for (Node addChild : add.children) {
       while (iter.hasNext()) {
@@ -117,13 +119,13 @@ class Trie {
 
   void save(DataOutput meta, IndexOutput index) throws IOException {
     meta.writeVLong(index.getFilePointer());
-    long rootFp = saveArcs(root, index, index.getFilePointer());
+    long rootFp = saveNodes(root, index, index.getFilePointer());
     meta.writeVLong(rootFp);
     index.writeLong(0L); // additional 8 bytes for over-reading
     meta.writeVLong(index.getFilePointer());
   }
 
-  long saveArcs(Node node, IndexOutput index, long startFP) throws IOException {
+  long saveNodes(Node node, IndexOutput index, long startFP) throws IOException {
     final int childrenNum = node.children.size();
 
     if (childrenNum == 0) {
@@ -150,9 +152,9 @@ class Trie {
     }
 
     long[] fpBuffer = new long[childrenNum];
-    for (int i = 0; i < childrenNum; i++) {
-      Node child = node.children.get(i);
-      fpBuffer[i] = saveArcs(child, index, startFP);
+    int bufferIndex = 0;
+    for (Node child : node.children) {
+      fpBuffer[bufferIndex++] = saveNodes(child, index, startFP);
     }
     assert IntStream.range(0, childrenNum - 1).allMatch(i -> fpBuffer[i + 1] > fpBuffer[i]);
 
@@ -170,7 +172,8 @@ class Trie {
 
       int childFpBytes = bytesRequired(fpBuffer[0]);
       int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
-      // TODO if we have only one child and no output, we can store child nodes labels in this node.
+      // TODO if we have only one child and no output, we can store child labels in this node.
+      // E.g. for a single term trie [foobar], we can have only two nodes [fooba] and [r]
       int sign =
           node.output != null
               ? SIGN_SINGLE_CHILDREN_WITH_OUTPUT

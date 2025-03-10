@@ -65,15 +65,6 @@ import org.apache.lucene.util.fst.Outputs;
  */
 public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
 
-  static final Outputs<BytesRef> FST_OUTPUTS = ByteSequenceOutputs.getSingleton();
-
-  static final BytesRef NO_OUTPUT = FST_OUTPUTS.getNoOutput();
-
-  static final int OUTPUT_FLAGS_NUM_BITS = 2;
-  static final int OUTPUT_FLAGS_MASK = 0x3;
-  static final int OUTPUT_FLAG_IS_FLOOR = 0x1;
-  static final int OUTPUT_FLAG_HAS_TERMS = 0x2;
-
   /** Extension of terms file */
   static final String TERMS_EXTENSION = "tim";
 
