@@ -111,7 +111,7 @@ class TrieReader {
             ? (termLong >>> 8) & BYTES_MINUS_1_MASK[fpBytesMinus1]
             : access.readLong(fp + 1);
     node.hasTerms = (term & 0x20) != 0;
-    if ((term & 0x40) != 0) {
+    if ((term & 0x40) != 0) { // has floor
       node.floorDataFp = fp + 2 + fpBytesMinus1;
     } else {
       node.floorDataFp = NO_FLOOR_DATA;
@@ -126,19 +126,19 @@ class TrieReader {
     // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
     int childFpBytesMinus1 = (term >>> 2) & 0x07;
-    int encodedOutputFpBytesMinus1 = (term >>> 5) & 0x07;
     long l = childFpBytesMinus1 <= 5 ? termLong >>> 16 : access.readLong(fp + 2);
     node.childFp = l & BYTES_MINUS_1_MASK[childFpBytesMinus1];
     node.minChildrenLabel = (term >>> 8) & 0xFF;
 
     if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
       node.outputFp = NO_OUTPUT;
-    } else {
+    } else { // has output
+      int encodedOutputFpBytesMinus1 = (term >>> 5) & 0x07;
       long offset = fp + childFpBytesMinus1 + 3;
       long encodedFp = access.readLong(offset) & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
       node.outputFp = encodedFp >>> 2;
       node.hasTerms = (encodedFp & 0x02L) != 0;
-      if ((encodedFp & 0x01L) != 0) {
+      if ((encodedFp & 0x01L) != 0) { // has floor
         node.floorDataFp = offset + encodedOutputFpBytesMinus1 + 1;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
@@ -155,12 +155,11 @@ class TrieReader {
     // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
     node.childrenFpBytes = ((term >>> 2) & 0x07) + 1;
-    boolean hasOutput = (term & 0x20) != 0;
     node.childrenStrategy = (term >>> 9) & 0x03;
     node.positionBytes = ((term >>> 11) & 0x1F) + 1;
     node.minChildrenLabel = (term >>> 16) & 0xFF;
 
-    if (hasOutput) {
+    if ((term & 0x20) != 0) { // has output
       int encodedOutputFpBytesMinus1 = (term >>> 6) & 0x07;
       long l = encodedOutputFpBytesMinus1 <= 4 ? termLong >>> 24 : access.readLong(fp + 3);
       long encodedFp = l & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
@@ -184,12 +183,13 @@ class TrieReader {
   }
 
   Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {
-    if (parent.sign == Trie.SIGN_NO_CHILDREN) {
+    int sign = parent.sign;
+    if (sign == Trie.SIGN_NO_CHILDREN) {
       return null;
     }
 
-    if (parent.sign == Trie.SIGN_SINGLE_CHILDREN_WITH_OUTPUT
-        || parent.sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
+    if (sign == Trie.SIGN_SINGLE_CHILDREN_WITH_OUTPUT
+        || sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
       if (targetLabel != parent.minChildrenLabel) {
         return null;
       }

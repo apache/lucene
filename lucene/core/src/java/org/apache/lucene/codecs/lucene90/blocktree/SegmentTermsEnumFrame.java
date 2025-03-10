@@ -183,7 +183,7 @@ final class SegmentTermsEnumFrame {
         : "fp=" + fp + " node=" + node + " isFloor=" + isFloor + " isLastInFloor=" + isLastInFloor;
 
     // TODO: if suffixes were stored in random-access
-    // array structure, then we could do binary senodeh
+    // array structure, then we could do binary search
     // instead of linear scan to find target term; eg
     // we could have simple array of offsets
 
