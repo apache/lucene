@@ -125,8 +125,6 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       return min;
     }
 
-    int bitsetWindowMax = (int) Math.min(max, (long) min + WINDOW_SIZE);
-
     if (acceptDocs == null) {
       int minDocIDRunEnd = max;
       for (DocIdSetIterator iterator : iterators) {
@@ -138,7 +136,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
         }
       }
 
-      if (minDocIDRunEnd >= bitsetWindowMax) {
+      if (minDocIDRunEnd - min >= WINDOW_SIZE / 2) {
         // We have a large range of doc IDs that all match.
         rangeDocIdStream.from = min;
         rangeDocIdStream.to = minDocIDRunEnd;
@@ -146,6 +144,8 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
         return minDocIDRunEnd;
       }
     }
+
+    int bitsetWindowMax = (int) Math.min(max, (long) min + WINDOW_SIZE);
 
     for (DocIdSetIterator it : iterators) {
       if (it.docID() > min || it.docIDRunEnd() < bitsetWindowMax) {
