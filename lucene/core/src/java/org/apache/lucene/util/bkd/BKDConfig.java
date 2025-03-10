@@ -45,6 +45,8 @@ public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxP
           new BKDConfig(1, 1, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
           // config for long / double
           new BKDConfig(1, 1, 8, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          // config for inetAddress
+          new BKDConfig(1, 1, 16, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
           // config for 2D points
           new BKDConfig(2, 2, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE));
 
