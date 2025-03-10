@@ -48,7 +48,9 @@ public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxP
           // config for inetAddress
           new BKDConfig(1, 1, 16, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
           // config for 2D points
-          new BKDConfig(2, 2, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE));
+          new BKDConfig(2, 2, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          // config for shapes
+          new BKDConfig(7, 4, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE));
 
   public BKDConfig {
     // Check inputs are on bounds

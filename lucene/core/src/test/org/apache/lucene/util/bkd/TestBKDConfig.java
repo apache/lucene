@@ -93,6 +93,11 @@ public class TestBKDConfig extends LuceneTestCase {
       assertSame(deduped, config);
     }
     {
+      BKDConfig config = BKDConfig.create(7, 4, 4, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+      BKDConfig deduped = BKDConfig.DEFAULT_CONFIGS.get(BKDConfig.DEFAULT_CONFIGS.indexOf(config));
+      assertSame(deduped, config);
+    }
+    {
       BKDConfig config = BKDConfig.create(1, 1, 6, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
       assertEquals(-1, BKDConfig.DEFAULT_CONFIGS.indexOf(config));
     }
