@@ -47,7 +47,7 @@ public class TestReproduceMessage extends WithNestedTests {
 
     @Rule
     public TestRule rule =
-        (base, description) ->
+        (base, _) ->
             new Statement() {
               @Override
               public void evaluate() throws Throwable {

@@ -290,7 +290,7 @@ public class TestFieldUpdatesBuffer extends LuceneTestCase {
       SortedMap<BytesRef, DocValuesUpdate.NumericDocValuesUpdate> byTerms = new TreeMap<>();
       for (DocValuesUpdate.NumericDocValuesUpdate update : updates) {
         byTerms.compute(
-            update.term.bytes, (k, v) -> v != null && v.docIDUpTo >= update.docIDUpTo ? v : update);
+            update.term.bytes, (_, v) -> v != null && v.docIDUpTo >= update.docIDUpTo ? v : update);
       }
       updates = new ArrayList<>(byTerms.values());
     }

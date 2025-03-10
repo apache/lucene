@@ -355,6 +355,8 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
   /**
    * Return the class that implements {@link ImpactsEnum} in this {@link PostingsFormat}. This is
    * internally used to help the JVM make good inlining decisions.
+   *
+   * @lucene.internal
    */
   public static Class<? extends ImpactsEnum> getImpactsEnumImpl() {
     return Lucene101PostingsReader.BlockPostingsEnum.class;

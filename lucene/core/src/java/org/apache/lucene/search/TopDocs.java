@@ -405,7 +405,7 @@ public class TopDocs {
         double rrfScoreContribution = 1d / Math.addExact(k, rank);
         rrfScore.compute(
             new ShardIndexAndDoc(scoreDoc.shardIndex, scoreDoc.doc),
-            (key, score) -> (score == null ? 0 : score) + rrfScoreContribution);
+            (_, score) -> (score == null ? 0 : score) + rrfScoreContribution);
       }
     }
 

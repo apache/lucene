@@ -171,7 +171,7 @@ public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFact
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setFont(StyleConstants.FONT_BUTTON_LARGE);
     closeBtn.setMargin(new Insets(3, 0, 3, 0));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     execButtons.add(closeBtn);
     panel.add(execButtons);
 

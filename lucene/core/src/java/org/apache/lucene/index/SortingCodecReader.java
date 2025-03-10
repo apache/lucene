@@ -810,7 +810,7 @@ public final class SortingCodecReader extends FilterCodecReader {
   private boolean assertCreatedOnlyOnce(String field, boolean norms) {
     assert Thread.holdsLock(this);
     // this is mainly there to make sure we change anything in the way we merge we realize it early
-    int timesCached = cacheStats.compute(field + "N:" + norms, (s, i) -> i == null ? 1 : i + 1);
+    int timesCached = cacheStats.compute(field + "N:" + norms, (_, i) -> i == null ? 1 : i + 1);
     if (timesCached > 1) {
       assert norms == false : "[" + field + "] norms must not be cached twice";
       boolean isSortField = false;

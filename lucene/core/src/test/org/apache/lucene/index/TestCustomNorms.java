@@ -56,7 +56,7 @@ public class TestCustomNorms extends LuceneTestCase {
       int boost = TestUtil.nextInt(random(), 1, 10);
       String value =
           IntStream.range(0, boost)
-              .mapToObj(k -> Integer.toString(boost))
+              .mapToObj(_ -> Integer.toString(boost))
               .collect(Collectors.joining(" "));
       Field f = new TextField(FLOAT_TEST_FIELD, value, Field.Store.YES);
 
