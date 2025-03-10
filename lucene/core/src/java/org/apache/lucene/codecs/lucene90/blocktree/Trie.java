@@ -77,7 +77,7 @@ class Trie {
       n.output = add.output;
     }
     ListIterator<Node> iter = n.children.listIterator();
-    // TODO we can do more efficient if there's no intersection
+    // TODO we can do more efficient if there is no intersection, block tree always do that
     outer:
     for (Node addChild : add.children) {
       while (iter.hasNext()) {
