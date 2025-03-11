@@ -14,6 +14,14 @@ API Changes
 * GITHUB#14160: Adjusts the default HNSW search behavior so that filter optimized search is enabled
   when 60% or less of vectors pass the pre-filter. (Ben Chaplin, Ben Trent)
 
+* GITHUB#14284: Remove IOException from DocIdSet#iterator signature (Luca Cavanna)
+
+* GITHUB#14288: The unused public static DocIdSet#all method has been removed. (Luca Cavanna)
+
+* GITHUB#14290: Remove redundant bits method from DocIdSet. (Luca Cavanna)
+
+* GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -37,7 +45,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+
+* GITHUB#14229: Bump minimum required Java version to 25
 
 ======================= Lucene 10.2.0 =======================
 
@@ -55,6 +64,21 @@ API Changes
 * GITHUB#14236: CombinedFieldQuery moved from lucene-sandbox to lucene-core.
   (Adrien Grand)
 
+* GITHUB#14282: Remove redundant field argument from the DocIdSetBuilder constructor that takes a
+  PointValues instance. (Luca Cavanna)
+
+* GITHUB#14289: The unused public static DocIdSet#all method has been deprecated.
+  (Luca Cavanna)
+
+* GITHUB#14292: The redundant DocIdSet#bits method has been deprecated. (Luca Cavanna)
+
+* GITHUB#14237: Add utils for sandbox facets module for the most common tasks. (Egor Potemkin)
+
+* GITHUB#14312: Added DocIdSetIterator#docIDRunEnd to let iterators tell when
+  they have runs of matches. This is then leveraged by conjunctions to
+  automatically ignore clauses that have long runs of matches over these runs,
+  resulting in better efficiency. (Adrien Grand)
+
 New Features
 ---------------------
 
@@ -62,11 +86,21 @@ New Features
   These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
-* GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
+* GITHUB#13974,GITHUB#14276: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox.
+  (Mikhail Khludnev)
 
 * GITHUB#14204: Added HistogramCollectorManager to efficiently compute a
   histogram of the distribution of the values of a field, for documents
   matching a given query. (Adrien Grand)
+
+* GITHUB#14278: Added `reuseChars` option to DictionaryCompoundWordTokenFilter, for use with
+  `longestMatch = true`. The value can be set to false to reduce the number of extracted subwords. For example,
+  if the word "schwein" is extracted, the sub-word "wein" is not extracted anymore. (Renato Haeberli)
+
+* GITHUB#14300: Add support JDK 24 to the Panama Vectorization Provider. (Chris Hegarty)
+
+* GITHUB#13470: Added `TopDocs#rrf` to combine multiple TopDocs instances using
+  reciprocal rank fusion. (Haren Lin, Adrien Grand)
 
 * GITHUB#14094: New KNN query that early terminates when HNSW nearest neighbor queue saturates (Tommaso Teofili)
 
@@ -115,6 +149,10 @@ Optimizations
 * GITHUB#14080: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up dense
   conjunctions. (Adrien Grand)
 
+* GITHUB#14293: Use the `DocIdSetIterator#loadIntoBitSet` API to speed up
+  intersection of dense queries with live docs and/or collectors' competitive
+  iterators. (Adrien Grand)
+
 * GITHUB#14133: Dense blocks of postings are now encoded as bit sets.
   (Adrien Grand)
 
@@ -150,6 +188,13 @@ Bug Fixes
 
 * GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
 
+* GITHUB#14320: Fix DirectIOIndexInput seek to not read when position is within buffer (Chris Hegarty)
+
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
+  LogByteSizeMergePolicy. (Adrien Grand)
+
 Other
 ---------------------
 
@@ -163,6 +208,8 @@ Other
   from 1.7.36 to 2.0.16. (Michael Froh)
 
 * GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
+
+* GITHUB#14279 : Add github action to verify changelog entry and set milestone to PRs. (Amir Raza)
 
 ======================= Lucene 10.1.0 =======================
 

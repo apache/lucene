@@ -146,7 +146,7 @@ public class CreateIndexDialogFactory implements DialogOpener.DialogFactory {
     createBtn.addActionListener(listeners::createIndex);
 
     cancelBtn.setText(MessageUtils.getLocalizedMessage("button.cancel"));
-    cancelBtn.addActionListener(e -> dialog.dispose());
+    cancelBtn.addActionListener(_ -> dialog.dispose());
   }
 
   @Override

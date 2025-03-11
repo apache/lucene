@@ -4,7 +4,7 @@ asm = "9.6"
 assertj = "3.21.0"
 commons-codec = "1.17.2"
 commons-compress = "1.19"
-ecj = "3.36.0"
+ecj = "3.40.0"
 errorprone = "2.36.0"
 flexmark = "0.61.24"
 # @keep This is GJF version for spotless/ tidy.
@@ -21,7 +21,7 @@ junit = "4.13.1"
 # @keep Minimum gradle version to run the build
 minGradle = "8.10"
 # @keep This is the minimum required Java version.
-minJava = "21"
+minJava = "23"
 morfologik = "2.1.9"
 morfologik-ukrainian = "4.9.1"
 nekohtml = "1.9.17"

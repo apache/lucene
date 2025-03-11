@@ -64,7 +64,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
   }
 
   protected KnnCollectorManager getKnnCollectorManager() {
-    return (visitLimit, searchStrategy, context) ->
+    return (visitLimit, _, _) ->
         new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitLimit);
   }
 

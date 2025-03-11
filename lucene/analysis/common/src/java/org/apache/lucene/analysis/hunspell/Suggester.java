@@ -172,7 +172,7 @@ public class Suggester {
               return compoundCache
                   .computeIfAbsent(
                       new String(chars, offset, length),
-                      __ ->
+                      _ ->
                           Optional.ofNullable(super.findStem(chars, offset, length, null, context)))
                   .orElse(null);
             }

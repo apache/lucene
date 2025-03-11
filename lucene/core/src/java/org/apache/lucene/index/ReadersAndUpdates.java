@@ -147,7 +147,7 @@ final class ReadersAndUpdates {
       throw new IllegalArgumentException("call finish first");
     }
     List<DocValuesFieldUpdates> fieldUpdates =
-        pendingDVUpdates.computeIfAbsent(update.field, key -> new ArrayList<>());
+        pendingDVUpdates.computeIfAbsent(update.field, _ -> new ArrayList<>());
     assert assertNoDupGen(fieldUpdates, update);
 
     ramBytesUsed.addAndGet(update.ramBytesUsed());
