@@ -17,6 +17,11 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * A {@link DocIdSetIterator} which is a disjunction of the approximations of the provided
@@ -24,18 +29,81 @@ import java.io.IOException;
  *
  * @lucene.internal
  */
-public class DisjunctionDISIApproximation extends DocIdSetIterator {
+public final class DisjunctionDISIApproximation extends DocIdSetIterator {
 
-  final DisiPriorityQueue subIterators;
-  final long cost;
+  public static DisjunctionDISIApproximation of(
+      Collection<? extends DisiWrapper> subIterators, long leadCost) {
 
-  public DisjunctionDISIApproximation(DisiPriorityQueue subIterators) {
-    this.subIterators = subIterators;
-    long cost = 0;
-    for (DisiWrapper w : subIterators) {
-      cost += w.cost;
+    return new DisjunctionDISIApproximation(subIterators, leadCost);
+  }
+
+  // Heap of iterators that lead iteration.
+  private final DisiPriorityQueue leadIterators;
+  // List of iterators that will likely advance on every call to nextDoc() / advance()
+  private final DisiWrapper[] otherIterators;
+  private final long cost;
+  private DisiWrapper leadTop;
+  private int minOtherDoc;
+
+  public DisjunctionDISIApproximation(
+      Collection<? extends DisiWrapper> subIterators, long leadCost) {
+    // Using a heap to store disjunctive clauses is great for exhaustive evaluation, when a single
+    // clause needs to move through the heap on every iteration on average. However, when
+    // intersecting with a selective filter, it is possible that all clauses need advancing, which
+    // makes the reordering cost scale in O(N * log(N)) per advance() call when checking clauses
+    // linearly would scale in O(N).
+    // To protect against this reordering overhead, we try to have 1.5 clauses or less that advance
+    // on every advance() call by only putting clauses into the heap as long as Σ min(1, cost /
+    // leadCost) <= 1.5, or Σ min(leadCost, cost) <= 1.5 * leadCost. Other clauses are checked
+    // linearly.
+
+    DisiWrapper[] wrappers = subIterators.toArray(DisiWrapper[]::new);
+    // Sort by descending cost.
+    Arrays.sort(wrappers, Comparator.<DisiWrapper>comparingLong(w -> w.cost).reversed());
+
+    long reorderThreshold = leadCost + (leadCost >> 1);
+    if (reorderThreshold < 0) { // overflow
+      reorderThreshold = Long.MAX_VALUE;
     }
+
+    long cost = 0; // track total cost
+    // Split `wrappers` into those that will remain out of the PQ, and those that will go in
+    // (PQ entries at the end). `lastIdx` is the last index of the wrappers that will remain out.
+    long reorderCost = 0;
+    int lastIdx = wrappers.length - 1;
+    for (; lastIdx >= 0; lastIdx--) {
+      long lastCost = wrappers[lastIdx].cost;
+      long inc = Math.min(lastCost, leadCost);
+      if (reorderCost + inc < 0 || reorderCost + inc > reorderThreshold) {
+        break;
+      }
+      reorderCost += inc;
+      cost += lastCost;
+    }
+
+    // Make leadIterators not empty. This helps save conditionals in the implementation which are
+    // rarely tested.
+    if (lastIdx == wrappers.length - 1) {
+      cost += wrappers[lastIdx].cost;
+      lastIdx--;
+    }
+
+    // Build the PQ:
+    assert lastIdx >= -1 && lastIdx < wrappers.length - 1;
+    int pqLen = wrappers.length - lastIdx - 1;
+    leadIterators = DisiPriorityQueue.ofMaxSize(pqLen);
+    leadIterators.addAll(wrappers, lastIdx + 1, pqLen);
+
+    // Build the non-PQ list:
+    otherIterators = ArrayUtil.copyOfSubArray(wrappers, 0, lastIdx + 1);
+    minOtherDoc = Integer.MAX_VALUE;
+    for (DisiWrapper w : otherIterators) {
+      cost += w.cost;
+      minOtherDoc = Math.min(minOtherDoc, w.doc);
+    }
+
     this.cost = cost;
+    leadTop = leadIterators.top();
   }
 
   @Override
@@ -45,29 +113,78 @@ public class DisjunctionDISIApproximation extends DocIdSetIterator {
 
   @Override
   public int docID() {
-    return subIterators.top().doc;
+    return Math.min(minOtherDoc, leadTop.doc);
   }
 
   @Override
   public int nextDoc() throws IOException {
-    DisiWrapper top = subIterators.top();
-    final int doc = top.doc;
-    do {
-      top.doc = top.approximation.nextDoc();
-      top = subIterators.updateTop();
-    } while (top.doc == doc);
-
-    return top.doc;
+    if (leadTop.doc < minOtherDoc) {
+      int curDoc = leadTop.doc;
+      do {
+        leadTop.doc = leadTop.approximation.nextDoc();
+        leadTop = leadIterators.updateTop();
+      } while (leadTop.doc == curDoc);
+      return Math.min(leadTop.doc, minOtherDoc);
+    } else {
+      return advance(minOtherDoc + 1);
+    }
   }
 
   @Override
   public int advance(int target) throws IOException {
-    DisiWrapper top = subIterators.top();
-    do {
-      top.doc = top.approximation.advance(target);
-      top = subIterators.updateTop();
-    } while (top.doc < target);
+    while (leadTop.doc < target) {
+      leadTop.doc = leadTop.approximation.advance(target);
+      leadTop = leadIterators.updateTop();
+    }
 
-    return top.doc;
+    minOtherDoc = Integer.MAX_VALUE;
+    for (DisiWrapper w : otherIterators) {
+      if (w.doc < target) {
+        w.doc = w.approximation.advance(target);
+      }
+      minOtherDoc = Math.min(minOtherDoc, w.doc);
+    }
+
+    return Math.min(leadTop.doc, minOtherDoc);
+  }
+
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    while (leadTop.doc < upTo) {
+      leadTop.approximation.intoBitSet(upTo, bitSet, offset);
+      leadTop.doc = leadTop.approximation.docID();
+      leadTop = leadIterators.updateTop();
+    }
+
+    minOtherDoc = Integer.MAX_VALUE;
+    for (DisiWrapper w : otherIterators) {
+      w.approximation.intoBitSet(upTo, bitSet, offset);
+      w.doc = w.approximation.docID();
+      minOtherDoc = Math.min(minOtherDoc, w.doc);
+    }
+  }
+
+  /** Return the linked list of iterators positioned on the current doc. */
+  public DisiWrapper topList() {
+    if (leadTop.doc < minOtherDoc) {
+      return leadIterators.topList();
+    } else {
+      return computeTopList();
+    }
+  }
+
+  private DisiWrapper computeTopList() {
+    assert leadTop.doc >= minOtherDoc;
+    DisiWrapper topList = null;
+    if (leadTop.doc == minOtherDoc) {
+      topList = leadIterators.topList();
+    }
+    for (DisiWrapper w : otherIterators) {
+      if (w.doc == minOtherDoc) {
+        w.next = topList;
+        topList = w;
+      }
+    }
+    return topList;
   }
 }

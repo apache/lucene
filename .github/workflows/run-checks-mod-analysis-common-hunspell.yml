@@ -1,4 +1,4 @@
-name: "Run checks: module lucene/analysis/common"
+name: "Run checks: module lucene/analysis/common (hunspell)"
 
 on:
   workflow_dispatch:
@@ -20,11 +20,11 @@ on:
       - 'lucene/analysis/common/**'
 
 env:
-  GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
+  DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
   test:
-    name: Extra regression tests
+    name: Extra Hunspell regression tests
     timeout-minutes: 15
 
     runs-on: ubuntu-latest
@@ -33,5 +33,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-for-build
 
-      - name: Run 'gradlew lucene/analysis/common check testRegressions'
-        run: ./gradlew -p lucene/analysis/common check testRegressions
+      - name: Run Hunspell regression tests
+        run: ./gradlew -p lucene/analysis/common -Ptests.hunspell.regressions=true -Ptests.verbose=true test --tests "TestAllDictionaries"

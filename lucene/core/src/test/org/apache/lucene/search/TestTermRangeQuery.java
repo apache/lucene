@@ -159,6 +159,7 @@ public class TestTermRangeQuery extends LuceneTestCase {
     assertEquals(0, allowedTerms.size());
   }
 
+  @SuppressWarnings("SelfAssertion")
   public void testEqualsHashcode() {
     Query query = TermRangeQuery.newStringRange("content", "A", "C", true, true);
 

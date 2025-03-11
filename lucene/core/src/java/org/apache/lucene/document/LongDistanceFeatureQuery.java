@@ -35,6 +35,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.NumericUtils;
 
 final class LongDistanceFeatureQuery extends Query {
@@ -403,6 +404,21 @@ final class LongDistanceFeatureQuery extends Query {
 
               // Doc is in-bounds
               adder.add(docID);
+            }
+
+            @Override
+            public void visit(DocIdSetIterator iterator) throws IOException {
+              int docID;
+              while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+                visit(docID);
+              }
+            }
+
+            @Override
+            public void visit(IntsRef ref) {
+              for (int i = 0; i < ref.length; ++i) {
+                visit(ref.ints[ref.offset + i]);
+              }
             }
 
             @Override

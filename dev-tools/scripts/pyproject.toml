@@ -1,0 +1,23 @@
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+# TODO: improve!
+# typeCheckingMode = "strict"
+reportUnnecessaryTypeIgnoreComment = "error"
+typeCheckingMode = "standard"
+
+[tool.ruff]
+line-length = 200
+indent-width = 2
+
+[tool.ruff.lint]
+# TODO: improve!
+# select = ["ALL"]
+
+# disabling/enabling of rules
+ignore = [
+  # These rules are always disabled: conflict with the formatter
+  # don't enable! https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+  "W191", "E111", "E114", "E117", "D206", "D300", "Q000", "Q001",
+  "Q002", "Q003", "COM812", "COM819", "ISC001", "ISC002", "E501",
+]

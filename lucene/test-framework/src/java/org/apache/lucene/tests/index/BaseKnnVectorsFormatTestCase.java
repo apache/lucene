@@ -124,6 +124,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  @Override
+  protected boolean mergeIsStable() {
+    // suppress this test from base class: merges for knn graphs are not stable due to connected
+    // components
+    // logic
+    return false;
+  }
+
   private int getVectorsMaxDimensions(String fieldName) {
     return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
   }
@@ -1944,7 +1952,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       // indexed 421 lines from LICENSE.txt
       // indexed 157 lines from NOTICE.txt
       int topK = 10;
-      int numQueries = 578;
+      int efSearch = 25;
+      int numQueries = 526;
       String[] testQueries = {
         "Apache Lucene",
         "Apache License",
@@ -1963,8 +1972,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
             new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
         assertEquals(numQueries, searcher.count(exactQuery)); // Same for exact search
 
-        KnnFloatVectorQuery query = new KnnFloatVectorQuery("field", queryEmbedding, topK);
-        assertEquals(10, searcher.count(query)); // Expect some results without timeout
+        KnnFloatVectorQuery query = new KnnFloatVectorQuery("field", queryEmbedding, efSearch);
+        assertEquals(efSearch, searcher.count(query)); // Expect some results without timeout
         TopDocs results = searcher.search(query, topK);
         Set<Integer> resultDocs = new HashSet<>();
         int i = 0;
@@ -1999,7 +2008,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       }
       int totalResults = testQueries.length * topK;
       assertTrue(
-          "Average recall for "
+          "codec: "
+              + getCodec()
+              + "Average recall for "
               + similarity
               + " should be at least "
               + (totalResults * min)
@@ -2028,6 +2039,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     Directory indexStore = newDirectory(random());
     IndexWriter writer = new IndexWriter(indexStore, newIndexWriterConfig());
     float[] scratch = new float[dimension];
+    Set<String> seen = new HashSet<>(578);
     for (String file : List.of("LICENSE.txt", "NOTICE.txt")) {
       try (InputStream in = BaseKnnVectorsFormatTestCase.class.getResourceAsStream(file);
           BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8))) {
@@ -2036,6 +2048,9 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         while ((line = reader.readLine()) != null) {
           line = line.strip();
           if (line.isEmpty()) {
+            continue;
+          }
+          if (seen.add(line) == false) {
             continue;
           }
           ++lineNo;
@@ -2062,8 +2077,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
 
   private float[] computeLineEmbedding(String line, float[] vector) {
     Arrays.fill(vector, 0);
-    for (int i = 0; i < line.length(); i++) {
+    int i = 0;
+    for (; i < line.length(); i++) {
       char c = line.charAt(i);
+      vector[i % vector.length] += c / ((float) (i + 1) / vector.length);
+    }
+    // keep encoding the line to repeatably fill the vector if the line is very short
+    for (; i < vector.length; i++) {
+      char c = line.charAt(i % line.length());
       vector[i % vector.length] += c / ((float) (i + 1) / vector.length);
     }
     VectorUtil.l2normalize(vector, false);

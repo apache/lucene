@@ -1379,7 +1379,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               // Slow, yet hopefully bug-free, faceting:
               @SuppressWarnings({"rawtypes", "unchecked"})
               Map<String, Integer>[] expectedCounts = new HashMap[numDims];
-              Arrays.setAll(expectedCounts, i -> new HashMap<>());
+              Arrays.setAll(expectedCounts, _ -> new HashMap<>());
 
               for (TestDoc doc : testDocs) {
                 if (doc.content.equals(searchToken)) {

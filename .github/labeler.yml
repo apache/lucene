@@ -1,0 +1,130 @@
+# This file defines module label mappings for the Lucene project.
+# Each module is associated with a set of file globs that, when matched,
+# will trigger the corresponding label to be applied to pull requests.
+#
+# This configuration is used by the workflow defined in .github/workflows/label-pull-request.yml.
+# If we are adding new labels or refactoring modules, we will need to modify this file globs here to ensure that the correct labels are applied.
+
+# For more information on how to define globs, visit: https://github.com/actions/labeler
+
+module:analysis:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/analysis/**'
+
+module:benchmark:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/benchmark/**'
+
+module:classification:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/classification/**'
+
+module:core/codecs:
+  - changed-files:
+      - any-glob-to-any-file: ['lucene/core/src/java/org/apache/lucene/codecs/**', 'lucene/core/src/test/org/apache/lucene/codecs/**']
+
+module:core/FSTs:
+  - changed-files:
+      - any-glob-to-any-file: ['lucene/core/src/java/org/apache/lucene/util/fst/**', 'lucene/core/src/test/org/apache/lucene/util/fst/**']
+
+module:core/hnsw:
+  - changed-files:
+      - any-glob-to-any-file: ['lucene/core/src/java/org/apache/lucene/util/hnsw/**', 'lucene/core/src/test/org/apache/lucene/util/hnsw/**']
+
+module:core/index:
+  - changed-files:
+      - any-glob-to-any-file: ['lucene/core/src/java/org/apache/lucene/index/**', 'lucene/core/src/test/org/apache/lucene/index/**']
+
+module:core/search:
+  - changed-files:
+      - any-glob-to-any-file: ['lucene/core/src/java/org/apache/lucene/search/**', 'lucene/core/src/test/org/apache/lucene/search/**']
+
+module:core/store:
+  - changed-files:
+      - any-glob-to-any-file: ['lucene/core/src/java/org/apache/lucene/store/**', 'lucene/core/src/test/org/apache/lucene/store/**']
+
+module:core/other:
+  - all:
+      - changed-files:
+          - any-glob-to-any-file: ['lucene/core/**']
+          - all-globs-to-all-files:
+              - '!lucene/core/src/java/org/apache/lucene/codecs/**'
+              - '!lucene/core/src/test/org/apache/lucene/codecs/**'
+              - '!lucene/core/src/java/org/apache/lucene/util/fst/**'
+              - '!lucene/core/src/test/org/apache/lucene/util/fst/**'
+              - '!lucene/core/src/java/org/apache/lucene/util/hnsw/**'
+              - '!lucene/core/src/test/org/apache/lucene/util/hnsw/**'
+              - '!lucene/core/src/java/org/apache/lucene/index/**'
+              - '!lucene/core/src/test/org/apache/lucene/index/**'
+              - '!lucene/core/src/java/org/apache/lucene/search/**'
+              - '!lucene/core/src/test/org/apache/lucene/search/**'
+              - '!lucene/core/src/java/org/apache/lucene/store/**'
+              - '!lucene/core/src/test/org/apache/lucene/store/**'
+
+module:demo:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/demo/**'
+
+module:expressions:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/expressions/**'
+
+module:facet:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/facet/**'
+
+module:grouping:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/grouping/**'
+
+module:highlighter:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/highlighter/**'
+
+module:join:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/join/**'
+
+module:luke:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/luke/**'
+
+module:misc:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/misc/**'
+
+module:monitor:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/monitor/**'
+
+module:queries:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/queries/**'
+
+module:queryparser:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/queryparser/**'
+
+module:replicator:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/replicator/**'
+
+module:sandbox:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/sandbox/**'
+
+module:spatial:
+  - changed-files:
+      - any-glob-to-any-file: ['lucene/spatial-extras/**', 'lucene/spatial-test-fixtures/**']
+
+module:spatial3d:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/spatial3d/**'
+
+module:suggest:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/suggest/**'
+
+module:test-framework:
+  - changed-files:
+      - any-glob-to-any-file: 'lucene/test-framework/**'

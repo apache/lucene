@@ -544,6 +544,7 @@ public abstract class LuceneTestCase extends Assert {
   static final TestRuleSetupAndRestoreClassEnv classEnvRule;
 
   /** Suite failure marker (any error in the test or suite scope). */
+  @SuppressWarnings("NonFinalStaticField")
   protected static TestRuleMarkFailure suiteFailureMarker;
 
   /** Temporary files cleanup rule. */
@@ -587,7 +588,7 @@ public abstract class LuceneTestCase extends Assert {
     ignoreAfterMaxFailures = TestRuleDelegate.of(ignoreAfterMaxFailuresDelegate);
   }
 
-  /**
+  /*
    * Try to capture streams early so that other classes don't have a chance to steal references to
    * them (as is the case with ju.logging handlers).
    */
@@ -608,7 +609,7 @@ public abstract class LuceneTestCase extends Assert {
    * This controls how suite-level rules are nested. It is important that _all_ rules declared in
    * {@link LuceneTestCase} are executed in proper order if they depend on each other.
    */
-  @ClassRule public static TestRule classRules;
+  @ClassRule public static final TestRule classRules;
 
   static {
     RuleChain r =
@@ -679,6 +680,7 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /** Set by TestRuleSetupAndRestoreClassEnv */
+  @SuppressWarnings("NonFinalStaticField")
   static LiveIWCFlushMode liveIWCFlushMode;
 
   static void setLiveIWCFlushMode(LiveIWCFlushMode flushMode) {
@@ -1097,11 +1099,6 @@ public abstract class LuceneTestCase extends Assert {
   public static TieredMergePolicy newTieredMergePolicy(Random r) {
     TieredMergePolicy tmp = new TieredMergePolicy();
     if (rarely(r)) {
-      tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-    } else {
-      tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-    }
-    if (rarely(r)) {
       tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
     } else {
       tmp.setMaxMergedSegmentMB(10 + r.nextDouble() * 100);
@@ -1207,8 +1204,7 @@ public abstract class LuceneTestCase extends Assert {
     if (rarely(r)) {
       // change CMS merge parameters
       MergeScheduler ms = c.getMergeScheduler();
-      if (ms instanceof ConcurrentMergeScheduler) {
-        ConcurrentMergeScheduler cms = (ConcurrentMergeScheduler) ms;
+      if (ms instanceof ConcurrentMergeScheduler cms) {
         int maxThreadCount = TestUtil.nextInt(r, 1, 4);
         int maxMergeCount = TestUtil.nextInt(r, maxThreadCount, maxThreadCount + 4);
         boolean enableAutoIOThrottle = random().nextBoolean();
@@ -1225,21 +1221,14 @@ public abstract class LuceneTestCase extends Assert {
     if (rarely(r)) {
       MergePolicy mp = c.getMergePolicy();
       configureRandom(r, mp);
-      if (mp instanceof LogMergePolicy) {
-        LogMergePolicy logmp = (LogMergePolicy) mp;
+      if (mp instanceof LogMergePolicy logmp) {
         logmp.setCalibrateSizeByDeletes(r.nextBoolean());
         if (rarely(r)) {
           logmp.setMergeFactor(TestUtil.nextInt(r, 2, 9));
         } else {
           logmp.setMergeFactor(TestUtil.nextInt(r, 10, 50));
         }
-      } else if (mp instanceof TieredMergePolicy) {
-        TieredMergePolicy tmp = (TieredMergePolicy) mp;
-        if (rarely(r)) {
-          tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 2, 9));
-        } else {
-          tmp.setMaxMergeAtOnce(TestUtil.nextInt(r, 10, 50));
-        }
+      } else if (mp instanceof TieredMergePolicy tmp) {
         if (rarely(r)) {
           tmp.setMaxMergedSegmentMB(0.2 + r.nextDouble() * 2.0);
         } else {
@@ -1591,14 +1580,26 @@ public abstract class LuceneTestCase extends Assert {
         availableLanguageTags[random.nextInt(availableLanguageTags.length)]);
   }
 
+  /** Time zone IDs that cause a deprecation warning in JDK 25. */
+  private static final Set<String> DEPRECATED_TIME_ZONE_IDS_JDK25 =
+      Set.of(
+          "ACT", "AET", "AGT", "ART", "AST", "BET", "BST", "CAT", "CNT", "CST", "CTT", "EAT", "ECT",
+          "EST", "HST", "IET", "IST", "JST", "MIT", "MST", "NET", "NST", "PLT", "PNT", "PRT", "PST",
+          "SST", "VST");
+
   /**
    * Return a random TimeZone from the available timezones on the system
    *
    * @see <a href="http://issues.apache.org/jira/browse/LUCENE-4020">LUCENE-4020</a>
    */
   public static TimeZone randomTimeZone(Random random) {
-    String[] tzIds = TimeZone.getAvailableIDs();
-    return TimeZone.getTimeZone(tzIds[random.nextInt(tzIds.length)]);
+    List<String> tzIds = Arrays.asList(TimeZone.getAvailableIDs());
+    // Remove time zones that cause deprecation warnings as these can break
+    // certain tests that expect exact output.
+    if (Runtime.version().feature() >= 25) {
+      tzIds = tzIds.stream().filter(id -> !DEPRECATED_TIME_ZONE_IDS_JDK25.contains(id)).toList();
+    }
+    return TimeZone.getTimeZone(RandomPicks.randomFrom(random, tzIds));
   }
 
   /** return a Locale object equivalent to its programmatic name */
@@ -1704,8 +1705,7 @@ public abstract class LuceneTestCase extends Assert {
                   : new ParallelCompositeReader((CompositeReader) r);
           break;
         case 1:
-          if (r instanceof LeafReader) {
-            final LeafReader ar = (LeafReader) r;
+          if (r instanceof LeafReader ar) {
             final List<String> allFields = new ArrayList<>();
             for (FieldInfo fi : ar.getFieldInfos()) {
               allFields.add(fi.name);
@@ -1861,7 +1861,7 @@ public abstract class LuceneTestCase extends Assert {
     // we need to reset the query cache in an @BeforeClass so that tests that
     // instantiate an IndexSearcher in an @BeforeClass method use a fresh new cache
     IndexSearcher.setDefaultQueryCache(
-        new LRUQueryCache(10000, 1 << 25, context -> true, Float.POSITIVE_INFINITY));
+        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY));
     IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
   }
 

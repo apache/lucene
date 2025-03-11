@@ -74,6 +74,6 @@ final class TermCounts {
         .sorted(comparator)
         .collect(
             Collectors.toMap(
-                Map.Entry::getKey, Map.Entry::getValue, (v1, v2) -> v1, LinkedHashMap::new));
+                Map.Entry::getKey, Map.Entry::getValue, (v1, _) -> v1, LinkedHashMap::new));
   }
 }

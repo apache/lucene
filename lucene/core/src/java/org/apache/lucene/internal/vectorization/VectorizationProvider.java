@@ -77,7 +77,7 @@ public abstract class VectorizationProvider {
 
   private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
       "org.apache.lucene.vectorization.upperJavaFeatureVersion";
-  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 23;
+  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 24;
 
   private static int getUpperJavaFeatureVersion() {
     int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
@@ -216,7 +216,8 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene101.Lucene101PostingsReader",
-          "org.apache.lucene.codecs.lucene101.PostingIndexInput");
+          "org.apache.lucene.codecs.lucene101.PostingIndexInput",
+          "org.apache.lucene.tests.util.TestSysoutsLimits");
 
   private static void ensureCaller() {
     final boolean validCaller =

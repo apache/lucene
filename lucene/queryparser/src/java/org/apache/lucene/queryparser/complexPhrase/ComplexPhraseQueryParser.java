@@ -294,9 +294,9 @@ public class ComplexPhraseQueryParser extends QueryParser {
 
         if (qc instanceof BooleanQuery || qc instanceof SynonymQuery) {
           ArrayList<SpanQuery> sc = new ArrayList<>();
-          BooleanQuery booleanCaluse =
+          BooleanQuery booleanClause =
               qc instanceof BooleanQuery ? (BooleanQuery) qc : convert((SynonymQuery) qc);
-          addComplexPhraseClause(sc, booleanCaluse);
+          addComplexPhraseClause(sc, booleanClause);
           if (sc.size() > 0) {
             allSpanClauses[i] = sc.get(0);
           } else {
@@ -315,8 +315,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
               new SpanTermQuery(
                   new Term(field, "Dummy clause because no terms found - must match nothing"));
         } else {
-          if (qc instanceof TermQuery) {
-            TermQuery tq = (TermQuery) qc;
+          if (qc instanceof TermQuery tq) {
             allSpanClauses[i] = new SpanTermQuery(tq.getTerm());
           } else {
             throw new IllegalArgumentException(
@@ -389,12 +388,10 @@ public class ComplexPhraseQueryParser extends QueryParser {
           chosenList = nots;
         }
 
-        if (childQuery instanceof TermQuery) {
-          TermQuery tq = (TermQuery) childQuery;
+        if (childQuery instanceof TermQuery tq) {
           SpanQuery stq = new SpanTermQuery(tq.getTerm());
           chosenList.add(stq);
-        } else if (childQuery instanceof BooleanQuery) {
-          BooleanQuery cbq = (BooleanQuery) childQuery;
+        } else if (childQuery instanceof BooleanQuery cbq) {
           addComplexPhraseClause(chosenList, cbq);
         } else if (childQuery instanceof MatchNoDocsQuery) {
           // Insert fake term e.g. phrase query was for "Fred Smithe*" and

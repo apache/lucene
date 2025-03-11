@@ -17,8 +17,10 @@
 package org.apache.lucene.search.suggest.document;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.analysis.miscellaneous.ConcatenateGraphFilter;
 import org.apache.lucene.internal.hppc.IntHashSet;
@@ -193,9 +195,10 @@ public class ContextQuery extends CompletionQuery implements Accountable {
     // include the SEP_LABEL in the query as well
     Automaton optionalSepLabel =
         Operations.optional(Automata.makeChar(ConcatenateGraphFilter.SEP_LABEL));
-    Automaton prefixAutomaton = Operations.concatenate(optionalSepLabel, innerAutomaton);
     Automaton contextsAutomaton =
-        Operations.concatenate(toContextAutomaton(contexts, matchAllContexts), prefixAutomaton);
+        Operations.concatenate(
+            List.of(
+                toContextAutomaton(contexts, matchAllContexts), optionalSepLabel, innerAutomaton));
     contextsAutomaton =
         Operations.determinize(contextsAutomaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
 
@@ -228,23 +231,21 @@ public class ContextQuery extends CompletionQuery implements Accountable {
     final Automaton matchAllAutomaton = Operations.repeat(Automata.makeAnyString());
     final Automaton sep = Automata.makeChar(ContextSuggestField.CONTEXT_SEPARATOR);
     if (matchAllContexts || contexts.size() == 0) {
-      return Operations.concatenate(matchAllAutomaton, sep);
+      return Operations.concatenate(List.of(matchAllAutomaton, sep));
     } else {
-      Automaton contextsAutomaton = null;
+      List<Automaton> automataList = new ArrayList<>();
       for (Map.Entry<IntsRef, ContextMetaData> entry : contexts.entrySet()) {
         final ContextMetaData contextMetaData = entry.getValue();
         final IntsRef ref = entry.getKey();
-        Automaton contextAutomaton = Automata.makeString(ref.ints, ref.offset, ref.length);
+        final List<Automaton> contextAutomaton = new ArrayList<>();
+        contextAutomaton.add(Automata.makeString(ref.ints, ref.offset, ref.length));
         if (contextMetaData.exact == false) {
-          contextAutomaton = Operations.concatenate(contextAutomaton, matchAllAutomaton);
+          contextAutomaton.add(matchAllAutomaton);
         }
-        contextAutomaton = Operations.concatenate(contextAutomaton, sep);
-        if (contextsAutomaton == null) {
-          contextsAutomaton = contextAutomaton;
-        } else {
-          contextsAutomaton = Operations.union(contextsAutomaton, contextAutomaton);
-        }
+        contextAutomaton.add(sep);
+        automataList.add(Operations.concatenate(contextAutomaton));
       }
+      Automaton contextsAutomaton = Operations.union(automataList);
       return contextsAutomaton;
     }
   }

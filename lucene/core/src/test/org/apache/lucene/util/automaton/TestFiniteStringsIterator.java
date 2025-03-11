@@ -96,7 +96,8 @@ public class TestFiniteStringsIterator extends LuceneTestCase {
 
   /** Basic test for getFiniteStrings */
   public void testFiniteStringsBasic() {
-    Automaton a = Operations.union(Automata.makeString("dog"), Automata.makeString("duck"));
+    Automaton a =
+        Operations.union(List.of(Automata.makeString("dog"), Automata.makeString("duck")));
     a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     FiniteStringsIterator iterator = new FiniteStringsIterator(a);
     List<IntsRef> actual = getFiniteStrings(iterator);
@@ -117,7 +118,7 @@ public class TestFiniteStringsIterator extends LuceneTestCase {
     TestUtil.randomFixedLengthUnicodeString(random(), chars, 0, chars.length);
     String bigString2 = new String(chars);
     Automaton a =
-        Operations.union(Automata.makeString(bigString1), Automata.makeString(bigString2));
+        Operations.union(List.of(Automata.makeString(bigString1), Automata.makeString(bigString2)));
     FiniteStringsIterator iterator = new FiniteStringsIterator(a);
     List<IntsRef> actual = getFiniteStrings(iterator);
     assertEquals(2, actual.size());
@@ -149,7 +150,7 @@ public class TestFiniteStringsIterator extends LuceneTestCase {
   }
 
   public void testShortAccept() {
-    Automaton a = Operations.union(Automata.makeString("x"), Automata.makeString("xy"));
+    Automaton a = Operations.union(List.of(Automata.makeString("x"), Automata.makeString("xy")));
     a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     FiniteStringsIterator iterator = new FiniteStringsIterator(a);
     List<IntsRef> actual = getFiniteStrings(iterator);

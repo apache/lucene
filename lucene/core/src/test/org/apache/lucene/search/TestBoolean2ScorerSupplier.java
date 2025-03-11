@@ -121,7 +121,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     }
 
     @Override
-    public void setTopLevelScoringClause() throws IOException {
+    public void setTopLevelScoringClause() {
       topLevelScoringClause = true;
     }
   }
@@ -436,7 +436,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
         .get(20); // triggers assertions as a side-effect
   }
 
-  public void testDisjunctionTopLevelScoringClause() throws Exception {
+  public void testDisjunctionTopLevelScoringClause() {
     Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
     for (Occur occur : Occur.values()) {
       subs.put(occur, new ArrayList<>());
@@ -453,7 +453,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     assertFalse(clause2.topLevelScoringClause);
   }
 
-  public void testConjunctionTopLevelScoringClause() throws Exception {
+  public void testConjunctionTopLevelScoringClause() {
     Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
     for (Occur occur : Occur.values()) {
       subs.put(occur, new ArrayList<>());
@@ -470,7 +470,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     assertFalse(clause2.topLevelScoringClause);
   }
 
-  public void testFilterTopLevelScoringClause() throws Exception {
+  public void testFilterTopLevelScoringClause() {
     Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
     for (Occur occur : Occur.values()) {
       subs.put(occur, new ArrayList<>());
@@ -487,7 +487,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     assertFalse(clause2.topLevelScoringClause);
   }
 
-  public void testSingleMustScoringClause() throws Exception {
+  public void testSingleMustScoringClause() {
     Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
     for (Occur occur : Occur.values()) {
       subs.put(occur, new ArrayList<>());
@@ -504,7 +504,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     assertFalse(clause2.topLevelScoringClause);
   }
 
-  public void testSingleShouldScoringClause() throws Exception {
+  public void testSingleShouldScoringClause() {
     Map<Occur, Collection<ScorerSupplier>> subs = new EnumMap<>(Occur.class);
     for (Occur occur : Occur.values()) {
       subs.put(occur, new ArrayList<>());

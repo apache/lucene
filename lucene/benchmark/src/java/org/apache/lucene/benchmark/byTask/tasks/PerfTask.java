@@ -163,7 +163,7 @@ public abstract class PerfTask implements Cloneable {
     if (params == null) {
       return name;
     }
-    return new StringBuilder(name).append('(').append(params).append(')').toString();
+    return name + '(' + params + ')';
   }
 
   /**

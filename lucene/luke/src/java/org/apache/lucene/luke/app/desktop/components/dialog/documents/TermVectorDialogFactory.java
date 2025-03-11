@@ -47,6 +47,7 @@ import org.apache.lucene.luke.models.documents.TermVectorEntry;
 /** Factory of term vector dialog */
 public final class TermVectorDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static TermVectorDialogFactory instance;
 
   private final Preferences prefs;
@@ -118,7 +119,7 @@ public final class TermVectorDialogFactory implements DialogOpener.DialogFactory
     footer.setOpaque(false);
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setMargin(new Insets(3, 3, 3, 3));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     footer.add(closeBtn);
     panel.add(footer, BorderLayout.PAGE_END);
 

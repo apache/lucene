@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.util.ArrayUtil;
 
@@ -45,7 +44,7 @@ class IntArrayDocIdSet extends DocIdSet {
   }
 
   @Override
-  public DocIdSetIterator iterator() throws IOException {
+  public DocIdSetIterator iterator() {
     return new DocIdSetIterator() {
       int i = 0;
       int doc = -1;

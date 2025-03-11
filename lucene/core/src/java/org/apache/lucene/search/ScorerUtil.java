@@ -18,10 +18,20 @@ package org.apache.lucene.search;
 
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
+import org.apache.lucene.index.ImpactsEnum;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Util class for Scorer related methods */
 class ScorerUtil {
+
+  private static final Class<?> DEFAULT_IMPACTS_ENUM_CLASS =
+      Lucene101PostingsFormat.getImpactsEnumImpl();
+  private static final Class<?> DEFAULT_ACCEPT_DOCS_CLASS =
+      new FixedBitSet(1).asReadOnlyBits().getClass();
+
   static long costWithMinShouldMatch(LongStream costs, int numScorers, int minShouldMatch) {
     // the idea here is the following: a boolean query c1,c2,...cn with minShouldMatch=m
     // could be rewritten to:
@@ -45,5 +55,66 @@ class ScorerUtil {
         };
     costs.forEach(pq::insertWithOverflow);
     return StreamSupport.stream(pq.spliterator(), false).mapToLong(Number::longValue).sum();
+  }
+
+  /**
+   * Optimize a {@link DocIdSetIterator} for the case when it is likely implemented via an {@link
+   * ImpactsEnum}. This return method only has 2 possible return types, which helps make sure that
+   * calls to {@link DocIdSetIterator#nextDoc()} and {@link DocIdSetIterator#advance(int)} are
+   * bimorphic at most and candidate for inlining.
+   */
+  static DocIdSetIterator likelyImpactsEnum(DocIdSetIterator it) {
+    if (it.getClass() != DEFAULT_IMPACTS_ENUM_CLASS
+        && it.getClass() != FilterDocIdSetIterator.class) {
+      it = new FilterDocIdSetIterator(it);
+    }
+    return it;
+  }
+
+  /**
+   * Optimize a {@link Scorable} for the case when it is likely implemented via a {@link
+   * TermScorer}. This return method only has 2 possible return types, which helps make sure that
+   * calls to {@link Scorable#score()} are bimorphic at most and candidate for inlining.
+   */
+  static Scorable likelyTermScorer(Scorable scorable) {
+    if (scorable.getClass() != TermScorer.class && scorable.getClass() != FilterScorable.class) {
+      scorable = new FilterScorable(scorable);
+    }
+    return scorable;
+  }
+
+  /**
+   * Optimize {@link Bits} representing the set of accepted documents for the case when it is likely
+   * implemented as live docs. This helps make calls to {@link Bits#get(int)} inlinable, which
+   * in-turn helps speed up query evaluation. This is especially helpful as inlining will sometimes
+   * enable auto-vectorizing shifts and masks that are done in {@link FixedBitSet#get(int)}.
+   */
+  static Bits likelyLiveDocs(Bits acceptDocs) {
+    if (acceptDocs == null) {
+      return acceptDocs;
+    } else if (acceptDocs.getClass() == DEFAULT_ACCEPT_DOCS_CLASS) {
+      return acceptDocs;
+    } else {
+      return new FilterBits(acceptDocs);
+    }
+  }
+
+  private static class FilterBits implements Bits {
+
+    private final Bits in;
+
+    FilterBits(Bits in) {
+      this.in = in;
+    }
+
+    @Override
+    public boolean get(int index) {
+      return in.get(index);
+    }
+
+    @Override
+    public int length() {
+      return in.length();
+    }
   }
 }
