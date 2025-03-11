@@ -41,6 +41,7 @@ public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxP
 
   private static final List<BKDConfig> DEFAULT_CONFIGS =
       List.of(
+          // cover the most common types for 1 and 2 dimensions.
           new BKDConfig(1, 1, 2, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
           new BKDConfig(1, 1, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
           new BKDConfig(1, 1, 8, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
@@ -49,6 +50,7 @@ public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxP
           new BKDConfig(2, 2, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
           new BKDConfig(2, 2, 8, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
           new BKDConfig(2, 2, 16, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          // cover lucene shapes
           new BKDConfig(7, 4, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE));
 
   public BKDConfig {
