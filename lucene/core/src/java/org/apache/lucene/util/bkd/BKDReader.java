@@ -67,7 +67,7 @@ public class BKDReader extends PointValues {
     }
     final int maxPointsInLeafNode = metaIn.readVInt();
     final int bytesPerDim = metaIn.readVInt();
-    config = BKDConfig.create(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
+    config = BKDConfig.of(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
 
     // Read index:
     numLeaves = metaIn.readVInt();

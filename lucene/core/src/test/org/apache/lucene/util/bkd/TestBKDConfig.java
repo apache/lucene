@@ -73,33 +73,25 @@ public class TestBKDConfig extends LuceneTestCase {
 
   public void testDeduplicate() {
     {
-      BKDConfig config = BKDConfig.create(1, 1, 4, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-      BKDConfig deduped = BKDConfig.DEFAULT_CONFIGS.get(BKDConfig.DEFAULT_CONFIGS.indexOf(config));
+      for (int dims : new int[] {1, 2}) {
+        for (int bytesPerDim : new int[] {2, 4, 8, 16}) {
+          BKDConfig config =
+              BKDConfig.of(dims, dims, bytesPerDim, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+          BKDConfig deduped =
+              BKDConfig.of(dims, dims, bytesPerDim, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+          assertSame(deduped, config);
+        }
+      }
+    }
+    {
+      BKDConfig config = BKDConfig.of(7, 4, 4, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+      BKDConfig deduped = BKDConfig.of(7, 4, 4, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
       assertSame(deduped, config);
     }
     {
-      BKDConfig config = BKDConfig.create(1, 1, 8, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-      BKDConfig deduped = BKDConfig.DEFAULT_CONFIGS.get(BKDConfig.DEFAULT_CONFIGS.indexOf(config));
-      assertSame(deduped, config);
-    }
-    {
-      BKDConfig config = BKDConfig.create(1, 1, 16, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-      BKDConfig deduped = BKDConfig.DEFAULT_CONFIGS.get(BKDConfig.DEFAULT_CONFIGS.indexOf(config));
-      assertSame(deduped, config);
-    }
-    {
-      BKDConfig config = BKDConfig.create(2, 2, 4, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-      BKDConfig deduped = BKDConfig.DEFAULT_CONFIGS.get(BKDConfig.DEFAULT_CONFIGS.indexOf(config));
-      assertSame(deduped, config);
-    }
-    {
-      BKDConfig config = BKDConfig.create(7, 4, 4, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-      BKDConfig deduped = BKDConfig.DEFAULT_CONFIGS.get(BKDConfig.DEFAULT_CONFIGS.indexOf(config));
-      assertSame(deduped, config);
-    }
-    {
-      BKDConfig config = BKDConfig.create(1, 1, 6, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
-      assertEquals(-1, BKDConfig.DEFAULT_CONFIGS.indexOf(config));
+      BKDConfig config = BKDConfig.of(1, 1, 6, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+      BKDConfig deduped = BKDConfig.of(1, 1, 6, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+      assertNotSame(config, deduped);
     }
   }
 }
