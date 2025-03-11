@@ -44,7 +44,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
   @Override
   protected Directory getDirectory(Path path) throws IOException {
     MMapDirectory m = new MMapDirectory(path);
-    m.setPreload((file, context) -> random().nextBoolean());
+    m.setPreload((_, _) -> random().nextBoolean());
     return m;
   }
 
@@ -328,5 +328,43 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     assertFalse(func.apply("_segment.si").isPresent());
     assertFalse(func.apply("segment.si").isPresent());
     assertFalse(func.apply("_51a.si").isPresent());
+  }
+
+  public void testPrefetchWithSingleSegment() throws IOException {
+    testPrefetchWithSegments(64 * 1024);
+  }
+
+  public void testPrefetchWithMultiSegment() throws IOException {
+    testPrefetchWithSegments(16 * 1024);
+  }
+
+  static final Class<IndexOutOfBoundsException> IOOBE = IndexOutOfBoundsException.class;
+
+  // does not verify that the actual segment is prefetched, but rather exercises the code and bounds
+  void testPrefetchWithSegments(int maxChunkSize) throws IOException {
+    byte[] bytes = new byte[(maxChunkSize * 2) + 1];
+    try (Directory dir =
+        new MMapDirectory(createTempDir("testPrefetchWithSegments"), maxChunkSize)) {
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
+      try (var in = dir.openInput("test", IOContext.READONCE)) {
+        in.prefetch(0, in.length());
+        expectThrows(IOOBE, () -> in.prefetch(1, in.length()));
+        expectThrows(IOOBE, () -> in.prefetch(in.length(), 1));
+
+        var slice1 = in.slice("slice-1", 1, in.length() - 1);
+        slice1.prefetch(0, slice1.length());
+        expectThrows(IOOBE, () -> slice1.prefetch(1, slice1.length()));
+        expectThrows(IOOBE, () -> slice1.prefetch(slice1.length(), 1));
+
+        // we sliced off all but one byte from the first complete memory segment
+        var slice2 = in.slice("slice-2", maxChunkSize - 1, in.length() - maxChunkSize + 1);
+        slice2.prefetch(0, slice2.length());
+        expectThrows(IOOBE, () -> slice2.prefetch(1, slice2.length()));
+        expectThrows(IOOBE, () -> slice2.prefetch(slice2.length(), 1));
+      }
+    }
   }
 }

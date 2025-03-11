@@ -17,6 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
@@ -24,6 +25,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.MathUtil;
 
 /**
@@ -72,8 +74,8 @@ public class BKDReader extends PointValues {
     numLeaves = metaIn.readVInt();
     assert numLeaves > 0;
 
-    minPackedValue = new byte[config.packedIndexBytesLength()];
-    maxPackedValue = new byte[config.packedIndexBytesLength()];
+    byte[] minPackedValue = new byte[config.packedIndexBytesLength()];
+    byte[] maxPackedValue = new byte[config.packedIndexBytesLength()];
 
     metaIn.readBytes(minPackedValue, 0, config.packedIndexBytesLength());
     metaIn.readBytes(maxPackedValue, 0, config.packedIndexBytesLength());
@@ -95,6 +97,13 @@ public class BKDReader extends PointValues {
                 + dim,
             metaIn);
       }
+    }
+    this.minPackedValue = minPackedValue;
+    if (Arrays.equals(maxPackedValue, minPackedValue)) {
+      // save heap for edge case of only a single value
+      this.maxPackedValue = minPackedValue;
+    } else {
+      this.maxPackedValue = maxPackedValue;
     }
 
     pointCount = metaIn.readVLong();
@@ -144,6 +153,19 @@ public class BKDReader extends PointValues {
           @Override
           public void visit(int docID) {
             count[0]++;
+          }
+
+          @Override
+          public void visit(DocIdSetIterator iterator) throws IOException {
+            int docID;
+            while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+              visit(docID);
+            }
+          }
+
+          @Override
+          public void visit(IntsRef ref) {
+            count[0] += ref.length;
           }
 
           @Override

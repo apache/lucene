@@ -124,7 +124,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
 
   /**
    * Expert: returns an IndexReader reading the index on the given {@link IndexCommit}. This method
-   * allows to open indices that were created wih a Lucene version older than N-1 provided that all
+   * allows to open indices that were created with a Lucene version older than N-1 provided that all
    * codecs for this index are available in the classpath and the segment file format used was
    * created with Lucene 7 or newer. Users of this API must be aware that Lucene doesn't guarantee
    * semantic compatibility for indices created with versions older than N-1. All backwards
@@ -150,8 +150,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
   /**
    * If the index has changed since the provided reader was opened, open and return a new reader;
    * else, return null. The new reader, if not null, will be the same type of reader as the previous
-   * one, ie an NRT reader will open a new NRT reader, a MultiReader will open a new MultiReader,
-   * etc.
+   * one, ie an NRT reader will open a new NRT reader etc.
    *
    * <p>This method is typically far less costly than opening a fully new <code>DirectoryReader
    * </code> as it shares resources (for example sub-readers) with the provided <code>
@@ -192,7 +191,7 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
    * never returns null).
    *
    * <p>This provides "near real-time" searching, in that changes made during an {@link IndexWriter}
-   * session can be quickly made available for searching without closing the writer nor calling
+   * session can be quickly made available for searching without closing the writer or calling
    * {@link IndexWriter#commit}.
    *
    * <p>It's <i>near</i> real-time because there is no hard guarantee on how quickly you can get a
@@ -305,7 +304,8 @@ public abstract class DirectoryReader extends BaseCompositeReader<LeafReader> {
 
   /**
    * Returns <code>true</code> if an index likely exists at the specified directory. Note that if a
-   * corrupt index exists, or if an index in the process of committing
+   * corrupt index exists, or if an index in the process of committing the return value is not
+   * reliable.
    *
    * @param directory the directory to check for an index
    * @return <code>true</code> if an index exists; <code>false</code> otherwise

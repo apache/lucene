@@ -25,6 +25,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
@@ -35,6 +36,8 @@ import org.apache.lucene.util.Bits;
  * @lucene.experimental
  */
 abstract class AbstractVectorSimilarityQuery extends Query {
+  // TODO, switch to optionally use the new strategy
+  static final KnnSearchStrategy.Hnsw DEFAULT_STRATEGY = new KnnSearchStrategy.Hnsw(0);
   protected final String field;
   protected final float traversalSimilarity, resultSimilarity;
   protected final Query filter;
@@ -61,8 +64,8 @@ abstract class AbstractVectorSimilarityQuery extends Query {
   }
 
   protected KnnCollectorManager getKnnCollectorManager() {
-    return (visitedLimit, context) ->
-        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitedLimit);
+    return (visitLimit, _, _) ->
+        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitLimit);
   }
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context) throws IOException;

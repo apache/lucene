@@ -63,7 +63,7 @@ import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.Version;
 
-/** Default general purpose indexing chain, which handles indexing all types of fields. */
+/** Default general purpose indexing chain, which handles indexing of all types of fields. */
 final class IndexingChain implements Accountable {
 
   final Counter bytesUsed = Counter.newCounter();
@@ -1450,7 +1450,7 @@ final class IndexingChain implements Accountable {
     private VectorEncoding vectorEncoding = VectorEncoding.FLOAT32;
     private VectorSimilarityFunction vectorSimilarityFunction = VectorSimilarityFunction.EUCLIDEAN;
 
-    private static String errMsg =
+    private static final String errMsg =
         "Inconsistency of field data structures across documents for field ";
 
     FieldSchema(String name) {

@@ -16,10 +16,11 @@
  */
 package org.apache.lucene.tests.store;
 
+import static com.carrotsearch.randomizedtesting.generators.RandomPicks.randomFrom;
+
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -50,15 +51,19 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
@@ -639,7 +644,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
                     if (files.length > 0) {
                       do {
-                        String file = RandomPicks.randomFrom(rnd, files);
+                        String file = randomFrom(rnd, files);
                         try (IndexInput input = dir.openInput(file, newIOContext(random()))) {
                           // Just open, nothing else.
                           assert input != null;
@@ -764,6 +769,12 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           IllegalArgumentException.class,
           () -> {
             slice.slice("slice3sub", 1, len / 2);
+          });
+
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> {
+            i.slice("slice4", Long.MAX_VALUE - 1, 10);
           });
 
       i.close();
@@ -1195,6 +1206,9 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
         slice1.seek(TestUtil.nextLong(random(), 0, slice1.length()));
         for (int j = 0; j < slice1.length(); j += 16) {
           IndexInput slice2 = slice1.slice("slice2", j, num - i - j);
+          if (random().nextBoolean()) {
+            slice2 = slice2.clone(); // clone shouldn't impact slice data
+          }
           assertEquals(0, slice2.getFilePointer());
           assertEquals(num - i - j, slice2.length());
           byte[] data = new byte[num];
@@ -1554,6 +1568,38 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
     doTestPrefetch(TestUtil.nextInt(random(), 1, 1024));
   }
 
+  public void testUpdateReadAdvice() throws IOException {
+    try (Directory dir = getDirectory(createTempDir("testUpdateReadAdvice"))) {
+      final int totalLength = TestUtil.nextInt(random(), 16384, 65536);
+      byte[] arr = new byte[totalLength];
+      random().nextBytes(arr);
+      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
+        out.writeBytes(arr, arr.length);
+      }
+
+      try (IndexInput orig = dir.openInput("temp.bin", IOContext.DEFAULT)) {
+        IndexInput in = random().nextBoolean() ? orig.clone() : orig;
+        // Read advice updated at start
+        in.updateReadAdvice(randomFrom(random(), ReadAdvice.values()));
+        for (int i = 0; i < totalLength; i++) {
+          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
+          in.seek(offset);
+          assertEquals(arr[offset], in.readByte());
+        }
+
+        // Updating readAdvice in the middle
+        for (int i = 0; i < 10_000; ++i) {
+          int offset = TestUtil.nextInt(random(), 0, (int) in.length() - 1);
+          in.seek(offset);
+          assertEquals(arr[offset], in.readByte());
+          if (random().nextBoolean()) {
+            in.updateReadAdvice(randomFrom(random(), ReadAdvice.values()));
+          }
+        }
+      }
+    }
+  }
+
   private void doTestPrefetch(int startOffset) throws IOException {
     try (Directory dir = getDirectory(createTempDir())) {
       final int totalLength = startOffset + TestUtil.nextInt(random(), 16384, 65536);
@@ -1598,6 +1644,49 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
                       arr, startOffset + offset, startOffset + offset + readLength),
                   ArrayUtil.copyOfSubArray(temp, 0, readLength));
           }
+        }
+      }
+    }
+  }
+
+  public void testIsLoaded() throws IOException {
+    testIsLoaded(0);
+  }
+
+  public void testIsLoadedOnSlice() throws IOException {
+    testIsLoaded(TestUtil.nextInt(random(), 1, 1024));
+  }
+
+  private void testIsLoaded(int startOffset) throws IOException {
+    try (Directory dir = getDirectory(createTempDir())) {
+      if (FilterDirectory.unwrap(dir) instanceof MMapDirectory mMapDirectory) {
+        mMapDirectory.setPreload(MMapDirectory.ALL_FILES);
+      }
+      final int totalLength = startOffset + TestUtil.nextInt(random(), 16384, 65536);
+      byte[] arr = new byte[totalLength];
+      random().nextBytes(arr);
+      try (IndexOutput out = dir.createOutput("temp.bin", IOContext.DEFAULT)) {
+        out.writeBytes(arr, arr.length);
+      }
+
+      try (IndexInput orig = dir.openInput("temp.bin", IOContext.DEFAULT)) {
+        IndexInput in;
+        if (startOffset == 0) {
+          in = orig.clone();
+        } else {
+          in = orig.slice("slice", startOffset, totalLength - startOffset);
+        }
+        var loaded = in.isLoaded();
+
+        if (Constants.WINDOWS) {
+          // On Windows, we temporarily don't care until this is fixed: #14050
+        } else if (FilterDirectory.unwrap(dir) instanceof MMapDirectory
+            // direct IO wraps MMap but does not support isLoaded
+            && !(dir.getClass().getName().contains("DirectIO"))) {
+          assertTrue(loaded.isPresent());
+          assertTrue(loaded.get());
+        } else {
+          assertFalse(loaded.isPresent());
         }
       }
     }

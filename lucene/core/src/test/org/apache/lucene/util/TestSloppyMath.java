@@ -27,13 +27,13 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSloppyMath extends LuceneTestCase {
   // accuracy for cos()
-  static double COS_DELTA = 1E-15;
+  private static final double COS_DELTA = 1E-15;
   // accuracy for asin()
-  static double ASIN_DELTA = 1E-7;
+  private static final double ASIN_DELTA = 1E-7;
   // accuracy for haversinMeters()
-  static double HAVERSIN_DELTA = 38E-2;
+  private static final double HAVERSIN_DELTA = 38E-2;
   // accuracy for haversinMeters() for "reasonable" distances (< 1000km)
-  static double REASONABLE_HAVERSIN_DELTA = 1E-5;
+  private static final double REASONABLE_HAVERSIN_DELTA = 1E-5;
 
   public void testCos() {
     assertTrue(Double.isNaN(cos(Double.NaN)));

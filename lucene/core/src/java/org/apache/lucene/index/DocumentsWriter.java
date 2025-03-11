@@ -215,7 +215,7 @@ final class DocumentsWriter implements Closeable, Accountable {
       if (infoStream.isEnabled("DW")) {
         infoStream.message("DW", "abort");
       }
-      for (final DocumentsWriterPerThread perThread : perThreadPool.filterAndLock(x -> true)) {
+      for (final DocumentsWriterPerThread perThread : perThreadPool.filterAndLock(_ -> true)) {
         try {
           abortDocumentsWriterPerThread(perThread);
         } finally {
@@ -291,7 +291,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     try {
       deleteQueue.clear();
       perThreadPool.lockNewWriters();
-      writers.addAll(perThreadPool.filterAndLock(x -> true));
+      writers.addAll(perThreadPool.filterAndLock(_ -> true));
       for (final DocumentsWriterPerThread perThread : writers) {
         assert perThread.isHeldByCurrentThread();
         abortDocumentsWriterPerThread(perThread);
@@ -486,7 +486,7 @@ final class DocumentsWriter implements Closeable, Accountable {
          * flush 'B' starts and freezes all deletes occurred since 'A' has
          * started. if 'B' finishes before 'A' we need to wait until 'A' is done
          * otherwise the deletes frozen by 'B' are not applied to 'A' and we
-         * might miss to deletes documents in 'A'.
+         * might miss to delete documents in 'A'.
          */
         try {
           assert assertTicketQueueModification(flushingDWPT.deleteQueue);

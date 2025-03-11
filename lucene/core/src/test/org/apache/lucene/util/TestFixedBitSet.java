@@ -616,4 +616,102 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     set.set(5);
     assertTrue(bits.get(5));
   }
+
+  public void testScanIsEmpty() {
+    FixedBitSet set = new FixedBitSet(0);
+    assertTrue(set.scanIsEmpty());
+
+    set = new FixedBitSet(13);
+    assertTrue(set.scanIsEmpty());
+    set.set(10);
+    assertFalse(set.scanIsEmpty());
+
+    set = new FixedBitSet(1024);
+    assertTrue(set.scanIsEmpty());
+    set.set(3);
+    assertFalse(set.scanIsEmpty());
+    set.clear(3);
+    set.set(1020);
+    assertFalse(set.scanIsEmpty());
+
+    set = new FixedBitSet(1030);
+    assertTrue(set.scanIsEmpty());
+    set.set(3);
+    assertFalse(set.scanIsEmpty());
+    set.clear(3);
+    set.set(1028);
+    assertFalse(set.scanIsEmpty());
+  }
+
+  public void testOrRange() {
+    FixedBitSet dest = new FixedBitSet(1_000);
+    FixedBitSet source = new FixedBitSet(10_000);
+    for (int i = 0; i < source.length(); i += 3) {
+      source.set(i);
+    }
+
+    // Test all possible alignments, and both a "short" (less than 64) and a long length.
+    for (int sourceFrom = 64; sourceFrom < 128; ++sourceFrom) {
+      for (int destFrom = 256; destFrom < 320; ++destFrom) {
+        for (int length :
+            new int[] {
+              0,
+              TestUtil.nextInt(random(), 1, Long.SIZE - 1),
+              TestUtil.nextInt(random(), Long.SIZE, 512)
+            }) {
+          dest.clear();
+          for (int i = 0; i < dest.length(); i += 10) {
+            dest.set(i);
+          }
+          FixedBitSet.orRange(source, sourceFrom, dest, destFrom, length);
+          for (int i = 0; i < dest.length(); ++i) {
+            boolean destSet = i % 10 == 0;
+            if (i < destFrom || i >= destFrom + length) {
+              // Outside of the range, unmodified
+              assertEquals("" + i, destSet, dest.get(i));
+            } else {
+              boolean sourceSet = source.get(sourceFrom + (i - destFrom));
+              assertEquals(sourceSet || destSet, dest.get(i));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public void testAndRange() {
+    FixedBitSet dest = new FixedBitSet(1_000);
+    FixedBitSet source = new FixedBitSet(10_000);
+    for (int i = 0; i < source.length(); i += 3) {
+      source.set(i);
+    }
+
+    // Test all possible alignments, and both a "short" (less than 64) and a long length.
+    for (int sourceFrom = 64; sourceFrom < 128; ++sourceFrom) {
+      for (int destFrom = 256; destFrom < 320; ++destFrom) {
+        for (int length :
+            new int[] {
+              0,
+              TestUtil.nextInt(random(), 1, Long.SIZE - 1),
+              TestUtil.nextInt(random(), Long.SIZE, 512)
+            }) {
+          dest.clear();
+          for (int i = 0; i < dest.length(); i += 2) {
+            dest.set(i);
+          }
+          FixedBitSet.andRange(source, sourceFrom, dest, destFrom, length);
+          for (int i = 0; i < dest.length(); ++i) {
+            boolean destSet = i % 2 == 0;
+            if (i < destFrom || i >= destFrom + length) {
+              // Outside of the range, unmodified
+              assertEquals("" + i, destSet, dest.get(i));
+            } else {
+              boolean sourceSet = source.get(sourceFrom + (i - destFrom));
+              assertEquals("" + i, sourceSet && destSet, dest.get(i));
+            }
+          }
+        }
+      }
+    }
+  }
 }

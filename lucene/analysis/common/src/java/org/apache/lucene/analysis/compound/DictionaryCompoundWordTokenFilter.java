@@ -28,6 +28,8 @@ import org.apache.lucene.analysis.TokenStream;
  */
 public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBase {
 
+  private boolean reuseChars = true;
+
   /**
    * Creates a new {@link DictionaryCompoundWordTokenFilter}
    *
@@ -50,6 +52,9 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
    * @param minSubwordSize only subwords longer than this get to the output stream
    * @param maxSubwordSize only subwords shorter than this get to the output stream
    * @param onlyLongestMatch Add only the longest matching subword to the stream
+   * @param reuseChars Characters are reused for multiple matching words, e.g. if a word contains
+   *     'schwein', the word 'schwein' and 'wein' will be extracted. If set to false, only the
+   *     longer word, 'schwein' in this case, will be extracted.
    */
   public DictionaryCompoundWordTokenFilter(
       TokenStream input,
@@ -57,10 +62,18 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
       int minWordSize,
       int minSubwordSize,
       int maxSubwordSize,
-      boolean onlyLongestMatch) {
+      boolean onlyLongestMatch,
+      boolean reuseChars) {
     super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
+    this.reuseChars = reuseChars;
+
     if (dictionary == null) {
       throw new IllegalArgumentException("dictionary must not be null");
+    }
+
+    if (!reuseChars && !onlyLongestMatch) {
+      throw new IllegalArgumentException(
+          "reuseChars can only be set to false if onlyLongestMatch is set to true");
     }
   }
 
@@ -87,6 +100,11 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
           }
         }
       }
+
+      if (longestMatchToken != null && !reuseChars) {
+        i += longestMatchToken.txt.length() - 1;
+      }
+
       if (this.onlyLongestMatch && longestMatchToken != null) {
         tokens.add(longestMatchToken);
       }

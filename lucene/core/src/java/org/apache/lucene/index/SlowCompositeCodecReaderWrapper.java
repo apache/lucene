@@ -301,7 +301,12 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
   }
 
-  private record DocValuesSub<T extends KnnVectorValues>(T sub, int docStart, int ordStart) {}
+  private record DocValuesSub<T extends KnnVectorValues>(T sub, int docStart, int ordStart) {
+    @SuppressWarnings("unchecked")
+    DocValuesSub<T> copy() throws IOException {
+      return new DocValuesSub<T>((T) (sub.copy()), docStart, ordStart);
+    }
+  }
 
   private static class MergedDocIterator<T extends KnnVectorValues>
       extends KnnVectorValues.DocIndexIterator {
@@ -850,7 +855,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     class MergedFloatVectorValues extends FloatVectorValues {
       final int dimension;
       final int size;
-      final DocValuesSub<?>[] subs;
+      final List<DocValuesSub<FloatVectorValues>> subs;
       final MergedDocIterator<FloatVectorValues> iter;
       final int[] starts;
       int lastSubIndex;
@@ -858,7 +863,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       MergedFloatVectorValues(int dimension, int size, List<DocValuesSub<FloatVectorValues>> subs) {
         this.dimension = dimension;
         this.size = size;
-        this.subs = subs.toArray(new DocValuesSub<?>[0]);
+        this.subs = subs;
         iter = new MergedDocIterator<>(subs);
         // [0, start(1), ..., size] - we want the extra element
         // to avoid checking for out-of-array bounds
@@ -888,8 +893,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       @Override
       public FloatVectorValues copy() throws IOException {
         List<DocValuesSub<FloatVectorValues>> subsCopy = new ArrayList<>();
-        for (Object sub : subs) {
-          subsCopy.add((DocValuesSub<FloatVectorValues>) sub);
+        for (DocValuesSub<FloatVectorValues> sub : subs) {
+          subsCopy.add(sub.copy());
         }
         return new MergedFloatVectorValues(dimension, size, subsCopy);
       }
@@ -900,9 +905,9 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         // We need to implement fully random-access API here in order to support callers like
         // SortingCodecReader that rely on it.
         lastSubIndex = findSub(ord, lastSubIndex, starts);
-        assert subs[lastSubIndex].sub != null;
-        return ((FloatVectorValues) subs[lastSubIndex].sub)
-            .vectorValue(ord - subs[lastSubIndex].ordStart);
+        DocValuesSub<FloatVectorValues> sub = subs.get(lastSubIndex);
+        assert sub.sub != null;
+        return (sub.sub).vectorValue(ord - sub.ordStart);
       }
     }
 
@@ -929,7 +934,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     class MergedByteVectorValues extends ByteVectorValues {
       final int dimension;
       final int size;
-      final DocValuesSub<?>[] subs;
+      final List<DocValuesSub<ByteVectorValues>> subs;
       final MergedDocIterator<ByteVectorValues> iter;
       final int[] starts;
       int lastSubIndex;
@@ -937,7 +942,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       MergedByteVectorValues(int dimension, int size, List<DocValuesSub<ByteVectorValues>> subs) {
         this.dimension = dimension;
         this.size = size;
-        this.subs = subs.toArray(new DocValuesSub<?>[0]);
+        this.subs = subs;
         iter = new MergedDocIterator<>(subs);
         // [0, start(1), ..., size] - we want the extra element
         // to avoid checking for out-of-array bounds
@@ -970,16 +975,16 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
         // SortingCodecReader that rely on it.  We maintain lastSubIndex since we expect some
         // repetition.
         lastSubIndex = findSub(ord, lastSubIndex, starts);
-        return ((ByteVectorValues) subs[lastSubIndex].sub)
-            .vectorValue(ord - subs[lastSubIndex].ordStart);
+        DocValuesSub<ByteVectorValues> sub = subs.get(lastSubIndex);
+        return sub.sub.vectorValue(ord - sub.ordStart);
       }
 
       @SuppressWarnings("unchecked")
       @Override
       public ByteVectorValues copy() throws IOException {
         List<DocValuesSub<ByteVectorValues>> newSubs = new ArrayList<>();
-        for (Object sub : subs) {
-          newSubs.add((DocValuesSub<ByteVectorValues>) sub);
+        for (DocValuesSub<ByteVectorValues> sub : subs) {
+          newSubs.add(sub.copy());
         }
         return new MergedByteVectorValues(dimension, size, newSubs);
       }

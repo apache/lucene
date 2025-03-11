@@ -202,9 +202,9 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                     return bytes;
                   });
               put(Random.class, random -> new Random(random.nextLong()));
-              put(Version.class, random -> Version.LATEST);
+              put(Version.class, _ -> Version.LATEST);
               put(AttributeFactory.class, BaseTokenStreamTestCase::newAttributeFactory);
-              put(AttributeSource.class, random -> null); // force IAE/NPE
+              put(AttributeSource.class, _ -> null); // force IAE/NPE
               put(
                   Set.class,
                   random -> {
@@ -242,19 +242,17 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   });
               // TODO: don't want to make the exponentially slow ones Dawid documents
               // in TestPatternReplaceFilter, so dont use truly random patterns (for now)
-              put(Pattern.class, random -> Pattern.compile("a"));
+              put(Pattern.class, _ -> Pattern.compile("a"));
               put(
                   Pattern[].class,
-                  random ->
-                      new Pattern[] {Pattern.compile("([a-z]+)"), Pattern.compile("([0-9]+)")});
+                  _ -> new Pattern[] {Pattern.compile("([a-z]+)"), Pattern.compile("([0-9]+)")});
               put(
                   PayloadEncoder.class,
-                  random ->
-                      new IdentityEncoder()); // the other encoders will throw exceptions if tokens
+                  _ -> new IdentityEncoder()); // the other encoders will throw exceptions if tokens
               // arent numbers?
               put(
                   Dictionary.class,
-                  random -> {
+                  _ -> {
                     // TODO: make nastier
                     InputStream affixStream =
                         TestRandomChains.class.getResourceAsStream("simple.aff");
@@ -270,7 +268,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   });
               put(
                   HyphenationTree.class,
-                  random -> {
+                  _ -> {
                     // TODO: make nastier
                     try {
                       InputSource is =
@@ -509,14 +507,14 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
               put(
                   JapaneseTokenizer.Mode.class,
                   random -> jaTokModes[random.nextInt(jaTokModes.length)]);
-              put(org.apache.lucene.analysis.ja.dict.UserDictionary.class, random -> null);
+              put(org.apache.lucene.analysis.ja.dict.UserDictionary.class, _ -> null);
 
               // Nori:
               final var koComplFilterModes = KoreanTokenizer.DecompoundMode.values();
               put(
                   KoreanTokenizer.DecompoundMode.class,
                   random -> koComplFilterModes[random.nextInt(koComplFilterModes.length)]);
-              put(org.apache.lucene.analysis.ko.dict.UserDictionary.class, random -> null);
+              put(org.apache.lucene.analysis.ko.dict.UserDictionary.class, _ -> null);
 
               // Phonetic:
               final var bmNameTypes = org.apache.commons.codec.language.bm.NameType.values();
@@ -553,9 +551,7 @@ public class TestRandomChains extends BaseTokenStreamTestCase {
                   });
 
               // Stempel
-              put(
-                  StempelStemmer.class,
-                  random -> new StempelStemmer(PolishAnalyzer.getDefaultTable()));
+              put(StempelStemmer.class, _ -> new StempelStemmer(PolishAnalyzer.getDefaultTable()));
             }
           });
 
