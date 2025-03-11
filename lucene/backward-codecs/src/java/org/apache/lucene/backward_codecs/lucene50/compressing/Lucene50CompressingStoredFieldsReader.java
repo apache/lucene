@@ -464,10 +464,6 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
       }
     }
 
-    boolean contains(int docID) {
-      return docID >= docBase && docID < docBase + chunkDocs;
-    }
-
     /** Reset this block so that it stores state for the block that contains the given doc id. */
     void reset(int docID) throws IOException {
       boolean success = false;
@@ -484,6 +480,10 @@ public final class Lucene50CompressingStoredFieldsReader extends StoredFieldsRea
           chunkDocs = 0;
         }
       }
+    }
+
+    boolean contains(int docID) {
+      return docID >= docBase && docID < docBase + chunkDocs;
     }
 
     private void doReset(int docID) throws IOException {

@@ -39,13 +39,13 @@ class TrieReader {
   static class Node {
 
     // single child
-    private long childFp;
+    private long childDeltaFp;
 
     // multi children
     private long positionFp;
     private int childrenStrategy;
     private int positionBytes;
-    private int childrenFpBytes;
+    private int childrenDeltaFpBytes;
 
     // common vars
     private long fp;
@@ -93,7 +93,7 @@ class TrieReader {
     if (sign == Trie.SIGN_NO_CHILDREN) {
       loadLeafNode(fp, term, termLong, node);
     } else if (sign == Trie.SIGN_MULTI_CHILDREN) {
-      loadMultiChildNode(fp, term, termLong, node);
+      loadMultiChildrenNode(fp, term, termLong, node);
     } else {
       loadSingleChildNode(fp, sign, term, termLong, node);
     }
@@ -125,16 +125,16 @@ class TrieReader {
     // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
     // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
-    int childFpBytesMinus1 = (term >>> 2) & 0x07;
-    long l = childFpBytesMinus1 <= 5 ? termLong >>> 16 : access.readLong(fp + 2);
-    node.childFp = l & BYTES_MINUS_1_MASK[childFpBytesMinus1];
+    int childDeltaFpBytesMinus1 = (term >>> 2) & 0x07;
+    long l = childDeltaFpBytesMinus1 <= 5 ? termLong >>> 16 : access.readLong(fp + 2);
+    node.childDeltaFp = l & BYTES_MINUS_1_MASK[childDeltaFpBytesMinus1];
     node.minChildrenLabel = (term >>> 8) & 0xFF;
 
     if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
       node.outputFp = NO_OUTPUT;
     } else { // has output
       int encodedOutputFpBytesMinus1 = (term >>> 5) & 0x07;
-      long offset = fp + childFpBytesMinus1 + 3;
+      long offset = fp + childDeltaFpBytesMinus1 + 3;
       long encodedFp = access.readLong(offset) & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
       node.outputFp = encodedFp >>> 2;
       node.hasTerms = (encodedFp & 0x02L) != 0;
@@ -146,7 +146,8 @@ class TrieReader {
     }
   }
 
-  private void loadMultiChildNode(long fp, int term, long termLong, Node node) throws IOException {
+  private void loadMultiChildrenNode(long fp, int term, long termLong, Node node)
+      throws IOException {
 
     // [n bytes] floor data
     // [n bytes] children fps | [n bytes] position data
@@ -154,7 +155,7 @@ class TrieReader {
     // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
     // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
-    node.childrenFpBytes = ((term >>> 2) & 0x07) + 1;
+    node.childrenDeltaFpBytes = ((term >>> 2) & 0x07) + 1;
     node.childrenStrategy = (term >>> 9) & 0x03;
     node.positionBytes = ((term >>> 11) & 0x1F) + 1;
     node.minChildrenLabel = (term >>> 16) & 0xFF;
@@ -171,7 +172,7 @@ class TrieReader {
         long childrenNum = (access.readByte(offset) & 0xFFL) + 1L;
         node.positionFp = offset + 1L;
         node.floorDataFp =
-            node.positionFp + node.positionBytes + childrenNum * node.childrenFpBytes;
+            node.positionFp + node.positionBytes + childrenNum * node.childrenDeltaFpBytes;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
         node.positionFp = fp + 4 + encodedOutputFpBytesMinus1;
@@ -194,7 +195,7 @@ class TrieReader {
         return null;
       }
       child.label = targetLabel;
-      load(child, parent.fp - parent.childFp);
+      load(child, parent.fp - parent.childDeltaFp);
       return child;
     }
 
@@ -215,9 +216,9 @@ class TrieReader {
       return null;
     }
 
-    final int codeBytes = parent.childrenFpBytes;
-    final long pos = positionBytesStartFp + positionBytes + (long) codeBytes * position;
-    final long fp = parent.fp - (access.readLong(pos) & BYTES_MINUS_1_MASK[codeBytes - 1]);
+    final int bytesPerEntry = parent.childrenDeltaFpBytes;
+    final long pos = positionBytesStartFp + positionBytes + (long) bytesPerEntry * position;
+    final long fp = parent.fp - (access.readLong(pos) & BYTES_MINUS_1_MASK[bytesPerEntry - 1]);
     child.label = targetLabel;
     load(child, fp);
 

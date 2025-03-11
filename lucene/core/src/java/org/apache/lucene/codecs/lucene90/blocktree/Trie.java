@@ -17,11 +17,12 @@
 package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.function.BiConsumer;
-import java.util.stream.IntStream;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -42,6 +43,7 @@ class Trie {
     final int label;
     final LinkedList<Node> children;
     Output output;
+    long fp = -1;
 
     Node(int label, Output output, LinkedList<Node> children) {
       this.label = label;
@@ -119,156 +121,176 @@ class Trie {
 
   void save(DataOutput meta, IndexOutput index) throws IOException {
     meta.writeVLong(index.getFilePointer());
-    long rootFp = saveNodes(root, index, index.getFilePointer());
-    meta.writeVLong(rootFp);
+    saveNodes(index);
+    meta.writeVLong(root.fp);
     index.writeLong(0L); // additional 8 bytes for over-reading
     meta.writeVLong(index.getFilePointer());
   }
 
-  /** NO-COMMIT might hit StackOverflowError if terms are long, need to avoid recursive */
-  long saveNodes(Node node, IndexOutput index, long startFP) throws IOException {
-    final int childrenNum = node.children.size();
+  void saveNodes(IndexOutput index) throws IOException {
+    final long startFP = index.getFilePointer();
+    Deque<Node> stack = new ArrayDeque<>();
+    stack.push(root);
 
-    if (childrenNum == 0) {
-      assert node.output != null;
-      final long fp = index.getFilePointer() - startFP;
+    while (stack.isEmpty() == false) {
+      Node node = stack.peek();
+      assert node.fp == -1;
+      final int childrenNum = node.children.size();
 
-      // [n bytes] floor data
-      // [n bytes] output fp
-      // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
+      if (childrenNum == 0) {
+        assert node.output != null;
 
-      Output output = node.output;
-      int outputFpBytes = bytesRequired(output.fp);
-      int header =
-          SIGN_NO_CHILDREN
-              | ((outputFpBytes - 1) << 2)
-              | ((output.hasTerms ? 1 : 0) << 5)
-              | ((output.floorData != null ? 1 : 0) << 6);
-      index.writeByte(((byte) header));
-      writeLongNBytes(output.fp, outputFpBytes, index);
-      if (output.floorData != null) {
-        index.writeBytes(output.floorData.bytes, output.floorData.offset, output.floorData.length);
-      }
-      return fp;
-    }
+        node.fp = index.getFilePointer() - startFP;
+        stack.pop();
 
-    long[] fpBuffer = new long[childrenNum];
-    int bufferIndex = 0;
-    for (Node child : node.children) {
-      fpBuffer[bufferIndex++] = saveNodes(child, index, startFP);
-    }
-    assert IntStream.range(0, childrenNum - 1).allMatch(i -> fpBuffer[i + 1] > fpBuffer[i]);
+        // [n bytes] floor data
+        // [n bytes] output fp
+        // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
 
-    final long fp = index.getFilePointer() - startFP;
-    for (int i = 0; i < childrenNum; i++) {
-      assert fp > fpBuffer[i];
-      fpBuffer[i] = fp - fpBuffer[i];
-    }
-
-    if (childrenNum == 1) {
-
-      // [n bytes] floor data
-      // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
-      // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
-
-      int childFpBytes = bytesRequired(fpBuffer[0]);
-      int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
-      // TODO if we have only one child and no output, we can store child labels in this node.
-      // E.g. for a single term trie [foobar], we can have only two nodes [fooba] and [r]
-      int sign =
-          node.output != null
-              ? SIGN_SINGLE_CHILDREN_WITH_OUTPUT
-              : SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT;
-      int header = sign | ((childFpBytes - 1) << 2) | ((encodedOutputFpBytes - 1) << 5);
-      index.writeByte((byte) header);
-      index.writeByte((byte) node.children.getFirst().label);
-      writeLongNBytes(fpBuffer[0], childFpBytes, index);
-      if (node.output != null) {
         Output output = node.output;
-        long encodedFp =
-            (output.floorData != null ? 0x01L : 0)
-                | (output.hasTerms ? 0x02L : 0)
-                | (output.fp << 2);
-        writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
+        int outputFpBytes = bytesRequired(output.fp);
+        int header =
+            SIGN_NO_CHILDREN
+                | ((outputFpBytes - 1) << 2)
+                | ((output.hasTerms ? 1 : 0) << 5)
+                | ((output.floorData != null ? 1 : 0) << 6);
+        index.writeByte(((byte) header));
+        writeLongNBytes(output.fp, outputFpBytes, index);
         if (output.floorData != null) {
           index.writeBytes(
               output.floorData.bytes, output.floorData.offset, output.floorData.length);
         }
+        continue;
       }
-      return fp;
-    }
 
-    // [n bytes] floor data
-    // [n bytes] children fps | [n bytes] position data
-    // [1 byte] children count (if floor data) | [n bytes] encoded output fp | [1 byte] label
-    // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
-    // [1bit] has output | [3bit] children fp bytes | [2bit] sign
+      Node unCompiled = null;
+      for (Node child : node.children) {
+        if (child.fp == -1) {
+          unCompiled = child;
+          break;
+        }
+      }
+      if (unCompiled != null) {
+        stack.push(unCompiled);
+        continue;
+      }
 
-    final int minLabel = node.children.getFirst().label;
-    final int maxLabel = node.children.getLast().label;
-    PositionStrategy positionStrategy = null;
-    int positionBytes = Integer.MAX_VALUE;
-    for (PositionStrategy strategy : PositionStrategy.values()) {
-      int strategyCost = strategy.positionBytes(minLabel, maxLabel, childrenNum);
-      if (strategyCost < positionBytes) {
-        positionStrategy = strategy;
-        positionBytes = strategyCost;
-      } else if (positionStrategy != null
-          && strategyCost == positionBytes
-          && strategy.priority > positionStrategy.priority) {
-        positionStrategy = strategy;
+      node.fp = index.getFilePointer() - startFP;
+      stack.pop();
+
+      if (childrenNum == 1) {
+
+        // [n bytes] floor data
+        // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
+        // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
+
+        long childDeltaFp = node.fp - node.children.getFirst().fp;
+        assert childDeltaFp > 0;
+        int childFpBytes = bytesRequired(childDeltaFp);
+        int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
+
+        // TODO if we have only one child and no output, we can store child labels in this node.
+        // E.g. for a single term trie [foobar], we can have only two nodes [fooba] and [r]
+
+        int sign =
+            node.output != null
+                ? SIGN_SINGLE_CHILDREN_WITH_OUTPUT
+                : SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT;
+        int header = sign | ((childFpBytes - 1) << 2) | ((encodedOutputFpBytes - 1) << 5);
+        index.writeByte((byte) header);
+        index.writeByte((byte) node.children.getFirst().label);
+        writeLongNBytes(childDeltaFp, childFpBytes, index);
+
+        if (node.output != null) {
+          Output output = node.output;
+          long encodedFp =
+              (output.floorData != null ? 0x01L : 0)
+                  | (output.hasTerms ? 0x02L : 0)
+                  | (output.fp << 2);
+          writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
+          if (output.floorData != null) {
+            index.writeBytes(
+                output.floorData.bytes, output.floorData.offset, output.floorData.length);
+          }
+        }
+      } else {
+
+        // [n bytes] floor data
+        // [n bytes] children fps | [n bytes] position data
+        // [1 byte] children count (if floor data) | [n bytes] encoded output fp | [1 byte] label
+        // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
+        // [1bit] has output | [3bit] children fp bytes | [2bit] sign
+
+        final int minLabel = node.children.getFirst().label;
+        final int maxLabel = node.children.getLast().label;
+        PositionStrategy positionStrategy = null;
+        int positionBytes = Integer.MAX_VALUE;
+        for (PositionStrategy strategy : PositionStrategy.values()) {
+          int strategyCost = strategy.positionBytes(minLabel, maxLabel, childrenNum);
+          if (strategyCost < positionBytes) {
+            positionStrategy = strategy;
+            positionBytes = strategyCost;
+          } else if (positionStrategy != null
+              && strategyCost == positionBytes
+              && strategy.priority > positionStrategy.priority) {
+            positionStrategy = strategy;
+          }
+        }
+
+        assert positionStrategy != null;
+        assert positionBytes > 0 && positionBytes <= 32;
+
+        long maxChildDeltaFp = node.fp - node.children.getFirst().fp;
+        assert maxChildDeltaFp > 0;
+        int childrenFpBytes = bytesRequired(maxChildDeltaFp);
+        int encodedOutputFpBytes = node.output == null ? 1 : bytesRequired(node.output.fp << 2);
+        int header =
+            SIGN_MULTI_CHILDREN
+                | ((childrenFpBytes - 1) << 2)
+                | ((node.output != null ? 1 : 0) << 5)
+                | ((encodedOutputFpBytes - 1) << 6)
+                | (positionStrategy.priority << 9)
+                | ((positionBytes - 1) << 11)
+                | (minLabel << 16);
+
+        writeLongNBytes(header, 3, index);
+
+        if (node.output != null) {
+          Output output = node.output;
+          long encodedFp =
+              (output.floorData != null ? 0x01L : 0)
+                  | (output.hasTerms ? 0x02L : 0)
+                  | (output.fp << 2);
+          writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
+          if (output.floorData != null) {
+            index.writeByte((byte) (childrenNum - 1));
+          }
+        }
+
+        long positionStartFp = index.getFilePointer();
+        positionStrategy.save(node.children, childrenNum, positionBytes, index);
+        assert index.getFilePointer() == positionStartFp + positionBytes
+            : positionStrategy.name()
+                + " position bytes compute error, computed: "
+                + positionBytes
+                + " actual: "
+                + (index.getFilePointer() - positionStartFp);
+
+        for (Node child : node.children) {
+          assert node.fp > child.fp;
+          writeLongNBytes(node.fp - child.fp, childrenFpBytes, index);
+        }
+
+        if (node.output != null && node.output.floorData != null) {
+          BytesRef floorData = node.output.floorData;
+          index.writeBytes(floorData.bytes, floorData.offset, floorData.length);
+        }
       }
     }
-
-    assert positionStrategy != null;
-    assert positionBytes > 0 && positionBytes <= 32;
-
-    int childrenFpBytes = bytesRequired(fpBuffer[0]);
-    int encodedOutputFpBytes = node.output == null ? 1 : bytesRequired(node.output.fp << 2);
-    int header =
-        SIGN_MULTI_CHILDREN
-            | ((childrenFpBytes - 1) << 2)
-            | ((node.output != null ? 1 : 0) << 5)
-            | ((encodedOutputFpBytes - 1) << 6)
-            | (positionStrategy.priority << 9)
-            | ((positionBytes - 1) << 11)
-            | (minLabel << 16);
-
-    writeLongNBytes(header, 3, index);
-
-    if (node.output != null) {
-      Output output = node.output;
-      long encodedFp =
-          (output.floorData != null ? 0x01L : 0) | (output.hasTerms ? 0x02L : 0) | (output.fp << 2);
-      writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
-      if (output.floorData != null) {
-        index.writeByte((byte) (childrenNum - 1));
-      }
-    }
-
-    long positionStartFp = index.getFilePointer();
-    positionStrategy.save(node.children, childrenNum, positionBytes, index);
-    assert index.getFilePointer() == positionStartFp + positionBytes
-        : positionStrategy.name()
-            + " position bytes compute error, computed: "
-            + positionBytes
-            + " actual: "
-            + (index.getFilePointer() - positionStartFp);
-
-    for (int i = 0; i < childrenNum; i++) {
-      writeLongNBytes(fpBuffer[i], childrenFpBytes, index);
-    }
-
-    if (node.output != null && node.output.floorData != null) {
-      index.writeBytes(
-          node.output.floorData.bytes, node.output.floorData.offset, node.output.floorData.length);
-    }
-
-    return fp;
   }
 
   private static int bytesRequired(long v) {
-    return Math.max(1, Long.BYTES - (Long.numberOfLeadingZeros(v) >>> 3));
+    return Long.BYTES - (Long.numberOfLeadingZeros(v | 1) >>> 3);
   }
 
   private static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
