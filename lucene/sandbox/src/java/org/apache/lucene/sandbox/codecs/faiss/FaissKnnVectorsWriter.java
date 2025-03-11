@@ -52,7 +52,7 @@ import org.apache.lucene.util.hnsw.IntToIntFunction;
  *
  * @lucene.experimental
  */
-public final class FaissKnnVectorsWriter extends KnnVectorsWriter {
+final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   private final String description, indexParams;
   private final FlatVectorsWriter rawVectorsWriter;
   private final IndexOutput meta, data;

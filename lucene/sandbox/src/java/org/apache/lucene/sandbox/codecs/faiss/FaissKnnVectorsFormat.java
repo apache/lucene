@@ -40,6 +40,8 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li>All files required by {@link Lucene99FlatVectorsFormat} for storing raw vectors.
  * </ul>
  *
+ * <p>Note: Set the {@code $OMP_NUM_THREADS} environment variable to control internal threading.
+ *
  * @lucene.experimental
  */
 public final class FaissKnnVectorsFormat extends KnnVectorsFormat {

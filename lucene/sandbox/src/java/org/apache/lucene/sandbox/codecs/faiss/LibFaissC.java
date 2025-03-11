@@ -55,7 +55,7 @@ import org.apache.lucene.util.hnsw.IntToIntFunction;
  *
  * @lucene.experimental
  */
-public final class LibFaissC {
+final class LibFaissC {
   /*
    * TODO: Requires some changes to Faiss, see:
    *  - https://github.com/facebookresearch/faiss/pull/4158 (merged in main, to be released in v1.11.0)
@@ -430,6 +430,10 @@ public final class LibFaissC {
 
       // Record hits
       for (int i = 0; i < k; i++) {
+        // Not enough results
+        if (ids[i] == -1) {
+          break;
+        }
 
         // Scale Faiss distances to Lucene scores, see VectorSimilarityFunction.java
         float score =

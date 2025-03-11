@@ -51,7 +51,7 @@ import org.apache.lucene.util.IOUtils;
  *
  * @lucene.experimental
  */
-public final class FaissKnnVectorsReader extends KnnVectorsReader {
+final class FaissKnnVectorsReader extends KnnVectorsReader {
   private final FlatVectorsReader rawVectorsReader;
   private final IndexInput meta, data;
   private final Map<String, IndexEntry> indexMap;
