@@ -363,7 +363,7 @@ public class IndexSearcher {
         sortedLeaves, (l1, l2) -> Integer.compare(l2.reader().maxDoc(), l1.reader().maxDoc()));
 
     if (allowSegmentPartitions) {
-      return slicesWithPartitionedSegments(maxDocsPerSlice, maxSegmentsPerSlice, sortedLeaves);
+      return slicesWithSegmentPartitions(maxDocsPerSlice, maxSegmentsPerSlice, sortedLeaves);
     }
 
     final List<LeafSlice> groupedLeaves = new ArrayList<>();
@@ -394,7 +394,7 @@ public class IndexSearcher {
     return groupedLeaves.toArray(LeafSlice.EMPTY_ARRAY);
   }
 
-  private static LeafSlice[] slicesWithPartitionedSegments(
+  private static LeafSlice[] slicesWithSegmentPartitions(
       int maxDocsPerSlice, int maxSegmentsPerSlice, LeafReaderContext[] sortedLeaves) {
     final List<List<LeafReaderContextPartition>> groupedLeafPartitions = new ArrayList<>();
     int currentSliceNumDocs = 0;
@@ -738,8 +738,8 @@ public class IndexSearcher {
    * to {@link #search(Query, Collector)}, this method will use the searcher's {@link Executor} in
    * order to parallelize execution of the collection on the configured {@link #getSlices()}.
    *
-   * @see CollectorManager
    * @lucene.experimental
+   * @see CollectorManager
    */
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
