@@ -183,6 +183,14 @@ public class RandomApproximationQuery extends Query {
     public float matchCost() {
       return randomMatchCost;
     }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      if (approximation.docID() == disi.docID()) {
+        return disi.docIDRunEnd();
+      }
+      return super.docIDRunEnd();
+    }
   }
 
   private static class RandomApproximation extends DocIdSetIterator {

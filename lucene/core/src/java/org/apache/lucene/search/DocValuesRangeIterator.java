@@ -211,6 +211,14 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
   }
 
   @Override
+  public int docIDRunEnd() throws IOException {
+    if (approximation.match == Match.YES) {
+      return approximation.upTo + 1;
+    }
+    return super.docIDRunEnd();
+  }
+
+  @Override
   public float matchCost() {
     return innerTwoPhase.matchCost();
   }
