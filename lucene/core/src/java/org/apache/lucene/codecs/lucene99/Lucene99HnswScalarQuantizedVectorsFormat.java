@@ -136,7 +136,7 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
       this.mergeExec = null;
     }
 
-    /**
+    /*
      * Defines the format used for storing, reading, and merging vectors on disk. Flat formats
      * enable random access to vectors based on their node ID, as recorded in the HNSW graph. To
      * ensure consistent access, the {@link ReadAdvice#RANDOM} read advice is used.
