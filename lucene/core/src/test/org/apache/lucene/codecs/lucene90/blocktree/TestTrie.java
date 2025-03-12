@@ -44,15 +44,17 @@ public class TestTrie extends LuceneTestCase {
           new Trie.Output(
               random().nextLong(1L << 62), random().nextBoolean(), new BytesRef(randomBytes()));
       expected.put(key, value);
-      trie.putAll(new Trie(key, value));
+      Trie add = new Trie(key, value);
+      trie.putAll(add);
+      Assert.assertThrows(IllegalStateException.class, () -> trie.putAll(add));
+      Assert.assertThrows(IllegalStateException.class, () -> add.putAll(trie));
     }
     trie.forEach(actual::put);
     assertEquals(expected, actual);
   }
 
   public void testTrieLookup() throws IOException {
-
-    for (int iter = 1; iter <= 12; iter++) {
+    for (int iter = 1; iter <= 15; iter++) {
       Map<BytesRef, Trie.Output> expected = new TreeMap<>();
 
       expected.put(new BytesRef(""), new Trie.Output(0L, false, new BytesRef("emptyOutput")));
@@ -68,13 +70,20 @@ public class TestTrie extends LuceneTestCase {
                 random().nextBoolean(),
                 random().nextBoolean() ? null : new BytesRef(randomBytes()));
         expected.put(key, value);
-        trie.putAll(new Trie(key, value));
+        Trie add = new Trie(key, value);
+        trie.putAll(add);
+        Assert.assertThrows(IllegalStateException.class, () -> trie.putAll(add));
+        Assert.assertThrows(IllegalStateException.class, () -> add.putAll(trie));
       }
 
       try (Directory directory = newDirectory()) {
         try (IndexOutput index = directory.createOutput("index", IOContext.DEFAULT);
             IndexOutput meta = directory.createOutput("meta", IOContext.DEFAULT)) {
           trie.save(meta, index);
+          assertThrows(IllegalStateException.class, () -> trie.save(meta, index));
+          assertThrows(
+              IllegalStateException.class,
+              () -> trie.putAll(new Trie(new BytesRef(), new Trie.Output(0L, true, null))));
         }
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
@@ -88,8 +97,8 @@ public class TestTrie extends LuceneTestCase {
             assertResult(reader, entry.getKey(), entry.getValue());
           }
 
-          int x = atLeast(100);
-          for (int i = 0; i < x; i++) {
+          int testNotFound = atLeast(100);
+          for (int i = 0; i < testNotFound; i++) {
             BytesRef key = new BytesRef(randomBytes());
             while (expected.containsKey(key)) {
               key = new BytesRef(randomBytes());
@@ -144,8 +153,8 @@ public class TestTrie extends LuceneTestCase {
       child = new TrieReader.Node();
     }
     assertTrue(parent.hasOutput());
-    assertEquals(term.toString(), expected.fp(), parent.outputFp);
-    assertEquals(term.toString(), expected.hasTerms(), parent.hasTerms);
+    assertEquals(expected.fp(), parent.outputFp);
+    assertEquals(expected.hasTerms(), parent.hasTerms);
     if (expected.floorData() == null) {
       assertFalse(parent.isFloor());
     } else {
