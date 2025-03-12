@@ -233,13 +233,7 @@ public class IndexSearcher {
       leafSlices =
           leafContexts.isEmpty()
               ? new LeafSlice[0]
-              : new LeafSlice[] {
-                new LeafSlice(
-                    new ArrayList<>(
-                        leafContexts.stream()
-                            .map(LeafReaderContextPartition::createForEntireSegment)
-                            .toList()))
-              };
+              : new LeafSlice[] {LeafSlice.entireSegments(leafContexts)};
     }
   }
 
@@ -394,12 +388,7 @@ public class IndexSearcher {
     LeafSlice[] slices = new LeafSlice[groupedLeaves.size()];
     int upto = 0;
     for (List<LeafReaderContext> currentLeaf : groupedLeaves) {
-      slices[upto] =
-          new LeafSlice(
-              new ArrayList<>(
-                  currentLeaf.stream()
-                      .map(LeafReaderContextPartition::createForEntireSegment)
-                      .toList()));
+      slices[upto] = LeafSlice.entireSegments(currentLeaf);
       ++upto;
     }
 
@@ -1013,6 +1002,10 @@ public class IndexSearcher {
    */
   public static class LeafSlice {
 
+    private static final Comparator<LeafReaderContextPartition> COMPARATOR =
+        Comparator.<LeafReaderContextPartition>comparingInt(l -> l.ctx.docBase)
+            .thenComparingInt(l -> l.minDocId);
+
     /**
      * The leaves that make up this slice.
      *
@@ -1022,18 +1015,27 @@ public class IndexSearcher {
 
     private final int maxDocs;
 
-    public LeafSlice(List<LeafReaderContextPartition> leafReaderContextPartitions) {
-      Comparator<LeafReaderContextPartition> docBaseComparator =
-          Comparator.comparingInt(l -> l.ctx.docBase);
-      Comparator<LeafReaderContextPartition> minDocIdComparator =
-          Comparator.comparingInt(l -> l.minDocId);
-      leafReaderContextPartitions.sort(docBaseComparator.thenComparing(minDocIdComparator));
-      this.partitions = leafReaderContextPartitions.toArray(new LeafReaderContextPartition[0]);
-      this.maxDocs =
-          Arrays.stream(partitions)
-              .map(leafPartition -> leafPartition.maxDocs)
-              .reduce(Integer::sum)
-              .get();
+    public LeafSlice(List<LeafReaderContextPartition> partitions) {
+      this(partitions.toArray(new LeafReaderContextPartition[0]));
+    }
+
+    private static LeafSlice entireSegments(List<LeafReaderContext> contexts) {
+      int count = contexts.size();
+      LeafReaderContextPartition[] parts = new LeafReaderContextPartition[count];
+      for (int i = 0; i < count; i++) {
+        parts[i] = LeafReaderContextPartition.createForEntireSegment(contexts.get(i));
+      }
+      return new LeafSlice(parts);
+    }
+
+    private LeafSlice(LeafReaderContextPartition... leafReaderContextPartitions) {
+      Arrays.sort(leafReaderContextPartitions, COMPARATOR);
+      this.partitions = leafReaderContextPartitions;
+      int maxDocs = 0;
+      for (LeafReaderContextPartition partition : partitions) {
+        maxDocs += partition.maxDocs;
+      }
+      this.maxDocs = maxDocs;
     }
 
     /**
