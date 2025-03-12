@@ -23,6 +23,7 @@ import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Wraps another Collector and checks that order is respected. */
 class AssertingLeafCollector extends FilterLeafCollector {
@@ -88,6 +89,23 @@ class AssertingLeafCollector extends FilterLeafCollector {
         assert target <= max
             : "advancing beyond the end of the scored window: target=" + target + ", max=" + max;
         return in.advance(target);
+      }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        assert upTo <= max
+            : "advancing beyond the end of the scored window: upTo=" + upTo + ", max=" + max;
+        in.intoBitSet(upTo, bitSet, offset);
+        assert in.docID() >= upTo;
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        assert docID() != -1;
+        assert docID() != NO_MORE_DOCS;
+        int nextNonMatchingDocID = in.docIDRunEnd();
+        assert nextNonMatchingDocID > docID();
+        return nextNonMatchingDocID;
       }
     };
   }

@@ -305,7 +305,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
           throw new AssertionError("Impossible.");
         }
         String service = matcher.group("serviceName");
-        services.computeIfAbsent(service, k -> new TreeSet<>()).addAll(implementations);
+        services.computeIfAbsent(service, _ -> new TreeSet<>()).addAll(implementations);
       }
     }
 
@@ -319,7 +319,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             Collectors.toMap(
                 ModuleDescriptor.Provides::service,
                 provides -> new TreeSet<>(provides.providers()),
-                (k, v) -> {
+                (_, _) -> {
                   throw new RuntimeException();
                 },
                 TreeMap::new));
@@ -334,7 +334,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   @Test
   public void testAllExportedPackagesInSync() throws IOException {
     for (var module : allLuceneModules) {
-      Set<String> jarPackages = getJarPackages(module, entry -> true);
+      Set<String> jarPackages = getJarPackages(module, _ -> true);
       Set<ModuleDescriptor.Exports> moduleExports = new HashSet<>(module.descriptor().exports());
 
       if (module.descriptor().name().equals("org.apache.lucene.luke")) {

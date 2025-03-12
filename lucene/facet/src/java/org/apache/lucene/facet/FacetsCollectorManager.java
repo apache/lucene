@@ -102,7 +102,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
       for (FacetsCollector.MatchingDocs matchingDocs : facetsCollector.getMatchingDocs()) {
         matchingDocsMap.compute(
             matchingDocs.context(),
-            (leafReaderContext, existing) -> {
+            (_, existing) -> {
               if (existing == null) {
                 return matchingDocs;
               }

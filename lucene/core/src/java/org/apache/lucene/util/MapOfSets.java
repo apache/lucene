@@ -52,7 +52,7 @@ public class MapOfSets<K, V> {
    * @return the size of the Set associated with key once val is added to it.
    */
   public int put(K key, V val) {
-    final Set<V> theSet = theMap.computeIfAbsent(key, k -> new HashSet<>(23));
+    final Set<V> theSet = theMap.computeIfAbsent(key, _ -> new HashSet<>(23));
     theSet.add(val);
     return theSet.size();
   }
@@ -64,7 +64,7 @@ public class MapOfSets<K, V> {
    * @return the size of the Set associated with key once val is added to it.
    */
   public int putAll(K key, Collection<? extends V> vals) {
-    final Set<V> theSet = theMap.computeIfAbsent(key, k -> new HashSet<>(23));
+    final Set<V> theSet = theMap.computeIfAbsent(key, _ -> new HashSet<>(23));
     theSet.addAll(vals);
     return theSet.size();
   }

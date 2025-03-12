@@ -22,30 +22,27 @@ import java.util.Random;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LeafCollector;
-import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.util.Bits;
 
 /** Wraps a Scorer with additional checks */
-final class AssertingBulkScorer extends BulkScorer {
+public final class AssertingBulkScorer extends BulkScorer {
 
-  public static BulkScorer wrap(Random random, BulkScorer other, int maxDoc, ScoreMode scoreMode) {
+  public static BulkScorer wrap(Random random, BulkScorer other, int maxDoc) {
     if (other == null || other instanceof AssertingBulkScorer) {
       return other;
     }
-    return new AssertingBulkScorer(random, other, maxDoc, scoreMode);
+    return new AssertingBulkScorer(random, other, maxDoc);
   }
 
   final Random random;
   final BulkScorer in;
   final int maxDoc;
-  final ScoreMode scoreMode;
   int max = 0;
 
-  private AssertingBulkScorer(Random random, BulkScorer in, int maxDoc, ScoreMode scoreMode) {
+  private AssertingBulkScorer(Random random, BulkScorer in, int maxDoc) {
     this.random = random;
     this.in = in;
     this.maxDoc = maxDoc;
-    this.scoreMode = scoreMode;
   }
 
   public BulkScorer getIn() {

@@ -39,7 +39,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for {@link org.apache.lucene.document.ShapeDocValuesField} */
 public class TestShapeDocValues extends LuceneTestCase {
-  private static double TOLERANCE = 1E-7;
+  private static final double TOLERANCE = 1E-7;
 
   private static final String FIELD_NAME = "field";
 

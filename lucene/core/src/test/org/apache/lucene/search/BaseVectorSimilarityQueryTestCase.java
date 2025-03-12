@@ -575,7 +575,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   @SuppressWarnings("unchecked")
   V[] getRandomVectors(int numDocs, int dim) {
-    return (V[]) IntStream.range(0, numDocs).mapToObj(i -> getRandomVector(dim)).toArray();
+    return (V[]) IntStream.range(0, numDocs).mapToObj(_ -> getRandomVector(dim)).toArray();
   }
 
   @SafeVarargs

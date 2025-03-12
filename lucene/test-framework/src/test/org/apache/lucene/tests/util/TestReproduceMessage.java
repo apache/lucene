@@ -31,7 +31,10 @@ import org.junit.runners.model.Statement;
 
 /** Test reproduce message is right. */
 public class TestReproduceMessage extends WithNestedTests {
+  @SuppressWarnings("NonFinalStaticField")
   public static SorePoint where;
+
+  @SuppressWarnings("NonFinalStaticField")
   public static SoreType type;
 
   public static class Nested extends AbstractNestedTest {
@@ -44,7 +47,7 @@ public class TestReproduceMessage extends WithNestedTests {
 
     @Rule
     public TestRule rule =
-        (base, description) ->
+        (base, _) ->
             new Statement() {
               @Override
               public void evaluate() throws Throwable {

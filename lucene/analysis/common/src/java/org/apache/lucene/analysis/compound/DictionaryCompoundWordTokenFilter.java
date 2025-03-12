@@ -28,6 +28,8 @@ import org.apache.lucene.analysis.TokenStream;
  */
 public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBase {
 
+  private boolean onlyLongestMatchNoSubwords = false;
+
   /**
    * Creates a new {@link DictionaryCompoundWordTokenFilter}
    *
@@ -49,7 +51,39 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
    * @param minWordSize only words longer than this get processed
    * @param minSubwordSize only subwords longer than this get to the output stream
    * @param maxSubwordSize only subwords shorter than this get to the output stream
-   * @param onlyLongestMatch Add only the longest matching subword to the stream
+   * @param onlyLongestMatch deprecated, use parameter onlyLongestMatchIgnoreSubwords instead
+   * @param onlyLongestMatchIgnoreSubwords Subwords are igored, e.g. if a word contains 'schwein',
+   *     only the longer word 'schwein' will be extracted, the subword 'wein' will be ignored.
+   *     Supersede parameter onlyLongestMatch
+   */
+  @Deprecated
+  public DictionaryCompoundWordTokenFilter(
+      TokenStream input,
+      CharArraySet dictionary,
+      int minWordSize,
+      int minSubwordSize,
+      int maxSubwordSize,
+      boolean onlyLongestMatch,
+      boolean onlyLongestMatchIgnoreSubwords) {
+    super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
+    this.onlyLongestMatchNoSubwords = onlyLongestMatchIgnoreSubwords;
+
+    if (dictionary == null) {
+      throw new IllegalArgumentException("dictionary must not be null");
+    }
+  }
+
+  /**
+   * Creates a new {@link DictionaryCompoundWordTokenFilter}
+   *
+   * @param input the {@link org.apache.lucene.analysis.TokenStream} to process
+   * @param dictionary the word dictionary to match against.
+   * @param minWordSize only words longer than this get processed
+   * @param minSubwordSize only subwords longer than this get to the output stream
+   * @param maxSubwordSize only subwords shorter than this get to the output stream
+   * @param onlyLongestMatchIgnoreSubwords Subwords are igored, e.g. if a word contains 'schwein',
+   *     only the longer word 'schwein' will be extracted, the subword 'wein' will be ignored.
+   *     Supersede parameter onlyLongestMatch
    */
   public DictionaryCompoundWordTokenFilter(
       TokenStream input,
@@ -57,8 +91,10 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
       int minWordSize,
       int minSubwordSize,
       int maxSubwordSize,
-      boolean onlyLongestMatch) {
-    super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
+      boolean onlyLongestMatchIgnoreSubwords) {
+    super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, false);
+    this.onlyLongestMatchNoSubwords = onlyLongestMatchIgnoreSubwords;
+
     if (dictionary == null) {
       throw new IllegalArgumentException("dictionary must not be null");
     }
@@ -66,6 +102,7 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
 
   @Override
   protected void decompose() {
+    boolean onlyLongestMatch = this.onlyLongestMatch || onlyLongestMatchNoSubwords;
     final int len = termAtt.length();
     for (int i = 0; i <= len - this.minSubwordSize; ++i) {
       CompoundToken longestMatchToken = null;
@@ -74,7 +111,7 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
           break;
         }
         if (dictionary.contains(termAtt.buffer(), i, j)) {
-          if (this.onlyLongestMatch) {
+          if (onlyLongestMatch) {
             if (longestMatchToken != null) {
               if (longestMatchToken.txt.length() < j) {
                 longestMatchToken = new CompoundToken(i, j);
@@ -87,8 +124,12 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
           }
         }
       }
-      if (this.onlyLongestMatch && longestMatchToken != null) {
+
+      if (longestMatchToken != null) {
         tokens.add(longestMatchToken);
+        if (onlyLongestMatchNoSubwords) {
+          i += longestMatchToken.txt.length() - 1;
+        }
       }
     }
   }

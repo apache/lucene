@@ -17,8 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.DirectoryReader;
@@ -30,7 +28,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.IOUtils;
 
 /**
  * This class only tests some basic functionality in CSQ, the main parts are mostly tested by
@@ -52,116 +49,6 @@ public class TestConstantScoreQuery extends LuceneTestCase {
     QueryUtils.checkUnequal(q2, q3);
     QueryUtils.checkUnequal(q1, q3);
     QueryUtils.checkUnequal(q1, new TermQuery(new Term("a", "b")));
-  }
-
-  private void checkHits(
-      IndexSearcher searcher,
-      Query q,
-      final float expectedScore,
-      final Class<? extends Scorable> innerScorerClass)
-      throws IOException {
-    final AtomicInteger count = new AtomicInteger();
-    searcher.search(
-        q,
-        new CollectorManager<SimpleCollector, Void>() {
-          @Override
-          public SimpleCollector newCollector() {
-            return new SimpleCollector() {
-              private Scorable scorer;
-
-              @Override
-              public void setScorer(Scorable scorer) {
-                this.scorer = scorer;
-                if (innerScorerClass != null) {
-                  Scorable innerScorer = rootScorer(scorer);
-                  assertEquals(
-                      "inner Scorer is implemented by wrong class",
-                      innerScorerClass,
-                      innerScorer.getClass());
-                }
-              }
-
-              @Override
-              public void collect(int doc) throws IOException {
-                assertEquals("Score differs from expected", expectedScore, this.scorer.score(), 0);
-                count.incrementAndGet();
-              }
-
-              @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE;
-              }
-            };
-          }
-
-          @Override
-          public Void reduce(Collection<SimpleCollector> collectors) {
-            return null;
-          }
-        });
-    assertEquals("invalid number of results", 1, count.get());
-  }
-
-  private Scorable rootScorer(Scorable s) {
-    while (true) {
-      try {
-        Collection<Scorable.ChildScorable> children = s.getChildren();
-        if (children.size() == 0) return s;
-        s = children.stream().findFirst().get().child();
-      } catch (
-          @SuppressWarnings("unused")
-          Exception e) {
-        // If FakeScorer returns UnsupportedOperationException
-        // We catch Exception here to deal with the (impossible) IOException too
-        return s;
-      }
-    }
-  }
-
-  public void testWrapped2Times() throws Exception {
-    Directory directory = null;
-    IndexReader reader = null;
-    IndexSearcher searcher = null;
-    try {
-      directory = newDirectory();
-      RandomIndexWriter writer = new RandomIndexWriter(random(), directory);
-
-      Document doc = new Document();
-      doc.add(newStringField("field", "term1", Field.Store.NO));
-      doc.add(newStringField("field", "term2", Field.Store.NO));
-      writer.addDocument(doc);
-
-      reader = writer.getReader();
-      writer.close();
-      // we don't wrap with AssertingIndexSearcher in order to have the original scorer in
-      // setScorer.
-      searcher = newSearcher(reader, true, false);
-      searcher.setQueryCache(null); // to assert on scorer impl
-
-      final BoostQuery csq1 =
-          new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("field", "term1"))), 2f);
-      final BoostQuery csq2 =
-          new BoostQuery(
-              new ConstantScoreQuery(
-                  new ConstantScoreQuery(new TermQuery(new Term("field", "term2")))),
-              5f);
-
-      final BooleanQuery.Builder bq = new BooleanQuery.Builder();
-      bq.add(csq1, BooleanClause.Occur.SHOULD);
-      bq.add(csq2, BooleanClause.Occur.SHOULD);
-
-      final BoostQuery csqbq = new BoostQuery(new ConstantScoreQuery(bq.build()), 17f);
-
-      checkHits(searcher, csq1, csq1.getBoost(), TermScorer.class);
-      checkHits(searcher, csq2, csq2.getBoost(), TermScorer.class);
-
-      // for the combined BQ, the scorer should always be BooleanScorer's BucketScorer, because our
-      // scorer supports out-of order collection!
-      final Class<Score> bucketScorerClass = Score.class;
-      checkHits(searcher, csqbq, csqbq.getBoost(), bucketScorerClass);
-    } finally {
-      IOUtils.close(reader, directory);
-    }
   }
 
   // a query for which other queries don't have special rewrite rules

@@ -324,12 +324,7 @@ final class DocIdsWriter {
   private static void readContinuousIds(IndexInput in, int count, IntersectVisitor visitor)
       throws IOException {
     int start = in.readVInt();
-    int extra = start & 63;
-    int offset = start - extra;
-    int numBits = count + extra;
-    FixedBitSet bitSet = new FixedBitSet(numBits);
-    bitSet.set(extra, numBits);
-    visitor.visit(new DocBaseBitSetIterator(bitSet, count, offset));
+    visitor.visit(DocIdSetIterator.range(start, start + count));
   }
 
   private static void readLegacyDeltaVInts(IndexInput in, int count, IntersectVisitor visitor)

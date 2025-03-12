@@ -67,7 +67,7 @@ In case your contribution fixes a bug, please create a new test case that fails 
 Use the tool suite at [luceneutil](https://github.com/mikemccand/luceneutil) to benchmark your code changes
 if you think that your change may have measurably changed the performance of a task. Apache Lucene also contains an off the shelf benchmark [module](https://github.com/apache/lucene/tree/main/lucene/benchmark).
 
-This is the same suite that is run in the [nightly benchmarks](https://home.apache.org/~mikemccand/lucenebench/).
+This is the same suite that is run in the [nightly benchmarks](https://benchmarks.mikemccandless.com/).
 
 The instructions for running the benchmarks can be found in the luceneutil [README](https://github.com/mikemccand/luceneutil/blob/master/README.md).
 
@@ -104,7 +104,7 @@ You may want to add a CHANGES entry to [CHANGES.txt](./lucene/CHANGES.txt). A CH
 
 Contributors should join the [Lucene mailing lists](https://lucene.apache.org/core/discussion.html). In particular, the commit list (to see changes as they are made), the dev list (to join discussions of changes) and the user list (to help others).
 
-Please keep discussions about Lucene on list so that everyone benefits. Emailing individual committers with questions about specific Lucene issues is discouraged. See http://people.apache.org/~hossman/#private_q.
+Please keep discussions about Lucene on list so that everyone benefits. Emailing individual committers with questions about specific Lucene issues is discouraged.
 
 ## Getting your feet wet: where to begin?
 
