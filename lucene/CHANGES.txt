@@ -72,6 +72,13 @@ API Changes
 
 * GITHUB#14292: The redundant DocIdSet#bits method has been deprecated. (Luca Cavanna)
 
+* GITHUB#14237: Add utils for sandbox facets module for the most common tasks. (Egor Potemkin)
+
+* GITHUB#14312: Added DocIdSetIterator#docIDRunEnd to let iterators tell when
+  they have runs of matches. This is then leveraged by conjunctions to
+  automatically ignore clauses that have long runs of matches over these runs,
+  resulting in better efficiency. (Adrien Grand)
+
 New Features
 ---------------------
 
@@ -79,7 +86,8 @@ New Features
   These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
-* GITHUB#13974: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox. (Mikhail Khludnev)
+* GITHUB#13974,GITHUB#14276: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox.
+  (Mikhail Khludnev)
 
 * GITHUB#14204: Added HistogramCollectorManager to efficiently compute a
   histogram of the distribution of the values of a field, for documents
@@ -177,6 +185,8 @@ Bug Fixes
   (Chris Hegarty)
 
 * GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
+
+* GITHUB#14320: Fix DirectIOIndexInput seek to not read when position is within buffer (Chris Hegarty)
 
 Changes in Runtime Behavior
 ---------------------
