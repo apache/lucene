@@ -19,12 +19,10 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.IndexReader;
@@ -146,7 +144,6 @@ public class TestCaseInsensitiveTermInSetQuery extends LuceneTestCase {
     }
     
     IndexReader reader = iw.getReader();
-    IndexSearcher searcher = newSearcher(reader);
     iw.close();
     
     // Tests for case-insensitive querying - we use ASCII-only query terms
@@ -377,18 +374,4 @@ public class TestCaseInsensitiveTermInSetQuery extends LuceneTestCase {
     dir.close();
   }
   
-  
-  // Helper method to create random case variations of a string
-  private String randomCaseVariation(String input) {
-    StringBuilder result = new StringBuilder();
-    for (int i = 0; i < input.length(); i++) {
-      char c = input.charAt(i);
-      if (random().nextBoolean()) {
-        result.append(Character.toUpperCase(c));
-      } else {
-        result.append(Character.toLowerCase(c));
-      }
-    }
-    return result.toString();
-  }
 }
