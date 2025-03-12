@@ -653,7 +653,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
       // Empty string prefix must have an output (block) in the index!
       assert node.hasOutput();
-      assert node.hasOutput();
 
       // if (DEBUG) {
       // System.out.println("    no seek state; push root frame");

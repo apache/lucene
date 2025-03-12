@@ -47,16 +47,14 @@ class TrieReader {
     private int positionBytes;
     private int childrenDeltaFpBytes;
 
-    // common vars
+    // common
     private long fp;
     private int minChildrenLabel;
-    int label;
-
-    // output vars
     private int sign;
+    int label;
     long outputFp;
     boolean hasTerms;
-    long floorDataFp; // only makes sense when outputFp != NO_OUTPUT;
+    long floorDataFp;
 
     boolean hasOutput() {
       return outputFp != NO_OUTPUT;
