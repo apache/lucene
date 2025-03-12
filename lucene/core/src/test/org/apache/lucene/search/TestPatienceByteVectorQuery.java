@@ -101,7 +101,7 @@ public class TestPatienceByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
     @Override
     public String toString(String field) {
-      return null;
+      return "ThrowingKnnVectorQuery{" + field + "}";
     }
   }
 }
