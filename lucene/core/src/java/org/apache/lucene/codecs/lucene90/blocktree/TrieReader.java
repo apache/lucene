@@ -43,14 +43,14 @@ class TrieReader {
 
     // multi children
     private long positionFp;
-    private int childrenStrategy;
+    private int positionStrategy;
     private int positionBytes;
     private int childrenDeltaFpBytes;
 
     // common
+    private int sign;
     private long fp;
     private int minChildrenLabel;
-    private int sign;
     int label;
     long outputFp;
     boolean hasTerms;
@@ -154,7 +154,7 @@ class TrieReader {
     // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
     node.childrenDeltaFpBytes = ((term >>> 2) & 0x07) + 1;
-    node.childrenStrategy = (term >>> 9) & 0x03;
+    node.positionStrategy = (term >>> 9) & 0x03;
     node.positionBytes = ((term >>> 11) & 0x1F) + 1;
     node.minChildrenLabel = (term >>> 16) & 0xFF;
 
@@ -182,7 +182,7 @@ class TrieReader {
   }
 
   Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {
-    int sign = parent.sign;
+    final int sign = parent.sign;
     if (sign == Trie.SIGN_NO_CHILDREN) {
       return null;
     }
@@ -206,7 +206,7 @@ class TrieReader {
       position = 0;
     } else if (targetLabel > minLabel) {
       position =
-          Trie.PositionStrategy.byCode(parent.childrenStrategy)
+          Trie.PositionStrategy.byCode(parent.positionStrategy)
               .lookup(targetLabel, access, positionBytesStartFp, positionBytes, minLabel);
     }
 
