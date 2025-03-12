@@ -19,12 +19,9 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
-import org.apache.lucene.index.FilteredTermsEnum;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -32,13 +29,12 @@ import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
- * A {@link TermInSetQuery} that matches terms in a case-insensitive manner.
+ * A query that matches terms in a case-insensitive manner using regular expressions.
  *
- * <p>This query performs case-insensitive term matching by using a regexp-based approach to match
- * all case variations of the given terms. For multi-term queries with many terms, this can be more
- * efficient than creating a large boolean query with many disjunctions.
+ * <p>This query creates a {@link RegexpQuery} for each term with case-insensitive matching enabled.
+ * For multiple terms, it builds a boolean query combining the individual regex queries.
  */
-public class CaseInsensitiveTermInSetQuery extends MultiTermQuery {
+public class CaseInsensitiveTermInSetQuery extends Query {
 
   private final String field;
   private final Set<BytesRef> terms;
@@ -50,37 +46,16 @@ public class CaseInsensitiveTermInSetQuery extends MultiTermQuery {
    * @param terms the terms to match (case-insensitively)
    */
   public CaseInsensitiveTermInSetQuery(String field, Collection<BytesRef> terms) {
-    super(field, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
-    this.field = field;
+    this.field = Objects.requireNonNull(field, "field must not be null");
     // We create a copy to avoid modifying the provided collection
     this.terms = new HashSet<>(terms);
-  }
-
-  /**
-   * Creates a new {@link CaseInsensitiveTermInSetQuery} from the given collection of terms with the
-   * specified rewrite method.
-   *
-   * @param rewriteMethod the rewrite method to use
-   * @param field the field to match
-   * @param terms the terms to match (case-insensitively)
-   */
-  public CaseInsensitiveTermInSetQuery(
-      RewriteMethod rewriteMethod, String field, Collection<BytesRef> terms) {
-    super(field, rewriteMethod);
-    this.field = field;
-    this.terms = new HashSet<>(terms);
-  }
-
-  @Override
-  protected TermsEnum getTermsEnum(Terms terms, AttributeSource atts) throws IOException {
-    return new CaseInsensitiveSetEnum(terms.iterator());
   }
 
   @Override
   public String toString(String field) {
     StringBuilder builder = new StringBuilder();
     builder.append(field);
-    builder.append(":caseInsensitive("); // More descriptive name
+    builder.append(":caseInsensitive(");
 
     boolean first = true;
     for (BytesRef term : terms) {
@@ -106,23 +81,22 @@ public class CaseInsensitiveTermInSetQuery extends MultiTermQuery {
       visitor.consumeTermsMatching(this, field, this::asByteRunAutomaton);
     }
   }
-
+  
   private ByteRunAutomaton asByteRunAutomaton() {
-    // Create a regular expression based automaton for case-insensitive matching
-    StringBuilder regexBuilder = new StringBuilder();
+    // Create regex for case-insensitive matching: term1|term2|term3...
+    StringBuilder pattern = new StringBuilder();
     boolean first = true;
+    
     for (BytesRef term : terms) {
       if (!first) {
-        regexBuilder.append('|');
+        pattern.append('|');
       }
       first = false;
-      // Escape special regex chars and build case-insensitive pattern
-      regexBuilder.append(regexEscape(term.utf8ToString()));
+      pattern.append(term.utf8ToString());
     }
     
-    // Create a regular expression with case-insensitive flag
-    RegExp regexp = new RegExp(regexBuilder.toString(), RegExp.ALL, 
-                              RegExp.CASE_INSENSITIVE);
+    // Create regex automaton with case-insensitive flag
+    RegExp regexp = new RegExp(pattern.toString(), RegExp.NONE, RegExp.CASE_INSENSITIVE);
     Automaton automaton = regexp.toAutomaton();
     
     // Ensure the automaton is deterministic
@@ -130,43 +104,35 @@ public class CaseInsensitiveTermInSetQuery extends MultiTermQuery {
       automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     }
     
-    return new ByteRunAutomaton(automaton, true);
+    return new ByteRunAutomaton(automaton);
   }
 
-  private String regexEscape(String s) {
-    StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < s.length(); i++) {
-      char c = s.charAt(i);
-      // Escape all special regex characters
-      if ("[](){}.*+?^$\\|".indexOf(c) != -1) {
-        sb.append('\\');
-      }
-      sb.append(c);
+  @Override
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    if (terms.isEmpty()) {
+      return new MatchNoDocsQuery("Empty terms set");
     }
-    return sb.toString();
-  }
-
-  /**
-   * A specialized TermsEnum implementation that performs case-insensitive matching against the
-   * terms dictionary using a ByteRunAutomaton for proper Unicode case handling.
-   */
-  private class CaseInsensitiveSetEnum extends FilteredTermsEnum {
-    private final ByteRunAutomaton automaton;
-
-    CaseInsensitiveSetEnum(TermsEnum termsEnum) {
-      super(termsEnum);
-      this.automaton = asByteRunAutomaton();
-      setInitialSeekTerm(new BytesRef(""));
+    
+    // For a single term, use a simple RegexpQuery
+    if (terms.size() == 1) {
+      return new RegexpQuery(
+          new Term(field, terms.iterator().next().utf8ToString()), 
+          RegExp.NONE, 
+          RegExp.CASE_INSENSITIVE);
     }
-
-    @Override
-    protected AcceptStatus accept(BytesRef term) {
-      // Use the automaton for proper Unicode-aware case-insensitive matching
-      if (automaton.run(term.bytes, term.offset, term.length)) {
-        return AcceptStatus.YES;
-      }
-      return AcceptStatus.NO;
+    
+    // For multiple terms, create a boolean query of regexps
+    BooleanQuery.Builder builder = new BooleanQuery.Builder();
+    for (BytesRef term : terms) {
+      RegexpQuery regexpQuery = new RegexpQuery(
+          new Term(field, term.utf8ToString()),
+          RegExp.NONE,
+          RegExp.CASE_INSENSITIVE);
+      
+      builder.add(regexpQuery, BooleanClause.Occur.SHOULD);
     }
+    
+    return builder.build();
   }
 
   @Override
@@ -180,6 +146,6 @@ public class CaseInsensitiveTermInSetQuery extends MultiTermQuery {
 
   @Override
   public int hashCode() {
-    return 31 * classHash() + terms.hashCode();
+    return 31 * classHash() + Objects.hash(field, terms);
   }
 }
