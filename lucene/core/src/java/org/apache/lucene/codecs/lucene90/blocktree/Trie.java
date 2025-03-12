@@ -205,7 +205,7 @@ class Trie {
         int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
 
         // TODO if we have only one child and no output, we can store child labels in this node.
-        // E.g. for a single term trie [foobar], we can have only two nodes [fooba] and [r]
+        // E.g. for a single term trie [foobar], we can save only two nodes [fooba] and [r]
 
         int sign =
             node.output != null
