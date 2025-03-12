@@ -226,19 +226,18 @@ public class IndexSearcher {
         : "IndexSearcher's ReaderContext must be topLevel for reader " + context.reader();
     reader = context.reader();
     this.taskExecutor =
-        executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
+        executor == null ? TaskExecutor.DIRECT_TASK_EXECUTOR : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
     if (executor == null) {
       leafSlices =
           leafContexts.isEmpty()
-              ? new LeafSlice[0]
+              ? LeafSlice.EMPTY_ARRAY
               : new LeafSlice[] {
                 new LeafSlice(
-                    new ArrayList<>(
-                        leafContexts.stream()
-                            .map(LeafReaderContextPartition::createForEntireSegment)
-                            .toList()))
+                    leafContexts.stream()
+                        .map(LeafReaderContextPartition::createForEntireSegment)
+                        .toList())
               };
     }
   }
@@ -357,57 +356,46 @@ public class IndexSearcher {
       boolean allowSegmentPartitions) {
 
     // Make a copy so we can sort:
-    List<LeafReaderContext> sortedLeaves = new ArrayList<>(leaves);
+    LeafReaderContext[] sortedLeaves = leaves.toArray(new LeafReaderContext[0]);
 
     // Sort by maxDoc, descending:
-    sortedLeaves.sort(Collections.reverseOrder(Comparator.comparingInt(l -> l.reader().maxDoc())));
+    Arrays.sort(
+        sortedLeaves, (l1, l2) -> Integer.compare(l2.reader().maxDoc(), l1.reader().maxDoc()));
 
     if (allowSegmentPartitions) {
       return slicesWithSegmentPartitions(maxDocsPerSlice, maxSegmentsPerSlice, sortedLeaves);
     }
 
-    final List<List<LeafReaderContext>> groupedLeaves = new ArrayList<>();
+    final List<LeafSlice> groupedLeaves = new ArrayList<>();
     long docSum = 0;
-    List<LeafReaderContext> group = null;
+    List<LeafReaderContextPartition> group = null;
     for (LeafReaderContext ctx : sortedLeaves) {
-      if (ctx.reader().maxDoc() > maxDocsPerSlice) {
+      final int maxDoc = ctx.reader().maxDoc();
+      var partition = LeafReaderContextPartition.createForEntireSegment(ctx);
+      if (maxDoc > maxDocsPerSlice) {
         assert group == null;
-        groupedLeaves.add(Collections.singletonList(ctx));
+        groupedLeaves.add(new LeafSlice(Collections.singletonList(partition)));
       } else {
         if (group == null) {
           group = new ArrayList<>();
-          group.add(ctx);
-
-          groupedLeaves.add(group);
-        } else {
-          group.add(ctx);
         }
-
-        docSum += ctx.reader().maxDoc();
-        if (group.size() >= maxSegmentsPerSlice || docSum > maxDocsPerSlice) {
+        group.add(partition);
+        docSum += maxDoc;
+        if (docSum > maxDocsPerSlice || group.size() >= maxSegmentsPerSlice) {
+          groupedLeaves.add(new LeafSlice(group));
           group = null;
           docSum = 0;
         }
       }
     }
-
-    LeafSlice[] slices = new LeafSlice[groupedLeaves.size()];
-    int upto = 0;
-    for (List<LeafReaderContext> currentLeaf : groupedLeaves) {
-      slices[upto] =
-          new LeafSlice(
-              new ArrayList<>(
-                  currentLeaf.stream()
-                      .map(LeafReaderContextPartition::createForEntireSegment)
-                      .toList()));
-      ++upto;
+    if (group != null) {
+      groupedLeaves.add(new LeafSlice(group));
     }
-
-    return slices;
+    return groupedLeaves.toArray(LeafSlice.EMPTY_ARRAY);
   }
 
   private static LeafSlice[] slicesWithSegmentPartitions(
-      int maxDocsPerSlice, int maxSegmentsPerSlice, List<LeafReaderContext> sortedLeaves) {
+      int maxDocsPerSlice, int maxSegmentsPerSlice, LeafReaderContext[] sortedLeaves) {
     final List<List<LeafReaderContextPartition>> groupedLeafPartitions = new ArrayList<>();
     int currentSliceNumDocs = 0;
     List<LeafReaderContextPartition> group = null;
@@ -750,50 +738,56 @@ public class IndexSearcher {
    * to {@link #search(Query, Collector)}, this method will use the searcher's {@link Executor} in
    * order to parallelize execution of the collection on the configured {@link #getSlices()}.
    *
-   * @see CollectorManager
    * @lucene.experimental
+   * @see CollectorManager
    */
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
     final C firstCollector = collectorManager.newCollector();
-    query = rewrite(query, firstCollector.scoreMode().needsScores());
-    final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
-    return search(weight, collectorManager, firstCollector);
-  }
-
-  private <C extends Collector, T> T search(
-      Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
     final LeafSlice[] leafSlices = getSlices();
     if (leafSlices.length == 0) {
       // there are no segments, nothing to offload to the executor, but we do need to call reduce to
       // create some kind of empty result
       assert leafContexts.isEmpty();
-      return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
-      final List<C> collectors = new ArrayList<>(leafSlices.length);
-      collectors.add(firstCollector);
       final ScoreMode scoreMode = firstCollector.scoreMode();
-      for (int i = 1; i < leafSlices.length; ++i) {
-        final C collector = collectorManager.newCollector();
-        collectors.add(collector);
+      final Weight weight = createWeight(rewrite(query, scoreMode.needsScores()), scoreMode, 1);
+      if (leafSlices.length == 1) {
+        search(leafSlices[0].partitions, weight, firstCollector);
+      } else {
+        return searchMultipleSlices(collectorManager, leafSlices, firstCollector, weight);
+      }
+    }
+    return collectorManager.reduce(Collections.singletonList(firstCollector));
+  }
+
+  private <C extends Collector, T> T searchMultipleSlices(
+      CollectorManager<C, T> collectorManager,
+      LeafSlice[] leafSlices,
+      C firstCollector,
+      Weight weight)
+      throws IOException {
+    final ScoreMode scoreMode = firstCollector.scoreMode();
+    final List<Callable<C>> listTasks = new ArrayList<>(leafSlices.length);
+    for (int i = 0; i < leafSlices.length; ++i) {
+      final C collector;
+      if (i == 0) {
+        collector = firstCollector;
+      } else {
+        collector = collectorManager.newCollector();
         if (scoreMode != collector.scoreMode()) {
           throw new IllegalStateException(
               "CollectorManager does not always produce collectors with the same score mode");
         }
       }
-      final List<Callable<C>> listTasks = new ArrayList<>(leafSlices.length);
-      for (int i = 0; i < leafSlices.length; ++i) {
-        final LeafReaderContextPartition[] leaves = leafSlices[i].partitions;
-        final C collector = collectors.get(i);
-        listTasks.add(
-            () -> {
-              search(leaves, weight, collector);
-              return collector;
-            });
-      }
-      List<C> results = taskExecutor.invokeAll(listTasks);
-      return collectorManager.reduce(results);
+      final LeafReaderContextPartition[] leaves = leafSlices[i].partitions;
+      listTasks.add(
+          () -> {
+            search(leaves, weight, collector);
+            return collector;
+          });
     }
+    return collectorManager.reduce(taskExecutor.invokeAll(listTasks));
   }
 
   /**
@@ -1013,6 +1007,12 @@ public class IndexSearcher {
    */
   public static class LeafSlice {
 
+    public static final LeafSlice[] EMPTY_ARRAY = new LeafSlice[0];
+
+    private static final Comparator<LeafReaderContextPartition> COMPARATOR =
+        Comparator.<LeafReaderContextPartition>comparingInt(l -> l.ctx.docBase)
+            .thenComparingInt(l -> l.minDocId);
+
     /**
      * The leaves that make up this slice.
      *
@@ -1023,17 +1023,14 @@ public class IndexSearcher {
     private final int maxDocs;
 
     public LeafSlice(List<LeafReaderContextPartition> leafReaderContextPartitions) {
-      Comparator<LeafReaderContextPartition> docBaseComparator =
-          Comparator.comparingInt(l -> l.ctx.docBase);
-      Comparator<LeafReaderContextPartition> minDocIdComparator =
-          Comparator.comparingInt(l -> l.minDocId);
-      leafReaderContextPartitions.sort(docBaseComparator.thenComparing(minDocIdComparator));
-      this.partitions = leafReaderContextPartitions.toArray(new LeafReaderContextPartition[0]);
-      this.maxDocs =
-          Arrays.stream(partitions)
-              .map(leafPartition -> leafPartition.maxDocs)
-              .reduce(Integer::sum)
-              .get();
+      var partitions = leafReaderContextPartitions.toArray(new LeafReaderContextPartition[0]);
+      Arrays.sort(partitions, COMPARATOR);
+      this.partitions = partitions;
+      int maxDocs = 0;
+      for (LeafReaderContextPartition partition : partitions) {
+        maxDocs += partition.maxDocs;
+      }
+      this.maxDocs = maxDocs;
     }
 
     /**
