@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
@@ -130,7 +131,7 @@ public class TestCaseInsensitiveTermInSetQuery extends LuceneTestCase {
 
     // We should not match any banana terms
     for (String value : matchedValues) {
-      assertFalse(value.toLowerCase().contains("banana"));
+      assertFalse(value.toLowerCase(Locale.ROOT).contains("banana"));
     }
 
     reader.close();
@@ -416,14 +417,14 @@ public class TestCaseInsensitiveTermInSetQuery extends LuceneTestCase {
       iw.addDocument(doc);
 
       // Uppercase variation
-      String upperVariation = baseTerm.toUpperCase();
+      String upperVariation = baseTerm.toUpperCase(Locale.ROOT);
       allTerms.add(upperVariation);
       Document upperDoc = new Document();
       upperDoc.add(new StringField("field", upperVariation, Store.YES));
       iw.addDocument(upperDoc);
 
       // Lowercase variation
-      String lowerVariation = baseTerm.toLowerCase();
+      String lowerVariation = baseTerm.toLowerCase(Locale.ROOT);
       allTerms.add(lowerVariation);
       Document lowerDoc = new Document();
       lowerDoc.add(new StringField("field", lowerVariation, Store.YES));

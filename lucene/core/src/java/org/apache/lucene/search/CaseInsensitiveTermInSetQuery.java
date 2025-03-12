@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.lucene.index.Term;
@@ -104,7 +105,7 @@ public class CaseInsensitiveTermInSetQuery extends Query {
     // Convert all terms to lowercase for case-insensitive comparison
     final Set<String> lowerCaseTerms = new HashSet<>(terms.size());
     for (BytesRef term : terms) {
-      lowerCaseTerms.add(term.utf8ToString().toLowerCase());
+      lowerCaseTerms.add(term.utf8ToString().toLowerCase(Locale.ROOT));
     }
 
     // Create a minimal automaton shell
@@ -117,7 +118,7 @@ public class CaseInsensitiveTermInSetQuery extends Query {
       public boolean run(byte[] s, int offset, int length) {
         // Convert input bytes to string and lowercase for comparison
         BytesRef slice = new BytesRef(s, offset, length);
-        String termString = slice.utf8ToString().toLowerCase();
+        String termString = slice.utf8ToString().toLowerCase(Locale.ROOT);
         return lowerCaseTerms.contains(termString);
       }
     };
