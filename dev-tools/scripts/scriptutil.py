@@ -22,11 +22,15 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from enum import Enum
+from re import Match, Pattern
+from typing import Self, override
 
 
-class Version(object):
-  def __init__(self, major, minor, bugfix, prerelease):
+class Version:
+  def __init__(self, major: int, minor: int, bugfix: int, prerelease: int):
+    super().__init__()
     self.major = major
     self.minor = minor
     self.bugfix = bugfix
@@ -36,7 +40,7 @@ class Version(object):
     self.constant = "LUCENE_%d_%d_%d" % (self.major, self.minor, self.bugfix)
 
   @classmethod
-  def parse(cls, value):
+  def parse(cls, value: str):
     match = re.search(r"(\d+)\.(\d+).(\d+)(.1|.2)?", value)
     if match is None:
       raise argparse.ArgumentTypeError("Version argument must be of format x.y.z(.1|.2)?")
@@ -44,10 +48,11 @@ class Version(object):
     parts.append({None: 0, ".1": 1, ".2": 2}[match.groups()[-1]])
     return Version(*parts)
 
+  @override
   def __str__(self):
     return self.dot
 
-  def make_previous_matcher(self, prefix="", suffix="", sep="\\."):
+  def make_previous_matcher(self, prefix: str = "", suffix: str = "", sep: str = "\\."):
     if self.is_bugfix_release():
       pattern = "%s%s%s%s%d" % (self.major, sep, self.minor, sep, self.bugfix - 1)
     elif self.is_minor_release():
@@ -66,23 +71,21 @@ class Version(object):
   def is_major_release(self):
     return self.bugfix == 0 and self.minor == 0
 
-  def on_or_after(self, other):
-    return (
-      self.major > other.major
-      or self.major == other.major
-      and (self.minor > other.minor or self.minor == other.minor and (self.bugfix > other.bugfix or self.bugfix == other.bugfix and self.prerelease >= other.prerelease))
+  def on_or_after(self, other: Self):
+    return self.major > other.major or (
+      self.major == other.major and (self.minor > other.minor or (self.minor == other.minor and (self.bugfix > other.bugfix or (self.bugfix == other.bugfix and self.prerelease >= other.prerelease))))
     )
 
-  def gt(self, other):
+  def gt(self, other: Self):
     return self.major > other.major or (self.major == other.major and self.minor > other.minor) or (self.major == other.major and self.minor == other.minor and self.bugfix > other.bugfix)
 
-  def is_back_compat_with(self, other):
+  def is_back_compat_with(self, other: Self):
     if not self.on_or_after(other):
       raise Exception("Back compat check disallowed for newer version: %s < %s" % (self, other))
     return other.major + 1 >= self.major
 
 
-def run(cmd, cwd=None):
+def run(cmd: str, cwd: str | None = None):
   try:
     output = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, cwd=cwd)
   except subprocess.CalledProcessError as e:
@@ -91,9 +94,9 @@ def run(cmd, cwd=None):
   return output.decode("utf-8")
 
 
-def update_file(filename, line_re, edit, append=None):
-  infile = open(filename, "r")
-  buffer = []
+def update_file(filename: str, line_re: Pattern[str], edit: Callable[[list[str], Match[str], str], bool | None], append: Callable[[list[str], bool], bool] | None = None):
+  infile = open(filename)
+  buffer: list[str] = []
 
   changed = False
   for line in infile:
@@ -139,7 +142,7 @@ def find_branch_type():
   raise Exception("Cannot run %s on feature branch" % sys.argv[0].rsplit("/", 1)[-1])
 
 
-def download(name, urlString, tmpDir, quiet=False, force_clean=True):
+def download(name: str, urlString: str, tmpDir: str, quiet: bool = False, force_clean: bool = True):
   if not quiet:
     print("Downloading %s" % urlString)
   startTime = time.time()
@@ -162,7 +165,7 @@ def download(name, urlString, tmpDir, quiet=False, force_clean=True):
     print("    %.1f MB in %.2f sec (%.1f MB/sec)" % (sizeMB, t, sizeMB / t))
 
 
-def attemptDownload(urlString, fileName):
+def attemptDownload(urlString: str, fileName: str):
   fIn = urllib.request.urlopen(urlString)
   fOut = open(fileName, "wb")
   success = False
