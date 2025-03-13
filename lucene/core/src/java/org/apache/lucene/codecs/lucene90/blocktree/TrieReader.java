@@ -84,16 +84,16 @@ class TrieReader {
 
   private void load(Node node, long fp) throws IOException {
     node.fp = fp;
-    long termLong = access.readLong(fp);
-    int term = (int) termLong;
-    int sign = node.sign = term & 0x03;
+    long termFlagsLong = access.readLong(fp);
+    int termFlags = (int) termFlagsLong;
+    int sign = node.sign = termFlags & 0x03;
 
-    if (sign == Trie.SIGN_NO_CHILDREN) {
-      loadLeafNode(fp, term, termLong, node);
-    } else if (sign == Trie.SIGN_MULTI_CHILDREN) {
-      loadMultiChildrenNode(fp, term, termLong, node);
+    if (sign == TrieBuilder.SIGN_NO_CHILDREN) {
+      loadLeafNode(fp, termFlags, termFlagsLong, node);
+    } else if (sign == TrieBuilder.SIGN_MULTI_CHILDREN) {
+      loadMultiChildrenNode(fp, termFlags, termFlagsLong, node);
     } else {
-      loadSingleChildNode(fp, sign, term, termLong, node);
+      loadSingleChildNode(fp, sign, termFlags, termFlagsLong, node);
     }
   }
 
@@ -104,12 +104,13 @@ class TrieReader {
     // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
 
     int fpBytesMinus1 = (term >>> 2) & 0x07;
-    node.outputFp =
-        fpBytesMinus1 <= 6
-            ? (termLong >>> 8) & BYTES_MINUS_1_MASK[fpBytesMinus1]
-            : access.readLong(fp + 1);
-    node.hasTerms = (term & 0x20) != 0;
-    if ((term & 0x40) != 0) { // has floor
+    if (fpBytesMinus1 <= 6) {
+      node.outputFp = (termLong >>> 8) & BYTES_MINUS_1_MASK[fpBytesMinus1];
+    } else {
+      node.outputFp = access.readLong(fp + 1);
+    }
+    node.hasTerms = (term & TrieBuilder.LEAF_NODE_HAS_TERMS) != 0;
+    if ((term & TrieBuilder.LEAF_NODE_HAS_FLOOR) != 0) { // has floor
       node.floorDataFp = fp + 2 + fpBytesMinus1;
     } else {
       node.floorDataFp = NO_FLOOR_DATA;
@@ -128,15 +129,16 @@ class TrieReader {
     node.childDeltaFp = l & BYTES_MINUS_1_MASK[childDeltaFpBytesMinus1];
     node.minChildrenLabel = (term >>> 8) & 0xFF;
 
-    if (sign == Trie.SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT) {
+    if (sign == TrieBuilder.SIGN_SINGLE_CHILD_WITHOUT_OUTPUT) {
       node.outputFp = NO_OUTPUT;
     } else { // has output
+      assert sign == TrieBuilder.SIGN_SINGLE_CHILD_WITH_OUTPUT;
       int encodedOutputFpBytesMinus1 = (term >>> 5) & 0x07;
       long offset = fp + childDeltaFpBytesMinus1 + 3;
       long encodedFp = access.readLong(offset) & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
       node.outputFp = encodedFp >>> 2;
-      node.hasTerms = (encodedFp & 0x02L) != 0;
-      if ((encodedFp & 0x01L) != 0) { // has floor
+      node.hasTerms = (encodedFp & TrieBuilder.NON_LEAF_NODE_HAS_TERMS) != 0;
+      if ((encodedFp & TrieBuilder.NON_LEAF_NODE_HAS_FLOOR) != 0) { // has floor
         node.floorDataFp = offset + encodedOutputFpBytesMinus1 + 1;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
@@ -163,9 +165,9 @@ class TrieReader {
       long l = encodedOutputFpBytesMinus1 <= 4 ? termLong >>> 24 : access.readLong(fp + 3);
       long encodedFp = l & BYTES_MINUS_1_MASK[encodedOutputFpBytesMinus1];
       node.outputFp = encodedFp >>> 2;
-      node.hasTerms = (encodedFp & 0x02L) != 0;
+      node.hasTerms = (encodedFp & TrieBuilder.NON_LEAF_NODE_HAS_TERMS) != 0;
 
-      if ((encodedFp & 0x01L) != 0) { // has floor
+      if ((encodedFp & TrieBuilder.NON_LEAF_NODE_HAS_FLOOR) != 0) { // has floor
         long offset = fp + 4 + encodedOutputFpBytesMinus1;
         long childrenNum = (access.readByte(offset) & 0xFFL) + 1L;
         node.positionFp = offset + 1L;
@@ -181,13 +183,14 @@ class TrieReader {
     }
   }
 
+  /** Overwrite (and return) the incoming Node child, or null if the targetLabel was not found. */
   Node lookupChild(int targetLabel, Node parent, Node child) throws IOException {
     final int sign = parent.sign;
-    if (sign == Trie.SIGN_NO_CHILDREN) {
+    if (sign == TrieBuilder.SIGN_NO_CHILDREN) {
       return null;
     }
 
-    if (sign != Trie.SIGN_MULTI_CHILDREN) {
+    if (sign != TrieBuilder.SIGN_MULTI_CHILDREN) {
       // single child
       if (targetLabel != parent.minChildrenLabel) {
         return null;
@@ -206,7 +209,7 @@ class TrieReader {
       position = 0;
     } else if (targetLabel > minLabel) {
       position =
-          Trie.PositionStrategy.byCode(parent.positionStrategy)
+          TrieBuilder.PositionStrategy.byCode(parent.positionStrategy)
               .lookup(targetLabel, access, positionBytesStartFp, positionBytes, minLabel);
     }
 

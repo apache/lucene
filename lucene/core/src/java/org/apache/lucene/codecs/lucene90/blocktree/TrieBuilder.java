@@ -30,25 +30,37 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 
 /** TODO make it a more memory efficient structure */
-class Trie {
+class TrieBuilder {
 
   static final int SIGN_NO_CHILDREN = 0x00;
-  static final int SIGN_SINGLE_CHILDREN_WITH_OUTPUT = 0x01;
-  static final int SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT = 0x02;
+  static final int SIGN_SINGLE_CHILD_WITH_OUTPUT = 0x01;
+  static final int SIGN_SINGLE_CHILD_WITHOUT_OUTPUT = 0x02;
   static final int SIGN_MULTI_CHILDREN = 0x03;
 
+  static final int LEAF_NODE_HAS_TERMS = 1 << 5;
+  static final int LEAF_NODE_HAS_FLOOR = 1 << 6;
+  static final long NON_LEAF_NODE_HAS_TERMS = 1L << 1;
+  static final long NON_LEAF_NODE_HAS_FLOOR = 1L << 0;
+
+  // describes the on-disk terms block which a trie node points to.
+  // floorData is non-null when a large block of terms sharing a single trie prefix is split into
+  // multiple on-disk blocks.
+  // hasTerms is false if this on-disk block consists entirely of pointers to child blocks.
   record Output(long fp, boolean hasTerms, BytesRef floorData) {}
 
   private enum Status {
-    UNSAVED,
+    BUILDING,
     SAVED,
     DESTROYED
   }
 
   private static class Node {
+    // the utf8 digit that leads to this Node, and 0 for root node
     private final int label;
+    // children listed in order by their utf8 label
     private final LinkedList<Node> children;
     private Output output;
+    // Used during saving, -1 means the node has not been saved.
     private long fp = -1;
 
     Node(int label, Output output, LinkedList<Node> children) {
@@ -58,10 +70,14 @@ class Trie {
     }
   }
 
-  private Status status = Status.UNSAVED;
+  private Status status = Status.BUILDING;
   final Node root = new Node(0, null, new LinkedList<>());
 
-  Trie(BytesRef k, Output v) {
+  static TrieBuilder bytesRefToTrie(BytesRef k, Output v) {
+    return new TrieBuilder(k, v);
+  }
+
+  private TrieBuilder(BytesRef k, Output v) {
     if (k.length == 0) {
       root.output = v;
       return;
@@ -76,15 +92,21 @@ class Trie {
     }
   }
 
-  void putAll(Trie trie) {
-    if (status != Status.UNSAVED || trie.status != Status.UNSAVED) {
+  /**
+   * Put all (K, V) pair from the given trie into this one. Output of current trie will be
+   * overwritten if the given trie has the same K.
+   *
+   * <p>Note: the given trie will be destroyed after absorbing.
+   */
+  void absorb(TrieBuilder trieBuilder) {
+    if (status != Status.BUILDING || trieBuilder.status != Status.BUILDING) {
       throw new IllegalStateException("tries should be unsaved");
     }
-    trie.status = Status.DESTROYED;
-    putAll(this.root, trie.root);
+    absorb(this.root, trieBuilder.root);
+    trieBuilder.status = Status.DESTROYED;
   }
 
-  private static void putAll(Node n, Node add) {
+  private static void absorb(Node n, Node add) {
     assert n.label == add.label;
     if (add.output != null) {
       n.output = add.output;
@@ -96,7 +118,8 @@ class Trie {
       while (iter.hasNext()) {
         Node nChild = iter.next();
         if (nChild.label == addChild.label) {
-          putAll(nChild, addChild);
+          // NO COMMIT: avoid this recursive impl.
+          absorb(nChild, addChild);
           continue outer;
         }
         if (nChild.label > addChild.label) {
@@ -113,39 +136,42 @@ class Trie {
     return root.output;
   }
 
-  void forEach(BiConsumer<BytesRef, Output> consumer) {
+  void visit(BiConsumer<BytesRef, Output> consumer) {
     if (root.output != null) {
       consumer.accept(new BytesRef(), root.output);
     }
-    intersect(root.children, new BytesRefBuilder(), consumer);
+    visit(root.children, new BytesRefBuilder(), consumer);
   }
 
-  private void intersect(
-      List<Node> nodes, BytesRefBuilder key, BiConsumer<BytesRef, Output> consumer) {
+  private void visit(List<Node> nodes, BytesRefBuilder key, BiConsumer<BytesRef, Output> consumer) {
     for (Node node : nodes) {
       key.append((byte) node.label);
-      if (node.output != null) consumer.accept(key.toBytesRef(), node.output);
-      intersect(node.children, key, consumer);
+      if (node.output != null) {
+        consumer.accept(key.toBytesRef(), node.output);
+      }
+      visit(node.children, key, consumer);
       key.setLength(key.length() - 1);
     }
   }
 
   void save(DataOutput meta, IndexOutput index) throws IOException {
-    if (status != Status.UNSAVED) {
+    if (status != Status.BUILDING) {
       throw new IllegalStateException("only unsaved trie can be saved");
     }
-    status = Status.SAVED;
     meta.writeVLong(index.getFilePointer());
     saveNodes(index);
     meta.writeVLong(root.fp);
     index.writeLong(0L); // additional 8 bytes for over-reading
     meta.writeVLong(index.getFilePointer());
+    status = Status.SAVED;
   }
 
   void saveNodes(IndexOutput index) throws IOException {
     final long startFP = index.getFilePointer();
     Deque<Node> stack = new ArrayDeque<>();
     stack.push(root);
+
+    // Visit and save nodes of this trie in a post-order traversal.
 
     while (stack.isEmpty() == false) {
       Node node = stack.peek();
@@ -163,12 +189,12 @@ class Trie {
         // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
 
         Output output = node.output;
-        int outputFpBytes = bytesRequired(output.fp);
+        int outputFpBytes = bytesRequiredVLong(output.fp);
         int header =
             SIGN_NO_CHILDREN
                 | ((outputFpBytes - 1) << 2)
-                | ((output.hasTerms ? 1 : 0) << 5)
-                | ((output.floorData != null ? 1 : 0) << 6);
+                | (output.hasTerms ? LEAF_NODE_HAS_TERMS : 0)
+                | (output.floorData != null ? LEAF_NODE_HAS_FLOOR : 0);
         index.writeByte(((byte) header));
         writeLongNBytes(output.fp, outputFpBytes, index);
         if (output.floorData != null) {
@@ -178,17 +204,20 @@ class Trie {
         continue;
       }
 
-      Node unCompiled = null;
+      Node unSaved = null;
+      // NO COMMIT: this makes it a O(n^2) operation, we should avoid it.
       for (Node child : node.children) {
         if (child.fp == -1) {
-          unCompiled = child;
+          unSaved = child;
           break;
         }
       }
-      if (unCompiled != null) {
-        stack.push(unCompiled);
+      if (unSaved != null) {
+        stack.push(unSaved);
         continue;
       }
+
+      // All children have been written, now it's time to write the parent!
 
       node.fp = index.getFilePointer() - startFP;
       stack.pop();
@@ -200,17 +229,17 @@ class Trie {
         // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
         long childDeltaFp = node.fp - node.children.getFirst().fp;
+        // parent node is always written after children
         assert childDeltaFp > 0;
-        int childFpBytes = bytesRequired(childDeltaFp);
-        int encodedOutputFpBytes = node.output == null ? 0 : bytesRequired(node.output.fp << 2);
+        int childFpBytes = bytesRequiredVLong(childDeltaFp);
+        int encodedOutputFpBytes =
+            node.output == null ? 0 : bytesRequiredVLong(node.output.fp << 2);
 
         // TODO if we have only one child and no output, we can store child labels in this node.
         // E.g. for a single term trie [foobar], we can save only two nodes [fooba] and [r]
 
         int sign =
-            node.output != null
-                ? SIGN_SINGLE_CHILDREN_WITH_OUTPUT
-                : SIGN_SINGLE_CHILDREN_WITHOUT_OUTPUT;
+            node.output != null ? SIGN_SINGLE_CHILD_WITH_OUTPUT : SIGN_SINGLE_CHILD_WITHOUT_OUTPUT;
         int header = sign | ((childFpBytes - 1) << 2) | ((encodedOutputFpBytes - 1) << 5);
         index.writeByte((byte) header);
         index.writeByte((byte) node.children.getFirst().label);
@@ -218,10 +247,8 @@ class Trie {
 
         if (node.output != null) {
           Output output = node.output;
-          long encodedFp =
-              (output.floorData != null ? 0x01L : 0)
-                  | (output.hasTerms ? 0x02L : 0)
-                  | (output.fp << 2);
+          long encodedFp = encodeFP(output);
+          ;
           writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
           if (output.floorData != null) {
             index.writeBytes(
@@ -257,8 +284,9 @@ class Trie {
 
         long maxChildDeltaFp = node.fp - node.children.getFirst().fp;
         assert maxChildDeltaFp > 0;
-        int childrenFpBytes = bytesRequired(maxChildDeltaFp);
-        int encodedOutputFpBytes = node.output == null ? 1 : bytesRequired(node.output.fp << 2);
+        int childrenFpBytes = bytesRequiredVLong(maxChildDeltaFp);
+        int encodedOutputFpBytes =
+            node.output == null ? 1 : bytesRequiredVLong(node.output.fp << 2);
         int header =
             SIGN_MULTI_CHILDREN
                 | ((childrenFpBytes - 1) << 2)
@@ -272,10 +300,7 @@ class Trie {
 
         if (node.output != null) {
           Output output = node.output;
-          long encodedFp =
-              (output.floorData != null ? 0x01L : 0)
-                  | (output.hasTerms ? 0x02L : 0)
-                  | (output.fp << 2);
+          long encodedFp = encodeFP(output);
           writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
           if (output.floorData != null) {
             index.writeByte((byte) (childrenNum - 1));
@@ -304,7 +329,14 @@ class Trie {
     }
   }
 
-  private static int bytesRequired(long v) {
+  private long encodeFP(Output output) {
+    assert output.fp < 1L << 62;
+    return (output.floorData != null ? NON_LEAF_NODE_HAS_FLOOR : 0)
+        | (output.hasTerms ? NON_LEAF_NODE_HAS_TERMS : 0)
+        | (output.fp << 2);
+  }
+
+  private static int bytesRequiredVLong(long v) {
     return Long.BYTES - (Long.numberOfLeadingZeros(v | 1) >>> 3);
   }
 
@@ -316,6 +348,11 @@ class Trie {
   }
 
   enum PositionStrategy {
+
+    /**
+     * Store children labels in a bitset, this is likely the most efficient storage as we can
+     * compute position with bitCount instruction, so we give it the highest priority.
+     */
     BITS(2) {
       @Override
       int positionBytes(int minLabel, int maxLabel, int labelCnt) {
@@ -371,6 +408,12 @@ class Trie {
         return pos;
       }
     },
+
+    /**
+     * Store labels in an array and lookup with binary search.
+     *
+     * <p>TODO: Can we use VectorAPI to speed up the lookup? we can check 64 labels once on AVX512!
+     */
     ARRAY(1) {
       @Override
       int positionBytes(int minLabel, int maxLabel, int labelCnt) {
@@ -406,6 +449,12 @@ class Trie {
       }
     },
 
+    /**
+     * Store labels that not existing within the range. E.g. store 10(max label) and 3, 5(absent
+     * label) for [1, 2, 4, 6, 7, 8, 9, 10]
+     *
+     * <p>TODO: Can we use VectorAPI to speed up the lookup? we can check 64 labels once on AVX512!
+     */
     REVERSE_ARRAY(0) {
 
       @Override

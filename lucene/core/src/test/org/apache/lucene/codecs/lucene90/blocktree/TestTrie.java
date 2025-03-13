@@ -30,60 +30,67 @@ import org.junit.Assert;
 
 public class TestTrie extends LuceneTestCase {
 
-  public void testTrie() {
-    Map<BytesRef, Trie.Output> actual = new TreeMap<>();
-    Map<BytesRef, Trie.Output> expected = new TreeMap<>();
+  public void testTrieBuilder() {
+    Map<BytesRef, TrieBuilder.Output> actual = new TreeMap<>();
+    Map<BytesRef, TrieBuilder.Output> expected = new TreeMap<>();
 
-    expected.put(new BytesRef(""), new Trie.Output(0L, false, new BytesRef("emptyOutput")));
-    Trie trie = new Trie(new BytesRef(""), new Trie.Output(0L, false, new BytesRef("emptyOutput")));
+    expected.put(new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
+    TrieBuilder trieBuilder =
+        TrieBuilder.bytesRefToTrie(
+            new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
 
     int n = random().nextInt(10000);
     for (int i = 0; i < n; i++) {
       BytesRef key = new BytesRef(randomBytes());
-      Trie.Output value =
-          new Trie.Output(
+      TrieBuilder.Output value =
+          new TrieBuilder.Output(
               random().nextLong(1L << 62), random().nextBoolean(), new BytesRef(randomBytes()));
       expected.put(key, value);
-      Trie add = new Trie(key, value);
-      trie.putAll(add);
-      Assert.assertThrows(IllegalStateException.class, () -> trie.putAll(add));
-      Assert.assertThrows(IllegalStateException.class, () -> add.putAll(trie));
+      TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);
+      trieBuilder.absorb(add);
+      Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
+      Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
     }
-    trie.forEach(actual::put);
+    trieBuilder.visit(actual::put);
     assertEquals(expected, actual);
   }
 
   public void testTrieLookup() throws IOException {
     for (int iter = 1; iter <= 15; iter++) {
-      Map<BytesRef, Trie.Output> expected = new TreeMap<>();
+      Map<BytesRef, TrieBuilder.Output> expected = new TreeMap<>();
 
-      expected.put(new BytesRef(""), new Trie.Output(0L, false, new BytesRef("emptyOutput")));
-      Trie trie =
-          new Trie(new BytesRef(""), new Trie.Output(0L, false, new BytesRef("emptyOutput")));
+      expected.put(
+          new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
+      TrieBuilder trieBuilder =
+          TrieBuilder.bytesRefToTrie(
+              new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
 
       int n = 1 << iter;
       for (int i = 0; i < n; i++) {
         BytesRef key = new BytesRef(randomBytes());
-        Trie.Output value =
-            new Trie.Output(
+        TrieBuilder.Output value =
+            new TrieBuilder.Output(
                 random().nextLong(1L << 62),
                 random().nextBoolean(),
                 random().nextBoolean() ? null : new BytesRef(randomBytes()));
         expected.put(key, value);
-        Trie add = new Trie(key, value);
-        trie.putAll(add);
-        Assert.assertThrows(IllegalStateException.class, () -> trie.putAll(add));
-        Assert.assertThrows(IllegalStateException.class, () -> add.putAll(trie));
+        TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);
+        trieBuilder.absorb(add);
+        Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
+        Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
       }
 
       try (Directory directory = newDirectory()) {
         try (IndexOutput index = directory.createOutput("index", IOContext.DEFAULT);
             IndexOutput meta = directory.createOutput("meta", IOContext.DEFAULT)) {
-          trie.save(meta, index);
-          assertThrows(IllegalStateException.class, () -> trie.save(meta, index));
+          trieBuilder.save(meta, index);
+          assertThrows(IllegalStateException.class, () -> trieBuilder.save(meta, index));
           assertThrows(
               IllegalStateException.class,
-              () -> trie.putAll(new Trie(new BytesRef(), new Trie.Output(0L, true, null))));
+              () ->
+                  trieBuilder.absorb(
+                      TrieBuilder.bytesRefToTrie(
+                          new BytesRef(), new TrieBuilder.Output(0L, true, null))));
         }
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
@@ -93,7 +100,7 @@ public class TestTrie extends LuceneTestCase {
           long end = metaIn.readVLong();
           TrieReader reader = new TrieReader(indexIn.slice("outputs", start, end - start), rootFP);
 
-          for (Map.Entry<BytesRef, Trie.Output> entry : expected.entrySet()) {
+          for (Map.Entry<BytesRef, TrieBuilder.Output> entry : expected.entrySet()) {
             assertResult(reader, entry.getKey(), entry.getValue());
           }
 
@@ -142,7 +149,7 @@ public class TestTrie extends LuceneTestCase {
     return bytes;
   }
 
-  private static void assertResult(TrieReader reader, BytesRef term, Trie.Output expected)
+  private static void assertResult(TrieReader reader, BytesRef term, TrieBuilder.Output expected)
       throws IOException {
     TrieReader.Node parent = reader.root;
     TrieReader.Node child = new TrieReader.Node();

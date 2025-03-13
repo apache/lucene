@@ -418,8 +418,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
   private final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
     public final long fp;
-    public Trie index;
-    public List<Trie> subIndices;
+    public TrieBuilder index;
+    public List<TrieBuilder> subIndices;
     public final boolean hasTerms;
     public final boolean isFloor;
     public final int floorLeadByte;
@@ -430,7 +430,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         boolean hasTerms,
         boolean isFloor,
         int floorLeadByte,
-        List<Trie> subIndices) {
+        List<TrieBuilder> subIndices) {
       super(false);
       this.prefix = prefix;
       this.fp = fp;
@@ -474,20 +474,21 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         floorData = new BytesRef(scratchBytes.toArrayCopy());
       }
 
-      Trie trie = new Trie(prefix, new Trie.Output(fp, hasTerms, floorData));
+      TrieBuilder trieBuilder =
+          TrieBuilder.bytesRefToTrie(prefix, new TrieBuilder.Output(fp, hasTerms, floorData));
       scratchBytes.reset();
 
       // Copy over index for all sub-blocks
       for (PendingBlock block : blocks) {
         if (block.subIndices != null) {
-          for (Trie subIndex : block.subIndices) {
-            trie.putAll(subIndex);
+          for (TrieBuilder subIndex : block.subIndices) {
+            trieBuilder.absorb(subIndex);
           }
           block.subIndices = null;
         }
       }
 
-      index = trie;
+      index = trieBuilder;
 
       assert subIndices == null;
 
@@ -755,7 +756,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       // System.out.println("  isLeaf=" + isLeafBlock);
 
-      final List<Trie> subIndices;
+      final List<TrieBuilder> subIndices;
 
       boolean absolute = true;
 
