@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -15,8 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Simple script that queries GitHub for all open PRs, then finds the ones without
+"""Simple script that queries GitHub for all open PRs, then finds the ones without
 issue number in title, and the ones where the linked JIRA is already closed
 """
 
@@ -27,12 +25,15 @@ sys.path.append(os.path.dirname(__file__))
 import argparse
 import json
 import re
-from typing import cast
+from typing import TYPE_CHECKING, Any, cast
 
 from github import Github
 from jinja2 import BaseLoader, Environment
 from jira import JIRA, Issue
 from jira.client import ResultList
+
+if TYPE_CHECKING:
+  from github.PullRequest import PullRequest
 
 
 def read_config():
@@ -44,13 +45,13 @@ def read_config():
   return newconf
 
 
-def out(text):
+def out(text: str):
   global conf
   if not (conf.json or conf.html):
     print(text)
 
 
-def make_html(dict):
+def make_html(dict: dict[Any, Any]):
   global conf
   template = Environment(loader=BaseLoader()).from_string("""
   <h1>Lucene Github PR report</h1>
@@ -83,7 +84,7 @@ def main():
   else:
     gh = Github()
   jira = JIRA("https://issues.apache.org/jira")  # this ctor has broken types in jira library. # pyright: ignore[reportArgumentType]
-  result = {}
+  result: dict[str, Any] = {}
   repo = gh.get_repo("apache/lucene")
   open_prs = repo.get_pulls(state="open")
   out("Lucene Github PR report")
@@ -93,7 +94,7 @@ def main():
 
   lack_jira = list(filter(lambda x: not re.match(r".*\b(LUCENE)-\d{3,6}\b", x.title), open_prs))
   result["no_jira_count"] = len(lack_jira)
-  lack_jira_list = []
+  lack_jira_list: list[dict[str, Any]] = []
   for pr in lack_jira:
     lack_jira_list.append({"title": pr.title, "number": pr.number, "user": pr.user.login, "created": pr.created_at.strftime("%Y-%m-%d")})
   result["no_jira"] = lack_jira_list
@@ -104,8 +105,8 @@ def main():
   out("\nOpen PRs with a resolved JIRA")
   has_jira = list(filter(lambda x: re.match(r".*\b(LUCENE)-\d{3,6}\b", x.title), open_prs))
 
-  issue_ids = []
-  issue_to_pr = {}
+  issue_ids: list[str] = []
+  issue_to_pr: dict[str, PullRequest] = {}
   for pr in has_jira:
     match = re.match(r".*\b((LUCENE)-\d{3,6})\b", pr.title)
     assert match
@@ -114,7 +115,7 @@ def main():
     issue_to_pr[jira_issue_str] = pr
 
   resolved_jiras = cast(ResultList[Issue], jira.search_issues(jql_str="key in (%s) AND status in ('Closed', 'Resolved')" % ", ".join(issue_ids)))
-  closed_jiras = []
+  closed_jiras: list[dict[str, Any]] = []
   for issue in resolved_jiras:
     pr_title = issue_to_pr[issue.key].title
     pr_number = issue_to_pr[issue.key].number

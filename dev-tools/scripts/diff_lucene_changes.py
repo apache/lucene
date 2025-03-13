@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -31,10 +30,8 @@ to users and avoid future annoying conflicts on backport.
 
 # e.g. python3 -u diff_lucene_changes.py branch_9_9 main 9.9.0
 
-#
 
-
-def get_changes_url(branch_name):
+def get_changes_url(branch_name: str):
   if os.path.isdir(branch_name):
     url = f"file://{branch_name}/lucene/CHANGES.txt"
   else:
@@ -43,7 +40,7 @@ def get_changes_url(branch_name):
   return url
 
 
-def extract_release_section(changes_txt, release_name):
+def extract_release_section(changes_txt: bytes, release_name: str):
   match = re.search(f"=======+ Lucene {re.escape(release_name)} =======+(.*?)=======+ Lucene .*? =======+$", changes_txt.decode("utf-8"), re.MULTILINE | re.DOTALL)
   assert match
   return match.group(1).encode("utf-8")
