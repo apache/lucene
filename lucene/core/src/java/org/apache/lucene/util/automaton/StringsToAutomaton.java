@@ -195,7 +195,10 @@ final class StringsToAutomaton {
 
   /** Internal recursive traversal for conversion. */
   private static int convert(
-      Automaton.Builder a, State s, IdentityHashMap<State, Integer> visited) {
+      Automaton.Builder a,
+      State s,
+      IdentityHashMap<State, Integer> visited,
+      boolean caseInsensitive) {
 
     Integer converted = visited.get(s);
     if (converted != null) {
@@ -209,7 +212,25 @@ final class StringsToAutomaton {
     int i = 0;
     int[] labels = s.labels;
     for (StringsToAutomaton.State target : s.states) {
-      a.addTransition(converted, convert(a, target, visited), labels[i++]);
+      int label = labels[i++];
+      int dest = convert(a, target, visited, caseInsensitive);
+      a.addTransition(converted, dest, label);
+      if (caseInsensitive) {
+        int[] alternatives = CaseFolding.lookupAlternates(label);
+        if (alternatives != null) {
+          for (int alt : alternatives) {
+            a.addTransition(converted, dest, alt);
+          }
+        } else {
+          int altCase =
+              Character.isLowerCase(label)
+                  ? Character.toUpperCase(label)
+                  : Character.toLowerCase(label);
+          if (altCase != label) {
+            a.addTransition(converted, dest, altCase);
+          }
+        }
+      }
     }
 
     return converted;
@@ -219,7 +240,7 @@ final class StringsToAutomaton {
    * Called after adding all terms. Performs final minimization and converts to a standard {@link
    * Automaton} instance.
    */
-  private Automaton completeAndConvert() {
+  private Automaton completeAndConvert(boolean caseInsensitive) {
     // Final minimization:
     if (this.stateRegistry == null) throw new IllegalStateException();
     if (root.hasChildren()) replaceOrRegister(root);
@@ -227,7 +248,7 @@ final class StringsToAutomaton {
 
     // Convert:
     Automaton.Builder a = new Automaton.Builder();
-    convert(a, root, new IdentityHashMap<>());
+    convert(a, root, new IdentityHashMap<>(), caseInsensitive);
     return a.finish();
   }
 
@@ -237,14 +258,17 @@ final class StringsToAutomaton {
    * UTF-8 codepoints as transition labels or binary (compiled) transition labels based on {@code
    * asBinary}.
    */
-  static Automaton build(Iterable<BytesRef> input, boolean asBinary) {
+  static Automaton build(Iterable<BytesRef> input, boolean asBinary, boolean caseInsensitive) {
+    if (asBinary && caseInsensitive) {
+      throw new IllegalArgumentException("Cannot use caseInsensitive on binary automaton");
+    }
     final StringsToAutomaton builder = new StringsToAutomaton();
 
     for (BytesRef b : input) {
       builder.add(b, asBinary);
     }
 
-    return builder.completeAndConvert();
+    return builder.completeAndConvert(caseInsensitive);
   }
 
   /**
@@ -253,14 +277,18 @@ final class StringsToAutomaton {
    * UTF-8 codepoints as transition labels or binary (compiled) transition labels based on {@code
    * asBinary}.
    */
-  static Automaton build(BytesRefIterator input, boolean asBinary) throws IOException {
+  static Automaton build(BytesRefIterator input, boolean asBinary, boolean caseInsensitive)
+      throws IOException {
+    if (asBinary && caseInsensitive) {
+      throw new IllegalArgumentException("Cannot use caseInsensitive on binary automaton");
+    }
     final StringsToAutomaton builder = new StringsToAutomaton();
 
     for (BytesRef b = input.next(); b != null; b = input.next()) {
       builder.add(b, asBinary);
     }
 
-    return builder.completeAndConvert();
+    return builder.completeAndConvert(caseInsensitive);
   }
 
   private void add(BytesRef current, boolean asBinary) {
