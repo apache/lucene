@@ -34,10 +34,13 @@ import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -180,6 +183,21 @@ public abstract class PointInSetQuery extends Query implements Accountable {
 
             @Override
             public Scorer get(long leadCost) throws IOException {
+              if (values.getDocCount() == reader.maxDoc()
+                  && values.getDocCount() == values.size()
+                  && cost() > reader.maxDoc() / 2) {
+                // If all docs have exactly one value and the cost is greater
+                // than half the leaf size then maybe we can make things faster
+                // by computing the set of documents that do NOT match the range
+                final FixedBitSet result = new FixedBitSet(reader.maxDoc());
+                result.set(0, reader.maxDoc());
+                long[] cost = new long[] {reader.maxDoc()};
+                values.intersect(
+                    new InverseMergePointVisitor(sortedPackedPoints.iterator(), result, cost));
+                final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
+                return new ConstantScoreScorer(score(), scoreMode, iterator);
+              }
+
               DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
               values.intersect(new MergePointVisitor(sortedPackedPoints.iterator(), result));
               DocIdSetIterator iterator = result.build().iterator();
@@ -303,7 +321,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
       }
     }
 
-    private boolean matches(byte[] packedValue) {
+    public boolean matches(byte[] packedValue) {
       while (nextQueryPoint != null) {
         int cmp = comparator.compare(nextQueryPoint.bytes, nextQueryPoint.offset, packedValue, 0);
         if (cmp == 0) {
@@ -348,6 +366,74 @@ public abstract class PointInSetQuery extends Query implements Accountable {
 
       // We exhausted all points in the query:
       return Relation.CELL_OUTSIDE_QUERY;
+    }
+  }
+
+  /**
+   * Essentially does a merge sort, only collecting hits when the indexed point and query point are
+   * the same. This is an optimization, used in the 1D and reverse collection case.
+   */
+  private class InverseMergePointVisitor extends MergePointVisitor {
+
+    private final FixedBitSet result;
+    private final long[] cost;
+
+    public InverseMergePointVisitor(TermIterator iterator, FixedBitSet result, long[] cost)
+        throws IOException {
+      super(iterator, null);
+      this.result = result;
+      this.cost = cost;
+    }
+
+    @Override
+    public void grow(int count) {}
+
+    @Override
+    public void visit(int docID) {
+      result.clear(docID);
+      cost[0]--;
+    }
+
+    @Override
+    public void visit(DocIdSetIterator iterator) throws IOException {
+      result.andNot(iterator);
+      cost[0] = Math.max(0, cost[0] - iterator.cost());
+    }
+
+    @Override
+    public void visit(IntsRef ref) {
+      for (int i = ref.offset; i < ref.offset + ref.length; i++) {
+        result.clear(ref.ints[i]);
+      }
+      cost[0] = Math.max(0, cost[0] - ref.length);
+    }
+
+    @Override
+    public void visit(int docID, byte[] packedValue) {
+      if (matches(packedValue) == false) {
+        visit(docID);
+      }
+    }
+
+    @Override
+    public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
+      if (matches(packedValue) == false) {
+        visit(iterator);
+      }
+    }
+
+    @Override
+    public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+      Relation relation = super.compare(minPackedValue, maxPackedValue);
+      return switch (relation) {
+        case CELL_INSIDE_QUERY ->
+            // all points match, skip this subtree
+            Relation.CELL_OUTSIDE_QUERY;
+        case CELL_OUTSIDE_QUERY ->
+            // none of the points match, clear all documents
+            Relation.CELL_INSIDE_QUERY;
+        default -> relation;
+      };
     }
   }
 
