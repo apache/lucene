@@ -97,6 +97,11 @@ public abstract class DocIdSetIterator {
           advance(upTo);
         }
       }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        return maxDoc;
+      }
     };
   }
 
@@ -150,6 +155,11 @@ public abstract class DocIdSetIterator {
           bitSet.set(doc - offset, upTo - offset);
           advance(upTo);
         }
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        return maxDoc;
       }
     };
   }
@@ -257,5 +267,25 @@ public abstract class DocIdSetIterator {
     for (int doc = docID(); doc < upTo; doc = nextDoc()) {
       bitSet.set(doc - offset);
     }
+  }
+
+  /**
+   * Returns the end of the run of consecutive doc IDs that match this {@link DocIdSetIterator} and
+   * that contains the current {@link #docID()}, that is: one plus the last doc ID of the run.
+   *
+   * <ol>
+   *   <li>The returned doc is greater than {@link #docID()}.
+   *   <li>All docs in range {@code [docID(), docIDRunEnd())} match this iterator.
+   *   <li>The current position of this iterator is not affected by calling {@link #docIDRunEnd()}.
+   * </ol>
+   *
+   * <p><b>Note</b>: It is illegal to call this method when the iterator is exhausted or not
+   * positioned.
+   *
+   * <p>The default implementation assumes runs of a single doc ID and returns {@link #docID()}) +
+   * 1.
+   */
+  public int docIDRunEnd() throws IOException {
+    return docID() + 1;
   }
 }
