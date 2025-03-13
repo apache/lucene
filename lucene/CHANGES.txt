@@ -93,9 +93,10 @@ New Features
   histogram of the distribution of the values of a field, for documents
   matching a given query. (Adrien Grand)
 
-* GITHUB#14278: Added `reuseChars` option to DictionaryCompoundWordTokenFilter, for use with
-  `longestMatch = true`. The value can be set to false to reduce the number of extracted subwords. For example,
-  if the word "schwein" is extracted, the sub-word "wein" is not extracted anymore. (Renato Haeberli)
+* GITHUB#14278: Added `onlyLongestMatchNoSubwords` option to DictionaryCompoundWordTokenFilter.
+  This replaces the `onlyLongestMatch` option, and actually only extracts longest matches. For example,
+  if the word "schwein" is extracted, the sub-word "wein" is not extracted anymore.
+  Deprecate `onlyLongestMatch`. (Renato Haeberli)
 
 * GITHUB#14300: Add support JDK 24 to the Panama Vectorization Provider. (Chris Hegarty)
 
