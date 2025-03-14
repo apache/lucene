@@ -425,15 +425,17 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     @Override
     public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
       Relation relation = super.compare(minPackedValue, maxPackedValue);
-      return switch (relation) {
-        case CELL_INSIDE_QUERY ->
-            // all points match, skip this subtree
-            Relation.CELL_OUTSIDE_QUERY;
-        case CELL_OUTSIDE_QUERY ->
-            // none of the points match, clear all documents
-            Relation.CELL_INSIDE_QUERY;
-        default -> relation;
-      };
+      switch (relation) {
+        case CELL_INSIDE_QUERY:
+          // all points match, skip this subtree
+          return Relation.CELL_OUTSIDE_QUERY;
+        case CELL_OUTSIDE_QUERY:
+          // none of the points match, clear all documents
+          return Relation.CELL_INSIDE_QUERY;
+        case CELL_CROSSES_QUERY:
+        default:
+          return relation;
+      }
     }
   }
 
