@@ -223,18 +223,18 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
             otherDoc = other.advance(doc);
           }
           if (doc != otherDoc) {
-            int clearUpTo = Math.min(WINDOW_SIZE, otherDoc - windowBase);
-            windowMatches.clear(windowMatch, clearUpTo);
-            windowMatch = advance(windowMatches, clearUpTo);
+            windowMatch = advance(windowMatches, otherDoc - windowBase);
             continue advanceHead;
           }
         }
+        collector.collect(doc);
         windowMatch = advance(windowMatches, windowMatch + 1);
       }
+    } else {
+      docIdStreamView.windowBase = windowBase;
+      collector.collect(docIdStreamView);
     }
 
-    docIdStreamView.windowBase = windowBase;
-    collector.collect(docIdStreamView);
     windowMatches.clear();
   }
 
