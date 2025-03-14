@@ -19,6 +19,7 @@
 module org.apache.lucene.analysis.common {
   requires java.xml;
   requires org.apache.lucene.core;
+  requires java.logging;
 
   exports org.apache.lucene.analysis.ar;
   exports org.apache.lucene.analysis.bg;

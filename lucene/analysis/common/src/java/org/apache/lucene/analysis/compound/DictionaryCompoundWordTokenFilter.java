@@ -51,36 +51,6 @@ public class DictionaryCompoundWordTokenFilter extends CompoundWordTokenFilterBa
    * @param minWordSize only words longer than this get processed
    * @param minSubwordSize only subwords longer than this get to the output stream
    * @param maxSubwordSize only subwords shorter than this get to the output stream
-   * @param onlyLongestMatch deprecated, use parameter onlyLongestMatchIgnoreSubwords instead
-   * @param onlyLongestMatchIgnoreSubwords Subwords are igored, e.g. if a word contains 'schwein',
-   *     only the longer word 'schwein' will be extracted, the subword 'wein' will be ignored.
-   *     Supersede parameter onlyLongestMatch
-   */
-  @Deprecated
-  public DictionaryCompoundWordTokenFilter(
-      TokenStream input,
-      CharArraySet dictionary,
-      int minWordSize,
-      int minSubwordSize,
-      int maxSubwordSize,
-      boolean onlyLongestMatch,
-      boolean onlyLongestMatchIgnoreSubwords) {
-    super(input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
-    this.onlyLongestMatchNoSubwords = onlyLongestMatchIgnoreSubwords;
-
-    if (dictionary == null) {
-      throw new IllegalArgumentException("dictionary must not be null");
-    }
-  }
-
-  /**
-   * Creates a new {@link DictionaryCompoundWordTokenFilter}
-   *
-   * @param input the {@link org.apache.lucene.analysis.TokenStream} to process
-   * @param dictionary the word dictionary to match against.
-   * @param minWordSize only words longer than this get processed
-   * @param minSubwordSize only subwords longer than this get to the output stream
-   * @param maxSubwordSize only subwords shorter than this get to the output stream
    * @param onlyLongestMatchIgnoreSubwords Subwords are igored, e.g. if a word contains 'schwein',
    *     only the longer word 'schwein' will be extracted, the subword 'wein' will be ignored.
    *     Supersede parameter onlyLongestMatch
