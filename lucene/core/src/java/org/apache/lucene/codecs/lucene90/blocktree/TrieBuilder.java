@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene90.blocktree;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -60,8 +61,12 @@ class TrieBuilder {
     // children listed in order by their utf8 label
     private final LinkedList<Node> children;
     private Output output;
-    // Used during saving, -1 means the node has not been saved.
+
+    // Vars used during saving:
+
+    // -1 means the node has not been saved.
     private long fp = -1;
+    private Iterator<Node> childrenIterator;
 
     Node(int label, Output output, LinkedList<Node> children) {
       this.label = label;
@@ -102,11 +107,16 @@ class TrieBuilder {
     if (status != Status.BUILDING || trieBuilder.status != Status.BUILDING) {
       throw new IllegalStateException("tries should be unsaved");
     }
-    absorb(this.root, trieBuilder.root);
+    // Use a simple stack to avoid recursion.
+    Deque<Runnable> stack = new ArrayDeque<>();
+    stack.add(() -> absorb(this.root, trieBuilder.root, stack));
+    while (!stack.isEmpty()) {
+      stack.pop().run();
+    }
     trieBuilder.status = Status.DESTROYED;
   }
 
-  private static void absorb(Node n, Node add) {
+  private static void absorb(Node n, Node add, Deque<Runnable> stack) {
     assert n.label == add.label;
     if (add.output != null) {
       n.output = add.output;
@@ -118,8 +128,7 @@ class TrieBuilder {
       while (iter.hasNext()) {
         Node nChild = iter.next();
         if (nChild.label == addChild.label) {
-          // NO COMMIT: avoid this recursive impl.
-          absorb(nChild, addChild);
+          stack.push(() -> absorb(nChild, addChild, stack));
           continue outer;
         }
         if (nChild.label > addChild.label) {
@@ -204,16 +213,11 @@ class TrieBuilder {
         continue;
       }
 
-      Node unSaved = null;
-      // NO COMMIT: this makes it a O(n^2) operation, we should avoid it.
-      for (Node child : node.children) {
-        if (child.fp == -1) {
-          unSaved = child;
-          break;
-        }
+      if (node.childrenIterator == null) {
+        node.childrenIterator = node.children.iterator();
       }
-      if (unSaved != null) {
-        stack.push(unSaved);
+      if (node.childrenIterator.hasNext()) {
+        stack.push(node.childrenIterator.next());
         continue;
       }
 
