@@ -43,10 +43,15 @@ class TrieBuilder {
   static final long NON_LEAF_NODE_HAS_TERMS = 1L << 1;
   static final long NON_LEAF_NODE_HAS_FLOOR = 1L << 0;
 
-  // describes the on-disk terms block which a trie node points to.
-  // floorData is non-null when a large block of terms sharing a single trie prefix is split into
-  // multiple on-disk blocks.
-  // hasTerms is false if this on-disk block consists entirely of pointers to child blocks.
+  /**
+   * The output describing the term block the prefix point to.
+   *
+   * @param fp describes the on-disk terms block which a trie node points to.
+   * @param hasTerms A boolean which will be false if this on-disk block consists entirely of
+   *     pointers to child blocks.
+   * @param floorData A {@link BytesRef} which will be non-null when a large block of terms sharing
+   *     a single trie prefix is split into multiple on-disk blocks.
+   */
   record Output(long fp, boolean hasTerms, BytesRef floorData) {}
 
   private enum Status {
@@ -56,16 +61,18 @@ class TrieBuilder {
   }
 
   private static class Node {
-    // the utf8 digit that leads to this Node, and 0 for root node
+    // The utf8 digit that leads to this Node, 0 for root node
     private final int label;
-    // children listed in order by their utf8 label
+    // The children listed in order by their utf8 label
     private final LinkedList<Node> children;
+    // The output of this node.
     private Output output;
 
     // Vars used during saving:
 
-    // -1 means the node has not been saved.
+    // The file pointer point to where the node saved. -1 means the node has not been saved.
     private long fp = -1;
+    // The iterator whose next() point to the first child has not been saved.
     private Iterator<Node> childrenIterator;
 
     Node(int label, Output output, LinkedList<Node> children) {
@@ -145,7 +152,9 @@ class TrieBuilder {
     return root.output;
   }
 
+  /** Used for tests only. */
   void visit(BiConsumer<BytesRef, Output> consumer) {
+    assert status == Status.BUILDING;
     if (root.output != null) {
       consumer.accept(new BytesRef(), root.output);
     }
@@ -252,7 +261,6 @@ class TrieBuilder {
         if (node.output != null) {
           Output output = node.output;
           long encodedFp = encodeFP(output);
-          ;
           writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
           if (output.floorData != null) {
             index.writeBytes(
