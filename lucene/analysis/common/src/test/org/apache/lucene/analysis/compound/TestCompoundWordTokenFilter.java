@@ -251,14 +251,11 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            true,
-            false);
+            true);
 
     assertTokenStreamContents(
         tf,
-        new String[] {
-          "Basfiolsfodralmakaregesäll", "Bas", "fiolsfodral", "fodral", "makare", "gesäll"
-        },
+        new String[] {"Basfiolsfodralmakaregesäll", "Bas", "fiolsfodral", "makare", "gesäll"},
         new int[] {0, 0, 0, 0, 0, 0},
         new int[] {26, 26, 26, 26, 26, 26},
         new int[] {1, 0, 0, 0, 0, 0});
@@ -276,7 +273,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            false,
             false);
 
     assertTokenStreamContents(
@@ -299,7 +295,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            false,
             false);
 
     // since "d" is shorter than the minimum subword size, it should not be added to the token
@@ -326,7 +321,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            false,
             false);
 
     CharTermAttribute termAtt = tf.getAttribute(CharTermAttribute.class);
@@ -355,7 +349,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-            false,
             false);
     MockRetainAttribute retAtt = stream.addAttribute(MockRetainAttribute.class);
     stream.reset();
@@ -695,7 +688,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
     String searchTerm = "schweinefleisch";
     DictionaryCompoundWordTokenFilter tf =
-        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict, true);
+        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict);
 
     assertTokenStreamContents(tf, new String[] {searchTerm, "schwein", "fleisch"});
   }
@@ -707,13 +700,13 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     String searchTerm = "nahkampfwaffen";
 
     DictionaryCompoundWordTokenFilter tf =
-        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict, true);
+        getDictionaryCompoundWordTokenFilter(tokenizer, searchTerm, dict);
 
     assertTokenStreamContents(tf, new String[] {searchTerm, "kampf", "waffe"});
   }
 
   private DictionaryCompoundWordTokenFilter getDictionaryCompoundWordTokenFilter(
-      Tokenizer tokenizer, String searchTerm, CharArraySet dict, boolean onlyLongestMatch) {
+      Tokenizer tokenizer, String searchTerm, CharArraySet dict) {
     tokenizer.setReader(new StringReader(searchTerm));
     return new DictionaryCompoundWordTokenFilter(
         tokenizer,
@@ -721,7 +714,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
         CompoundWordTokenFilterBase.DEFAULT_MIN_WORD_SIZE,
         CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
         CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
-        onlyLongestMatch,
         true);
   }
 }
