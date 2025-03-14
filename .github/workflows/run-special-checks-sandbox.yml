@@ -1,0 +1,81 @@
+name: "Run special checks: module lucene/sandbox"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - '*'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_10x'
+
+jobs:
+  faiss-tests:
+    name: tests for the Faiss codec (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        java: [ '23' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Setup conda for dependencies
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-activate-base: false
+          auto-update-conda: true
+          activate-environment: faiss
+          channels: pytorch
+          conda-remove-defaults: true
+          miniforge-version: latest
+
+      # TODO: Not needed after https://github.com/facebookresearch/faiss/pull/4186 is released in v1.11.0, the C_API will be published to Conda
+      - name: Checkout Faiss
+        uses: actions/checkout@v4
+        with:
+          # TODO: Change to facebookresearch/faiss@main after https://github.com/facebookresearch/faiss/pull/4180 is merged
+          repository: kaivalnp/faiss
+          ref: custom_io_c
+          path: faiss
+
+      # TODO: Not needed after https://github.com/facebookresearch/faiss/pull/4186 is released in v1.11.0, the C_API will be published to Conda
+      - name: Build C_API of Faiss
+        working-directory: faiss
+        run: |
+          conda install faiss-cpu=1.10.0 cmake=3.26 make=4.2
+          echo "$CONDA/bin" >> $GITHUB_PATH
+          cmake -B build \
+              -DBUILD_TESTING=OFF \
+              -DFAISS_ENABLE_PYTHON=OFF \
+              -DBUILD_SHARED_LIBS=ON \
+              -DFAISS_ENABLE_GPU=OFF \
+              -DFAISS_ENABLE_CUVS=OFF \
+              -DFAISS_ENABLE_ROCM=OFF \
+              -DFAISS_OPT_LEVEL=generic \
+              -DFAISS_ENABLE_C_API=ON \
+              -DCMAKE_BUILD_TYPE=Release \
+              .
+          make -k -C build -j$(nproc)
+        env:
+          LD_LIBRARY_PATH: ${{ env.CONDA_PREFIX }}/lib
+
+      - name: Checkout Lucene
+        uses: actions/checkout@v4
+
+      - name: Prepare Lucene workspace
+        uses: ./.github/actions/prepare-for-build
+
+      - name: Run tests for Faiss codec
+        run: ./gradlew -p lucene/sandbox test --tests "org.apache.lucene.sandbox.codecs.faiss.*"
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/faiss/build/c_api:${{ env.CONDA_PREFIX }}/lib
+
+    defaults:
+      run:
+        shell: bash -el {0}
