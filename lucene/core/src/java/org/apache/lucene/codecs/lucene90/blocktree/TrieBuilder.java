@@ -61,6 +61,7 @@ class TrieBuilder {
   }
 
   private static class Node {
+
     // The utf8 digit that leads to this Node, 0 for root node
     private final int label;
     // The children listed in order by their utf8 label
@@ -242,8 +243,7 @@ class TrieBuilder {
         // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
         long childDeltaFp = node.fp - node.children.getFirst().fp;
-        // parent node is always written after children
-        assert childDeltaFp > 0;
+        assert childDeltaFp > 0 : "parent node is always written after children: " + childDeltaFp;
         int childFpBytes = bytesRequiredVLong(childDeltaFp);
         int encodedOutputFpBytes =
             node.output == null ? 0 : bytesRequiredVLong(node.output.fp << 2);
