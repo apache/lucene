@@ -217,7 +217,7 @@ public class MatchRegionRetriever {
     highlightDocuments(
         Arrays.stream(topDocs.scoreDocs).mapToInt(scoreDoc -> scoreDoc.doc).sorted().iterator(),
         consumer,
-        field -> Integer.MAX_VALUE);
+        _ -> Integer.MAX_VALUE);
   }
 
   /**
@@ -475,7 +475,7 @@ public class MatchRegionRetriever {
     return (field) -> {
       FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
       if (fieldInfo == null) {
-        return (mi, doc) -> {
+        return (_, _) -> {
           throw new IOException("FieldInfo is null for field: " + field);
         };
       }
@@ -500,7 +500,7 @@ public class MatchRegionRetriever {
 
         case NONE:
         default:
-          return (matchesIterator, doc) -> {
+          return (_, _) -> {
             throw new IOException(
                 "Field is indexed without positions and/or offsets: "
                     + field
@@ -557,7 +557,7 @@ public class MatchRegionRetriever {
     }
 
     private void addField(FieldInfo field, String value) {
-      fieldValues.computeIfAbsent(field.name, v -> new ArrayList<>()).add(value);
+      fieldValues.computeIfAbsent(field.name, _ -> new ArrayList<>()).add(value);
     }
 
     @Override

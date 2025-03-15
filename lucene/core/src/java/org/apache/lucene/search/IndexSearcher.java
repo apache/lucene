@@ -233,13 +233,7 @@ public class IndexSearcher {
       leafSlices =
           leafContexts.isEmpty()
               ? new LeafSlice[0]
-              : new LeafSlice[] {
-                new LeafSlice(
-                    new ArrayList<>(
-                        leafContexts.stream()
-                            .map(LeafReaderContextPartition::createForEntireSegment)
-                            .toList()))
-              };
+              : new LeafSlice[] {LeafSlice.entireSegments(leafContexts)};
     }
   }
 
@@ -363,57 +357,7 @@ public class IndexSearcher {
     sortedLeaves.sort(Collections.reverseOrder(Comparator.comparingInt(l -> l.reader().maxDoc())));
 
     if (allowSegmentPartitions) {
-      final List<List<LeafReaderContextPartition>> groupedLeafPartitions = new ArrayList<>();
-      int currentSliceNumDocs = 0;
-      List<LeafReaderContextPartition> group = null;
-      for (LeafReaderContext ctx : sortedLeaves) {
-        if (ctx.reader().maxDoc() > maxDocsPerSlice) {
-          assert group == null;
-          // if the segment does not fit in a single slice, we split it into maximum 5 partitions of
-          // equal size
-          int numSlices = Math.min(5, Math.ceilDiv(ctx.reader().maxDoc(), maxDocsPerSlice));
-          int numDocs = ctx.reader().maxDoc() / numSlices;
-          int maxDocId = numDocs;
-          int minDocId = 0;
-          for (int i = 0; i < numSlices - 1; i++) {
-            groupedLeafPartitions.add(
-                Collections.singletonList(
-                    LeafReaderContextPartition.createFromAndTo(ctx, minDocId, maxDocId)));
-            minDocId = maxDocId;
-            maxDocId += numDocs;
-          }
-          // the last slice gets all the remaining docs
-          groupedLeafPartitions.add(
-              Collections.singletonList(
-                  LeafReaderContextPartition.createFromAndTo(
-                      ctx, minDocId, ctx.reader().maxDoc())));
-        } else {
-          if (group == null) {
-            group = new ArrayList<>();
-            groupedLeafPartitions.add(group);
-          }
-          group.add(LeafReaderContextPartition.createForEntireSegment(ctx));
-
-          currentSliceNumDocs += ctx.reader().maxDoc();
-          // We only split a segment when it does not fit entirely in a slice. We don't partition
-          // the
-          // segment that makes the current slice (which holds multiple segments) go over
-          // maxDocsPerSlice. This means that a slice either contains multiple entire segments, or a
-          // single partition of a segment.
-          if (group.size() >= maxSegmentsPerSlice || currentSliceNumDocs > maxDocsPerSlice) {
-            group = null;
-            currentSliceNumDocs = 0;
-          }
-        }
-      }
-
-      LeafSlice[] slices = new LeafSlice[groupedLeafPartitions.size()];
-      int upto = 0;
-      for (List<LeafReaderContextPartition> currentGroup : groupedLeafPartitions) {
-        slices[upto] = new LeafSlice(currentGroup);
-        ++upto;
-      }
-      return slices;
+      return slicesWithSegmentPartitions(maxDocsPerSlice, maxSegmentsPerSlice, sortedLeaves);
     }
 
     final List<List<LeafReaderContext>> groupedLeaves = new ArrayList<>();
@@ -444,15 +388,64 @@ public class IndexSearcher {
     LeafSlice[] slices = new LeafSlice[groupedLeaves.size()];
     int upto = 0;
     for (List<LeafReaderContext> currentLeaf : groupedLeaves) {
-      slices[upto] =
-          new LeafSlice(
-              new ArrayList<>(
-                  currentLeaf.stream()
-                      .map(LeafReaderContextPartition::createForEntireSegment)
-                      .toList()));
+      slices[upto] = LeafSlice.entireSegments(currentLeaf);
       ++upto;
     }
 
+    return slices;
+  }
+
+  private static LeafSlice[] slicesWithSegmentPartitions(
+      int maxDocsPerSlice, int maxSegmentsPerSlice, List<LeafReaderContext> sortedLeaves) {
+    final List<List<LeafReaderContextPartition>> groupedLeafPartitions = new ArrayList<>();
+    int currentSliceNumDocs = 0;
+    List<LeafReaderContextPartition> group = null;
+    for (LeafReaderContext ctx : sortedLeaves) {
+      if (ctx.reader().maxDoc() > maxDocsPerSlice) {
+        assert group == null;
+        // if the segment does not fit in a single slice, we split it into maximum 5 partitions of
+        // equal size
+        int numSlices = Math.min(5, Math.ceilDiv(ctx.reader().maxDoc(), maxDocsPerSlice));
+        int numDocs = ctx.reader().maxDoc() / numSlices;
+        int maxDocId = numDocs;
+        int minDocId = 0;
+        for (int i = 0; i < numSlices - 1; i++) {
+          groupedLeafPartitions.add(
+              Collections.singletonList(
+                  LeafReaderContextPartition.createFromAndTo(ctx, minDocId, maxDocId)));
+          minDocId = maxDocId;
+          maxDocId += numDocs;
+        }
+        // the last slice gets all the remaining docs
+        groupedLeafPartitions.add(
+            Collections.singletonList(
+                LeafReaderContextPartition.createFromAndTo(ctx, minDocId, ctx.reader().maxDoc())));
+      } else {
+        if (group == null) {
+          group = new ArrayList<>();
+          groupedLeafPartitions.add(group);
+        }
+        group.add(LeafReaderContextPartition.createForEntireSegment(ctx));
+
+        currentSliceNumDocs += ctx.reader().maxDoc();
+        // We only split a segment when it does not fit entirely in a slice. We don't partition
+        // the
+        // segment that makes the current slice (which holds multiple segments) go over
+        // maxDocsPerSlice. This means that a slice either contains multiple entire segments, or a
+        // single partition of a segment.
+        if (group.size() >= maxSegmentsPerSlice || currentSliceNumDocs > maxDocsPerSlice) {
+          group = null;
+          currentSliceNumDocs = 0;
+        }
+      }
+    }
+
+    LeafSlice[] slices = new LeafSlice[groupedLeafPartitions.size()];
+    int upto = 0;
+    for (List<LeafReaderContextPartition> currentGroup : groupedLeafPartitions) {
+      slices[upto] = new LeafSlice(currentGroup);
+      ++upto;
+    }
     return slices;
   }
 
@@ -852,7 +845,7 @@ public class IndexSearcher {
       }
       try {
         // Optimize for the case when live docs are stored in a FixedBitSet.
-        Bits acceptDocs = ScorerUtil.likelyFixedBitSet(ctx.reader().getLiveDocs());
+        Bits acceptDocs = ScorerUtil.likelyLiveDocs(ctx.reader().getLiveDocs());
         scorer.score(leafCollector, acceptDocs, minDocId, maxDocId);
       } catch (
           @SuppressWarnings("unused")
@@ -1009,6 +1002,10 @@ public class IndexSearcher {
    */
   public static class LeafSlice {
 
+    private static final Comparator<LeafReaderContextPartition> COMPARATOR =
+        Comparator.<LeafReaderContextPartition>comparingInt(l -> l.ctx.docBase)
+            .thenComparingInt(l -> l.minDocId);
+
     /**
      * The leaves that make up this slice.
      *
@@ -1018,18 +1015,27 @@ public class IndexSearcher {
 
     private final int maxDocs;
 
-    public LeafSlice(List<LeafReaderContextPartition> leafReaderContextPartitions) {
-      Comparator<LeafReaderContextPartition> docBaseComparator =
-          Comparator.comparingInt(l -> l.ctx.docBase);
-      Comparator<LeafReaderContextPartition> minDocIdComparator =
-          Comparator.comparingInt(l -> l.minDocId);
-      leafReaderContextPartitions.sort(docBaseComparator.thenComparing(minDocIdComparator));
-      this.partitions = leafReaderContextPartitions.toArray(new LeafReaderContextPartition[0]);
-      this.maxDocs =
-          Arrays.stream(partitions)
-              .map(leafPartition -> leafPartition.maxDocs)
-              .reduce(Integer::sum)
-              .get();
+    public LeafSlice(List<LeafReaderContextPartition> partitions) {
+      this(partitions.toArray(new LeafReaderContextPartition[0]));
+    }
+
+    private static LeafSlice entireSegments(List<LeafReaderContext> contexts) {
+      int count = contexts.size();
+      LeafReaderContextPartition[] parts = new LeafReaderContextPartition[count];
+      for (int i = 0; i < count; i++) {
+        parts[i] = LeafReaderContextPartition.createForEntireSegment(contexts.get(i));
+      }
+      return new LeafSlice(parts);
+    }
+
+    private LeafSlice(LeafReaderContextPartition... leafReaderContextPartitions) {
+      Arrays.sort(leafReaderContextPartitions, COMPARATOR);
+      this.partitions = leafReaderContextPartitions;
+      int maxDocs = 0;
+      for (LeafReaderContextPartition partition : partitions) {
+        maxDocs += partition.maxDocs;
+      }
+      this.maxDocs = maxDocs;
     }
 
     /**

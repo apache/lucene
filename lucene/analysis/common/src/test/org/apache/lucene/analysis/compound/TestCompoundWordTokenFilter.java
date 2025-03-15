@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Arrays;
-import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
@@ -253,7 +252,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             true,
-            true);
+            false);
 
     assertTokenStreamContents(
         tf,
@@ -278,7 +277,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             false,
-            true);
+            false);
 
     assertTokenStreamContents(
         tf,
@@ -301,7 +300,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             false,
-            true);
+            false);
 
     // since "d" is shorter than the minimum subword size, it should not be added to the token
     // stream
@@ -328,7 +327,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             false,
-            true);
+            false);
 
     CharTermAttribute termAtt = tf.getAttribute(CharTermAttribute.class);
     tf.reset();
@@ -357,7 +356,7 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
             CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
             CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
             false,
-            true);
+            false);
     MockRetainAttribute retAtt = stream.addAttribute(MockRetainAttribute.class);
     stream.reset();
     while (stream.incrementToken()) {
@@ -713,16 +712,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
     assertTokenStreamContents(tf, new String[] {searchTerm, "kampf", "waffe"});
   }
 
-  public void testDecompoundingWithInvalidParameterCombination() {
-
-    Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            getDictionaryCompoundWordTokenFilter(
-                tokenizer, "", new CharArraySet(List.of(), true), false));
-  }
-
   private DictionaryCompoundWordTokenFilter getDictionaryCompoundWordTokenFilter(
       Tokenizer tokenizer, String searchTerm, CharArraySet dict, boolean onlyLongestMatch) {
     tokenizer.setReader(new StringReader(searchTerm));
@@ -733,6 +722,6 @@ public class TestCompoundWordTokenFilter extends BaseTokenStreamTestCase {
         CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE,
         CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE,
         onlyLongestMatch,
-        false);
+        true);
   }
 }

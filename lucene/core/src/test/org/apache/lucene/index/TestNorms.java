@@ -76,7 +76,7 @@ public class TestNorms extends LuceneTestCase {
       int boost = TestUtil.nextInt(random, 1, 255);
       String value =
           IntStream.range(0, boost)
-              .mapToObj(k -> Integer.toString(boost))
+              .mapToObj(_ -> Integer.toString(boost))
               .collect(Collectors.joining(" "));
       Field f = new TextField(BYTE_TEST_FIELD, value, Field.Store.YES);
       doc.add(f);

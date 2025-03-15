@@ -80,7 +80,7 @@ public final class LogsPanelProvider {
             FontUtils.elegantIconHtml("&#xe0e6;", MessageUtils.getLocalizedMessage("button.copy")));
     copyBtn.setMargin(new Insets(3, 3, 3, 3));
     copyBtn.addActionListener(
-        e -> {
+        _ -> {
           Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
           StringSelection selection = new StringSelection(logTextArea.getText());
           clipboard.setContents(selection, null);
@@ -123,7 +123,7 @@ public final class LogsPanelProvider {
 
     // Update state on filter change.
     logFilter.addActionListener(
-        e -> {
+        _ -> {
           updater.accept(logBuffer.getLogRecords());
         });
 

@@ -25,7 +25,7 @@ import java.io.IOException;
 public class LogByteSizeMergePolicy extends LogMergePolicy {
 
   /** Default minimum segment size. @see setMinMergeMB */
-  public static final double DEFAULT_MIN_MERGE_MB = 1.6;
+  public static final double DEFAULT_MIN_MERGE_MB = 16;
 
   /**
    * Default maximum segment size. A segment of this size or larger will never be merged. @see
