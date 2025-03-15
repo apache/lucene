@@ -176,6 +176,8 @@ Optimizations
 
 * GITHUB#14338: Deduplicate BKDConfig records in BKDReader. (Ignacio Vera)
 
+* GITHUB#14301: Avoid unnecessary evaluations and skipping documents. (hanbj)
+
 Bug Fixes
 ---------------------
 
