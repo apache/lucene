@@ -316,38 +316,21 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
    * merge threads by their merge size in descending order and then pauses/unpauses threads from
    * first to last -- that way, smaller merges are guaranteed to run before larger ones.
    */
+
+   // Define a global fixed-size thread pool for merge operations
+  private static final int THREAD_POOL_SIZE = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+  private static final ExecutorService mergeThreadPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+
   protected synchronized void updateMergeThreads() {
 
     // Only look at threads that are alive & not in the
     // process of stopping (ie have an active merge):
     final List<MergeThread> activeMerges = new ArrayList<>();
 
-    // Track number of active IndexWriters
-    private static final AtomicInteger activeIndexWriters = new AtomicInteger(0);
-
-    // Call this when IndexWriter starts using ConcurrentMergeScheduler
-    public void startIndexWriter() {
-        activeIndexWriters.incrementAndGet();
-    }
-
-    // Call this when IndexWriter is closed
-    public void stopIndexWriter() {
-        activeIndexWriters.decrementAndGet();
-    }
-
-    int numActiveWriters = Math.max(1, activeIndexWriters.get()); // At least 1 writer
-    int adjustedMaxThreadCount = Math.max(1, maxThreadCount / numActiveWriters);
-
-    int threadIdx = 0;
-    while (threadIdx < mergeThreads.size()) {
-      final MergeThread mergeThread = mergeThreads.get(threadIdx);
-      if (!mergeThread.isAlive()) {
-        // Prune any dead threads
-        mergeThreads.remove(threadIdx);
-        continue;
+    for (MergeThread mergeThread : mergeThreads) {
+      if (mergeThread.isAlive()) {
+          activeMerges.add(mergeThread);
       }
-      activeMerges.add(mergeThread);
-      threadIdx++;
     }
 
     // Sort the merge threads, largest first:
@@ -399,8 +382,11 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // Don't rate limit small merges:
         newMBPerSec = Double.POSITIVE_INFINITY;
       } else {
-        newMBPerSec = targetMBPerSec / numActiveWriters; // Distribute MB/sec across active writers
+        newMBPerSec = targetMBPerSec / THREAD_POOL_SIZE; // Distribute bandwidth across shared pool
       }
+      
+      // Submit merge task to the shared thread pool
+      mergeThreadPool.submit(() -> doMergeOperation(mergeThread));
 
       MergeRateLimiter rateLimiter = mergeThread.rateLimiter;
       double curMBPerSec = rateLimiter.getMBPerSec();
