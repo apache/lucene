@@ -169,6 +169,7 @@ public abstract sealed class DirectMonotonicReader extends LongValues
     }
   }
 
+  /** A DirectMonotonicReader that reads from a single block. */
   protected static final class SingleBlockDirectMonotonicReader extends DirectMonotonicReader {
     private final LongValues reader;
     private final long min;
@@ -234,6 +235,7 @@ public abstract sealed class DirectMonotonicReader extends LongValues
     }
   }
 
+  /** A DirectMonotonicReader that reads from multiple blocks. */
   protected static final class MultiBlockDirectMonotonicReader extends DirectMonotonicReader {
     private final int blockShift;
     private final long blockMask;
