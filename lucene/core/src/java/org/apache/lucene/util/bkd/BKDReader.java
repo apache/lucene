@@ -661,7 +661,7 @@ public class BKDReader extends PointValues {
       // How many points are stored in this leaf cell:
       int count = in.readVInt();
 
-      docIdsWriter.readInts(in, count, iterator.docIDs);
+      iterator.docIDs = docIdsWriter.readInts(in, count);
 
       return count;
     }
@@ -1033,11 +1033,10 @@ public class BKDReader extends PointValues {
     private int length;
     private int offset;
     private int docID;
-    final int[] docIDs;
+    private int[] docIDs;
     private final DocIdsWriter docIdsWriter;
 
     public BKDReaderDocIDSetIterator(int maxPointsInLeafNode) {
-      this.docIDs = new int[maxPointsInLeafNode];
       this.docIdsWriter = new DocIdsWriter(maxPointsInLeafNode);
     }
 
@@ -1059,6 +1058,7 @@ public class BKDReader extends PointValues {
       if (idx == length) {
         docID = DocIdSetIterator.NO_MORE_DOCS;
       } else {
+        assert docIDs != null;
         docID = docIDs[offset + idx];
         idx++;
       }
