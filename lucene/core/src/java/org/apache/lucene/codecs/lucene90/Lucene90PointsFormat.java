@@ -17,11 +17,13 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
+import java.util.Map;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.util.bkd.BKDWriter;
 
 /**
  * Lucene 9.0 point format, which encodes dimensional values in a block KD-tree structure for fast
@@ -59,18 +61,40 @@ public final class Lucene90PointsFormat extends PointsFormat {
   public static final String META_EXTENSION = "kdm";
 
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_BKD_VECTORIZED_BPV24 = 1;
+  static final int VERSION_CURRENT = VERSION_BKD_VECTORIZED_BPV24;
+
+  private static final Map<Integer, Integer> VERSION_TO_BKD_VERSION =
+      Map.of(
+          VERSION_START, BKDWriter.VERSION_META_FILE,
+          VERSION_BKD_VECTORIZED_BPV24, BKDWriter.VERSION_VECTORIZED_DOCID);
+
+  private final int version;
 
   /** Sole constructor */
-  public Lucene90PointsFormat() {}
+  public Lucene90PointsFormat() {
+    this(VERSION_CURRENT);
+  }
+
+  /** Constructor that takes a version. This is used for testing with older versions. */
+  Lucene90PointsFormat(int version) {
+    if (VERSION_TO_BKD_VERSION.containsKey(version) == false) {
+      throw new IllegalArgumentException("Invalid version: " + version);
+    }
+    this.version = version;
+  }
 
   @Override
   public PointsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene90PointsWriter(state);
+    return new Lucene90PointsWriter(state, version);
   }
 
   @Override
   public PointsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene90PointsReader(state);
+  }
+
+  static int bkdVersion(int version) {
+    return VERSION_TO_BKD_VERSION.get(version);
   }
 }
