@@ -622,6 +622,50 @@ public class Automaton implements Accountable, TransitionAccessor {
     return b.toString();
   }
 
+  /**
+   * Returns the mermaidjs representation of the automaton.
+   * <p>
+   * This is not a serious tool but it works on github.
+   */
+  public String toMermaid() {
+    // mermaid start/end states are no good: not used.
+    // Instead there's just a style class of "accept"
+    StringBuilder b = new StringBuilder();
+    b.append("stateDiagram\n");
+    b.append("  direction LR\n");
+    b.append("  classDef accept border-width:5px;stroke-width:5px,stroke:#00FFFF\n");
+
+    final int numStates = getNumStates();
+    Transition t = new Transition();
+
+    for (int state = 0; state < numStates; state++) {
+      b.append("  ");
+      b.append(state);
+      b.append('\n');
+      if (isAccept(state)) {
+        b.append("  class ");
+        b.append(state);
+        b.append(" accept\n");
+      }
+      int numTransitions = initTransition(state, t);
+      for (int i = 0; i < numTransitions; i++) {
+        getNextTransition(t);
+        b.append("  ");
+        b.append(state);
+        b.append(" --> ");
+        b.append(t.dest);
+        b.append(':');
+        appendCharString(t.min, b);
+        if (t.max != t.min) {
+          b.append('-');
+          appendCharString(t.max, b);
+        }
+        b.append('\n');
+      }
+    }
+    return b.toString();
+  }
+
   /** Returns sorted array of all interval start points. */
   public int[] getStartPoints() {
     IntHashSet pointset = new IntHashSet();
