@@ -40,7 +40,6 @@ public final class DocIdsWriter {
   private static final byte LEGACY_DELTA_VINT = (byte) 0;
 
   private final int[] scratch;
-
   private final LongsRef scratchLongs = new LongsRef();
 
   /**
