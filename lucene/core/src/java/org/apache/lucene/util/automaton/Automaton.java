@@ -624,8 +624,8 @@ public class Automaton implements Accountable, TransitionAccessor {
 
   /**
    * Returns the mermaidjs representation of the automaton.
-   * <p>
-   * This is not a serious tool but it works on github.
+   *
+   * <p>This is not a serious tool but it works on github.
    */
   public String toMermaid() {
     // mermaid start/end states are no good: not used.
