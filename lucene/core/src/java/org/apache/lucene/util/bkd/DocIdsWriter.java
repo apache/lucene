@@ -28,8 +28,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LongsRef;
 
-/** Public for jmh benchmark. */
-public final class DocIdsWriter {
+final class DocIdsWriter {
 
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
@@ -60,12 +59,12 @@ public final class DocIdsWriter {
     scratchIntsRef.offset = 0;
   }
 
-  public DocIdsWriter(int maxPointsInLeaf, int version) {
+  DocIdsWriter(int maxPointsInLeaf, int version) {
     this.scratch = new int[maxPointsInLeaf];
     this.version = version;
   }
 
-  public void writeDocIds(int[] docIds, int start, int count, DataOutput out) throws IOException {
+  void writeDocIds(int[] docIds, int start, int count, DataOutput out) throws IOException {
     // docs can be sorted either when all docs in a block have the same value
     // or when a segment is sorted
     boolean strictlySorted = true;
@@ -213,7 +212,7 @@ public final class DocIdsWriter {
   }
 
   /** Read {@code count} integers into {@code docIDs}. */
-  public void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
+  void readInts(IndexInput in, int count, int[] docIDs) throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
       case CONTINUOUS_IDS:
@@ -371,7 +370,7 @@ public final class DocIdsWriter {
    * Read {@code count} integers and feed the result directly to {@link
    * IntersectVisitor#visit(int)}.
    */
-  public void readInts(IndexInput in, int count, IntersectVisitor visitor, int[] buffer)
+  void readInts(IndexInput in, int count, IntersectVisitor visitor, int[] buffer)
       throws IOException {
     final int bpv = in.readByte();
     switch (bpv) {
