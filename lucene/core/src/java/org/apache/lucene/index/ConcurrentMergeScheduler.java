@@ -316,21 +316,22 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
    * merge threads by their merge size in descending order and then pauses/unpauses threads from
    * first to last -- that way, smaller merges are guaranteed to run before larger ones.
    */
-
-   // Define a global fixed-size thread pool for merge operations
-  private static final int THREAD_POOL_SIZE = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
-  private static final ExecutorService mergeThreadPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-
   protected synchronized void updateMergeThreads() {
 
     // Only look at threads that are alive & not in the
     // process of stopping (ie have an active merge):
     final List<MergeThread> activeMerges = new ArrayList<>();
 
-    for (MergeThread mergeThread : mergeThreads) {
-      if (mergeThread.isAlive()) {
-          activeMerges.add(mergeThread);
+    int threadIdx = 0;
+    while (threadIdx < mergeThreads.size()) {
+      final MergeThread mergeThread = mergeThreads.get(threadIdx);
+      if (!mergeThread.isAlive()) {
+        // Prune any dead threads
+        mergeThreads.remove(threadIdx);
+        continue;
       }
+      activeMerges.add(mergeThread);
+      threadIdx++;
     }
 
     // Sort the merge threads, largest first:
@@ -382,11 +383,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // Don't rate limit small merges:
         newMBPerSec = Double.POSITIVE_INFINITY;
       } else {
-        newMBPerSec = targetMBPerSec / THREAD_POOL_SIZE; // Distribute bandwidth across shared pool
+        newMBPerSec = targetMBPerSec;
       }
-      
-      // Submit merge task to the shared thread pool
-      mergeThreadPool.submit(() -> doMergeOperation(mergeThread));
 
       MergeRateLimiter rateLimiter = mergeThread.rateLimiter;
       double curMBPerSec = rateLimiter.getMBPerSec();
