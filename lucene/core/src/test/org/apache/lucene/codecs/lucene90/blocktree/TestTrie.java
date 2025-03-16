@@ -45,11 +45,13 @@ public class TestTrie extends LuceneTestCase {
       TrieBuilder.Output value =
           new TrieBuilder.Output(
               random().nextLong(1L << 62), random().nextBoolean(), new BytesRef(randomBytes()));
-      expected.put(key, value);
-      TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);
-      trieBuilder.absorb(add);
-      Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
-      Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
+      if (!expected.containsKey(key)) {
+        expected.put(key, value);
+        TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);
+        trieBuilder.absorb(add);
+        Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
+        Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
+      }
     }
     trieBuilder.visit(actual::put);
     assertEquals(expected, actual);
@@ -73,11 +75,13 @@ public class TestTrie extends LuceneTestCase {
                 random().nextLong(1L << 62),
                 random().nextBoolean(),
                 random().nextBoolean() ? null : new BytesRef(randomBytes()));
-        expected.put(key, value);
-        TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);
-        trieBuilder.absorb(add);
-        Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
-        Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
+        if (!expected.containsKey(key)) {
+          expected.put(key, value);
+          TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);
+          trieBuilder.absorb(add);
+          Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
+          Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
+        }
       }
 
       try (Directory directory = newDirectory()) {

@@ -127,6 +127,9 @@ class TrieBuilder {
   private static void absorb(Node n, Node add, Deque<Runnable> stack) {
     assert n.label == add.label;
     if (add.output != null) {
+      if (n.output != null) {
+        throw new IllegalStateException("duplicate key found");
+      }
       n.output = add.output;
     }
     ListIterator<Node> iter = n.children.listIterator();
