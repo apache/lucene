@@ -93,6 +93,8 @@ public class BKDWriter implements Closeable {
   /** Default maximum heap to use, before spilling to (slower) disk */
   public static final float DEFAULT_MAX_MB_SORT_IN_HEAP = 16.0f;
 
+  public static int UNKNOWN_DOC_COUNT = -1;
+
   /** BKD tree configuration */
   protected final BKDConfig config;
 
@@ -132,6 +134,9 @@ public class BKDWriter implements Closeable {
   private final int maxDoc;
   private final DocIdsWriter docIdsWriter;
 
+  /** -1 means the docCount is unknown */
+  private final int docCount;
+
   public BKDWriter(
       int maxDoc,
       Directory tempDir,
@@ -139,6 +144,24 @@ public class BKDWriter implements Closeable {
       BKDConfig config,
       double maxMBSortInHeap,
       long totalPointCount) {
+    this(
+        maxDoc,
+        tempDir,
+        tempFileNamePrefix,
+        config,
+        maxMBSortInHeap,
+        totalPointCount,
+        UNKNOWN_DOC_COUNT);
+  }
+
+  public BKDWriter(
+      int maxDoc,
+      Directory tempDir,
+      String tempFileNamePrefix,
+      BKDConfig config,
+      double maxMBSortInHeap,
+      long totalPointCount,
+      int docCount) {
     verifyParams(maxMBSortInHeap, totalPointCount);
     // We use tracking dir to deal with removing files on exception, so each place that
     // creates temp files doesn't need crazy try/finally/sucess logic:
@@ -154,7 +177,12 @@ public class BKDWriter implements Closeable {
     this.equalsPredicate = BKDUtil.getEqualsPredicate(config.bytesPerDim());
     this.commonPrefixComparator = BKDUtil.getPrefixLengthComparator(config.bytesPerDim());
 
-    docsSeen = new FixedBitSet(maxDoc);
+    this.docCount = docCount;
+    if (docCount == UNKNOWN_DOC_COUNT) {
+      docsSeen = new FixedBitSet(maxDoc);
+    } else {
+      docsSeen = null;
+    }
 
     scratchDiff = new byte[config.bytesPerDim()];
     scratch = new byte[config.packedBytesLength()];
@@ -236,7 +264,9 @@ public class BKDWriter implements Closeable {
     }
     pointWriter.append(packedValue, docID);
     pointCount++;
-    docsSeen.set(docID);
+    if (docsSeen != null) {
+      docsSeen.set(docID);
+    }
   }
 
   private static class MergeReader {
@@ -532,8 +562,10 @@ public class BKDWriter implements Closeable {
     // compute the min/max for this slice
     computePackedValueBounds(
         values, 0, Math.toIntExact(pointCount), minPackedValue, maxPackedValue, scratchBytesRef1);
-    for (int i = 0; i < Math.toIntExact(pointCount); ++i) {
-      docsSeen.set(values.getDocID(i));
+    if (docsSeen != null) {
+      for (int i = 0; i < Math.toIntExact(pointCount); ++i) {
+        docsSeen.set(values.getDocID(i));
+      }
     }
 
     final long dataStartFP = dataOut.getFilePointer();
@@ -706,7 +738,9 @@ public class BKDWriter implements Closeable {
           leafCount * config.packedBytesLength(),
           config.packedBytesLength());
       leafDocs[leafCount] = docID;
-      docsSeen.set(docID);
+      if (docsSeen != null) {
+        docsSeen.set(docID);
+      }
       leafCount++;
 
       if (valueCount + leafCount > totalPointCount) {
@@ -1257,7 +1291,8 @@ public class BKDWriter implements Closeable {
     metaOut.writeBytes(maxPackedValue, 0, config.packedIndexBytesLength());
 
     metaOut.writeVLong(pointCount);
-    metaOut.writeVInt(docsSeen.cardinality());
+    assert docsSeen != null ^ docCount != UNKNOWN_DOC_COUNT;
+    metaOut.writeVInt(docCount == UNKNOWN_DOC_COUNT ? docsSeen.cardinality() : docCount);
     metaOut.writeVInt(packedIndex.length);
     metaOut.writeLong(dataStartFP);
     // If metaOut and indexOut are the same file, we account for the fact that

@@ -135,7 +135,8 @@ public class Lucene90PointsWriter extends PointsWriter {
             writeState.segmentInfo.name,
             config,
             maxMBSortInHeap,
-            values.size())) {
+            values.size(),
+            docCount)) {
 
       if (values instanceof MutablePointTree) {
         IORunnable finalizer =
@@ -201,6 +202,7 @@ public class Lucene90PointsWriter extends PointsWriter {
 
           // Worst case total maximum size (if none of the points are deleted):
           long totMaxSize = 0;
+          int totDocCount = 0;
           for (int i = 0; i < mergeState.pointsReaders.length; i++) {
             PointsReader reader = mergeState.pointsReaders[i];
             if (reader != null) {
@@ -210,6 +212,11 @@ public class Lucene90PointsWriter extends PointsWriter {
                 PointValues values = reader.getValues(fieldInfo.name);
                 if (values != null) {
                   totMaxSize += values.size();
+                  if (mergeState.liveDocs[i] != null) {
+                    totDocCount = BKDWriter.UNKNOWN_DOC_COUNT;
+                  } else if (totDocCount != BKDWriter.UNKNOWN_DOC_COUNT) {
+                    totDocCount += values.getDocCount();
+                  }
                 }
               }
             }
@@ -233,7 +240,8 @@ public class Lucene90PointsWriter extends PointsWriter {
                   writeState.segmentInfo.name,
                   config,
                   maxMBSortInHeap,
-                  totMaxSize)) {
+                  totMaxSize,
+                  totDocCount)) {
             List<PointValues> pointValues = new ArrayList<>();
             List<MergeState.DocMap> docMaps = new ArrayList<>();
             for (int i = 0; i < mergeState.pointsReaders.length; i++) {

@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.util.bkd.BKDWriter;
 
 /**
  * Abstract API to write points
@@ -28,11 +29,20 @@ import org.apache.lucene.index.PointValues;
  * @lucene.experimental
  */
 public abstract class PointsWriter implements Closeable {
+
+  /** If the docCount is provided, we can avoid using FixedBitSet. */
+  protected int docCount = BKDWriter.UNKNOWN_DOC_COUNT;
+
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected PointsWriter() {}
 
   /** Write all values contained in the provided reader */
   public abstract void writeField(FieldInfo fieldInfo, PointsReader values) throws IOException;
+
+  /** Set the computed docCount */
+  public void setDocCount(int docCount) {
+    this.docCount = docCount;
+  }
 
   /**
    * Default naive merge implementation for one field: it just re-indexes all the values from the
@@ -41,6 +51,7 @@ public abstract class PointsWriter implements Closeable {
    */
   protected void mergeOneField(MergeState mergeState, FieldInfo fieldInfo) throws IOException {
     long maxPointCount = 0;
+    int totDocCount = 0;
     for (int i = 0; i < mergeState.pointsReaders.length; i++) {
       PointsReader pointsReader = mergeState.pointsReaders[i];
       if (pointsReader != null) {
@@ -49,11 +60,17 @@ public abstract class PointsWriter implements Closeable {
           PointValues values = pointsReader.getValues(fieldInfo.name);
           if (values != null) {
             maxPointCount += values.size();
+            if (mergeState.liveDocs[i] != null) {
+              totDocCount = BKDWriter.UNKNOWN_DOC_COUNT;
+            } else if (totDocCount != BKDWriter.UNKNOWN_DOC_COUNT) {
+              totDocCount += values.getDocCount();
+            }
           }
         }
       }
     }
     final long finalMaxPointCount = maxPointCount;
+    docCount = totDocCount;
     writeField(
         fieldInfo,
         new PointsReader() {
