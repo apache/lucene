@@ -151,6 +151,7 @@ public class BKDWriter implements Closeable {
         BKDWriter.VERSION_CURRENT);
   }
 
+  /** This ctor should be only used for testing with older versions. */
   public BKDWriter(
       int maxDoc,
       Directory tempDir,

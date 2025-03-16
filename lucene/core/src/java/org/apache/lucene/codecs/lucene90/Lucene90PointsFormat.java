@@ -76,7 +76,8 @@ public final class Lucene90PointsFormat extends PointsFormat {
     this(VERSION_CURRENT);
   }
 
-  public Lucene90PointsFormat(int version) {
+  /** Constructor that takes a version. This is used for testing with older versions. */
+  Lucene90PointsFormat(int version) {
     if (VERSION_TO_BKD_VERSION.containsKey(version) == false) {
       throw new IllegalArgumentException("Invalid version: " + version);
     }

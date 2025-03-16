@@ -128,9 +128,9 @@ final class DocIdsWriter {
           }
           for (int i = 0; i < quarter; i++) {
             final int longIdx = i + numInts + start;
-            scratch[i] |= docIds[longIdx] >>> 16;
+            scratch[i] |= docIds[longIdx] & 0xFF;
             scratch[i + quarter] |= (docIds[longIdx] >>> 8) & 0xFF;
-            scratch[i + quarter * 2] |= docIds[longIdx] & 0xFF;
+            scratch[i + quarter * 2] |= docIds[longIdx] >>> 16;
           }
           for (int i = 0; i < numInts; i++) {
             out.writeInt(scratch[i]);
@@ -289,13 +289,12 @@ final class DocIdsWriter {
       // Same format, but enabling the JVM to specialize the decoding logic for the default number
       // of points per node proved to help on benchmarks
       decode16(docIds, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE / 2, min);
-      assert half * 2 == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE
-          : "we are assuming DEFAULT_MAX_POINTS_IN_LEAF_NODE is a multiple of 2 here.";
     } else {
       decode16(docIds, half, min);
-      for (int i = half << 1; i < count; i++) {
-        docIds[i] = Short.toUnsignedInt(in.readShort()) + min;
-      }
+    }
+    // read the remaining doc if count is odd.
+    for (int i = half << 1; i < count; i++) {
+      docIds[i] = Short.toUnsignedInt(in.readShort()) + min;
     }
   }
 
@@ -319,14 +318,12 @@ final class DocIdsWriter {
           scratch,
           BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE / 4,
           BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE / 4 * 3);
-      assert quarter * 4 == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE
-          : " we are assuming DEFAULT_MAX_POINTS_IN_LEAF_NODE is a multiple of 4 here.";
     } else {
       decode24(docIDs, scratch, quarter, numInts);
-      // Now read the remaining 0, 1, 2 or 3 values
-      for (int i = quarter << 2; i < count; ++i) {
-        docIDs[i] = (in.readShort() & 0xFFFF) | (in.readByte() & 0xFF) << 16;
-      }
+    }
+    // Now read the remaining 0, 1, 2 or 3 values
+    for (int i = quarter << 2; i < count; ++i) {
+      docIDs[i] = (in.readShort() & 0xFFFF) | (in.readByte() & 0xFF) << 16;
     }
   }
 
@@ -336,9 +333,9 @@ final class DocIdsWriter {
     }
     for (int i = 0; i < quarter; i++) {
       docIDs[i + numInts] =
-          ((scratch[i] & 0xFF) << 16)
+          (scratch[i] & 0xFF)
               | ((scratch[i + quarter] & 0xFF) << 8)
-              | (scratch[i + quarter * 2] & 0xFF);
+              | ((scratch[i + quarter * 2] & 0xFF) << 16);
     }
   }
 

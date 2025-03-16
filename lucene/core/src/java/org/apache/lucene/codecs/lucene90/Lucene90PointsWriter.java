@@ -117,7 +117,16 @@ public class Lucene90PointsWriter extends PointsWriter {
    * Uses the defaults values for {@code maxPointsInLeafNode} (512) and {@code maxMBSortInHeap}
    * (16.0)
    */
-  public Lucene90PointsWriter(SegmentWriteState writeState, int version) throws IOException {
+  public Lucene90PointsWriter(SegmentWriteState writeState) throws IOException {
+    this(
+        writeState,
+        BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE,
+        BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP,
+        Lucene90PointsFormat.VERSION_CURRENT);
+  }
+
+  /** Constructor that takes a version. This is used for testing with older versions. */
+  Lucene90PointsWriter(SegmentWriteState writeState, int version) throws IOException {
     this(
         writeState,
         BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE,
