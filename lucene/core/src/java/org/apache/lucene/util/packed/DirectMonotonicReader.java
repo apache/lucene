@@ -31,7 +31,7 @@ public abstract sealed class DirectMonotonicReader extends LongValues
     permits DirectMonotonicReader.MultiBlockDirectMonotonicReader,
         DirectMonotonicReader.SingleBlockDirectMonotonicReader {
 
-  private static final Meta SINGLE_ZERO_BLOCK = new SingleBlockMeta(0L, 0.0f, (byte) 0);
+  private static final Meta SINGLE_ZERO_BLOCK = new SingleBlockMeta(0L, 0.0f, (byte) 0, 0L);
 
   /**
    * In-memory metadata that needs to be kept around for {@link DirectMonotonicReader} to read data
@@ -108,11 +108,10 @@ public abstract sealed class DirectMonotonicReader extends LongValues
     final long min = metaIn.readLong();
     final float avgInt = Float.intBitsToFloat(metaIn.readInt());
     final long offsets = metaIn.readLong();
-    assert offsets == 0;
     final byte bpvs = metaIn.readByte();
     final boolean allValuesZero = min == 0L && avgInt == 0 && bpvs == 0;
     // save heap in case all values are zero
-    return allValuesZero ? SINGLE_ZERO_BLOCK : new SingleBlockMeta(min, avgInt, bpvs);
+    return allValuesZero ? SINGLE_ZERO_BLOCK : new SingleBlockMeta(min, avgInt, bpvs, offsets);
   }
 
   private static Meta loadMultiBlockMeta(IndexInput metaIn, int numBlocks, int blockShift)
@@ -149,11 +148,13 @@ public abstract sealed class DirectMonotonicReader extends LongValues
     private final long min;
     private final float avg;
     private final byte bpv;
+    private final long offset;
 
-    private SingleBlockMeta(long min, float avg, byte bpv) {
+    private SingleBlockMeta(long min, float avg, byte bpv, long offset) {
       this.min = min;
       this.avg = avg;
       this.bpv = bpv;
+      this.offset = offset;
     }
 
     @Override
@@ -162,7 +163,7 @@ public abstract sealed class DirectMonotonicReader extends LongValues
       if (bpv == 0) {
         reader = LongValues.ZEROES;
       } else {
-        reader = DirectReader.getInstance(data, bpv, 0L);
+        reader = DirectReader.getInstance(data, bpv, offset);
       }
       return new SingleBlockDirectMonotonicReader(reader, min, avg, bpv);
     }
