@@ -106,7 +106,7 @@ public final class DocIdsWriter {
       }
       out.writeVInt(min);
       final int halfLen = count >> 1;
-      for (int i = 0; i < halfLen; i++) {
+      for (int i = 0; i < halfLen; ++i) {
         scratch[i] = scratch[halfLen + i] | (scratch[i] << 16);
       }
       for (int i = 0; i < halfLen; i++) {

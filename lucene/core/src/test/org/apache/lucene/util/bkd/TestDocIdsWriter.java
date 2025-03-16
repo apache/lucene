@@ -43,7 +43,11 @@ public class TestDocIdsWriter extends LuceneTestCase {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
-        int[] docIDs = new int[1 + random().nextInt(5000)];
+        int count =
+            random().nextBoolean()
+                ? 1 + random().nextInt(5000)
+                : BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+        int[] docIDs = new int[count];
         final int bpv = TestUtil.nextInt(random(), 1, 32);
         for (int i = 0; i < docIDs.length; ++i) {
           docIDs[i] = TestUtil.nextInt(random(), 0, (1 << bpv) - 1);
@@ -72,7 +76,11 @@ public class TestDocIdsWriter extends LuceneTestCase {
     int numIters = atLeast(100);
     try (Directory dir = newDirectory()) {
       for (int iter = 0; iter < numIters; ++iter) {
-        int[] docIDs = new int[1 + random().nextInt(5000)];
+        int count =
+            random().nextBoolean()
+                ? 1 + random().nextInt(5000)
+                : BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE;
+        int[] docIDs = new int[count];
         int min = random().nextInt(1000);
         final int bpv = TestUtil.nextInt(random(), 1, 16);
         for (int i = 0; i < docIDs.length; ++i) {
