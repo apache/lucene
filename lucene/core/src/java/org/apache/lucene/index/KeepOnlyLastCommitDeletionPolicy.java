@@ -40,9 +40,11 @@ public final class KeepOnlyLastCommitDeletionPolicy extends IndexDeletionPolicy 
   public void onCommit(List<? extends IndexCommit> commits) {
     // Note that commits.size() should normally be 2 (if not
     // called by onInit above):
+    int retainCount = 5; // Number of commits to keep
     int size = commits.size();
-    for (int i = 0; i < size - 1; i++) {
-      commits.get(i).delete();
+
+    for (int i = 0; i < size - retainCount; i++) {
+        commits.get(i).delete(); // Delete only if older than retainCount
     }
   }
 }
