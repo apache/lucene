@@ -187,4 +187,16 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
     }
     return topList;
   }
+
+  @Override
+  public int docIDRunEnd() throws IOException {
+    // We're only looking at the "top" clauses. In theory, we may be able to find longer runs if
+    // other clauses have overlapping runs with the runs of the top clauses, but does it actually
+    // happen in practice and would it buy much?
+    int maxDocIDRunEnd = super.docIDRunEnd();
+    for (DisiWrapper w = topList(); w != null; w = w.next) {
+      maxDocIDRunEnd = Math.max(maxDocIDRunEnd, w.approximation.docIDRunEnd());
+    }
+    return maxDocIDRunEnd;
+  }
 }
