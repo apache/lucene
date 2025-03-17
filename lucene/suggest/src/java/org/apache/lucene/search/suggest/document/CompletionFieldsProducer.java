@@ -56,7 +56,7 @@ import org.apache.lucene.util.IOUtils;
 final class CompletionFieldsProducer extends FieldsProducer implements Accountable {
 
   private FieldsProducer delegateFieldsProducer;
-  private Map<String, CompletionsTermsReader> readers;
+  private final Map<String, CompletionsTermsReader> readers;
   private IndexInput dictIn;
 
   // copy ctr for merge instance
