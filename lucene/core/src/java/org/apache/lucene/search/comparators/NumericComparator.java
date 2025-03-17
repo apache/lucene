@@ -254,12 +254,26 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
             @Override
             public void visit(IntsRef ref) {
-              adder.add(ref);
+              final int[] docs = ref.ints;
+              for (int i = ref.offset, to = ref.offset + ref.length; i < to; i++) {
+                int docID = docs[i];
+                if (docID > maxDocVisited) {
+                  adder.add(docID);
+                }
+              }
             }
 
             @Override
             public void visit(DocIdSetIterator iterator) throws IOException {
-              adder.add(iterator);
+              assert iterator.docID() == -1;
+              int docID = iterator.nextDoc();
+              if (docID < maxDocVisited + 1) {
+                docID = iterator.advance(maxDocVisited + 1);
+              }
+              while (docID != DocIdSetIterator.NO_MORE_DOCS) {
+                adder.add(docID);
+                docID = iterator.nextDoc();
+              }
             }
 
             @Override
