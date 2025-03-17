@@ -951,15 +951,16 @@ public class TestSuggestField extends LuceneTestCase {
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
           final CompletionPostingsFormat.FSTLoadMode fstLoadMode =
               RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
-          //FST load mode can only be overridden via a custom completion postings format
-          final PostingsFormat postingsFormat = new CompletionPostingsFormat("Completion101",  fstLoadMode) {
-            final CompletionPostingsFormat delegate = new Completion101PostingsFormat();
+          // FST load mode can only be overridden via a custom completion postings format
+          final PostingsFormat postingsFormat =
+              new CompletionPostingsFormat("Completion101", fstLoadMode) {
+                final CompletionPostingsFormat delegate = new Completion101PostingsFormat();
 
-            @Override
-            protected PostingsFormat delegatePostingsFormat() {
-              return delegate.delegatePostingsFormat();
-            }
-          };
+                @Override
+                protected PostingsFormat delegatePostingsFormat() {
+                  return delegate.delegatePostingsFormat();
+                }
+              };
 
           @Override
           public PostingsFormat postingsFormat() {
