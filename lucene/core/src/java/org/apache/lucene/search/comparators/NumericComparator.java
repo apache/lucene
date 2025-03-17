@@ -267,7 +267,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             public void visit(DocIdSetIterator iterator) throws IOException {
               assert iterator.docID() == -1;
               int docID = iterator.nextDoc();
-              if (docID < maxDocVisited + 1) {
+              if (docID <= maxDocVisited) {
                 docID = iterator.advance(maxDocVisited + 1);
               }
               while (docID != DocIdSetIterator.NO_MORE_DOCS) {
