@@ -384,7 +384,7 @@ final class DocIdsWriter {
       // of points per node proved to help on benchmarks
       assert floorToMultipleOf16(quarter) == quarter
           : "We are relying on the fact that quarter of BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE"
-              + " is a multiple of 8 to vectorize the decoding loop,"
+              + " is a multiple of 16 to vectorize the decoding loop,"
               + " please check performance issue if you want to break this assumption.";
       decode24(
           docIDs,
