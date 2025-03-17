@@ -31,6 +31,7 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
@@ -249,6 +250,16 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
               if (l >= minValueAsLong && l <= maxValueAsLong) {
                 adder.add(docID); // doc is competitive
               }
+            }
+
+            @Override
+            public void visit(IntsRef ref) {
+              adder.add(ref);
+            }
+
+            @Override
+            public void visit(DocIdSetIterator iterator) throws IOException {
+              adder.add(iterator);
             }
 
             @Override
