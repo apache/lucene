@@ -308,8 +308,8 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       // Since a TwoPhaseIterator comes with its approximation, the number of approximations is gte
       // the number of TwoPhaseIterators
       assert twoPhases.size() <= 1;
-      TwoPhaseIterator twoPhase = twoPhases.get(0);
-      DocIdSetIterator approximation = approximations.isEmpty() ? null : approximations.get(0);
+      DocIdSetIterator approximation = approximations.get(0);
+      TwoPhaseIterator twoPhase = twoPhases.isEmpty() ? null : twoPhases.get(0);
       if (approximation.docID() < min) {
         approximation.advance(min);
       }
