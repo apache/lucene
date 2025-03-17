@@ -118,7 +118,7 @@ final class DocIdsWriter {
     } else {
       if (max <= 0x1FFFFF && version >= BKDWriter.VERSION_VECTORIZE_BPV24_AND_INTRODUCE_BPV21) {
         out.writeByte(BPV_21);
-        final int oneThird = floorToMultipleOf8(count / 3);
+        final int oneThird = floorToMultipleOf16(count / 3);
         final int numInts = oneThird * 2;
         for (int i = 0; i < numInts; i++) {
           scratch[i] = docIds[i + start] << 11;
@@ -334,13 +334,13 @@ final class DocIdsWriter {
     }
   }
 
-  private static int floorToMultipleOf8(int n) {
+  private static int floorToMultipleOf16(int n) {
     assert n >= 0;
-    return n & 0xFFFFFFF8;
+    return n & 0xFFFFFFF0;
   }
 
   private void readInts21(IndexInput in, int count, int[] docIDs) throws IOException {
-    int oneThird = floorToMultipleOf8(count / 3);
+    int oneThird = floorToMultipleOf16(count / 3);
     int numInts = oneThird << 1;
     in.readInts(scratch, 0, numInts);
     if (count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE) {
@@ -349,8 +349,8 @@ final class DocIdsWriter {
       decode21(
           docIDs,
           scratch,
-          floorToMultipleOf8(BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE / 3),
-          floorToMultipleOf8(BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE / 3) * 2);
+          floorToMultipleOf16(BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE / 3),
+          floorToMultipleOf16(BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE / 3) * 2);
     } else {
       decode21(docIDs, scratch, oneThird, numInts);
     }
@@ -382,7 +382,7 @@ final class DocIdsWriter {
     if (count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE) {
       // Same format, but enabling the JVM to specialize the decoding logic for the default number
       // of points per node proved to help on benchmarks
-      assert floorToMultipleOf8(quarter) == quarter
+      assert floorToMultipleOf16(quarter) == quarter
           : "We are relying on the fact that quarter of BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE"
               + " is a multiple of 8 to vectorize the decoding loop,"
               + " please check performance issue if you want to break this assumption.";
