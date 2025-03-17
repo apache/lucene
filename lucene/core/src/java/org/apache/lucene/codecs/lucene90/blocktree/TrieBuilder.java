@@ -106,8 +106,9 @@ class TrieBuilder {
   }
 
   /**
-   * Put all (K, V) pair from the given trie into this one. Output of current trie will be
-   * overwritten if the given trie has the same K.
+   * Absorb all (K, V) pairs from the given trie into this one. The given trie builder should not
+   * have key that already exists in this one, otherwise a {@link IllegalArgumentException } will be
+   * thrown and this trie will get destroyed.
    *
    * <p>Note: the given trie will be destroyed after absorbing.
    */
@@ -124,11 +125,12 @@ class TrieBuilder {
     trieBuilder.status = Status.DESTROYED;
   }
 
-  private static void absorb(Node n, Node add, Deque<Runnable> stack) {
+  private void absorb(Node n, Node add, Deque<Runnable> stack) {
     assert n.label == add.label;
     if (add.output != null) {
       if (n.output != null) {
-        throw new IllegalStateException("duplicate key found");
+        this.status = Status.DESTROYED;
+        throw new IllegalArgumentException("Duplicated key found in the given trie.");
       }
       n.output = add.output;
     }
