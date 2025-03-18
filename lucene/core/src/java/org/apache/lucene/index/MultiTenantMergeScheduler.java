@@ -16,10 +16,6 @@ public class MultiTenantMergeScheduler extends MergeScheduler {
             Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
     }
 
-    private static ExecutorService getMergeThreadPool() {
-        return LazyHolder.MERGE_THREAD_POOL;
-    }
-
     // Use getMergeThreadPool() instead of direct access
 
     @Override
