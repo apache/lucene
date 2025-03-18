@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
@@ -43,7 +44,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
     List<BytesRef> terms = basicTerms();
     Collections.sort(terms);
 
-    Automaton a = build(terms, false, false);
+    Automaton a = build(terms, false);
     checkAutomaton(terms, a, false);
     checkMinimized(a);
   }
@@ -52,16 +53,27 @@ public class TestStringsToAutomaton extends LuceneTestCase {
     List<BytesRef> terms = basicTerms();
     Collections.sort(terms);
 
-    Automaton a = build(terms, false, true);
+    Automaton a = buildCaseInsensitive(terms, false);
     checkAutomaton(terms, a, false, true);
     checkMinimized(a);
+  }
+
+  public void testCornerCase() throws Exception {
+    List<BytesRef> terms =
+        Stream.of("aib", "aıc")
+            .map(LuceneTestCase::newBytesRef)
+            .sorted()
+            .collect(Collectors.toCollection(ArrayList::new));
+    Automaton a = buildCaseInsensitive(terms, true);
+    System.out.println(a.toDot());
+    assertTrue(a.isDeterministic());
   }
 
   public void testBasicBinary() throws Exception {
     List<BytesRef> terms = basicTerms();
     Collections.sort(terms);
 
-    Automaton a = build(terms, true, false);
+    Automaton a = build(terms, true);
     checkAutomaton(terms, a, true);
     checkMinimized(a);
   }
@@ -89,7 +101,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
       Automaton expected =
           MinimizationOperations.minimize(
               Operations.union(automatonList), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-      Automaton actual = build(sortedTerms, buildBinary, false);
+      Automaton actual = build(sortedTerms, buildBinary);
       assertSameAutomaton(expected, actual);
     }
   }
@@ -100,31 +112,22 @@ public class TestStringsToAutomaton extends LuceneTestCase {
       int size = random().nextInt(2, 50);
       Set<BytesRef> terms = new HashSet<>();
       List<Automaton> automatonList = new ArrayList<>(size);
+      boolean turkic = random().nextBoolean();
       for (int j = 0; j < size; j++) {
         String s = TestUtil.randomRealisticUnicodeString(random(), 8);
+        int[] lowercased = s.codePoints().map(c -> CaseFolding.foldCase(c, turkic)).toArray();
+        s = new String(lowercased, 0, lowercased.length);
         terms.add(newBytesRef(s));
         List<Automaton> charAutomata =
             s.codePoints()
                 .mapToObj(
                     c -> {
-                      List<Automaton> caseAutomata = new ArrayList<>();
-                      caseAutomata.add(Automata.makeChar(c));
-                      int[] alternates = CaseFolding.lookupAlternates(c);
-                      if (alternates != null) {
-                        for (int alt : alternates) {
-                          caseAutomata.add(Automata.makeChar(alt));
-                        }
-                      } else {
-                        int altCase =
-                            Character.isLowerCase(c)
-                                ? Character.toUpperCase(c)
-                                : Character.toLowerCase(c);
-
-                        if (altCase != c) {
-                          caseAutomata.add(Automata.makeChar(altCase));
-                        }
+                      Automaton a = Automata.makeChar(c);
+                      int altCase = CaseFolding.upperCase(c, turkic);
+                      if (altCase != c) {
+                        return Operations.union(List.of(a, Automata.makeChar(altCase)));
                       }
-                      return Operations.union(caseAutomata);
+                      return a;
                     })
                 .collect(Collectors.toList());
         if (charAutomata.isEmpty()) {
@@ -138,7 +141,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
       Automaton expected =
           MinimizationOperations.minimize(
               Operations.union(automatonList), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-      Automaton actual = build(sortedTerms, false, true);
+      Automaton actual = buildCaseInsensitive(sortedTerms, turkic);
       assertSameAutomaton(expected, actual);
     }
   }
@@ -157,7 +160,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
     IllegalArgumentException e =
         expectThrows(
             IllegalArgumentException.class,
-            () -> build(Collections.singleton(new BytesRef(b10k)), false, false));
+            () -> build(Collections.singleton(new BytesRef(b10k)), false));
     assertTrue(
         e.getMessage()
             .startsWith(
@@ -166,7 +169,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
                     + " UTF-8 bytes"));
 
     byte[] b1k = ArrayUtil.copyOfSubArray(b10k, 0, 1000);
-    build(Collections.singleton(new BytesRef(b1k)), false, false); // no exception
+    build(Collections.singleton(new BytesRef(b1k)), false); // no exception
   }
 
   private void testRandom(boolean allowBinary) throws Exception {
@@ -184,7 +187,7 @@ public class TestStringsToAutomaton extends LuceneTestCase {
       }
 
       List<BytesRef> sorted = terms.stream().sorted().toList();
-      Automaton a = build(sorted, allowBinary, false);
+      Automaton a = build(sorted, allowBinary);
       checkAutomaton(sorted, a, allowBinary);
     }
   }
@@ -238,12 +241,20 @@ public class TestStringsToAutomaton extends LuceneTestCase {
     return terms;
   }
 
-  private Automaton build(Collection<BytesRef> terms, boolean asBinary, boolean caseInsensitive)
+  private Automaton build(Collection<BytesRef> terms, boolean asBinary) throws IOException {
+    if (random().nextBoolean()) {
+      return StringsToAutomaton.build(terms, asBinary, false, false);
+    } else {
+      return StringsToAutomaton.build(new TermIterator(terms), asBinary, false, false);
+    }
+  }
+
+  private Automaton buildCaseInsensitive(Collection<BytesRef> terms, boolean turkic)
       throws IOException {
     if (random().nextBoolean()) {
-      return StringsToAutomaton.build(terms, asBinary, caseInsensitive);
+      return StringsToAutomaton.build(terms, false, true, turkic);
     } else {
-      return StringsToAutomaton.build(new TermIterator(terms), asBinary, caseInsensitive);
+      return StringsToAutomaton.build(new TermIterator(terms), false, true, turkic);
     }
   }
 

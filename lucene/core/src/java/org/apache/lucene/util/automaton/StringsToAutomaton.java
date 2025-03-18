@@ -40,10 +40,13 @@ import org.apache.lucene.util.UnicodeUtil;
  * @see Automata#makeBinaryStringUnion(BytesRefIterator)
  */
 final class StringsToAutomaton {
+  private final boolean caseInsensitive;
+  private final boolean turkic;
 
   /** The default constructor is private. Use static methods directly. */
-  private StringsToAutomaton() {
-    super();
+  private StringsToAutomaton(boolean caseInsensitive, boolean turkic) {
+    this.caseInsensitive = caseInsensitive;
+    this.turkic = turkic;
   }
 
   /** DFSA state with <code>char</code> labels on transitions. */
@@ -198,7 +201,8 @@ final class StringsToAutomaton {
       Automaton.Builder a,
       State s,
       IdentityHashMap<State, Integer> visited,
-      boolean caseInsensitive) {
+      boolean caseInsensitive,
+      boolean turkic) {
 
     Integer converted = visited.get(s);
     if (converted != null) {
@@ -213,22 +217,12 @@ final class StringsToAutomaton {
     int[] labels = s.labels;
     for (StringsToAutomaton.State target : s.states) {
       int label = labels[i++];
-      int dest = convert(a, target, visited, caseInsensitive);
+      int dest = convert(a, target, visited, caseInsensitive, turkic);
       a.addTransition(converted, dest, label);
       if (caseInsensitive) {
-        int[] alternatives = CaseFolding.lookupAlternates(label);
-        if (alternatives != null) {
-          for (int alt : alternatives) {
-            a.addTransition(converted, dest, alt);
-          }
-        } else {
-          int altCase =
-              Character.isLowerCase(label)
-                  ? Character.toUpperCase(label)
-                  : Character.toLowerCase(label);
-          if (altCase != label) {
-            a.addTransition(converted, dest, altCase);
-          }
+        int altCase = CaseFolding.upperCase(label, turkic);
+        if (altCase != label) {
+          a.addTransition(converted, dest, altCase);
         }
       }
     }
@@ -240,7 +234,7 @@ final class StringsToAutomaton {
    * Called after adding all terms. Performs final minimization and converts to a standard {@link
    * Automaton} instance.
    */
-  private Automaton completeAndConvert(boolean caseInsensitive) {
+  private Automaton completeAndConvert() {
     // Final minimization:
     if (this.stateRegistry == null) throw new IllegalStateException();
     if (root.hasChildren()) replaceOrRegister(root);
@@ -248,7 +242,7 @@ final class StringsToAutomaton {
 
     // Convert:
     Automaton.Builder a = new Automaton.Builder();
-    convert(a, root, new IdentityHashMap<>(), caseInsensitive);
+    convert(a, root, new IdentityHashMap<>(), caseInsensitive, turkic);
     return a.finish();
   }
 
@@ -258,17 +252,18 @@ final class StringsToAutomaton {
    * UTF-8 codepoints as transition labels or binary (compiled) transition labels based on {@code
    * asBinary}.
    */
-  static Automaton build(Iterable<BytesRef> input, boolean asBinary, boolean caseInsensitive) {
+  static Automaton build(
+      Iterable<BytesRef> input, boolean asBinary, boolean caseInsensitive, boolean turkic) {
     if (asBinary && caseInsensitive) {
       throw new IllegalArgumentException("Cannot use caseInsensitive on binary automaton");
     }
-    final StringsToAutomaton builder = new StringsToAutomaton();
+    final StringsToAutomaton builder = new StringsToAutomaton(caseInsensitive, turkic);
 
     for (BytesRef b : input) {
       builder.add(b, asBinary);
     }
 
-    return builder.completeAndConvert(caseInsensitive);
+    return builder.completeAndConvert();
   }
 
   /**
@@ -277,18 +272,19 @@ final class StringsToAutomaton {
    * UTF-8 codepoints as transition labels or binary (compiled) transition labels based on {@code
    * asBinary}.
    */
-  static Automaton build(BytesRefIterator input, boolean asBinary, boolean caseInsensitive)
+  static Automaton build(
+      BytesRefIterator input, boolean asBinary, boolean caseInsensitive, boolean turkic)
       throws IOException {
     if (asBinary && caseInsensitive) {
       throw new IllegalArgumentException("Cannot use caseInsensitive on binary automaton");
     }
-    final StringsToAutomaton builder = new StringsToAutomaton();
+    final StringsToAutomaton builder = new StringsToAutomaton(caseInsensitive, turkic);
 
     for (BytesRef b = input.next(); b != null; b = input.next()) {
       builder.add(b, asBinary);
     }
 
-    return builder.completeAndConvert(caseInsensitive);
+    return builder.completeAndConvert();
   }
 
   private void add(BytesRef current, boolean asBinary) {
@@ -321,6 +317,10 @@ final class StringsToAutomaton {
     } else {
       while (pos < max) {
         codePoint = UnicodeUtil.codePointAt(bytes, pos, codePoint);
+        if (caseInsensitive
+            && codePoint.codePoint != CaseFolding.foldCase(codePoint.codePoint, turkic)) {
+          throw new IllegalArgumentException("Case-insensitive input must be lower-case");
+        }
         next = state.lastChild(codePoint.codePoint);
         if (next == null) {
           break;
