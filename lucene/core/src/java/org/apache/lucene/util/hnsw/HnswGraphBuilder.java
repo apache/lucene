@@ -154,7 +154,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.graphSearcher = graphSearcher;
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
-    beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth, M * 2));
+    beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth / 2, M * 3));
   }
 
   @Override
