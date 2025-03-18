@@ -3,9 +3,14 @@ package org.apache.lucene.index;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.util.LuceneTestCase;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class TestMultiTenantMergeScheduler extends LuceneTestCase {
 
@@ -57,16 +62,31 @@ public class TestMultiTenantMergeScheduler extends LuceneTestCase {
         }
         writer.commit();
 
-        long startTime = System.currentTimeMillis();
-        writer.forceMerge(1);
-        long endTime = System.currentTimeMillis();
+        CountDownLatch latch = new CountDownLatch(2);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        Future<?> mergeTask1 = executor.submit(() -> {
+            latch.countDown();
+            try { latch.await(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            writer.forceMerge(1);
+        });
+
+        Future<?> mergeTask2 = executor.submit(() -> {
+            latch.countDown();
+            try { latch.await(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            writer.forceMerge(1);
+        });
+
+        mergeTask1.get();
+        mergeTask2.get();
+        executor.shutdown();
 
         writer.close();
         scheduler.close();
         MultiTenantMergeScheduler.shutdownThreadPool();
 
-        // Check if merging took less time than sequential execution would
-        assertTrue("Merges did not happen concurrently!", (endTime - startTime) < 5000);
+        // Assert that at least two merges ran concurrently
+        assertTrue("Expected concurrent merges", scheduler.getActiveMergesCount() > 1);
 
         dir.close();
     }

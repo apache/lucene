@@ -10,24 +10,22 @@ import java.io.IOException;
  */
 public class MultiTenantMergeScheduler extends MergeScheduler {
 
-    // Shared global thread pool with lazy initialization
-    private static class LazyHolder {
-        static final ExecutorService MERGE_THREAD_POOL = 
-            Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
-    }
+    // Shared global thread pool
+    private static final ExecutorService MERGE_THREAD_POOL = Executors.newFixedThreadPool(
+        Runtime.getRuntime().availableProcessors() / 2
+    );
 
-    // Use getMergeThreadPool() instead of direct access
+    // Track active merges per writer
+    private final List<Future<?>> activeMerges = Collections.synchronizedList(new ArrayList<>());
 
     @Override
     public void merge(MergeScheduler.MergeSource mergeSource, MergeTrigger trigger) throws IOException {
-        while (mergeSource.hasPendingMerges()) { // Use hasPendingMerges() instead of relying on null check
+        while (true) {
             MergePolicy.OneMerge merge = mergeSource.getNextMerge();
-            if (merge == null) {
-                break; // Explicitly exit if no merge is available
-            }
+            if (merge == null) break;  // No more merges
             
-            // Submit merge task to the shared thread pool
-            MERGE_THREAD_POOL.submit(() -> {
+            // Submit merge task and track future
+            Future<?> future = MERGE_THREAD_POOL.submit(() -> {
                 try {
                     mergeSource.merge(merge);
                 } catch (IOException e) {
@@ -35,23 +33,27 @@ public class MultiTenantMergeScheduler extends MergeScheduler {
                 }
             });
 
+            activeMerges.add(future);
+            
             // Cleanup completed merges
             activeMerges.removeIf(Future::isDone);
         }
     }
 
+    private final ConcurrentHashMap<IndexWriter, List<Merge>> activeMerges = new ConcurrentHashMap<>();
+
     @Override
     public void close() throws IOException {
-        // Wait for all running merges to complete
-        for (Future<?> future : activeMerges) {
-            try {
-                future.get();  // Wait for completion
-            } catch (Exception e) {
-                throw new IOException("Error while waiting for merges to finish", e);
-            }
+        IndexWriter currentWriter = getCurrentIndexWriter();  // Method to get the calling writer
+        List<Merge> merges = activeMerges.getOrDefault(currentWriter, Collections.emptyList());
+    
+        for (Merge merge : merges) {
+            merge.waitForCompletion(); // Only wait for merges related to this writer
         }
-        activeMerges.clear();
+    
+        activeMerges.remove(currentWriter); // Cleanup after closing
     }
+    
 
     // Providing a method to shut down the global thread pool gracefully
     public static void shutdownThreadPool() {
