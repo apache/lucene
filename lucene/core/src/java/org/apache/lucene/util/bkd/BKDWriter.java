@@ -85,8 +85,8 @@ public class BKDWriter implements Closeable {
   public static final int VERSION_SELECTIVE_INDEXING = 6;
   public static final int VERSION_LOW_CARDINALITY_LEAVES = 7;
   public static final int VERSION_META_FILE = 9;
-  public static final int VERSION_VECTORIZED_DOCID = 10;
-  public static final int VERSION_CURRENT = VERSION_VECTORIZED_DOCID;
+  public static final int VERSION_VECTORIZE_BPV24_AND_INTRODUCE_BPV21 = 10;
+  public static final int VERSION_CURRENT = VERSION_VECTORIZE_BPV24_AND_INTRODUCE_BPV21;
 
   /** Number of splits before we compute the exact bounding box of an inner node. */
   private static final int SPLITS_BEFORE_EXACT_BOUNDS = 4;
