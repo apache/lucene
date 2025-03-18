@@ -305,9 +305,7 @@ public final class NRTSuggester implements Accountable {
     return (numDocs > 0) ? ((double) numDocs / maxDocs) : -1;
   }
 
-  /**
-   * Loads a {@link NRTSuggester} from {@link org.apache.lucene.store.IndexInput}
-   */
+  /** Loads a {@link NRTSuggester} from {@link org.apache.lucene.store.IndexInput} */
   public static NRTSuggester load(IndexInput input) throws IOException {
     final FST<Pair<Long, BytesRef>> fst;
     PairOutputs<Long, BytesRef> outputs =

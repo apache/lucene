@@ -104,9 +104,7 @@ public abstract class CompletionPostingsFormat extends PostingsFormat {
   static final String INDEX_EXTENSION = "cmp";
   static final String DICT_EXTENSION = "lkp";
 
-  /**
-   * Creates a {@link CompletionPostingsFormat} with the given name.
-   */
+  /** Creates a {@link CompletionPostingsFormat} with the given name. */
   public CompletionPostingsFormat(String name) {
     super(name);
   }
