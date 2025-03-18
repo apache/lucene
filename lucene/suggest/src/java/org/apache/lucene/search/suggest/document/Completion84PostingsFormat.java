@@ -29,7 +29,7 @@ import org.apache.lucene.codecs.PostingsFormat;
 public class Completion84PostingsFormat extends CompletionPostingsFormat {
   /** Creates a {@link Completion84PostingsFormat} that will load the completion FST off-heap. */
   public Completion84PostingsFormat() {
-    super("Completion84", FSTLoadMode.OFF_HEAP);
+    super("Completion84");
   }
 
   @Override

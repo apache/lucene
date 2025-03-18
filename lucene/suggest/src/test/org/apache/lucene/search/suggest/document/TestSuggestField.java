@@ -20,7 +20,6 @@ import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.assertTok
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -949,18 +948,8 @@ public class TestSuggestField extends LuceneTestCase {
     iwc.setMergePolicy(newLogMergePolicy());
     Codec filterCodec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          final CompletionPostingsFormat.FSTLoadMode fstLoadMode =
-              RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
           // FST load mode can only be overridden via a custom completion postings format
-          final PostingsFormat postingsFormat =
-              new CompletionPostingsFormat("Completion101", fstLoadMode) {
-                final CompletionPostingsFormat delegate = new Completion101PostingsFormat();
-
-                @Override
-                protected PostingsFormat delegatePostingsFormat() {
-                  return delegate.delegatePostingsFormat();
-                }
-              };
+          final PostingsFormat postingsFormat = new Completion101PostingsFormat();
 
           @Override
           public PostingsFormat postingsFormat() {
