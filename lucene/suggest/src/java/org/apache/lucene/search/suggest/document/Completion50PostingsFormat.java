@@ -27,7 +27,7 @@ import org.apache.lucene.codecs.PostingsFormat;
  * @lucene.experimental
  */
 public class Completion50PostingsFormat extends CompletionPostingsFormat {
-  /** Creates a {@link Completion50PostingsFormat} that will load the completion FST off-heap. */
+  /** Creates a {@link Completion50PostingsFormat}. */
   public Completion50PostingsFormat() {
     super("completion");
   }

@@ -306,8 +306,7 @@ public final class NRTSuggester implements Accountable {
   }
 
   /**
-   * Loads a {@link NRTSuggester} from {@link org.apache.lucene.store.IndexInput} on or off-heap
-   * depending on the provided <code>fstLoadMode</code>
+   * Loads a {@link NRTSuggester} from {@link org.apache.lucene.store.IndexInput}
    */
   public static NRTSuggester load(IndexInput input) throws IOException {
     final FST<Pair<Long, BytesRef>> fst;

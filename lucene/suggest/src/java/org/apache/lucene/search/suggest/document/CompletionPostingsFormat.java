@@ -105,8 +105,7 @@ public abstract class CompletionPostingsFormat extends PostingsFormat {
   static final String DICT_EXTENSION = "lkp";
 
   /**
-   * Creates a {@link CompletionPostingsFormat} that will use the provided <code>fstLoadMode</code>
-   * to determine if the completion FST should be loaded on or off heap.
+   * Creates a {@link CompletionPostingsFormat} with the given name.
    */
   public CompletionPostingsFormat(String name) {
     super(name);
