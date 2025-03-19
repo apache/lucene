@@ -41,6 +41,11 @@ New Features
   These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
+* GITHUB#14078, GITHUB#14374: Adds two new binary quantized vector codecs `Lucene102HnswBinaryQuantizedVectorsFormat`
+  and `Lucene102BinaryQuantizedVectorsFormat`. These new formats allow a ~32x from raw float32 vectors while
+  achieving high recall (with oversampling and reranking vectors) for typical modern knn vector search tasks.
+  (Mayya Sharipova, Ben Trent, Tom Veasey, John Wagster, Chris Hegarty)
+
 * GITHUB#13974,GITHUB#14276: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox.
   (Mikhail Khludnev)
 
