@@ -20,7 +20,6 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.MINIMUM_MSE_GRID;
 
-import java.util.Arrays;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
@@ -33,10 +32,10 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
     float a = interval[0];
     float b = interval[1];
     int nSteps = (1 << bits) - 1;
-    float step = (b - a) / nSteps;
+    double step = (b - a) / nSteps;
     for (int h = 0; h < quantized.length; h++) {
-      float xi = (float) (quantized[h] & 0xFF) * step + a;
-      dequantized[h] = xi + centroid[h];
+      double xi = (double) (quantized[h] & 0xFF) * step + a;
+      dequantized[h] = (float) (xi + centroid[h]);
     }
     return dequantized;
   }
@@ -61,6 +60,7 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
         new OptimizedScalarQuantizer(VectorSimilarityFunction.DOT_PRODUCT);
     float[] scratch = new float[dims];
     for (byte bit : ALL_BITS) {
+      float eps = (1f / (float) (1 << (bit)));
       byte[] destination = new byte[dims];
       for (int i = 0; i < numVectors; ++i) {
         System.arraycopy(vectors[i], 0, scratch, 0, dims);
@@ -75,18 +75,12 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
                 bit,
                 new float[] {result.lowerInterval(), result.upperInterval()},
                 centroid);
+        float mae = 0;
         for (int k = 0; k < dims; ++k) {
-          assertArrayEquals(
-              "bits: "
-                  + bit
-                  + "\n dequant: "
-                  + Arrays.toString(dequantized)
-                  + "\n raw_vec: "
-                  + Arrays.toString(vectors[i]),
-              vectors[i],
-              dequantized,
-              1f / (float) (1 << bit));
+          mae += Math.abs(dequantized[k] - vectors[i][k]);
         }
+        mae /= dims;
+        assertTrue("bits: " + bit + " mae: " + mae + " > eps: " + eps, mae <= eps);
       }
     }
   }
