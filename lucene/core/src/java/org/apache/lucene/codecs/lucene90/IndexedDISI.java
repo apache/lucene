@@ -107,6 +107,7 @@ public final class IndexedDISI extends DocIdSetIterator {
   public static final byte DEFAULT_DENSE_RANK_POWER = 9; // Every 512 docIDs / 8 longs
 
   static final int MAX_ARRAY_LENGTH = (1 << 12) - 1;
+  static int BINARY_SEARCH_WINDOW_SIZE = 4;
 
   private static void flush(
       int block, FixedBitSet buffer, int cardinality, byte denseRankPower, IndexOutput out)
@@ -589,6 +590,8 @@ public final class IndexedDISI extends DocIdSetIterator {
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
         // TODO: binary search
+        // Since we just advance to the doc equals or greater than target.
+        // Maybe use branchLess binary search like https://github.com/apache/lucene/pull/13692.
         for (; disi.index < disi.nextBlockIndex; ) {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           disi.index++;
@@ -602,10 +605,23 @@ public final class IndexedDISI extends DocIdSetIterator {
         return false;
       }
 
+      boolean binarySearch4(IndexedDISI disi, int target, long filePointer, int i)
+          throws IOException {
+        disi.slice.seek((i + 1) * Short.BYTES + filePointer);
+        int doc;
+        if ((doc = disi.slice.readShort()) < target) {
+          i += 2;
+        }
+        disi.slice.seek(i * Short.BYTES + filePointer);
+        if ((doc = disi.slice.readShort()) < target) {
+          i += 1;
+        }
+        return false;
+      }
+
       @Override
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        // TODO: binary search
         if (disi.nextExistDocInBlock > targetInBlock) {
           assert !disi.exists;
           return false;
@@ -613,22 +629,91 @@ public final class IndexedDISI extends DocIdSetIterator {
         if (target == disi.doc) {
           return disi.exists;
         }
-        for (; disi.index < disi.nextBlockIndex; ) {
+        // binary search
+        long filePointer = disi.slice.getFilePointer();
+        for (int i = 0;
+            i + BINARY_SEARCH_WINDOW_SIZE < disi.nextBlockIndex;
+            i += BINARY_SEARCH_WINDOW_SIZE) {
+          disi.slice.seek((i + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
           int doc = Short.toUnsignedInt(disi.slice.readShort());
-          disi.index++;
           if (doc >= targetInBlock) {
-            disi.nextExistDocInBlock = doc;
-            if (doc != targetInBlock) {
-              disi.index--;
-              disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
-              break;
+            disi.slice.seek((i + 1) * Short.BYTES + filePointer);
+            if ((doc = disi.slice.readShort()) < target) {
+              i += 2;
             }
-            disi.exists = true;
-            return true;
+            disi.slice.seek(i * Short.BYTES + filePointer);
+            if ((doc = disi.slice.readShort()) < target) {
+              i += 1;
+            }
+            if (doc >= targetInBlock) {
+              disi.nextExistDocInBlock = doc;
+              disi.index += (i + 1);
+              if (doc != targetInBlock) {
+                disi.index--;
+                disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+                System.out.println(
+                    "targetInBlock: "
+                        + targetInBlock
+                        + ", index: "
+                        + disi.index
+                        + ", nextBlockIndex: "
+                        + disi.nextBlockIndex
+                        + ", doc: "
+                        + disi.doc
+                        + ", exists: "
+                        + disi.exists
+                        + ", getFilePointer: "
+                        + disi.slice.getFilePointer());
+                break;
+              }
+              disi.exists = true;
+              System.out.println(
+                  "targetInBlock: "
+                      + targetInBlock
+                      + ", index: "
+                      + disi.index
+                      + ", nextBlockIndex: "
+                      + disi.nextBlockIndex
+                      + ", doc: "
+                      + disi.doc
+                      + ", exists: "
+                      + disi.exists
+                      + ", getFilePointer: "
+                      + disi.slice.getFilePointer());
+              return true;
+            }
           }
         }
-        disi.exists = false;
         return false;
+
+        //        for (; disi.index < disi.nextBlockIndex; ) {
+        //          int doc = Short.toUnsignedInt(disi.slice.readShort());
+        //          disi.index++;
+        //          if (doc >= targetInBlock) {
+        //            disi.nextExistDocInBlock = doc;
+        //            if (doc != targetInBlock) {
+        //              disi.index--;
+        //              disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+        //              System.out.println("targetInBlock: " + targetInBlock +
+        //                  ", index: " + disi.index +
+        //                  ", nextBlockIndex: " + disi.nextBlockIndex +
+        //                  ", doc: " + disi.doc +
+        //                  ", exists: " + disi.exists +
+        //                  ", getFilePointer: " + disi.slice.getFilePointer());
+        //              break;
+        //            }
+        //            disi.exists = true;
+        //            System.out.println("targetInBlock: " + targetInBlock +
+        //                ", index: " + disi.index +
+        //                ", nextBlockIndex: " + disi.nextBlockIndex +
+        //                ", doc: " + disi.doc +
+        //                ", exists: " + disi.exists +
+        //                ", getFilePointer: " + disi.slice.getFilePointer());
+        //            return true;
+        //          }
+        //        }
+        //        disi.exists = false;
+        //        return false;
       }
     },
     DENSE {

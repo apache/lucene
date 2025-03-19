@@ -42,6 +42,47 @@ public class TestIndexedDISI extends LuceneTestCase {
     }
   }
 
+  public void testBinarySearchSparse() throws IOException {
+    final int B = 65536;
+    int maxDoc = B * 3;
+    BitSet set = new SparseFixedBitSet(maxDoc);
+    for (int i = 0; i < 100; i++) {
+      set.set(i);
+      set.set(i + B);
+      set.set(i + B * 2);
+    }
+
+    set.clear(11);
+    set.clear(17);
+    set.clear(12 + B);
+    set.clear(20 + B);
+
+    try (Directory dir = newDirectory()) {
+      final int cardinality = set.cardinality();
+      final byte denseRankPower = 9; // Not tested here so fixed to isolate factors
+      long length;
+      int jumpTableEntryCount;
+      try (IndexOutput out = dir.createOutput("foo", IOContext.DEFAULT)) {
+        jumpTableEntryCount =
+            IndexedDISI.writeBitSet(new BitSetIterator(set, cardinality), out, denseRankPower);
+        length = out.getFilePointer();
+      }
+
+      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+        IndexedDISI disi =
+            new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPower, cardinality);
+        disi.advanceExact(10);
+        disi.advanceExact(11);
+        disi.advanceExact(15);
+        disi.advanceExact(17);
+        disi.advanceExact(10 + B);
+        disi.advanceExact(12 + B);
+        disi.advanceExact(17 + B);
+        disi.advanceExact(20 + B);
+      }
+    }
+  }
+
   // EMPTY blocks are special with regard to jumps as they have size 0
   @Nightly
   public void testEmptyBlocks() throws IOException {
