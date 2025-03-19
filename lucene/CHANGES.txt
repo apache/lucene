@@ -168,6 +168,8 @@ Other
 
 * GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
 
+* GITHUB#14372: Reduce visibility of NRTSuggester#load from public to package private (Luca Cavanna)
+
 ======================= Lucene 10.1.0 =======================
 
 API Changes
