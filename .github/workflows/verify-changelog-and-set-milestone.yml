@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: ChangeLog Entry Verifier and Milestone Setter
         run: |
@@ -38,9 +38,10 @@ jobs:
           echo -e "\n"
           echo "################## STEP 2 ##################"
           echo "Checking for change log entry in ${{ env.CHANGE_LOG_FILE }}"
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          git log  --pretty=oneline | tail -n 2 | cat
-          echo "merge base sha: ${{ github.event.pull_request.base.sha }}, merge head sha: ${{ github.event.pull_request.head.sha }}"
+          git pull --unshallow origin ${{ github.event.pull_request.head.ref }}
+          git log  --pretty=oneline | head -n 25 | cat
+          echo "merge base ref: ${{ github.event.pull_request.base.ref }}, head ref: ${{ github.event.pull_request.head.ref }}"
+          echo "merge base sha: ${{ github.event.pull_request.base.sha }}, head sha: ${{ github.event.pull_request.head.sha }}"
           if ! git diff ${{ github.event.pull_request.base.sha }} --name-only | grep -q "${{ env.CHANGE_LOG_FILE }}"; then
             echo "Change log file:${{ env.CHANGE_LOG_FILE }} does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
             exit 0
