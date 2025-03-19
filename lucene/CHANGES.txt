@@ -64,6 +64,8 @@ Improvements
 * GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
   (Robert Muir)
 
+* GITHUB#13984: Add HNSW graph checks and stats to CheckIndex (Ben Chaplin)
+
 * GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
 
 * GITHUB#14138: Implement IntersectVisitor#visit(IntsRef) in  many of the current implementations and add
