@@ -20,12 +20,76 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomFloat;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.MINIMUM_MSE_GRID;
 
+import java.util.Arrays;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
 
 public class TestOptimizedScalarQuantizer extends LuceneTestCase {
   static final byte[] ALL_BITS = new byte[] {1, 2, 3, 4, 5, 6, 7, 8};
+
+  static float[] deQuantize(byte[] quantized, byte bits, float[] interval, float[] centroid) {
+    float[] dequantized = new float[quantized.length];
+    float a = interval[0];
+    float b = interval[1];
+    int nSteps = (1 << bits) - 1;
+    float step = (b - a) / nSteps;
+    for (int h = 0; h < quantized.length; h++) {
+      float xi = (float) (quantized[h] & 0xFF) * step + a;
+      dequantized[h] = xi + centroid[h];
+    }
+    return dequantized;
+  }
+
+  public void testQuantizationQuality() {
+    int dims = 16;
+    int numVectors = 32;
+    float[][] vectors = new float[numVectors][];
+    float[] centroid = new float[dims];
+    for (int i = 0; i < numVectors; ++i) {
+      vectors[i] = new float[dims];
+      for (int j = 0; j < dims; ++j) {
+        vectors[i][j] = randomFloat();
+        centroid[j] += vectors[i][j];
+      }
+    }
+    for (int j = 0; j < dims; ++j) {
+      centroid[j] /= numVectors;
+    }
+    // similarity doesn't matter for this test
+    OptimizedScalarQuantizer osq =
+        new OptimizedScalarQuantizer(VectorSimilarityFunction.DOT_PRODUCT);
+    float[] scratch = new float[dims];
+    for (byte bit : ALL_BITS) {
+      byte[] destination = new byte[dims];
+      for (int i = 0; i < numVectors; ++i) {
+        System.arraycopy(vectors[i], 0, scratch, 0, dims);
+        OptimizedScalarQuantizer.QuantizationResult result =
+            osq.scalarQuantize(scratch, destination, bit, centroid);
+        assertValidResults(result);
+        assertValidQuantizedRange(destination, bit);
+
+        float[] dequantized =
+            deQuantize(
+                destination,
+                bit,
+                new float[] {result.lowerInterval(), result.upperInterval()},
+                centroid);
+        for (int k = 0; k < dims; ++k) {
+          assertArrayEquals(
+              "bits: "
+                  + bit
+                  + "\n dequant: "
+                  + Arrays.toString(dequantized)
+                  + "\n raw_vec: "
+                  + Arrays.toString(vectors[i]),
+              vectors[i],
+              dequantized,
+              1f / (float) (1 << bit));
+        }
+      }
+    }
+  }
 
   public void testAbusiveEdgeCases() {
     // large zero array
