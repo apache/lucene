@@ -35,7 +35,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
-import org.apache.lucene.search.suggest.document.CompletionPostingsFormat.FSTLoadMode;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
@@ -56,7 +55,7 @@ import org.apache.lucene.util.IOUtils;
 final class CompletionFieldsProducer extends FieldsProducer implements Accountable {
 
   private FieldsProducer delegateFieldsProducer;
-  private Map<String, CompletionsTermsReader> readers;
+  private final Map<String, CompletionsTermsReader> readers;
   private IndexInput dictIn;
 
   // copy ctr for merge instance
@@ -66,8 +65,7 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
     this.readers = readers;
   }
 
-  CompletionFieldsProducer(String codecName, SegmentReadState state, FSTLoadMode fstLoadMode)
-      throws IOException {
+  CompletionFieldsProducer(String codecName, SegmentReadState state) throws IOException {
     String indexFile =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, INDEX_EXTENSION);
@@ -114,8 +112,7 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
         FieldInfo fieldInfo = state.fieldInfos.fieldInfo(fieldNumber);
         // we don't load the FST yet
         readers.put(
-            fieldInfo.name,
-            new CompletionsTermsReader(dictIn, offset, minWeight, maxWeight, type, fstLoadMode));
+            fieldInfo.name, new CompletionsTermsReader(dictIn, offset, minWeight, maxWeight, type));
       }
       CodecUtil.checkFooter(index);
       success = true;
