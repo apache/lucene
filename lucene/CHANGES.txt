@@ -145,6 +145,7 @@ Improvements
 
 * GITHUB#14213: Allowing indexing stored-only StoredField directly from DataInput. (Tim Brooks)
 
+* GITHUB#14364: Completion FSTs to be loaded off-heap at all times. (Luca Cavanna)
 
 Optimizations
 ---------------------
