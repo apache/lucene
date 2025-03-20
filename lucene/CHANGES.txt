@@ -185,7 +185,9 @@ Optimizations
 
 * GITHUB#14301: Avoid unnecessary evaluations and skipping documents. (hanbj)
 
-# GITHUB#14203: Decode doc ids in BKD leaves with auto-vectorized loops when using DEFAULT_MAX_POINTS_IN_LEAF_NODE. (Guo Feng)
+* GITHUB#14203: Decode doc ids in BKD leaves with auto-vectorized loops when using DEFAULT_MAX_POINTS_IN_LEAF_NODE. (Guo Feng)
+
+* GITHUB#14176: Avoid the per-doc virtual call when building competitive iterator for dynamic pruning. (Guo Feng)
 
 # GITHUB#14361: Introduce new encoding of BPV 21 for DocIdsWriter used in BKD Tree. (Aniketh Jain, Guo Feng)
 
