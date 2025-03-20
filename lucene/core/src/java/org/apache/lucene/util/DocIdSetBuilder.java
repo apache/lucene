@@ -48,7 +48,7 @@ public final class DocIdSetBuilder {
 
     void add(DocIdSetIterator iterator) throws IOException;
 
-    void add(IntsRef docs, int docLowerBoundExclusive);
+    void add(IntsRef docs, int docLowerBoundInclusive);
   }
 
   private record FixedBitSetAdder(FixedBitSet bitSet) implements BulkAdder {
@@ -72,10 +72,10 @@ public final class DocIdSetBuilder {
     }
 
     @Override
-    public void add(IntsRef docs, int docLowerBoundExclusive) {
+    public void add(IntsRef docs, int docLowerBoundInclusive) {
       for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
         int doc = docs.ints[i];
-        if (doc > docLowerBoundExclusive) {
+        if (doc >= docLowerBoundInclusive) {
           bitSet.set(docs.ints[i]);
         }
       }
@@ -119,11 +119,11 @@ public final class DocIdSetBuilder {
     }
 
     @Override
-    public void add(IntsRef docs, int docLowerBoundExclusive) {
+    public void add(IntsRef docs, int docLowerBoundInclusive) {
       int index = buffer.length;
       for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
         int doc = docs.ints[i];
-        if (doc > docLowerBoundExclusive) {
+        if (doc >= docLowerBoundInclusive) {
           buffer.array[index++] = doc;
         }
       }

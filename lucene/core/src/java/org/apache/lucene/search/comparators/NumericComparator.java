@@ -262,7 +262,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
             @Override
             public void visit(IntsRef ref) {
-              adder.add(ref, maxDocVisited);
+              adder.add(ref, maxDocVisited - 1);
             }
 
             @Override
