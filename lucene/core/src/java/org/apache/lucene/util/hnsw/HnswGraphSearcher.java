@@ -272,11 +272,11 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
       if (topCandidateSimilarity < minAcceptedSimilarity) {
-        // if the similarity is equivalent to the minAcceptedSimilarity, we should explore one
-        // candidate
-        // however, running into many duplicates can be expensive, so we should stop exploring if
-        // equivalent minimum scores are found
-        if (shouldExploreMinSim && Math.nextUp(candidates.topScore()) == minAcceptedSimilarity) {
+        // if the similarity is equivalent to the minAcceptedSimilarity,
+        // we should explore one candidate
+        // however, running into many duplicates can be expensive,
+        // so we should stop exploring if equivalent minimum scores are found
+        if (shouldExploreMinSim && Math.nextUp(topCandidateSimilarity) == minAcceptedSimilarity) {
           shouldExploreMinSim = false;
         } else {
           break;
