@@ -76,7 +76,7 @@ public final class DocIdSetBuilder {
       for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
         int doc = docs.ints[i];
         if (doc >= docLowerBoundInclusive) {
-          bitSet.set(docs.ints[i]);
+          bitSet.set(doc);
         }
       }
     }
