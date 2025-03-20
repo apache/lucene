@@ -605,20 +605,6 @@ public final class IndexedDISI extends DocIdSetIterator {
         return false;
       }
 
-      boolean binarySearch4(IndexedDISI disi, int target, long filePointer, int i)
-          throws IOException {
-        disi.slice.seek((i + 1) * Short.BYTES + filePointer);
-        int doc;
-        if ((doc = disi.slice.readShort()) < target) {
-          i += 2;
-        }
-        disi.slice.seek(i * Short.BYTES + filePointer);
-        if ((doc = disi.slice.readShort()) < target) {
-          i += 1;
-        }
-        return false;
-      }
-
       @Override
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
@@ -638,82 +624,31 @@ public final class IndexedDISI extends DocIdSetIterator {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           if (doc >= targetInBlock) {
             disi.slice.seek((i + 1) * Short.BYTES + filePointer);
-            if ((doc = disi.slice.readShort()) < target) {
+            if ((doc = disi.slice.readShort()) < targetInBlock) {
               i += 2;
             }
             disi.slice.seek(i * Short.BYTES + filePointer);
-            if ((doc = disi.slice.readShort()) < target) {
+            if ((doc = disi.slice.readShort()) < targetInBlock) {
               i += 1;
             }
+
+            disi.slice.seek(i * Short.BYTES + filePointer);
+            doc = disi.slice.readShort();
             if (doc >= targetInBlock) {
               disi.nextExistDocInBlock = doc;
               disi.index += (i + 1);
               if (doc != targetInBlock) {
                 disi.index--;
                 disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
-                System.out.println(
-                    "targetInBlock: "
-                        + targetInBlock
-                        + ", index: "
-                        + disi.index
-                        + ", nextBlockIndex: "
-                        + disi.nextBlockIndex
-                        + ", doc: "
-                        + disi.doc
-                        + ", exists: "
-                        + disi.exists
-                        + ", getFilePointer: "
-                        + disi.slice.getFilePointer());
                 break;
               }
               disi.exists = true;
-              System.out.println(
-                  "targetInBlock: "
-                      + targetInBlock
-                      + ", index: "
-                      + disi.index
-                      + ", nextBlockIndex: "
-                      + disi.nextBlockIndex
-                      + ", doc: "
-                      + disi.doc
-                      + ", exists: "
-                      + disi.exists
-                      + ", getFilePointer: "
-                      + disi.slice.getFilePointer());
               return true;
             }
+            break;
           }
         }
         return false;
-
-        //        for (; disi.index < disi.nextBlockIndex; ) {
-        //          int doc = Short.toUnsignedInt(disi.slice.readShort());
-        //          disi.index++;
-        //          if (doc >= targetInBlock) {
-        //            disi.nextExistDocInBlock = doc;
-        //            if (doc != targetInBlock) {
-        //              disi.index--;
-        //              disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
-        //              System.out.println("targetInBlock: " + targetInBlock +
-        //                  ", index: " + disi.index +
-        //                  ", nextBlockIndex: " + disi.nextBlockIndex +
-        //                  ", doc: " + disi.doc +
-        //                  ", exists: " + disi.exists +
-        //                  ", getFilePointer: " + disi.slice.getFilePointer());
-        //              break;
-        //            }
-        //            disi.exists = true;
-        //            System.out.println("targetInBlock: " + targetInBlock +
-        //                ", index: " + disi.index +
-        //                ", nextBlockIndex: " + disi.nextBlockIndex +
-        //                ", doc: " + disi.doc +
-        //                ", exists: " + disi.exists +
-        //                ", getFilePointer: " + disi.slice.getFilePointer());
-        //            return true;
-        //          }
-        //        }
-        //        disi.exists = false;
-        //        return false;
       }
     },
     DENSE {
