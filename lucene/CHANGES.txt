@@ -191,6 +191,8 @@ Optimizations
 
 # GITHUB#14361: Introduce new encoding of BPV 21 for DocIdsWriter used in BKD Tree. (Aniketh Jain, Guo Feng)
 
+* GITHUB#14331: Speedup merging of HNSW graphs. (Mayya Sharipova, Tom Veasey)
+
 Bug Fixes
 ---------------------
 
