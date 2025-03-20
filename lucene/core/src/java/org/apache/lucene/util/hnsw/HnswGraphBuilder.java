@@ -25,10 +25,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -214,8 +214,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     addGraphNodeInternal(node, scorer, null);
   }
 
-  private void addGraphNodeInternal(
-      int node, UpdateableRandomVectorScorer scorer, Set<Integer> eps0) throws IOException {
+  private void addGraphNodeInternal(int node, UpdateableRandomVectorScorer scorer, IntHashSet eps0)
+      throws IOException {
     if (frozen) {
       throw new IllegalStateException("Graph builder is already frozen");
     }
@@ -256,11 +256,7 @@ public class HnswGraphBuilder implements HnswBuilder {
         int level = i + lowestUnsetLevel;
         candidates.clear();
         if (level == 0 && eps0 != null && eps0.size() > 0) {
-          eps = new int[eps0.size()];
-          int j = 0;
-          for (int ep : eps0) {
-            eps[j++] = ep;
-          }
+          eps = eps0.toArray();
           candidates = beamCandidates0;
         }
         graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
@@ -321,7 +317,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     addGraphNodeInternal(node, scorer, null);
   }
 
-  public void addGraphNodeWithEps(int node, Set<Integer> eps0) throws IOException {
+  public void addGraphNodeWithEps(int node, IntHashSet eps0) throws IOException {
     UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     scorer.setScoringOrdinal(node);
     addGraphNodeInternal(node, scorer, eps0);

@@ -168,6 +168,8 @@ Optimizations
 
 * GITHUB#14272: Use DocIdSetIterator#range for continuous-id BKD leaves. (Guo Feng)
 
+* GITHUB#14331: Speedup merging of HNSW graphs. (Mayya Sharipova, Tom Veasey)
+
 Bug Fixes
 ---------------------
 

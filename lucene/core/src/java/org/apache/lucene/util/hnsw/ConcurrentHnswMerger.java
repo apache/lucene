@@ -95,7 +95,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
    * @return the mapping from old ordinals to new ordinals
    * @throws IOException If an error occurs while reading from the merge state
    */
-  private static final int[] getNewOrdMapping(
+  private static int[] getNewOrdMapping(
       FieldInfo fieldInfo,
       KnnVectorsReader initReader,
       MergeState.DocMap initDocMap,
@@ -118,6 +118,7 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
         docId = initializerIterator.nextDoc()) {
       int newId = initDocMap.get(docId);
       maxNewDocID = Math.max(newId, maxNewDocID);
+      assert newIdToOldOrdinal.containsKey(newId) == false;
       newIdToOldOrdinal.put(newId, initializerIterator.index());
     }
 
@@ -129,11 +130,11 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
     for (int newDocId = mergedVectorIterator.nextDoc();
         newDocId <= maxNewDocID;
         newDocId = mergedVectorIterator.nextDoc()) {
-      int hashDocIndex = newIdToOldOrdinal.indexOf(newDocId);
-      if (newIdToOldOrdinal.indexExists(hashDocIndex)) {
+      int oldOrd = newIdToOldOrdinal.getOrDefault(newDocId, -1);
+      if (oldOrd != -1) {
         int newOrd = mergedVectorIterator.index();
         initializedNodes.set(newOrd);
-        oldToNewOrdinalMap[newIdToOldOrdinal.indexGet(hashDocIndex)] = newOrd;
+        oldToNewOrdinalMap[oldOrd] = newOrd;
       }
     }
     return oldToNewOrdinalMap;

@@ -20,29 +20,9 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.Set;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.BitSet;
-
-/**
- * A graph builder that is used during segments' merging.
- *
- * <p>This builder uses a smart algorithm to merge multiple graphs into a single graph. The
- * algorithm is based on the idea if we know where we want to insert a node, we have a good idea of
- * where we want to insert its neighbours.
- *
- * <p>The algorithm is based on the following steps: 1. Get all graphs that don't have deletions and
- * sort them by size. 2. Copy the largest graph to the new graph (gL). 3. For each remaining small
- * graph (gS) - Find the nodes that best cover gS: join set `j`. These nodes will be inserted into
- * gL as usual: by searching gL to find the best candidates: `w` to which connect the nodes. - For
- * each remaining node in gS: - we do NOT do search in gL. Instead, we form `w` by union of the
- * node's neighbors' in Gs and the node's neighbors' neighbors' in gL.
- *
- * <p>We expect the size of join set `j` to be small, 1/5-1/2 of size gS. And for the rest of the
- * nodes of gS, we expect savings by not doing extra search in gL.
- *
- * @lucene.experimental
- */
 
 /**
  * A graph builder that is used during segments' merging.
@@ -64,7 +44,7 @@ import org.apache.lucene.util.BitSet;
  *             <ul>
  *               <li>We provide eps to search in gL. We form `eps` by the union of the node's
  *                   neighbors in gS and the node's neighbors' neighbors in gL. We also limit
- *                   beamWidth (efConstruction to M*2)
+ *                   beamWidth (efConstruction to M*3)
  *             </ul>
  *       </ul>
  * </ul>
@@ -176,7 +156,7 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       if (j.contains(u)) {
         continue;
       }
-      Set<Integer> eps = new HashSet<>();
+      IntHashSet eps = new IntHashSet();
       gS.seek(0, u);
       for (int v = gS.nextNeighbor(); v != NO_MORE_DOCS; v = gS.nextNeighbor()) {
         // if u's neighbour v is in the join set, or already added to gL (v < u),
