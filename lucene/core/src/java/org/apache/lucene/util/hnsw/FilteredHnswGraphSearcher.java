@@ -20,6 +20,8 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+
+import org.apache.lucene.search.HnswKnnCollector;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -200,6 +202,9 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
             minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
           }
         }
+      }
+      if (results instanceof HnswKnnCollector hnswKnnCollector) {
+        hnswKnnCollector.nextCandidate();
       }
     }
   }
