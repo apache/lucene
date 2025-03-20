@@ -27,6 +27,11 @@ import org.apache.lucene.search.Weight.DefaultBulkScorer;
  */
 public abstract class ConstantScoreScorerSupplier extends ScorerSupplier {
 
+  /** Create a {@link ConstantScoreScorerSupplier} that matches all docs in [0, maxDoc). */
+  public static ConstantScoreScorerSupplier matchAll(float score, ScoreMode scoreMode, int maxDoc) {
+    return fromIterator(DocIdSetIterator.all(maxDoc), score, scoreMode, maxDoc);
+  }
+
   /** Create a {@link ConstantScoreScorerSupplier} for the given iterator. */
   public static ConstantScoreScorerSupplier fromIterator(
       DocIdSetIterator iterator, float score, ScoreMode scoreMode, int maxDoc) {

@@ -39,6 +39,9 @@ import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.NumericUtils;
 
 final class LongDistanceFeatureQuery extends Query {
+  // MIN_SKIP_INTERVAL and MAX_SKIP_INTERVAL both should be powers of 2
+  private static final int MIN_SKIP_INTERVAL = 32;
+  private static final int MAX_SKIP_INTERVAL = 8192;
 
   private final String field;
   private final long origin;
@@ -234,6 +237,10 @@ final class LongDistanceFeatureQuery extends Query {
     private final NumericDocValues docValues;
     private long maxDistance = Long.MAX_VALUE;
 
+    private int currentSkipInterval = MIN_SKIP_INTERVAL;
+    // helps to be conservative about increasing the sampling interval
+    private int tryUpdateFailCount = 0;
+
     protected DistanceScorer(
         int maxDoc,
         long leadCost,
@@ -346,7 +353,9 @@ final class LongDistanceFeatureQuery extends Query {
 
       // Start sampling if we get called too much
       setMinCompetitiveScoreCounter++;
-      if (setMinCompetitiveScoreCounter > 256 && (setMinCompetitiveScoreCounter & 0x1f) != 0x1f) {
+      if (setMinCompetitiveScoreCounter > 256
+          && (setMinCompetitiveScoreCounter & (currentSkipInterval - 1))
+              != currentSkipInterval - 1) {
         return;
       }
 
@@ -444,10 +453,28 @@ final class LongDistanceFeatureQuery extends Query {
       if (PointValues.isEstimatedPointCountGreaterThanOrEqualTo(
           visitor, pointValues.getPointTree(), threshold)) {
         // the new range is not selective enough to be worth materializing
+        updateSkipInterval(false);
         return;
       }
       pointValues.intersect(visitor);
       it = result.build().iterator();
+      updateSkipInterval(true);
+    }
+
+    private void updateSkipInterval(boolean success) {
+      if (setMinCompetitiveScoreCounter > 256) {
+        if (success) {
+          currentSkipInterval = Math.max(currentSkipInterval / 2, MIN_SKIP_INTERVAL);
+          tryUpdateFailCount = 0;
+        } else {
+          if (tryUpdateFailCount >= 3) {
+            currentSkipInterval = Math.min(currentSkipInterval * 2, MAX_SKIP_INTERVAL);
+            tryUpdateFailCount = 0;
+          } else {
+            tryUpdateFailCount++;
+          }
+        }
+      }
     }
   }
 }

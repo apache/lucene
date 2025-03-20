@@ -1163,7 +1163,7 @@ public class TestSortOptimization extends LuceneTestCase {
     // behavior when the bulk scorer reads ahead
     Query randomQuery;
     if (query instanceof MatchAllDocsQuery) {
-      randomQuery = new ReadAheadMatchAllDocsQuery(random());
+      randomQuery = new ReadAheadMatchAllDocsQuery();
     } else {
       randomQuery = query;
     }
