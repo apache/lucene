@@ -1,4 +1,4 @@
-# Run "gradlew writeLocks" after modifying this file!
+# Run "gradlew writeLocks" and "gradlew updateLicenses" after modifying this file!
 [versions]
 antlr = "4.11.1"
 asm = "9.6"
