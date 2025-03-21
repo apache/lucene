@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene90.blocktree;
 
+import static org.apache.lucene.codecs.lucene90.blocktree.TrieBuilder.ChildSaveStrategy;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
@@ -30,6 +32,17 @@ import org.apache.lucene.util.BytesRef;
 import org.junit.Assert;
 
 public class TestTrie extends LuceneTestCase {
+
+  public void testStrategyChoose() {
+    // bits use 32 bytes while reverse array use 31 bytes, choose reverse array
+    assertSame(ChildSaveStrategy.REVERSE_ARRAY, ChildSaveStrategy.choose(0, 255, 226));
+    // bits use 32 bytes while array use 31 bytes, choose array
+    assertSame(ChildSaveStrategy.ARRAY, ChildSaveStrategy.choose(0, 255, 32));
+    // array and bits both use 32 position bytes, we choose bits.
+    assertSame(ChildSaveStrategy.BITS, ChildSaveStrategy.choose(0, 255, 33));
+    // reverse_array and bits both use 32 position bytes, we choose bits.
+    assertSame(ChildSaveStrategy.BITS, ChildSaveStrategy.choose(0, 255, 225));
+  }
 
   public void testRandomTerms() throws Exception {
     Supplier<byte[]> supplier = TestTrie::randomBytes;

@@ -309,17 +309,9 @@ class TrieBuilder {
         final int minLabel = node.firstChild.label;
         final int maxLabel = node.lastChild.label;
         assert maxLabel > minLabel;
-        ChildSaveStrategy childSaveStrategy = null;
-        int positionBytes = Integer.MAX_VALUE;
-        for (ChildSaveStrategy strategy : ChildSaveStrategy.STRATEGIES_IN_PRIORITY_ORDER) {
-          int strategyCost = strategy.positionBytes(minLabel, maxLabel, childrenNum);
-          if (strategyCost < positionBytes) {
-            childSaveStrategy = strategy;
-            positionBytes = strategyCost;
-          }
-        }
-
-        assert childSaveStrategy != null;
+        ChildSaveStrategy childSaveStrategy =
+            ChildSaveStrategy.choose(minLabel, maxLabel, childrenNum);
+        int positionBytes = childSaveStrategy.positionBytes(minLabel, maxLabel, childrenNum);
         assert positionBytes > 0 && positionBytes <= 32;
 
         // children fps are in order, so the first child's fp is min, then delta is max.
@@ -529,7 +521,7 @@ class TrieBuilder {
 
     /**
      * Store labels that not existing within the range. E.g. store 10(max label) and 3, 5(absent
-     * label) for [1, 2, 4, 6, 7, 8, 9, 10]
+     * label) for [1, 2, 4, 6, 7, 8, 9, 10].
      *
      * <p>TODO: Can we use VectorAPI to speed up the lookup? we can check 64 labels once on AVX512!
      */
@@ -582,8 +574,9 @@ class TrieBuilder {
       }
     };
 
+    private static final ChildSaveStrategy[] STRATEGIES_IN_PRIORITY_ORDER =
+        new ChildSaveStrategy[] {BITS, ARRAY, REVERSE_ARRAY};
     private static final ChildSaveStrategy[] STRATEGIES_BY_CODE;
-    private static final ChildSaveStrategy[] STRATEGIES_IN_PRIORITY_ORDER;
 
     static {
       STRATEGIES_BY_CODE = new ChildSaveStrategy[ChildSaveStrategy.values().length];
@@ -591,7 +584,6 @@ class TrieBuilder {
         assert STRATEGIES_BY_CODE[strategy.code] == null;
         STRATEGIES_BY_CODE[strategy.code] = strategy;
       }
-      STRATEGIES_IN_PRIORITY_ORDER = new ChildSaveStrategy[] {BITS, ARRAY, REVERSE_ARRAY};
     }
 
     final int code;
@@ -611,6 +603,21 @@ class TrieBuilder {
 
     static ChildSaveStrategy byCode(int code) {
       return STRATEGIES_BY_CODE[code];
+    }
+
+    static ChildSaveStrategy choose(int minLabel, int maxLabel, int labelCnt) {
+      ChildSaveStrategy childSaveStrategy = null;
+      int positionBytes = Integer.MAX_VALUE;
+      for (ChildSaveStrategy strategy : ChildSaveStrategy.STRATEGIES_IN_PRIORITY_ORDER) {
+        int strategyCost = strategy.positionBytes(minLabel, maxLabel, labelCnt);
+        if (strategyCost < positionBytes) {
+          childSaveStrategy = strategy;
+          positionBytes = strategyCost;
+        }
+      }
+      assert childSaveStrategy != null;
+      assert positionBytes > 0 && positionBytes <= 32;
+      return childSaveStrategy;
     }
   }
 }
