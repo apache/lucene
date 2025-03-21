@@ -23,7 +23,7 @@ import java.util.function.IntConsumer;
 
 /**
  * This file contains unicode properties used by {@code RegExp}. The data was generated using ICU4J
- * v74.2.0.0, unicode version: 15.1.0.0.
+ * v77.1.0.0, unicode version: 16.0.0.0.
  */
 final class CaseFolding {
   private CaseFolding() {}
