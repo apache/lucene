@@ -40,6 +40,7 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.FixedLengthBytesRefArray;
 import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
@@ -678,7 +679,8 @@ public class BKDWriter implements Closeable {
     final IndexOutput metaOut, indexOut, dataOut;
     final long dataStartFP;
     final LongArrayList leafBlockFPs = new LongArrayList();
-    final List<byte[]> leafBlockStartValues = new ArrayList<>();
+    FixedLengthBytesRefArray leafBlockStartValues =
+        new FixedLengthBytesRefArray(config.packedBytesLength());
     final byte[] leafValues = new byte[config.maxPointsInLeafNode() * config.packedBytesLength()];
     final int[] leafDocs = new int[config.maxPointsInLeafNode()];
     private long valueCount;
@@ -780,8 +782,7 @@ public class BKDWriter implements Closeable {
 
             @Override
             public BytesRef getSplitValue(int index) {
-              scratchBytesRef1.bytes = leafBlockStartValues.get(index);
-              return scratchBytesRef1;
+              return leafBlockStartValues.get(scratchBytesRef1, index);
             }
 
             @Override
@@ -816,8 +817,9 @@ public class BKDWriter implements Closeable {
       if (leafBlockFPs.size() > 0) {
         // Save the first (minimum) value in each leaf block except the first, to build the split
         // value index in the end:
-        leafBlockStartValues.add(
-            ArrayUtil.copyOfSubArray(leafValues, 0, config.packedBytesLength()));
+        scratchBytesRef1.bytes = leafValues;
+        scratchBytesRef1.offset = 0;
+        leafBlockStartValues.append(scratchBytesRef1);
       }
       leafBlockFPs.add(dataOut.getFilePointer());
       checkMaxLeafNodeCount(leafBlockFPs.size());
