@@ -34,7 +34,7 @@ import org.junit.Assert;
 public class TestTrie extends LuceneTestCase {
 
   public void testStrategyChoose() {
-    // bits use 32 bytes while reverse array use 31 bytes, choose reverse array
+    // bits use 32 bytes while reverse_array use 31 bytes, choose reverse_array
     assertSame(ChildSaveStrategy.REVERSE_ARRAY, ChildSaveStrategy.choose(0, 255, 226));
     // bits use 32 bytes while array use 31 bytes, choose array
     assertSame(ChildSaveStrategy.ARRAY, ChildSaveStrategy.choose(0, 255, 32));
@@ -65,7 +65,7 @@ public class TestTrie extends LuceneTestCase {
   public void testOneByteTerms() throws Exception {
     // heavily test single byte terms to generate various label distribution.
     Supplier<byte[]> supplier = () -> new byte[] {(byte) random().nextInt()};
-    int round = atLeast(50);
+    int round = atLeast(100);
     for (int i = 0; i < round; i++) {
       testTrieLookup(supplier, 10);
     }
