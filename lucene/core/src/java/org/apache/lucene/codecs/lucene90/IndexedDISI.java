@@ -617,7 +617,8 @@ public final class IndexedDISI extends DocIdSetIterator {
         }
         // binary search
         long filePointer = disi.slice.getFilePointer();
-        for (int i = 0;
+        int i = 0;
+        for (;
             i + BINARY_SEARCH_WINDOW_SIZE < disi.nextBlockIndex;
             i += BINARY_SEARCH_WINDOW_SIZE) {
           disi.slice.seek((i + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
@@ -630,11 +631,11 @@ public final class IndexedDISI extends DocIdSetIterator {
             return true;
           } else if (doc > targetInBlock) {
             disi.slice.seek((i + 1) * Short.BYTES + filePointer);
-            if (disi.slice.readShort() < targetInBlock) {
+            if ((doc = disi.slice.readShort()) < targetInBlock) {
               i += 2;
             }
             disi.slice.seek(i * Short.BYTES + filePointer);
-            if (disi.slice.readShort() < targetInBlock) {
+            if ((doc = disi.slice.readShort()) < targetInBlock) {
               i += 1;
             }
             disi.slice.seek(i * Short.BYTES + filePointer);
@@ -651,6 +652,24 @@ public final class IndexedDISI extends DocIdSetIterator {
               return true;
             }
             break;
+          }
+        }
+
+        // Compare last.
+        disi.index += i;
+        disi.slice.seek(i * Short.BYTES + filePointer);
+        for (; disi.index < disi.nextBlockIndex; ) {
+          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          disi.index++;
+          if (doc >= targetInBlock) {
+            disi.nextExistDocInBlock = doc;
+            if (doc != targetInBlock) {
+              disi.index--;
+              disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+              break;
+            }
+            disi.exists = true;
+            return true;
           }
         }
         return false;
