@@ -183,6 +183,8 @@ import org.apache.lucene.util.compress.LowercaseAsciiCompression;
  * The index is also used to determine when a given term cannot exist on disk (in the .tim file),
  * saving a disk seek.
  *
+ * <p>// NO COMMIT: fix & add java doc of the new trie
+ *
  * <p>Notes:
  *
  * <ul>

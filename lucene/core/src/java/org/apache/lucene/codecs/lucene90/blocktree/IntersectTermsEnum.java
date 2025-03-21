@@ -87,7 +87,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     for (int idx = 0; idx < stack.length; idx++) {
       stack[idx] = new IntersectTermsEnumFrame(this, idx);
     }
-    for (int nodeIdx = 0; nodeIdx < nodes.length; nodeIdx++) {
+    for (int nodeIdx = 1; nodeIdx < nodes.length; nodeIdx++) {
       nodes[nodeIdx] = new TrieReader.Node();
     }
 

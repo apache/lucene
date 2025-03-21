@@ -209,7 +209,7 @@ class TrieReader {
       position = 0;
     } else if (targetLabel > minLabel) {
       position =
-          TrieBuilder.PositionStrategy.byCode(parent.positionStrategy)
+          TrieBuilder.ChildSaveStrategy.byCode(parent.positionStrategy)
               .lookup(targetLabel, access, positionBytesStartFp, positionBytes, minLabel);
     }
 

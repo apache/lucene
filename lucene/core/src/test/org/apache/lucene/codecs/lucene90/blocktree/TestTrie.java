@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.function.Supplier;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -30,7 +31,34 @@ import org.junit.Assert;
 
 public class TestTrie extends LuceneTestCase {
 
-  public void testTrieBuilder() {
+  public void testRandomTerms() throws Exception {
+    Supplier<byte[]> supplier = TestTrie::randomBytes;
+    testTrieBuilder(supplier, atLeast(10000));
+    testTrieLookup(supplier, TEST_NIGHTLY ? 16 : 12);
+  }
+
+  public void testVeryLongTerms() throws Exception {
+    Supplier<byte[]> supplier =
+        () -> {
+          byte[] bytes = new byte[65535];
+          for (int i = 1; i < bytes.length; i++) {
+            bytes[i] = (byte) random().nextInt(i / 256 + 1);
+          }
+          return bytes;
+        };
+    testTrieLookup(supplier, 5);
+  }
+
+  public void testOneByteTerms() throws Exception {
+    // heavily test single byte terms to generate various label distribution.
+    Supplier<byte[]> supplier = () -> new byte[] {(byte) random().nextInt()};
+    int round = atLeast(20);
+    for (int i = 0; i < round; i++) {
+      testTrieLookup(supplier, 10);
+    }
+  }
+
+  private void testTrieBuilder(Supplier<byte[]> randomBytesSupplier, int count) {
     Map<BytesRef, TrieBuilder.Output> actual = new TreeMap<>();
     Map<BytesRef, TrieBuilder.Output> expected = new TreeMap<>();
 
@@ -39,12 +67,13 @@ public class TestTrie extends LuceneTestCase {
         TrieBuilder.bytesRefToTrie(
             new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
 
-    int n = random().nextInt(10000);
-    for (int i = 0; i < n; i++) {
-      BytesRef key = new BytesRef(randomBytes());
+    for (int i = 0; i < count; i++) {
+      BytesRef key = new BytesRef(randomBytesSupplier.get());
       TrieBuilder.Output value =
           new TrieBuilder.Output(
-              random().nextLong(1L << 62), random().nextBoolean(), new BytesRef(randomBytes()));
+              random().nextLong(1L << 62),
+              random().nextBoolean(),
+              new BytesRef(randomBytesSupplier.get()));
       if (!expected.containsKey(key)) {
         expected.put(key, value);
         TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);
@@ -57,8 +86,8 @@ public class TestTrie extends LuceneTestCase {
     assertEquals(expected, actual);
   }
 
-  public void testTrieLookup() throws IOException {
-    for (int iter = 1; iter <= 15; iter++) {
+  private void testTrieLookup(Supplier<byte[]> randomBytesSupplier, int round) throws IOException {
+    for (int iter = 1; iter <= round; iter++) {
       Map<BytesRef, TrieBuilder.Output> expected = new TreeMap<>();
 
       expected.put(
@@ -69,12 +98,12 @@ public class TestTrie extends LuceneTestCase {
 
       int n = 1 << iter;
       for (int i = 0; i < n; i++) {
-        BytesRef key = new BytesRef(randomBytes());
+        BytesRef key = new BytesRef(randomBytesSupplier.get());
         TrieBuilder.Output value =
             new TrieBuilder.Output(
                 random().nextLong(1L << 62),
                 random().nextBoolean(),
-                random().nextBoolean() ? null : new BytesRef(randomBytes()));
+                random().nextBoolean() ? null : new BytesRef(randomBytesSupplier.get()));
         if (!expected.containsKey(key)) {
           expected.put(key, value);
           TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);

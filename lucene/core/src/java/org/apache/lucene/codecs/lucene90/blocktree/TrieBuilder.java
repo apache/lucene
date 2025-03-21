@@ -24,13 +24,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.function.BiConsumer;
+import java.util.stream.IntStream;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 
-/** TODO make it a more memory efficient structure */
+/**
+ * A builder to build prefix tree (trie) as the index of block tree, and can be saved to disk.
+ *
+ * <p>TODO make it a more memory efficient structure
+ */
 class TrieBuilder {
 
   static final int SIGN_NO_CHILDREN = 0x00;
@@ -46,11 +51,10 @@ class TrieBuilder {
   /**
    * The output describing the term block the prefix point to.
    *
-   * @param fp describes the on-disk terms block which a trie node points to.
-   * @param hasTerms A boolean which will be false if this on-disk block consists entirely of
-   *     pointers to child blocks.
-   * @param floorData A {@link BytesRef} which will be non-null when a large block of terms sharing
-   *     a single trie prefix is split into multiple on-disk blocks.
+   * @param fp the file pointer to the on-disk terms block which a trie node points to.
+   * @param hasTerms false if this on-disk block consists entirely of pointers to child blocks.
+   * @param floorData will be non-null when a large block of terms sharing a single trie prefix is
+   *     split into multiple on-disk blocks.
    */
   record Output(long fp, boolean hasTerms, BytesRef floorData) {}
 
@@ -65,7 +69,7 @@ class TrieBuilder {
     // The utf8 digit that leads to this Node, 0 for root node
     private final int label;
     // The children listed in order by their utf8 label
-    private final LinkedList<Node> children;
+    private final LinkedList<Node> children = new LinkedList<>();
     // The output of this node.
     private Output output;
 
@@ -76,15 +80,14 @@ class TrieBuilder {
     // The iterator whose next() point to the first child has not been saved.
     private Iterator<Node> childrenIterator;
 
-    Node(int label, Output output, LinkedList<Node> children) {
+    Node(int label, Output output) {
       this.label = label;
       this.output = output;
-      this.children = children;
     }
   }
 
   private Status status = Status.BUILDING;
-  final Node root = new Node(0, null, new LinkedList<>());
+  final Node root = new Node(0, null);
 
   static TrieBuilder bytesRefToTrie(BytesRef k, Output v) {
     return new TrieBuilder(k, v);
@@ -99,7 +102,7 @@ class TrieBuilder {
     for (int i = 0; i < k.length; i++) {
       int b = k.bytes[i + k.offset] & 0xFF;
       Output output = i == k.length - 1 ? v : null;
-      Node node = new Node(b, output, new LinkedList<>());
+      Node node = new Node(b, output);
       parent.children.add(node);
       parent = node;
     }
@@ -127,6 +130,9 @@ class TrieBuilder {
 
   private void absorb(Node n, Node add, Deque<Runnable> stack) {
     assert n.label == add.label;
+    assert assertChildrenLabelInOrder(n);
+    assert assertChildrenLabelInOrder(add);
+
     if (add.output != null) {
       if (n.output != null) {
         this.status = Status.DESTROYED;
@@ -134,8 +140,10 @@ class TrieBuilder {
       }
       n.output = add.output;
     }
-    ListIterator<Node> iter = n.children.listIterator();
+
     // TODO we can do more efficient if there is no intersection, block tree always do that
+    // Children labels are in order, so like a merge sort, this is O(M+N),
+    ListIterator<Node> iter = n.children.listIterator();
     outer:
     for (Node addChild : add.children) {
       while (iter.hasNext()) {
@@ -152,6 +160,7 @@ class TrieBuilder {
       }
       iter.add(addChild);
     }
+    assert assertChildrenLabelInOrder(n);
   }
 
   Output getEmptyOutput() {
@@ -195,15 +204,16 @@ class TrieBuilder {
     Deque<Node> stack = new ArrayDeque<>();
     stack.push(root);
 
-    // Visit and save nodes of this trie in a post-order traversal.
-
+    // Visit and save nodes of this trie in a post-order depth-first traversal.
     while (stack.isEmpty() == false) {
       Node node = stack.peek();
       assert node.fp == -1;
+      assertChildrenLabelInOrder(node);
+
       final int childrenNum = node.children.size();
 
-      if (childrenNum == 0) {
-        assert node.output != null;
+      if (childrenNum == 0) { // leaf node
+        assert node.output != null : "leaf nodes should have output.";
 
         node.fp = index.getFilePointer() - startFP;
         stack.pop();
@@ -227,6 +237,9 @@ class TrieBuilder {
         }
         continue;
       }
+
+      // If there are any children have not been saved, push it into stack and continue.
+      // We want to ensure saving children before parent.
 
       if (node.childrenIterator == null) {
         node.childrenIterator = node.children.iterator();
@@ -282,25 +295,25 @@ class TrieBuilder {
 
         final int minLabel = node.children.getFirst().label;
         final int maxLabel = node.children.getLast().label;
-        PositionStrategy positionStrategy = null;
+        assert maxLabel > minLabel;
+        ChildSaveStrategy childSaveStrategy = null;
         int positionBytes = Integer.MAX_VALUE;
-        for (PositionStrategy strategy : PositionStrategy.values()) {
+        for (ChildSaveStrategy strategy : ChildSaveStrategy.STRATEGIES_IN_PRIORITY_ORDER) {
           int strategyCost = strategy.positionBytes(minLabel, maxLabel, childrenNum);
           if (strategyCost < positionBytes) {
-            positionStrategy = strategy;
+            childSaveStrategy = strategy;
             positionBytes = strategyCost;
-          } else if (positionStrategy != null
-              && strategyCost == positionBytes
-              && strategy.priority > positionStrategy.priority) {
-            positionStrategy = strategy;
           }
         }
 
-        assert positionStrategy != null;
+        assert childSaveStrategy != null;
         assert positionBytes > 0 && positionBytes <= 32;
 
+        assertChildrenFpInOrder(node);
+        // children fps are in order, so the first child's fp is min, then delta is max.
         long maxChildDeltaFp = node.fp - node.children.getFirst().fp;
-        assert maxChildDeltaFp > 0;
+        assert maxChildDeltaFp > 0 : "parent always written after all children";
+
         int childrenFpBytes = bytesRequiredVLong(maxChildDeltaFp);
         int encodedOutputFpBytes =
             node.output == null ? 1 : bytesRequiredVLong(node.output.fp << 2);
@@ -309,7 +322,7 @@ class TrieBuilder {
                 | ((childrenFpBytes - 1) << 2)
                 | ((node.output != null ? 1 : 0) << 5)
                 | ((encodedOutputFpBytes - 1) << 6)
-                | (positionStrategy.priority << 9)
+                | (childSaveStrategy.code << 9)
                 | ((positionBytes - 1) << 11)
                 | (minLabel << 16);
 
@@ -320,21 +333,22 @@ class TrieBuilder {
           long encodedFp = encodeFP(output);
           writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
           if (output.floorData != null) {
+            // We need this childrenNum to compute where the floor data start.
             index.writeByte((byte) (childrenNum - 1));
           }
         }
 
         long positionStartFp = index.getFilePointer();
-        positionStrategy.save(node.children, childrenNum, positionBytes, index);
+        childSaveStrategy.save(node.children, childrenNum, positionBytes, index);
         assert index.getFilePointer() == positionStartFp + positionBytes
-            : positionStrategy.name()
+            : childSaveStrategy.name()
                 + " position bytes compute error, computed: "
                 + positionBytes
                 + " actual: "
                 + (index.getFilePointer() - positionStartFp);
 
         for (Node child : node.children) {
-          assert node.fp > child.fp;
+          assert node.fp > child.fp : "parent always written after all children";
           writeLongNBytes(node.fp - child.fp, childrenFpBytes, index);
         }
 
@@ -360,11 +374,26 @@ class TrieBuilder {
   private static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
     for (int i = 0; i < n; i++) {
       out.writeByte((byte) v);
-      v >>= 8;
+      v >>>= 8;
     }
+    assert v == 0;
   }
 
-  enum PositionStrategy {
+  private static boolean assertChildrenLabelInOrder(Node node) {
+    assert IntStream.range(0, node.children.size() - 1)
+            .allMatch(i -> node.children.get(i).label < node.children.get(i + 1).label)
+        : " the children of node should always be in order.";
+    return true;
+  }
+
+  private static boolean assertChildrenFpInOrder(Node node) {
+    assert IntStream.range(0, node.children.size() - 1)
+            .allMatch(i -> node.children.get(i).fp < node.children.get(i + 1).fp)
+        : " the children of node should always be in order.";
+    return true;
+  }
+
+  enum ChildSaveStrategy {
 
     /**
      * Store children labels in a bitset, this is likely the most efficient storage as we can
@@ -522,18 +551,22 @@ class TrieBuilder {
       }
     };
 
-    private static final PositionStrategy[] STRATEGIES = new PositionStrategy[3];
+    private static final ChildSaveStrategy[] STRATEGIES_BY_CODE;
+    private static final ChildSaveStrategy[] STRATEGIES_IN_PRIORITY_ORDER;
 
     static {
-      for (PositionStrategy strategy : PositionStrategy.values()) {
-        STRATEGIES[strategy.priority] = strategy;
+      STRATEGIES_BY_CODE = new ChildSaveStrategy[ChildSaveStrategy.values().length];
+      for (ChildSaveStrategy strategy : ChildSaveStrategy.values()) {
+        assert STRATEGIES_BY_CODE[strategy.code] == null;
+        STRATEGIES_BY_CODE[strategy.code] = strategy;
       }
+      STRATEGIES_IN_PRIORITY_ORDER = new ChildSaveStrategy[] {BITS, ARRAY, REVERSE_ARRAY};
     }
 
-    final int priority;
+    final int code;
 
-    PositionStrategy(int priority) {
-      this.priority = priority;
+    ChildSaveStrategy(int code) {
+      this.code = code;
     }
 
     abstract int positionBytes(int minLabel, int maxLabel, int labelCnt);
@@ -545,8 +578,8 @@ class TrieBuilder {
         int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
         throws IOException;
 
-    static PositionStrategy byCode(int code) {
-      return STRATEGIES[code];
+    static ChildSaveStrategy byCode(int code) {
+      return STRATEGIES_BY_CODE[code];
     }
   }
 }
