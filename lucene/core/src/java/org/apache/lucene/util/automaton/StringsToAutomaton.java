@@ -40,10 +40,13 @@ import org.apache.lucene.util.UnicodeUtil;
  * @see Automata#makeBinaryStringUnion(BytesRefIterator)
  */
 final class StringsToAutomaton {
+  private final boolean caseInsensitive;
+  private final boolean turkic;
 
   /** The default constructor is private. Use static methods directly. */
-  private StringsToAutomaton() {
-    super();
+  private StringsToAutomaton(boolean caseInsensitive, boolean turkic) {
+    this.caseInsensitive = caseInsensitive;
+    this.turkic = turkic;
   }
 
   /** DFSA state with <code>char</code> labels on transitions. */
@@ -195,7 +198,11 @@ final class StringsToAutomaton {
 
   /** Internal recursive traversal for conversion. */
   private static int convert(
-      Automaton.Builder a, State s, IdentityHashMap<State, Integer> visited) {
+      Automaton.Builder a,
+      State s,
+      IdentityHashMap<State, Integer> visited,
+      boolean caseInsensitive,
+      boolean turkic) {
 
     Integer converted = visited.get(s);
     if (converted != null) {
@@ -209,7 +216,15 @@ final class StringsToAutomaton {
     int i = 0;
     int[] labels = s.labels;
     for (StringsToAutomaton.State target : s.states) {
-      a.addTransition(converted, convert(a, target, visited), labels[i++]);
+      int label = labels[i++];
+      int dest = convert(a, target, visited, caseInsensitive, turkic);
+      a.addTransition(converted, dest, label);
+      if (caseInsensitive) {
+        int altCase = CaseFolding.upperCase(label, turkic);
+        if (altCase != label) {
+          a.addTransition(converted, dest, altCase);
+        }
+      }
     }
 
     return converted;
@@ -227,7 +242,7 @@ final class StringsToAutomaton {
 
     // Convert:
     Automaton.Builder a = new Automaton.Builder();
-    convert(a, root, new IdentityHashMap<>());
+    convert(a, root, new IdentityHashMap<>(), caseInsensitive, turkic);
     return a.finish();
   }
 
@@ -237,8 +252,12 @@ final class StringsToAutomaton {
    * UTF-8 codepoints as transition labels or binary (compiled) transition labels based on {@code
    * asBinary}.
    */
-  static Automaton build(Iterable<BytesRef> input, boolean asBinary) {
-    final StringsToAutomaton builder = new StringsToAutomaton();
+  static Automaton build(
+      Iterable<BytesRef> input, boolean asBinary, boolean caseInsensitive, boolean turkic) {
+    if (asBinary && caseInsensitive) {
+      throw new IllegalArgumentException("Cannot use caseInsensitive on binary automaton");
+    }
+    final StringsToAutomaton builder = new StringsToAutomaton(caseInsensitive, turkic);
 
     for (BytesRef b : input) {
       builder.add(b, asBinary);
@@ -253,8 +272,13 @@ final class StringsToAutomaton {
    * UTF-8 codepoints as transition labels or binary (compiled) transition labels based on {@code
    * asBinary}.
    */
-  static Automaton build(BytesRefIterator input, boolean asBinary) throws IOException {
-    final StringsToAutomaton builder = new StringsToAutomaton();
+  static Automaton build(
+      BytesRefIterator input, boolean asBinary, boolean caseInsensitive, boolean turkic)
+      throws IOException {
+    if (asBinary && caseInsensitive) {
+      throw new IllegalArgumentException("Cannot use caseInsensitive on binary automaton");
+    }
+    final StringsToAutomaton builder = new StringsToAutomaton(caseInsensitive, turkic);
 
     for (BytesRef b = input.next(); b != null; b = input.next()) {
       builder.add(b, asBinary);
@@ -293,6 +317,10 @@ final class StringsToAutomaton {
     } else {
       while (pos < max) {
         codePoint = UnicodeUtil.codePointAt(bytes, pos, codePoint);
+        if (caseInsensitive
+            && codePoint.codePoint != CaseFolding.foldCase(codePoint.codePoint, turkic)) {
+          throw new IllegalArgumentException("Case-insensitive input must be lower-case");
+        }
         next = state.lastChild(codePoint.codePoint);
         if (next == null) {
           break;

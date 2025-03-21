@@ -743,4 +743,42 @@ class CaseFolding {
 
     return alts;
   }
+
+  /**
+   * Folds the case of the given character according to {@link Character#toLowerCase(int)}, but with
+   * exceptions if the turkic flag is set.
+   *
+   * @param codepoint to code point for the character to fold
+   * @param turkic if true, then apply tr/az folding rules
+   * @return the folded character
+   */
+  static int foldCase(int codepoint, boolean turkic) {
+    if (turkic) {
+      if (codepoint == 0x00130) { // İ [LATIN CAPITAL LETTER I WITH DOT ABOVE]
+        return 0x00069; // i [LATIN SMALL LETTER I]
+      } else if (codepoint == 0x000049) { //  I [LATIN CAPITAL LETTER I]
+        return 0x00131; // ı [LATIN SMALL LETTER DOTLESS I]
+      }
+    }
+    return Character.toLowerCase(codepoint);
+  }
+
+  /**
+   * Attempts to convert the given character to upper case, acccording to {@link
+   * Character#toUpperCase(int)}, but with exceptions if the turkic flag is set.
+   *
+   * @param codepoint to code point for the character to convert to upper case
+   * @param turkic if true, then apply tr/az folding rules
+   * @return the upper case character
+   */
+  static int upperCase(int codepoint, boolean turkic) {
+    if (turkic) {
+      if (codepoint == 0x00069) { // i [LATIN SMALL LETTER I]
+        return 0x00130; // İ [LATIN CAPITAL LETTER I WITH DOT ABOVE]
+      } else if (codepoint == 0x00131) { // ı [LATIN SMALL LETTER DOTLESS I]
+        return 0x000049; // I [LATIN CAPITAL LETTER I]
+      }
+    }
+    return Character.toUpperCase(codepoint);
+  }
 }

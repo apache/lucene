@@ -758,7 +758,7 @@ public class RegExp {
    * @param codepoint the Character code point to encode as an Automaton
    * @return the original codepoint and the set of alternates
    */
-  private int[] toCaseInsensitiveChar(int codepoint) {
+  static int[] toCaseInsensitiveChar(int codepoint) {
     int[] altCodepoints = CaseFolding.lookupAlternates(codepoint);
     if (altCodepoints != null) {
       int[] concat = new int[altCodepoints.length + 1];

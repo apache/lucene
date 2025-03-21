@@ -608,7 +608,24 @@ public final class Automata {
     if (utf8Strings.iterator().hasNext() == false) {
       return makeEmpty();
     } else {
-      return StringsToAutomaton.build(utf8Strings, false);
+      return StringsToAutomaton.build(utf8Strings, false, false, false);
+    }
+  }
+
+  /**
+   * Returns a new (deterministic and minimal) automaton that accepts the union of the given
+   * collection of {@link BytesRef}s representing UTF-8 encoded strings.
+   *
+   * @param utf8Strings The input strings, UTF-8 encoded. The collection must be in sorted order.
+   * @return An {@link Automaton} accepting all input strings. The resulting automaton is codepoint
+   *     based (full unicode codepoints on transitions).
+   */
+  public static Automaton makeCaseInsensitiveStringUnion(
+      Iterable<BytesRef> utf8Strings, boolean turkic) {
+    if (utf8Strings.iterator().hasNext() == false) {
+      return makeEmpty();
+    } else {
+      return StringsToAutomaton.build(utf8Strings, false, true, turkic);
     }
   }
 
@@ -625,7 +642,7 @@ public final class Automata {
     if (utf8Strings.iterator().hasNext() == false) {
       return makeEmpty();
     } else {
-      return StringsToAutomaton.build(utf8Strings, true);
+      return StringsToAutomaton.build(utf8Strings, true, false, false);
     }
   }
 
@@ -638,7 +655,7 @@ public final class Automata {
    *     based (full unicode codepoints on transitions).
    */
   public static Automaton makeStringUnion(BytesRefIterator utf8Strings) throws IOException {
-    return StringsToAutomaton.build(utf8Strings, false);
+    return StringsToAutomaton.build(utf8Strings, false, false, false);
   }
 
   /**
@@ -651,6 +668,6 @@ public final class Automata {
    *     based (UTF-8 encoded byte transition labels).
    */
   public static Automaton makeBinaryStringUnion(BytesRefIterator utf8Strings) throws IOException {
-    return StringsToAutomaton.build(utf8Strings, true);
+    return StringsToAutomaton.build(utf8Strings, true, false, false);
   }
 }
