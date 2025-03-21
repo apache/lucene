@@ -291,6 +291,8 @@ public abstract class PointValues {
     /**
      * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implementations may have
      * their optimizations.
+     *
+     * <p>It is guaranteed that the given iterator is not positioned;
      */
     default void visit(DocIdSetIterator iterator) throws IOException {
       int docID;
