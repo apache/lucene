@@ -76,7 +76,7 @@ class TrieBuilder {
 
     // The file pointer point to where the node saved. -1 means the node has not been saved.
     private long fp = -1;
-    // The iterator whose next() point to the first child has not been saved.
+    // The latest child that have been saved. null means no child has been saved.
     private Node savedTo;
 
     Node(int label, Output output) {

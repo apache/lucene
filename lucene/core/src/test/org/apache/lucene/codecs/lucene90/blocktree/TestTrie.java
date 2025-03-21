@@ -34,7 +34,7 @@ public class TestTrie extends LuceneTestCase {
   public void testRandomTerms() throws Exception {
     Supplier<byte[]> supplier = TestTrie::randomBytes;
     testTrieBuilder(supplier, atLeast(10000));
-    testTrieLookup(supplier, TEST_NIGHTLY ? 16 : 12);
+    testTrieLookup(supplier, TEST_NIGHTLY ? 18 : 12);
   }
 
   public void testVeryLongTerms() throws Exception {
@@ -52,7 +52,7 @@ public class TestTrie extends LuceneTestCase {
   public void testOneByteTerms() throws Exception {
     // heavily test single byte terms to generate various label distribution.
     Supplier<byte[]> supplier = () -> new byte[] {(byte) random().nextInt()};
-    int round = atLeast(20);
+    int round = atLeast(50);
     for (int i = 0; i < round; i++) {
       testTrieLookup(supplier, 10);
     }
