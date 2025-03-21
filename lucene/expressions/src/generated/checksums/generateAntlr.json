@@ -1,4 +1,10 @@
 {
+    "../../../../../.gradle/caches/modules-2/files-2.1/com.ibm.icu/icu4j/72.1/bc9057df4b5efddf7f6d1880bf7f3399f4ce5633/icu4j-72.1.jar": "bc9057df4b5efddf7f6d1880bf7f3399f4ce5633",
+    "../../../../../.gradle/caches/modules-2/files-2.1/org.abego.treelayout/org.abego.treelayout.core/1.0.3/457216e8e6578099ae63667bb1e4439235892028/org.abego.treelayout.core-1.0.3.jar": "457216e8e6578099ae63667bb1e4439235892028",
+    "../../../../../.gradle/caches/modules-2/files-2.1/org.antlr/ST4/4.3.4/bf68d049dd4e6e104055a79ac3bf9e6307d29258/ST4-4.3.4.jar": "bf68d049dd4e6e104055a79ac3bf9e6307d29258",
+    "../../../../../.gradle/caches/modules-2/files-2.1/org.antlr/antlr-runtime/3.5.3/9011fb189c5ed6d99e5f3322514848d1ec1e1416/antlr-runtime-3.5.3.jar": "9011fb189c5ed6d99e5f3322514848d1ec1e1416",
+    "../../../../../.gradle/caches/modules-2/files-2.1/org.antlr/antlr4-runtime/4.13.2/fc3db6d844df652a3d5db31c87fa12757f13691d/antlr4-runtime-4.13.2.jar": "fc3db6d844df652a3d5db31c87fa12757f13691d",
+    "../../../../../.gradle/caches/modules-2/files-2.1/org.antlr/antlr4/4.13.2/a2bc0d399506a7297568baee188b481727d45d3b/antlr4-4.13.2.jar": "a2bc0d399506a7297568baee188b481727d45d3b",
     "lucene/expressions/src/java/org/apache/lucene/expressions/js/Javascript.g4": "818e89aae0b6c7601051802013898c128fe7c1ba",
     "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptBaseVisitor.java": "6965abdb8b069aaceac1ce4f32ed965b194f3a25",
     "lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptLexer.java": "6508dc5008e96a1ad28c967a3401407ba83f140b",
