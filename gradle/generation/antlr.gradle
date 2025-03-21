@@ -44,6 +44,7 @@ configure(project(":lucene:expressions")) {
     def tempOutput = file("$buildDir/antlr")
     def outputFiles = fileTree(dir: sourceDir, includes: generatedPatterns)
 
+    inputs.property "antlr-version", deps.antlr.core.get().version
     inputs.files inputFiles
     outputs.files outputFiles
 
