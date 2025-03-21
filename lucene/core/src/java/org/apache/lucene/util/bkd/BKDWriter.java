@@ -679,7 +679,7 @@ public class BKDWriter implements Closeable {
     final IndexOutput metaOut, indexOut, dataOut;
     final long dataStartFP;
     final LongArrayList leafBlockFPs = new LongArrayList();
-    FixedLengthBytesRefArray leafBlockStartValues =
+    final FixedLengthBytesRefArray leafBlockStartValues =
         new FixedLengthBytesRefArray(config.packedBytesLength());
     final byte[] leafValues = new byte[config.maxPointsInLeafNode() * config.packedBytesLength()];
     final int[] leafDocs = new int[config.maxPointsInLeafNode()];
