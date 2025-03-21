@@ -61,14 +61,10 @@ public class HnswQueueSaturationCollector extends HnswKnnCollector {
   }
 
   @Override
-  public float minCompetitiveSimilarity() {
-    return delegate.minCompetitiveSimilarity();
-  }
-
-  @Override
   public TopDocs topDocs() {
     TopDocs topDocs;
     if (patienceFinished && delegate.earlyTerminated() == false) {
+      // this avoids re-running exact search in the filtered scenario when patience is exhausted
       TopDocs delegateDocs = delegate.topDocs();
       TotalHits totalHits =
           new TotalHits(delegateDocs.totalHits.value(), TotalHits.Relation.EQUAL_TO);
