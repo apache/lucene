@@ -106,7 +106,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   public void testCaseInsensitiveClassRangeCompression() {
     RegExp re = new RegExp("[a-z]", RegExp.NONE, RegExp.CASE_INSENSITIVE_RANGE);
     assertEquals(
-        "REGEXP_CHAR_CLASS starts=[U+0041 U+0061 U+0130 U+017F U+212A] ends=[U+005A U+007A U+0131 U+017F U+212A]\n",
+        "REGEXP_CHAR_CLASS starts=[U+0041 U+0061 U+017F U+212A] ends=[U+005A U+007A U+017F U+212A]\n",
         re.toStringTree());
     AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
   }

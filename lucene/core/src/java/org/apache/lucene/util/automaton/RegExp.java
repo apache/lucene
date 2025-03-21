@@ -796,19 +796,11 @@ public class RegExp {
 
     // iterate over range, adding codepoint and any alternatives as transitions
     for (int i = start; i <= end; i++) {
-      scratch.addTransition(state, state, i);
-      int[] altCodePoints = CaseFolding.lookupAlternates(i);
-      if (altCodePoints != null) {
-        for (int alt : altCodePoints) {
-          scratch.addTransition(state, state, alt);
-        }
-      } else {
-        int altCase =
-            Character.isLowerCase(i) ? Character.toUpperCase(i) : Character.toLowerCase(i);
-        if (altCase != i) {
-          scratch.addTransition(state, state, altCase);
-        }
-      }
+      CaseFolding.expand(
+          i,
+          (int ch) -> {
+            scratch.addTransition(state, state, ch);
+          });
     }
 
     // compress transitions
