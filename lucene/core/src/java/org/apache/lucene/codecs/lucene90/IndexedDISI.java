@@ -622,16 +622,21 @@ public final class IndexedDISI extends DocIdSetIterator {
             i += BINARY_SEARCH_WINDOW_SIZE) {
           disi.slice.seek((i + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
           int doc = Short.toUnsignedInt(disi.slice.readShort());
-          if (doc >= targetInBlock) {
+          // Since we have read last doc, compare it first.
+          if (doc == targetInBlock) {
+            disi.nextExistDocInBlock = doc;
+            disi.index += i + BINARY_SEARCH_WINDOW_SIZE;
+            disi.exists = true;
+            return true;
+          } else if (doc > targetInBlock) {
             disi.slice.seek((i + 1) * Short.BYTES + filePointer);
-            if ((doc = disi.slice.readShort()) < targetInBlock) {
+            if (disi.slice.readShort() < targetInBlock) {
               i += 2;
             }
             disi.slice.seek(i * Short.BYTES + filePointer);
-            if ((doc = disi.slice.readShort()) < targetInBlock) {
+            if (disi.slice.readShort() < targetInBlock) {
               i += 1;
             }
-
             disi.slice.seek(i * Short.BYTES + filePointer);
             doc = disi.slice.readShort();
             if (doc >= targetInBlock) {
