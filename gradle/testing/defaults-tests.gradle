@@ -142,6 +142,7 @@ allprojects {
               ':lucene:core',
               ':lucene:codecs',
               ":lucene:distribution.tests",
+              ':lucene:sandbox',
               ":lucene:test-framework"
       ] ? 'ALL-UNNAMED' : 'org.apache.lucene.core')
 
