@@ -137,6 +137,9 @@ Improvements
 * GITHUB#14192: Added support for RegExp to handle case insensitive matching
   across the full set of Unicode characters. (John Wagster)
 
+* GITHUB#14381: Add RegExp.CASE_INSENSITIVE_RANGE flag to support case-insensitive
+  matches of character class ranges such as /[a-z]/ (Robert Muir)
+
 * GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
   improved to tolerate more instances of this problem.  (Robert Muir)
 
