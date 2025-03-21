@@ -1,0 +1,4 @@
+{
+    "lucene/core/src/java/org/apache/lucene/util/automaton/CaseFolding.java": "299cbef6383ef2ddb1fe06f4ecda3efab961bed4",
+    "property:icuConfig": "com.ibm.icu:icu4j:74.2"
+}

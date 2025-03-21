@@ -31,6 +31,7 @@ package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -436,12 +437,11 @@ public class RegExp {
    *
    * <p>In general the attempt is to reach parity with {@link java.util.regex.Pattern}
    * Pattern.CASE_INSENSITIVE and Pattern.UNICODE_CASE flags when doing a case-insensitive match. We
-   * support common case folding in addition to simple case folding as defined by the common (C),
-   * simple (S) and special (T) mappings in
-   * https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt. This is in line with {@link
-   * java.util.regex.Pattern} and means characters like those representing the Greek symbol sigma
-   * (Σ, σ, ς) will all match one another despite σ and ς both being lowercase characters as
-   * detailed here: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt.
+   * support common case folding in addition to simple case folding as defined by the common (C) and
+   * simple (S) mappings in https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt. This is in
+   * line with {@link java.util.regex.Pattern} and means characters like those representing the
+   * Greek symbol sigma (Σ, σ, ς) will all match one another despite σ and ς both being lowercase
+   * characters as detailed here: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt.
    *
    * <p>Some Unicode characters are difficult to correctly decode casing. In some cases Java's
    * String class correctly handles decoding these but Java's {@link java.util.regex.Pattern} class
@@ -767,23 +767,14 @@ public class RegExp {
    * @return the original codepoint and the set of alternates
    */
   private int[] toCaseInsensitiveChar(int codepoint) {
-    int[] altCodepoints = CaseFolding.lookupAlternates(codepoint);
-    if (altCodepoints != null) {
-      int[] concat = new int[altCodepoints.length + 1];
-      System.arraycopy(altCodepoints, 0, concat, 0, altCodepoints.length);
-      concat[altCodepoints.length] = codepoint;
-      return concat;
-    } else {
-      int altCase =
-          Character.isLowerCase(codepoint)
-              ? Character.toUpperCase(codepoint)
-              : Character.toLowerCase(codepoint);
-      if (altCase != codepoint) {
-        return new int[] {altCase, codepoint};
-      } else {
-        return new int[] {codepoint};
-      }
-    }
+    List<Integer> list = new ArrayList<>();
+    CaseFolding.expand(
+        codepoint,
+        (int variant) -> {
+          list.add(variant);
+        });
+    Collections.sort(list);
+    return list.stream().mapToInt(Integer::intValue).toArray();
   }
 
   /**
