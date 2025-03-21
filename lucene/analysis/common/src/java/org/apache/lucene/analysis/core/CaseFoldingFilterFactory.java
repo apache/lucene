@@ -38,7 +38,7 @@ import org.apache.lucene.analysis.TokenStream;
 public class CaseFoldingFilterFactory extends TokenFilterFactory {
 
   /** SPI name */
-  public static final String NAME = "casefold";
+  public static final String NAME = "caseFolding";
 
   /** Creates a new CaseFoldingFilterFactory */
   public CaseFoldingFilterFactory(Map<String, String> args) {
