@@ -680,7 +680,7 @@ public class BKDWriter implements Closeable {
     final long dataStartFP;
     final LongArrayList leafBlockFPs = new LongArrayList();
     final FixedLengthBytesRefArray leafBlockStartValues =
-        new FixedLengthBytesRefArray(config.packedBytesLength());
+        new FixedLengthBytesRefArray(config.packedIndexBytesLength());
     final byte[] leafValues = new byte[config.maxPointsInLeafNode() * config.packedBytesLength()];
     final int[] leafDocs = new int[config.maxPointsInLeafNode()];
     private long valueCount;
@@ -770,7 +770,7 @@ public class BKDWriter implements Closeable {
 
       pointCount = valueCount;
 
-      scratchBytesRef1.length = config.bytesPerDim();
+      scratchBytesRef1.length = config.packedIndexBytesLength();
       scratchBytesRef1.offset = 0;
       assert leafBlockStartValues.size() + 1 == leafBlockFPs.size();
       BKDTreeLeafNodes leafNodes =
@@ -819,7 +819,7 @@ public class BKDWriter implements Closeable {
         // value index in the end:
         scratchBytesRef1.bytes = leafValues;
         scratchBytesRef1.offset = 0;
-        scratchBytesRef1.length = config.packedBytesLength();
+        scratchBytesRef1.length = config.packedIndexBytesLength();
         leafBlockStartValues.append(scratchBytesRef1);
       }
       leafBlockFPs.add(dataOut.getFilePointer());
