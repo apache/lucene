@@ -819,6 +819,7 @@ public class BKDWriter implements Closeable {
         // value index in the end:
         scratchBytesRef1.bytes = leafValues;
         scratchBytesRef1.offset = 0;
+        scratchBytesRef1.length = config.packedBytesLength();
         leafBlockStartValues.append(scratchBytesRef1);
       }
       leafBlockFPs.add(dataOut.getFilePointer());
