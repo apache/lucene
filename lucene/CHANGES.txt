@@ -184,6 +184,8 @@ Other
 
 * GITHUB#14372: Reduce visibility of NRTSuggester#load from public to package private (Luca Cavanna)
 
+* GITHUB#14386: Bump analysis/icu's icu4j dependency to 77.1 (Robert Muir)
+
 ======================= Lucene 10.1.0 =======================
 
 API Changes
