@@ -57,6 +57,7 @@
 FE58>002D
 FE63>002D
 FF0D>002D
+10D6E>002D
 10EAD>002D
 
 ## Greek letterforms folding (done by kd)
