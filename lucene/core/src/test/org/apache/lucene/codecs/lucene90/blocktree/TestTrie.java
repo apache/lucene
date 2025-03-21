@@ -59,14 +59,8 @@ public class TestTrie extends LuceneTestCase {
   }
 
   private void testTrieBuilder(Supplier<byte[]> randomBytesSupplier, int count) {
-    Map<BytesRef, TrieBuilder.Output> actual = new TreeMap<>();
     Map<BytesRef, TrieBuilder.Output> expected = new TreeMap<>();
-
     expected.put(new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
-    TrieBuilder trieBuilder =
-        TrieBuilder.bytesRefToTrie(
-            new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
-
     for (int i = 0; i < count; i++) {
       BytesRef key = new BytesRef(randomBytesSupplier.get());
       TrieBuilder.Output value =
@@ -74,14 +68,21 @@ public class TestTrie extends LuceneTestCase {
               random().nextLong(1L << 62),
               random().nextBoolean(),
               new BytesRef(randomBytesSupplier.get()));
-      if (!expected.containsKey(key)) {
-        expected.put(key, value);
-        TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);
-        trieBuilder.absorb(add);
-        Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
-        Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
-      }
+      expected.put(key, value);
     }
+
+    TrieBuilder trieBuilder =
+        TrieBuilder.bytesRefToTrie(
+            new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
+    for (var entry : expected.entrySet()) {
+      if (entry.getKey().equals(new BytesRef(""))) {
+        continue;
+      }
+      TrieBuilder add = TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue());
+      trieBuilder.absorb(add);
+      Assert.assertThrows(IllegalArgumentException.class, () -> add.absorb(trieBuilder));
+    }
+    Map<BytesRef, TrieBuilder.Output> actual = new TreeMap<>();
     trieBuilder.visit(actual::put);
     assertEquals(expected, actual);
   }
@@ -89,13 +90,8 @@ public class TestTrie extends LuceneTestCase {
   private void testTrieLookup(Supplier<byte[]> randomBytesSupplier, int round) throws IOException {
     for (int iter = 1; iter <= round; iter++) {
       Map<BytesRef, TrieBuilder.Output> expected = new TreeMap<>();
-
       expected.put(
           new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
-      TrieBuilder trieBuilder =
-          TrieBuilder.bytesRefToTrie(
-              new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
-
       int n = 1 << iter;
       for (int i = 0; i < n; i++) {
         BytesRef key = new BytesRef(randomBytesSupplier.get());
@@ -104,13 +100,19 @@ public class TestTrie extends LuceneTestCase {
                 random().nextLong(1L << 62),
                 random().nextBoolean(),
                 random().nextBoolean() ? null : new BytesRef(randomBytesSupplier.get()));
-        if (!expected.containsKey(key)) {
-          expected.put(key, value);
-          TrieBuilder add = TrieBuilder.bytesRefToTrie(key, value);
-          trieBuilder.absorb(add);
-          Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
-          Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
+        expected.put(key, value);
+      }
+
+      TrieBuilder trieBuilder =
+          TrieBuilder.bytesRefToTrie(
+              new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
+      for (var entry : expected.entrySet()) {
+        if (entry.getKey().equals(new BytesRef(""))) {
+          continue;
         }
+        TrieBuilder add = TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue());
+        trieBuilder.absorb(add);
+        Assert.assertThrows(IllegalArgumentException.class, () -> add.absorb(trieBuilder));
       }
 
       try (Directory directory = newDirectory()) {
@@ -175,7 +177,7 @@ public class TestTrie extends LuceneTestCase {
   }
 
   private static byte[] randomBytes() {
-    byte[] bytes = new byte[random().nextInt(256)];
+    byte[] bytes = new byte[random().nextInt(256) + 1];
     for (int i = 1; i < bytes.length; i++) {
       bytes[i] = (byte) random().nextInt(1 << (i % 9));
     }

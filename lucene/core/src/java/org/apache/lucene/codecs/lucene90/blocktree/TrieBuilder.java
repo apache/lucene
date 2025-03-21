@@ -19,12 +19,7 @@ package org.apache.lucene.codecs.lucene90.blocktree;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
 import java.util.function.BiConsumer;
-import java.util.stream.IntStream;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -68,17 +63,21 @@ class TrieBuilder {
 
     // The utf8 digit that leads to this Node, 0 for root node
     private final int label;
-    // The children listed in order by their utf8 label
-    private final LinkedList<Node> children = new LinkedList<>();
     // The output of this node.
     private Output output;
+    // The number of children of this node.
+    private int childrenNum;
+    // Pointers to relative nodes
+    private Node next;
+    private Node firstChild;
+    private Node lastChild;
 
     // Vars used during saving:
 
     // The file pointer point to where the node saved. -1 means the node has not been saved.
     private long fp = -1;
     // The iterator whose next() point to the first child has not been saved.
-    private Iterator<Node> childrenIterator;
+    private Node savedTo;
 
     Node(int label, Output output) {
       this.label = label;
@@ -88,12 +87,15 @@ class TrieBuilder {
 
   private Status status = Status.BUILDING;
   final Node root = new Node(0, null);
+  private final BytesRef minKey;
+  private BytesRef maxKey;
 
   static TrieBuilder bytesRefToTrie(BytesRef k, Output v) {
     return new TrieBuilder(k, v);
   }
 
   private TrieBuilder(BytesRef k, Output v) {
+    minKey = maxKey = BytesRef.deepCopyOf(k);
     if (k.length == 0) {
       root.output = v;
       return;
@@ -103,64 +105,69 @@ class TrieBuilder {
       int b = k.bytes[i + k.offset] & 0xFF;
       Output output = i == k.length - 1 ? v : null;
       Node node = new Node(b, output);
-      parent.children.add(node);
+      parent.firstChild = parent.lastChild = node;
+      parent.childrenNum = 1;
       parent = node;
     }
   }
 
   /**
-   * Absorb all (K, V) pairs from the given trie into this one. The given trie builder should not
-   * have key that already exists in this one, otherwise a {@link IllegalArgumentException } will be
-   * thrown and this trie will get destroyed.
+   * Absorb all (K, V) pairs from the given trie into this one. The given trie builder need to
+   * ensure its keys greater or equals than max key of this one, otherwise a {@link
+   * IllegalArgumentException } will be thrown.
    *
    * <p>Note: the given trie will be destroyed after absorbing.
    */
   void absorb(TrieBuilder trieBuilder) {
     if (status != Status.BUILDING || trieBuilder.status != Status.BUILDING) {
-      throw new IllegalStateException("tries should be unsaved");
+      throw new IllegalStateException("tries have wrong status.");
     }
-    // Use a simple stack to avoid recursion.
-    Deque<Runnable> stack = new ArrayDeque<>();
-    stack.add(() -> absorb(this.root, trieBuilder.root, stack));
-    while (!stack.isEmpty()) {
-      stack.pop().run();
+    if (this.maxKey.compareTo(trieBuilder.minKey) >= 0) {
+      throw new IllegalArgumentException("given trie has intersection with current one.");
     }
-    trieBuilder.status = Status.DESTROYED;
-  }
+    this.maxKey = trieBuilder.maxKey;
 
-  private void absorb(Node n, Node add, Deque<Runnable> stack) {
-    assert n.label == add.label;
-    assert assertChildrenLabelInOrder(n);
-    assert assertChildrenLabelInOrder(add);
+    Node a = this.root;
+    Node b = trieBuilder.root;
 
-    if (add.output != null) {
-      if (n.output != null) {
-        this.status = Status.DESTROYED;
-        throw new IllegalArgumentException("Duplicated key found in the given trie.");
+    while (true) {
+      assert a.label == b.label;
+
+      if (b.childrenNum == 0) {
+        break;
       }
-      n.output = add.output;
-    }
 
-    // TODO we can do more efficient if there is no intersection, block tree always do that
-    // Children labels are in order, so like a merge sort, this is O(M+N),
-    ListIterator<Node> iter = n.children.listIterator();
-    outer:
-    for (Node addChild : add.children) {
-      while (iter.hasNext()) {
-        Node nChild = iter.next();
-        if (nChild.label == addChild.label) {
-          stack.push(() -> absorb(nChild, addChild, stack));
-          continue outer;
-        }
-        if (nChild.label > addChild.label) {
-          iter.previous(); // move back
-          iter.add(addChild);
-          continue outer;
-        }
+      if (a.childrenNum == 0) {
+        a.childrenNum = b.childrenNum;
+        a.firstChild = b.firstChild;
+        a.lastChild = b.lastChild;
+        break;
       }
-      iter.add(addChild);
+
+      final Node aLast = a.lastChild;
+      final Node bFirst = b.firstChild;
+
+      if (aLast.label < bFirst.label) {
+        aLast.next = bFirst;
+        a.childrenNum += b.childrenNum;
+        a.lastChild = b.lastChild;
+        break;
+      }
+
+      assert aLast.label == bFirst.label;
+      if (bFirst.output != null) {
+        assert aLast.output == null;
+        aLast.output = bFirst.output;
+      }
+      aLast.next = bFirst.next;
+      a.childrenNum += b.childrenNum - 1;
+      if (a.lastChild.label != b.lastChild.label) {
+        a.lastChild = b.lastChild;
+      }
+
+      a = aLast;
+      b = bFirst;
     }
-    assert assertChildrenLabelInOrder(n);
   }
 
   Output getEmptyOutput() {
@@ -173,17 +180,18 @@ class TrieBuilder {
     if (root.output != null) {
       consumer.accept(new BytesRef(), root.output);
     }
-    visit(root.children, new BytesRefBuilder(), consumer);
+    visit(root.firstChild, new BytesRefBuilder(), consumer);
   }
 
-  private void visit(List<Node> nodes, BytesRefBuilder key, BiConsumer<BytesRef, Output> consumer) {
-    for (Node node : nodes) {
-      key.append((byte) node.label);
-      if (node.output != null) {
-        consumer.accept(key.toBytesRef(), node.output);
+  private void visit(Node first, BytesRefBuilder key, BiConsumer<BytesRef, Output> consumer) {
+    while (first != null) {
+      key.append((byte) first.label);
+      if (first.output != null) {
+        consumer.accept(key.toBytesRef(), first.output);
       }
-      visit(node.children, key, consumer);
+      visit(first.firstChild, key, consumer);
       key.setLength(key.length() - 1);
+      first = first.next;
     }
   }
 
@@ -208,9 +216,9 @@ class TrieBuilder {
     while (stack.isEmpty() == false) {
       Node node = stack.peek();
       assert node.fp == -1;
-      assertChildrenLabelInOrder(node);
+      assert assertChildrenLabelInOrder(node);
 
-      final int childrenNum = node.children.size();
+      final int childrenNum = node.childrenNum;
 
       if (childrenNum == 0) { // leaf node
         assert node.output != null : "leaf nodes should have output.";
@@ -241,16 +249,21 @@ class TrieBuilder {
       // If there are any children have not been saved, push it into stack and continue.
       // We want to ensure saving children before parent.
 
-      if (node.childrenIterator == null) {
-        node.childrenIterator = node.children.iterator();
+      if (node.savedTo == null) {
+        node.savedTo = node.firstChild;
+        stack.push(node.savedTo);
+        continue;
       }
-      if (node.childrenIterator.hasNext()) {
-        stack.push(node.childrenIterator.next());
+      if (node.savedTo.next != null) {
+        assert node.savedTo.fp >= 0;
+        node.savedTo = node.savedTo.next;
+        stack.push(node.savedTo);
         continue;
       }
 
       // All children have been written, now it's time to write the parent!
 
+      assert assertSavingStatus(node);
       node.fp = index.getFilePointer() - startFP;
       stack.pop();
 
@@ -260,7 +273,7 @@ class TrieBuilder {
         // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
         // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
-        long childDeltaFp = node.fp - node.children.getFirst().fp;
+        long childDeltaFp = node.fp - node.firstChild.fp;
         assert childDeltaFp > 0 : "parent node is always written after children: " + childDeltaFp;
         int childFpBytes = bytesRequiredVLong(childDeltaFp);
         int encodedOutputFpBytes =
@@ -273,7 +286,7 @@ class TrieBuilder {
             node.output != null ? SIGN_SINGLE_CHILD_WITH_OUTPUT : SIGN_SINGLE_CHILD_WITHOUT_OUTPUT;
         int header = sign | ((childFpBytes - 1) << 2) | ((encodedOutputFpBytes - 1) << 5);
         index.writeByte((byte) header);
-        index.writeByte((byte) node.children.getFirst().label);
+        index.writeByte((byte) node.firstChild.label);
         writeLongNBytes(childDeltaFp, childFpBytes, index);
 
         if (node.output != null) {
@@ -293,8 +306,8 @@ class TrieBuilder {
         // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
         // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
-        final int minLabel = node.children.getFirst().label;
-        final int maxLabel = node.children.getLast().label;
+        final int minLabel = node.firstChild.label;
+        final int maxLabel = node.lastChild.label;
         assert maxLabel > minLabel;
         ChildSaveStrategy childSaveStrategy = null;
         int positionBytes = Integer.MAX_VALUE;
@@ -309,9 +322,8 @@ class TrieBuilder {
         assert childSaveStrategy != null;
         assert positionBytes > 0 && positionBytes <= 32;
 
-        assertChildrenFpInOrder(node);
         // children fps are in order, so the first child's fp is min, then delta is max.
-        long maxChildDeltaFp = node.fp - node.children.getFirst().fp;
+        long maxChildDeltaFp = node.fp - node.firstChild.fp;
         assert maxChildDeltaFp > 0 : "parent always written after all children";
 
         int childrenFpBytes = bytesRequiredVLong(maxChildDeltaFp);
@@ -339,7 +351,7 @@ class TrieBuilder {
         }
 
         long positionStartFp = index.getFilePointer();
-        childSaveStrategy.save(node.children, childrenNum, positionBytes, index);
+        childSaveStrategy.save(node, childrenNum, positionBytes, index);
         assert index.getFilePointer() == positionStartFp + positionBytes
             : childSaveStrategy.name()
                 + " position bytes compute error, computed: "
@@ -347,7 +359,7 @@ class TrieBuilder {
                 + " actual: "
                 + (index.getFilePointer() - positionStartFp);
 
-        for (Node child : node.children) {
+        for (Node child = node.firstChild; child != null; child = child.next) {
           assert node.fp > child.fp : "parent always written after all children";
           writeLongNBytes(node.fp - child.fp, childrenFpBytes, index);
         }
@@ -380,16 +392,36 @@ class TrieBuilder {
   }
 
   private static boolean assertChildrenLabelInOrder(Node node) {
-    assert IntStream.range(0, node.children.size() - 1)
-            .allMatch(i -> node.children.get(i).label < node.children.get(i + 1).label)
-        : " the children of node should always be in order.";
+    if (node.childrenNum > 1) {
+      Node child = node.firstChild;
+      while (child.next != null) {
+        assert child.label < child.next.label : "the children of node should always be in order.";
+        child = child.next;
+      }
+    }
     return true;
   }
 
-  private static boolean assertChildrenFpInOrder(Node node) {
-    assert IntStream.range(0, node.children.size() - 1)
-            .allMatch(i -> node.children.get(i).fp < node.children.get(i + 1).fp)
-        : " the children of node should always be in order.";
+  private static boolean assertSavingStatus(Node node) {
+    assert assertChildrenLabelInOrder(node);
+    assert node.childrenNum != 0;
+    if (node.childrenNum == 1) {
+      assert node.firstChild == node.lastChild;
+      assert node.firstChild.next == null;
+      assert node.savedTo == node.firstChild;
+      assert node.firstChild.fp >= 0;
+    } else {
+      int n = 0;
+      for (Node child = node.firstChild; child != null; child = child.next) {
+        n++;
+        assert child.fp >= 0;
+        assert child.next == null || child.fp < child.next.fp
+            : " the children of node should always be in order.";
+      }
+      assert node.childrenNum == n;
+      assert node.lastChild == node.savedTo;
+      assert node.savedTo.next == null;
+    }
     return true;
   }
 
@@ -407,13 +439,13 @@ class TrieBuilder {
       }
 
       @Override
-      void save(List<Node> children, int labelCnt, int positionBytes, IndexOutput output)
+      void save(Node parent, int labelCnt, int positionBytes, IndexOutput output)
           throws IOException {
         byte presenceBits = 1; // The first arc is always present.
         int presenceIndex = 0;
-        int previousLabel = children.getFirst().label;
-        for (int arcIdx = 1; arcIdx < children.size(); arcIdx++) {
-          int label = children.get(arcIdx).label;
+        int previousLabel = parent.firstChild.label;
+        for (Node child = parent.firstChild.next; child != null; child = child.next) {
+          int label = child.label;
           assert label > previousLabel;
           presenceIndex += label - previousLabel;
           while (presenceIndex >= Byte.SIZE) {
@@ -425,7 +457,7 @@ class TrieBuilder {
           presenceBits |= 1 << presenceIndex;
           previousLabel = label;
         }
-        assert presenceIndex == (children.getLast().label - children.getFirst().label) % 8;
+        assert presenceIndex == (parent.lastChild.label - parent.firstChild.label) % 8;
         assert presenceBits != 0; // The last byte is not 0.
         assert (presenceBits & (1 << presenceIndex)) != 0; // The last arc is always present.
         output.writeByte(presenceBits);
@@ -467,10 +499,10 @@ class TrieBuilder {
       }
 
       @Override
-      void save(List<Node> children, int labelCnt, int positionBytes, IndexOutput output)
+      void save(Node parent, int labelCnt, int positionBytes, IndexOutput output)
           throws IOException {
-        for (int i = 1; i < labelCnt; i++) {
-          output.writeByte((byte) children.get(i).label);
+        for (Node child = parent.firstChild.next; child != null; child = child.next) {
+          output.writeByte((byte) child.label);
         }
       }
 
@@ -510,13 +542,12 @@ class TrieBuilder {
       }
 
       @Override
-      void save(List<Node> children, int labelCnt, int positionBytes, IndexOutput output)
+      void save(Node parent, int labelCnt, int positionBytes, IndexOutput output)
           throws IOException {
-        output.writeByte((byte) children.getLast().label);
-        int lastLabel = children.getFirst().label;
-        for (int i = 1; i < labelCnt; i++) {
-          Node node = children.get(i);
-          while (++lastLabel < node.label) {
+        output.writeByte((byte) parent.lastChild.label);
+        int lastLabel = parent.firstChild.label;
+        for (Node child = parent.firstChild.next; child != null; child = child.next) {
+          while (++lastLabel < child.label) {
             output.writeByte((byte) lastLabel);
           }
         }
@@ -571,7 +602,7 @@ class TrieBuilder {
 
     abstract int positionBytes(int minLabel, int maxLabel, int labelCnt);
 
-    abstract void save(List<Node> children, int labelCnt, int positionBytes, IndexOutput output)
+    abstract void save(Node parent, int labelCnt, int positionBytes, IndexOutput output)
         throws IOException;
 
     abstract int lookup(
