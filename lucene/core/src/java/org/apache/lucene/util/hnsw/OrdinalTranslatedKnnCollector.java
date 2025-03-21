@@ -54,8 +54,8 @@ public final class OrdinalTranslatedKnnCollector extends HnswKnnCollector {
 
   @Override
   public void nextCandidate() {
-    if (this.collector instanceof HnswKnnCollector) {
-      ((HnswKnnCollector) this.collector).nextCandidate();
+    if (this.collector instanceof HnswKnnCollector hnswCollector) {
+      hnswCollector.nextCandidate();
     }
   }
 }
