@@ -49,7 +49,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
@@ -243,10 +242,18 @@ public class TestKnnGraph extends LuceneTestCase {
          * orientation of the various priority queues, the scoring function, but not so much the
          * approximate KNN search algorithm
          */
-        assertGraphSearch(new int[] {0, 15, 3, 18, 5}, new float[] {0f, 0.1f}, dr);
+        assertGraphSearch(
+            new int[] {0, 15, 3, 18, 5},
+            new float[] {0.99f, 0.55f, 0.50f, 0.36f, 0.22f},
+            new float[] {0f, 0.1f},
+            dr);
         // Tiebreaking by docid must be done after search.
         // assertGraphSearch(new int[]{11, 1, 8, 14, 21}, new float[]{2, 2}, dr);
-        assertGraphSearch(new int[] {15, 18, 0, 3, 5}, new float[] {0.3f, 0.8f}, dr);
+        assertGraphSearch(
+            new int[] {15, 18, 0, 3, 5},
+            new float[] {0.88f, 0.65f, 0.58f, 0.47f, 0.40f},
+            new float[] {0.3f, 0.8f},
+            dr);
       }
     }
   }
@@ -297,15 +304,11 @@ public class TestKnnGraph extends LuceneTestCase {
                   latch.await();
                   IndexSearcher searcher = manager.acquire();
                   try {
-                    KnnFloatVectorQuery query =
-                        new KnnFloatVectorQuery("vector", new float[] {0f, 0.1f}, 5);
-                    TopDocs results = searcher.search(query, 5);
-                    StoredFields storedFields = searcher.storedFields();
-                    for (ScoreDoc doc : results.scoreDocs) {
-                      // map docId to insertion id
-                      doc.doc = Integer.parseInt(storedFields.document(doc.doc).get("id"));
-                    }
-                    assertResults(new int[] {0, 15, 3, 18, 5}, results);
+                    assertGraphSearch(
+                        new int[] {0, 15, 3, 18, 5},
+                        new float[] {0.99f, 0.55f, 0.50f, 0.36f, 0.22f},
+                        new float[] {0f, 0.1f},
+                        searcher.getIndexReader());
                   } finally {
                     manager.release(searcher);
                   }
@@ -323,7 +326,8 @@ public class TestKnnGraph extends LuceneTestCase {
     IOUtils.close(manager, iw, dir);
   }
 
-  private void assertGraphSearch(int[] expected, float[] vector, IndexReader reader)
+  private void assertGraphSearch(
+      int[] expected, float[] expectedScores, float[] vector, IndexReader reader)
       throws IOException {
     TopDocs results = doKnnSearch(reader, vector, 5);
     StoredFields storedFields = reader.storedFields();
@@ -331,29 +335,26 @@ public class TestKnnGraph extends LuceneTestCase {
       // map docId to insertion id
       doc.doc = Integer.parseInt(storedFields.document(doc.doc).get("id"));
     }
-    assertResults(expected, results);
+    assertResults(expected, expectedScores, results);
   }
 
   private static TopDocs doKnnSearch(IndexReader reader, float[] vector, int k) throws IOException {
-    TopDocs[] results = new TopDocs[reader.leaves().size()];
-    for (LeafReaderContext ctx : reader.leaves()) {
-      Bits liveDocs = ctx.reader().getLiveDocs();
-      results[ctx.ord] =
-          ctx.reader()
-              .searchNearestVectors(KNN_GRAPH_FIELD, vector, k, liveDocs, Integer.MAX_VALUE);
-      if (ctx.docBase > 0) {
-        for (ScoreDoc doc : results[ctx.ord].scoreDocs) {
-          doc.doc += ctx.docBase;
-        }
-      }
-    }
-    return TopDocs.merge(k, results);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    return searcher.search(new KnnFloatVectorQuery(KNN_GRAPH_FIELD, vector, k), k);
   }
 
-  private void assertResults(int[] expected, TopDocs results) {
+  private void assertResults(int[] expected, float[] expectedScores, TopDocs results) {
     assertEquals(results.toString(), expected.length, results.scoreDocs.length);
     for (int i = expected.length - 1; i >= 0; i--) {
-      assertEquals(Arrays.toString(results.scoreDocs), expected[i], results.scoreDocs[i].doc);
+      assertEquals(
+          "doc mismatch at idx: " + i + " results: " + Arrays.toString(results.scoreDocs),
+          expected[i],
+          results.scoreDocs[i].doc);
+      assertEquals(
+          "score mismatch at idx: " + i + " results: " + Arrays.toString(results.scoreDocs),
+          expectedScores[i],
+          results.scoreDocs[i].score,
+          0.01f);
     }
   }
 
