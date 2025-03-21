@@ -479,6 +479,14 @@ public class RegExp {
    */
   public static final int CASE_INSENSITIVE = 0x0200;
 
+  /**
+   * Similar to {@link #CASE_INSENSITIVE} but for character class ranges.
+   *
+   * <p>This flag allows ranges such as {@code [a-z]} to match {@code A}, but may result in
+   * performance costs during parsing.
+   */
+  public static final int CASE_INSENSITIVE_RANGE = 0x0400;
+
   // -----  Deprecated flags ( > 0xffff )  ------
 
   /**
@@ -775,6 +783,53 @@ public class RegExp {
       } else {
         return new int[] {codepoint};
       }
+    }
+  }
+
+  /**
+   * Expands range to include case-insensitive matches.
+   *
+   * <p>This is expensive: case-insensitive range involves iterating over the range space, adding
+   * alternatives. Jump on the grenade here, contain CPU and memory explosion just to this method
+   * activated by optional flag.
+   */
+  private void expandCaseInsensitiveRange(
+      int start, int end, List<Integer> rangeStarts, List<Integer> rangeEnds) {
+    if (start > end)
+      throw new IllegalArgumentException(
+          "invalid range: from (" + start + ") cannot be > to (" + end + ")");
+
+    // contain the explosion of transitions by using a throwaway state
+    Automaton scratch = new Automaton();
+    int state = scratch.createState();
+
+    // iterate over range, adding codepoint and any alternatives as transitions
+    for (int i = start; i <= end; i++) {
+      scratch.addTransition(state, state, i);
+      int[] altCodePoints = CaseFolding.lookupAlternates(i);
+      if (altCodePoints != null) {
+        for (int alt : altCodePoints) {
+          scratch.addTransition(state, state, alt);
+        }
+      } else {
+        int altCase =
+            Character.isLowerCase(i) ? Character.toUpperCase(i) : Character.toLowerCase(i);
+        if (altCase != i) {
+          scratch.addTransition(state, state, altCase);
+        }
+      }
+    }
+
+    // compress transitions
+    scratch.finishState();
+
+    // add compressed ranges to list
+    Transition transition = new Transition();
+    int numTransitions = scratch.initTransition(state, transition);
+    for (int i = 0; i < numTransitions; i++) {
+      scratch.getNextTransition(transition);
+      rangeStarts.add(transition.min);
+      rangeEnds.add(transition.max);
     }
   }
 
@@ -1323,9 +1378,13 @@ public class RegExp {
         int c = parseCharExp();
 
         if (match('-')) {
-          // range from c-d
-          starts.add(c);
-          ends.add(parseCharExp());
+          if (check(CASE_INSENSITIVE_RANGE)) {
+            expandCaseInsensitiveRange(c, parseCharExp(), starts, ends);
+          } else {
+            // simple range from c-d
+            starts.add(c);
+            ends.add(parseCharExp());
+          }
         } else if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
           // single case-insensitive character
           for (int form : toCaseInsensitiveChar(c)) {
