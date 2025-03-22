@@ -617,47 +617,49 @@ public final class IndexedDISI extends DocIdSetIterator {
         }
         // binary search
         long filePointer = disi.slice.getFilePointer();
-        int i = 0;
+        int i = disi.index;
         for (;
-            i + BINARY_SEARCH_WINDOW_SIZE < disi.nextBlockIndex;
+            i + BINARY_SEARCH_WINDOW_SIZE <= disi.nextBlockIndex;
             i += BINARY_SEARCH_WINDOW_SIZE) {
-          disi.slice.seek((i + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
+          disi.slice.seek(
+              (i - disi.index + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           // Since we have read last doc, compare it first.
           if (doc == targetInBlock) {
             disi.nextExistDocInBlock = doc;
-            disi.index += i + BINARY_SEARCH_WINDOW_SIZE;
+            disi.index += (i - disi.index + BINARY_SEARCH_WINDOW_SIZE);
             disi.exists = true;
             return true;
           } else if (doc > targetInBlock) {
-            disi.slice.seek((i + 1) * Short.BYTES + filePointer);
+            disi.slice.seek((i - disi.index + 1) * Short.BYTES + filePointer);
             if ((doc = disi.slice.readShort()) < targetInBlock) {
               i += 2;
             }
-            disi.slice.seek(i * Short.BYTES + filePointer);
+            disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
             if ((doc = disi.slice.readShort()) < targetInBlock) {
               i += 1;
             }
-            disi.slice.seek(i * Short.BYTES + filePointer);
+            disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
             doc = disi.slice.readShort();
             if (doc >= targetInBlock) {
               disi.nextExistDocInBlock = doc;
-              disi.index += (i + 1);
+              disi.index += (i - disi.index + 1);
               if (doc != targetInBlock) {
                 disi.index--;
                 disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
-                break;
+                return false;
               }
               disi.exists = true;
-              return true;
             }
-            break;
+            return true;
           }
         }
 
         // Compare last.
-        disi.index += i;
-        disi.slice.seek(i * Short.BYTES + filePointer);
+        if (i - disi.index > 0) {
+          disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
+          disi.index += (i - disi.index);
+        }
         for (; disi.index < disi.nextBlockIndex; ) {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           disi.index++;
