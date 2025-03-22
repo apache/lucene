@@ -149,9 +149,7 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
     assert r instanceof DirectoryReader
         : "searcher's IndexReader should be a DirectoryReader, but got " + r;
     DirectoryReader dr = (DirectoryReader) r;
-    List<IndexCommit> commits = DirectoryReader.listCommits(dr.directory());
-    IndexCommit refreshCommit =
-        refreshCommitSupplier.getSearcherRefreshCommit(commits, dr.getIndexCommit());
+    IndexCommit refreshCommit = refreshCommitSupplier.getSearcherRefreshCommit(dr);
     final IndexReader newReader = DirectoryReader.openIfChanged(dr, refreshCommit);
     if (newReader == null) {
       return null;

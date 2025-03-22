@@ -98,10 +98,8 @@ public final class ReaderManager extends ReferenceManager<DirectoryReader> {
 
   @Override
   protected DirectoryReader refreshIfNeeded(DirectoryReader referenceToRefresh) throws IOException {
-    List<IndexCommit> commits = DirectoryReader.listCommits(referenceToRefresh.directory());
     IndexCommit refreshCommit =
-        refreshCommitSupplier.getSearcherRefreshCommit(
-            commits, referenceToRefresh.getIndexCommit());
+        refreshCommitSupplier.getSearcherRefreshCommit(referenceToRefresh);
     return DirectoryReader.openIfChanged(referenceToRefresh, refreshCommit);
   }
 

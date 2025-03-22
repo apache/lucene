@@ -163,9 +163,7 @@ public class SearcherTaxonomyManager
     // taxonomy reader:
     final IndexReader r = ref.searcher.getIndexReader();
     DirectoryReader dr = (DirectoryReader) r;
-    List<IndexCommit> commits = DirectoryReader.listCommits(dr.directory());
-    IndexCommit refreshCommit =
-        refreshCommitSupplier.getSearcherRefreshCommit(commits, dr.getIndexCommit());
+    IndexCommit refreshCommit = refreshCommitSupplier.getSearcherRefreshCommit(dr);
     IndexReader newReader = DirectoryReader.openIfChanged(dr, refreshCommit);
     DirectoryTaxonomyReader tr = null;
     if (refreshCommitSupplier.refreshTaxonomy() == true) {

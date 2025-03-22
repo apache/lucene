@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.util.List;
+
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
 
 /**
@@ -30,11 +32,9 @@ public interface RefreshCommitSupplier {
    * Expert: Returns the index commit that searcher should refresh on. A null return value (default)
    * indicates reader should refresh on the latest commit.
    *
-   * @param commits List of commits from searcher directory.
-   * @param currentCommit Current searcher commit.
+   * @param reader DirectoryReader to refresh
    */
-  default IndexCommit getSearcherRefreshCommit(
-      List<IndexCommit> commits, IndexCommit currentCommit) {
+  default IndexCommit getSearcherRefreshCommit(DirectoryReader reader) {
     return null;
   }
 
