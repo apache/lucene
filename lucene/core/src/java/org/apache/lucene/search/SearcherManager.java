@@ -17,7 +17,9 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.store.Directory;
@@ -52,6 +54,7 @@ import org.apache.lucene.store.Directory;
 public final class SearcherManager extends ReferenceManager<IndexSearcher> {
 
   private final SearcherFactory searcherFactory;
+  private RefreshCommitSupplier refreshCommitSupplier = new RefreshCommitSupplier() {};
 
   /**
    * Creates and returns a new SearcherManager from the given {@link IndexWriter}.
@@ -131,6 +134,10 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
     this.current = getSearcher(searcherFactory, reader, null);
   }
 
+  public void setRefreshCommitSupplier(RefreshCommitSupplier refreshCommitSupplier) {
+    this.refreshCommitSupplier = refreshCommitSupplier;
+  }
+
   @Override
   protected void decRef(IndexSearcher reference) throws IOException {
     reference.getIndexReader().decRef();
@@ -141,7 +148,11 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
     final IndexReader r = referenceToRefresh.getIndexReader();
     assert r instanceof DirectoryReader
         : "searcher's IndexReader should be a DirectoryReader, but got " + r;
-    final IndexReader newReader = DirectoryReader.openIfChanged((DirectoryReader) r);
+    DirectoryReader dr = (DirectoryReader) r;
+    List<IndexCommit> commits = DirectoryReader.listCommits(dr.directory());
+    IndexCommit refreshCommit =
+        refreshCommitSupplier.getSearcherRefreshCommit(commits, dr.getIndexCommit());
+    final IndexReader newReader = DirectoryReader.openIfChanged(dr, refreshCommit);
     if (newReader == null) {
       return null;
     } else {
