@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene90.blocktree;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.function.BiConsumer;
 import org.apache.lucene.store.DataOutput;
@@ -113,8 +114,7 @@ class TrieBuilder {
 
   /**
    * Absorb all (K, V) pairs from the given trie into this one. The given trie builder need to
-   * ensure its keys greater or equals than max key of this one, otherwise a {@link
-   * IllegalArgumentException } will be thrown.
+   * ensure its keys greater or equals than max key of this one.
    *
    * <p>Note: the given trie will be destroyed after absorbing.
    */
@@ -122,58 +122,47 @@ class TrieBuilder {
     if (status != Status.BUILDING || trieBuilder.status != Status.BUILDING) {
       throw new IllegalStateException("tries have wrong status.");
     }
-    if (this.maxKey.compareTo(trieBuilder.minKey) >= 0) {
-      throw new IllegalArgumentException("given trie has intersection with current one.");
-    }
-    this.maxKey = trieBuilder.maxKey;
+    assert this.maxKey.compareTo(trieBuilder.minKey) < 0;
 
+    int mismatch =
+        Arrays.mismatch(
+            this.maxKey.bytes,
+            this.maxKey.offset,
+            this.maxKey.offset + this.maxKey.length,
+            trieBuilder.minKey.bytes,
+            trieBuilder.minKey.offset,
+            trieBuilder.minKey.offset + trieBuilder.minKey.length);
     Node a = this.root;
     Node b = trieBuilder.root;
 
-    while (true) {
-      // Merging children of b into children of a.
-      // Labels of children of b are greater or equals to labels of children of a.
-
-      if (b.childrenNum == 0) {
-        // b is leaf node, nothing to do.
-        break;
-      }
-      if (a.childrenNum == 0) {
-        // a is leaf node, copy children of b
-        a.childrenNum = b.childrenNum;
-        a.firstChild = b.firstChild;
-        a.lastChild = b.lastChild;
-        break;
-      }
-
+    for (int i = 0; i < mismatch; i++) {
       final Node aLast = a.lastChild;
       final Node bFirst = b.firstChild;
-
-      if (aLast.label < bFirst.label) {
-        // children of b are all greater than children of a, append.
-        aLast.next = bFirst;
-        a.childrenNum += b.childrenNum;
-        a.lastChild = b.lastChild;
-        break;
-      }
-
-      // Last child of a and first child of b have the same label, append children of b other than
-      // the first one.
       assert aLast.label == bFirst.label;
-      if (bFirst.output != null) {
-        assert aLast.output == null;
-        aLast.output = bFirst.output;
-      }
-      aLast.next = bFirst.next;
-      a.childrenNum += b.childrenNum - 1;
-      if (a.lastChild.label != b.lastChild.label) {
+
+      if (b.childrenNum > 1) {
+        aLast.next = bFirst.next;
+        a.childrenNum += b.childrenNum - 1;
         a.lastChild = b.lastChild;
+        assertChildrenLabelInOrder(a);
       }
-      assertChildrenLabelInOrder(a);
 
       a = aLast;
       b = bFirst;
     }
+
+    assert b.childrenNum > 0;
+    if (a.childrenNum == 0) {
+      a.firstChild = b.firstChild;
+      a.lastChild = b.lastChild;
+      a.childrenNum = b.childrenNum;
+    } else {
+      a.lastChild.next = b.firstChild;
+      a.lastChild = b.lastChild;
+      a.childrenNum += b.childrenNum;
+    }
+
+    this.maxKey = trieBuilder.maxKey;
     trieBuilder.status = Status.DESTROYED;
   }
 
