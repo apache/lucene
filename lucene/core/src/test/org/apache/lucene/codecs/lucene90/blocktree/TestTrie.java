@@ -93,7 +93,8 @@ public class TestTrie extends LuceneTestCase {
       }
       TrieBuilder add = TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue());
       trieBuilder.absorb(add);
-      Assert.assertThrows(IllegalArgumentException.class, () -> add.absorb(trieBuilder));
+      Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
+      Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
     }
     Map<BytesRef, TrieBuilder.Output> actual = new TreeMap<>();
     trieBuilder.visit(actual::put);
@@ -125,7 +126,8 @@ public class TestTrie extends LuceneTestCase {
         }
         TrieBuilder add = TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue());
         trieBuilder.absorb(add);
-        Assert.assertThrows(IllegalArgumentException.class, () -> add.absorb(trieBuilder));
+        Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
+        Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
       }
 
       try (Directory directory = newDirectory()) {

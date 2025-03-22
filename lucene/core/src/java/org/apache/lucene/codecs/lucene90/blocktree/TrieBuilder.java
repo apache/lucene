@@ -131,13 +131,15 @@ class TrieBuilder {
     Node b = trieBuilder.root;
 
     while (true) {
-      assert a.label == b.label;
+      // Merging children of b into children of a.
+      // Labels of children of b are greater or equals to labels of children of a.
 
       if (b.childrenNum == 0) {
+        // b is leaf node, nothing to do.
         break;
       }
-
       if (a.childrenNum == 0) {
+        // a is leaf node, copy children of b
         a.childrenNum = b.childrenNum;
         a.firstChild = b.firstChild;
         a.lastChild = b.lastChild;
@@ -148,12 +150,15 @@ class TrieBuilder {
       final Node bFirst = b.firstChild;
 
       if (aLast.label < bFirst.label) {
+        // children of b are all greater than children of a, append.
         aLast.next = bFirst;
         a.childrenNum += b.childrenNum;
         a.lastChild = b.lastChild;
         break;
       }
 
+      // Last child of a and first child of b have the same label, append children of b other than
+      // the first one.
       assert aLast.label == bFirst.label;
       if (bFirst.output != null) {
         assert aLast.output == null;
@@ -164,10 +169,12 @@ class TrieBuilder {
       if (a.lastChild.label != b.lastChild.label) {
         a.lastChild = b.lastChild;
       }
+      assertChildrenLabelInOrder(a);
 
       a = aLast;
       b = bFirst;
     }
+    trieBuilder.status = Status.DESTROYED;
   }
 
   Output getEmptyOutput() {
@@ -263,7 +270,7 @@ class TrieBuilder {
 
       // All children have been written, now it's time to write the parent!
 
-      assert assertSavingStatus(node);
+      assert assertNonLeafNodePreparingSaving(node);
       node.fp = index.getFilePointer() - startFP;
       stack.pop();
 
@@ -384,17 +391,26 @@ class TrieBuilder {
   }
 
   private static boolean assertChildrenLabelInOrder(Node node) {
-    if (node.childrenNum > 1) {
-      Node child = node.firstChild;
-      while (child.next != null) {
-        assert child.label < child.next.label : "the children of node should always be in order.";
-        child = child.next;
+    if (node.childrenNum == 0) {
+      assert node.firstChild == null;
+      assert node.lastChild == null;
+    }
+    if (node.childrenNum == 1) {
+      assert node.firstChild == node.lastChild;
+      assert node.firstChild.next == null;
+    } else if (node.childrenNum > 1) {
+      int n = 0;
+      for (Node child = node.firstChild; child != null; child = child.next) {
+        n++;
+        assert child.next == null || child.label < child.next.label
+            : " the label of children nodes should always be in order.";
       }
+      assert node.childrenNum == n;
     }
     return true;
   }
 
-  private static boolean assertSavingStatus(Node node) {
+  private static boolean assertNonLeafNodePreparingSaving(Node node) {
     assert assertChildrenLabelInOrder(node);
     assert node.childrenNum != 0;
     if (node.childrenNum == 1) {
@@ -408,7 +424,7 @@ class TrieBuilder {
         n++;
         assert child.fp >= 0;
         assert child.next == null || child.fp < child.next.fp
-            : " the children of node should always be in order.";
+            : " the fp or children nodes should always be in order.";
       }
       assert node.childrenNum == n;
       assert node.lastChild == node.savedTo;
