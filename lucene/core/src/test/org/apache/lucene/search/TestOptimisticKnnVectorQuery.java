@@ -37,18 +37,17 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.VectorUtil;
 
-public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
+public class TestOptimisticKnnVectorQuery extends BaseKnnVectorQueryTestCase {
 
   @Override
   KnnFloatVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
-    return new KnnFloatVectorQuery(field, query, k, queryFilter);
+    return new OptimisticKnnVectorQuery(field, query, k, queryFilter);
   }
 
   @Override
@@ -77,14 +76,15 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
             getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10);
-      assertEquals("KnnFloatVectorQuery:field[0.0,...][10]", query.toString("ignored"));
+      assertEquals("OptimisticKnnVectorQuery:field[0.0,...][10]", query.toString("ignored"));
 
       assertDocScoreQueryToString(query.rewrite(newSearcher(reader)));
 
       // test with filter
       Query filter = new TermQuery(new Term("id", "text"));
       query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, filter);
-      assertEquals("KnnFloatVectorQuery:field[0.0,...][10][id:text]", query.toString("ignored"));
+      assertEquals(
+          "OptimisticKnnVectorQuery:field[0.0,...][10][id:text]", query.toString("ignored"));
     }
   }
 
@@ -264,7 +264,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   static class ThrowingKnnVectorQuery extends KnnFloatVectorQuery {
 
     public ThrowingKnnVectorQuery(String field, float[] target, int k, Query filter) {
-      super(field, target, k, filter, new KnnSearchStrategy.Hnsw(0));
+      super(field, target, k, filter);
     }
 
     @Override
