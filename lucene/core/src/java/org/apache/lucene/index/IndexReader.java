@@ -127,6 +127,16 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
      */
     void addClosedListener(ClosedListener listener);
   }
+  
+  /**
+   * Returns a list of {@link LeafReader} extracted from {@link LeafReaderContext}.
+   * This provides a direct way to get the leaf readers of an index.
+   *
+   * @return List of {@link LeafReader}
+   */
+  public List<LeafReader> leafReaders() {
+    return leaves().stream().map(LeafReaderContext::reader).collect(Collectors.toList());
+  }
 
   /** A cache key identifying a resource that is being cached on. */
   public static final class CacheKey {

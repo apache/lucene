@@ -104,6 +104,29 @@ public class TestIndexReaderClose extends LuceneTestCase {
     dir.close();
   }
 
+  public void testLeafReaders() throws IOException {
+    Directory dir = new RAMDirectory();
+    IndexWriterConfig config = new IndexWriterConfig(new StandardAnalyzer());
+    IndexWriter writer = new IndexWriter(dir, config);
+
+    // Add a document to ensure there's a segment
+    Document doc = new Document();
+    doc.add(new TextField("field", "test", Field.Store.YES));
+    writer.addDocument(doc);
+    writer.commit();
+    writer.close();
+
+    // Open the reader and test leafReaders()
+    IndexReader reader = DirectoryReader.open(dir);
+    List<LeafReader> leafReaders = reader.leafReaders();
+
+    assertNotNull(leafReaders);
+    assertEquals(reader.leaves().size(), leafReaders.size());
+
+    reader.close();
+    dir.close();
+  }
+
   public void testCoreListenerOnWrapperWithDifferentCacheKey() throws IOException {
     RandomIndexWriter w = new RandomIndexWriter(random(), newDirectory());
     final int numDocs = TestUtil.nextInt(random(), 1, 5);
