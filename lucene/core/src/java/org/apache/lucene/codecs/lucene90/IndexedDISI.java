@@ -629,6 +629,23 @@ public final class IndexedDISI extends DocIdSetIterator {
             disi.nextExistDocInBlock = doc;
             disi.index += (i - disi.index + BINARY_SEARCH_WINDOW_SIZE);
             disi.exists = true;
+            System.out.println(
+                "targetInBlock: "
+                    + targetInBlock
+                    + ", index: "
+                    + disi.index
+                    + ", nextBlockIndex: "
+                    + disi.nextBlockIndex
+                    + ", doc: "
+                    + disi.doc
+                    + ", exists: "
+                    + disi.exists
+                    + ",nextExistDocInBlock: "
+                    + disi.nextExistDocInBlock
+                    + ",found: "
+                    + true
+                    + ", getFilePointer: "
+                    + disi.slice.getFilePointer());
             return true;
           } else if (doc > targetInBlock) {
             disi.slice.seek((i - disi.index + 1) * Short.BYTES + filePointer);
@@ -647,11 +664,46 @@ public final class IndexedDISI extends DocIdSetIterator {
               if (doc != targetInBlock) {
                 disi.index--;
                 disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+                disi.exists = false;
+                System.out.println(
+                    "targetInBlock: "
+                        + targetInBlock
+                        + ", index: "
+                        + disi.index
+                        + ", nextBlockIndex: "
+                        + disi.nextBlockIndex
+                        + ", doc: "
+                        + disi.doc
+                        + ", exists: "
+                        + disi.exists
+                        + ",nextExistDocInBlock: "
+                        + disi.nextExistDocInBlock
+                        + ",found: "
+                        + false
+                        + ", getFilePointer: "
+                        + disi.slice.getFilePointer());
                 return false;
               }
               disi.exists = true;
+              System.out.println(
+                  "targetInBlock: "
+                      + targetInBlock
+                      + ", index: "
+                      + disi.index
+                      + ", nextBlockIndex: "
+                      + disi.nextBlockIndex
+                      + ", doc: "
+                      + disi.doc
+                      + ", exists: "
+                      + disi.exists
+                      + ",nextExistDocInBlock: "
+                      + disi.nextExistDocInBlock
+                      + ",found: "
+                      + true
+                      + ", getFilePointer: "
+                      + disi.slice.getFilePointer());
+              return true;
             }
-            return true;
           }
         }
 
@@ -660,6 +712,8 @@ public final class IndexedDISI extends DocIdSetIterator {
           disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
           disi.index += (i - disi.index);
         }
+
+
         for (; disi.index < disi.nextBlockIndex; ) {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           disi.index++;
@@ -671,9 +725,44 @@ public final class IndexedDISI extends DocIdSetIterator {
               break;
             }
             disi.exists = true;
+            System.out.println(
+                "targetInBlock: "
+                    + targetInBlock
+                    + ", index: "
+                    + disi.index
+                    + ", nextBlockIndex: "
+                    + disi.nextBlockIndex
+                    + ", doc: "
+                    + disi.doc
+                    + ", exists: "
+                    + disi.exists
+                    + ",nextExistDocInBlock: "
+                    + disi.nextExistDocInBlock
+                    + ",found: "
+                    + true
+                    + ", getFilePointer: "
+                    + disi.slice.getFilePointer());
             return true;
           }
         }
+        disi.exists = false;
+        System.out.println(
+            "targetInBlock: "
+                + targetInBlock
+                + ", index: "
+                + disi.index
+                + ", nextBlockIndex: "
+                + disi.nextBlockIndex
+                + ", doc: "
+                + disi.doc
+                + ", exists: "
+                + disi.exists
+                + ",nextExistDocInBlock: "
+                + disi.nextExistDocInBlock
+                + ",found: "
+                + false
+                + ", getFilePointer: "
+                + disi.slice.getFilePointer());
         return false;
       }
     },
