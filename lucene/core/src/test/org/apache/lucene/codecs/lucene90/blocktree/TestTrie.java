@@ -93,6 +93,9 @@ public class TestTrie extends LuceneTestCase {
       }
       TrieBuilder add = TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue());
       trieBuilder.absorb(add);
+      Assert.assertThrows(
+          IllegalArgumentException.class,
+          () -> trieBuilder.absorb(TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue())));
       Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
       Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
     }
@@ -126,6 +129,9 @@ public class TestTrie extends LuceneTestCase {
         }
         TrieBuilder add = TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue());
         trieBuilder.absorb(add);
+        Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> trieBuilder.absorb(TrieBuilder.bytesRefToTrie(entry.getKey(), entry.getValue())));
         Assert.assertThrows(IllegalStateException.class, () -> add.absorb(trieBuilder));
         Assert.assertThrows(IllegalStateException.class, () -> trieBuilder.absorb(add));
       }
