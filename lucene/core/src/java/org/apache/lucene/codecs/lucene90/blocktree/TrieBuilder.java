@@ -157,6 +157,7 @@ class TrieBuilder {
       a.lastChild = b.lastChild;
       a.childrenNum = b.childrenNum;
     } else {
+      assert a.lastChild.label < b.firstChild.label;
       a.lastChild.next = b.firstChild;
       a.lastChild = b.lastChild;
       a.childrenNum += b.childrenNum;
