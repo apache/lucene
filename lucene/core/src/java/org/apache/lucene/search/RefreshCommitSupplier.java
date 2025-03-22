@@ -43,7 +43,7 @@ public interface RefreshCommitSupplier {
    *
    * <p>Expert: Taxonomy readers are always refreshed on the latest commit. Use this function to
    * skip taxonomy refresh if the searcher commit returned by {@link
-   * RefreshCommitSupplier#getSearcherRefreshCommit(List, IndexCommit)} is not yet ready for the
+   * RefreshCommitSupplier#getSearcherRefreshCommit(DirectoryReader)} is not yet ready for the
    * latest taxonomy changes. Otherwise, you might get a new reader that references ords not yet
    * known to the taxonomy reader
    *
