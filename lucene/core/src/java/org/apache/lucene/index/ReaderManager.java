@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.List;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ReferenceManager;
 import org.apache.lucene.search.RefreshCommitSupplier;
@@ -98,8 +97,7 @@ public final class ReaderManager extends ReferenceManager<DirectoryReader> {
 
   @Override
   protected DirectoryReader refreshIfNeeded(DirectoryReader referenceToRefresh) throws IOException {
-    IndexCommit refreshCommit =
-        refreshCommitSupplier.getSearcherRefreshCommit(referenceToRefresh);
+    IndexCommit refreshCommit = refreshCommitSupplier.getSearcherRefreshCommit(referenceToRefresh);
     return DirectoryReader.openIfChanged(referenceToRefresh, refreshCommit);
   }
 
