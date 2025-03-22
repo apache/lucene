@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -158,7 +159,7 @@ public class SpellChecker implements java.io.Closeable {
     synchronized (modifyCurrentIndexLock) {
       ensureOpen();
       if (!DirectoryReader.indexExists(spellIndexDir)) {
-        IndexWriter writer = new IndexWriter(spellIndexDir, new IndexWriterConfig(null));
+        IndexWriter writer = new IndexWriter(spellIndexDir, new IndexWriterConfig((Analyzer) null));
         writer.close();
       }
       swapSearcher(spellIndexDir);
@@ -453,7 +454,7 @@ public class SpellChecker implements java.io.Closeable {
       ensureOpen();
       final Directory dir = this.spellIndex;
       final IndexWriter writer =
-          new IndexWriter(dir, new IndexWriterConfig(null).setOpenMode(OpenMode.CREATE));
+          new IndexWriter(dir, new IndexWriterConfig((Analyzer) null).setOpenMode(OpenMode.CREATE));
       writer.close();
       swapSearcher(dir);
     }
