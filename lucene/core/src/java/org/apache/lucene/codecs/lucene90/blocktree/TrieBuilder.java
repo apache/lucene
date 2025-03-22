@@ -161,6 +161,7 @@ class TrieBuilder {
       a.lastChild = b.lastChild;
       a.childrenNum += b.childrenNum;
     }
+    assertChildrenLabelInOrder(a);
 
     this.maxKey = trieBuilder.maxKey;
     trieBuilder.status = Status.DESTROYED;
