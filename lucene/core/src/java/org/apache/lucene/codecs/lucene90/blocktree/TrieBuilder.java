@@ -171,7 +171,10 @@ class TrieBuilder {
     return root.output;
   }
 
-  /** Used for tests only. */
+  /**
+   * Used for tests only. The recursive impl need to be avoided if someone plans to use for
+   * production one day.
+   */
   void visit(BiConsumer<BytesRef, Output> consumer) {
     assert status == Status.BUILDING;
     if (root.output != null) {
