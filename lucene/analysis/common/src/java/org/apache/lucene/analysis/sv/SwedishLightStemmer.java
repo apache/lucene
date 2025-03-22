@@ -87,6 +87,9 @@ class SwedishLightStemmer {
             || endsWith(s, len, "te")
             || endsWith(s, len, "et"))) return len - 2;
 
+    if (len > 5 && endsWith(s, len, "ion"))
+      return len;
+
     if (len > 3)
       switch (s[len - 1]) {
         case 't':
