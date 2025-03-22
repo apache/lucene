@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.search.Weight.DefaultBulkScorer;
 
 /**
@@ -78,9 +79,18 @@ public abstract class ConstantScoreScorerSupplier extends ScorerSupplier {
   public final BulkScorer bulkScorer() throws IOException {
     DocIdSetIterator iterator = iterator(Long.MAX_VALUE);
     if (maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE / 2
-        && iterator.cost() >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE
-        && TwoPhaseIterator.unwrap(iterator) == null) {
-      return new DenseConjunctionBulkScorer(Collections.singletonList(iterator), maxDoc, score);
+        && iterator.cost() >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
+      TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
+      List<DocIdSetIterator> iterators;
+      List<TwoPhaseIterator> twoPhases;
+      if (twoPhase == null) {
+        iterators = Collections.singletonList(iterator);
+        twoPhases = Collections.emptyList();
+      } else {
+        iterators = Collections.emptyList();
+        twoPhases = Collections.singletonList(twoPhase);
+      }
+      return new DenseConjunctionBulkScorer(iterators, twoPhases, maxDoc, score);
     } else {
       return new DefaultBulkScorer(new ConstantScoreScorer(score, scoreMode, iterator));
     }
