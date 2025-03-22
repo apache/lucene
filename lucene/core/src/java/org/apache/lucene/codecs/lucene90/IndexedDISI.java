@@ -107,6 +107,7 @@ public final class IndexedDISI extends DocIdSetIterator {
   public static final byte DEFAULT_DENSE_RANK_POWER = 9; // Every 512 docIDs / 8 longs
 
   static final int MAX_ARRAY_LENGTH = (1 << 12) - 1;
+  static int BINARY_SEARCH_WINDOW_SIZE = 4;
 
   private static void flush(
       int block, FixedBitSet buffer, int cardinality, byte denseRankPower, IndexOutput out)
@@ -589,6 +590,8 @@ public final class IndexedDISI extends DocIdSetIterator {
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
         // TODO: binary search
+        // Since we just advance to the doc equals or greater than target.
+        // Maybe use branchLess binary search like https://github.com/apache/lucene/pull/13692.
         for (; disi.index < disi.nextBlockIndex; ) {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           disi.index++;
@@ -605,7 +608,6 @@ public final class IndexedDISI extends DocIdSetIterator {
       @Override
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        // TODO: binary search
         if (disi.nextExistDocInBlock > targetInBlock) {
           assert !disi.exists;
           return false;
@@ -613,6 +615,49 @@ public final class IndexedDISI extends DocIdSetIterator {
         if (target == disi.doc) {
           return disi.exists;
         }
+        // binary search
+        long filePointer = disi.slice.getFilePointer();
+        int i = 0;
+        for (;
+            i + BINARY_SEARCH_WINDOW_SIZE < disi.nextBlockIndex;
+            i += BINARY_SEARCH_WINDOW_SIZE) {
+          disi.slice.seek((i + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
+          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          // Since we have read last doc, compare it first.
+          if (doc == targetInBlock) {
+            disi.nextExistDocInBlock = doc;
+            disi.index += i + BINARY_SEARCH_WINDOW_SIZE;
+            disi.exists = true;
+            return true;
+          } else if (doc > targetInBlock) {
+            disi.slice.seek((i + 1) * Short.BYTES + filePointer);
+            if ((doc = disi.slice.readShort()) < targetInBlock) {
+              i += 2;
+            }
+            disi.slice.seek(i * Short.BYTES + filePointer);
+            if ((doc = disi.slice.readShort()) < targetInBlock) {
+              i += 1;
+            }
+            disi.slice.seek(i * Short.BYTES + filePointer);
+            doc = disi.slice.readShort();
+            if (doc >= targetInBlock) {
+              disi.nextExistDocInBlock = doc;
+              disi.index += (i + 1);
+              if (doc != targetInBlock) {
+                disi.index--;
+                disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+                break;
+              }
+              disi.exists = true;
+              return true;
+            }
+            break;
+          }
+        }
+
+        // Compare last.
+        disi.index += i;
+        disi.slice.seek(i * Short.BYTES + filePointer);
         for (; disi.index < disi.nextBlockIndex; ) {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           disi.index++;
@@ -627,7 +672,6 @@ public final class IndexedDISI extends DocIdSetIterator {
             return true;
           }
         }
-        disi.exists = false;
         return false;
       }
     },
