@@ -17,13 +17,16 @@
 package org.apache.lucene.facet.taxonomy;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ReferenceManager;
+import org.apache.lucene.search.RefreshCommitSupplier;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
@@ -50,6 +53,7 @@ public class SearcherTaxonomyManager
   private final SearcherFactory searcherFactory;
   private final long taxoEpoch;
   private final DirectoryTaxonomyWriter taxoWriter;
+  private RefreshCommitSupplier refreshCommitSupplier = new RefreshCommitSupplier() {};
 
   /** Creates near-real-time searcher and taxonomy reader from the corresponding writers. */
   public SearcherTaxonomyManager(
@@ -122,6 +126,10 @@ public class SearcherTaxonomyManager
     taxoEpoch = -1;
   }
 
+  public void setRefreshCommitSupplier(RefreshCommitSupplier refreshCommitSupplier) {
+    this.refreshCommitSupplier = refreshCommitSupplier;
+  }
+
   @Override
   protected void decRef(SearcherAndTaxonomy ref) throws IOException {
     ref.searcher.getIndexReader().decRef();
@@ -154,33 +162,46 @@ public class SearcherTaxonomyManager
     // new reader that references ords not yet known to the
     // taxonomy reader:
     final IndexReader r = ref.searcher.getIndexReader();
-    final IndexReader newReader = DirectoryReader.openIfChanged((DirectoryReader) r);
-    if (newReader == null) {
-      return null;
-    } else {
-      DirectoryTaxonomyReader tr;
+    DirectoryReader dr = (DirectoryReader) r;
+    List<IndexCommit> commits = DirectoryReader.listCommits(dr.directory());
+    IndexCommit refreshCommit =
+        refreshCommitSupplier.getSearcherRefreshCommit(commits, dr.getIndexCommit());
+    IndexReader newReader = DirectoryReader.openIfChanged(dr, refreshCommit);
+    DirectoryTaxonomyReader tr = null;
+    if (refreshCommitSupplier.refreshTaxonomy() == true) {
       try {
         tr = TaxonomyReader.openIfChanged(ref.taxonomyReader);
       } catch (Throwable t1) {
         try {
-          IOUtils.close(newReader);
+          if (newReader != null) {
+            IOUtils.close(newReader);
+          }
         } catch (Throwable t2) {
           t2.addSuppressed(t2);
         }
         throw t1;
       }
-      if (tr == null) {
-        ref.taxonomyReader.incRef();
-        tr = ref.taxonomyReader;
-      } else if (taxoWriter != null && taxoWriter.getTaxonomyEpoch() != taxoEpoch) {
-        IOUtils.close(newReader, tr);
+      if (tr != null && taxoWriter != null && taxoWriter.getTaxonomyEpoch() != taxoEpoch) {
+        IOUtils.close(tr);
+        if (newReader != null) {
+          IOUtils.close(newReader);
+        }
         throw new IllegalStateException(
             "DirectoryTaxonomyWriter.replaceTaxonomy was called, which is not allowed when using SearcherTaxonomyManager");
       }
-
-      return new SearcherAndTaxonomy(
-          SearcherManager.getSearcher(searcherFactory, newReader, r), tr);
     }
+    if (newReader == null && tr == null) {
+      return null;
+    }
+    if (newReader == null) {
+      ref.searcher.getIndexReader().incRef();
+      newReader = ref.searcher.getIndexReader();
+    }
+    if (tr == null) {
+      ref.taxonomyReader.incRef();
+      tr = ref.taxonomyReader;
+    }
+    return new SearcherAndTaxonomy(SearcherManager.getSearcher(searcherFactory, newReader, r), tr);
   }
 
   @Override
