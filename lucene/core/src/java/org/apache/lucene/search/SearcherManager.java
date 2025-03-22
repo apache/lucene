@@ -133,6 +133,7 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
     this.current = getSearcher(searcherFactory, reader, null);
   }
 
+  /** Set supplier for selecting commits to refresh on */
   public void setRefreshCommitSupplier(RefreshCommitSupplier refreshCommitSupplier) {
     this.refreshCommitSupplier = refreshCommitSupplier;
   }

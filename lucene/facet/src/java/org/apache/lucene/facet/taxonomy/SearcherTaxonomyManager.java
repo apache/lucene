@@ -125,6 +125,7 @@ public class SearcherTaxonomyManager
     taxoEpoch = -1;
   }
 
+  /** Set supplier for selecting commits to refresh on */
   public void setRefreshCommitSupplier(RefreshCommitSupplier refreshCommitSupplier) {
     this.refreshCommitSupplier = refreshCommitSupplier;
   }

@@ -86,6 +86,7 @@ public final class ReaderManager extends ReferenceManager<DirectoryReader> {
     current = reader;
   }
 
+  /** Set supplier for selecting commits to refresh on */
   public void setRefreshCommitSupplier(RefreshCommitSupplier refreshCommitSupplier) {
     this.refreshCommitSupplier = refreshCommitSupplier;
   }
