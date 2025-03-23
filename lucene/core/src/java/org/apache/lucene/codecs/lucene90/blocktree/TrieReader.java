@@ -44,7 +44,7 @@ class TrieReader {
     // multi children
     private long positionFp;
     private int positionStrategy;
-    private int positionBytes;
+    private int strategyBytes;
     private int childrenDeltaFpBytes;
 
     // common
@@ -157,7 +157,7 @@ class TrieReader {
 
     node.childrenDeltaFpBytes = ((term >>> 2) & 0x07) + 1;
     node.positionStrategy = (term >>> 9) & 0x03;
-    node.positionBytes = ((term >>> 11) & 0x1F) + 1;
+    node.strategyBytes = ((term >>> 11) & 0x1F) + 1;
     node.minChildrenLabel = (term >>> 16) & 0xFF;
 
     if ((term & 0x20) != 0) { // has output
@@ -172,7 +172,7 @@ class TrieReader {
         long childrenNum = (access.readByte(offset) & 0xFFL) + 1L;
         node.positionFp = offset + 1L;
         node.floorDataFp =
-            node.positionFp + node.positionBytes + childrenNum * node.childrenDeltaFpBytes;
+            node.positionFp + node.strategyBytes + childrenNum * node.childrenDeltaFpBytes;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
         node.positionFp = fp + 4 + encodedOutputFpBytesMinus1;
@@ -200,9 +200,9 @@ class TrieReader {
       return child;
     }
 
-    final long positionBytesStartFp = parent.positionFp;
+    final long strategyBytesStartFp = parent.positionFp;
     final int minLabel = parent.minChildrenLabel;
-    final int positionBytes = parent.positionBytes;
+    final int strategyBytes = parent.strategyBytes;
 
     int position = -1;
     if (targetLabel == minLabel) {
@@ -210,7 +210,7 @@ class TrieReader {
     } else if (targetLabel > minLabel) {
       position =
           TrieBuilder.ChildSaveStrategy.byCode(parent.positionStrategy)
-              .lookup(targetLabel, access, positionBytesStartFp, positionBytes, minLabel);
+              .lookup(targetLabel, access, strategyBytesStartFp, strategyBytes, minLabel);
     }
 
     if (position < 0) {
@@ -218,7 +218,7 @@ class TrieReader {
     }
 
     final int bytesPerEntry = parent.childrenDeltaFpBytes;
-    final long pos = positionBytesStartFp + positionBytes + (long) bytesPerEntry * position;
+    final long pos = strategyBytesStartFp + strategyBytes + (long) bytesPerEntry * position;
     final long fp = parent.fp - (access.readLong(pos) & BYTES_MINUS_1_MASK[bytesPerEntry - 1]);
     child.label = targetLabel;
     load(child, fp);

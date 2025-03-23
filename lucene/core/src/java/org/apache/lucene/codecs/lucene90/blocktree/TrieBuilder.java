@@ -312,8 +312,8 @@ class TrieBuilder {
         assert maxLabel > minLabel;
         ChildSaveStrategy childSaveStrategy =
             ChildSaveStrategy.choose(minLabel, maxLabel, childrenNum);
-        int positionBytes = childSaveStrategy.positionBytes(minLabel, maxLabel, childrenNum);
-        assert positionBytes > 0 && positionBytes <= 32;
+        int strategyBytes = childSaveStrategy.needBytes(minLabel, maxLabel, childrenNum);
+        assert strategyBytes > 0 && strategyBytes <= 32;
 
         // children fps are in order, so the first child's fp is min, then delta is max.
         long maxChildDeltaFp = node.fp - node.firstChild.fp;
@@ -328,7 +328,7 @@ class TrieBuilder {
                 | ((node.output != null ? 1 : 0) << 5)
                 | ((encodedOutputFpBytes - 1) << 6)
                 | (childSaveStrategy.code << 9)
-                | ((positionBytes - 1) << 11)
+                | ((strategyBytes - 1) << 11)
                 | (minLabel << 16);
 
         writeLongNBytes(header, 3, index);
@@ -344,11 +344,11 @@ class TrieBuilder {
         }
 
         long positionStartFp = index.getFilePointer();
-        childSaveStrategy.save(node, childrenNum, positionBytes, index);
-        assert index.getFilePointer() == positionStartFp + positionBytes
+        childSaveStrategy.save(node, childrenNum, strategyBytes, index);
+        assert index.getFilePointer() == positionStartFp + strategyBytes
             : childSaveStrategy.name()
                 + " position bytes compute error, computed: "
-                + positionBytes
+                + strategyBytes
                 + " actual: "
                 + (index.getFilePointer() - positionStartFp);
 
@@ -388,8 +388,7 @@ class TrieBuilder {
     if (node.childrenNum == 0) {
       assert node.firstChild == null;
       assert node.lastChild == null;
-    }
-    if (node.childrenNum == 1) {
+    } else if (node.childrenNum == 1) {
       assert node.firstChild == node.lastChild;
       assert node.firstChild.next == null;
     } else if (node.childrenNum > 1) {
@@ -435,13 +434,13 @@ class TrieBuilder {
      */
     BITS(2) {
       @Override
-      int positionBytes(int minLabel, int maxLabel, int labelCnt) {
+      int needBytes(int minLabel, int maxLabel, int labelCnt) {
         int byteDistance = maxLabel - minLabel + 1;
         return (byteDistance + 7) >>> 3;
       }
 
       @Override
-      void save(Node parent, int labelCnt, int positionBytes, IndexOutput output)
+      void save(Node parent, int labelCnt, int strategyBytes, IndexOutput output)
           throws IOException {
         byte presenceBits = 1; // The first arc is always present.
         int presenceIndex = 0;
@@ -467,10 +466,10 @@ class TrieBuilder {
 
       @Override
       int lookup(
-          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+          int targetLabel, RandomAccessInput in, long offset, int strategyBytes, int minLabel)
           throws IOException {
         int bitIndex = targetLabel - minLabel;
-        if (bitIndex >= (positionBytes << 3)) {
+        if (bitIndex >= (strategyBytes << 3)) {
           return -1;
         }
         int wordIndex = bitIndex >>> 6;
@@ -496,12 +495,12 @@ class TrieBuilder {
      */
     ARRAY(1) {
       @Override
-      int positionBytes(int minLabel, int maxLabel, int labelCnt) {
+      int needBytes(int minLabel, int maxLabel, int labelCnt) {
         return labelCnt - 1; // min label saved
       }
 
       @Override
-      void save(Node parent, int labelCnt, int positionBytes, IndexOutput output)
+      void save(Node parent, int labelCnt, int strategyBytes, IndexOutput output)
           throws IOException {
         for (Node child = parent.firstChild.next; child != null; child = child.next) {
           output.writeByte((byte) child.label);
@@ -510,10 +509,10 @@ class TrieBuilder {
 
       @Override
       int lookup(
-          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+          int targetLabel, RandomAccessInput in, long offset, int strategyBytes, int minLabel)
           throws IOException {
         int low = 0;
-        int high = positionBytes - 1;
+        int high = strategyBytes - 1;
         while (low <= high) {
           int mid = (low + high) >>> 1;
           int midLabel = in.readByte(offset + mid) & 0xFF;
@@ -538,13 +537,13 @@ class TrieBuilder {
     REVERSE_ARRAY(0) {
 
       @Override
-      int positionBytes(int minLabel, int maxLabel, int labelCnt) {
+      int needBytes(int minLabel, int maxLabel, int labelCnt) {
         int byteDistance = maxLabel - minLabel + 1;
         return byteDistance - labelCnt + 1;
       }
 
       @Override
-      void save(Node parent, int labelCnt, int positionBytes, IndexOutput output)
+      void save(Node parent, int labelCnt, int strategyBytes, IndexOutput output)
           throws IOException {
         output.writeByte((byte) parent.lastChild.label);
         int lastLabel = parent.firstChild.label;
@@ -557,18 +556,18 @@ class TrieBuilder {
 
       @Override
       int lookup(
-          int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+          int targetLabel, RandomAccessInput in, long offset, int strategyBytes, int minLabel)
           throws IOException {
         int maxLabel = in.readByte(offset++) & 0xFF;
         if (targetLabel >= maxLabel) {
-          return targetLabel == maxLabel ? maxLabel - minLabel - positionBytes + 1 : -1;
+          return targetLabel == maxLabel ? maxLabel - minLabel - strategyBytes + 1 : -1;
         }
-        if (positionBytes == 1) {
+        if (strategyBytes == 1) {
           return targetLabel - minLabel;
         }
 
         int low = 0;
-        int high = positionBytes - 2;
+        int high = strategyBytes - 2;
         while (low <= high) {
           int mid = (low + high) >>> 1;
           int midLabel = in.readByte(offset + mid) & 0xFF;
@@ -602,13 +601,13 @@ class TrieBuilder {
       this.code = code;
     }
 
-    abstract int positionBytes(int minLabel, int maxLabel, int labelCnt);
+    abstract int needBytes(int minLabel, int maxLabel, int labelCnt);
 
-    abstract void save(Node parent, int labelCnt, int positionBytes, IndexOutput output)
+    abstract void save(Node parent, int labelCnt, int strategyBytes, IndexOutput output)
         throws IOException;
 
     abstract int lookup(
-        int targetLabel, RandomAccessInput in, long offset, int positionBytes, int minLabel)
+        int targetLabel, RandomAccessInput in, long offset, int strategyBytes, int minLabel)
         throws IOException;
 
     static ChildSaveStrategy byCode(int code) {
@@ -617,16 +616,16 @@ class TrieBuilder {
 
     static ChildSaveStrategy choose(int minLabel, int maxLabel, int labelCnt) {
       ChildSaveStrategy childSaveStrategy = null;
-      int positionBytes = Integer.MAX_VALUE;
+      int strategyBytes = Integer.MAX_VALUE;
       for (ChildSaveStrategy strategy : ChildSaveStrategy.STRATEGIES_IN_PRIORITY_ORDER) {
-        int strategyCost = strategy.positionBytes(minLabel, maxLabel, labelCnt);
-        if (strategyCost < positionBytes) {
+        int strategyCost = strategy.needBytes(minLabel, maxLabel, labelCnt);
+        if (strategyCost < strategyBytes) {
           childSaveStrategy = strategy;
-          positionBytes = strategyCost;
+          strategyBytes = strategyCost;
         }
       }
       assert childSaveStrategy != null;
-      assert positionBytes > 0 && positionBytes <= 32;
+      assert strategyBytes > 0 && strategyBytes <= 32;
       return childSaveStrategy;
     }
   }
