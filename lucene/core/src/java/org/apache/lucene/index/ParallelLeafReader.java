@@ -355,17 +355,17 @@ public class ParallelLeafReader extends LeafReader {
           Fields docFields = termVectors.get(docID); // Fetch all fields at once
 
           if (docFields != null) {
-              if (fields == null) {
-                  fields = new ParallelFields();
-              }
+            if (fields == null) {
+              fields = new ParallelFields();
+            }
 
-              // Step 3: Aggregate only required fields
-              for (String fieldName : docFields) {
-                  Terms vector = docFields.terms(fieldName);
-                  if (vector != null) {
-                      fields.addField(fieldName, vector);
-                  }
+            // Step 3: Aggregate only required fields
+            for (String fieldName : docFields) {
+              Terms vector = docFields.terms(fieldName);
+              if (vector != null) {
+                fields.addField(fieldName, vector);
               }
+            }
           }
         }
 
