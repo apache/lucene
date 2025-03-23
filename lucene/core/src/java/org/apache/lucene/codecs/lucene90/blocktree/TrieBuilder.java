@@ -302,9 +302,9 @@ class TrieBuilder {
       } else {
 
         // [n bytes] floor data
-        // [n bytes] children fps | [n bytes] position data
+        // [n bytes] children fps | [n bytes] strategy data
         // [1 byte] children count (if floor data) | [n bytes] encoded output fp | [1 byte] label
-        // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
+        // [5bit] strategy bytes | 2bit children strategy | [3bit] encoded output fp bytes
         // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
         final int minLabel = node.firstChild.label;
@@ -343,14 +343,14 @@ class TrieBuilder {
           }
         }
 
-        long positionStartFp = index.getFilePointer();
+        long strategyStartFp = index.getFilePointer();
         childSaveStrategy.save(node, childrenNum, strategyBytes, index);
-        assert index.getFilePointer() == positionStartFp + strategyBytes
+        assert index.getFilePointer() == strategyStartFp + strategyBytes
             : childSaveStrategy.name()
-                + " position bytes compute error, computed: "
+                + " strategy bytes compute error, computed: "
                 + strategyBytes
                 + " actual: "
-                + (index.getFilePointer() - positionStartFp);
+                + (index.getFilePointer() - strategyStartFp);
 
         for (Node child = node.firstChild; child != null; child = child.next) {
           assert node.fp > child.fp : "parent always written after all children";

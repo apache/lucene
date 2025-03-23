@@ -42,8 +42,8 @@ class TrieReader {
     private long childDeltaFp;
 
     // multi children
-    private long positionFp;
-    private int positionStrategy;
+    private long strategyFp;
+    private int childSaveStrategy;
     private int strategyBytes;
     private int childrenDeltaFpBytes;
 
@@ -150,13 +150,13 @@ class TrieReader {
       throws IOException {
 
     // [n bytes] floor data
-    // [n bytes] children fps | [n bytes] position data
+    // [n bytes] children fps | [n bytes] strategy data
     // [1 byte] children count (if floor data) | [n bytes] encoded output fp | [1 byte] label
-    // [5bit] position bytes | 2bit children strategy | [3bit] encoded output fp bytes
+    // [5bit] strategy bytes | 2bit children strategy | [3bit] encoded output fp bytes
     // [1bit] has output | [3bit] children fp bytes | [2bit] sign
 
     node.childrenDeltaFpBytes = ((term >>> 2) & 0x07) + 1;
-    node.positionStrategy = (term >>> 9) & 0x03;
+    node.childSaveStrategy = (term >>> 9) & 0x03;
     node.strategyBytes = ((term >>> 11) & 0x1F) + 1;
     node.minChildrenLabel = (term >>> 16) & 0xFF;
 
@@ -170,16 +170,16 @@ class TrieReader {
       if ((encodedFp & TrieBuilder.NON_LEAF_NODE_HAS_FLOOR) != 0) { // has floor
         long offset = fp + 4 + encodedOutputFpBytesMinus1;
         long childrenNum = (access.readByte(offset) & 0xFFL) + 1L;
-        node.positionFp = offset + 1L;
+        node.strategyFp = offset + 1L;
         node.floorDataFp =
-            node.positionFp + node.strategyBytes + childrenNum * node.childrenDeltaFpBytes;
+            node.strategyFp + node.strategyBytes + childrenNum * node.childrenDeltaFpBytes;
       } else {
         node.floorDataFp = NO_FLOOR_DATA;
-        node.positionFp = fp + 4 + encodedOutputFpBytesMinus1;
+        node.strategyFp = fp + 4 + encodedOutputFpBytesMinus1;
       }
     } else {
       node.outputFp = NO_OUTPUT;
-      node.positionFp = fp + 3;
+      node.strategyFp = fp + 3;
     }
   }
 
@@ -200,7 +200,7 @@ class TrieReader {
       return child;
     }
 
-    final long strategyBytesStartFp = parent.positionFp;
+    final long strategyBytesStartFp = parent.strategyFp;
     final int minLabel = parent.minChildrenLabel;
     final int strategyBytes = parent.strategyBytes;
 
@@ -209,7 +209,7 @@ class TrieReader {
       position = 0;
     } else if (targetLabel > minLabel) {
       position =
-          TrieBuilder.ChildSaveStrategy.byCode(parent.positionStrategy)
+          TrieBuilder.ChildSaveStrategy.byCode(parent.childSaveStrategy)
               .lookup(targetLabel, access, strategyBytesStartFp, strategyBytes, minLabel);
     }
 
