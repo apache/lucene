@@ -35,6 +35,7 @@ Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
+* GITHUB#14373: Optimized `ParallelLeafReader` to improve term vector fetching efficiency.
 
 Bug Fixes
 ---------------------
