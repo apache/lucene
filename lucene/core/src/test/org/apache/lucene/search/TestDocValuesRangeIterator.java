@@ -62,11 +62,13 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
     assertEquals(DocValuesRangeIterator.Match.YES, rangeApproximation.match);
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximationWithGaps.match);
     assertEquals(255, rangeApproximation.upTo);
+    assertEquals(256, rangeIterator.docIDRunEnd());
     if (doLevels) {
       assertEquals(127, rangeApproximationWithGaps.upTo);
     } else {
       assertEquals(255, rangeApproximationWithGaps.upTo);
     }
+    assertEquals(rangeApproximationWithGaps.docID(), rangeIteratorWithGaps.docIDRunEnd());
     assertTrue(rangeIterator.matches());
     assertTrue(rangeIteratorWithGaps.matches());
     assertTrue(values.docID() < rangeApproximation.docID()); // we did not advance doc values
@@ -80,6 +82,8 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
     assertEquals(768, rangeApproximationWithGaps.advance(300));
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximation.match);
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximationWithGaps.match);
+    assertEquals(rangeApproximation.docID(), rangeIterator.docIDRunEnd());
+    assertEquals(rangeApproximationWithGaps.docID(), rangeIteratorWithGaps.docIDRunEnd());
     if (doLevels) {
       assertEquals(831, rangeApproximation.upTo);
       assertEquals(831, rangeApproximationWithGaps.upTo);
@@ -105,6 +109,8 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
     assertEquals(DocValuesRangeIterator.Match.IF_DOC_HAS_VALUE, rangeApproximation.match);
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximationWithGaps.match);
     assertEquals(1024 + 256 - 1, rangeApproximation.upTo);
+    assertEquals(rangeApproximation.docID(), rangeIterator.docIDRunEnd());
+    assertEquals(rangeApproximationWithGaps.docID(), rangeIteratorWithGaps.docIDRunEnd());
     if (doLevels) {
       assertEquals(1024 + 128 - 1, rangeApproximationWithGaps.upTo);
     } else {
@@ -122,6 +128,8 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
     assertEquals(1024 + 768, rangeApproximationWithGaps.advance(1024 + 300));
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximation.match);
     assertEquals(DocValuesRangeIterator.Match.MAYBE, rangeApproximationWithGaps.match);
+    assertEquals(rangeApproximation.docID(), rangeIterator.docIDRunEnd());
+    assertEquals(rangeApproximationWithGaps.docID(), rangeIteratorWithGaps.docIDRunEnd());
     if (doLevels) {
       assertEquals(1024 + 831, rangeApproximation.upTo);
       assertEquals(1024 + 831, rangeApproximationWithGaps.upTo);

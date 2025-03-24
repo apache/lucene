@@ -296,7 +296,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     windowMatches.clear();
   }
 
-  private void scoreWindowUsingLeapFrog(
+  private static void scoreWindowUsingLeapFrog(
       LeafCollector collector,
       Bits acceptDocs,
       List<DocIdSetIterator> approximations,
