@@ -87,11 +87,27 @@ public class TestRegExpParsing extends LuceneTestCase {
     AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
   }
 
-  // ranges aren't treated as case-insensitive, but maybe ok with charclass
-  // instead of adding range, expand it: iterate each codepoint, adding its alternatives
-  public void testCaseInsensitiveClassRange() {
+  // ranges aren't treated as case-insensitive, unless special flag is provided
+  public void testCaseInsensitiveClassRangeDisabled() {
     RegExp re = new RegExp("[c-d]", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
     assertEquals("REGEXP_CHAR_RANGE from=c to=d\n", re.toStringTree());
+    AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
+  }
+
+  // case insensitive range
+  public void testCaseInsensitiveClassRange() {
+    RegExp re = new RegExp("[c-d]", RegExp.NONE, RegExp.CASE_INSENSITIVE_RANGE);
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0043 U+0063] ends=[U+0044 U+0064]\n", re.toStringTree());
+    AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
+  }
+
+  // common enough that we need to ensure this one is efficient
+  public void testCaseInsensitiveClassRangeCompression() {
+    RegExp re = new RegExp("[a-z]", RegExp.NONE, RegExp.CASE_INSENSITIVE_RANGE);
+    assertEquals(
+        "REGEXP_CHAR_CLASS starts=[U+0041 U+0061 U+017F U+212A] ends=[U+005A U+007A U+017F U+212A]\n",
+        re.toStringTree());
     AutomatonTestUtil.assertMinimalDFA(re.toAutomaton());
   }
 

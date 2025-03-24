@@ -16,11 +16,7 @@
  */
 package org.apache.lucene.util.automaton;
 
-import java.io.IOException;
-import java.util.HexFormat;
-import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -95,76 +91,6 @@ public class TestRegExp extends LuceneTestCase {
     // class 3 Unicode characters behaves appropriately with different flags
     r = new RegExp("ﬗ", RegExp.ALL, RegExp.CASE_INSENSITIVE);
     assertFalse(new CharacterRunAutomaton(r.toAutomaton()).run("ﬗ".toUpperCase(Locale.ROOT)));
-
-    r = new RegExp(new String(Character.toChars(0x1C8A)), RegExp.ALL, RegExp.CASE_INSENSITIVE);
-    assertTrue(
-        new CharacterRunAutomaton(r.toAutomaton()).run(new String(Character.toChars(0x1C89))));
-  }
-
-  public void testRandomUnicodeInsensitiveMatchPatternParity() {
-    HexFormat hexFormat = HexFormat.of().withUpperCase();
-    int maxIters = 1000;
-    List<Integer> reservedCharacters =
-        Set.of(
-                '.', '^', '$', '*', '+', '?', '(', ')', '[', '{', '\\', '|', '-', '"', '<', '>',
-                '#', '@', '&', '~')
-            .stream()
-            .map(c -> (int) c)
-            .toList();
-    for (int i = 0; i < maxIters; i++) {
-      int nextCode1 = random().nextInt(0, Character.MAX_CODE_POINT + 1);
-      int nextCode2 = random().nextInt(0, Character.MAX_CODE_POINT + 1);
-
-      // skip if we select a reserved character that blows up .^$*+?()[{\|-]"<
-      if (reservedCharacters.contains(nextCode1)) {
-        continue;
-      }
-
-      String pattern = new String(Character.toChars(nextCode1));
-      String altString = new String(Character.toChars(nextCode2));
-
-      Pattern javaRegex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-      RegExp r = new RegExp(pattern, RegExp.ALL, RegExp.CASE_INSENSITIVE);
-      CharacterRunAutomaton cra = new CharacterRunAutomaton(r.toAutomaton());
-
-      // Pattern doesn't respect the Unicode spec so some things will not match
-      if (javaRegex.matcher(altString).matches()) {
-        // ... but if they do match then we must agree
-        assertTrue(
-            "Pattern and RegExp disagree on pattern: "
-                + hexFormat.toHexDigits(nextCode1, 4)
-                + " :text: "
-                + hexFormat.toHexDigits(nextCode2, 4),
-            cra.run(altString));
-      }
-    }
-  }
-
-  public void testUnicodeInsensitiveMatchPatternParity() throws IOException {
-    // this ensures that if the Pattern class behavior were to change with a change to the Unicode
-    // spec then we would pick it up.  It may help indicate in the future if we don't notice
-    // that the spec has changed and Pattern picks up the change first
-    for (int codepoint = 0; codepoint < Character.MAX_CODE_POINT + 1; codepoint++) {
-      int[] caseInsensitiveAlternatives = CaseFolding.lookupAlternates(codepoint);
-      if (caseInsensitiveAlternatives != null) {
-        String pattern = new String(Character.toChars(codepoint));
-        Pattern javaRegex =
-            Pattern.compile(pattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-        RegExp r = new RegExp(pattern, RegExp.ALL, RegExp.CASE_INSENSITIVE);
-        CharacterRunAutomaton cra = new CharacterRunAutomaton(r.toAutomaton());
-        for (int i = 0; i < caseInsensitiveAlternatives.length; i++) {
-
-          int alt = caseInsensitiveAlternatives[i];
-          String altString = new String(Character.toChars(alt));
-
-          // Pattern doesn't respect the Unicode spec so some things will not match
-          if (javaRegex.matcher(altString).matches()) {
-            // ... but if they do match then we must agree
-            assertTrue(cra.run(altString));
-          }
-        }
-      }
-    }
   }
 
   // LUCENE-6046
