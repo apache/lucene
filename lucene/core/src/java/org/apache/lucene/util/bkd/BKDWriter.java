@@ -605,11 +605,13 @@ public class BKDWriter implements Closeable {
       String fieldName,
       MutablePointTree reader)
       throws IOException {
-    int size = Math.toIntExact(reader.size());
-    MutablePointTreeReaderUtils.sort(config, maxDoc, reader, 0, size);
-
+    MutablePointTreeReaderUtils.sort(config, maxDoc, reader, 0, Math.toIntExact(reader.size()));
+    final int numLeaves =
+        Math.toIntExact(
+            (reader.size() + config.maxPointsInLeafNode() - 1) / config.maxPointsInLeafNode());
+    checkMaxLeafNodeCount(numLeaves);
     final OneDimensionBKDWriter oneDimWriter =
-        new OneDimensionBKDWriter(metaOut, indexOut, dataOut, new ArrayLongAccumulator(size));
+        new OneDimensionBKDWriter(metaOut, indexOut, dataOut, new ArrayLongAccumulator(numLeaves));
 
     reader.visitDocValues(
         new IntersectVisitor() {
@@ -904,6 +906,7 @@ public class BKDWriter implements Closeable {
 
     @Override
     public LongValues getValues() {
+      assert count == values.length;
       return new LongValues() {
         @Override
         public long get(long index) {
