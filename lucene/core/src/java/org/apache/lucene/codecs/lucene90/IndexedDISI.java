@@ -107,7 +107,7 @@ public final class IndexedDISI extends DocIdSetIterator {
   public static final byte DEFAULT_DENSE_RANK_POWER = 9; // Every 512 docIDs / 8 longs
 
   static final int MAX_ARRAY_LENGTH = (1 << 12) - 1;
-  static int BINARY_SEARCH_WINDOW_SIZE = 4;
+  static final int BINARY_SEARCH_WINDOW_SIZE = 4;
 
   private static void flush(
       int block, FixedBitSet buffer, int cardinality, byte denseRankPower, IndexOutput out)
