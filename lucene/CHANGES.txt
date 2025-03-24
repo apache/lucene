@@ -153,6 +153,8 @@ Optimizations
 
 * GITHUB#14383: Use FixedLengthBytesRefArray in OneDimensionBKDWriter to hold split values. (Ignacio Vera)
 
+* GITHUB#14373: Optimized `ParallelLeafReader` to improve term vector fetching efficiency. (Divyansh Agrawal)
+
 Bug Fixes
 ---------------------
 
