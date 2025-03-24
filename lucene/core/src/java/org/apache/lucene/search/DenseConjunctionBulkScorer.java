@@ -305,7 +305,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       int max)
       throws IOException {
     assert twoPhases.size() > 0;
-    assert approximations.size() > twoPhases.size();
+    assert approximations.size() >= twoPhases.size();
 
     if (approximations.size() == 1) {
       // scoreWindowUsingLeapFrog is only used if there is at least one two-phase iterator, so our
