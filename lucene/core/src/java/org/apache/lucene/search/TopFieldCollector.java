@@ -61,7 +61,8 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       }
       if (countAllDocs == null) {
         final int maxDoc = ReaderUtil.getTopLevelContext(context).reader().maxDoc();
-        if (countAllDocs = (totalHitsThreshold >= maxDoc)) {
+        countAllDocs = totalHitsThreshold >= maxDoc;
+        if (countAllDocs) {
           firstComparator.disableSkipping();
         }
       }
