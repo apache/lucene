@@ -304,18 +304,20 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       int min,
       int max)
       throws IOException {
+    assert twoPhases.size() > 0;
+    assert approximations.size() > twoPhases.size();
+
     if (approximations.size() == 1) {
-      // Since a TwoPhaseIterator comes with its approximation, the number of approximations is gte
-      // the number of TwoPhaseIterators
-      assert twoPhases.size() <= 1;
+      // scoreWindowUsingLeapFrog is only used if there is at least one two-phase iterator, so our
+      // single clause is a two-phase iterator
+      assert twoPhases.size() == 1;
       DocIdSetIterator approximation = approximations.get(0);
-      TwoPhaseIterator twoPhase = twoPhases.isEmpty() ? null : twoPhases.get(0);
+      TwoPhaseIterator twoPhase = twoPhases.get(0);
       if (approximation.docID() < min) {
         approximation.advance(min);
       }
       for (int doc = approximation.docID(); doc < max; doc = approximation.nextDoc()) {
-        if ((acceptDocs == null || acceptDocs.get(doc))
-            && (twoPhase == null || twoPhase.matches())) {
+        if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
           collector.collect(doc);
         }
       }
