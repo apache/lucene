@@ -1,0 +1,247 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.sandbox.search;
+
+import java.io.IOException;
+import java.util.*;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.ConstantScoreScorerSupplier;
+import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.DocValuesRangeIterator;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.search.Weight;
+import org.apache.lucene.util.PriorityQueue;
+
+/**
+ * A union multiple ranges over SortedNumericDocValuesField
+ *
+ * @lucene.experimental
+ */
+public class SortedNumericDocValuesMultiRangeQuery extends Query {
+
+  protected final String fieldName;
+  protected final NavigableSet<DocValuesMultiRangeQuery.LongRange> sortedClauses;
+
+  protected SortedNumericDocValuesMultiRangeQuery(
+      String fieldName, List<DocValuesMultiRangeQuery.LongRange> clauses) {
+    this.fieldName = fieldName;
+    sortedClauses = resolveOverlaps(clauses);
+  }
+
+  private static final class Edge {
+    private final DocValuesMultiRangeQuery.LongRange range;
+    private final boolean point;
+    private final boolean upper;
+
+    private static Edge createPoint(DocValuesMultiRangeQuery.LongRange r) {
+      return new Edge(r);
+    }
+
+    long getValue() {
+      return upper ? range.upper : range.lower;
+    }
+
+    private Edge(DocValuesMultiRangeQuery.LongRange range, boolean upper) {
+      this.range = range;
+      this.upper = upper;
+      this.point = false;
+    }
+
+    /** expecting Arrays.equals(lower.bytes,upper.bytes) i.e. point */
+    private Edge(DocValuesMultiRangeQuery.LongRange range) {
+      this.range = range;
+      this.upper = false;
+      this.point = true;
+    }
+  }
+
+  /** Merges overlapping ranges. map.floor() doesn't work with overlaps */
+  private static NavigableSet<DocValuesMultiRangeQuery.LongRange> resolveOverlaps(
+      Collection<DocValuesMultiRangeQuery.LongRange> clauses) {
+    NavigableSet<DocValuesMultiRangeQuery.LongRange> sortedClauses =
+        new TreeSet<>(
+            Comparator.comparing(r -> r.lower)
+            //        .thenComparing(r -> r.upper)
+            );
+    PriorityQueue<Edge> heap =
+        new PriorityQueue<>(clauses.size() * 2) {
+          @Override
+          protected boolean lessThan(Edge a, Edge b) {
+            return a.getValue() - b.getValue() < 0;
+          }
+        };
+    for (DocValuesMultiRangeQuery.LongRange r : clauses) {
+      long cmp = r.lower - r.upper;
+      if (cmp == 0) {
+        heap.add(Edge.createPoint(r));
+      } else {
+        if (cmp < 0) {
+          heap.add(new Edge(r, false));
+          heap.add(new Edge(r, true));
+        } // else drop reverse ranges
+      }
+    }
+    int totalEdges = heap.size();
+    int depth = 0;
+    Edge started = null;
+    for (int i = 0; i < totalEdges; i++) {
+      Edge smallest = heap.pop();
+      if (depth == 0 && smallest.point) {
+        if (i < totalEdges - 1 && heap.top().point) { // repeating same points
+          if (smallest.getValue() == heap.top().getValue()) {
+            continue;
+          }
+        }
+        sortedClauses.add(smallest.range);
+      }
+      if (!smallest.point) {
+        if (!smallest.upper) {
+          depth++;
+          if (depth == 1) { // just started
+            started = smallest;
+          }
+        } else {
+          depth--;
+          if (depth == 0) {
+            sortedClauses.add(
+                started.range == smallest.range // no overlap case, the most often
+                    ? smallest.range
+                    : new DocValuesMultiRangeQuery.LongRange(
+                        started.getValue(), smallest.getValue()));
+            started = null;
+          }
+        }
+      }
+    }
+    return sortedClauses;
+  }
+
+  @Override
+  public String toString(String fld) {
+    return (Objects.equals(fieldName, fld) ? "" : fieldName + ":") + sortedClauses;
+  }
+
+  @Override
+  public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+      throws IOException {
+    return new MultiRangeWeight(boost, scoreMode);
+  }
+
+  @Override
+  public void visit(QueryVisitor visitor) {
+    if (visitor.acceptField(fieldName)) {
+      visitor.visitLeaf(this);
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SortedNumericDocValuesMultiRangeQuery that = (SortedNumericDocValuesMultiRangeQuery) o;
+    return Objects.equals(fieldName, that.fieldName)
+        && Objects.equals(sortedClauses, that.sortedClauses);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fieldName, sortedClauses);
+  }
+
+  /** Weight for {@linkplain SortedNumericDocValuesMultiRangeQuery} */
+  protected class MultiRangeWeight extends ConstantScoreWeight {
+    final ScoreMode scoreMode;
+
+    public MultiRangeWeight(float boost, ScoreMode scoreMode) {
+      super(SortedNumericDocValuesMultiRangeQuery.this, boost);
+      this.scoreMode = scoreMode;
+    }
+
+    @Override
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      if (context.reader().getFieldInfos().fieldInfo(fieldName) == null) {
+        return null;
+      }
+      long lowerValue = sortedClauses.getFirst().lower;
+      long upperValue = sortedClauses.getLast().upper;
+      int maxDoc = context.reader().maxDoc();
+      DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
+      if (skipper != null) {
+        if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
+          return null;
+        }
+      }
+
+      SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), fieldName);
+      TwoPhaseIterator iterator;
+      iterator =
+          new TwoPhaseIterator(values) {
+            @Override
+            public boolean matches() throws IOException {
+              for (int i = 0, count = values.docValueCount(); i < count; ++i) {
+                final long value = values.nextValue();
+                if (value >= lowerValue && value <= upperValue) {
+                  // TODO reuse instance, subSet
+                  DocValuesMultiRangeQuery.LongRange lessOrEq =
+                      sortedClauses.floor(
+                          new DocValuesMultiRangeQuery.LongRange(
+                              value, value // Long.MAX_VALUE
+                              ));
+                  if (lessOrEq != null && lessOrEq.upper >= value) {
+                    assert lessOrEq.lower <= value;
+                    return true;
+                  }
+                }
+                //                    if (value < lowerValue) {
+                //                      continue;
+                //                    }
+                //                    // Values are sorted, so the first value that is >= lowerValue
+                // is our best
+                //                    // candidate
+                //                    return value <= upperValue;
+              }
+              return false; // all values were < lowerValue
+            }
+
+            @Override
+            public float matchCost() {
+              return 2; // 2 comparisons
+            }
+          };
+      if (skipper != null) {
+        iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue, false);
+      }
+      return ConstantScoreScorerSupplier.fromIterator(
+          TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
+    }
+
+    // TODO perhaps count() specification?
+
+    @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return DocValues.isCacheable(ctx, fieldName);
+    }
+  }
+}
