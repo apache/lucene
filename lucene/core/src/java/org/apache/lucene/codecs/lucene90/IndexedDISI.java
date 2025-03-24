@@ -597,7 +597,7 @@ public final class IndexedDISI extends DocIdSetIterator {
             i + BINARY_SEARCH_WINDOW_SIZE <= disi.nextBlockIndex;
             i += BINARY_SEARCH_WINDOW_SIZE) {
           disi.slice.seek(
-              (i - disi.index + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
+              (long) (i - disi.index + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           // Since we have read last doc, compare it first.
           if (doc == targetInBlock) {
@@ -607,15 +607,15 @@ public final class IndexedDISI extends DocIdSetIterator {
             disi.exists = true;
             return true;
           } else if (doc > targetInBlock) {
-            disi.slice.seek((i - disi.index + 1) * Short.BYTES + filePointer);
-            if ((doc = Short.toUnsignedInt(disi.slice.readShort())) < targetInBlock) {
+            disi.slice.seek((long) (i - disi.index + 1) * Short.BYTES + filePointer);
+            if (Short.toUnsignedInt(disi.slice.readShort()) < targetInBlock) {
               i += 2;
             }
-            disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
-            if ((doc = Short.toUnsignedInt(disi.slice.readShort())) < targetInBlock) {
+            disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
+            if (Short.toUnsignedInt(disi.slice.readShort()) < targetInBlock) {
               i += 1;
             }
-            disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
+            disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
             doc = Short.toUnsignedInt(disi.slice.readShort());
             if (doc >= targetInBlock) {
               disi.doc = disi.block | doc;
@@ -629,7 +629,7 @@ public final class IndexedDISI extends DocIdSetIterator {
 
         // Compare last.
         if (i - disi.index > 0) {
-          disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
+          disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
           disi.index += (i - disi.index);
         }
 
@@ -663,7 +663,7 @@ public final class IndexedDISI extends DocIdSetIterator {
             i + BINARY_SEARCH_WINDOW_SIZE <= disi.nextBlockIndex;
             i += BINARY_SEARCH_WINDOW_SIZE) {
           disi.slice.seek(
-              (i - disi.index + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
+              (long) (i - disi.index + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           // Since we have read last doc, compare it first.
           if (doc == targetInBlock) {
@@ -672,15 +672,15 @@ public final class IndexedDISI extends DocIdSetIterator {
             disi.exists = true;
             return true;
           } else if (doc > targetInBlock) {
-            disi.slice.seek((i - disi.index + 1) * Short.BYTES + filePointer);
-            if ((doc = Short.toUnsignedInt(disi.slice.readShort())) < targetInBlock) {
+            disi.slice.seek((long) (i - disi.index + 1) * Short.BYTES + filePointer);
+            if (Short.toUnsignedInt(disi.slice.readShort()) < targetInBlock) {
               i += 2;
             }
-            disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
-            if ((doc = Short.toUnsignedInt(disi.slice.readShort())) < targetInBlock) {
+            disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
+            if (Short.toUnsignedInt(disi.slice.readShort()) < targetInBlock) {
               i += 1;
             }
-            disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
+            disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
             doc = Short.toUnsignedInt(disi.slice.readShort());
             if (doc >= targetInBlock) {
               disi.nextExistDocInBlock = doc;
@@ -699,7 +699,7 @@ public final class IndexedDISI extends DocIdSetIterator {
 
         // Compare last.
         if (i - disi.index > 0) {
-          disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
+          disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
           disi.index += (i - disi.index);
         }
 
