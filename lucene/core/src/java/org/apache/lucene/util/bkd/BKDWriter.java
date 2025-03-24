@@ -584,7 +584,7 @@ public class BKDWriter implements Closeable {
 
     scratchBytesRef1.length = config.bytesPerDim();
     scratchBytesRef1.bytes = splitPackedValues;
-    final LongValues longValues =
+    final LongValues leafFPLongValues =
         new LongValues() {
           @Override
           public long get(long index) {
@@ -593,7 +593,12 @@ public class BKDWriter implements Closeable {
         };
 
     return makeWriter(
-        metaOut, indexOut, splitDimensionValues, longValues, leafBlockFPs.length, dataStartFP);
+        metaOut,
+        indexOut,
+        splitDimensionValues,
+        leafFPLongValues,
+        leafBlockFPs.length,
+        dataStartFP);
   }
 
   /* In the 1D case, we can simply sort points in ascending order and use the
@@ -692,7 +697,7 @@ public class BKDWriter implements Closeable {
 
     final IndexOutput metaOut, indexOut, dataOut;
     final long dataStartFP;
-    final LongAccumulator accumulator;
+    final LongAccumulator leafFPAccumulator;
     final FixedLengthBytesRefArray leafBlockStartValues =
         new FixedLengthBytesRefArray(config.packedIndexBytesLength());
     final byte[] leafValues = new byte[config.maxPointsInLeafNode() * config.packedBytesLength()];
@@ -705,7 +710,7 @@ public class BKDWriter implements Closeable {
         IndexOutput metaOut,
         IndexOutput indexOut,
         IndexOutput dataOut,
-        LongAccumulator accumulator) {
+        LongAccumulator leafFPAccumulator) {
       if (config.numIndexDims() != 1) {
         throw new UnsupportedOperationException(
             "config.numIndexDims() must be 1 but got " + config.numIndexDims());
@@ -726,7 +731,7 @@ public class BKDWriter implements Closeable {
       this.indexOut = indexOut;
       this.dataOut = dataOut;
       this.dataStartFP = dataOut.getFilePointer();
-      this.accumulator = accumulator;
+      this.leafFPAccumulator = leafFPAccumulator;
       lastPackedValue = new byte[config.packedBytesLength()];
     }
 
@@ -790,13 +795,13 @@ public class BKDWriter implements Closeable {
 
       scratchBytesRef1.length = config.packedIndexBytesLength();
       scratchBytesRef1.offset = 0;
-      assert leafBlockStartValues.size() + 1 == accumulator.size();
-      final LongValues longValues = accumulator.getValues();
+      assert leafBlockStartValues.size() + 1 == leafFPAccumulator.size();
+      final LongValues leafFPLongValues = leafFPAccumulator.getValues();
       BKDTreeLeafNodes leafNodes =
           new BKDTreeLeafNodes() {
             @Override
             public long getLeafLP(int index) {
-              return longValues.get(index);
+              return leafFPLongValues.get(index);
             }
 
             @Override
@@ -811,7 +816,7 @@ public class BKDWriter implements Closeable {
 
             @Override
             public int numLeaves() {
-              return Math.toIntExact(accumulator.size());
+              return Math.toIntExact(leafFPAccumulator.size());
             }
           };
       return () -> {
@@ -833,7 +838,7 @@ public class BKDWriter implements Closeable {
 
       valueCount += leafCount;
 
-      if (accumulator.size() > 0) {
+      if (leafFPAccumulator.size() > 0) {
         // Save the first (minimum) value in each leaf block except the first, to build the split
         // value index in the end:
         scratchBytesRef1.bytes = leafValues;
@@ -841,8 +846,8 @@ public class BKDWriter implements Closeable {
         scratchBytesRef1.length = config.packedIndexBytesLength();
         leafBlockStartValues.append(scratchBytesRef1);
       }
-      accumulator.add(dataOut.getFilePointer());
-      checkMaxLeafNodeCount(Math.toIntExact(accumulator.size()));
+      leafFPAccumulator.add(dataOut.getFilePointer());
+      checkMaxLeafNodeCount(Math.toIntExact(leafFPAccumulator.size()));
 
       // Find per-dim common prefix:
       commonPrefixLengths[0] =
