@@ -45,12 +45,11 @@ public class TestIndexedDISI extends LuceneTestCase {
 
   public void testBinarySearchSparse() throws IOException {
     final int B = 65536;
-    int maxDoc = B * 3;
+    int maxDoc = B * 2;
     BitSet set = new SparseFixedBitSet(maxDoc);
     for (int i = 0; i < 100; i++) {
       set.set(i);
       set.set(i + B);
-      set.set(i + B * 2);
     }
 
     set.clear(11);
@@ -58,6 +57,7 @@ public class TestIndexedDISI extends LuceneTestCase {
     set.clear(12 + B);
     set.clear(20 + B);
 
+    // Test advanceExact.
     try (Directory dir = newDirectory()) {
       final int cardinality = set.cardinality();
       final byte denseRankPower = 9; // Not tested here so fixed to isolate factors
@@ -72,6 +72,7 @@ public class TestIndexedDISI extends LuceneTestCase {
       try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
         IndexedDISI disi =
             new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPower, cardinality);
+
         assertTrue(disi.advanceExact(10));
         assertFalse(disi.advanceExact(11));
         assertTrue(disi.advanceExact(15));
@@ -80,6 +81,24 @@ public class TestIndexedDISI extends LuceneTestCase {
         assertFalse(disi.advanceExact(12 + B));
         assertTrue(disi.advanceExact(17 + B));
         assertFalse(disi.advanceExact(20 + B));
+      }
+
+      // Test advance.
+      try (IndexInput in = dir.openInput("foo", IOContext.DEFAULT)) {
+        IndexedDISI disi =
+            new IndexedDISI(in, 0L, length, jumpTableEntryCount, denseRankPower, cardinality);
+
+        assertEquals(disi.advance(10), 10);
+        assertEquals(disi.advance(11), 12);
+        assertEquals(disi.advance(15), 15);
+        assertEquals(disi.advance(17), 18);
+        //        next block's first doc
+        assertEquals(disi.advance(100), 65536);
+        assertEquals(disi.advance(10 + B), 10 + B);
+        assertEquals(disi.advance(12 + B), 13 + B);
+        assertEquals(disi.advance(17 + B), 17 + B);
+        assertEquals(disi.advance(20 + B), 21 + B);
+        assertEquals(disi.advance(100 + B), Integer.MAX_VALUE);
       }
     }
   }

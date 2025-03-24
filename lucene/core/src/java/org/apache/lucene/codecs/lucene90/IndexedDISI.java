@@ -589,9 +589,50 @@ public final class IndexedDISI extends DocIdSetIterator {
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        // TODO: binary search
-        // Since we just advance to the doc equals or greater than target.
-        // Maybe use branchLess binary search like https://github.com/apache/lucene/pull/13692.
+
+        // binary search
+        long filePointer = disi.slice.getFilePointer();
+        int i = disi.index;
+        for (;
+            i + BINARY_SEARCH_WINDOW_SIZE <= disi.nextBlockIndex;
+            i += BINARY_SEARCH_WINDOW_SIZE) {
+          disi.slice.seek(
+              (i - disi.index + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
+          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          // Since we have read last doc, compare it first.
+          if (doc == targetInBlock) {
+            disi.doc = disi.block | doc;
+            disi.nextExistDocInBlock = doc;
+            disi.index += (i - disi.index + BINARY_SEARCH_WINDOW_SIZE);
+            disi.exists = true;
+            return true;
+          } else if (doc > targetInBlock) {
+            disi.slice.seek((i - disi.index + 1) * Short.BYTES + filePointer);
+            if ((doc = Short.toUnsignedInt(disi.slice.readShort())) < targetInBlock) {
+              i += 2;
+            }
+            disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
+            if ((doc = Short.toUnsignedInt(disi.slice.readShort())) < targetInBlock) {
+              i += 1;
+            }
+            disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
+            doc = Short.toUnsignedInt(disi.slice.readShort());
+            if (doc >= targetInBlock) {
+              disi.doc = disi.block | doc;
+              disi.nextExistDocInBlock = doc;
+              disi.index += (i - disi.index + 1);
+              disi.exists = true;
+              return true;
+            }
+          }
+        }
+
+        // Compare last.
+        if (i - disi.index > 0) {
+          disi.slice.seek((i - disi.index) * Short.BYTES + filePointer);
+          disi.index += (i - disi.index);
+        }
+
         for (; disi.index < disi.nextBlockIndex; ) {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           disi.index++;
