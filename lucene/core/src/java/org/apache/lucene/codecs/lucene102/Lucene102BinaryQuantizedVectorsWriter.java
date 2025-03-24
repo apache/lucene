@@ -448,18 +448,22 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       float cDotC)
       throws IOException {
     long vectorDataOffset = binarizedVectorData.alignFilePointer(Float.BYTES);
-    final IndexOutput tempQuantizedVectorData =
-        segmentWriteState.directory.createTempOutput(
-            binarizedVectorData.getName(), "temp", segmentWriteState.context);
-    final IndexOutput tempScoreQuantizedVectorData =
-        segmentWriteState.directory.createTempOutput(
-            binarizedVectorData.getName(), "score_temp", segmentWriteState.context);
+    IndexOutput tempQuantizedVectorData = null;
+    IndexOutput tempScoreQuantizedVectorData = null;
     IndexInput binarizedDataInput = null;
     IndexInput binarizedScoreDataInput = null;
     boolean success = false;
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
     try {
+      tempQuantizedVectorData =
+          segmentWriteState.directory.createTempOutput(
+              binarizedVectorData.getName(), "temp", segmentWriteState.context);
+      tempScoreQuantizedVectorData =
+          segmentWriteState.directory.createTempOutput(
+              binarizedVectorData.getName(), "score_temp", segmentWriteState.context);
+      final String tempQuantizedVectorName = tempQuantizedVectorData.getName();
+      final String tempScoreQuantizedVectorName = tempScoreQuantizedVectorData.getName();
       FloatVectorValues floatVectorValues =
           MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
@@ -475,8 +479,7 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       CodecUtil.writeFooter(tempQuantizedVectorData);
       IOUtils.close(tempQuantizedVectorData);
       binarizedDataInput =
-          segmentWriteState.directory.openInput(
-              tempQuantizedVectorData.getName(), segmentWriteState.context);
+          segmentWriteState.directory.openInput(tempQuantizedVectorName, segmentWriteState.context);
       binarizedVectorData.copyBytes(
           binarizedDataInput, binarizedDataInput.length() - CodecUtil.footerLength());
       long vectorDataLength = binarizedVectorData.getFilePointer() - vectorDataOffset;
@@ -485,7 +488,7 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       IOUtils.close(tempScoreQuantizedVectorData);
       binarizedScoreDataInput =
           segmentWriteState.directory.openInput(
-              tempScoreQuantizedVectorData.getName(), segmentWriteState.context);
+              tempScoreQuantizedVectorName, segmentWriteState.context);
       writeMeta(
           fieldInfo,
           segmentWriteState.segmentInfo.maxDoc(),
@@ -521,9 +524,7 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           () -> {
             IOUtils.close(finalBinarizedDataInput, finalBinarizedScoreDataInput);
             IOUtils.deleteFilesIgnoringExceptions(
-                segmentWriteState.directory,
-                tempQuantizedVectorData.getName(),
-                tempScoreQuantizedVectorData.getName());
+                segmentWriteState.directory, tempQuantizedVectorName, tempScoreQuantizedVectorName);
           });
     } finally {
       if (success == false) {
@@ -532,10 +533,14 @@ public class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
             tempScoreQuantizedVectorData,
             binarizedDataInput,
             binarizedScoreDataInput);
-        IOUtils.deleteFilesIgnoringExceptions(
-            segmentWriteState.directory,
-            tempQuantizedVectorData.getName(),
-            tempScoreQuantizedVectorData.getName());
+        if (tempQuantizedVectorData != null) {
+          IOUtils.deleteFilesIgnoringExceptions(
+              segmentWriteState.directory, tempQuantizedVectorData.getName());
+        }
+        if (tempScoreQuantizedVectorData != null) {
+          IOUtils.deleteFilesIgnoringExceptions(
+              segmentWriteState.directory, tempScoreQuantizedVectorData.getName());
+        }
       }
     }
   }
