@@ -1063,6 +1063,9 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     public int docIDRunEnd() throws IOException {
       // Note: this assumes that BLOCK_SIZE == 128, this bit of the code would need to be changed if
       // the block size was changed.
+      // Hack to avoid compiler warning that both sides of the equal sign are identical.
+      long blockSize = BLOCK_SIZE;
+      assert blockSize == 2 * Long.SIZE;
       boolean level0IsDense =
           encoding == DeltaEncoding.UNARY
               && docBitSet.getBits()[0] == -1L
