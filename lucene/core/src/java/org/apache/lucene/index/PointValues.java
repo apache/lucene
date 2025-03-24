@@ -352,8 +352,7 @@ public abstract class PointValues {
   }
 
   private static void intersect(IntersectVisitor visitor, PointTree pointTree) throws IOException {
-    int depth = 0;
-    do {
+    while (true) {
       Relation compare =
           visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
       if (compare == Relation.CELL_INSIDE_QUERY) {
@@ -364,7 +363,6 @@ public abstract class PointValues {
         // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
         // through and do full filtering:
         if (pointTree.moveToChild()) {
-          depth++;
           continue;
         }
         // TODO: we can assert that the first value here in fact matches what the pointTree
@@ -372,11 +370,12 @@ public abstract class PointValues {
         // Leaf node; scan and filter all points in this block:
         pointTree.visitDocValues(visitor);
       }
-      while (depth > 0 && pointTree.moveToSibling() == false) {
-        pointTree.moveToParent();
-        depth--;
+      while (pointTree.moveToSibling() == false) {
+        if (pointTree.moveToParent() == false) {
+          return;
+        }
       }
-    } while (depth > 0);
+    }
   }
 
   /**
