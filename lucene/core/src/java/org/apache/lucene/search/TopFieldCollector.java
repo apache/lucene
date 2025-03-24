@@ -59,6 +59,12 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
           firstComparator.disableSkipping();
         }
       }
+      if (countAllDocs == null) {
+        final int maxDoc = ReaderUtil.getTopLevelContext(context).reader().maxDoc();
+        if (countAllDocs = totalHitsThreshold >= maxDoc) {
+          firstComparator.disableSkipping();
+        }
+      }
       LeafFieldComparator[] comparators = queue.getComparators(context);
       int[] reverseMuls = queue.getReverseMul();
       if (comparators.length == 1) {
@@ -305,6 +311,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
   final boolean canSetMinScore;
 
   Boolean searchSortPartOfIndexSort = null; // shows if Search Sort if a part of the Index Sort
+  Boolean countAllDocs = null;
 
   // an accumulator that maintains the maximum of the segment's minimum competitive scores
   final MaxScoreAccumulator minScoreAcc;

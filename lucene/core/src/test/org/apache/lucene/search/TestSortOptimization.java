@@ -739,31 +739,42 @@ public class TestSortOptimization extends LuceneTestCase {
     doc.add(new NumericDocValuesField("intRange", 4));
 
     writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new IntPoint("intField", 4));
+    doc.add(new NumericDocValuesField("intField", 4));
+    writer.addDocument(doc);
     DirectoryReader reader = writer.getReader();
     writer.close();
 
     IndexSearcher searcher = newSearcher(reader, random().nextBoolean(), random().nextBoolean());
 
     SortField longSortOnIntField = new SortField("intField", SortField.Type.LONG);
+    TopFieldCollectorManager longSortOnIntFieldCM =
+        new TopFieldCollectorManager(new Sort(longSortOnIntField), 1, 1);
     assertThrows(
         IllegalArgumentException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField)));
+        () -> searcher.search(new MatchAllDocsQuery(), longSortOnIntFieldCM));
     // assert that when sort optimization is disabled we can use LONG sort on int field
     longSortOnIntField.setOptimizeSortWithIndexedData(false);
     searcher.search(new MatchAllDocsQuery(), 1, new Sort(longSortOnIntField));
 
     SortField intSortOnLongField = new SortField("longField", SortField.Type.INT);
+    TopFieldCollectorManager intSortOnLongFieldCM =
+        new TopFieldCollectorManager(new Sort(intSortOnLongField), 1, 1);
     assertThrows(
         IllegalArgumentException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField)));
+        () -> searcher.search(new MatchAllDocsQuery(), intSortOnLongFieldCM));
     // assert that when sort optimization is disabled we can use INT sort on long field
     intSortOnLongField.setOptimizeSortWithIndexedData(false);
     searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnLongField));
 
     SortField intSortOnIntRangeField = new SortField("intRange", SortField.Type.INT);
+    TopFieldCollectorManager intSortOnIntRangeFieldCM =
+        new TopFieldCollectorManager(new Sort(intSortOnIntRangeField), 1, 1);
     assertThrows(
         IllegalArgumentException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField)));
+        () -> searcher.search(new MatchAllDocsQuery(), intSortOnIntRangeFieldCM));
     // assert that when sort optimization is disabled we can use INT sort on intRange field
     intSortOnIntRangeField.setOptimizeSortWithIndexedData(false);
     searcher.search(new MatchAllDocsQuery(), 1, new Sort(intSortOnIntRangeField));
