@@ -69,7 +69,6 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   private final List<DocIdSetIterator> windowApproximations = new ArrayList<>();
   private final List<TwoPhaseIterator> windowTwoPhases = new ArrayList<>();
   private final DocIdStreamView docIdStreamView = new DocIdStreamView();
-  private final RangeDocIdStream rangeDocIdStream = new RangeDocIdStream();
   private final SingleIteratorDocIdStream singleIteratorDocIdStream =
       new SingleIteratorDocIdStream();
 
@@ -184,9 +183,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
 
       if (minDocIDRunEnd - min >= WINDOW_SIZE / 2) {
         // We have a large range of doc IDs that all match.
-        rangeDocIdStream.from = min;
-        rangeDocIdStream.to = minDocIDRunEnd;
-        collector.collect(rangeDocIdStream);
+        collector.collectRange(min, minDocIDRunEnd);
         return minDocIDRunEnd;
       }
     }
@@ -392,23 +389,6 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     @Override
     public int count() throws IOException {
       return windowMatches.cardinality();
-    }
-  }
-
-  final class RangeDocIdStream extends DocIdStream {
-
-    int from, to;
-
-    @Override
-    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      for (int i = from; i < to; ++i) {
-        consumer.accept(i);
-      }
-    }
-
-    @Override
-    public int count() throws IOException {
-      return to - from;
     }
   }
 
