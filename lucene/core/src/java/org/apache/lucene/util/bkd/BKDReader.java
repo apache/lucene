@@ -17,6 +17,7 @@
 package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
@@ -33,7 +34,6 @@ import org.apache.lucene.util.MathUtil;
  * @lucene.experimental
  */
 public class BKDReader extends PointValues {
-
   final BKDConfig config;
   final int numLeaves;
   final IndexInput in;
@@ -67,14 +67,14 @@ public class BKDReader extends PointValues {
     }
     final int maxPointsInLeafNode = metaIn.readVInt();
     final int bytesPerDim = metaIn.readVInt();
-    config = new BKDConfig(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
+    config = BKDConfig.of(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
 
     // Read index:
     numLeaves = metaIn.readVInt();
     assert numLeaves > 0;
 
-    minPackedValue = new byte[config.packedIndexBytesLength()];
-    maxPackedValue = new byte[config.packedIndexBytesLength()];
+    byte[] minPackedValue = new byte[config.packedIndexBytesLength()];
+    byte[] maxPackedValue = new byte[config.packedIndexBytesLength()];
 
     metaIn.readBytes(minPackedValue, 0, config.packedIndexBytesLength());
     metaIn.readBytes(maxPackedValue, 0, config.packedIndexBytesLength());
@@ -96,6 +96,13 @@ public class BKDReader extends PointValues {
                 + dim,
             metaIn);
       }
+    }
+    this.minPackedValue = minPackedValue;
+    if (Arrays.equals(maxPackedValue, minPackedValue)) {
+      // save heap for edge case of only a single value
+      this.maxPackedValue = minPackedValue;
+    } else {
+      this.maxPackedValue = maxPackedValue;
     }
 
     pointCount = metaIn.readVLong();
@@ -261,7 +268,7 @@ public class BKDReader extends PointValues {
           1,
           minPackedValue,
           maxPackedValue,
-          new BKDReaderDocIDSetIterator(config.maxPointsInLeafNode()),
+          new BKDReaderDocIDSetIterator(config.maxPointsInLeafNode(), version),
           new byte[config.packedBytesLength()],
           new byte[config.packedIndexBytesLength()],
           new byte[config.packedIndexBytesLength()],
@@ -590,7 +597,8 @@ public class BKDReader extends PointValues {
         // How many points are stored in this leaf cell:
         int count = leafNodes.readVInt();
         // No need to call grow(), it has been called up-front
-        docIdsWriter.readInts(leafNodes, count, visitor);
+        // Borrow scratchIterator.docIds as decoding buffer
+        docIdsWriter.readInts(leafNodes, count, visitor, scratchIterator.docIDs);
       } else {
         pushLeft();
         addAll(visitor, grown);
@@ -1028,9 +1036,9 @@ public class BKDReader extends PointValues {
     final int[] docIDs;
     private final DocIdsWriter docIdsWriter;
 
-    public BKDReaderDocIDSetIterator(int maxPointsInLeafNode) {
+    public BKDReaderDocIDSetIterator(int maxPointsInLeafNode, int version) {
       this.docIDs = new int[maxPointsInLeafNode];
-      this.docIdsWriter = new DocIdsWriter(maxPointsInLeafNode);
+      this.docIdsWriter = new DocIdsWriter(maxPointsInLeafNode, version);
     }
 
     @Override

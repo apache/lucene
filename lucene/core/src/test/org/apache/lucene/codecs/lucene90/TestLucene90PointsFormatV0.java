@@ -14,26 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search.suggest.document;
+package org.apache.lucene.codecs.lucene90;
 
-import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.PointsFormat;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
+import org.apache.lucene.tests.index.BasePointsFormatTestCase;
 
-/**
- * {@link org.apache.lucene.search.suggest.document.CompletionPostingsFormat} for {@code
- * org.apache.lucene.backward_codecs.lucene50.Lucene50PostingsFormat}. This format is only used for
- * backward-compatibility of the index format and cannot be used to write data, use {@link
- * Completion99PostingsFormat} on new indices.
- *
- * @lucene.experimental
- */
-public class Completion50PostingsFormat extends CompletionPostingsFormat {
-  /** Creates a {@link Completion50PostingsFormat}. */
-  public Completion50PostingsFormat() {
-    super("completion");
-  }
+public class TestLucene90PointsFormatV0 extends BasePointsFormatTestCase {
 
   @Override
-  protected PostingsFormat delegatePostingsFormat() {
-    return PostingsFormat.forName("Lucene50");
+  protected Codec getCodec() {
+    return new AssertingCodec() {
+      @Override
+      public PointsFormat pointsFormat() {
+        return new Lucene90PointsFormat(Lucene90PointsFormat.VERSION_START);
+      }
+    };
   }
 }

@@ -2022,11 +2022,22 @@ public final class CheckIndex implements Closeable {
           }
         }
 
-        // Checking score blocks is heavy, we only do it on long postings lists, on every 1024th
-        // term or if slow checks are enabled.
+        // Checking score blocks and doc ID runs is heavy, we only do it on long postings lists, on
+        // every 1024th term or if slow checks are enabled.
         if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS
             || docFreq > 1024
             || (status.termCount + status.delTermCount) % 1024 == 0) {
+          postings = termsEnum.postings(postings, PostingsEnum.NONE);
+          checkDocIDRuns(postings);
+          if (hasFreqs) {
+            postings = termsEnum.postings(postings, PostingsEnum.FREQS);
+            checkDocIDRuns(postings);
+          }
+          if (hasPositions) {
+            postings = termsEnum.postings(postings, PostingsEnum.POSITIONS);
+            checkDocIDRuns(postings);
+          }
+
           // First check max scores and block uptos
           // But only if slow checks are enabled since we visit all docs
           if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS) {
@@ -2455,6 +2466,31 @@ public final class CheckIndex implements Closeable {
     BytesRef filteredTerm = filteredTerms.next();
     if (filteredTerm != null) {
       throw new CheckIndexException("Expected exhausted TermsEnum, but got " + filteredTerm);
+    }
+  }
+
+  private static void checkDocIDRuns(DocIdSetIterator iterator) throws IOException {
+    int prevDoc = -1;
+    int runEnd = 0;
+    for (int doc = iterator.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = iterator.nextDoc()) {
+      if (prevDoc + 1 < runEnd && doc != prevDoc + 1) {
+        throw new CheckIndexException(
+            "Run end is " + runEnd + " but next doc after " + prevDoc + " is " + doc);
+      }
+      int newRunEnd = iterator.docIDRunEnd();
+      if (newRunEnd <= doc) {
+        throw new CheckIndexException("Run end " + newRunEnd + " is <= doc ID " + doc);
+      }
+      if (newRunEnd > runEnd) {
+        runEnd = newRunEnd;
+      }
+      prevDoc = doc;
+    }
+
+    if (runEnd != prevDoc + 1) {
+      throw new CheckIndexException("Run end is " + runEnd + " but last doc is " + prevDoc);
     }
   }
 
