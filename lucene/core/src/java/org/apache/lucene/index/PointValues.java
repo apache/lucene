@@ -291,6 +291,8 @@ public abstract class PointValues {
     /**
      * Similar to {@link IntersectVisitor#visit(int)}, but a bulk visit and implementations may have
      * their optimizations.
+     *
+     * <p>It is guaranteed that the given iterator is not positioned;
      */
     default void visit(DocIdSetIterator iterator) throws IOException {
       int docID;
@@ -349,34 +351,30 @@ public abstract class PointValues {
     assert pointTree.moveToParent() == false;
   }
 
-  private void intersect(IntersectVisitor visitor, PointTree pointTree) throws IOException {
-    Relation r = visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
-    switch (r) {
-      case CELL_OUTSIDE_QUERY:
-        // This cell is fully outside the query shape: stop recursing
-        break;
-      case CELL_INSIDE_QUERY:
+  private static void intersect(IntersectVisitor visitor, PointTree pointTree) throws IOException {
+    while (true) {
+      Relation compare =
+          visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
+      if (compare == Relation.CELL_INSIDE_QUERY) {
         // This cell is fully inside the query shape: recursively add all points in this cell
         // without filtering
         pointTree.visitDocIDs(visitor);
-        break;
-      case CELL_CROSSES_QUERY:
+      } else if (compare == Relation.CELL_CROSSES_QUERY) {
         // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
         // through and do full filtering:
         if (pointTree.moveToChild()) {
-          do {
-            intersect(visitor, pointTree);
-          } while (pointTree.moveToSibling());
-          pointTree.moveToParent();
-        } else {
-          // TODO: we can assert that the first value here in fact matches what the pointTree
-          // claimed?
-          // Leaf node; scan and filter all points in this block:
-          pointTree.visitDocValues(visitor);
+          continue;
         }
-        break;
-      default:
-        throw new IllegalArgumentException("Unreachable code");
+        // TODO: we can assert that the first value here in fact matches what the pointTree
+        // claimed?
+        // Leaf node; scan and filter all points in this block:
+        pointTree.visitDocValues(visitor);
+      }
+      while (pointTree.moveToSibling() == false) {
+        if (pointTree.moveToParent() == false) {
+          return;
+        }
+      }
     }
   }
 

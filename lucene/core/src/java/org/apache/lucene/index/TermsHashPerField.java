@@ -143,7 +143,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   }
 
   /**
-   * Called when we first encounter a new term. We must allocate slies to store the postings (vInt
+   * Called when we first encounter a new term. We must allocate slices to store the postings (vInt
    * compressed doc/freq/prox), and also the int pointers to where (in our {@link ByteBlockPool}
    * storage) the postings for this term begin.
    */

@@ -292,7 +292,7 @@ public final class RamUsageTester {
               a(Path.class, v -> charArraySize(v.toString().length()));
 
               // Ignorable JDK classes.
-              a(ByteOrder.class, v -> 0);
+              a(ByteOrder.class, _ -> 0);
             }
 
             @SuppressWarnings("unchecked")

@@ -46,16 +46,18 @@ public class Lucene90PointsWriter extends PointsWriter {
   final SegmentWriteState writeState;
   final int maxPointsInLeafNode;
   final double maxMBSortInHeap;
+  final int version;
   private boolean finished;
 
   /** Full constructor */
   public Lucene90PointsWriter(
-      SegmentWriteState writeState, int maxPointsInLeafNode, double maxMBSortInHeap)
+      SegmentWriteState writeState, int maxPointsInLeafNode, double maxMBSortInHeap, int version)
       throws IOException {
     assert writeState.fieldInfos.hasPointValues();
     this.writeState = writeState;
     this.maxPointsInLeafNode = maxPointsInLeafNode;
     this.maxMBSortInHeap = maxMBSortInHeap;
+    this.version = version;
     String dataFileName =
         IndexFileNames.segmentFileName(
             writeState.segmentInfo.name,
@@ -105,6 +107,12 @@ public class Lucene90PointsWriter extends PointsWriter {
     }
   }
 
+  public Lucene90PointsWriter(
+      SegmentWriteState writeState, int maxPointsInLeafNode, double maxMBSortInHeap)
+      throws IOException {
+    this(writeState, maxPointsInLeafNode, maxMBSortInHeap, Lucene90PointsFormat.VERSION_CURRENT);
+  }
+
   /**
    * Uses the defaults values for {@code maxPointsInLeafNode} (512) and {@code maxMBSortInHeap}
    * (16.0)
@@ -113,7 +121,17 @@ public class Lucene90PointsWriter extends PointsWriter {
     this(
         writeState,
         BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE,
-        BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP);
+        BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP,
+        Lucene90PointsFormat.VERSION_CURRENT);
+  }
+
+  /** Constructor that takes a version. This is used for testing with older versions. */
+  Lucene90PointsWriter(SegmentWriteState writeState, int version) throws IOException {
+    this(
+        writeState,
+        BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE,
+        BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP,
+        version);
   }
 
   @Override
@@ -135,7 +153,8 @@ public class Lucene90PointsWriter extends PointsWriter {
             writeState.segmentInfo.name,
             config,
             maxMBSortInHeap,
-            values.size())) {
+            values.size(),
+            Lucene90PointsFormat.bkdVersion(version))) {
 
       if (values instanceof MutablePointTree) {
         IORunnable finalizer =
@@ -233,7 +252,8 @@ public class Lucene90PointsWriter extends PointsWriter {
                   writeState.segmentInfo.name,
                   config,
                   maxMBSortInHeap,
-                  totMaxSize)) {
+                  totMaxSize,
+                  Lucene90PointsFormat.bkdVersion(version))) {
             List<PointValues> pointValues = new ArrayList<>();
             List<MergeState.DocMap> docMaps = new ArrayList<>();
             for (int i = 0; i < mergeState.pointsReaders.length; i++) {

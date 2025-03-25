@@ -39,6 +39,12 @@ class FindHyperlinks(HTMLParser):
     self.printed = False
 
   def handle_starttag(self, tag, attrs):
+    # look for explicit broken link
+    if tag == 'details':
+      for attName, attValue in attrs:
+        if attName == 'class' and attValue == 'invalid-tag':
+          raise RuntimeError('javadoc generated an invalid-tag')
+
     # NOTE: I don't think 'a' should be in here. But try debugging 
     # NumericRangeQuery.html. (Could be javadocs bug, it's a generic type...)
     if tag not in ('link', 'meta', 'frame', 'br', 'wbr', 'hr', 'p', 'li', 'img', 'col', 'a', 'dt', 'dd', 'input'):
@@ -108,7 +114,7 @@ def parse(baseURL, html):
   try:
     parser.feed(html)
     parser.close()
-  except:
+  except Exception:
     # TODO: Python's html.parser is now always lenient, which is no good for us: we want correct HTML in our javadocs
     parser.printFile()
     print('  WARNING: failed to parse %s:' % baseURL)
@@ -140,7 +146,7 @@ def checkAll(dirName):
   else:
     iter = os.walk(dirName)
 
-  for root, dirs, files in iter:
+  for root, _, files in iter:
     for f in files:
       main, ext = os.path.splitext(f)
       ext = ext.lower()
@@ -162,7 +168,7 @@ def checkAll(dirName):
   # ... then verify:
   print()
   print('Verify...')
-  for fullPath, (links, anchors) in allFiles.items():
+  for fullPath, (links, _) in allFiles.items():
     #print fullPath
     printed = False
     for link in links:

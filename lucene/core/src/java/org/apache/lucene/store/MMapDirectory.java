@@ -86,13 +86,13 @@ public class MMapDirectory extends FSDirectory {
    * Argument for {@link #setPreload(BiPredicate)} that configures all files to be preloaded upon
    * opening them.
    */
-  public static final BiPredicate<String, IOContext> ALL_FILES = (filename, context) -> true;
+  public static final BiPredicate<String, IOContext> ALL_FILES = (_, _) -> true;
 
   /**
    * Argument for {@link #setPreload(BiPredicate)} that configures no files to be preloaded upon
    * opening them.
    */
-  public static final BiPredicate<String, IOContext> NO_FILES = (filename, context) -> false;
+  public static final BiPredicate<String, IOContext> NO_FILES = (_, _) -> false;
 
   /**
    * This sysprop allows to control the total maximum number of mmapped files that can be associated
@@ -107,7 +107,7 @@ public class MMapDirectory extends FSDirectory {
       "org.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits";
 
   /** Argument for {@link #setGroupingFunction(Function)} that configures no grouping. */
-  public static final Function<String, Optional<String>> NO_GROUPING = filename -> Optional.empty();
+  public static final Function<String, Optional<String>> NO_GROUPING = _ -> Optional.empty();
 
   /** Argument for {@link #setGroupingFunction(Function)} that configures grouping by segment. */
   public static final Function<String, Optional<String>> GROUP_BY_SEGMENT =
@@ -134,7 +134,7 @@ public class MMapDirectory extends FSDirectory {
    * opening them if they use the {@link ReadAdvice#RANDOM_PRELOAD} advice.
    */
   public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
-      (filename, context) -> context.readAdvice() == ReadAdvice.RANDOM_PRELOAD;
+      (_, context) -> context.readAdvice() == ReadAdvice.RANDOM_PRELOAD;
 
   private BiPredicate<String, IOContext> preload = NO_FILES;
 

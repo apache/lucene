@@ -61,5 +61,5 @@ public abstract class ScorerSupplier {
    * and this boolean to know whether to prepare for reacting to {@link
    * Scorer#setMinCompetitiveScore(float)} calls.
    */
-  public void setTopLevelScoringClause() throws IOException {}
+  public void setTopLevelScoringClause() {}
 }

@@ -645,16 +645,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             int tag = (int) fieldDoc.fields[0];
             assertTrue(lower <= tag && tag <= numDocs);
           }
-
-          // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
-          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 6);
-          expectThrows(
-              UnsupportedOperationException.class,
-              () ->
-                  searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4),
-                      numDocs));
-
           // Test a filter with cost slightly more than k, and check we use exact search as k
           // results are not retrieved from approximate search
           Query filter5 = IntPoint.newRangeQuery("tag", lower, lower + 11);
@@ -673,6 +663,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(10, results.totalHits.value());
           assertEquals(results.totalHits.value(), results.scoreDocs.length);
         }
+        // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
+        // due to extreme edge cases, removing the randomness
+        float[] vector = new float[dimension];
+        for (int i = 0; i < dimension; i++) {
+          vector[i] = i % 2 == 0 ? 42 : 7;
+        }
+        Query filter4 = IntPoint.newRangeQuery("tag", 250, 256);
+        expectThrows(
+            UnsupportedOperationException.class,
+            () -> searcher.search(getThrowingKnnVectorQuery("field", vector, 1, filter4), numDocs));
       }
     }
   }

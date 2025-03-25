@@ -1,0 +1,36 @@
+name: "Run checks: dev-tools/scripts (python)"
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - 'main'
+      - 'branch_10x'
+    paths:
+      - '.github/workflows/run-checks-python.yml'
+      - 'dev-tools/scripts/**'
+
+  push:
+    branches:
+      - 'main'
+      - 'branch_10x'
+    paths:
+      - '.github/workflows/run-checks-python.yml'
+      - 'dev-tools/scripts/**'
+
+jobs:
+  lint:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.6"
+
+      - name: Lint Python
+        run: "cd dev-tools/scripts && make"

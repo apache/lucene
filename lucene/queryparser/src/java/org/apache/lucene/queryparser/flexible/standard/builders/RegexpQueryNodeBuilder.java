@@ -48,7 +48,7 @@ public class RegexpQueryNodeBuilder implements StandardQueryBuilder {
         new Term(regexpNode.getFieldAsString(), regexpNode.textToBytesRef()),
         RegExp.ALL,
         0,
-        name -> null,
+        _ -> null,
         Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
         method);
   }

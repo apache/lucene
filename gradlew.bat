@@ -108,7 +108,7 @@ goto fail
 
 :failWithJvmMessage
 @rem https://github.com/apache/lucene/pull/819
-echo Error: Something went wrong. Make sure you're using Java version of exactly 21.
+echo Error: Something went wrong. Make sure you're using Java version of exactly 23.
 
 :fail
 rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
