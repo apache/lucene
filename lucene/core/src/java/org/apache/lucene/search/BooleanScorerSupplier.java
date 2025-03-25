@@ -332,11 +332,9 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       assert scoreMode.needsScores() == false;
       filters.add(new DisjunctionSumScorer(optionalScorers, scoreMode, cost));
 
-      if (filters.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)
-          && maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
+      if (maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
           && cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
-        return new DenseConjunctionBulkScorer(
-            filters.stream().map(Scorer::iterator).toList(), maxDoc, 0f);
+        return DenseConjunctionBulkScorer.of(filters, maxDoc, 0f);
       }
 
       return new DefaultBulkScorer(new ConjunctionScorer(filters, Collections.emptyList()));
@@ -392,14 +390,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
     if (scoreMode != ScoreMode.TOP_SCORES
         && requiredScoring.size() + requiredNoScoring.size() >= 2
-        && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)
-        && requiredNoScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
+        && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
       if (requiredScoring.isEmpty()
           && maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
           && leadCost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
-        return new DenseConjunctionBulkScorer(
-            requiredNoScoring.stream().map(Scorer::iterator).toList(), maxDoc, 0f);
-      } else {
+        return DenseConjunctionBulkScorer.of(requiredNoScoring, maxDoc, 0f);
+      } else if (requiredNoScoring.stream()
+          .map(Scorer::twoPhaseIterator)
+          .allMatch(Objects::isNull)) {
         return new ConjunctionBulkScorer(requiredScoring, requiredNoScoring);
       }
     }
