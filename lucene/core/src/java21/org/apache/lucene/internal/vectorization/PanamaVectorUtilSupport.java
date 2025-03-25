@@ -911,6 +911,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   @Override
   public float minMaxScalarQuantize(
       float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
+    assert vector.length == dest.length;
     float correction = 0;
     int i = 0;
     // only vectorize if we have a viable BYTE_SPECIES we can use for output

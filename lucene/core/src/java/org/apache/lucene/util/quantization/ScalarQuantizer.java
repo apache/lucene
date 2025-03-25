@@ -123,7 +123,8 @@ public class ScalarQuantizer {
     assert src.length == dest.length;
     assert similarityFunction != VectorSimilarityFunction.COSINE || VectorUtil.isUnitVector(src);
 
-    float correction = VectorUtil.quantize(src, dest, scale, alpha, minQuantile, maxQuantile);
+    float correction =
+        VectorUtil.minMaxScalarQuantize(src, dest, scale, alpha, minQuantile, maxQuantile);
     if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
       return 0;
     }
