@@ -171,27 +171,30 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       }
     }
 
-    if (acceptDocs == null) {
-      int minDocIDRunEnd = max;
-      for (DisiWrapper w : iterators) {
-        if (w.docID() > min) {
-          minDocIDRunEnd = min;
-          break;
-        } else {
-          minDocIDRunEnd = Math.min(minDocIDRunEnd, w.docIDRunEnd());
+    int minDocIDRunEnd = max;
+    int bitsetWindowMax = (int) Math.min(max, (long) min + WINDOW_SIZE);
+    for (DisiWrapper w : iterators) {
+      if (w.docID() > min) {
+        minDocIDRunEnd = min;
+      } else {
+        int docIDRunEnd = w.docIDRunEnd();
+        minDocIDRunEnd = Math.min(minDocIDRunEnd, docIDRunEnd);
+        // If we can find one clause that matches over more than half the window then we truncate
+        // the window to the run end of this clause as the benefits of evaluating one less clause
+        // likely dominate the overhead of using a smaller window.
+        if (docIDRunEnd - min >= WINDOW_SIZE / 2) {
+          bitsetWindowMax = Math.min(bitsetWindowMax, docIDRunEnd);
         }
-      }
-
-      if (minDocIDRunEnd - min >= WINDOW_SIZE / 2) {
-        // We have a large range of doc IDs that all match.
-        rangeDocIdStream.from = min;
-        rangeDocIdStream.to = minDocIDRunEnd;
-        collector.collect(rangeDocIdStream);
-        return minDocIDRunEnd;
       }
     }
 
-    int bitsetWindowMax = (int) Math.min(max, (long) min + WINDOW_SIZE);
+    if (acceptDocs == null && minDocIDRunEnd >= bitsetWindowMax) {
+      // We have a large range of doc IDs that all match.
+      rangeDocIdStream.from = min;
+      rangeDocIdStream.to = minDocIDRunEnd;
+      collector.collect(rangeDocIdStream);
+      return minDocIDRunEnd;
+    }
 
     for (DisiWrapper w : iterators) {
       if (w.docID() > min || w.docIDRunEnd() < bitsetWindowMax) {
