@@ -157,6 +157,8 @@ Optimizations
 
 * GITHUB#14393: Pack file pointers using the packed monotonic builder when building BKD trees. (Ignacio Vera)
 
+* GITHUB#14304: Add SIMD optimizations for scalar quantized queries and indexing. (Simon Cooper)
+
 Bug Fixes
 ---------------------
 
