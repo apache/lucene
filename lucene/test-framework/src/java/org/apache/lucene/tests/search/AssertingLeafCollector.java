@@ -170,7 +170,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
     @Override
     public int count(int upTo) throws IOException {
       assert fullyConsumed == false : "A terminal operation has already been called";
-      int count = stream.count();
+      int count = stream.count(upTo);
       fullyConsumed = upTo == DocIdSetIterator.NO_MORE_DOCS;
       if (fullyConsumed) {
         assert stream.mayHaveRemaining() == false;

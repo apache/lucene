@@ -62,6 +62,9 @@ public abstract class DocIdStream {
     return count[0];
   }
 
-  /** Return {@code true} if this stream may have remaining doc IDs. */
+  /**
+   * Return {@code true} if this stream may have remaining doc IDs. This must eventually return
+   * {@code false} once this stream is exhausted.
+   */
   public abstract boolean mayHaveRemaining();
 }
