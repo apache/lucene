@@ -200,6 +200,8 @@ Optimizations
 
 * GITHUB#14373: Optimized `ParallelLeafReader` to improve term vector fetching efficiency. (Divyansh Agrawal)
 
+* GITHUB#14393: Pack file pointers using the packed monotonic builder when building BKD trees. (Ignacio Vera)
+
 Bug Fixes
 ---------------------
 
