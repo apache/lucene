@@ -1101,7 +1101,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
             new Term("field", "[a-z][123]"),
             RegExp.ALL,
             0,
-            name -> null,
+            _ -> null,
             Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertTrue(getQuery("/[A-Z][123]/^0.5", qp) instanceof BoostQuery);

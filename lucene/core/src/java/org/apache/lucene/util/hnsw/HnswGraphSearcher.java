@@ -266,11 +266,21 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     // A bound that holds the minimum similarity to the query vector that a candidate vector must
     // have to be considered.
     float minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+    // We should allow exploring equivalent minAcceptedSimilarity values at least once
+    boolean shouldExploreMinSim = true;
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
       if (topCandidateSimilarity < minAcceptedSimilarity) {
-        break;
+        // if the similarity is equivalent to the minAcceptedSimilarity,
+        // we should explore one candidate
+        // however, running into many duplicates can be expensive,
+        // so we should stop exploring if equivalent minimum scores are found
+        if (shouldExploreMinSim && Math.nextUp(topCandidateSimilarity) == minAcceptedSimilarity) {
+          shouldExploreMinSim = false;
+        } else {
+          break;
+        }
       }
 
       int topCandidateNode = candidates.pop();
@@ -291,7 +301,13 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           candidates.add(friendOrd, friendSimilarity);
           if (acceptOrds == null || acceptOrds.get(friendOrd)) {
             if (results.collect(friendOrd, friendSimilarity)) {
+              float oldMinAcceptedSimilarity = minAcceptedSimilarity;
               minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+              if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
+                // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
+                // if necessary
+                shouldExploreMinSim = true;
+              }
             }
           }
         }

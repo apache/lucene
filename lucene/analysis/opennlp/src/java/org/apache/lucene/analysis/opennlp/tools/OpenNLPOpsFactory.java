@@ -35,14 +35,17 @@ import org.apache.lucene.util.ResourceLoader;
  * thread-safe.
  */
 public class OpenNLPOpsFactory {
-  private static Map<String, SentenceModel> sentenceModels = new ConcurrentHashMap<>();
-  private static ConcurrentHashMap<String, TokenizerModel> tokenizerModels =
+  private static final Map<String, SentenceModel> sentenceModels = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, TokenizerModel> tokenizerModels =
       new ConcurrentHashMap<>();
-  private static ConcurrentHashMap<String, POSModel> posTaggerModels = new ConcurrentHashMap<>();
-  private static ConcurrentHashMap<String, ChunkerModel> chunkerModels = new ConcurrentHashMap<>();
-  private static Map<String, TokenNameFinderModel> nerModels = new ConcurrentHashMap<>();
-  private static Map<String, LemmatizerModel> lemmatizerModels = new ConcurrentHashMap<>();
-  private static Map<String, DictionaryLemmatizer> lemmaDictionaries = new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, POSModel> posTaggerModels =
+      new ConcurrentHashMap<>();
+  private static final ConcurrentHashMap<String, ChunkerModel> chunkerModels =
+      new ConcurrentHashMap<>();
+  private static final Map<String, TokenNameFinderModel> nerModels = new ConcurrentHashMap<>();
+  private static final Map<String, LemmatizerModel> lemmatizerModels = new ConcurrentHashMap<>();
+  private static final Map<String, DictionaryLemmatizer> lemmaDictionaries =
+      new ConcurrentHashMap<>();
 
   public static NLPSentenceDetectorOp getSentenceDetector(String modelName) throws IOException {
     if (modelName != null) {

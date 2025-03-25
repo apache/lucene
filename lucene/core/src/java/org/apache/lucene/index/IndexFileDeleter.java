@@ -86,9 +86,6 @@ final class IndexFileDeleter implements Closeable {
   final boolean startingCommitDeleted;
   private SegmentInfos lastSegmentInfos;
 
-  /** Change to true to see details of reference counts when infoStream is enabled */
-  public static boolean VERBOSE_REF_COUNTS = false;
-
   private final FileDeleter fileDeleter;
 
   private final IndexWriter writer;
@@ -602,7 +599,7 @@ final class IndexFileDeleter implements Closeable {
   }
 
   private void logInfo(FileDeleter.MsgType msgType, String msg) {
-    if (msgType == FileDeleter.MsgType.REF && VERBOSE_REF_COUNTS == false) {
+    if (msgType == FileDeleter.MsgType.REF) {
       // do not log anything
     } else {
       if (infoStream.isEnabled("IFD")) {

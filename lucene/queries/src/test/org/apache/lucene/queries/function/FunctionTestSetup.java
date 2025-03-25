@@ -49,7 +49,7 @@ public abstract class FunctionTestSetup extends LuceneTestCase {
    * Actual score computation order is slightly different than assumptios this allows for a small
    * amount of variation
    */
-  protected static float TEST_SCORE_TOLERANCE_DELTA = 0.001f;
+  protected static final float TEST_SCORE_TOLERANCE_DELTA = 0.001f;
 
   protected static final int N_DOCS = 17; // select a primary number > 2
 
@@ -111,7 +111,10 @@ public abstract class FunctionTestSetup extends LuceneTestCase {
     "text for the test, but oh much much safer. ",
   };
 
+  @SuppressWarnings("NonFinalStaticField")
   protected static Directory dir;
+
+  @SuppressWarnings("NonFinalStaticField")
   protected static Analyzer anlzr;
 
   @AfterClass

@@ -373,7 +373,13 @@ public class DirectIODirectory extends FilterDirectory {
     @Override
     public void seek(long pos) throws IOException {
       if (pos != getFilePointer()) {
-        seekInternal(pos);
+        final long absolutePos = pos + offset;
+        if (absolutePos >= filePos && absolutePos <= filePos + buffer.limit()) {
+          // the new position is within the existing buffer
+          buffer.position(Math.toIntExact(absolutePos - filePos));
+        } else {
+          seekInternal(pos); // do an actual seek/read
+        }
       }
       assert pos == getFilePointer();
     }
