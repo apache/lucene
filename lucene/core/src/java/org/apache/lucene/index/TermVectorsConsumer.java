@@ -102,7 +102,7 @@ class TermVectorsConsumer extends TermsHash {
 
   void initTermVectorsWriter() throws IOException {
     if (writer == null) {
-      IOContext context = new IOContext(new FlushInfo(lastDocID, bytesUsed.get()));
+      IOContext context = IOContext.flush(new FlushInfo(lastDocID, bytesUsed.get()));
       writer = codec.termVectorsFormat().vectorsWriter(directory, info, context);
       lastDocID = 0;
       accountable = writer;
