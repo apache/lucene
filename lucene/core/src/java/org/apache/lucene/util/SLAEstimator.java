@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.Query;
 
+/** Interface to implement SLA Estimator */
 public interface SLAEstimator {
   double estimate(Query query, IndexReader reader, long baseSlaMs) throws IOException;
 }
