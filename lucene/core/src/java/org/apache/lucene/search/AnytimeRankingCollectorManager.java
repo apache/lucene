@@ -22,9 +22,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
-/**
- * Collector Manager for AnytimeRankingCollector
- */
+/** Collector Manager for AnytimeRankingCollector */
 public class AnytimeRankingCollectorManager
     implements CollectorManager<AnytimeRankingCollector, TopDocs> {
   private final int topK;

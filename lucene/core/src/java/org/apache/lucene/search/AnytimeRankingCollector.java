@@ -19,9 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 
-/**
- * This collector collected top docs while following a given SLA
- */
+/** This collector collected top docs while following a given SLA */
 public class AnytimeRankingCollector extends TopDocsCollector<ScoreDoc> {
   private static final int MIN_SLA_CHECK_INTERVAL = 32;
   private static final int MAX_SLA_CHECK_INTERVAL = 512;
