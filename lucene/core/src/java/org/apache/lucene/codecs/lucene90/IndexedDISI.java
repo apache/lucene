@@ -497,12 +497,40 @@ public final class IndexedDISI extends DocIdSetIterator {
     return doc;
   }
 
+  @Override
+  public int advanceBinarySearch(int target) throws IOException {
+    final int targetBlock = target & 0xFFFF0000;
+    if (block < targetBlock) {
+      advanceBlock(targetBlock);
+    }
+    if (block == targetBlock) {
+      if (method.advanceWithinBlockBinarySearch(this, target)) {
+        return doc;
+      }
+      readBlockHeader();
+    }
+    boolean found = method.advanceWithinBlockBinarySearch(this, block);
+    assert found;
+    return doc;
+  }
+
   public boolean advanceExact(int target) throws IOException {
     final int targetBlock = target & 0xFFFF0000;
     if (block < targetBlock) {
       advanceBlock(targetBlock);
     }
     boolean found = block == targetBlock && method.advanceExactWithinBlock(this, target);
+    this.doc = target;
+    return found;
+  }
+
+  public boolean advanceExactBinarySearch(int target) throws IOException {
+    final int targetBlock = target & 0xFFFF0000;
+    if (block < targetBlock) {
+      advanceBlock(targetBlock);
+    }
+    boolean found =
+        block == targetBlock && method.advanceExactWithinBlockBinarySearch(this, target);
     this.doc = target;
     return found;
   }
@@ -590,6 +618,23 @@ public final class IndexedDISI extends DocIdSetIterator {
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
 
+        for (; disi.index < disi.nextBlockIndex; ) {
+          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          disi.index++;
+          if (doc >= targetInBlock) {
+            disi.doc = disi.block | doc;
+            disi.exists = true;
+            disi.nextExistDocInBlock = doc;
+            return true;
+          }
+        }
+        return false;
+      }
+
+      @Override
+      boolean advanceWithinBlockBinarySearch(IndexedDISI disi, int target) throws IOException {
+        final int targetInBlock = target & 0xFFFF;
+
         // binary search
         long filePointer = disi.slice.getFilePointer();
         int i = disi.index;
@@ -648,6 +693,35 @@ public final class IndexedDISI extends DocIdSetIterator {
 
       @Override
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
+        final int targetInBlock = target & 0xFFFF;
+        if (disi.nextExistDocInBlock > targetInBlock) {
+          assert !disi.exists;
+          return false;
+        }
+        if (target == disi.doc) {
+          return disi.exists;
+        }
+
+        for (; disi.index < disi.nextBlockIndex; ) {
+          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          disi.index++;
+          if (doc >= targetInBlock) {
+            disi.nextExistDocInBlock = doc;
+            if (doc != targetInBlock) {
+              disi.index--;
+              disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+              break;
+            }
+            disi.exists = true;
+            return true;
+          }
+        }
+        disi.exists = false;
+        return false;
+      }
+
+      @Override
+      boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
         if (disi.nextExistDocInBlock > targetInBlock) {
           assert !disi.exists;
@@ -788,6 +862,11 @@ public final class IndexedDISI extends DocIdSetIterator {
         disi.index = disi.numberOfOnes - Long.bitCount(leftBits);
         return (leftBits & 1L) != 0;
       }
+
+      @Override
+      boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target) {
+        return false;
+      }
     },
     ALL {
       @Override
@@ -802,6 +881,11 @@ public final class IndexedDISI extends DocIdSetIterator {
         disi.index = target - disi.gap;
         return true;
       }
+
+      @Override
+      boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target) {
+        return false;
+      }
     };
 
     /**
@@ -811,10 +895,25 @@ public final class IndexedDISI extends DocIdSetIterator {
     abstract boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException;
 
     /**
+     * Advance to the first doc from the block that is equal to or greater than {@code target}.
+     * Return true if there is such a doc and false otherwise.
+     */
+    boolean advanceWithinBlockBinarySearch(IndexedDISI disi, int target) throws IOException {
+      return false;
+    }
+
+    /**
      * Advance the iterator exactly to the position corresponding to the given {@code target} and
      * return whether this document exists.
      */
     abstract boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException;
+
+    /**
+     * Advance the iterator exactly to the position corresponding to the given {@code target} and
+     * return whether this document exists.
+     */
+    abstract boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target)
+        throws IOException;
   }
 
   /**
