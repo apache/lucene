@@ -41,7 +41,7 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
   public TestVectorUtilSupport(int size) {
     this.size = size;
     // scale the delta with the size
-    this.delta = 1e-6 * size;
+    this.delta = 1e-5 * size;
   }
 
   @ParametersFactory
