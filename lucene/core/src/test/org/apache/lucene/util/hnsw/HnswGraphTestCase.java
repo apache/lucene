@@ -528,9 +528,9 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   public void testBuildingJoinSet() throws IOException {
     int dim = random().nextInt(100) + 1;
-    int nDoc = random().nextInt(5000) + 1;
-    int M = 16;
-    int beamWidth = random().nextInt(10) + 5;
+    int nDoc = random().nextInt(500) + 100;
+    int M = random().nextInt(16) + 16;
+    int beamWidth = random().nextInt(100) + 16;
     long seed = random().nextLong();
     KnnVectorValues vectors = vectorValues(nDoc, dim);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);

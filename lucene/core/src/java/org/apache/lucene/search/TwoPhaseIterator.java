@@ -118,4 +118,18 @@ public abstract class TwoPhaseIterator {
    * indexing an array. The returned value must be positive.
    */
   public abstract float matchCost();
+
+  /**
+   * Returns the end of the run of consecutive doc IDs that match this {@link TwoPhaseIterator} and
+   * that contains the current doc ID of the approximation, that is: one plus the last doc ID of the
+   * run.
+   *
+   * <p><b>Note</b>: It is illegal to call this method when the approximation is exhausted or not
+   * positioned.
+   *
+   * <p>The default implementation returns the current doc ID of the approximation.
+   */
+  public int docIDRunEnd() throws IOException {
+    return approximation().docID();
+  }
 }

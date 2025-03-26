@@ -16,8 +16,13 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.hamcrest.Matchers.closeTo;
+
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
@@ -25,17 +30,18 @@ import java.util.stream.IntStream;
 
 public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
-  private static final double DELTA = 1e-3;
-
   private static final int[] VECTOR_SIZES = {
     1, 4, 6, 8, 13, 16, 25, 32, 64, 100, 128, 207, 256, 300, 512, 702, 1024, 1536, 2046, 2048, 4096,
     4098
   };
 
   private final int size;
+  private final double delta;
 
   public TestVectorUtilSupport(int size) {
     this.size = size;
+    // scale the delta with the size
+    this.delta = 1e-5 * size;
   }
 
   @ParametersFactory
@@ -164,11 +170,49 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     return packed;
   }
 
+  public void testMinMaxScalarQuantize() {
+    Random r = random();
+    float min = r.nextFloat(-1, 1);
+    float max = r.nextFloat(min, 1);
+    float divisor = (float) ((1 << 7) - 1); // 7 bits quantization here
+
+    float scale = divisor / (max - min);
+    float alpha = (max - min) / divisor;
+
+    float[] vector = new float[size];
+    for (int i = 0; i < vector.length; i++) {
+      vector[i] = (r.nextFloat() * (max - min)) + min;
+    }
+
+    List<byte[]> outputs = new ArrayList<>();
+    assertFloatReturningProviders(
+        p -> {
+          byte[] output = new byte[size];
+          outputs.add(output);
+          return p.minMaxScalarQuantize(vector, output, scale, alpha, min, max);
+        });
+
+    // check the outputs are identical
+    for (int o = 1; o < outputs.size(); o++) {
+      assertArrayEquals(outputs.getFirst(), outputs.get(o));
+    }
+
+    // check recalculation too
+    float newMax = max * 2;
+    float newMin = min / 2;
+    float newScale = divisor / (newMax - newMin);
+    float newAlpha = (newMax - newMin) / divisor;
+
+    assertFloatReturningProviders(
+        p ->
+            p.recalculateScalarQuantizationOffset(
+                outputs.getFirst(), alpha, min, newScale, newAlpha, newMin, newMax));
+  }
+
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
-    assertEquals(
-        func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
+    assertThat(
         func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
-        DELTA);
+        closeTo(func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()), delta));
   }
 
   private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {

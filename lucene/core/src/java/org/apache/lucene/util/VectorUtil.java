@@ -334,4 +334,46 @@ public final class VectorUtil {
     assert IntStream.range(0, to - 1).noneMatch(i -> buffer[i] > buffer[i + 1]);
     return IMPL.findNextGEQ(buffer, target, from, to);
   }
+
+  /**
+   * Scalar quantizes {@code vector}, putting the result into {@code dest}.
+   *
+   * @param vector the vector to quantize
+   * @param dest the destination vector
+   * @param scale the scaling factor
+   * @param alpha the alpha value
+   * @param minQuantile the lower quantile of the distribution
+   * @param maxQuantile the upper quantile of the distribution
+   * @return the corrective offset that needs to be applied to the score
+   */
+  public static float minMaxScalarQuantize(
+      float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
+    if (vector.length != dest.length)
+      throw new IllegalArgumentException("source and destination arrays should be the same size");
+    return IMPL.minMaxScalarQuantize(vector, dest, scale, alpha, minQuantile, maxQuantile);
+  }
+
+  /**
+   * Recalculates the offset for {@code vector}.
+   *
+   * @param vector the vector to quantize
+   * @param oldAlpha the previous alpha value
+   * @param oldMinQuantile the previous lower quantile
+   * @param scale the scaling factor
+   * @param alpha the alpha value
+   * @param minQuantile the lower quantile of the distribution
+   * @param maxQuantile the upper quantile of the distribution
+   * @return the new corrective offset
+   */
+  public static float recalculateOffset(
+      byte[] vector,
+      float oldAlpha,
+      float oldMinQuantile,
+      float scale,
+      float alpha,
+      float minQuantile,
+      float maxQuantile) {
+    return IMPL.recalculateScalarQuantizationOffset(
+        vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile);
+  }
 }
