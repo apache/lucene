@@ -70,7 +70,7 @@ public class TestDISIDocIdStream extends LuceneTestCase {
     expected.advance(42);
 
     assertTrue(stream.mayHaveRemaining());
-    stream.forEach(40, doc -> fail());
+    stream.forEach(40, _ -> fail());
 
     assertTrue(stream.mayHaveRemaining());
     stream.forEach(
@@ -122,7 +122,7 @@ public class TestDISIDocIdStream extends LuceneTestCase {
     BitSetIterator expected = new BitSetIterator(bitSet, bitSet.approximateCardinality());
 
     assertTrue(stream.mayHaveRemaining());
-    stream.forEach(40, doc -> fail());
+    stream.forEach(40, _ -> fail());
 
     assertTrue(stream.mayHaveRemaining());
     assertEquals(bitSet.cardinality(42, 50), stream.count(50));

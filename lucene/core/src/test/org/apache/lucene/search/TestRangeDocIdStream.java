@@ -41,7 +41,7 @@ public class TestRangeDocIdStream extends LuceneTestCase {
     int[] expected = new int[] {42};
 
     assertTrue(stream.mayHaveRemaining());
-    stream.forEach(20, doc -> fail());
+    stream.forEach(20, _ -> fail());
 
     assertTrue(stream.mayHaveRemaining());
     stream.forEach(
