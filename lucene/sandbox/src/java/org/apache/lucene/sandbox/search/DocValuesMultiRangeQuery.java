@@ -152,6 +152,11 @@ public final class DocValuesMultiRangeQuery {
     }
   }
 
+  /**
+   * Builder for creating a multi-range query for stabbing by SortedNumerics or Numerics field
+   * values. For the single range it behaves like {@link
+   * SortedNumericDocValuesField#newSlowRangeQuery(String, long, long)}
+   */
   public static class SortedNumericStabbingBuilder {
     protected final String fieldName;
     protected final List<LongRange> clauses = new ArrayList<>();
