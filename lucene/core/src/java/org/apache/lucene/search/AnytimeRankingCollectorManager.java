@@ -22,44 +22,47 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
-public class AnytimeRankingCollectorManager implements CollectorManager<AnytimeRankingCollector, TopDocs> {
-    private final int topK;
-    private final long slaThresholdMs;
+public class AnytimeRankingCollectorManager
+    implements CollectorManager<AnytimeRankingCollector, TopDocs> {
+  private final int topK;
+  private final long slaThresholdMs;
 
-    public AnytimeRankingCollectorManager(int topK, long slaThresholdMs) {
-        this.topK = topK;
-        this.slaThresholdMs = slaThresholdMs;
-    }
+  public AnytimeRankingCollectorManager(int topK, long slaThresholdMs) {
+    this.topK = topK;
+    this.slaThresholdMs = slaThresholdMs;
+  }
 
-    @Override
-    public AnytimeRankingCollector newCollector() {
-        return new AnytimeRankingCollector(topK, slaThresholdMs);
-    }
+  @Override
+  public AnytimeRankingCollector newCollector() {
+    return new AnytimeRankingCollector(topK, slaThresholdMs);
+  }
 
-    @Override
-    public TopDocs reduce(Collection<AnytimeRankingCollector> collectors) throws IOException {
-        PriorityQueue<ScoreDoc> sortedDocs = new PriorityQueue<>(topK, Comparator.comparingDouble(sd -> sd.score));
-        long totalHits = 0;
+  @Override
+  public TopDocs reduce(Collection<AnytimeRankingCollector> collectors) throws IOException {
+    PriorityQueue<ScoreDoc> sortedDocs =
+        new PriorityQueue<>(topK, Comparator.comparingDouble(sd -> sd.score));
+    long totalHits = 0;
 
-        for (AnytimeRankingCollector collector : collectors) {
-            TopDocs topDocs = collector.topDocs();
-            totalHits += topDocs.totalHits.value();
+    for (AnytimeRankingCollector collector : collectors) {
+      TopDocs topDocs = collector.topDocs();
+      totalHits += topDocs.totalHits.value();
 
-            for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-                if (sortedDocs.size() < topK) {
-                    sortedDocs.offer(scoreDoc);
-                } else if (scoreDoc.score > sortedDocs.peek().score) {
-                    sortedDocs.poll();
-                    sortedDocs.offer(scoreDoc);
-                }
-            }
+      for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+        if (sortedDocs.size() < topK) {
+          sortedDocs.offer(scoreDoc);
+        } else if (scoreDoc.score > sortedDocs.peek().score) {
+          sortedDocs.poll();
+          sortedDocs.offer(scoreDoc);
         }
-
-        // Cannot use TopDocs.merge() since it assumes each shard has returned atleast K results
-        // which is not necessarily true for early termination
-        ScoreDoc[] results = sortedDocs.toArray(new ScoreDoc[0]);
-        Arrays.sort(results, (a, b) -> Float.compare(b.score, a.score)); // Descending order
-
-        return new TopDocs(new TotalHits(totalHits, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), results);
+      }
     }
+
+    // Cannot use TopDocs.merge() since it assumes each shard has returned atleast K results
+    // which is not necessarily true for early termination
+    ScoreDoc[] results = sortedDocs.toArray(new ScoreDoc[0]);
+    Arrays.sort(results, (a, b) -> Float.compare(b.score, a.score)); // Descending order
+
+    return new TopDocs(
+        new TotalHits(totalHits, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), results);
+  }
 }

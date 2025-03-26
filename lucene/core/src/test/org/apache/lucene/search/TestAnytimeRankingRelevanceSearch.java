@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.HashMap;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -27,111 +31,116 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.HashMap;
-
 public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
 
-    private String indexPath;
+  private String indexPath;
 
-    @Override
-    public void setUp() throws Exception {
-        super.setUp();
-        indexPath = Files.createTempDirectory("testindex_relevance").toAbsolutePath().toString();
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    indexPath = Files.createTempDirectory("testindex_relevance").toAbsolutePath().toString();
 
-        try (Directory directory = FSDirectory.open(Paths.get(indexPath));
-             IndexWriter writer = new IndexWriter(directory, new IndexWriterConfig(new StandardAnalyzer()))) {
+    try (Directory directory = FSDirectory.open(Paths.get(indexPath));
+        IndexWriter writer =
+            new IndexWriter(directory, new IndexWriterConfig(new StandardAnalyzer()))) {
 
-            for (int i = 1; i <= 50; i++) {
-                addDocument(writer, "Lucene test document " + i + " containing ranking relevance efficiency performance scoring", i);
-                if (i % 5 == 0) {
-                    addDocument(writer, "Lucene boosted search efficiency query expansion", i + 50);
-                }
-                if (i % 3 == 0) {
-                    addDocument(writer, "Lucene document test ranking optimization BM25 tuning", i + 100);
-                }
-                if (i % 7 == 0) {
-                    addDocument(writer, "Lucene scalable indexing techniques for optimal retrieval", i + 150);
-                }
-            }
-
-            writer.commit();
+      for (int i = 1; i <= 50; i++) {
+        addDocument(
+            writer,
+            "Lucene test document "
+                + i
+                + " containing ranking relevance efficiency performance scoring",
+            i);
+        if (i % 5 == 0) {
+          addDocument(writer, "Lucene boosted search efficiency query expansion", i + 50);
         }
-    }
-
-    @Test
-    public void testRelevanceAcrossDiverseDocuments() throws Exception {
-        try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
-            IndexSearcher searcher = newSearcher(reader);
-            searcher.setSimilarity(new BM25Similarity());
-
-            Query query = new TermQuery(new Term("content", "lucene"));
-            AnytimeRankingSearcher anytimeSearcher = new AnytimeRankingSearcher(searcher, 10, 20, "content");
-            TopDocs results = anytimeSearcher.search(query, new HashMap<>(), reader.maxDoc());
-
-            assertNotNull("Results should not be null", results);
-            assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
+        if (i % 3 == 0) {
+          addDocument(writer, "Lucene document test ranking optimization BM25 tuning", i + 100);
         }
-    }
-
-    @Test
-    public void testPerformanceQueries() throws Exception {
-        try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
-            IndexSearcher searcher = newSearcher(reader);
-            searcher.setSimilarity(new BM25Similarity());
-
-            AnytimeRankingSearcher anytimeSearcher = new AnytimeRankingSearcher(searcher, 15, 30, "content");
-            Query query = new TermQuery(new Term("content", "performance"));
-            TopDocs results = anytimeSearcher.search(query, new HashMap<>(), reader.maxDoc());
-
-            assertNotNull("Results should not be null", results);
-            assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
+        if (i % 7 == 0) {
+          addDocument(writer, "Lucene scalable indexing techniques for optimal retrieval", i + 150);
         }
+      }
+
+      writer.commit();
     }
+  }
 
-    @Test
-    public void testBM25ScoringDiversity() throws Exception {
-        try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
-            IndexSearcher searcher = newSearcher(reader);
-            searcher.setSimilarity(new BM25Similarity());
+  @Test
+  public void testRelevanceAcrossDiverseDocuments() throws Exception {
+    try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
+      IndexSearcher searcher = newSearcher(reader);
+      searcher.setSimilarity(new BM25Similarity());
 
-            AnytimeRankingSearcher anytimeSearcher = new AnytimeRankingSearcher(searcher, 10, 50, "content");
-            Query query = new TermQuery(new Term("content", "scoring"));
-            TopDocs results = anytimeSearcher.search(query, new HashMap<>(), reader.maxDoc());
+      Query query = new TermQuery(new Term("content", "lucene"));
+      AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(searcher, 10, 20, "content");
+      TopDocs results = anytimeSearcher.search(query, new HashMap<>(), reader.maxDoc());
 
-            assertNotNull("Results should not be null", results);
-            assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
-        }
+      assertNotNull("Results should not be null", results);
+      assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
     }
+  }
 
-    @Test
-    public void testEmptyQuery() throws Exception {
-        try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
-            IndexSearcher searcher = newSearcher(reader);
-            searcher.setSimilarity(new BM25Similarity());
+  @Test
+  public void testPerformanceQueries() throws Exception {
+    try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
+      IndexSearcher searcher = newSearcher(reader);
+      searcher.setSimilarity(new BM25Similarity());
 
-            AnytimeRankingSearcher anytimeSearcher = new AnytimeRankingSearcher(searcher, 5, 20, "content");
-            Query query = new TermQuery(new Term("content", " "));
-            TopDocs results = anytimeSearcher.search(query, new HashMap<>(), reader.maxDoc());
+      AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(searcher, 15, 30, "content");
+      Query query = new TermQuery(new Term("content", "performance"));
+      TopDocs results = anytimeSearcher.search(query, new HashMap<>(), reader.maxDoc());
 
-            assertNotNull("Empty queries should return zero results", results);
-            assertEquals("Results should be zero for an empty query", 0, results.scoreDocs.length);
-        }
+      assertNotNull("Results should not be null", results);
+      assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
     }
+  }
 
-    private void addDocument(IndexWriter writer, String content, int docID) throws IOException {
-        Document doc = new Document();
-        doc.add(new IntPoint("docID", docID));
-        doc.add(new StoredField("docID", docID));
-        doc.add(new TextField("content", content, Field.Store.NO));
-        writer.addDocument(doc);
+  @Test
+  public void testBM25ScoringDiversity() throws Exception {
+    try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
+      IndexSearcher searcher = newSearcher(reader);
+      searcher.setSimilarity(new BM25Similarity());
+
+      AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(searcher, 10, 50, "content");
+      Query query = new TermQuery(new Term("content", "scoring"));
+      TopDocs results = anytimeSearcher.search(query, new HashMap<>(), reader.maxDoc());
+
+      assertNotNull("Results should not be null", results);
+      assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
     }
+  }
+
+  @Test
+  public void testEmptyQuery() throws Exception {
+    try (IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
+      IndexSearcher searcher = newSearcher(reader);
+      searcher.setSimilarity(new BM25Similarity());
+
+      AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(searcher, 5, 20, "content");
+      Query query = new TermQuery(new Term("content", " "));
+      TopDocs results = anytimeSearcher.search(query, new HashMap<>(), reader.maxDoc());
+
+      assertNotNull("Empty queries should return zero results", results);
+      assertEquals("Results should be zero for an empty query", 0, results.scoreDocs.length);
+    }
+  }
+
+  private void addDocument(IndexWriter writer, String content, int docID) throws IOException {
+    Document doc = new Document();
+    doc.add(new IntPoint("docID", docID));
+    doc.add(new StoredField("docID", docID));
+    doc.add(new TextField("content", content, Field.Store.NO));
+    writer.addDocument(doc);
+  }
 }

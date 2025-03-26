@@ -16,12 +16,10 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.Query;
 
-import java.io.IOException;
-
 public interface SLAEstimator {
-    double estimate(Query query, IndexReader reader, long baseSlaMs) throws IOException;
+  double estimate(Query query, IndexReader reader, long baseSlaMs) throws IOException;
 }
-
