@@ -47,24 +47,20 @@ public abstract class DocIdStream {
 
   /** Count the number of entries in this stream. This is a terminal operation. */
   public int count() throws IOException {
-    int[] count = new int[1];
-    forEach(_ -> count[0]++);
-    return count[0];
+    return count(DocIdSetIterator.NO_MORE_DOCS);
   }
 
   /**
    * Count the number of doc IDs in this stream that are below the given {@code upTo}. These doc IDs
    * may not be consumed again later.
    */
-  public int count(int upTo) throws IOException {
-    int[] count = new int[1];
-    forEach(upTo, doc -> count[0]++);
-    return count[0];
-  }
+  // Note: it's abstract rather than having a default impl that delegates to #forEach because doing
+  // so would defeat the purpose of collecting hits via a DocIdStream.
+  public abstract int count(int upTo) throws IOException;
 
   /**
    * Return {@code true} if this stream may have remaining doc IDs. This must eventually return
-   * {@code false} once this stream is exhausted.
+   * {@code false} when the stream is exhausted.
    */
   public abstract boolean mayHaveRemaining();
 }
