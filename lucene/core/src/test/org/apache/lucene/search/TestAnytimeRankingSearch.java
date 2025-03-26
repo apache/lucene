@@ -42,6 +42,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Test;
 
 public class TestAnytimeRankingSearch extends LuceneTestCase {
@@ -71,12 +72,14 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
 
       Map<Integer, Double> rangeScores = new HashMap<>();
       for (int i = 1; i <= 10; i++) {
-        rangeScores.put(i, Math.random());
+        rangeScores.put(i, random().nextDouble());
       }
 
       AnytimeRankingSearcher anytimeSearcher =
           new AnytimeRankingSearcher(searcher, 10, 50, "content");
-      ExecutorService executor = Executors.newCachedThreadPool();
+      int cpus = Runtime.getRuntime().availableProcessors();
+      ExecutorService executor =
+          Executors.newFixedThreadPool(cpus, new NamedThreadFactory("hunspellStemming-"));
       List<Future<TopDocs>> futures = new ArrayList<>();
 
       searcher.setSimilarity(new BM25Similarity(5.0f, 0.2f)); // Stronger term frequency weighting
@@ -193,7 +196,9 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
 
       AnytimeRankingSearcher anytimeSearcher =
           new AnytimeRankingSearcher(searcher, 10, 50, "content");
-      ExecutorService executor = Executors.newFixedThreadPool(3);
+      int cpus = Runtime.getRuntime().availableProcessors();
+      ExecutorService executor =
+          Executors.newFixedThreadPool(cpus, new NamedThreadFactory("hunspellStemming-"));
       List<Future<TopDocs>> futures = new ArrayList<>();
 
       for (Query query : queries) {
