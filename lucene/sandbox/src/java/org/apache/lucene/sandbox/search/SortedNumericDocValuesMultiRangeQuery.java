@@ -231,7 +231,9 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
             }
           };
       if (skipper != null) {
-        iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue, false);
+        iterator =
+            new DocValuesRangeIterator(
+                iterator, skipper, lowerValue, upperValue, sortedClauses.size() > 1);
       }
       return ConstantScoreScorerSupplier.fromIterator(
           TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
