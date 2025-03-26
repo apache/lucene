@@ -63,7 +63,7 @@ public final class DocValuesMultiRangeQuery {
     @Override
     public int hashCode() {
       int result = lower.hashCode();
-      result = (int) (31L * result + upper.hashCode());
+      result = 31 * result + upper.hashCode();
       return result;
     }
 
@@ -99,7 +99,7 @@ public final class DocValuesMultiRangeQuery {
     @Override
     public int hashCode() {
       int result = (int) lower;
-      result = (int) (31 * result + upper);
+      result = (int) (31L * result + upper);
       return result;
     }
 
