@@ -17,7 +17,13 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.NavigableSet;
+import java.util.Objects;
+import java.util.TreeSet;
+
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
