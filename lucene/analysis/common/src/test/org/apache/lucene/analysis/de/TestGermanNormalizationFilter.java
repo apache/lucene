@@ -85,7 +85,7 @@ public class TestGermanNormalizationFilter extends BaseTokenStreamTestCase {
   }
 
   public void testKeyword() throws IOException {
-    final CharArraySet exclusionSet = new CharArraySet(asSet("bär"), false);
+    final CharArraySet exclusionSet = new CharArraySet(asSet("Bär"), false);
     Analyzer a =
         new Analyzer() {
           @Override
@@ -95,7 +95,7 @@ public class TestGermanNormalizationFilter extends BaseTokenStreamTestCase {
             return new TokenStreamComponents(source, new GermanNormalizationFilter(sink));
           }
         };
-    checkOneTerm(a, "bär", "bär");
+    checkOneTerm(a, "Bär", "Bär");
     a.close();
   }
 }
