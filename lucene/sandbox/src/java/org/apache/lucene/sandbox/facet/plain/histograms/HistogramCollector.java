@@ -255,7 +255,7 @@ final class HistogramCollector implements Collector {
 
     @Override
     public void collect(DocIdStream stream) throws IOException {
-      for (;;) {
+      for (; ; ) {
         int upToExclusive = upToInclusive + 1;
         if (upToExclusive < 0) { // overflow
           upToExclusive = Integer.MAX_VALUE;
