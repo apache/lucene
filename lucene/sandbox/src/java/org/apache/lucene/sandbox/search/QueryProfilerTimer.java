@@ -40,7 +40,8 @@ class QueryProfilerTimer {
     this(0, 0, 0, 0, 0);
   }
 
-  public QueryProfilerTimer(long timing, long count, long lastCount, long start, long earliestTimerStartTime) {
+  public QueryProfilerTimer(
+      long timing, long count, long lastCount, long start, long earliestTimerStartTime) {
     this.timing = timing;
     this.count = count;
     this.lastCount = lastCount;
@@ -48,16 +49,12 @@ class QueryProfilerTimer {
     this.earliestTimerStartTime = earliestTimerStartTime;
   }
 
-  /**
-   * pkg-private for testing
-   */
+  /** pkg-private for testing */
   long nanoTime() {
     return System.nanoTime();
   }
 
-  /**
-   * Start the timer.
-   */
+  /** Start the timer. */
   public final void start() {
     assert start == 0 : "#start call misses a matching #stop call";
     // We measure the timing of each method call for the first 256
@@ -77,9 +74,7 @@ class QueryProfilerTimer {
     count++;
   }
 
-  /**
-   * Stop the timer.
-   */
+  /** Stop the timer. */
   public final void stop() {
     if (doTiming) {
       timing += (count - lastCount) * Math.max(nanoTime() - start, 1L);
@@ -88,9 +83,7 @@ class QueryProfilerTimer {
     }
   }
 
-  /**
-   * Return the number of times that {@link #start()} has been called.
-   */
+  /** Return the number of times that {@link #start()} has been called. */
   public final long getCount() {
     if (start != 0) {
       throw new IllegalStateException("#start call misses a matching #stop call");
@@ -98,9 +91,7 @@ class QueryProfilerTimer {
     return count;
   }
 
-  /**
-   * Return the timer start time in nanoseconds.
-   */
+  /** Return the timer start time in nanoseconds. */
   public final long getEarliestTimerStartTime() {
     if (start != 0) {
       throw new IllegalStateException("#start call misses a matching #stop call");

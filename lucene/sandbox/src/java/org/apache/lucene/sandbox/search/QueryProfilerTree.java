@@ -62,9 +62,9 @@ class QueryProfilerTree {
   }
 
   /**
-   * Returns a {@link AbstractQueryProfilerBreakdown} for a scoring query. Scoring queries (e.g. those that
-   * are past the rewrite phase and are now being wrapped by createWeight() ) follow a recursive
-   * progression. We can track the dependency tree by a simple stack
+   * Returns a {@link AbstractQueryProfilerBreakdown} for a scoring query. Scoring queries (e.g.
+   * those that are past the rewrite phase and are now being wrapped by createWeight() ) follow a
+   * recursive progression. We can track the dependency tree by a simple stack
    *
    * <p>The only hiccup is that the first scoring query will be identical to the last rewritten
    * query, so we need to take special care to fix that
