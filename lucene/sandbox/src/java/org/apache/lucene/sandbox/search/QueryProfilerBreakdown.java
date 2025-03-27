@@ -17,20 +17,24 @@
 
 package org.apache.lucene.sandbox.search;
 
+import org.apache.lucene.util.CollectionUtil;
+
 import java.util.Collections;
 import java.util.Map;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * A record of timings for the various operations that may happen during query execution. A node's
  * time may be composed of several internal attributes (rewriting, weighting, scoring, etc).
  */
-class QueryProfilerBreakdown {
-
-  /** The accumulated timings for this query node */
+public class QueryProfilerBreakdown {
+  /**
+   * The accumulated timings for this query node
+   */
   private final QueryProfilerTimer[] timers;
 
-  /** Sole constructor. */
+  /**
+   * Sole constructor.
+   */
   public QueryProfilerBreakdown() {
     timers = new QueryProfilerTimer[QueryProfilerTimingType.values().length];
     for (int i = 0; i < timers.length; ++i) {
@@ -42,7 +46,9 @@ class QueryProfilerBreakdown {
     return timers[type.ordinal()];
   }
 
-  /** Build a timing count breakdown. */
+  /**
+   * Build a timing count breakdown.
+   */
   public final Map<String, Long> toBreakdownMap() {
     Map<String, Long> map = CollectionUtil.newHashMap(timers.length * 2);
     for (QueryProfilerTimingType type : QueryProfilerTimingType.values()) {

@@ -62,7 +62,7 @@ class QueryProfilerTree {
   }
 
   /**
-   * Returns a {@link QueryProfilerBreakdown} for a scoring query. Scoring queries (e.g. those that
+   * Returns a {@link AbstractQueryProfilerBreakdown} for a scoring query. Scoring queries (e.g. those that
    * are past the rewrite phase and are now being wrapped by createWeight() ) follow a recursive
    * progression. We can track the dependency tree by a simple stack
    *
@@ -72,7 +72,7 @@ class QueryProfilerTree {
    * @param query The scoring query we wish to profile
    * @return A ProfileBreakdown for this query
    */
-  public QueryProfilerBreakdown getProfileBreakdown(Query query) {
+  public AbstractQueryProfilerBreakdown getProfileBreakdown(Query query) {
     int token = currentToken;
 
     boolean stackEmpty = stack.isEmpty();
@@ -106,13 +106,13 @@ class QueryProfilerTree {
    * Helper method to add a new node to the dependency tree.
    *
    * <p>Initializes a new list in the dependency tree, saves the query and generates a new {@link
-   * QueryProfilerBreakdown} to track the timings of this query.
+   * AbstractQueryProfilerBreakdown} to track the timings of this query.
    *
    * @param query The query to profile
    * @param token The assigned token for this query
-   * @return A {@link QueryProfilerBreakdown} to profile this query
+   * @return A {@link AbstractQueryProfilerBreakdown} to profile this query
    */
-  private QueryProfilerBreakdown addDependencyNode(Query query, int token) {
+  private AbstractQueryProfilerBreakdown addDependencyNode(Query query, int token) {
 
     // Add a new slot in the dependency tree
     tree.add(new IntArrayList(5));
@@ -120,13 +120,13 @@ class QueryProfilerTree {
     // Save our query for lookup later
     queries.add(query);
 
-    QueryProfilerBreakdown breakdown = createProfileBreakdown();
+    AbstractQueryProfilerBreakdown breakdown = createProfileBreakdown();
     breakdowns.add(token, breakdown);
     return breakdown;
   }
 
-  private QueryProfilerBreakdown createProfileBreakdown() {
-    return new QueryProfilerBreakdown();
+  private AbstractQueryProfilerBreakdown createProfileBreakdown() {
+    return new DefaultQueryProfilerBreakdown();
   }
 
   /** Removes the last (e.g. most recent) value on the stack */

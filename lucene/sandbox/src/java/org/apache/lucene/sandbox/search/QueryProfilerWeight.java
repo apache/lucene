@@ -31,16 +31,16 @@ import org.apache.lucene.search.Weight;
  */
 class QueryProfilerWeight extends FilterWeight {
 
-  private final QueryProfilerBreakdown profile;
+  private final AbstractQueryProfilerBreakdown profile;
 
-  public QueryProfilerWeight(Weight subQueryWeight, QueryProfilerBreakdown profile) {
+  public QueryProfilerWeight(Weight subQueryWeight, AbstractQueryProfilerBreakdown profile) {
     super(subQueryWeight);
     this.profile = profile;
   }
 
   @Override
   public int count(LeafReaderContext context) throws IOException {
-    QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.COUNT);
+    QueryProfilerTimer timer = profile.context(context).getTimer(QueryProfilerTimingType.COUNT);
     timer.start();
     try {
       return in.count(context);
@@ -51,7 +51,7 @@ class QueryProfilerWeight extends FilterWeight {
 
   @Override
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-    QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.BUILD_SCORER);
+    QueryProfilerTimer timer = profile.context(context).getTimer(QueryProfilerTimingType.BUILD_SCORER);
     timer.start();
     final ScorerSupplier subQueryScorerSupplier;
     try {
@@ -68,7 +68,7 @@ class QueryProfilerWeight extends FilterWeight {
       public Scorer get(long loadCost) throws IOException {
         timer.start();
         try {
-          return new QueryProfilerScorer(subQueryScorerSupplier.get(loadCost), profile);
+          return new QueryProfilerScorer(subQueryScorerSupplier.get(loadCost), profile.context(context));
         } finally {
           timer.stop();
         }

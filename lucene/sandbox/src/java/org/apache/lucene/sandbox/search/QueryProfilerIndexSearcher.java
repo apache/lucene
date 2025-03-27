@@ -53,7 +53,7 @@ public class QueryProfilerIndexSearcher extends IndexSearcher {
     // createWeight() is called for each query in the tree, so we tell the queryProfiler
     // each invocation so that it can build an internal representation of the query
     // tree
-    QueryProfilerBreakdown profile = profiler.getProfileBreakdown(query);
+    AbstractQueryProfilerBreakdown profile = profiler.getProfileBreakdown(query);
     QueryProfilerTimer timer = profile.getTimer(QueryProfilerTimingType.CREATE_WEIGHT);
     timer.start();
     final Weight weight;
