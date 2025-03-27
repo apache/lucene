@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.apache.lucene.analysis.util.StemmerUtil;
 
 /**
@@ -44,6 +45,7 @@ public final class GermanNormalizationFilter extends TokenFilter {
   private static final int U = 2; /* umlaut state, allows e-deletion */
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final KeywordAttribute keywordAttr = addAttribute(KeywordAttribute.class);
 
   public GermanNormalizationFilter(TokenStream input) {
     super(input);
@@ -52,6 +54,9 @@ public final class GermanNormalizationFilter extends TokenFilter {
   @Override
   public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
+      if (keywordAttr.isKeyword()) {
+        return true;
+      }
       int state = N;
       char[] buffer = termAtt.buffer();
       int length = termAtt.length();
