@@ -18,9 +18,11 @@ package org.apache.lucene.analysis.de;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 
@@ -79,6 +81,21 @@ public class TestGermanNormalizationFilter extends BaseTokenStreamTestCase {
           }
         };
     checkOneTerm(a, "", "");
+    a.close();
+  }
+
+  public void testKeyword() throws IOException {
+    final CharArraySet exclusionSet = new CharArraySet(asSet("bär"), false);
+    Analyzer a =
+            new Analyzer() {
+              @Override
+              protected TokenStreamComponents createComponents(String fieldName) {
+                Tokenizer source = new MockTokenizer(MockTokenizer.WHITESPACE, false);
+                TokenStream sink = new SetKeywordMarkerFilter(source, exclusionSet);
+                return new TokenStreamComponents(source, new GermanNormalizationFilter(sink));
+              }
+            };
+    checkOneTerm(a, "bär", "bär");
     a.close();
   }
 }
