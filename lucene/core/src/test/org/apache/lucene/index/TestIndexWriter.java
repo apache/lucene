@@ -5037,4 +5037,45 @@ public class TestIndexWriter extends LuceneTestCase {
       }
     }
   }
+
+  public void testAdvanceSegmentInfosCounter() throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriter writer;
+    IndexReader reader;
+
+    writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    // add 10 documents
+    for (int i = 0; i < 10; i++) {
+      addDocWithIndex(writer, i);
+      writer.commit();
+    }
+    long beforeAdvanceSegmentCounter = writer.getSegmentInfosCounter();
+    writer.advanceSegmentInfosCounter(1);
+    assertEquals(beforeAdvanceSegmentCounter, writer.getSegmentInfosCounter());
+
+    writer.advanceSegmentInfosCounter(1000);
+    assertEquals(1000, writer.getSegmentInfosCounter());
+
+    // add 40 documents
+    for (int i = 10; i < 50; i++) {
+      addDocWithIndex(writer, i);
+      writer.commit();
+    }
+
+    assertEquals(1041, writer.getSegmentInfosCounter());
+
+    IndexWriter.DocStats docStats = writer.getDocStats();
+    assertEquals(50, docStats.maxDoc);
+    assertEquals(50, docStats.numDocs);
+    writer.close();
+
+    // check that the index reader gives the same numbers.
+    reader = DirectoryReader.open(dir);
+    assertEquals(50, reader.maxDoc());
+    assertEquals(50, reader.numDocs());
+    reader.close();
+    dir.close();
+  }
 }
