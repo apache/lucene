@@ -22,28 +22,28 @@ import org.apache.lucene.util.FixedBitSet;
 final class DISIDocIdStream extends DocIdStream {
 
   private final DocIdSetIterator iterator;
-  private final int to;
+  private final int max;
   private final FixedBitSet spare;
 
-  DISIDocIdStream(DocIdSetIterator iterator, int to, FixedBitSet spare) {
-    if (to - iterator.docID() > spare.length()) {
+  DISIDocIdStream(DocIdSetIterator iterator, int max, FixedBitSet spare) {
+    if (max - iterator.docID() > spare.length()) {
       throw new IllegalArgumentException("Bit set is too small to hold all potential matches");
     }
     this.iterator = iterator;
-    this.to = to;
+    this.max = max;
     this.spare = spare;
   }
 
   @Override
   public boolean mayHaveRemaining() {
-    return iterator.docID() < to;
+    return iterator.docID() < max;
   }
 
   @Override
   public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
     // If there are no live docs to apply, loading matching docs into a bit set and then iterating
     // bits is unlikely to beat iterating the iterator directly.
-    upTo = Math.min(upTo, to);
+    upTo = Math.min(upTo, max);
     for (int doc = iterator.docID(); doc < upTo; doc = iterator.nextDoc()) {
       consumer.accept(doc);
     }
@@ -57,7 +57,7 @@ final class DISIDocIdStream extends DocIdStream {
     // If the collector is just interested in the count, loading in a bit set and counting bits is
     // often faster than incrementing a counter on every call to nextDoc().
     assert spare.scanIsEmpty();
-    upTo = Math.min(upTo, to);
+    upTo = Math.min(upTo, max);
     int offset = iterator.docID();
     iterator.intoBitSet(upTo, spare, offset);
     int count = spare.cardinality(0, upTo - offset);

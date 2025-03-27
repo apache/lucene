@@ -223,6 +223,7 @@ public final class FixedBitSet extends BitSet {
       }
       cardinality += Long.bitCount(bits);
       from += numBitsTilNextWord;
+      assert (from & 0x3F) == 0;
     }
 
     for (int i = from >> 6, end = to >> 6; i < end; ++i) {
@@ -846,6 +847,7 @@ public final class FixedBitSet extends BitSet {
       }
       forEach(bits, from + base, consumer);
       from += numBitsTilNextWord;
+      assert (from & 0x3F) == 0;
     }
 
     for (int i = from >> 6, end = to >> 6; i < end; ++i) {

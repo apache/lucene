@@ -159,11 +159,6 @@ final class BooleanScorer extends BulkScorer {
       w.doc = it.docID();
     }
 
-    if (buckets == null && acceptDocs != null) {
-      // In this case, live docs have not been applied yet.
-      acceptDocs.applyMask(matching, base);
-    }
-
     if (buckets == null) {
       if (acceptDocs != null) {
         // In this case, live docs have not been applied yet.

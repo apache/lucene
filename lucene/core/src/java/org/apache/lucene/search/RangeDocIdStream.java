@@ -38,7 +38,7 @@ final class RangeDocIdStream extends DocIdStream {
 
   @Override
   public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
-    if (upTo >= this.upTo) {
+    if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
       for (int doc = this.upTo; doc < upTo; ++doc) {
         consumer.accept(doc);
@@ -49,7 +49,7 @@ final class RangeDocIdStream extends DocIdStream {
 
   @Override
   public int count(int upTo) throws IOException {
-    if (upTo >= this.upTo) {
+    if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
       int count = upTo - this.upTo;
       this.upTo = upTo;

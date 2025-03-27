@@ -39,7 +39,7 @@ final class BitSetDocIdStream extends DocIdStream {
 
   @Override
   public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
-    if (upTo >= this.upTo) {
+    if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
       bitSet.forEach(this.upTo - offset, upTo - offset, offset, consumer);
       this.upTo = upTo;
@@ -48,7 +48,7 @@ final class BitSetDocIdStream extends DocIdStream {
 
   @Override
   public int count(int upTo) throws IOException {
-    if (upTo >= this.upTo) {
+    if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
       int count = bitSet.cardinality(this.upTo - offset, upTo - offset);
       this.upTo = upTo;
