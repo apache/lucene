@@ -22,6 +22,10 @@ import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
 
+/**
+ * Common AbstractQueryProfileBreakdown class that can be used by both concurrent
+ * and non-concurrent versions of profile breakdown
+ */
 public abstract class AbstractQueryProfilerBreakdown extends QueryProfilerBreakdown {
   /**
    * Return (or create) contextual profile breakdown instance
