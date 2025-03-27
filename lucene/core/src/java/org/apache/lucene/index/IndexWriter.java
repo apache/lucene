@@ -1437,10 +1437,11 @@ public class IndexWriter
     if (segmentInfos.counter < newCounter) {
       segmentInfos.counter = newCounter;
     }
+    changed();
   }
 
   /** Returns the {@link SegmentInfos#counter}. */
-  public synchronized long getSegmentInfosCounter() {
+  public long getSegmentInfosCounter() {
     this.ensureOpen();
     return segmentInfos.counter;
   }
