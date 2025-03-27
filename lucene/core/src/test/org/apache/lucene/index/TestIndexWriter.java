@@ -5064,7 +5064,9 @@ public class TestIndexWriter extends LuceneTestCase {
       writer.commit();
     }
 
-    assertEquals(1041, writer.getSegmentInfosCounter());
+    // There may be merge operations in the background, here only verifies that the current segment
+    // counter is greater than 1000.
+    assertTrue(writer.getSegmentInfosCounter() > 1000);
 
     IndexWriter.DocStats docStats = writer.getDocStats();
     assertEquals(50, docStats.maxDoc);
