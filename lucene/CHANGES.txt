@@ -86,6 +86,11 @@ New Features
   These queries allow for the vector search entry points to be initialized via a `seed` query. This follows
   the research provided via https://arxiv.org/abs/2307.16779. (Sean MacAvaney, Ben Trent).
 
+* GITHUB#14078, GITHUB#14374: Adds two new binary quantized vector codecs `Lucene102HnswBinaryQuantizedVectorsFormat`
+  and `Lucene102BinaryQuantizedVectorsFormat`. These new formats allow a ~32x from raw float32 vectors while
+  achieving high recall (with oversampling and reranking vectors) for typical modern knn vector search tasks.
+  (Mayya Sharipova, Ben Trent, Tom Veasey, John Wagster, Chris Hegarty)
+
 * GITHUB#13974,GITHUB#14276: Introducing DocValuesMultiRangeQuery.SortedSetStabbingBuilder into sandbox.
   (Mikhail Khludnev)
 
@@ -108,7 +113,8 @@ Improvements
 
 * GITHUB#14079: Hunspell Dictionary now supports an option to tolerate REP rule count mismatches.
   (Robert Muir)
-* GITHUB#13984: Add HNSW graph checks and stats to CheckIndex
+
+* GITHUB#13984: Add HNSW graph checks and stats to CheckIndex (Ben Chaplin)
 
 * GITHUB#14113: Remove unnecessary ByteArrayDataInput allocations from `Lucene90DocValuesProducer$TermsDict.decompressBlock`. (Ankit Jain)
 
@@ -131,6 +137,9 @@ Improvements
 * GITHUB#14192: Added support for RegExp to handle case insensitive matching
   across the full set of Unicode characters. (John Wagster)
 
+* GITHUB#14381: Add RegExp.CASE_INSENSITIVE_RANGE flag to support case-insensitive
+  matches of character class ranges such as /[a-z]/ (Robert Muir)
+
 * GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
   improved to tolerate more instances of this problem.  (Robert Muir)
 
@@ -139,6 +148,7 @@ Improvements
 
 * GITHUB#14213: Allowing indexing stored-only StoredField directly from DataInput. (Tim Brooks)
 
+* GITHUB#14364: Completion FSTs to be loaded off-heap at all times. (Luca Cavanna)
 
 Optimizations
 ---------------------
@@ -178,7 +188,21 @@ Optimizations
 
 * GITHUB#14301: Avoid unnecessary evaluations and skipping documents. (hanbj)
 
-# GITHUB#14203: Decode doc ids in BKD leaves with auto-vectorized loops when using DEFAULT_MAX_POINTS_IN_LEAF_NODE. (Guo Feng)
+* GITHUB#14203: Decode doc ids in BKD leaves with auto-vectorized loops when using DEFAULT_MAX_POINTS_IN_LEAF_NODE. (Guo Feng)
+
+* GITHUB#14176: Avoid the per-doc virtual call when building competitive iterator for dynamic pruning. (Guo Feng)
+
+# GITHUB#14361: Introduce new encoding of BPV 21 for DocIdsWriter used in BKD Tree. (Aniketh Jain, Guo Feng)
+
+* GITHUB#14331: Speedup merging of HNSW graphs. (Mayya Sharipova, Tom Veasey)
+
+* GITHUB#14383: Use FixedLengthBytesRefArray in OneDimensionBKDWriter to hold split values. (Ignacio Vera)
+
+* GITHUB#14373: Optimized `ParallelLeafReader` to improve term vector fetching efficiency. (Divyansh Agrawal)
+
+* GITHUB#14393: Pack file pointers using the packed monotonic builder when building BKD trees. (Ignacio Vera)
+
+* GITHUB#14304: Add SIMD optimizations for scalar quantized queries and indexing. (Simon Cooper)
 
 Bug Fixes
 ---------------------
@@ -191,7 +215,7 @@ Bug Fixes
 * GITHUB#14126: Avoid overflow in index input slices invariant checks
   (Chris Hegarty)
 
-* GITHUB#14215: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent)
+* GITHUB#14215, GITHUB#14249, GITHUB#14366: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent, Ignacio Vera)
 
 * GITHUB#14320: Fix DirectIOIndexInput seek to not read when position is within buffer (Chris Hegarty)
 
@@ -214,7 +238,11 @@ Other
 
 * GITHUB#14223 : Fixed a flaky test TestKnnFloatVectorQuery.testFindFewer (Navneet Verma)
 
-* GITHUB#14279 : Add github action to verify changelog entry and set milestone to PRs. (Amir Raza)
+* GITHUB#14372: Reduce visibility of NRTSuggester#load from public to package private (Luca Cavanna)
+
+* GITHUB#14386: Bump analysis/icu's icu4j dependency to 77.1 (Robert Muir)
+
+* GITHUB#14388: Bump expression's antlr dependency to 4.13.2 (Dawid Weiss, Robert Muir)
 
 ======================= Lucene 10.1.0 =======================
 

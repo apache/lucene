@@ -33,6 +33,7 @@ final class DocIdsWriter {
   private static final byte CONTINUOUS_IDS = (byte) -2;
   private static final byte BITSET_IDS = (byte) -1;
   private static final byte DELTA_BPV_16 = (byte) 16;
+  private static final byte BPV_21 = (byte) 21;
   private static final byte BPV_24 = (byte) 24;
   private static final byte BPV_32 = (byte) 32;
   // These signs are legacy, should no longer be used in the writing side.
@@ -115,9 +116,33 @@ final class DocIdsWriter {
         out.writeShort((short) scratch[count - 1]);
       }
     } else {
-      if (max <= 0xFFFFFF) {
+      if (max <= 0x1FFFFF && version >= BKDWriter.VERSION_VECTORIZE_BPV24_AND_INTRODUCE_BPV21) {
+        out.writeByte(BPV_21);
+        final int oneThird = floorToMultipleOf16(count / 3);
+        final int numInts = oneThird * 2;
+        for (int i = 0; i < numInts; i++) {
+          scratch[i] = docIds[i + start] << 11;
+        }
+        for (int i = 0; i < oneThird; i++) {
+          final int longIdx = i + numInts + start;
+          scratch[i] |= docIds[longIdx] & 0x7FF;
+          scratch[i + oneThird] |= (docIds[longIdx] >>> 11) & 0x7FF;
+        }
+        for (int i = 0; i < numInts; i++) {
+          out.writeInt(scratch[i]);
+        }
+        int i = oneThird * 3;
+        for (; i < count - 2; i += 3) {
+          out.writeLong(
+              ((long) docIds[i]) | (((long) docIds[i + 1]) << 21) | (((long) docIds[i + 2]) << 42));
+        }
+        for (; i < count; ++i) {
+          out.writeShort((short) docIds[start + i]);
+          out.writeByte((byte) (docIds[start + i] >>> 16));
+        }
+      } else if (max <= 0xFFFFFF) {
         out.writeByte(BPV_24);
-        if (version < BKDWriter.VERSION_VECTORIZED_DOCID) {
+        if (version < BKDWriter.VERSION_VECTORIZE_BPV24_AND_INTRODUCE_BPV21) {
           writeScalarInts24(docIds, start, count, out);
         } else {
           // encode the docs in the format that can be vectorized decoded.
@@ -224,8 +249,11 @@ final class DocIdsWriter {
       case DELTA_BPV_16:
         readDelta16(in, count, docIDs);
         break;
+      case BPV_21:
+        readInts21(in, count, docIDs);
+        break;
       case BPV_24:
-        if (version < BKDWriter.VERSION_VECTORIZED_DOCID) {
+        if (version < BKDWriter.VERSION_VECTORIZE_BPV24_AND_INTRODUCE_BPV21) {
           readScalarInts24(in, count, docIDs);
         } else {
           readInts24(in, count, docIDs);
@@ -306,6 +334,47 @@ final class DocIdsWriter {
     }
   }
 
+  private static int floorToMultipleOf16(int n) {
+    assert n >= 0;
+    return n & 0xFFFFFFF0;
+  }
+
+  private void readInts21(IndexInput in, int count, int[] docIDs) throws IOException {
+    int oneThird = floorToMultipleOf16(count / 3);
+    int numInts = oneThird << 1;
+    in.readInts(scratch, 0, numInts);
+    if (count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE) {
+      // Same format, but enabling the JVM to specialize the decoding logic for the default number
+      // of points per node proved to help on benchmarks
+      decode21(
+          docIDs,
+          scratch,
+          floorToMultipleOf16(BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE / 3),
+          floorToMultipleOf16(BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE / 3) * 2);
+    } else {
+      decode21(docIDs, scratch, oneThird, numInts);
+    }
+    int i = oneThird * 3;
+    for (; i < count - 2; i += 3) {
+      long l = in.readLong();
+      docIDs[i] = (int) (l & 0x1FFFFFL);
+      docIDs[i + 1] = (int) ((l >>> 21) & 0x1FFFFFL);
+      docIDs[i + 2] = (int) (l >>> 42);
+    }
+    for (; i < count; ++i) {
+      docIDs[i] = (in.readShort() & 0xFFFF) | (in.readByte() & 0xFF) << 16;
+    }
+  }
+
+  private static void decode21(int[] docIds, int[] scratch, int oneThird, int numInts) {
+    for (int i = 0; i < numInts; ++i) {
+      docIds[i] = scratch[i] >>> 11;
+    }
+    for (int i = 0; i < oneThird; i++) {
+      docIds[i + numInts] = (scratch[i] & 0x7FF) | ((scratch[i + oneThird] & 0x7FF) << 11);
+    }
+  }
+
   private void readInts24(IndexInput in, int count, int[] docIDs) throws IOException {
     int quarter = count >> 2;
     int numInts = quarter * 3;
@@ -313,6 +382,10 @@ final class DocIdsWriter {
     if (count == BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE) {
       // Same format, but enabling the JVM to specialize the decoding logic for the default number
       // of points per node proved to help on benchmarks
+      assert floorToMultipleOf16(quarter) == quarter
+          : "We are relying on the fact that quarter of BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE"
+              + " is a multiple of 16 to vectorize the decoding loop,"
+              + " please check performance issue if you want to break this assumption.";
       decode24(
           docIDs,
           scratch,
@@ -380,8 +453,11 @@ final class DocIdsWriter {
       case DELTA_BPV_16:
         readDelta16(in, count, visitor);
         break;
+      case BPV_21:
+        readInts21(in, count, visitor, buffer);
+        break;
       case BPV_24:
-        if (version < BKDWriter.VERSION_VECTORIZED_DOCID) {
+        if (version < BKDWriter.VERSION_VECTORIZE_BPV24_AND_INTRODUCE_BPV21) {
           readScalarInts24(in, count, visitor);
         } else {
           readInts24(in, count, visitor, buffer);
@@ -421,6 +497,14 @@ final class DocIdsWriter {
   private void readDelta16(IndexInput in, int count, IntersectVisitor visitor) throws IOException {
     readDelta16(in, count, scratch);
     scratchIntsRef.ints = scratch;
+    scratchIntsRef.length = count;
+    visitor.visit(scratchIntsRef);
+  }
+
+  private void readInts21(IndexInput in, int count, IntersectVisitor visitor, int[] buffer)
+      throws IOException {
+    readInts21(in, count, buffer);
+    scratchIntsRef.ints = buffer;
     scratchIntsRef.length = count;
     visitor.visit(scratchIntsRef);
   }

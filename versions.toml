@@ -1,5 +1,6 @@
+# Run "gradlew writeLocks" and "gradlew updateLicenses" after modifying this file!
 [versions]
-antlr = "4.11.1"
+antlr = "4.13.2"
 asm = "9.6"
 assertj = "3.21.0"
 commons-codec = "1.17.2"
@@ -11,7 +12,7 @@ flexmark = "0.61.24"
 googleJavaFormat = "1.23.0"
 groovy = "4.0.22"
 hamcrest = "2.2"
-icu4j = "74.2"
+icu4j = "77.1"
 javacc = "7.0.12"
 jflex = "1.8.2"
 jgit = "6.10.0.202406032230-r"
