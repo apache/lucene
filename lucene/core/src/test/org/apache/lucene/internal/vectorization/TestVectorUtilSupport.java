@@ -209,8 +209,8 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
     assertEquals(
-        func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
         func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
+        func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
         delta);
   }
 
