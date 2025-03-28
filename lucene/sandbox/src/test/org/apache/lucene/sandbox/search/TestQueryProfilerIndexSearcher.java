@@ -78,7 +78,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.search(query, 1);
 
-    List<QueryProfilerResult> results = searcher.getProfileResult();
+    List<QuerySliceProfilerResult> results = searcher.getProfileResult().get(0);
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
@@ -122,7 +122,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     Query secondQuery = new TermQuery(new Term("foo", "baz"));
     searcher.search(secondQuery, 1);
 
-    List<QueryProfilerResult> results = searcher.getProfileResult();
+    List<QuerySliceProfilerResult> results = searcher.getProfileResult().get(0);
     assertEquals(2, results.size());
 
     Map<String, Long> firstResult = results.get(0).getTimeBreakdown();
@@ -154,7 +154,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.search(query, 1, Sort.INDEXORDER); // scores are not needed
 
-    List<QueryProfilerResult> results = searcher.getProfileResult();
+    List<QuerySliceProfilerResult> results = searcher.getProfileResult().get(0);
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
@@ -194,7 +194,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     Query query = new TermQuery(new Term("foo", "bar"));
     searcher.count(query); // will use index stats
 
-    List<QueryProfilerResult> results = searcher.getProfileResult();
+    List<QuerySliceProfilerResult> results = searcher.getProfileResult().get(0);
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
@@ -234,7 +234,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     QueryProfilerIndexSearcher searcher = new QueryProfilerIndexSearcher(reader);
     Query query = new RandomApproximationQuery(new TermQuery(new Term("foo", "bar")), random());
     searcher.count(query);
-    List<QueryProfilerResult> results = searcher.getProfileResult();
+    List<QuerySliceProfilerResult> results = searcher.getProfileResult().get(0);
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(
