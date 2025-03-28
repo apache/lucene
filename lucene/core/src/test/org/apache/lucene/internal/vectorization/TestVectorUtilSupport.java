@@ -210,9 +210,15 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
-    assertThat(
-        func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
-        closeTo(func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()), delta));
+    double luceneValue =
+        func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport());
+    double panamaValue =
+        func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport());
+    if (Double.isNaN(luceneValue)){
+      assertTrue(Double.isNaN(panamaValue));
+    } else {
+      assertThat(panamaValue, closeTo(luceneValue, delta));
+    }
   }
 
   private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {
