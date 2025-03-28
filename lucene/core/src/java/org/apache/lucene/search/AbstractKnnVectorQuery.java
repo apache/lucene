@@ -81,6 +81,9 @@ abstract class AbstractKnnVectorQuery extends Query {
               .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
               .build();
       Query rewritten = indexSearcher.rewrite(booleanQuery);
+      if (rewritten.getClass() == MatchNoDocsQuery.class) {
+        return rewritten;
+      }
       filterWeight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
     } else {
       filterWeight = null;
