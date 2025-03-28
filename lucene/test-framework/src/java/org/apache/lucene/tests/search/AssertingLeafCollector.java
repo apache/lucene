@@ -120,7 +120,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
   private class AssertingDocIdStream extends DocIdStream {
 
     private final DocIdStream stream;
-    private boolean consumed;
+    private int lastUpTo = -1;
 
     AssertingDocIdStream(DocIdStream stream) {
       this.stream = stream;
@@ -128,7 +128,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
     @Override
     public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      assert consumed == false : "A terminal operation has already been called";
+      assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
       stream.forEach(
           doc -> {
             assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
@@ -137,15 +137,54 @@ class AssertingLeafCollector extends FilterLeafCollector {
             consumer.accept(doc);
             lastCollected = doc;
           });
-      consumed = true;
+      lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
+      assert stream.mayHaveRemaining() == false;
+    }
+
+    @Override
+    public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
+      assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
+      stream.forEach(
+          doc -> {
+            assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
+            assert doc >= min : "Out of range: " + doc + " < " + min;
+            assert doc < max : "Out of range: " + doc + " >= " + max;
+            consumer.accept(doc);
+            lastCollected = doc;
+          });
+      lastUpTo = upTo;
+      if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
+        assert stream.mayHaveRemaining() == false;
+      }
     }
 
     @Override
     public int count() throws IOException {
-      assert consumed == false : "A terminal operation has already been called";
+      assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
       int count = stream.count();
-      consumed = true;
+      lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
+      assert stream.mayHaveRemaining() == false;
       return count;
+    }
+
+    @Override
+    public int count(int upTo) throws IOException {
+      assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
+      int count = stream.count(upTo);
+      lastUpTo = upTo;
+      if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
+        assert stream.mayHaveRemaining() == false;
+      }
+      return count;
+    }
+
+    @Override
+    public boolean mayHaveRemaining() {
+      boolean mayHaveRemaining = stream.mayHaveRemaining();
+      if (lastUpTo == DocIdSetIterator.NO_MORE_DOCS) {
+        assert mayHaveRemaining == false;
+      }
+      return mayHaveRemaining;
     }
   }
 }
