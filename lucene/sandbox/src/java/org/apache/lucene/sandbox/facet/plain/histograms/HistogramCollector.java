@@ -279,7 +279,9 @@ final class HistogramCollector implements Collector {
     public void finish() throws IOException {
       // Put counts that we computed in the int[] back into the hash map.
       for (int i = 0; i < counts.length; ++i) {
-        collectorCounts.addTo(leafMinBucket + i, counts[i]);
+        if (counts[i] != 0) {
+          collectorCounts.addTo(leafMinBucket + i, counts[i]);
+        }
       }
       checkMaxBuckets(collectorCounts.size(), maxBuckets);
     }
