@@ -17,9 +17,7 @@
 
 package org.apache.lucene.util;
 
-import java.io.IOException;
 import java.util.stream.IntStream;
-import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
@@ -335,13 +333,5 @@ public final class VectorUtil {
   public static int findNextGEQ(int[] buffer, int target, int from, int to) {
     assert IntStream.range(0, to - 1).noneMatch(i -> buffer[i] > buffer[i + 1]);
     return IMPL.findNextGEQ(buffer, target, from, to);
-  }
-
-  /**
-   * Advance to the first doc from the block that is equal to or greater than {@code target}. Return
-   * true if there is such a doc and false otherwise.
-   */
-  public static boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
-    return IMPL.advanceWithinBlock(disi, target);
   }
 }
