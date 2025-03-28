@@ -167,34 +167,35 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       }
     }
 
-    if (acceptDocs == null) {
-      int minDocIDRunEnd = max;
-      for (DisiWrapper w : iterators) {
-        if (w.docID() > min) {
-          minDocIDRunEnd = min;
-          break;
-        } else {
-          minDocIDRunEnd = Math.min(minDocIDRunEnd, w.docIDRunEnd());
-        }
-      }
-
-      if (minDocIDRunEnd - min >= WINDOW_SIZE / 2) {
-        // We have a large range of doc IDs that all match.
-        collector.collect(new RangeDocIdStream(min, minDocIDRunEnd));
-        return minDocIDRunEnd;
-      }
-    }
-
-    int bitsetWindowMax = (int) Math.min(max, (long) min + WINDOW_SIZE);
-
+    // Partition clauses of the conjunction into:
+    //  - clauses that don't fully match the first half of the window and get evaluated via
+    // #loadIntoBitSet or leaf-frog,
+    //  - other clauses that are used to compute the greatest possible window size that they fully
+    // match.
+    // This logic helps align scoring windows with the natural #docIDRunEnd() boundaries of the
+    // data, which helps evaluate fewer clauses per window - without allowing windows to become too
+    // small thanks to the WINDOW_SIZE/2 threshold.
+    int minDocIDRunEnd = max;
+    final int minRunEndThreshold = (int) Math.min((long) min + WINDOW_SIZE / 2, max);
     for (DisiWrapper w : iterators) {
-      if (w.docID() > min || w.docIDRunEnd() < bitsetWindowMax) {
+      int docIdRunEnd = w.docIDRunEnd();
+      if (w.docID() > min || docIdRunEnd < minRunEndThreshold) {
         windowApproximations.add(w.approximation());
         if (w.twoPhase() != null) {
           windowTwoPhases.add(w.twoPhase());
         }
+      } else {
+        minDocIDRunEnd = Math.min(minDocIDRunEnd, docIdRunEnd);
       }
     }
+
+    if (acceptDocs == null && windowApproximations.isEmpty()) {
+      // We have a large range of doc IDs that all match.
+      collector.collect(new RangeDocIdStream(min, minDocIDRunEnd));
+      return minDocIDRunEnd;
+    }
+
+    int bitsetWindowMax = (int) Math.min(minDocIDRunEnd, (long) WINDOW_SIZE + min);
 
     if (windowTwoPhases.isEmpty()) {
       if (acceptDocs == null && windowApproximations.size() == 1) {
