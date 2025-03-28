@@ -17,18 +17,19 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.FixedBitSet;
 
-final class RangeDocIdStream extends DocIdStream {
+final class BitSetDocIdStream extends DocIdStream {
 
+  private final FixedBitSet bitSet;
+  private final int offset, max;
   private int upTo;
-  private final int max;
 
-  RangeDocIdStream(int min, int max) {
-    if (max < min) {
-      throw new IllegalArgumentException("min = " + min + " > max = " + max);
-    }
-    this.upTo = min;
-    this.max = max;
+  BitSetDocIdStream(FixedBitSet bitSet, int offset) {
+    this.bitSet = bitSet;
+    this.offset = offset;
+    upTo = offset;
+    max = (int) Math.min(Integer.MAX_VALUE, (long) offset + bitSet.length());
   }
 
   @Override
@@ -40,9 +41,7 @@ final class RangeDocIdStream extends DocIdStream {
   public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
     if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
-      for (int doc = this.upTo; doc < upTo; ++doc) {
-        consumer.accept(doc);
-      }
+      bitSet.forEach(this.upTo - offset, upTo - offset, offset, consumer);
       this.upTo = upTo;
     }
   }
@@ -51,7 +50,7 @@ final class RangeDocIdStream extends DocIdStream {
   public int count(int upTo) throws IOException {
     if (upTo > this.upTo) {
       upTo = Math.min(upTo, max);
-      int count = upTo - this.upTo;
+      int count = bitSet.cardinality(this.upTo - offset, upTo - offset);
       this.upTo = upTo;
       return count;
     } else {

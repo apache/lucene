@@ -65,4 +65,39 @@ public interface VectorUtilSupport {
    * @return the dot product
    */
   long int4BitDotProduct(byte[] int4Quantized, byte[] binaryQuantized);
+
+  /**
+   * Quantizes {@code vector}, putting the result into {@code dest}.
+   *
+   * @param vector the vector to quantize
+   * @param dest the destination vector
+   * @param scale the scaling factor
+   * @param alpha the alpha value
+   * @param minQuantile the lower quantile of the distribution
+   * @param maxQuantile the upper quantile of the distribution
+   * @return the corrective offset that needs to be applied to the score
+   */
+  float minMaxScalarQuantize(
+      float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile);
+
+  /**
+   * Recalculates the offset for {@code vector}.
+   *
+   * @param vector the vector to quantize
+   * @param oldAlpha the previous alpha value
+   * @param oldMinQuantile the previous lower quantile
+   * @param scale the scaling factor
+   * @param alpha the alpha value
+   * @param minQuantile the lower quantile of the distribution
+   * @param maxQuantile the upper quantile of the distribution
+   * @return the new corrective offset
+   */
+  float recalculateScalarQuantizationOffset(
+      byte[] vector,
+      float oldAlpha,
+      float oldMinQuantile,
+      float scale,
+      float alpha,
+      float minQuantile,
+      float maxQuantile);
 }

@@ -907,4 +907,98 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     return subRet0 + (subRet1 << 1) + (subRet2 << 2) + (subRet3 << 3);
   }
+
+  @Override
+  public float minMaxScalarQuantize(
+      float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
+    assert vector.length == dest.length;
+    float correction = 0;
+    int i = 0;
+    // only vectorize if we have a viable BYTE_SPECIES we can use for output
+    if (VECTOR_BITSIZE >= 256) {
+      FloatVector sum = FloatVector.zero(FLOAT_SPECIES);
+
+      for (; i < FLOAT_SPECIES.loopBound(vector.length); i += FLOAT_SPECIES.length()) {
+        FloatVector v = FloatVector.fromArray(FLOAT_SPECIES, vector, i);
+
+        // Make sure the value is within the quantile range, cutting off the tails
+        // see first parenthesis in equation: byte = (float - minQuantile) * 127/(maxQuantile -
+        // minQuantile)
+        FloatVector dxc = v.min(maxQuantile).max(minQuantile).sub(minQuantile);
+        // Scale the value to the range [0, 127], this is our quantized value
+        // scale = 127/(maxQuantile - minQuantile)
+        // Math.round rounds to positive infinity, so do the same by +0.5 then truncating to int
+        Vector<Integer> roundedDxs =
+            fma(dxc, dxc.broadcast(scale), dxc.broadcast(0.5f)).convert(VectorOperators.F2I, 0);
+        // output this to the array
+        ((ByteVector) roundedDxs.castShape(BYTE_SPECIES, 0)).intoArray(dest, i);
+        // We multiply by `alpha` here to get the quantized value back into the original range
+        // to aid in calculating the corrective offset
+        FloatVector dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
+        // Calculate the corrective offset that needs to be applied to the score
+        // in addition to the `byte * minQuantile * alpha` term in the equation
+        // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized value
+        // will be rounded to the nearest whole number and lose some accuracy
+        // Additionally, we account for the global correction of `minQuantile^2` in the equation
+        sum =
+            fma(
+                v.sub(minQuantile / 2f),
+                v.broadcast(minQuantile),
+                fma(v.sub(minQuantile).sub(dxq), dxq, sum));
+      }
+
+      correction = sum.reduceLanes(VectorOperators.ADD);
+    }
+
+    // complete the tail normally
+    correction +=
+        new DefaultVectorUtilSupport.ScalarQuantizer(alpha, scale, minQuantile, maxQuantile)
+            .quantize(vector, dest, i);
+
+    return correction;
+  }
+
+  @Override
+  public float recalculateScalarQuantizationOffset(
+      byte[] vector,
+      float oldAlpha,
+      float oldMinQuantile,
+      float scale,
+      float alpha,
+      float minQuantile,
+      float maxQuantile) {
+    float correction = 0;
+    int i = 0;
+    // only vectorize if we have a viable BYTE_SPECIES that we can use
+    if (VECTOR_BITSIZE >= 256) {
+      FloatVector sum = FloatVector.zero(FLOAT_SPECIES);
+
+      for (; i < BYTE_SPECIES.loopBound(vector.length); i += BYTE_SPECIES.length()) {
+        FloatVector fv =
+            (FloatVector) ByteVector.fromArray(BYTE_SPECIES, vector, i).castShape(FLOAT_SPECIES, 0);
+        // undo the old quantization
+        FloatVector v = fma(fv, fv.broadcast(oldAlpha), fv.broadcast(oldMinQuantile));
+
+        // same operations as in quantize above
+        FloatVector dxc = v.min(maxQuantile).max(minQuantile).sub(minQuantile);
+        Vector<Integer> roundedDxs =
+            fma(dxc, dxc.broadcast(scale), dxc.broadcast(0.5f)).convert(VectorOperators.F2I, 0);
+        FloatVector dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
+        sum =
+            fma(
+                v.sub(minQuantile / 2f),
+                v.broadcast(minQuantile),
+                fma(v.sub(minQuantile).sub(dxq), dxq, sum));
+      }
+
+      correction = sum.reduceLanes(VectorOperators.ADD);
+    }
+
+    // complete the tail normally
+    correction +=
+        new DefaultVectorUtilSupport.ScalarQuantizer(alpha, scale, minQuantile, maxQuantile)
+            .recalculateOffset(vector, i, oldAlpha, oldMinQuantile);
+
+    return correction;
+  }
 }

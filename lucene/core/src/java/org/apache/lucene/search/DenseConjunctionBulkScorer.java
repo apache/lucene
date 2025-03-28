@@ -68,9 +68,6 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   private final FixedBitSet clauseWindowMatches = new FixedBitSet(WINDOW_SIZE);
   private final List<DocIdSetIterator> windowApproximations = new ArrayList<>();
   private final List<TwoPhaseIterator> windowTwoPhases = new ArrayList<>();
-  private final DocIdStreamView docIdStreamView = new DocIdStreamView();
-  private final SingleIteratorDocIdStream singleIteratorDocIdStream =
-      new SingleIteratorDocIdStream();
 
   static DenseConjunctionBulkScorer of(List<Scorer> filters, int maxDoc, float constantScore) {
     List<DocIdSetIterator> iterators = new ArrayList<>();
@@ -203,10 +200,11 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       if (acceptDocs == null && windowApproximations.size() == 1) {
         // We have a range of doc IDs where all matches of an iterator are matches of the
         // conjunction.
-        singleIteratorDocIdStream.iterator = windowApproximations.get(0);
-        singleIteratorDocIdStream.from = min;
-        singleIteratorDocIdStream.to = bitsetWindowMax;
-        collector.collect(singleIteratorDocIdStream);
+        DocIdSetIterator iterator = windowApproximations.get(0);
+        if (iterator.docID() < min) {
+          iterator.advance(min);
+        }
+        collector.collect(new DISIDocIdStream(iterator, bitsetWindowMax, clauseWindowMatches));
       } else {
         scoreWindowUsingBitSet(collector, acceptDocs, windowApproximations, min, bitsetWindowMax);
       }
@@ -286,8 +284,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
         windowMatch = advance(windowMatches, windowMatch + 1);
       }
     } else {
-      docIdStreamView.windowBase = windowBase;
-      collector.collect(docIdStreamView);
+      collector.collect(new BitSetDocIdStream(windowMatches, windowBase));
     }
 
     windowMatches.clear();
@@ -366,62 +363,5 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   @Override
   public long cost() {
     return iterators.get(0).approximation().cost();
-  }
-
-  final class DocIdStreamView extends DocIdStream {
-
-    int windowBase;
-
-    @Override
-    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      int windowBase = this.windowBase;
-      long[] bitArray = windowMatches.getBits();
-      for (int idx = 0; idx < bitArray.length; idx++) {
-        long bits = bitArray[idx];
-        while (bits != 0L) {
-          int ntz = Long.numberOfTrailingZeros(bits);
-          consumer.accept(windowBase + ((idx << 6) | ntz));
-          bits ^= 1L << ntz;
-        }
-      }
-    }
-
-    @Override
-    public int count() throws IOException {
-      return windowMatches.cardinality();
-    }
-  }
-
-  /** {@link DocIdStream} for a {@link DocIdSetIterator} with no live docs to apply. */
-  final class SingleIteratorDocIdStream extends DocIdStream {
-
-    int from, to;
-    DocIdSetIterator iterator;
-
-    @Override
-    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      // If there are no live docs to apply, loading matching docs into a bit set and then iterating
-      // bits is unlikely to beat iterating the iterator directly.
-      if (iterator.docID() < from) {
-        iterator.advance(from);
-      }
-      for (int doc = iterator.docID(); doc < to; doc = iterator.nextDoc()) {
-        consumer.accept(doc);
-      }
-    }
-
-    @Override
-    public int count() throws IOException {
-      // If the collector is just interested in the count, loading in a bit set and counting bits is
-      // often faster than incrementing a counter on every call to nextDoc().
-      assert windowMatches.scanIsEmpty();
-      if (iterator.docID() < from) {
-        iterator.advance(from);
-      }
-      iterator.intoBitSet(to, clauseWindowMatches, from);
-      int count = clauseWindowMatches.cardinality();
-      clauseWindowMatches.clear();
-      return count;
-    }
   }
 }
