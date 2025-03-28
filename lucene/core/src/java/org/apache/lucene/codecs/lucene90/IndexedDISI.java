@@ -886,11 +886,6 @@ public final class IndexedDISI extends DocIdSetIterator {
         disi.index = disi.numberOfOnes - Long.bitCount(leftBits);
         return (leftBits & 1L) != 0;
       }
-
-      @Override
-      boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target) {
-        return false;
-      }
     },
     ALL {
       @Override
@@ -904,11 +899,6 @@ public final class IndexedDISI extends DocIdSetIterator {
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) {
         disi.index = target - disi.gap;
         return true;
-      }
-
-      @Override
-      boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target) {
-        return false;
       }
     };
 
@@ -944,8 +934,9 @@ public final class IndexedDISI extends DocIdSetIterator {
      * Advance the iterator exactly to the position corresponding to the given {@code target} and
      * return whether this document exists.
      */
-    abstract boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target)
-        throws IOException;
+    boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target) throws IOException {
+      return false;
+    }
   }
 
   /**
