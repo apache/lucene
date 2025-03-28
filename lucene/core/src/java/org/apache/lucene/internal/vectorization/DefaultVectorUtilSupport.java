@@ -17,6 +17,8 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import java.io.IOException;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -207,6 +209,23 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       }
     }
     return to;
+  }
+
+  @Override
+  public boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
+    final int targetInBlock = target & 0xFFFF;
+
+    for (; disi.index < disi.nextBlockIndex; ) {
+      int doc = Short.toUnsignedInt(disi.slice.readShort());
+      disi.index++;
+      if (doc >= targetInBlock) {
+        disi.doc = disi.block | doc;
+        disi.exists = true;
+        disi.nextExistDocInBlock = doc;
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

@@ -17,6 +17,9 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import java.io.IOException;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
+
 /**
  * Interface for implementations of VectorUtil support.
  *
@@ -52,6 +55,12 @@ public interface VectorUtilSupport {
    * to} is returned.
    */
   int findNextGEQ(int[] buffer, int target, int from, int to);
+
+  /**
+   * Advance to the first doc from the block that is equal to or greater than {@code target}. Return
+   * true if there is such a doc and false otherwise.
+   */
+  boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException;
 
   /**
    * Compute the dot product between a quantized int4 vector and a binary quantized vector. It is

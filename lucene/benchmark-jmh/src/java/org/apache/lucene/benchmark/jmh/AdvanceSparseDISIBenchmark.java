@@ -188,13 +188,21 @@ public class AdvanceSparseDISIBenchmark {
 
   @Benchmark
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+  public void advanceVector() throws IOException {
+    for (int target : targets) {
+      disi2.advanceVector(target);
+    }
+  }
+
+  //  @Benchmark
+  @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public void advanceBinarySearch() throws IOException {
     for (int target : targets) {
       disi2.advanceBinarySearch(target);
     }
   }
 
-  @Benchmark
+  //  @Benchmark
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public void advanceExact() throws IOException {
     for (int target : targets) {
@@ -202,7 +210,7 @@ public class AdvanceSparseDISIBenchmark {
     }
   }
 
-  @Benchmark
+  //  @Benchmark
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public void advanceExactBinarySearch() throws IOException {
     for (int target : targets) {
@@ -214,10 +222,11 @@ public class AdvanceSparseDISIBenchmark {
     //     For debugging.
     AdvanceSparseDISIBenchmark advanceSparseDISIBenchmark = new AdvanceSparseDISIBenchmark();
     advanceSparseDISIBenchmark.setup();
-    advanceSparseDISIBenchmark.advance();
-    advanceSparseDISIBenchmark.advanceBinarySearch();
-    advanceSparseDISIBenchmark.advanceExact();
-    advanceSparseDISIBenchmark.advanceExactBinarySearch();
+    //    advanceSparseDISIBenchmark.advance();
+    advanceSparseDISIBenchmark.advanceVector();
+    //    advanceSparseDISIBenchmark.advanceBinarySearch();
+    //    advanceSparseDISIBenchmark.advanceExact();
+    //    advanceSparseDISIBenchmark.advanceExactBinarySearch();
     advanceSparseDISIBenchmark.tearDown();
   }
 }

@@ -27,6 +27,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RoaringDocIdSet;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Disk-based implementation of a {@link DocIdSetIterator} which can return the index of the current
@@ -289,7 +290,7 @@ public final class IndexedDISI extends DocIdSetIterator {
   // Members are pkg-private to avoid synthetic accessors when accessed from the `Method` enum
 
   /** The slice that stores the {@link DocIdSetIterator}. */
-  final IndexInput slice;
+  public final IndexInput slice;
 
   final int jumpTableEntryCount;
   final byte denseRankPower;
@@ -417,18 +418,18 @@ public final class IndexedDISI extends DocIdSetIterator {
     }
   }
 
-  int block = -1;
+  public int block = -1;
   long blockEnd;
   long denseBitmapOffset = -1; // Only used for DENSE blocks
-  int nextBlockIndex = -1;
+  public int nextBlockIndex = -1;
   Method method;
 
-  int doc = -1;
-  int index = -1;
+  public int doc = -1;
+  public int index = -1;
 
   // SPARSE variables
-  boolean exists;
-  int nextExistDocInBlock = -1;
+  public boolean exists;
+  public int nextExistDocInBlock = -1;
 
   // DENSE variables
   long word;
@@ -493,6 +494,23 @@ public final class IndexedDISI extends DocIdSetIterator {
       readBlockHeader();
     }
     boolean found = method.advanceWithinBlock(this, block);
+    assert found;
+    return doc;
+  }
+
+  @Override
+  public int advanceVector(int target) throws IOException {
+    final int targetBlock = target & 0xFFFF0000;
+    if (block < targetBlock) {
+      advanceBlock(targetBlock);
+    }
+    if (block == targetBlock) {
+      if (method.advanceWithinBlockVector(this, target)) {
+        return doc;
+      }
+      readBlockHeader();
+    }
+    boolean found = method.advanceWithinBlockVector(this, block);
     assert found;
     return doc;
   }
@@ -614,6 +632,7 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   enum Method {
     SPARSE {
+
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
@@ -629,6 +648,11 @@ public final class IndexedDISI extends DocIdSetIterator {
           }
         }
         return false;
+      }
+
+      @Override
+      boolean advanceWithinBlockVector(IndexedDISI disi, int target) throws IOException {
+        return VectorUtil.advanceWithinBlock(disi, target);
       }
 
       @Override
@@ -893,6 +917,14 @@ public final class IndexedDISI extends DocIdSetIterator {
      * Return true if there is such a doc and false otherwise.
      */
     abstract boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException;
+
+    /**
+     * Advance to the first doc from the block that is equal to or greater than {@code target}.
+     * Return true if there is such a doc and false otherwise.
+     */
+    boolean advanceWithinBlockVector(IndexedDISI disi, int target) throws IOException {
+      return false;
+    }
 
     /**
      * Advance to the first doc from the block that is equal to or greater than {@code target}.
