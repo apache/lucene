@@ -60,6 +60,6 @@ class QueryProfilerBreakdown {
     }
 
     return threadToSliceBreakdown.computeIfAbsent(
-        currentThreadId, ctx -> new QuerySliceProfilerBreakdown());
+        currentThreadId, _ -> new QuerySliceProfilerBreakdown());
   }
 }
