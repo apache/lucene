@@ -191,7 +191,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
 
     if (acceptDocs == null && windowApproximations.isEmpty()) {
       // We have a large range of doc IDs that all match.
-      collector.collect(new RangeDocIdStream(min, minDocIDRunEnd));
+      collector.collectRange(min, minDocIDRunEnd);
       return minDocIDRunEnd;
     }
 

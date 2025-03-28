@@ -24,8 +24,8 @@ final class RangeDocIdStream extends DocIdStream {
   private final int max;
 
   RangeDocIdStream(int min, int max) {
-    if (max < min) {
-      throw new IllegalArgumentException("min = " + min + " > max = " + max);
+    if (min >= max) {
+      throw new IllegalArgumentException("min = " + min + " >= max = " + max);
     }
     this.upTo = min;
     this.max = max;
