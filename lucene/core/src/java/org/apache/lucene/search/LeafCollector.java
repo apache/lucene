@@ -85,7 +85,8 @@ public interface LeafCollector {
   void collect(int doc) throws IOException;
 
   /**
-   * Collect a range of doc IDs, between {@code min} inclusive and {@code max} exclusive.
+   * Collect a range of doc IDs, between {@code min} inclusive and {@code max} exclusive. {@code
+   * max} is guaranteed to be greater than {@code min}.
    *
    * <p>Extending this method is typically useful to take advantage of pre-aggregated data exposed
    * in a {@link DocValuesSkipper}.
