@@ -279,8 +279,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   CacheAndCount get(Query key, IndexReader.CacheHelper cacheHelper) {
-    assert !(key instanceof BoostQuery);
-    assert !(key instanceof ConstantScoreQuery);
+    assert key instanceof BoostQuery == false;
+    assert key instanceof ConstantScoreQuery == false;
     final IndexReader.CacheKey readerKey = cacheHelper.getKey();
     final LeafCache leafCache = cache.get(readerKey);
     if (leafCache == null) {
