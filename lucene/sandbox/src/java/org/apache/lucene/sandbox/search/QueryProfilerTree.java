@@ -144,6 +144,10 @@ class QueryProfilerTree {
    * @return a hierarchical representation of the profiled query tree
    */
   public List<List<QuerySliceProfilerResult>> getTree() {
+    // The profiler tree is shared at query level and we need
+    // to recursively collect all the children for single slice
+    // Another way could be to show the slice level breakdown at
+    // each query level for each child, which looks less intuitive
     final Collection<Long> uniqueSlices = getUniqueSlices();
     final List<List<QuerySliceProfilerResult>> results = new ArrayList<>();
     for (long sliceId : uniqueSlices) {
@@ -151,6 +155,8 @@ class QueryProfilerTree {
       for (IntCursor root : roots) {
         sliceResults.add(doGetTree(root.value, sliceId));
       }
+
+      results.add(sliceResults);
     }
     return results;
   }
@@ -173,6 +179,7 @@ class QueryProfilerTree {
    */
   private QuerySliceProfilerResult doGetTree(int token, long sliceId) {
     Query query = queries.get(token);
+    // Can query slice profiler breakdown be null??
     QuerySliceProfilerBreakdown breakdown =
         breakdowns.get(token).getQuerySliceProfilerBreakdown(sliceId);
     IntArrayList children = tree.get(token);

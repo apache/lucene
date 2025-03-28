@@ -42,6 +42,10 @@ class QueryProfilerBreakdown {
   }
 
   public final QueryProfilerTimer getTimer(QueryProfilerTimingType timingType) {
+    // What about Weight timer, ideally that should be shared across slices?
+    // Maybe we can pull the Weight timer up into query profiler breakdown instead
+    // of slice level breakdown? But how do we show that information in the profiler
+    // tree? Repeat the same weight information across slices across queries/child queries?
     return getQuerySliceProfilerBreakdown().getTimer(timingType);
   }
 
