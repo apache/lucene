@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
@@ -100,7 +99,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   private final Map<IndexReader.CacheKey, LeafCache> cache;
   private final ReentrantReadWriteLock.ReadLock readLock;
   private final ReentrantReadWriteLock.WriteLock writeLock;
-  private final AtomicReference<Float> skipCacheFactor;
+  private volatile float skipCacheFactor;
   private final LongAdder hitCount;
   private final LongAdder missCount;
 
@@ -123,30 +122,14 @@ public class LRUQueryCache implements QueryCache, Accountable {
       long maxRamBytesUsed,
       Predicate<LeafReaderContext> leavesToCache,
       float skipCacheFactor) {
-    this(maxSize, maxRamBytesUsed, leavesToCache, new AtomicReference<>(skipCacheFactor));
-  }
-
-  /**
-   * Additionally, allows the ability to pass skipCacheFactor in form of AtomicReference where the
-   * caller can dynamically update(in a thread safe way) its value by calling skipCacheFactor.set()
-   * on their end.
-   */
-  public LRUQueryCache(
-      int maxSize,
-      long maxRamBytesUsed,
-      Predicate<LeafReaderContext> leavesToCache,
-      AtomicReference<Float> skipCacheFactor) {
     this.maxSize = maxSize;
     this.maxRamBytesUsed = maxRamBytesUsed;
     this.leavesToCache = leavesToCache;
-    if (skipCacheFactor == null || skipCacheFactor.get() == null) {
-      throw new IllegalArgumentException("skipCacheFactor should not be null");
-    }
-    if (skipCacheFactor.get() < 1) { //
+    if (skipCacheFactor < 1) { //
       // NaN >= 1
       // evaluates false
       throw new IllegalArgumentException(
-          "skipCacheFactor must be no less than 1, get " + skipCacheFactor.get());
+          "skipCacheFactor must be no less than 1, get " + skipCacheFactor);
     }
     this.skipCacheFactor = skipCacheFactor;
 
@@ -161,8 +144,12 @@ public class LRUQueryCache implements QueryCache, Accountable {
     missCount = new LongAdder();
   }
 
-  AtomicReference<Float> getSkipCacheFactor() {
+  public float getSkipCacheFactor() {
     return skipCacheFactor;
+  }
+
+  public void setSkipCacheFactor(float skipCacheFactor) {
+    this.skipCacheFactor = skipCacheFactor;
   }
 
   /**
@@ -316,8 +303,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
   }
 
   private void putIfAbsent(Query query, CacheAndCount cached, IndexReader.CacheHelper cacheHelper) {
-    assert !(query instanceof BoostQuery);
-    assert !(query instanceof ConstantScoreQuery);
+    assert query instanceof BoostQuery == false;
+    assert query instanceof ConstantScoreQuery == false;
     // under a lock to make sure that mostRecentlyUsedQueries and cache remain sync'ed
     writeLock.lock();
     try {
@@ -675,15 +662,15 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
 
     CacheAndCount get(Query query) {
-      assert !(query instanceof BoostQuery);
-      assert !(query instanceof ConstantScoreQuery);
+      assert query instanceof BoostQuery == false;
+      assert query instanceof ConstantScoreQuery == false;
       return cache.get(query);
     }
 
     void putIfAbsent(Query query, CacheAndCount cached) {
       assert writeLock.isHeldByCurrentThread();
-      assert !(query instanceof BoostQuery);
-      assert !(query instanceof ConstantScoreQuery);
+      assert query instanceof BoostQuery == false;
+      assert query instanceof ConstantScoreQuery == false;
       if (cache.putIfAbsent(query, cached) == null) {
         // the set was actually put
         onDocIdSetCache(HASHTABLE_RAM_BYTES_PER_ENTRY + cached.ramBytesUsed());
@@ -692,8 +679,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
     void remove(Query query) {
       assert writeLock.isHeldByCurrentThread();
-      assert !(query instanceof BoostQuery);
-      assert !(query instanceof ConstantScoreQuery);
+      assert query instanceof BoostQuery == false;
+      assert query instanceof ConstantScoreQuery == false;
       CacheAndCount removed = cache.remove(query);
       if (removed != null) {
         onDocIdSetEviction(HASHTABLE_RAM_BYTES_PER_ENTRY + removed.ramBytesUsed());
@@ -750,14 +737,14 @@ public class LRUQueryCache implements QueryCache, Accountable {
         policy.onUse(getQuery());
       }
 
-      if (!in.isCacheable(context)) {
+      if (in.isCacheable(context) == false) {
         // this segment is not suitable for caching
         return in.scorerSupplier(context);
       }
 
       // Short-circuit: Check whether this segment is eligible for caching
       // before we take a lock because of #get
-      if (!shouldCache(context)) {
+      if (shouldCache(context) == false) {
         return in.scorerSupplier(context);
       }
 
@@ -768,7 +755,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       }
 
       // If the lock is already busy, prefer using the uncached version than waiting
-      if (!readLock.tryLock()) {
+      if (readLock.tryLock() == false) {
         return in.scorerSupplier(context);
       }
 
@@ -793,7 +780,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
             @Override
             public DocIdSetIterator iterator(long leadCost) throws IOException {
               // skip cache operation which would slow query down too much
-              if (cost / skipCacheFactor.get() > leadCost) {
+              if (cost / skipCacheFactor > leadCost) {
                 return supplier.get(leadCost).iterator();
               }
 
@@ -851,7 +838,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
       // Short-circuit: Check whether this segment is eligible for caching
       // before we take a lock because of #get
-      if (!shouldCache(context)) {
+      if (shouldCache(context) == false) {
         return in.count(context);
       }
 
@@ -862,7 +849,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
       }
 
       // If the lock is already busy, prefer using the uncached version than waiting
-      if (!readLock.tryLock()) {
+      if (readLock.tryLock() == false) {
         return in.count(context);
       }
 

@@ -2179,18 +2179,17 @@ public class TestLRUQueryCache extends LuceneTestCase {
     Set<Query> cacheSet = new HashSet<>();
 
     // Define skip cache factor to be 1, so that query is not cached.
-    AtomicReference<Float> skipCacheFactor = new AtomicReference<>(1.0f);
-    final LRUQueryCache cache = new LRUQueryCache(1000000, 10000000, _ -> true, skipCacheFactor);
+    final LRUQueryCache cache = new LRUQueryCache(1000000, 10000000, _ -> true, 1.0f);
     searcher.setQueryCache(cache);
     searcher.search(query, 1);
     assertEquals(cacheSet, new HashSet<>(cache.cachedQueries()));
-    assertEquals(1.0, cache.getSkipCacheFactor().get().floatValue(), 0);
+    assertEquals(1.0, cache.getSkipCacheFactor(), 0);
 
     // Now change the skipCacheFactor to 3.0f, now same query should get cached.
-    skipCacheFactor.set(3.0f);
+    cache.setSkipCacheFactor(3.0f);
     searcher.search(query, 1);
     assertEquals(new HashSet<>(List.of(subQuery1)), new HashSet<>(cache.cachedQueries()));
-    assertEquals(3.0, cache.getSkipCacheFactor().get().floatValue(), 0);
+    assertEquals(3.0, cache.getSkipCacheFactor(), 0);
 
     reader.close();
     dir.close();
