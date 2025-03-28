@@ -180,9 +180,10 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     // data, which helps evaluate fewer clauses per window - without allowing windows to become too
     // small thanks to the WINDOW_SIZE/2 threshold.
     int minDocIDRunEnd = max;
+    final int minRunEndThreshold = (int) Math.min((long) min + WINDOW_SIZE / 2, max);
     for (DisiWrapper w : iterators) {
       int docIdRunEnd = w.docIDRunEnd();
-      if (w.docID() > min || (docIdRunEnd - min) < WINDOW_SIZE / 2) {
+      if (w.docID() > min || docIdRunEnd < minRunEndThreshold) {
         windowApproximations.add(w.approximation());
         if (w.twoPhase() != null) {
           windowTwoPhases.add(w.twoPhase());
