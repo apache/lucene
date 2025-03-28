@@ -17,7 +17,10 @@
 
 package org.apache.lucene.util;
 
+import java.io.IOException;
 import java.util.stream.IntStream;
+
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 
@@ -375,5 +378,13 @@ public final class VectorUtil {
       float maxQuantile) {
     return IMPL.recalculateScalarQuantizationOffset(
         vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile);
+  }
+
+  /**
+   * Advance to the first doc from the block that is equal to or greater than {@code target}. Return
+   * true if there is such a doc and false otherwise.
+   */
+  public static boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
+    return IMPL.advanceWithinBlock(disi, target);
   }
 }
