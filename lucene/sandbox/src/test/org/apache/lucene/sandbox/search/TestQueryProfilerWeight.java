@@ -151,7 +151,7 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
   public void testPropagateMatches() throws IOException {
     Query query = new MatchAllDocsQuery();
     Weight fakeWeight = new FakeWeight(query);
-    DefaultQueryProfilerBreakdown profile = new DefaultQueryProfilerBreakdown();
+    QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
     assertEquals(42, profileWeight.matches(null, 1).getMatches("some_field").startPosition());
   }
@@ -159,7 +159,7 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
   public void testPropagateExplain() throws IOException {
     Query query = new MatchAllDocsQuery();
     Weight fakeWeight = new FakeWeight(query);
-    DefaultQueryProfilerBreakdown profile = new DefaultQueryProfilerBreakdown();
+    QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
     assertEquals("fake_description", profileWeight.explain(null, 1).getDescription());
   }
@@ -167,7 +167,7 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
   public void testPropagateScorer() throws IOException {
     Query query = new MatchAllDocsQuery();
     Weight fakeWeight = new FakeWeight(query);
-    DefaultQueryProfilerBreakdown profile = new DefaultQueryProfilerBreakdown();
+    QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
     assertEquals(42f, profileWeight.scorer(null).getMaxScore(DocIdSetIterator.NO_MORE_DOCS), 0f);
   }
@@ -175,7 +175,7 @@ public class TestQueryProfilerWeight extends LuceneTestCase {
   public void testPropagateTopLevelScoringClause() throws IOException {
     Query query = new MatchAllDocsQuery();
     Weight fakeWeight = new FakeWeight(query);
-    DefaultQueryProfilerBreakdown profile = new DefaultQueryProfilerBreakdown();
+    QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerWeight profileWeight = new QueryProfilerWeight(fakeWeight, profile);
     ScorerSupplier scorerSupplier = profileWeight.scorerSupplier(null);
     scorerSupplier.setTopLevelScoringClause();

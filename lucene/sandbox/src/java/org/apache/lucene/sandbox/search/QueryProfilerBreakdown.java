@@ -17,45 +17,45 @@
 
 package org.apache.lucene.sandbox.search;
 
-import java.util.Collections;
-import java.util.Map;
-import org.apache.lucene.util.CollectionUtil;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * A record of timings for the various operations that may happen during query execution. A node's
  * time may be composed of several internal attributes (rewriting, weighting, scoring, etc).
  */
-public class QueryProfilerBreakdown {
-  /** The accumulated timings for this query node */
-  private final QueryProfilerTimer[] timers;
+class QueryProfilerBreakdown {
+  private final ConcurrentMap<Long, QuerySliceProfilerBreakdown> threadToSliceBreakdown;
 
   /** Sole constructor. */
   public QueryProfilerBreakdown() {
-    timers = new QueryProfilerTimer[QueryProfilerTimingType.values().length];
-    for (int i = 0; i < timers.length; ++i) {
-      timers[i] = new QueryProfilerTimer();
-    }
+    threadToSliceBreakdown = new ConcurrentHashMap<>();
   }
 
-  public QueryProfilerTimer getTimer(QueryProfilerTimingType type) {
-    return timers[type.ordinal()];
+  public final QuerySliceProfilerBreakdown getQuerySliceProfilerBreakdown(final long sliceId) {
+    return threadToSliceBreakdown.get(sliceId);
   }
 
-  /** Build a timing count breakdown. */
-  public final Map<String, Long> toBreakdownMap() {
-    Map<String, Long> map = CollectionUtil.newHashMap(timers.length * 2);
-    for (QueryProfilerTimingType type : QueryProfilerTimingType.values()) {
-      map.put(type.toString(), timers[type.ordinal()].getApproximateTiming());
-      map.put(type.toString() + "_count", timers[type.ordinal()].getCount());
-    }
-    return Collections.unmodifiableMap(map);
+  public final Collection<Long> getSlices() {
+    return threadToSliceBreakdown.keySet();
   }
 
-  public final long toTotalTime() {
-    long total = 0;
-    for (QueryProfilerTimer timer : timers) {
-      total += timer.getApproximateTiming();
+  public final QueryProfilerTimer getTimer(QueryProfilerTimingType timingType) {
+    return getQuerySliceProfilerBreakdown().getTimer(timingType);
+  }
+
+  private QuerySliceProfilerBreakdown getQuerySliceProfilerBreakdown() {
+    final long currentThreadId = Thread.currentThread().threadId();
+    // See please https://bugs.openjdk.java.net/browse/JDK-8161372
+    final QuerySliceProfilerBreakdown profilerBreakdown =
+        threadToSliceBreakdown.get(currentThreadId);
+
+    if (profilerBreakdown != null) {
+      return profilerBreakdown;
     }
-    return total;
+
+    return threadToSliceBreakdown.computeIfAbsent(
+        currentThreadId, ctx -> new QuerySliceProfilerBreakdown());
   }
 }

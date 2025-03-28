@@ -58,7 +58,7 @@ public class TestQueryProfilerScorer extends LuceneTestCase {
 
   public void testPropagateMinCompetitiveScore() throws IOException {
     FakeScorer fakeScorer = new FakeScorer();
-    DefaultQueryProfilerBreakdown profile = new DefaultQueryProfilerBreakdown();
+    QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerScorer queryProfilerScorer = new QueryProfilerScorer(fakeScorer, profile);
     queryProfilerScorer.setMinCompetitiveScore(0.42f);
     assertEquals(0.42f, fakeScorer.minCompetitiveScore, 0f);
@@ -66,7 +66,7 @@ public class TestQueryProfilerScorer extends LuceneTestCase {
 
   public void testPropagateMaxScore() throws IOException {
     FakeScorer fakeScorer = new FakeScorer();
-    DefaultQueryProfilerBreakdown profile = new DefaultQueryProfilerBreakdown();
+    QueryProfilerBreakdown profile = new QueryProfilerBreakdown();
     QueryProfilerScorer queryProfilerScorer = new QueryProfilerScorer(fakeScorer, profile);
     queryProfilerScorer.setMinCompetitiveScore(0.42f);
     fakeScorer.maxScore = 42f;

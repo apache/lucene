@@ -17,11 +17,7 @@
 
 package org.apache.lucene.sandbox.search;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.List;
+import java.util.*;
 import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.search.Query;
@@ -62,9 +58,9 @@ class QueryProfilerTree {
   }
 
   /**
-   * Returns a {@link AbstractQueryProfilerBreakdown} for a scoring query. Scoring queries (e.g.
-   * those that are past the rewrite phase and are now being wrapped by createWeight() ) follow a
-   * recursive progression. We can track the dependency tree by a simple stack
+   * Returns a {@link QueryProfilerBreakdown} for a scoring query. Scoring queries (e.g. those that
+   * are past the rewrite phase and are now being wrapped by createWeight() ) follow a recursive
+   * progression. We can track the dependency tree by a simple stack
    *
    * <p>The only hiccup is that the first scoring query will be identical to the last rewritten
    * query, so we need to take special care to fix that
@@ -72,7 +68,7 @@ class QueryProfilerTree {
    * @param query The scoring query we wish to profile
    * @return A ProfileBreakdown for this query
    */
-  public AbstractQueryProfilerBreakdown getProfileBreakdown(Query query) {
+  public QueryProfilerBreakdown getProfileBreakdown(Query query) {
     int token = currentToken;
 
     boolean stackEmpty = stack.isEmpty();
@@ -106,13 +102,13 @@ class QueryProfilerTree {
    * Helper method to add a new node to the dependency tree.
    *
    * <p>Initializes a new list in the dependency tree, saves the query and generates a new {@link
-   * AbstractQueryProfilerBreakdown} to track the timings of this query.
+   * QueryProfilerBreakdown} to track the timings of this query.
    *
    * @param query The query to profile
    * @param token The assigned token for this query
-   * @return A {@link AbstractQueryProfilerBreakdown} to profile this query
+   * @return A {@link QueryProfilerBreakdown} to profile this query
    */
-  private AbstractQueryProfilerBreakdown addDependencyNode(Query query, int token) {
+  private QueryProfilerBreakdown addDependencyNode(Query query, int token) {
 
     // Add a new slot in the dependency tree
     tree.add(new IntArrayList(5));
@@ -120,13 +116,13 @@ class QueryProfilerTree {
     // Save our query for lookup later
     queries.add(query);
 
-    AbstractQueryProfilerBreakdown breakdown = createProfileBreakdown();
+    QueryProfilerBreakdown breakdown = createProfileBreakdown();
     breakdowns.add(token, breakdown);
     return breakdown;
   }
 
-  private AbstractQueryProfilerBreakdown createProfileBreakdown() {
-    return new DefaultQueryProfilerBreakdown();
+  private QueryProfilerBreakdown createProfileBreakdown() {
+    return new QueryProfilerBreakdown();
   }
 
   /** Removes the last (e.g. most recent) value on the stack */
@@ -140,12 +136,26 @@ class QueryProfilerTree {
    *
    * @return a hierarchical representation of the profiled query tree
    */
-  public List<QueryProfilerResult> getTree() {
-    ArrayList<QueryProfilerResult> results = new ArrayList<>(roots.size());
-    for (IntCursor root : roots) {
-      results.add(doGetTree(root.value));
+  public List<List<QuerySliceProfilerResult>> getTree() {
+    final Collection<Long> uniqueSlices = getUniqueSlices();
+    final List<List<QuerySliceProfilerResult>> results = new ArrayList<>();
+    for (long sliceId : uniqueSlices) {
+      final List<QuerySliceProfilerResult> sliceResults = new ArrayList<>(roots.size());
+      for (IntCursor root : roots) {
+        sliceResults.add(doGetTree(root.value, sliceId));
+      }
     }
     return results;
+  }
+
+  private Collection<Long> getUniqueSlices() {
+    final Set<Long> uniqueSlices = new HashSet<>();
+    for (IntCursor root : roots) {
+      final QueryProfilerBreakdown breakdown = breakdowns.get(root.value);
+      uniqueSlices.addAll(breakdown.getSlices());
+    }
+
+    return uniqueSlices;
   }
 
   /**
@@ -154,16 +164,17 @@ class QueryProfilerTree {
    * @param token The node we are currently finalizing
    * @return A hierarchical representation of the tree inclusive of children at this level
    */
-  private QueryProfilerResult doGetTree(int token) {
+  private QuerySliceProfilerResult doGetTree(int token, long sliceId) {
     Query query = queries.get(token);
-    QueryProfilerBreakdown breakdown = breakdowns.get(token);
+    QuerySliceProfilerBreakdown breakdown =
+        breakdowns.get(token).getQuerySliceProfilerBreakdown(sliceId);
     IntArrayList children = tree.get(token);
-    List<QueryProfilerResult> childrenProfileResults = Collections.emptyList();
+    List<QuerySliceProfilerResult> childrenProfileResults = Collections.emptyList();
 
     if (children != null) {
       childrenProfileResults = new ArrayList<>(children.size());
       for (IntCursor child : children) {
-        QueryProfilerResult childNode = doGetTree(child.value);
+        QuerySliceProfilerResult childNode = doGetTree(child.value, sliceId);
         childrenProfileResults.add(childNode);
       }
     }
@@ -172,7 +183,7 @@ class QueryProfilerTree {
     // calculating the same times over and over...but worth the effort?
     String type = getTypeFromQuery(query);
     String description = getDescriptionFromQuery(query);
-    return new QueryProfilerResult(
+    return new QuerySliceProfilerResult(
         type,
         description,
         breakdown.toBreakdownMap(),
