@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 
 import java.io.IOException;
 import java.util.stream.IntStream;
-
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
