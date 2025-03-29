@@ -125,7 +125,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
     this.maxSize = maxSize;
     this.maxRamBytesUsed = maxRamBytesUsed;
     this.leavesToCache = leavesToCache;
-    if (skipCacheFactor < 1) { //
+    if (skipCacheFactor >= 1 == false) { //
       // NaN >= 1
       // evaluates false
       throw new IllegalArgumentException(
@@ -148,6 +148,12 @@ public class LRUQueryCache implements QueryCache, Accountable {
     return skipCacheFactor;
   }
 
+  /**
+   * This setter enables the skipCacheFactor to be updated dynamically.
+   *
+   * @param skipCacheFactor determines whether we need to skip the cache operation based on cost and
+   *     lead cost.
+   */
   public void setSkipCacheFactor(float skipCacheFactor) {
     this.skipCacheFactor = skipCacheFactor;
   }
