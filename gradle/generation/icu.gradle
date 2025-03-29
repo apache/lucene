@@ -287,7 +287,7 @@ configure(project(":lucene:analysis:common")) {
 configure(project(":lucene:core")) {
   task generateUnicodePropsInternal() {
     def icuConfig = rootProject.configurations.icu_current
-    def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
+    def outputFile = file("src/java/org/apache/lucene/util/CaseFolding.java")
 
     description "Regenerate ${outputFile} (with ${icuConfig.name})"
     group "generation"
