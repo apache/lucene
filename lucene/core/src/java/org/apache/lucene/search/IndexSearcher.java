@@ -29,6 +29,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.ExitableIndexReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.IndexWriter;
@@ -194,6 +195,12 @@ public class IndexSearcher {
   /** Creates a searcher searching the provided index. */
   public IndexSearcher(IndexReader r) {
     this(r, null);
+  }
+
+  /** Creates a searcher searching the provided index. */
+  public IndexSearcher(ExitableIndexReader r) {
+    this(r, null);
+    setTimeout(r.getQueryTimeout());
   }
 
   /**
