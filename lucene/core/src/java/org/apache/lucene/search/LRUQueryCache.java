@@ -155,7 +155,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
    * This setter enables the skipCacheFactor to be updated dynamically.
    *
    * @param skipCacheFactor clauses whose cost is {@code skipCacheFactor} times more than the cost
-   *     of the * top-level query will not be cached in order to not slow down queries too much.
+   *     of the top-level query will not be cached in order to not slow down queries too much.
    */
   public void setSkipCacheFactor(float skipCacheFactor) {
     this.skipCacheFactor = skipCacheFactor;
