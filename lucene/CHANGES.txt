@@ -253,6 +253,8 @@ Optimizations
 
 * GITHUB#14304: Add SIMD optimizations for scalar quantized queries and indexing. (Simon Cooper)
 
+* GITHUB#14397: Cache preset dict for LZ4WithPresetDictDecompressor. (kkewwei)
+
 Bug Fixes
 ---------------------
 
