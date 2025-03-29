@@ -85,6 +85,11 @@ public final class GraphTokenStreamFiniteStrings {
         Operations.removeDeadStates(Operations.determinize(aut, DEFAULT_DETERMINIZE_WORK_LIMIT));
   }
 
+  /** Return the number of states of this automaton. */
+  public int getNumStates() {
+    return det.getNumStates();
+  }
+
   /**
    * Returns whether the provided state is the start of multiple side paths of different length (eg:
    * new york, ny)
