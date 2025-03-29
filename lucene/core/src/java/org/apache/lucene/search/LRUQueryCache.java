@@ -99,7 +99,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   private final Map<IndexReader.CacheKey, LeafCache> cache;
   private final ReentrantReadWriteLock.ReadLock readLock;
   private final ReentrantReadWriteLock.WriteLock writeLock;
-  private final float skipCacheFactor;
+  private volatile float skipCacheFactor;
   private final LongAdder hitCount;
   private final LongAdder missCount;
 
@@ -140,6 +140,20 @@ public class LRUQueryCache implements QueryCache, Accountable {
     ramBytesUsed = 0;
     hitCount = new LongAdder();
     missCount = new LongAdder();
+  }
+
+  public float getSkipCacheFactor() {
+    return skipCacheFactor;
+  }
+
+  /**
+   * This setter enables the skipCacheFactor to be updated dynamically.
+   *
+   * @param skipCacheFactor determines whether we need to skip the cache operation based on cost and
+   *     lead cost.
+   */
+  public void setSkipCacheFactor(float skipCacheFactor) {
+    this.skipCacheFactor = skipCacheFactor;
   }
 
   /**
@@ -706,13 +720,12 @@ public class LRUQueryCache implements QueryCache, Accountable {
     private boolean cacheEntryHasReasonableWorstCaseSize(int maxDoc) {
       // The worst-case (dense) is a bit set which needs one bit per document
       final long worstCaseRamUsage = maxDoc / 8;
-      final long totalRamAvailable = maxRamBytesUsed;
       // Imagine the worst-case that a cache entry is large than the size of
       // the cache: not only will this entry be trashed immediately but it
       // will also evict all current entries from the cache. For this reason
       // we only cache on an IndexReader if we have available room for
       // 5 different filters on this reader to avoid excessive trashing
-      return worstCaseRamUsage * 5 < totalRamAvailable;
+      return worstCaseRamUsage * 5 < maxRamBytesUsed;
     }
 
     /** Check whether this segment is eligible for caching, regardless of the query. */
