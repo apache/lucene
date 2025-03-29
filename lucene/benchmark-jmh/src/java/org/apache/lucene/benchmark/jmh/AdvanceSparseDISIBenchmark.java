@@ -178,7 +178,7 @@ public class AdvanceSparseDISIBenchmark {
     Files.deleteIfExists(path4);
   }
 
-  @Benchmark
+  //  @Benchmark
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public void advance() throws IOException {
     for (int target : targets) {
@@ -186,7 +186,7 @@ public class AdvanceSparseDISIBenchmark {
     }
   }
 
-  @Benchmark
+  //  @Benchmark
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public void advanceVector() throws IOException {
     for (int target : targets) {
@@ -202,11 +202,19 @@ public class AdvanceSparseDISIBenchmark {
     }
   }
 
-  //  @Benchmark
+  @Benchmark
   @CompilerControl(CompilerControl.Mode.DONT_INLINE)
   public void advanceExact() throws IOException {
     for (int target : targets) {
       disi3.advanceExact(target);
+    }
+  }
+
+  @Benchmark
+  @CompilerControl(CompilerControl.Mode.DONT_INLINE)
+  public void advanceExactVector() throws IOException {
+    for (int target : targets) {
+      disi4.advanceExactVector(target);
     }
   }
 
@@ -223,9 +231,10 @@ public class AdvanceSparseDISIBenchmark {
     AdvanceSparseDISIBenchmark advanceSparseDISIBenchmark = new AdvanceSparseDISIBenchmark();
     advanceSparseDISIBenchmark.setup();
     //    advanceSparseDISIBenchmark.advance();
-    advanceSparseDISIBenchmark.advanceVector();
+    //    advanceSparseDISIBenchmark.advanceVector();
     //    advanceSparseDISIBenchmark.advanceBinarySearch();
-    //    advanceSparseDISIBenchmark.advanceExact();
+    //        advanceSparseDISIBenchmark.advanceExact();
+    advanceSparseDISIBenchmark.advanceExactVector();
     //    advanceSparseDISIBenchmark.advanceExactBinarySearch();
     advanceSparseDISIBenchmark.tearDown();
   }

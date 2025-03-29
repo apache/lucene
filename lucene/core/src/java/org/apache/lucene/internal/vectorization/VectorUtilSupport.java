@@ -63,6 +63,12 @@ public interface VectorUtilSupport {
   boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException;
 
   /**
+   * Advance to the first doc from the block that is equal to or greater than {@code target}. Return
+   * true if there is such a doc and false otherwise.
+   */
+  boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException;
+
+  /**
    * Compute the dot product between a quantized int4 vector and a binary quantized vector. It is
    * assumed that the int4 quantized bits are packed in the byte array in the same way as the {@link
    * org.apache.lucene.util.quantization.OptimizedScalarQuantizer#transposeHalfByte(byte[], byte[])}

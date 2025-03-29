@@ -386,4 +386,12 @@ public final class VectorUtil {
   public static boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
     return IMPL.advanceWithinBlock(disi, target);
   }
+
+  /**
+   * Advance to the first doc from the block that is equal to or greater than {@code target}. Return
+   * true if there is such a doc and false otherwise.
+   */
+  public static boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
+    return IMPL.advanceExactWithinBlock(disi, target);
+  }
 }

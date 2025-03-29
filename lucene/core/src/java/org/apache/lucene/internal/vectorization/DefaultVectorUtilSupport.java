@@ -229,6 +229,35 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
+    final int targetInBlock = target & 0xFFFF;
+    if (disi.nextExistDocInBlock > targetInBlock) {
+      assert !disi.exists;
+      return false;
+    }
+    if (target == disi.doc) {
+      return disi.exists;
+    }
+
+    for (; disi.index < disi.nextBlockIndex; ) {
+      int doc = Short.toUnsignedInt(disi.slice.readShort());
+      disi.index++;
+      if (doc >= targetInBlock) {
+        disi.nextExistDocInBlock = doc;
+        if (doc != targetInBlock) {
+          disi.index--;
+          disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+          break;
+        }
+        disi.exists = true;
+        return true;
+      }
+    }
+    disi.exists = false;
+    return false;
+  }
+
+  @Override
   public long int4BitDotProduct(byte[] int4Quantized, byte[] binaryQuantized) {
     return int4BitDotProductImpl(int4Quantized, binaryQuantized);
   }

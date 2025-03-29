@@ -844,6 +844,67 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
+    final int targetInBlock = target & 0xFFFF;
+    if (disi.nextExistDocInBlock > targetInBlock) {
+      assert !disi.exists;
+      return false;
+    }
+    if (target == disi.doc) {
+      return disi.exists;
+    }
+
+    if (disi.slice instanceof MemorySegmentIndexInput && ENABLE_ADVANCE_WITHIN_BLOCK_VECTOR_OPTO) {
+      for (;
+          disi.index + SHORT_SPECIES.length() < disi.nextBlockIndex;
+          disi.index += SHORT_SPECIES.length()) {
+        disi.slice.skipBytes((long) (SHORT_SPECIES.length() - 1) * Short.BYTES);
+        if (Short.toUnsignedInt(disi.slice.readShort()) >= targetInBlock) {
+          disi.slice.seek(
+              disi.slice.getFilePointer() - (long) (SHORT_SPECIES.length()) * Short.BYTES);
+          // TODO: handle vector cross memory segment (maybe would not in sparse block?) .
+          ShortVector shortVector =
+              ShortVector.fromMemorySegment(
+                  SHORT_SPECIES,
+                  ((MemorySegmentIndexInput) disi.slice).curSegment,
+                  disi.slice.getFilePointer(),
+                  LITTLE_ENDIAN);
+          VectorMask<Short> mask = shortVector.compare(VectorOperators.LT, targetInBlock);
+          disi.nextExistDocInBlock = shortVector.lane(mask.trueCount());
+          if (disi.nextExistDocInBlock == targetInBlock) {
+            disi.index += mask.trueCount() + 1;
+            disi.exists = true;
+            disi.slice.skipBytes((long) (mask.trueCount() + 1) * Short.BYTES);
+            return true;
+          } else {
+            disi.index += mask.trueCount();
+            disi.exists = false;
+            disi.slice.skipBytes((long) (mask.trueCount()) * Short.BYTES);
+            return false;
+          }
+        }
+      }
+    }
+
+    for (; disi.index < disi.nextBlockIndex; ) {
+      int doc = Short.toUnsignedInt(disi.slice.readShort());
+      disi.index++;
+      if (doc >= targetInBlock) {
+        disi.nextExistDocInBlock = doc;
+        if (doc != targetInBlock) {
+          disi.index--;
+          disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+          break;
+        }
+        disi.exists = true;
+        return true;
+      }
+    }
+    disi.exists = false;
+    return false;
+  }
+
+  @Override
   public long int4BitDotProduct(byte[] q, byte[] d) {
     assert q.length == d.length * 4;
     // 128 / 8 == 16

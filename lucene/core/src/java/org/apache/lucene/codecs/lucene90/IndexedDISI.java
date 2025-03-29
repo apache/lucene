@@ -542,6 +542,16 @@ public final class IndexedDISI extends DocIdSetIterator {
     return found;
   }
 
+  public boolean advanceExactVector(int target) throws IOException {
+    final int targetBlock = target & 0xFFFF0000;
+    if (block < targetBlock) {
+      advanceBlock(targetBlock);
+    }
+    boolean found = block == targetBlock && method.advanceExactWithinBlockVector(this, target);
+    this.doc = target;
+    return found;
+  }
+
   public boolean advanceExactBinarySearch(int target) throws IOException {
     final int targetBlock = target & 0xFFFF0000;
     if (block < targetBlock) {
@@ -818,6 +828,11 @@ public final class IndexedDISI extends DocIdSetIterator {
         disi.exists = false;
         return false;
       }
+
+      @Override
+      boolean advanceExactWithinBlockVector(IndexedDISI disi, int target) throws IOException {
+        return VectorUtil.advanceExactWithinBlock(disi, target);
+      }
     },
     DENSE {
       @Override
@@ -935,6 +950,14 @@ public final class IndexedDISI extends DocIdSetIterator {
      * return whether this document exists.
      */
     boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target) throws IOException {
+      return false;
+    }
+
+    /**
+     * Advance to the first doc from the block that is equal to or greater than {@code target}.
+     * Return true if there is such a doc and false otherwise.
+     */
+    boolean advanceExactWithinBlockVector(IndexedDISI disi, int target) throws IOException {
       return false;
     }
   }
