@@ -108,6 +108,8 @@ New Features
 * GITHUB#13470: Added `TopDocs#rrf` to combine multiple TopDocs instances using
   reciprocal rank fusion. (Haren Lin, Adrien Grand)
 
+* GITHUB#14094: New KNN query that early terminates when HNSW nearest neighbor queue saturates (Tommaso Teofili)
+
 Improvements
 ---------------------
 
