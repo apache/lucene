@@ -142,6 +142,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
     missCount = new LongAdder();
   }
 
+  /**
+   * Get the skip cache factor
+   *
+   * @return #setSkipCacheFactor
+   */
   public float getSkipCacheFactor() {
     return skipCacheFactor;
   }
@@ -149,8 +154,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
   /**
    * This setter enables the skipCacheFactor to be updated dynamically.
    *
-   * @param skipCacheFactor determines whether we need to skip the cache operation based on cost and
-   *     lead cost.
+   * @param skipCacheFactor clauses whose cost is {@code skipCacheFactor} times more than the cost
+   *     of the * top-level query will not be cached in order to not slow down queries too much.
    */
   public void setSkipCacheFactor(float skipCacheFactor) {
     this.skipCacheFactor = skipCacheFactor;
