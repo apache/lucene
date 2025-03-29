@@ -47,6 +47,7 @@ Other
 ---------------------
 
 * GITHUB#14229: Bump minimum required Java version to 25
+* GITHUB#14412: Allow skip cache factor to be updated dynamically. (Sagar Upadhyaya)
 
 ======================= Lucene 10.2.0 =======================
 
