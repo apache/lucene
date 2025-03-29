@@ -654,7 +654,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       throw new UnsupportedOperationException();
     }
 
-    OnHeapHnswGraph getGraph() throws IOException {
+    OnHeapHnswGraph getGraph() {
       assert flatFieldVectorsWriter.isFinished();
       if (node > 0) {
         return hnswGraphBuilder.getCompletedGraph();
