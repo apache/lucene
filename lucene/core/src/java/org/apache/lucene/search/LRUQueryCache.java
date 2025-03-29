@@ -125,9 +125,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
     this.maxSize = maxSize;
     this.maxRamBytesUsed = maxRamBytesUsed;
     this.leavesToCache = leavesToCache;
-    if (skipCacheFactor >= 1 == false) { //
-      // NaN >= 1
-      // evaluates false
+    if (skipCacheFactor >= 1 == false) { // NaN >= 1 evaluates false
       throw new IllegalArgumentException(
           "skipCacheFactor must be no less than 1, get " + skipCacheFactor);
     }
