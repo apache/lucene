@@ -32,6 +32,7 @@ import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
 import org.apache.lucene.index.FilterLeafReader;
+import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -747,4 +748,35 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     writerRef.get().close();
     dir.close();
   }
+
+  /** Returns the first commit with generation higher than current reader commit */
+  public static class NextCommitSelector implements RefreshCommitSupplier {
+    @Override
+    public IndexCommit getSearcherRefreshCommit(DirectoryReader reader) throws IOException {
+      List<IndexCommit> commits = DirectoryReader.listCommits(reader.directory());
+      IndexCommit current = reader.getIndexCommit();
+      for (IndexCommit commit : commits) {
+        if (commit.getGeneration() > current.getGeneration()) {
+          return commit;
+        }
+      }
+      // we're already on latest commit
+      return null;
+    }
+  }
+
+  public void testStepWiseCommitRefresh() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("docId", "doc-" + i, Field.Store.YES));
+      w.addDocument(doc);
+    }
+    w.commit();
+    SearcherManager sm = new SearcherManager(dir, null);
+    DirectoryReader dr = (DirectoryReader) sm.acquire().getIndexReader();
+    System.out.println("current commit: " + dr.getIndexCommit().getGeneration());
+  }
+
 }

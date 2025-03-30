@@ -19,6 +19,8 @@ package org.apache.lucene.search;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
 
+import java.io.IOException;
+
 /**
  * Expert: Interface to supply commit for searcher refresh.
  *
@@ -32,7 +34,7 @@ public interface RefreshCommitSupplier {
    *
    * @param reader DirectoryReader to refresh
    */
-  default IndexCommit getSearcherRefreshCommit(DirectoryReader reader) {
+  default IndexCommit getSearcherRefreshCommit(DirectoryReader reader) throws IOException {
     return null;
   }
 
