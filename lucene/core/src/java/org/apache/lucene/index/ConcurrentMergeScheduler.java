@@ -87,7 +87,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   private int maxMergeCount = AUTO_DETECT_MERGES_AND_THREADS;
 
   /** How many {@link MergeThread}s have kicked off (this is use to name them). */
-  protected int mergeThreadCount;
+  protected int mergeThreadCounter;
 
   /** Floor for IO write rate limit (we will never go any lower than this) */
   private static final double MIN_MERGE_MB_PER_SEC = 5.0;
@@ -673,7 +673,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
       throws IOException {
     final MergeThread thread = new MergeThread(mergeSource, merge);
     thread.setDaemon(true);
-    thread.setName("Lucene Merge Thread #" + mergeThreadCount++);
+    thread.setName("Lucene Merge Thread #" + mergeThreadCounter++);
     return thread;
   }
 
