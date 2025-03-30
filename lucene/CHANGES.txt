@@ -63,6 +63,8 @@ New Features
 * GITHUB#13470: Added `TopDocs#rrf` to combine multiple TopDocs instances using
   reciprocal rank fusion. (Haren Lin, Adrien Grand)
 
+* GITHUB#14412: Allow skip cache factor to be updated dynamically. (Sagar Upadhyaya)
+
 Improvements
 ---------------------
 
