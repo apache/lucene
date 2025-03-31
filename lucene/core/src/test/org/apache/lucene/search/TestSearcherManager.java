@@ -777,11 +777,6 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     }
     w.commit();
     SearcherManager sm = new SearcherManager(dir, null);
-    IndexSearcher s = sm.acquire();
-    DirectoryReader dr = (DirectoryReader) s.getIndexReader();
-    long startGen = dr.getIndexCommit().getGeneration();
-    sm.release(s);
-
     final int numCommits = 5;
     for (int i = 0; i < numCommits; i++) {
       for (int j = 0; j < 20; j++) {
