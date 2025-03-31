@@ -48,6 +48,32 @@ Other
 
 * GITHUB#14229: Bump minimum required Java version to 25
 
+======================= Lucene 10.3.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.2.0 =======================
 
 API Changes
@@ -107,6 +133,8 @@ New Features
 
 * GITHUB#13470: Added `TopDocs#rrf` to combine multiple TopDocs instances using
   reciprocal rank fusion. (Haren Lin, Adrien Grand)
+
+* GITHUB#14412: Allow skip cache factor to be updated dynamically. (Sagar Upadhyaya)
 
 Improvements
 ---------------------

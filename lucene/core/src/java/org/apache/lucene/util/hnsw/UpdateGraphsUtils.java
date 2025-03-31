@@ -55,7 +55,7 @@ public class UpdateGraphsUtils {
     }
 
     long gTot = 0L;
-    while (gTot < gExit) {
+    while (gTot < gExit && heap.size() > 0) {
       long el = heap.pop();
       int gain = decodeValue1(el);
       int v = decodeValue2(el);
