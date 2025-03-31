@@ -64,7 +64,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
 
 Bug Fixes
 ---------------------
