@@ -148,7 +148,7 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
             .add(NumericDocValuesField.newSlowRangeQuery("f", Long.MIN_VALUE, 2), Occur.SHOULD)
             .add(NumericDocValuesField.newSlowRangeQuery("f", 10, Long.MAX_VALUE), Occur.SHOULD)
             .build();
-    actualCounts = searcher.search(query, new HistogramCollectorManager("f", 4));
+    actualCounts = searcher.search(query, new HistogramCollectorManager("f", 4, 3));
     expectedCounts = new LongIntHashMap();
     for (long value : values) {
       if (value <= 2 || value >= 10) {
