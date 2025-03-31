@@ -5040,10 +5040,8 @@ public class TestIndexWriter extends LuceneTestCase {
 
   public void testAdvanceSegmentInfosCounter() throws IOException {
     Directory dir = newDirectory();
-
     IndexWriter writer;
     IndexReader reader;
-
     writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
 
     // add 10 documents
@@ -5075,6 +5073,51 @@ public class TestIndexWriter extends LuceneTestCase {
     assertEquals(50, reader.maxDoc());
     assertEquals(50, reader.numDocs());
     reader.close();
+    dir.close();
+  }
+
+  public void testAdvanceSegmentCounterInCrashAndRecoveryScenario() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer;
+    IndexReader reader;
+    writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    // add 100 documents
+    for (int i = 0; i < 100; i++) {
+      addDocWithIndex(writer, i);
+      if (random().nextBoolean()) {
+        writer.commit();
+      }
+    }
+    IndexWriter.DocStats docStats = writer.getDocStats();
+    assertEquals(100, docStats.maxDoc);
+    assertEquals(100, docStats.numDocs);
+    writer.commit();
+    writer.close();
+
+    // recovery and advance segment counter
+    writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    assertEquals(100, writer.getDocStats().numDocs);
+    long newSegmentCounter = writer.getSegmentInfosCounter() + 1000;
+    writer.advanceSegmentInfosCounter(newSegmentCounter);
+
+    // add 10 documents
+    for (int i = 0; i < 10; i++) {
+      addDocWithIndex(writer, i);
+      if (random().nextBoolean()) {
+        writer.commit();
+      }
+    }
+
+    assertTrue(writer.getSegmentInfosCounter() >= newSegmentCounter);
+
+    assertEquals(110, writer.getDocStats().numDocs);
+    // check that the index reader gives the same numbers.
+    reader = DirectoryReader.open(dir);
+    assertEquals(110, reader.maxDoc());
+    assertEquals(110, reader.numDocs());
+    reader.close();
+    writer.close();
     dir.close();
   }
 }
