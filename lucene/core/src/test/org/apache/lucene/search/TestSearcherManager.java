@@ -768,15 +768,58 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
   public void testStepWiseCommitRefresh() throws Exception {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    for (int i = 0; i < 100; i++) {
+    int docId = 0;
+    // create initial commit
+    for (int i = 0; i < 20; i++) {
       Document doc = new Document();
-      doc.add(newStringField("docId", "doc-" + i, Field.Store.YES));
+      doc.add(newStringField("docId", "doc-" + docId++, Field.Store.YES));
       w.addDocument(doc);
     }
     w.commit();
     SearcherManager sm = new SearcherManager(dir, null);
-    DirectoryReader dr = (DirectoryReader) sm.acquire().getIndexReader();
-    System.out.println("current commit: " + dr.getIndexCommit().getGeneration());
+    IndexSearcher s = sm.acquire();
+    DirectoryReader dr = (DirectoryReader) s.getIndexReader();
+    long startGen = dr.getIndexCommit().getGeneration();
+    sm.release(s);
+
+    final int numCommits = 5;
+    for (int i = 0; i < numCommits; i++) {
+      for (int j = 0; j < 20; j++) {
+        Document doc = new Document();
+        doc.add(newStringField("docId", "doc-" + docId++, Field.Store.YES));
+        w.addDocument(doc);
+      }
+      w.commit();
+    }
+    sm.setRefreshCommitSupplier(new NextCommitSelector());
+
+    // maybeRefresh only refreshes on the next incremental commit
+    // so it takes us numCommits to get to latest
+    int stepsToCurrent = 0;
+    while (isSearcherManagerCurrent(sm) == false) {
+      long oldGen = getSearcherManagerGen(sm);
+      sm.maybeRefreshBlocking();
+      long newGen = getSearcherManagerGen(sm);
+      assertTrue(newGen == oldGen + 1);
+      stepsToCurrent++;
+    }
+    assertEquals(numCommits, stepsToCurrent);
+  }
+
+  private boolean isSearcherManagerCurrent(SearcherManager sm) throws IOException {
+    IndexSearcher s = sm.acquire();
+    DirectoryReader dr = (DirectoryReader) s.getIndexReader();
+    boolean isCurrent = dr.isCurrent();
+    sm.release(s);
+    return isCurrent;
+  }
+
+  private long getSearcherManagerGen(SearcherManager sm) throws IOException {
+    IndexSearcher s = sm.acquire();
+    DirectoryReader dr = (DirectoryReader) s.getIndexReader();
+    long gen = dr.getIndexCommit().getGeneration();
+    sm.release(s);
+    return gen;
   }
 
 }
