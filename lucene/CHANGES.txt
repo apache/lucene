@@ -52,7 +52,8 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#14401: Added LeafCollector#collectRange to enable collector to take
+  advantage of pre-aggregated data to speed up faceting. (Adrien Grand)
 
 New Features
 ---------------------
