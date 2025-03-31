@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.AnnQueryUtils.createBitSet;
+import static org.apache.lucene.search.AnnQueryUtils.createFilterWeight;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -81,10 +84,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
     return new Weight(this) {
-      final Weight filterWeight =
-          filter == null
-              ? null
-              : searcher.createWeight(searcher.rewrite(filter), ScoreMode.COMPLETE_NO_SCORES, 1);
+      final Weight filterWeight = createFilterWeight(searcher, filter, field);
 
       final QueryTimeout queryTimeout = searcher.getTimeout();
       final TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager =
@@ -136,21 +136,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
             return null;
           }
 
-          BitSet acceptDocs;
-          if (liveDocs == null && scorer.iterator() instanceof BitSetIterator bitSetIterator) {
-            // If there are no deletions, and matching docs are already cached
-            acceptDocs = bitSetIterator.getBitSet();
-          } else {
-            // Else collect all matching docs
-            FilteredDocIdSetIterator filtered =
-                new FilteredDocIdSetIterator(scorer.iterator()) {
-                  @Override
-                  protected boolean match(int doc) {
-                    return liveDocs == null || liveDocs.get(doc);
-                  }
-                };
-            acceptDocs = BitSet.of(filtered, leafReader.maxDoc());
-          }
+          BitSet acceptDocs = createBitSet(scorer.iterator(), liveDocs, leafReader.maxDoc());
 
           int cardinality = acceptDocs.cardinality();
           if (cardinality == 0) {
