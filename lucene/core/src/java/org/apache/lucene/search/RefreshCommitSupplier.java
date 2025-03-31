@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
-
-import java.io.IOException;
 
 /**
  * Expert: Interface to supply commit for searcher refresh.
