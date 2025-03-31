@@ -816,5 +816,4 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     sm.release(s);
     return gen;
   }
-
 }
