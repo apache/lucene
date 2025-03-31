@@ -5113,6 +5113,7 @@ public class TestIndexWriter extends LuceneTestCase {
 
     assertEquals(110, writer.getDocStats().numDocs);
     // check that the index reader gives the same numbers.
+    writer.commit();
     reader = DirectoryReader.open(dir);
     assertEquals(110, reader.maxDoc());
     assertEquals(110, reader.numDocs());
