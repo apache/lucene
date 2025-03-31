@@ -51,6 +51,16 @@ class AssertingLeafCollector extends FilterLeafCollector {
   }
 
   @Override
+  public void collectRange(int min, int max) throws IOException {
+    assert min > lastCollected;
+    assert max > min;
+    assert min >= this.min : "Out of range: " + min + " < " + this.min;
+    assert max <= this.max : "Out of range: " + (max - 1) + " >= " + this.max;
+    in.collectRange(min, max);
+    lastCollected = max - 1;
+  }
+
+  @Override
   public void collect(int doc) throws IOException {
     assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
     assert doc >= min : "Out of range: " + doc + " < " + min;
