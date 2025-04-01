@@ -167,6 +167,11 @@ public abstract class KnnSearchStrategy {
     public void nextVectorsBlock() {}
   }
 
+  /**
+   * A strategy for kNN search on HNSW that early exits when nearest neighbor collection rate saturates.
+   *
+   * @lucene.experimental
+   */
   public static class Patience extends Hnsw {
     private final HnswQueueSaturationCollector collector;
 
