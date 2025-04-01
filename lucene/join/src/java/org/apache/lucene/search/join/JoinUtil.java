@@ -185,7 +185,7 @@ public final class JoinUtil {
           };
     } else {
       scoreAggregator =
-          (key, score) -> {
+          (_, _) -> {
             throw new UnsupportedOperationException();
           };
     }

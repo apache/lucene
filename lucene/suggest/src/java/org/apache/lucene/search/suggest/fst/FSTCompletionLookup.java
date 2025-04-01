@@ -76,7 +76,7 @@ public class FSTCompletionLookup extends Lookup {
    *
    * @see #FSTCompletionLookup(Directory, String, FSTCompletion, boolean)
    */
-  private static int INVALID_BUCKETS_COUNT = -1;
+  private static final int INVALID_BUCKETS_COUNT = -1;
 
   /**
    * Shared tail length for conflating in the created automaton. Setting this to larger values

@@ -888,16 +888,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     public void advanceShallow(int target) throws IOException {
       if (target > level0LastDocID) { // advance level 0 skip data
         doAdvanceShallow(target);
-
-        // If we are on the last doc ID of a block and we are advancing on the doc ID just beyond
-        // this block, then we decode the block. This may not be necessary, but this helps avoid
-        // having to check whether we are in a block that is not decoded yet in #nextDoc().
-        if (docBufferUpto == BLOCK_SIZE && target == doc + 1) {
-          refillDocs();
-          needsRefilling = false;
-        } else {
-          needsRefilling = true;
-        }
+        needsRefilling = true;
       }
     }
 
@@ -914,8 +905,13 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     @Override
     public int nextDoc() throws IOException {
-      if (doc == level0LastDocID) {
-        moveToNextLevel0Block();
+      if (doc == level0LastDocID || needsRefilling) {
+        if (needsRefilling) {
+          refillDocs();
+          needsRefilling = false;
+        } else {
+          moveToNextLevel0Block();
+        }
       }
 
       switch (encoding) {
@@ -1061,6 +1057,32 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         int doc = docBuffer[i];
         bitSet.set(doc - offset);
       }
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      // Note: this assumes that BLOCK_SIZE == 128, this bit of the code would need to be changed if
+      // the block size was changed.
+      // Hack to avoid compiler warning that both sides of the equal sign are identical.
+      long blockSize = BLOCK_SIZE;
+      assert blockSize == 2 * Long.SIZE;
+      boolean level0IsDense =
+          encoding == DeltaEncoding.UNARY
+              && docBitSet.getBits()[0] == -1L
+              && docBitSet.getBits()[1] == -1L;
+      if (level0IsDense) {
+
+        int level0DocCountUpto = docFreq - docCountLeft;
+        boolean level1IsDense =
+            level1LastDocID - level0LastDocID == level1DocCountUpto - level0DocCountUpto;
+        if (level1IsDense) {
+          return level1LastDocID + 1;
+        }
+
+        return level0LastDocID + 1;
+      }
+
+      return super.docIDRunEnd();
     }
 
     private void skipPositions(int freq) throws IOException {
@@ -1362,9 +1384,8 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
     if (docIn.getFilePointer() != state.docStartFP) {
       // Don't prefetch if the input is already positioned at the right offset, which suggests that
       // the caller is streaming the entire inverted index (e.g. for merging), let the read-ahead
-      // logic do its work instead. Note that this heuristic doesn't work for terms that have skip
-      // data, since skip data is stored after the last term, but handling all terms that have <128
-      // docs is a good start already.
+      // logic do its work instead. Note that this heuristic also handles terms with skip data
+      // starting in version 912, where skip data was directly inlined into postings lists.
       docIn.prefetch(state.docStartFP, 1);
     }
     // Note: we don't prefetch positions or offsets, which are less likely to be needed.

@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 
 /** Logger factory. This configures log interceptors for the GUI. */
 public class LoggerFactory {
+  @SuppressWarnings("NonFinalStaticField")
   public static CircularLogBufferHandler circularBuffer;
 
   public static void initGuiLogging() {

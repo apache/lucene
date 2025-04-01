@@ -133,7 +133,8 @@ public class TestAutomatonQuery extends LuceneTestCase {
         1,
         Operations.determinize(
             Automata.makeDecimalInterval(0, 2000, 0), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
-    assertAutomatonHits(2, Operations.union(Automata.makeChar('a'), Automata.makeChar('b')));
+    assertAutomatonHits(
+        2, Operations.union(List.of(Automata.makeChar('a'), Automata.makeChar('b'))));
     assertAutomatonHits(0, Operations.intersection(Automata.makeChar('a'), Automata.makeChar('b')));
     assertAutomatonHits(
         1,
@@ -151,7 +152,8 @@ public class TestAutomatonQuery extends LuceneTestCase {
     AutomatonQuery a3 =
         new AutomatonQuery(
             newTerm("foobar"),
-            Operations.concatenate(Automata.makeString("foo"), Automata.makeString("bar")));
+            Operations.concatenate(
+                List.of(Automata.makeString("foo"), Automata.makeString("bar"))));
     // different than a1 (same term, but different language)
     AutomatonQuery a4 = new AutomatonQuery(newTerm("foobar"), Automata.makeString("different"));
     // different than a1 (different term, same language)
@@ -189,7 +191,7 @@ public class TestAutomatonQuery extends LuceneTestCase {
    */
   public void testRewritePrefix() throws IOException {
     Automaton pfx = Automata.makeString("do");
-    Automaton prefixAutomaton = Operations.concatenate(pfx, Automata.makeAnyString());
+    Automaton prefixAutomaton = Operations.concatenate(List.of(pfx, Automata.makeAnyString()));
     AutomatonQuery aq = new AutomatonQuery(newTerm("bogus"), prefixAutomaton);
     assertEquals(3, automatonQueryNrHits(aq));
   }

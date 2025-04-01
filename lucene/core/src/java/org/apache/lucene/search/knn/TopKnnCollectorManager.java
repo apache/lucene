@@ -49,11 +49,14 @@ public class TopKnnCollectorManager implements KnnCollectorManager {
    * @param context the leaf reader context
    */
   @Override
-  public KnnCollector newCollector(int visitedLimit, LeafReaderContext context) throws IOException {
+  public KnnCollector newCollector(
+      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+      throws IOException {
     if (globalScoreQueue == null) {
-      return new TopKnnCollector(k, visitedLimit);
+      return new TopKnnCollector(k, visitedLimit, searchStrategy);
     } else {
-      return new MultiLeafKnnCollector(k, globalScoreQueue, new TopKnnCollector(k, visitedLimit));
+      return new MultiLeafKnnCollector(
+          k, globalScoreQueue, new TopKnnCollector(k, visitedLimit, searchStrategy));
     }
   }
 }

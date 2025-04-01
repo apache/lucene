@@ -171,7 +171,7 @@ public class Hunspell {
         offset,
         length,
         context,
-        (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
+        (stem, formID, _, _, _, _, _) -> {
           if (!acceptCase(toCheck, formID, stem)) {
             return dictionary.hasFlag(formID, Dictionary.HIDDEN_FLAG);
           }
@@ -478,7 +478,7 @@ public class Hunspell {
     words.add(ref);
 
     Stemmer.RootProcessor stopOnMatching =
-        (stem, formID, morphDataId, outerPrefix, innerPrefix, outerSuffix, innerSuffix) -> {
+        (_, formID, _, _, _, _, _) -> {
           ref.ints[0] = formID;
           for (CompoundRule r : dictionary.compoundRules) {
             if (r.fullyMatches(words)) {

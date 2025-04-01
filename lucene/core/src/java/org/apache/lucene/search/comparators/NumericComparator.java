@@ -30,6 +30,8 @@ import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
@@ -251,6 +253,19 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             }
 
             @Override
+            public void visit(DocIdSetIterator iterator) throws IOException {
+              if (iterator.advance(maxDocVisited + 1) != DocIdSetIterator.NO_MORE_DOCS) {
+                adder.add(iterator.docID());
+                adder.add(iterator);
+              }
+            }
+
+            @Override
+            public void visit(IntsRef ref) {
+              adder.add(ref, maxDocVisited + 1);
+            }
+
+            @Override
             public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               long min = sortableBytesToLong(minPackedValue);
               long max = sortableBytesToLong(maxPackedValue);
@@ -411,6 +426,17 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         @Override
         public int advance(int target) throws IOException {
           return docID = competitiveIterator.advance(target);
+        }
+
+        @Override
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+          // The competitive iterator is usually a BitSetIterator, which has an optimized
+          // implementation of #intoBitSet.
+          if (competitiveIterator.docID() < docID) {
+            competitiveIterator.advance(docID);
+          }
+          competitiveIterator.intoBitSet(upTo, bitSet, offset);
+          docID = competitiveIterator.docID();
         }
       };
     }

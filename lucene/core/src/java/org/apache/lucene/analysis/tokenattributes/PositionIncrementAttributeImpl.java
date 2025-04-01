@@ -57,8 +57,7 @@ public class PositionIncrementAttributeImpl extends AttributeImpl
       return true;
     }
 
-    if (other instanceof PositionIncrementAttributeImpl) {
-      PositionIncrementAttributeImpl _other = (PositionIncrementAttributeImpl) other;
+    if (other instanceof PositionIncrementAttributeImpl _other) {
       return positionIncrement == _other.positionIncrement;
     }
 

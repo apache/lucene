@@ -19,7 +19,9 @@ package org.apache.lucene.search;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestDocIdSetIterator extends LuceneTestCase {
   public void testRangeBasic() throws Exception {
@@ -63,5 +65,73 @@ public class TestDocIdSetIterator extends LuceneTestCase {
     assertEquals(18, disi.nextDoc());
     assertEquals(19, disi.nextDoc());
     assertEquals(NO_MORE_DOCS, disi.nextDoc());
+  }
+
+  public void testIntoBitset() throws Exception {
+    for (int i = 0; i < 10; i++) {
+      int max = 1 + random().nextInt(500);
+      DocIdSetIterator expectedDisi;
+      DocIdSetIterator actualDisi;
+      if ((i & 1) == 0) {
+        int min = random().nextInt(max);
+        expectedDisi = DocIdSetIterator.range(min, max);
+        actualDisi = DocIdSetIterator.range(min, max);
+      } else {
+        expectedDisi = DocIdSetIterator.all(max);
+        actualDisi = DocIdSetIterator.all(max);
+      }
+      FixedBitSet expected = new FixedBitSet(max * 2);
+      FixedBitSet actual = new FixedBitSet(max * 2);
+      int doc = -1;
+      expectedDisi.nextDoc();
+      actualDisi.nextDoc();
+      while (doc != NO_MORE_DOCS) {
+        int r = random().nextInt(3);
+        switch (r) {
+          case 0 -> {
+            expectedDisi.nextDoc();
+            actualDisi.nextDoc();
+          }
+          case 1 -> {
+            int jump = expectedDisi.docID() + random().nextInt(5);
+            expectedDisi.advance(jump);
+            actualDisi.advance(jump);
+          }
+          case 2 -> {
+            expected.clear();
+            actual.clear();
+            int upTo =
+                random().nextBoolean()
+                    ? expectedDisi.docID() - 1
+                    : expectedDisi.docID() + random().nextInt(5);
+            int offset = expectedDisi.docID() - random().nextInt(max);
+            // use the default impl of intoBitSet
+            new FilterDocIdSetIterator(expectedDisi).intoBitSet(upTo, expected, offset);
+            actualDisi.intoBitSet(upTo, actual, offset);
+            assertArrayEquals(expected.getBits(), actual.getBits());
+          }
+        }
+        assertEquals(expectedDisi.docID(), actualDisi.docID());
+        doc = expectedDisi.docID();
+      }
+    }
+  }
+
+  public void testDocIDRunEnd() throws IOException {
+    DocIdSetIterator it = DocIdSetIterator.all(13);
+    assertEquals(0, it.nextDoc());
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(10, it.advance(10));
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(13));
+  }
+
+  public void testDocIDRunEndRange() throws IOException {
+    DocIdSetIterator it = DocIdSetIterator.range(4, 13);
+    assertEquals(4, it.nextDoc());
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(10, it.advance(10));
+    assertEquals(13, it.docIDRunEnd());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(13));
   }
 }

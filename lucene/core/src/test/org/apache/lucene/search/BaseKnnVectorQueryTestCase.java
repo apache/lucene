@@ -69,8 +69,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   abstract AbstractKnnVectorQuery getKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
 
+  /** Ensures that query throws an exception when an exact search is executed */
   abstract AbstractKnnVectorQuery getThrowingKnnVectorQuery(
       String field, float[] query, int k, Query queryFilter);
+
+  /**
+   * Ensures that an approximate query returns at most maxResults results, and throws an exception
+   * when an exact search is executed
+   */
+  abstract AbstractKnnVectorQuery getCappedResultsThrowingKnnVectorQuery(
+      String field, float[] vec, int k, Query query, int maxResults);
 
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k) {
     return getKnnVectorQuery(field, query, k, null);
@@ -187,8 +195,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertMatches(searcher, kvq, 2);
       ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
       assertEquals(scoreDocs.length, 2);
-      assertIdMatches(reader, "id2", scoreDocs[0]);
-      assertIdMatches(reader, "id0", scoreDocs[1]);
+      assertTopIdsMatches(reader, Set.of("id2", "id0"), scoreDocs);
     }
   }
 
@@ -621,20 +628,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
                       getThrowingKnnVectorQuery("field", randomVector(dimension), 10, filter1),
                       numDocs));
 
-          // Test a restrictive filter and check we use exact search
-          Query filter2 = IntPoint.newRangeQuery("tag", lower, lower + 6);
-          results =
-              searcher.search(
-                  getKnnVectorQuery("field", randomVector(dimension), 5, filter2), numDocs);
-          assertEquals(5, results.totalHits.value());
-          assertEquals(results.totalHits.value(), results.scoreDocs.length);
-          expectThrows(
-              UnsupportedOperationException.class,
-              () ->
-                  searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 5, filter2),
-                      numDocs));
-
           // Test an unrestrictive filter and check we use approximate search
           Query filter3 = IntPoint.newRangeQuery("tag", lower, numDocs);
           results =
@@ -652,16 +645,34 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             int tag = (int) fieldDoc.fields[0];
             assertTrue(lower <= tag && tag <= numDocs);
           }
-
-          // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
-          Query filter4 = IntPoint.newRangeQuery("tag", lower, lower + 2);
+          // Test a filter with cost slightly more than k, and check we use exact search as k
+          // results are not retrieved from approximate search
+          Query filter5 = IntPoint.newRangeQuery("tag", lower, lower + 11);
+          results =
+              searcher.search(
+                  getKnnVectorQuery("field", randomVector(dimension), 10, filter5), numDocs);
+          assertEquals(10, results.totalHits.value());
+          assertEquals(results.totalHits.value(), results.scoreDocs.length);
           expectThrows(
               UnsupportedOperationException.class,
               () ->
                   searcher.search(
-                      getThrowingKnnVectorQuery("field", randomVector(dimension), 1, filter4),
+                      getCappedResultsThrowingKnnVectorQuery(
+                          "field", randomVector(dimension), 10, filter5, 5),
                       numDocs));
+          assertEquals(10, results.totalHits.value());
+          assertEquals(results.totalHits.value(), results.scoreDocs.length);
         }
+        // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
+        // due to extreme edge cases, removing the randomness
+        float[] vector = new float[dimension];
+        for (int i = 0; i < dimension; i++) {
+          vector[i] = i % 2 == 0 ? 42 : 7;
+        }
+        Query filter4 = IntPoint.newRangeQuery("tag", 250, 256);
+        expectThrows(
+            UnsupportedOperationException.class,
+            () -> searcher.search(getThrowingKnnVectorQuery("field", vector, 1, filter4), numDocs));
       }
     }
   }
@@ -885,7 +896,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager noTimeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, null);
       KnnCollector noTimeoutCollector =
-          noTimeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
+          noTimeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a normal collector is created without timeout
       assertFalse(
@@ -902,7 +913,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       TimeLimitingKnnCollectorManager timeoutManager =
           new TimeLimitingKnnCollectorManager(delegate, () -> true);
       KnnCollector timeoutCollector =
-          timeoutManager.newCollector(Integer.MAX_VALUE, searcher.leafContexts.get(0));
+          timeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
       // Check that a time limiting collector is created, which returns partial results
       assertFalse(timeoutCollector instanceof TopKnnCollector);
@@ -1024,6 +1035,16 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       throws IOException {
     String actualId = reader.storedFields().document(scoreDoc.doc).get("id");
     assertEquals(expectedId, actualId);
+  }
+
+  void assertTopIdsMatches(IndexReader reader, Set<String> expectedIds, ScoreDoc[] scoreDocs)
+      throws IOException {
+    Set<String> actualIds = new HashSet<>();
+    for (ScoreDoc scoreDoc : scoreDocs) {
+      actualIds.add(reader.storedFields().document(scoreDoc.doc).get("id"));
+    }
+    assertEquals(expectedIds.size(), actualIds.size());
+    assertEquals(expectedIds, actualIds);
   }
 
   void assertDocScoreQueryToString(Query query) {

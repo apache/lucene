@@ -62,7 +62,7 @@ public class TestFunctionMatchQuery extends FunctionTestSetup {
   }
 
   public void testTwoPhaseIteratorMatchCost() throws IOException {
-    DoublePredicate predicate = d -> true;
+    DoublePredicate predicate = _ -> true;
 
     // should use default match cost
     FunctionMatchQuery fmq = new FunctionMatchQuery(in, predicate);

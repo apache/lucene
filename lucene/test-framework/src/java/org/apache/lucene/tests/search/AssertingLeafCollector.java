@@ -23,6 +23,7 @@ import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Wraps another Collector and checks that order is respected. */
 class AssertingLeafCollector extends FilterLeafCollector {
@@ -47,6 +48,16 @@ class AssertingLeafCollector extends FilterLeafCollector {
   @Override
   public void collect(DocIdStream stream) throws IOException {
     in.collect(new AssertingDocIdStream(stream));
+  }
+
+  @Override
+  public void collectRange(int min, int max) throws IOException {
+    assert min > lastCollected;
+    assert max > min;
+    assert min >= this.min : "Out of range: " + min + " < " + this.min;
+    assert max <= this.max : "Out of range: " + (max - 1) + " >= " + this.max;
+    in.collectRange(min, max);
+    lastCollected = max - 1;
   }
 
   @Override
@@ -89,6 +100,23 @@ class AssertingLeafCollector extends FilterLeafCollector {
             : "advancing beyond the end of the scored window: target=" + target + ", max=" + max;
         return in.advance(target);
       }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        assert upTo <= max
+            : "advancing beyond the end of the scored window: upTo=" + upTo + ", max=" + max;
+        in.intoBitSet(upTo, bitSet, offset);
+        assert in.docID() >= upTo;
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        assert docID() != -1;
+        assert docID() != NO_MORE_DOCS;
+        int nextNonMatchingDocID = in.docIDRunEnd();
+        assert nextNonMatchingDocID > docID();
+        return nextNonMatchingDocID;
+      }
     };
   }
 
@@ -102,7 +130,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
   private class AssertingDocIdStream extends DocIdStream {
 
     private final DocIdStream stream;
-    private boolean consumed;
+    private int lastUpTo = -1;
 
     AssertingDocIdStream(DocIdStream stream) {
       this.stream = stream;
@@ -110,7 +138,7 @@ class AssertingLeafCollector extends FilterLeafCollector {
 
     @Override
     public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      assert consumed == false : "A terminal operation has already been called";
+      assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
       stream.forEach(
           doc -> {
             assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
@@ -119,15 +147,54 @@ class AssertingLeafCollector extends FilterLeafCollector {
             consumer.accept(doc);
             lastCollected = doc;
           });
-      consumed = true;
+      lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
+      assert stream.mayHaveRemaining() == false;
+    }
+
+    @Override
+    public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
+      assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
+      stream.forEach(
+          doc -> {
+            assert doc > lastCollected : "Out of order : " + lastCollected + " " + doc;
+            assert doc >= min : "Out of range: " + doc + " < " + min;
+            assert doc < max : "Out of range: " + doc + " >= " + max;
+            consumer.accept(doc);
+            lastCollected = doc;
+          });
+      lastUpTo = upTo;
+      if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
+        assert stream.mayHaveRemaining() == false;
+      }
     }
 
     @Override
     public int count() throws IOException {
-      assert consumed == false : "A terminal operation has already been called";
+      assert lastUpTo != DocIdSetIterator.NO_MORE_DOCS : "exhausted";
       int count = stream.count();
-      consumed = true;
+      lastUpTo = DocIdSetIterator.NO_MORE_DOCS;
+      assert stream.mayHaveRemaining() == false;
       return count;
+    }
+
+    @Override
+    public int count(int upTo) throws IOException {
+      assert lastUpTo < upTo : "upTo=" + upTo + " but previous upTo=" + lastUpTo;
+      int count = stream.count(upTo);
+      lastUpTo = upTo;
+      if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
+        assert stream.mayHaveRemaining() == false;
+      }
+      return count;
+    }
+
+    @Override
+    public boolean mayHaveRemaining() {
+      boolean mayHaveRemaining = stream.mayHaveRemaining();
+      if (lastUpTo == DocIdSetIterator.NO_MORE_DOCS) {
+        assert mayHaveRemaining == false;
+      }
+      return mayHaveRemaining;
     }
   }
 }

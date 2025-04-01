@@ -58,7 +58,7 @@ public class TestOpenNLPChunkerFilterFactory extends BaseTokenStreamTestCase {
     8, 15, 17, 21, 23, 29, 30, 39, 46, 48, 49, 51, 57, 58
   };
   private static final String[] SENTENCES_chunks = {
-    "B-NP", "I-NP", "I-NP", "I-NP", "I-NP", "I-NP", "O", "B-NP", "I-NP", "I-NP", "O", "B-NP",
+    "B-NP", "I-NP", "I-NP", "B-VP", "B-NP", "I-NP", "O", "B-NP", "I-NP", "I-NP", "O", "B-NP",
     "I-NP", "O"
   };
 

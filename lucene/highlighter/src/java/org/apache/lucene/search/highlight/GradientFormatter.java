@@ -18,7 +18,7 @@ package org.apache.lucene.search.highlight;
 
 /** Formats text with different color intensity depending on the score of the term. */
 public class GradientFormatter implements Formatter {
-  private float maxScore;
+  private final float maxScore;
 
   int fgRMin, fgGMin, fgBMin;
   int fgRMax, fgGMax, fgBMax;
@@ -151,12 +151,12 @@ public class GradientFormatter implements Formatter {
     return Math.min(colorMin, colorMax) + (int) colScore;
   }
 
-  private static char[] hexDigits = {
+  private static final char[] HEX_DIGITS = {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
   };
 
   private static String intToHex(int i) {
-    return "" + hexDigits[(i & 0xF0) >> 4] + hexDigits[i & 0x0F];
+    return "" + HEX_DIGITS[(i & 0xF0) >> 4] + HEX_DIGITS[i & 0x0F];
   }
 
   /**

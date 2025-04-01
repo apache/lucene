@@ -360,7 +360,9 @@ public abstract class StringHelper {
   }
 
   // Holds 128 bit unsigned value:
+  @SuppressWarnings("NonFinalStaticField")
   private static BigInteger nextId;
+
   private static final BigInteger mask128;
   private static final Object idLock = new Object();
 

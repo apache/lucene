@@ -61,6 +61,7 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
@@ -72,6 +73,7 @@ import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -181,7 +183,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                         similarityFunction));
               }
             }
-            ;
             doc.add(new StringField("id", Integer.toString(vectors.ordToDoc(ord)), Field.Store.NO));
             iw.addDocument(doc);
           }
@@ -525,6 +526,23 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
+  public void testBuildingJoinSet() throws IOException {
+    int dim = random().nextInt(100) + 1;
+    int nDoc = random().nextInt(500) + 100;
+    int M = random().nextInt(16) + 16;
+    int beamWidth = random().nextInt(100) + 16;
+    long seed = random().nextLong();
+    KnnVectorValues vectors = vectorValues(nDoc, dim);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
+    HnswGraph graph = builder.build(vectors.size());
+
+    Set<Integer> j = UpdateGraphsUtils.computeJoinSet(graph);
+    assertTrue(
+        "Join set size [" + j.size() + "] is not less than graph size [" + graph.size() + "]",
+        j.size() < graph.size());
+  }
+
   public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() throws IOException {
     int totalSize = atLeast(100);
     int initializerSize = random().nextInt(5, totalSize);
@@ -704,6 +722,58 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     assertTrue(nn.earlyTerminated());
     // The visited count shouldn't exceed the limit
     assertTrue(nn.visitedCount() <= visitedLimit);
+  }
+
+  public void testFindAll() throws IOException {
+    int numVectors = 10;
+    KnnVectorValues vectorValues = circularVectorValues(numVectors);
+    T target = getTargetVector();
+    float minScore = Float.POSITIVE_INFINITY;
+    for (int i = 0; i < numVectors; i++) {
+      float score =
+          switch (getVectorEncoding()) {
+            case BYTE ->
+                similarityFunction.compare(
+                    ((ByteVectorValues) vectorValues).vectorValue(i), (byte[]) target);
+            case FLOAT32 ->
+                similarityFunction.compare(
+                    ((FloatVectorValues) vectorValues).vectorValue(i), (float[]) target);
+          };
+      minScore = Math.min(minScore, score);
+    }
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
+    OnHeapHnswGraph hnsw = builder.build(numVectors);
+    float finalMinScore = Math.nextDown(minScore);
+
+    AbstractKnnCollector collector =
+        new AbstractKnnCollector(numVectors, Long.MAX_VALUE, KnnSearchStrategy.Hnsw.DEFAULT) {
+          int collected;
+
+          @Override
+          public boolean collect(int docId, float similarity) {
+            collected++;
+            return true;
+          }
+
+          @Override
+          public int numCollected() {
+            return collected;
+          }
+
+          @Override
+          public float minCompetitiveSimilarity() {
+            return finalMinScore;
+          }
+
+          @Override
+          public TopDocs topDocs() {
+            return null;
+          }
+        };
+    HnswGraphSearcher.search(
+        buildScorer(vectorValues, target), collector, hnsw, new BitSet.MatchAllBits(numVectors));
+    assertEquals(numVectors, collector.numCollected());
   }
 
   public void testHnswGraphBuilderInvalid() throws IOException {
@@ -1336,7 +1406,12 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
 
     @Override
-    public int maxConn() throws IOException {
+    public int neighborCount() {
+      return delegate.neighborCount();
+    }
+
+    @Override
+    public int maxConn() {
       return delegate.maxConn();
     }
 
