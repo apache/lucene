@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search;
 
+import org.apache.lucene.search.knn.KnnSearchStrategy;
+
 /**
  * A {@link KnnCollector.Decorator} that early exits when nearest neighbor queue keeps saturating
  * beyond a 'patience' parameter. This records the rate of collection of new nearest neighbors in
@@ -75,8 +77,7 @@ public class HnswQueueSaturationCollector extends KnnCollector.Decorator {
     return topDocs;
   }
 
-  @Override
-  public void nextVectorsBlock() {
+  public void nextCandidate() {
     double queueSaturation =
         (double) Math.min(currentQueueSize, previousQueueSize) / currentQueueSize;
     previousQueueSize = currentQueueSize;
@@ -88,5 +89,13 @@ public class HnswQueueSaturationCollector extends KnnCollector.Decorator {
     if (countSaturated > patience) {
       patienceFinished = true;
     }
+  }
+
+  @Override
+  public KnnSearchStrategy getSearchStrategy() {
+    KnnSearchStrategy delegateStrategy = delegate.getSearchStrategy();
+    assert delegateStrategy instanceof KnnSearchStrategy.Hnsw;
+    return new KnnSearchStrategy.Patience(
+        this, ((KnnSearchStrategy.Hnsw) delegateStrategy).filteredSearchThreshold());
   }
 }

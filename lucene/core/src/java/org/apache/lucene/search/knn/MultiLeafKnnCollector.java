@@ -133,9 +133,6 @@ public final class MultiLeafKnnCollector extends KnnCollector.Decorator {
   }
 
   @Override
-  public void nextVectorsBlock() {}
-
-  @Override
   public String toString() {
     return "MultiLeafKnnCollector[subCollector=" + subCollector + "]";
   }

@@ -201,8 +201,8 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
           }
         }
       }
-      if (results instanceof KnnCollector.Decorator knnCollectorDecorator) {
-        knnCollectorDecorator.nextVectorsBlock();
+      if (results.getSearchStrategy() != null) {
+        results.getSearchStrategy().nextVectorsBlock();
       }
     }
   }

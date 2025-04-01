@@ -50,11 +50,4 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator 
                 : TotalHits.Relation.EQUAL_TO),
         td.scoreDocs);
   }
-
-  @Override
-  public void nextVectorsBlock() {
-    if (this.collector instanceof KnnCollector.Decorator knnCollectorDecorator) {
-      knnCollectorDecorator.nextVectorsBlock();
-    }
-  }
 }

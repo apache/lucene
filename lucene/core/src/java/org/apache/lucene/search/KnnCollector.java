@@ -150,7 +150,5 @@ public interface KnnCollector {
     public KnnSearchStrategy getSearchStrategy() {
       return collector.getSearchStrategy();
     }
-
-    public abstract void nextVectorsBlock();
   }
 }

@@ -18,6 +18,7 @@ package org.apache.lucene.search.knn;
 
 import java.util.Objects;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.HnswQueueSaturationCollector;
 
 /**
  * KnnSearchStrategy is a strategy for kNN search, providing additional search strategy
@@ -40,7 +41,7 @@ public abstract class KnnSearchStrategy {
   @Override
   public abstract int hashCode();
 
-  //  public abstract void nextVectorsBlock(KnnCollector collector);
+  public abstract void nextVectorsBlock();
 
   /**
    * A strategy for kNN search that uses HNSW
@@ -92,6 +93,9 @@ public abstract class KnnSearchStrategy {
     public int hashCode() {
       return Objects.hashCode(filteredSearchThreshold);
     }
+
+    @Override
+    public void nextVectorsBlock() {}
   }
 
   /**
@@ -157,6 +161,33 @@ public abstract class KnnSearchStrategy {
     @Override
     public int hashCode() {
       return Objects.hash(entryPoints, numberOfEntryPoints, originalStrategy);
+    }
+
+    @Override
+    public void nextVectorsBlock() {}
+  }
+
+  public static class Patience extends Hnsw {
+    private final HnswQueueSaturationCollector collector;
+
+    public Patience(HnswQueueSaturationCollector collector, int filteredSearchThreshold) {
+      super(filteredSearchThreshold);
+      this.collector = collector;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return super.equals(obj) && Objects.equals(collector, ((Patience) obj).collector);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(super.filteredSearchThreshold, collector);
+    }
+
+    @Override
+    public void nextVectorsBlock() {
+      collector.nextCandidate();
     }
   }
 }

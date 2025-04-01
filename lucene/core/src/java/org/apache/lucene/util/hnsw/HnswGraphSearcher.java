@@ -312,8 +312,8 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           }
         }
       }
-      if (results instanceof KnnCollector.Decorator knnCollectorDecorator) {
-        knnCollectorDecorator.nextVectorsBlock();
+      if (results.getSearchStrategy() != null) {
+        results.getSearchStrategy().nextVectorsBlock();
       }
     }
   }

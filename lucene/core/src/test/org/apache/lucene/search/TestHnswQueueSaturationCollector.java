@@ -53,7 +53,7 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       queueSaturationCollector.collect(i, 1.0f - i * 1e-3f);
       if (i % 10 == 0) {
-        queueSaturationCollector.nextVectorsBlock();
+        queueSaturationCollector.nextCandidate();
       }
       if (queueSaturationCollector.earlyTerminated()) {
         assertEquals(120, i);
@@ -73,7 +73,7 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     for (int i = 0; i < random.nextInt(numDocs); i++) {
       queueSaturationCollector.collect(random.nextInt(numDocs), random.nextFloat(1.0f));
       if (i % 10 == 0) {
-        queueSaturationCollector.nextVectorsBlock();
+        queueSaturationCollector.nextCandidate();
       }
       boolean earlyTerminatedSaturation = queueSaturationCollector.earlyTerminated();
       boolean earlyTerminatedDelegate = delegate.earlyTerminated();
@@ -92,7 +92,7 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     for (int i = 0; i < random.nextInt(numDocs); i++) {
       queueSaturationCollector.collect(random.nextInt(numDocs), random.nextFloat(1.0f));
       if (i % 10 == 0) {
-        queueSaturationCollector.nextVectorsBlock();
+        queueSaturationCollector.nextCandidate();
       }
       if (delegate.earlyTerminated()) {
         TopDocs topDocs = queueSaturationCollector.topDocs();
