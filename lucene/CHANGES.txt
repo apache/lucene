@@ -69,6 +69,8 @@ Optimizations
 
 * GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
 
+* GITHUB#14267: Reduce the number of comparisons when lowerPoint is equal to upperPoint. (hanbj)
+
 Bug Fixes
 ---------------------
 (No changes)
