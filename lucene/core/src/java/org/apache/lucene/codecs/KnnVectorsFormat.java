@@ -152,7 +152,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             public void close() {}
 
             @Override
-            public long offHeapBytes() {
+            public long offHeapByteSize() {
               return 0L;
             }
           };

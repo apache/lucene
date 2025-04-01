@@ -21,7 +21,9 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -43,6 +45,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.OffHeapAccountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -258,12 +261,17 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public long offHeapBytes() {
+  public long offHeapByteSize() {
     long bytes = 0L;
     for (var field : fields.values()) {
       bytes += field.vectorDataLength();
     }
     return bytes;
+  }
+
+  @Override
+  public Collection<OffHeapAccountable> getChildOffHeapResources() {
+    return List.of(OffHeapAccountable.named("raw vectors", rawVectorsReader));
   }
 
   public float[] getCentroid(String field) {

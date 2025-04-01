@@ -264,7 +264,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public long offHeapBytes() {
+  public long offHeapByteSize() {
     long bytes = 0L;
     for (var field : fields.values()) {
       var f = field.value;

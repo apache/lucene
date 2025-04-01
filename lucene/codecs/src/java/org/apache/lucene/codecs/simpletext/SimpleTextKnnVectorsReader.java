@@ -276,8 +276,8 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public long offHeapBytes() {
-    return 0L;
+  public long offHeapByteSize() {
+    return 0L; // all in-heap
   }
 
   @Override

@@ -251,7 +251,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public long offHeapBytes() {
+  public long offHeapByteSize() {
     long bytes = 0L;
     for (var field : fields.values()) {
       bytes += field.value.vectorIndexLength();
@@ -261,7 +261,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public Collection<OffHeapAccountable> getChildOffHeapResources() {
-    return List.of(flatVectorsReader);
+    return List.of(OffHeapAccountable.named("flat vectors", flatVectorsReader));
   }
 
   @Override
@@ -585,7 +585,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     }
 
     @Override
-    public long offHeapBytes() {
+    public long offHeapByteSize() {
       return dataIn.length();
     }
   }

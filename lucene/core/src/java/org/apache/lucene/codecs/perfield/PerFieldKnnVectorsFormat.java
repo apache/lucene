@@ -345,10 +345,10 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public long offHeapBytes() {
+    public long offHeapByteSize() {
       long bytes = 0L;
       for (var field : fields.values()) {
-        bytes += field.value.offHeapBytes();
+        bytes += field.value.offHeapByteSize();
       }
       return bytes;
     }

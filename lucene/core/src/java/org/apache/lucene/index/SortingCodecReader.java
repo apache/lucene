@@ -591,8 +591,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public long offHeapBytes() {
-        return delegate.offHeapBytes();
+      public long offHeapByteSize() {
+        return delegate.offHeapByteSize();
       }
 
       @Override

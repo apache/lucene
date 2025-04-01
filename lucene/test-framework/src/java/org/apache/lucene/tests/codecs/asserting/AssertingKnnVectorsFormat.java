@@ -219,8 +219,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public long offHeapBytes() {
-      return delegate.offHeapBytes();
+    public long offHeapByteSize() {
+      return delegate.offHeapByteSize();
     }
 
     @Override

@@ -21,18 +21,21 @@ import java.util.Collection;
 import java.util.Collections;
 
 /**
- * An object whose off-heap memory requirements can be computed.
+ * An object whose off-heap memory usage can be determined.
+ *
+ * <p>The value reported is not necessarily the actual RAM usage, but rather the size of off-heap
+ * space required if it were to be fully loaded into memory.
  *
  * @lucene.experimental
  */
 public interface OffHeapAccountable {
 
   /**
-   * Returns the size of the off-heap memory requirements in bytes.
+   * Returns the size of the off-heap memory usage in bytes.
    *
-   * @return a non-negative value indicate the size of the off-heap memory requirements.
+   * @return a non-negative value indicate the size of the off-heap memory usage.
    */
-  long offHeapBytes();
+  long offHeapByteSize();
 
   /**
    * Returns nested resources of this class. The result should be a point-in-time snapshot (to avoid
@@ -40,5 +43,30 @@ public interface OffHeapAccountable {
    */
   default Collection<OffHeapAccountable> getChildOffHeapResources() {
     return Collections.emptyList();
+  }
+
+  static OffHeapAccountable named(String description, OffHeapAccountable in) {
+    return named(
+        description + " [" + in + "]", in.getChildOffHeapResources(), in.offHeapByteSize());
+  }
+
+  static OffHeapAccountable named(
+      String description, Collection<OffHeapAccountable> children, long bytes) {
+    return new OffHeapAccountable() {
+      @Override
+      public long offHeapByteSize() {
+        return bytes;
+      }
+
+      @Override
+      public Collection<OffHeapAccountable> getChildOffHeapResources() {
+        return children;
+      }
+
+      @Override
+      public String toString() {
+        return description;
+      }
+    };
   }
 }
