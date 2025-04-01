@@ -23,7 +23,7 @@ import java.util.Collections;
 /**
  * An object whose off-heap memory requirements can be computed.
  *
- * @lucene.internal
+ * @lucene.experimental
  */
 public interface OffHeapAccountable {
 
