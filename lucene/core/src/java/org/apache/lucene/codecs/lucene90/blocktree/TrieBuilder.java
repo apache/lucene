@@ -354,8 +354,6 @@ class TrieBuilder {
 
         for (Node child = node.firstChild; child != null; child = child.next) {
           assert node.fp > child.fp : "parent always written after all children";
-          // note that we sometimes write trailing 0 bytes here, when the incoming int n is bigger
-          // than would be required for a "normal" vLong
           writeLongNBytes(node.fp - child.fp, childrenFpBytes, index);
         }
 
@@ -379,11 +377,15 @@ class TrieBuilder {
   }
 
   /**
-   * This differs from writeVLong because it can write more bytes than would be needed for vLong
+   * Write the first (LSB order) n bytes of the given long v into the DataOutput.
+   *
+   * <p>This differs from writeVLong because it can write more bytes than would be needed for vLong
    * when the incoming int n is larger.
    */
   private static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
     for (int i = 0; i < n; i++) {
+      // Note that we sometimes write trailing 0 bytes here, when the incoming int n is bigger than
+      // would be required for a "normal" vLong
       out.writeByte((byte) v);
       v >>>= 8;
     }
