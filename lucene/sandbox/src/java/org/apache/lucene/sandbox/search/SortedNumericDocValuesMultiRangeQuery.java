@@ -173,9 +173,9 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
   }
 
   /**
-   * TreeSet.equals is ruled by {@linkplain Comparator} logic.
-   * This comparator have to be upper bound agnostic to support floor() lookups. However, equals()
-   * should be upper bound sensitive and here we ensure that.
+   * TreeSet.equals is ruled by {@linkplain Comparator} logic. This comparator have to be upper
+   * bound agnostic to support floor() lookups. However, equals() should be upper bound sensitive
+   * and here we ensure that.
    */
   private boolean upperBoundWiseEquals(
       NavigableSet<DocValuesMultiRangeQuery.LongRange> left,
