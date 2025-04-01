@@ -27,9 +27,10 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.OffHeapAccountable;
 
 /** Reads vectors from an index. */
-public abstract class KnnVectorsReader implements Closeable {
+public abstract class KnnVectorsReader implements Closeable, OffHeapAccountable {
 
   /** Sole constructor */
   protected KnnVectorsReader() {}

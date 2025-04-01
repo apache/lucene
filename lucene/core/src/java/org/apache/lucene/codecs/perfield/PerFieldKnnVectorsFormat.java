@@ -343,6 +343,15 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
       }
       IOUtils.close(readers);
     }
+
+    @Override
+    public long offHeapBytes() {
+      long bytes = 0L;
+      for (var field : fields.values()) {
+        bytes += field.value.offHeapBytes();
+      }
+      return bytes;
+    }
   }
 
   static String getSuffix(String formatName, String suffix) {

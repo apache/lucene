@@ -257,6 +257,15 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
     return size;
   }
 
+  @Override
+  public long offHeapBytes() {
+    long bytes = 0L;
+    for (var field : fields.values()) {
+      bytes += field.vectorDataLength();
+    }
+    return bytes;
+  }
+
   public float[] getCentroid(String field) {
     FieldEntry fieldEntry = fields.get(field);
     if (fieldEntry != null) {

@@ -276,6 +276,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public long offHeapBytes() {
+    return 0L;
+  }
+
+  @Override
   public void close() throws IOException {
     dataIn.close();
   }

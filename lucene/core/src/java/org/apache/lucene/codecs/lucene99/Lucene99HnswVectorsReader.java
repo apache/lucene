@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -47,6 +48,7 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.OffHeapAccountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
@@ -246,6 +248,20 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return Lucene99HnswVectorsReader.SHALLOW_SIZE
         + fields.ramBytesUsed()
         + flatVectorsReader.ramBytesUsed();
+  }
+
+  @Override
+  public long offHeapBytes() {
+    long bytes = 0L;
+    for (var field : fields.values()) {
+      bytes += field.value.vectorIndexLength();
+    }
+    return bytes;
+  }
+
+  @Override
+  public Collection<OffHeapAccountable> getChildOffHeapResources() {
+    return List.of(flatVectorsReader);
   }
 
   @Override
@@ -464,7 +480,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   /** Read the nearest-neighbors graph from the index input */
-  private static final class OffHeapHnswGraph extends HnswGraph {
+  private static final class OffHeapHnswGraph extends HnswGraph implements OffHeapAccountable {
 
     final IndexInput dataIn;
     final int[][] nodesByLevel;
@@ -566,6 +582,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       } else {
         return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
       }
+    }
+
+    @Override
+    public long offHeapBytes() {
+      return dataIn.length();
     }
   }
 }

@@ -852,6 +852,11 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       return new MergedFloatVectorValues(dimension, size, subs);
     }
 
+    @Override
+    public long offHeapBytes() {
+      return Arrays.stream(readers).mapToLong(KnnVectorsReader::offHeapBytes).sum();
+    }
+
     class MergedFloatVectorValues extends FloatVectorValues {
       final int dimension;
       final int size;

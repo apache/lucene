@@ -190,6 +190,11 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
+      public long offHeapBytes() {
+        return 0;
+      }
+
+      @Override
       public void close() {}
     };
   }

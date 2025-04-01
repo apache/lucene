@@ -167,6 +167,15 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
+  public long offHeapBytes() {
+    long bytes = 0L;
+    for (var field : fields.values()) {
+      bytes += field.value.vectorDataLength();
+    }
+    return bytes;
+  }
+
+  @Override
   public void checkIntegrity() throws IOException {
     CodecUtil.checksumEntireFile(vectorData);
   }

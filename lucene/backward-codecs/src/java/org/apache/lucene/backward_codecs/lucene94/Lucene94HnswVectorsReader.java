@@ -306,6 +306,16 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public long offHeapBytes() {
+    long bytes = 0L;
+    for (var field : fields.values()) {
+      var f = field.value;
+      bytes += f.vectorDataLength() + f.vectorIndexLength();
+    }
+    return bytes;
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(vectorData, vectorIndex);
   }

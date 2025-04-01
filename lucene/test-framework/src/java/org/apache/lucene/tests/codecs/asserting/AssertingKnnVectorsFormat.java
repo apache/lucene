@@ -219,6 +219,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public long offHeapBytes() {
+      return delegate.offHeapBytes();
+    }
+
+    @Override
     public void close() throws IOException {
       assert !mergeInstance;
       delegate.close();
