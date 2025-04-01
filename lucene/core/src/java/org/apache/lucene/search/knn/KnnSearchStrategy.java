@@ -41,9 +41,7 @@ public abstract class KnnSearchStrategy {
   @Override
   public abstract int hashCode();
 
-  /**
-   * Signal processing of the next block of vectors.
-   */
+  /** Signal processing of the next block of vectors. */
   public abstract void nextVectorsBlock();
 
   /**
@@ -171,7 +169,8 @@ public abstract class KnnSearchStrategy {
   }
 
   /**
-   * A strategy for kNN search on HNSW that early exits when nearest neighbor collection rate saturates.
+   * A strategy for kNN search on HNSW that early exits when nearest neighbor collection rate
+   * saturates.
    *
    * @lucene.experimental
    */
