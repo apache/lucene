@@ -40,6 +40,8 @@ public abstract class KnnSearchStrategy {
   @Override
   public abstract int hashCode();
 
+  //  public abstract void nextVectorsBlock(KnnCollector collector);
+
   /**
    * A strategy for kNN search that uses HNSW
    *

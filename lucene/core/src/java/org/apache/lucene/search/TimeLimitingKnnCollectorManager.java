@@ -70,5 +70,8 @@ public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
 
       return new TopDocs(new TotalHits(docs.totalHits.value(), relation), docs.scoreDocs);
     }
+
+    @Override
+    public void nextVectorsBlock() {}
   }
 }

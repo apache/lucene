@@ -46,8 +46,10 @@ public class TestPatienceByteVectorQuery extends BaseKnnVectorQueryTestCase {
   }
 
   @Override
-  AbstractKnnVectorQuery getCappedResultsThrowingKnnVectorQuery(String field, float[] vec, int k, Query query, int maxResults) {
-    return new TestKnnByteVectorQuery.CappedResultsThrowingKnnVectorQuery(field, floatToBytes(vec), k, query, maxResults);
+  AbstractKnnVectorQuery getCappedResultsThrowingKnnVectorQuery(
+      String field, float[] vec, int k, Query query, int maxResults) {
+    return new TestKnnByteVectorQuery.CappedResultsThrowingKnnVectorQuery(
+        field, floatToBytes(vec), k, query, maxResults);
   }
 
   @Override

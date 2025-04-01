@@ -306,6 +306,9 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
         return searchStrategy;
       }
 
+      @Override
+      public void nextVectorsBlock() {}
+
       class AssertingSeededStrategy extends KnnSearchStrategy.Seeded {
         private final KnnSearchStrategy.Seeded seeded;
 
