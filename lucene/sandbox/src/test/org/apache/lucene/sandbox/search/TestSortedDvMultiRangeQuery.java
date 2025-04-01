@@ -383,10 +383,11 @@ public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
       lower = 1;
       upper = 10;
       builder.add(lower, upper);
+      Query query = builder.build();
       assertEquals(
-          "sanity check for potential match",
+          "sanity check for potential match " + query,
           2,
-          searcher.search(builder.build(), 1).totalHits.value());
+          searcher.search(query, 100).totalHits.value());
     }
     // hit by value as a range upper==lower
     TopDocs hit1 = searcher.search(mrSNumDvQ("foo", 2, 3, 4, 5, -5, -2, 1, 1), 1);

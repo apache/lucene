@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.Objects;
@@ -88,7 +89,7 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
     NavigableSet<DocValuesMultiRangeQuery.LongRange> sortedClauses =
         new TreeSet<>(
             Comparator.comparing(r -> r.lower)
-            //        .thenComparing(r -> r.upper)
+            // .thenComparing(r -> r.upper)// have to ignore upper boundary for .floor() lookups
             );
     PriorityQueue<Edge> heap =
         new PriorityQueue<>(clauses.size() * 2) {
@@ -167,7 +168,25 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
     if (o == null || getClass() != o.getClass()) return false;
     SortedNumericDocValuesMultiRangeQuery that = (SortedNumericDocValuesMultiRangeQuery) o;
     return Objects.equals(fieldName, that.fieldName)
-        && Objects.equals(sortedClauses, that.sortedClauses);
+        // && Objects.equals(sortedClauses, that.sortedClauses)
+        && upperBoundWiseEquals(sortedClauses, that.sortedClauses);
+  }
+
+  /**
+   * TreeSet.equals is ruled by {@linkplain Comparator<DocValuesMultiRangeQuery.LongRange>} logic.
+   * This comparator have to be upper bound agnostic to support floor() lookups. However, equals()
+   * should be upper bound sensitive and here we ensure that.
+   */
+  private boolean upperBoundWiseEquals(
+      NavigableSet<DocValuesMultiRangeQuery.LongRange> left,
+      NavigableSet<DocValuesMultiRangeQuery.LongRange> right) {
+    for (Iterator<DocValuesMultiRangeQuery.LongRange> li = left.iterator(), ri = right.iterator();
+        li.hasNext() && ri.hasNext(); ) {
+      if (!li.next().equals(ri.next()) || li.hasNext() != ri.hasNext()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
@@ -203,36 +222,39 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
       TwoPhaseIterator iterator;
       iterator =
           new TwoPhaseIterator(values) {
+            final DocValuesMultiRangeQuery.LongRange lookupVal =
+                new DocValuesMultiRangeQuery.LongRange(-Long.MAX_VALUE, -Long.MAX_VALUE);
+
             @Override
             public boolean matches() throws IOException {
+              NavigableSet<DocValuesMultiRangeQuery.LongRange> rangeTree = sortedClauses;
               for (int i = 0, count = values.docValueCount(); i < count; ++i) {
                 final long value = values.nextValue();
                 if (value >= lowerValue && value <= upperValue) {
-                  // TODO reuse instance, subSet
-                  DocValuesMultiRangeQuery.LongRange lessOrEq =
-                      sortedClauses.floor(
-                          new DocValuesMultiRangeQuery.LongRange(
-                              value, value // Long.MAX_VALUE
-                              ));
-                  if (lessOrEq != null && lessOrEq.upper >= value) {
-                    assert lessOrEq.lower <= value;
-                    return true;
-                  }
+                  lookupVal.lower = value;
+                  lookupVal.upper = value;
+                  DocValuesMultiRangeQuery.LongRange lessOrEq = rangeTree.floor(lookupVal);
+                  if (lessOrEq != null) {
+                    if (lessOrEq.upper >= value) {
+                      assert lessOrEq.lower <= value;
+                      return true;
+                    }
+                    assert lessOrEq.upper < value
+                        : "always true. prev range is over before the value";
+                    // cut range tree for greater values, if we'll look up then
+                    if (i < count - 1) {
+                      rangeTree = rangeTree.tailSet(lessOrEq, false);
+                    }
+                  } // else
+                  // lessOrEq == null - value before the first range
                 }
-                //                    if (value < lowerValue) {
-                //                      continue;
-                //                    }
-                //                    // Values are sorted, so the first value that is >= lowerValue
-                // is our best
-                //                    // candidate
-                //                    return value <= upperValue;
               }
               return false; // all values were < lowerValue
             }
 
             @Override
             public float matchCost() {
-              return 2; // 2 comparisons
+              return sortedClauses.size();
             }
           };
       if (skipper != null) {
@@ -243,8 +265,6 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
       return ConstantScoreScorerSupplier.fromIterator(
           TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
     }
-
-    // TODO perhaps count() specification?
 
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
