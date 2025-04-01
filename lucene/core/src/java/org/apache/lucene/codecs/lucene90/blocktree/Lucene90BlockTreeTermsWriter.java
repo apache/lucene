@@ -484,7 +484,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       for (PendingBlock block : blocks) {
         if (block.subIndices != null) {
           for (TrieBuilder subIndex : block.subIndices) {
-            trieBuilder.absorb(subIndex);
+            trieBuilder.append(subIndex);
           }
           block.subIndices = null;
         }

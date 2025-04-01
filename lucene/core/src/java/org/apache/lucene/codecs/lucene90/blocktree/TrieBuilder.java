@@ -30,7 +30,7 @@ import org.apache.lucene.util.BytesRefBuilder;
 /**
  * A builder to build prefix tree (trie) as the index of block tree, and can be saved to disk.
  *
- * <p>TODO make it a more memory efficient structure
+ * <p>TODO make this trie builder a more memory efficient structure.
  */
 class TrieBuilder {
 
@@ -113,12 +113,12 @@ class TrieBuilder {
   }
 
   /**
-   * Absorb all (K, V) pairs from the given trie into this one. The given trie builder need to
+   * Append all (K, V) pairs from the given trie into this one. The given trie builder need to
    * ensure its keys greater or equals than max key of this one.
    *
-   * <p>Note: the given trie will be destroyed after absorbing.
+   * <p>Note: the given trie will be destroyed after appending.
    */
-  void absorb(TrieBuilder trieBuilder) {
+  void append(TrieBuilder trieBuilder) {
     if (status != Status.BUILDING || trieBuilder.status != Status.BUILDING) {
       throw new IllegalStateException("tries have wrong status.");
     }
@@ -247,7 +247,7 @@ class TrieBuilder {
         continue;
       }
 
-      // If there are any children have not been saved, push it into stack and continue.
+      // If there are any children have not been saved, push the first one into stack and continue.
       // We want to ensure saving children before parent.
 
       if (node.savedTo == null) {
@@ -354,6 +354,8 @@ class TrieBuilder {
 
         for (Node child = node.firstChild; child != null; child = child.next) {
           assert node.fp > child.fp : "parent always written after all children";
+          // note that we sometimes write trailing 0 bytes here, when the incoming int n is bigger
+          // than would be required for a "normal" vLong
           writeLongNBytes(node.fp - child.fp, childrenFpBytes, index);
         }
 
@@ -376,6 +378,10 @@ class TrieBuilder {
     return Long.BYTES - (Long.numberOfLeadingZeros(v | 1) >>> 3);
   }
 
+  /**
+   * This differs from writeVLong because it can write more bytes than would be needed for vLong
+   * when the incoming int n is larger.
+   */
   private static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
     for (int i = 0; i < n; i++) {
       out.writeByte((byte) v);
@@ -396,7 +402,7 @@ class TrieBuilder {
       for (Node child = node.firstChild; child != null; child = child.next) {
         n++;
         assert child.next == null || child.label < child.next.label
-            : " the label of children nodes should always be in order.";
+            : " the label of children nodes should always be in strictly increasing order.";
       }
       assert node.childrenNum == n;
     }
