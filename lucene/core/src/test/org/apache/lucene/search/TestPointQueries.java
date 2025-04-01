@@ -2497,4 +2497,45 @@ public class TestPointQueries extends LuceneTestCase {
     w.close();
     dir.close();
   }
+
+  public void testPointInSetQuerySkipsNonMatchingSegments() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new IntPoint("field", 10));
+    doc.add(new IntPoint("field2d", 10, 10));
+    w.addDocument(doc);
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    IndexSearcher searcher = newSearcher(reader);
+
+    Query query = IntPoint.newSetQuery("field", 1, 3, 5);
+    Weight weight =
+        searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newSetQuery("field", 11, 13, 15);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = IntPoint.newSetQuery("field", 5, 10, 15);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNotNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = newMultiDimIntSetQuery("field2d", 2, 5, 5);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = newMultiDimIntSetQuery("field2d", 2, 15, 15);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    query = newMultiDimIntSetQuery("field2d", 2, 10, 10);
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertNotNull(weight.scorerSupplier(reader.leaves().get(0)));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
 }

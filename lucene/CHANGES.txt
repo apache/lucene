@@ -22,6 +22,8 @@ Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
 
+* GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
+
 Bug Fixes
 ---------------------
 (No changes)
