@@ -41,6 +41,9 @@ public abstract class KnnSearchStrategy {
   @Override
   public abstract int hashCode();
 
+  /**
+   * Signal processing of the next block of vectors.
+   */
   public abstract void nextVectorsBlock();
 
   /**
