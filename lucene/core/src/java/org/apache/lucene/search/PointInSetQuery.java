@@ -111,7 +111,8 @@ public abstract class PointInSetQuery extends Query implements Accountable {
       if (previous == null) {
         previous = new BytesRefBuilder();
         lowerPoint = new byte[bytesPerDim * numDims];
-        System.arraycopy(current.bytes, current.offset, lowerPoint, 0, lowerPoint.length);
+        assert lowerPoint.length == current.length;
+        System.arraycopy(current.bytes, current.offset, lowerPoint, 0, current.length);
       } else {
         int cmp = previous.get().compareTo(current);
         if (cmp == 0) {
@@ -129,7 +130,8 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     if (previous != null) {
       BytesRef max = previous.get();
       upperPoint = new byte[bytesPerDim * numDims];
-      System.arraycopy(max.bytes, max.offset, upperPoint, 0, upperPoint.length);
+      assert upperPoint.length == max.length;
+      System.arraycopy(max.bytes, max.offset, upperPoint, 0, max.length);
     }
     ramBytesUsed =
         BASE_RAM_BYTES
@@ -162,21 +164,6 @@ public abstract class PointInSetQuery extends Query implements Accountable {
           return null;
         }
 
-        if (values.getDocCount() == 0) {
-          return null;
-        } else if (lowerPoint != null && upperPoint != null) {
-          ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
-          final byte[] fieldPackedLower = values.getMinPackedValue();
-          final byte[] fieldPackedUpper = values.getMaxPackedValue();
-          for (int i = 0; i < numDims; ++i) {
-            int offset = i * bytesPerDim;
-            if (comparator.compare(lowerPoint, offset, fieldPackedUpper, offset) > 0
-                || comparator.compare(upperPoint, offset, fieldPackedLower, offset) < 0) {
-              return null;
-            }
-          }
-        }
-
         if (values.getNumIndexDimensions() != numDims) {
           throw new IllegalArgumentException(
               "field=\""
@@ -194,6 +181,22 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                   + values.getBytesPerDimension()
                   + " but this query has bytesPerDim="
                   + bytesPerDim);
+        }
+
+        if (values.getDocCount() == 0) {
+          return null;
+        } else if (lowerPoint != null) {
+          assert upperPoint != null;
+          ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+          final byte[] fieldPackedLower = values.getMinPackedValue();
+          final byte[] fieldPackedUpper = values.getMaxPackedValue();
+          for (int i = 0; i < numDims; ++i) {
+            int offset = i * bytesPerDim;
+            if (comparator.compare(lowerPoint, offset, fieldPackedUpper, offset) > 0
+                || comparator.compare(upperPoint, offset, fieldPackedLower, offset) < 0) {
+              return null;
+            }
+          }
         }
 
         if (numDims == 1) {
