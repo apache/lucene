@@ -167,7 +167,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public long offHeapBytes() {
+  public long offHeapByteSize() {
     long bytes = 0L;
     for (var field : fields.values()) {
       bytes += field.value.vectorDataLength();
