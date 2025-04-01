@@ -350,19 +350,20 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
     CountDownLatch mergeCloseCountDownLatch = new CountDownLatch(1);
     CountDownLatch updateDocumentFailCountDownLatch = new CountDownLatch(1);
     CountDownLatch mergeCountDownLatch = new CountDownLatch(1);
+    CountDownLatch indexWriterCloseCountDownLatch = new CountDownLatch(1);
     ConcurrentMergeScheduler mergeScheduler =
         new ConcurrentMergeScheduler() {
           @Override
           public void close() throws IOException {
-            super.close();
             try {
               mergeCloseCountDownLatch.countDown();
               // Let merge close not end for a long time, causing AlreadyClosedException exception
               // thrown when writer.commit()
-              Thread.sleep(5000);
+              indexWriterCloseCountDownLatch.await();
             } catch (InterruptedException e) {
               throw new RuntimeException(e);
             }
+            super.close();
           }
         };
     // Prevent waiting in ConcurrentMergeScheduler#maybeStall from causing test deadlock
@@ -417,6 +418,12 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
                 throw new RuntimeException(e);
               }
               super.merge(merge);
+            }
+
+            @Override
+            public void close() throws IOException {
+              indexWriterCloseCountDownLatch.countDown();
+              super.close();
             }
           };
       ((ConcurrentMergeScheduler) writer.getConfig().getMergeScheduler()).setSuppressExceptions();
@@ -473,7 +480,15 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
         reader.close();
       }
 
-      dir.close();
+      try {
+        dir.close();
+      } finally {
+        if (indexWriterCloseCountDownLatch.getCount() == 1) {
+          // Avoid merge thread leakage when reproducing problems (without calling writer.close) in
+          // finally
+          indexWriterCloseCountDownLatch.countDown();
+        }
+      }
     }
   }
 
