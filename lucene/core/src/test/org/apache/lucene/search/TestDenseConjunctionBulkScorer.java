@@ -648,18 +648,29 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
   }
 
   public void testMixedRangeIntersection() throws IOException {
-    int maxDoc = 100_000;
+    int maxDoc = 80_000;
     FixedBitSet clause2 = new FixedBitSet(maxDoc);
     for (int i = 0; i < maxDoc; i += 2) {
       clause2.set(i);
     }
+    DocIdSetIterator rangeIterator =
+        new FilterDocIdSetIterator(DocIdSetIterator.range(10_000, 50_000)) {
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return in.docIDRunEnd();
+          }
+
+          @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            fail(
+                "intoBitSet should not be called if scoring windows get aligned with #docIDRunEnd");
+          }
+        };
     List<DocIdSetIterator> clauses =
-        Arrays.asList(DocIdSetIterator.range(10_000, 60_000), new BitSetIterator(clause2, 50_000));
+        Arrays.asList(rangeIterator, new BitSetIterator(clause2, 40_000));
     Collections.shuffle(clauses, random());
     BulkScorer scorer =
         new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
-    // AssertingBulkScorer randomly splits the scored range into smaller ranges
-    scorer = AssertingBulkScorer.wrap(random(), scorer, maxDoc);
     FixedBitSet result = new FixedBitSet(maxDoc);
     scorer.score(
         new LeafCollector() {
@@ -676,14 +687,14 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
         DocIdSetIterator.NO_MORE_DOCS);
 
     FixedBitSet expected = new FixedBitSet(maxDoc);
-    for (int i = 10_000; i < 60_000; i += 2) {
+    for (int i = 10_000; i < 50_000; i += 2) {
       expected.set(i);
     }
     assertEquals(expected, result);
 
     // Now exercise DocIdStream.count()
     clauses =
-        Arrays.asList(DocIdSetIterator.range(10_000, 60_000), new BitSetIterator(clause2, 50_000));
+        Arrays.asList(DocIdSetIterator.range(10_000, 50_000), new BitSetIterator(clause2, 40_000));
     Collections.shuffle(clauses, random());
     scorer = new DenseConjunctionBulkScorer(clauses, Collections.emptyList(), maxDoc, 0f);
     CountingLeafCollector collector = new CountingLeafCollector();
