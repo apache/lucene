@@ -145,21 +145,21 @@ import org.apache.lucene.util.compress.LowercaseAsciiCompression;
  *
  * <h2>Term Metadata</h2>
  *
- * <p>The .tmd file contains the list of term metadata (such as FST index metadata) and field level
+ * <p>The .tmd file contains the list of term metadata (such as trie index metadata) and field level
  * statistics (such as sum of total term freq).
  *
  * <ul>
  *   <li>TermsMeta (.tmd) --&gt; Header, NumFields, &lt;FieldStats&gt;<sup>NumFields</sup>,
  *       TermIndexLength, TermDictLength, Footer
  *   <li>FieldStats --&gt; FieldNumber, NumTerms, RootCodeLength, Byte<sup>RootCodeLength</sup>,
- *       SumTotalTermFreq?, SumDocFreq, DocCount, MinTerm, MaxTerm, IndexStartFP, FSTHeader,
- *       <i>FSTMetadata</i>
- *   <li>Header,FSTHeader --&gt; {@link CodecUtil#writeHeader CodecHeader}
+ *       SumTotalTermFreq?, SumDocFreq, DocCount, MinTerm, MaxTerm, IndexStartFP, TrieRootNodeFp,
+ *       IndexEndFp
+ *   <li>Header --&gt; {@link CodecUtil#writeHeader CodecHeader}
  *   <li>TermIndexLength, TermDictLength --&gt; {@link DataOutput#writeLong Uint64}
  *   <li>MinTerm,MaxTerm --&gt; {@link DataOutput#writeVInt VInt} length followed by the byte[]
  *   <li>NumFields,FieldNumber,RootCodeLength,DocCount --&gt; {@link DataOutput#writeVInt VInt}
- *   <li>NumTerms,SumTotalTermFreq,SumDocFreq,IndexStartFP --&gt; {@link DataOutput#writeVLong
- *       VLong}
+ *   <li>NumTerms,SumTotalTermFreq,SumDocFreq,IndexStartFP,TrieStartFP,TrieRootNodeFp,TrieEndFp
+ *       --&gt; {@link DataOutput#writeVLong VLong}
  *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  * </ul>
  *
@@ -183,17 +183,26 @@ import org.apache.lucene.util.compress.LowercaseAsciiCompression;
  * The index is also used to determine when a given term cannot exist on disk (in the .tim file),
  * saving a disk seek.
  *
- * <p>NO COMMIT: fix and add java doc of the new trie
+ * <ul>
+ *   <li>TermsIndex (.tip) --&gt; Header, TrieIndex<sup>NumFields</sup>Footer
+ *   <li>Header --&gt; {@link CodecUtil#writeHeader CodecHeader}
+ *       <!-- TODO: better describe trie output here -->
+ *   <li>TrieIndex --&gt; {trie&lt;byte[]&gt;}
+ *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
+ * </ul>
  *
  * <p>Notes:
  *
  * <ul>
- *   <li>The .tip file contains a separate FST for each field. The FST maps a term prefix to the
+ *   <li>The .tip file contains a separate trie for each field. The trie maps a term prefix to the
  *       on-disk block that holds all terms starting with that prefix. Each field's IndexStartFP
- *       points to its FST.
+ *       points to its trie.
+ *   <li>The trie stores its nodes in a depth-first order. Each node stores its output (if any) and
+ *       children's labels and file pointers. Nodes have various strategies to store their children,
+ *       decided by the distribution of the children's labels.
  *   <li>It's possible that an on-disk block would contain too many terms (more than the allowed
  *       maximum (default: 48)). When this happens, the block is sub-divided into new blocks (called
- *       "floor blocks"), and then the output in the FST for the block's prefix encodes the leading
+ *       "floor blocks"), and then the output in the trie for the block's prefix encodes the leading
  *       byte of each sub-block, and its file pointer.
  * </ul>
  *
@@ -1089,7 +1098,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         writeBytesRef(metaOut, new BytesRef(firstPendingTerm.termBytes));
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
         root.index.save(metaOut, indexOut);
-        // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);
+        // System.out.println("  write trie " + indexStartFP + " field=" + fieldInfo.name);
 
         /*
         if (DEBUG) {
