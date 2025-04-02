@@ -223,12 +223,6 @@ public class IndexSearcher {
         executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
-    if (executor == null) {
-      leafSlices =
-          leafContexts.isEmpty()
-              ? new LeafSlice[0]
-              : new LeafSlice[] {LeafSlice.entireSegments(leafContexts)};
-    }
   }
 
   /**
@@ -534,19 +528,25 @@ public class IndexSearcher {
   private synchronized LeafSlice[] computeAndCacheSlices() {
     LeafSlice[] res = leafSlices;
     if (res == null) {
-      res = slices(leafContexts);
-      /*
-       * Enforce that there aren't multiple leaf partitions within the same leaf slice pointing to the
-       * same leaf context. It is a requirement that {@link Collector#getLeafCollector(LeafReaderContext)}
-       * gets called once per leaf context. Also, it does not make sense to partition a segment to then search
-       * those partitions as part of the same slice, because the goal of partitioning is parallel searching
-       * which happens at the slice level.
-       */
-      for (LeafSlice leafSlice : res) {
-        if (leafSlice.partitions.length <= 1) {
-          continue;
+      if (taskExecutor == TaskExecutor.DIRECT_TASK_EXECUTOR) {
+        res = leafContexts.isEmpty()
+                ? new LeafSlice[0]
+                : new LeafSlice[] {LeafSlice.entireSegments(leafContexts)};
+      } else {
+        res = slices(leafContexts);
+        /*
+         * Enforce that there aren't multiple leaf partitions within the same leaf slice pointing to the
+         * same leaf context. It is a requirement that {@link Collector#getLeafCollector(LeafReaderContext)}
+         * gets called once per leaf context. Also, it does not make sense to partition a segment to then search
+         * those partitions as part of the same slice, because the goal of partitioning is parallel searching
+         * which happens at the slice level.
+         */
+        for (LeafSlice leafSlice : res) {
+          if (leafSlice.partitions.length <= 1) {
+            continue;
+          }
+          enforceDistinctLeaves(leafSlice);
         }
-        enforceDistinctLeaves(leafSlice);
       }
       leafSlices = res;
     }
