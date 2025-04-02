@@ -48,22 +48,18 @@ import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 /**
  * Utility class to wrap necessary functions of the native C_API of Faiss using <a
- * href="https://openjdk.org/projects/panama">Project Panama</a> (library {@value
- * LibFaissC#LIBRARY_NAME}, version {@value LibFaissC#LIBRARY_VERSION}, build using <a
+ * href="https://openjdk.org/projects/panama">Project Panama</a> (<a
+ * href="https://anaconda.org/pytorch/faiss-cpu">install from Conda</a> or build using <a
  * href="https://github.com/facebookresearch/faiss/blob/main/c_api/INSTALL.md">this guide</a> and
  * add to runtime along with all dependencies).
  *
  * @lucene.experimental
  */
 final class LibFaissC {
-  /*
-   * TODO: Requires some changes to Faiss, see:
-   *  - https://github.com/facebookresearch/faiss/pull/4158 (merged in main, to be released in v1.11.0)
-   *  - https://github.com/facebookresearch/faiss/pull/4167 (merged in main, to be released in v1.11.0)
-   *  - https://github.com/facebookresearch/faiss/pull/4180 (in progress)
-   */
-
+  // TODO: Use vectorized version where available
   public static final String LIBRARY_NAME = "faiss_c";
+
+  // TODO: Uses the nightly version (@main) until v1.11.0 is released
   public static final String LIBRARY_VERSION = "1.10.0";
 
   static {

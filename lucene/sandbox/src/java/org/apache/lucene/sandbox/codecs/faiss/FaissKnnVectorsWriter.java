@@ -57,7 +57,7 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   private final FlatVectorsWriter rawVectorsWriter;
   private final IndexOutput meta, data;
   private final Map<FieldInfo, FlatFieldVectorsWriter<?>> rawFields;
-  private boolean finished;
+  private boolean closed, finished;
 
   public FaissKnnVectorsWriter(
       String description,
@@ -70,6 +70,7 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
     this.indexParams = indexParams;
     this.rawVectorsWriter = rawVectorsWriter;
     this.rawFields = new HashMap<>();
+    this.closed = false;
     this.finished = false;
 
     boolean failure = true;
@@ -188,7 +189,10 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(rawVectorsWriter, meta, data);
+    if (closed == false) {
+      IOUtils.close(rawVectorsWriter, meta, data);
+      closed = true;
+    }
   }
 
   @Override

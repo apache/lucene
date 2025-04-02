@@ -29,13 +29,25 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 
-/** Tests for {@link FaissKnnVectorsFormat}. */
+/**
+ * Tests for {@link FaissKnnVectorsFormat}. Will run only if required shared libraries (including
+ * dependencies) are present at runtime, or the {@value #FAISS_RUN_TESTS} JVM arg is set to {@code
+ * true}
+ */
 public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
+  private static final String FAISS_RUN_TESTS = "tests.faiss.run";
+
   private static final VectorEncoding[] SUPPORTED_ENCODINGS = {FLOAT32};
   private static final VectorSimilarityFunction[] SUPPORTED_FUNCTIONS = {DOT_PRODUCT, EUCLIDEAN};
 
   @BeforeClass
-  public static void checkLibraryPresent() throws ClassNotFoundException {
+  public static void maybeSuppress() throws ClassNotFoundException {
+    // Explicitly run tests
+    if (Boolean.getBoolean(FAISS_RUN_TESTS)) {
+      return;
+    }
+
+    // Otherwise check if dependencies are present
     boolean faissLibraryPresent;
     try {
       Class.forName("org.apache.lucene.sandbox.codecs.faiss.LibFaissC");
