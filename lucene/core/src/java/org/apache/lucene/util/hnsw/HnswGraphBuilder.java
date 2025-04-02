@@ -642,7 +642,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
     @Override
     public KnnSearchStrategy getSearchStrategy() {
-      throw new IllegalArgumentException("Should not use unique strategy during graph building");
+      return null;
     }
   }
 }

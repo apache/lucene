@@ -312,6 +312,9 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           }
         }
       }
+      if (results.getSearchStrategy() != null) {
+        results.getSearchStrategy().nextVectorsBlock();
+      }
     }
   }
 
