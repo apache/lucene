@@ -43,6 +43,10 @@ Bug Fixes
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
+
 Other
 ---------------------
 
