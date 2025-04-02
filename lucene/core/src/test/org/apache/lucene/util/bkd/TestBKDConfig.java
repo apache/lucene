@@ -70,4 +70,28 @@ public class TestBKDConfig extends LuceneTestCase {
           ex.getMessage().contains("maxPointsInLeafNode must be <= ArrayUtil.MAX_ARRAY_LENGTH"));
     }
   }
+
+  public void testDeduplicate() {
+    {
+      for (int dims : new int[] {1, 2}) {
+        for (int bytesPerDim : new int[] {2, 4, 8, 16}) {
+          BKDConfig config =
+              BKDConfig.of(dims, dims, bytesPerDim, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+          BKDConfig deduped =
+              BKDConfig.of(dims, dims, bytesPerDim, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+          assertSame(deduped, config);
+        }
+      }
+    }
+    {
+      BKDConfig config = BKDConfig.of(7, 4, 4, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+      BKDConfig deduped = BKDConfig.of(7, 4, 4, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+      assertSame(deduped, config);
+    }
+    {
+      BKDConfig config = BKDConfig.of(1, 1, 6, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+      BKDConfig deduped = BKDConfig.of(1, 1, 6, BKDConfig.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+      assertNotSame(config, deduped);
+    }
+  }
 }

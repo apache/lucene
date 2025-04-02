@@ -1,21 +1,163 @@
 [tool.pyright]
+pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
-# TODO: improve!
-# typeCheckingMode = "strict"
+typeCheckingMode = "strict"
+reportCallInDefaultInitializer = "error"
+reportImplicitStringConcatenation = "error"
+reportImportCycles = "error"
+reportImplicitOverride = "error"
+reportPropertyTypeMismatch = "error"
+reportUninitializedInstanceVariable = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
-typeCheckingMode = "standard"
+
+# This is a big TODO list of current typing problems
+# Pick an item off the list, change to "error", and send a pull request to fix it!
+# You can find more information on a rule at https://github.com/microsoft/pyright/blob/main/docs/configuration.md
+reportConstantRedefinition = "hint"          # Requires fixing nonstandard variable conventions
+reportMissingSuperCall = "hint"              # Requires adding missing super().__init__() calls
+reportMissingTypeStubs = "hint"              # Can be fixed by switching 'ics' to alternative such as 'icalendar'
+reportPrivateUsage = "hint"                  # Can be fixed by using TLS properly (Ruff S323)
+reportUnnecessaryComparison = "hint"         # Requires cleaning up some dead code
+reportUntypedNamedTuple = "hint"             # Requires moving to different type of named tuple
+reportUnusedCallResult = "none"              # Forces you to assign unused retvals to '_', very noisy.
+
+# Intentionally disabled because it slows pyright by 2x
+reportShadowedImports = "none"       # Extremely slow check
 
 [tool.ruff]
+target-version = "py312"
 line-length = 200
 indent-width = 2
 
 [tool.ruff.lint]
-# TODO: improve!
-# select = ["ALL"]
+select = ["ALL"]
 
 # disabling/enabling of rules
 ignore = [
+  # This is a big TODO list of current linter problems.
+  # Pick an item off the list, remove it, and send a pull request to fix it!
+  # You can find more information on a rule at https://docs.astral.sh/ruff/rules/
+  "A001",    # variable name is shadowing a python builtin
+  "A002",    # function argument name is shadowing a python builtin
+  "ANN001",  # missing type annotation for function argument
+  "ANN201",  # missing return annotation for public function
+  "ANN202",  # missing return annotation for private function
+  "ANN204",  # missing return annotation for special method
+  "ANN206",  # missing return annotation for classmethod
+  "ANN401",  # use of Any as function parameter
+  "ARG001",  # unused function argument
+  "ARG002",  # unused method argument
+  "ARG005",  # unused lambda argument
+  "B006",    # do not use mutable datastructures for arg defaults
+  "B904",    # within except clause, raise exceptions with .. from
+  "BLE001",  # do not catch blind exception
+  "C408",    # unnecessary dict() call
+  "C416",    # unnecessary list comprehension
+  "C417",    # unnecessary map() usage
+  "C901",    # function is too complex
+  "D100",    # missing docstring in public module
+  "D101",    # missing docstring in public class
+  "D102",    # missing docstring in public method
+  "D103",    # missing docstring in public function
+  "D105",    # missing docstring in magic method
+  "D107",    # missing docstring in ctor
+  "D205",    # blank line required between summary and description
+  "D400",    # first docstring line should end with a period
+  "D401",    # first docstring line should be in imperative mood
+  "D415",    # first docstring line should end with punctuation
+  "DTZ005",  # datetime.datetime.now called without tz argument
+  "EM101",   # exception must not use a string literal, assign to variable first
+  "ERA001",  # found commented-out code
+  "EXE001",  # shebang present but file is not executable
+  "FBT001",  # boolean-typed positional argument in function definition
+  "FBT002",  # boolean default positional argument in function definition
+  "FBT003",  # boolean positional value in function call
+  "FIX002",  # line contains TODO, consider resolving issue
+  "FIX004",  # line contains HACK, consider resolving issue
+  "FURB129", # instead of calling readlines(), iterate over file object directly
+  "N802",    # function name should be lowercase
+  "N803",    # argument name should be lowercase
+  "N806",    # variable should be lowercase
+  "N816",    # variable in global scope should not be mixedCase
+  "PERF203", # try-except within a loop incurs performance overhead
+  "PERF401", # use list.extend to create a transformed list
+  "PIE810",  # call endswith once with a tuple
+  "PLC0206", # extracting value from dictionary without calling .items
+  "PLR0911", # too many return statements
+  "PLR0912", # too many branches
+  "PLR0913", # too many arguments in function definition
+  "PLR0915", # too many statements
+  "PLR1704", # redefining argument with local name
+  "PLR1714", # consider merging multiple comparisons
+  "PLR1722", # use sys.exit() instead of exit
+  "PLR2004", # magic value used in comparison
+  "PLW0602", # using global for variable but no assignment is done
+  "PLW0603", # using global statement to update variable is discouraged
+  "PLW2901", # loop variable overwritten by assignment target
+  "PTH100",  # os.path.abspath should be replaced by Path.resolve
+  "PTH103",  # os.mkdirs should be replaced by Path.mkdir(parents=True)
+  "PTH104",  # os.rename should be replaced by Path.rename
+  "PTH107",  # os.remove shoudl be replaced by Path.unlink
+  "PTH109",  # os.getcwd should be replaced by Path.cwd
+  "PTH110",  # os.path.exists should be replaced by Path.exists
+  "PTH111",  # os.path.expanduser should be replaced by Path.expanduser
+  "PTH112",  # os.path.isdir should be replaced by Path.is_dir
+  "PTH113",  # os.path.isfile should be replaced by Path.is_file
+  "PTH116",  # os.stat should be replaced by Path.stat, Path.owner, or Path.group
+  "PTH117",  # os.path.isabs should be replaced by Path.is_absolute
+  "PTH118",  # os.path.join should be replaced by Path with '/' operator
+  "PTH119",  # os.path.basename should be replaced by Path.name
+  "PTH120",  # os.path.dirname should be replaced by Path.parent
+  "PTH123",  # open should be replaced by Path.open
+  "PTH202",  # os.path.getsize should be replaced by Path.stat.st_size
+  "PTH207",  # glob should be replaced by Path.glob or Path.rglob
+  "PYI024",  # use typing.NamedTuple instead of collections.namedtuple
+  "RET503",  # missing explicit return at end of function able to return non-None
+  "RET504",  # unnecessary assignment before return
+  "RUF005",  # unnecessary concatenation
+  "RUF012",  # mutable class attributes should be annotated with typing.ClassVar
+  "S101",    # use of 'assert' detected
+  "S108",    # probable insecure usage of temp file/directory
+  "S110",    # try-except-pass detected, consider logging the exception
+  "S307",    # use of insecure eval, consider using ast.literal_eval
+  "S310",    # audit url open for permitted schemes. allowing use of file: is often unexpected
+  "S311",    # standard prng not suitable for cryptographic purposes
+  "S314",    # using xml to parse untrusted data, use defusedxml equivalents
+  "S323",    # use of insecure TLS context
+  "S324",    # use of insecure hash function: sha1
+  "S506",    # probable use of unsafe yaml loader, consider yaml.safe_load
+  "S602",    # subprocess call with shell=True identified, security issue
+  "S603",    # subprocess call: check for execution of untrusted input
+  "S605",    # starting a process wtih a shell, seems safe, but may be changed in future
+  "S607",    # starting a process with a partial executable path
+  "S701",    # consider using jinja autoescape=True to mitigate XSS
+  "SIM102",  # use single if statement instead of nested if statement
+  "SIM108",  # use ternary operator instead of if-else-block
+  "SIM112",  # use capitalized environment variable
+  "SIM113",  # use enumerate for index variable in loop
+  "SIM115",  # use a context manager for opening files
+  "SIM118",  # use 'key in dict' instead of 'key in dict.keys'
+  "SIM201",  # use returncode != 0 instead of not returncode == 0
+  "SLF001",  # private member accessed
+  "T201",    # print function found
+  "TD002",   # missing author for this TODO
+  "TD003",   # missing issue link for this TODO
+  "TD004",   # missing colon for this TODO
+  "TD005",   # missing issue description for this TODO
+  "TRY002",  # create your own exception
+  "TRY003",  # avoid specifying long messages outside exception class
+  "TRY201",  # use raise without specifying exception name
+  "TRY300",  # consider moving this statement to else block
+  "UP008",   # use super() instead of super(__class__, self)
+  "UP036",   # version block is outdated for minimum python version
+  "UP031",   # use format specifiers instead of percent format
+
+  # These rules are always disabled, conflict with other rules
+  # don't enable! (switch to the alternative instead)
+  "D203",    # disabled in favor of D211 (no-black-line-before-class)
+  "D213",    # disabled in favor of D212 (multi-line-summary-first-line)
+
   # These rules are always disabled: conflict with the formatter
   # don't enable! https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
   "W191", "E111", "E114", "E117", "D206", "D300", "Q000", "Q001",

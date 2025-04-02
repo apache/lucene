@@ -122,38 +122,13 @@ public class ScalarQuantizer {
   public float quantize(float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
     assert src.length == dest.length;
     assert similarityFunction != VectorSimilarityFunction.COSINE || VectorUtil.isUnitVector(src);
-    float correction = 0;
-    for (int i = 0; i < src.length; i++) {
-      correction += quantizeFloat(src[i], dest, i);
-    }
+
+    float correction =
+        VectorUtil.minMaxScalarQuantize(src, dest, scale, alpha, minQuantile, maxQuantile);
     if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
       return 0;
     }
     return correction;
-  }
-
-  private float quantizeFloat(float v, byte[] dest, int destIndex) {
-    assert dest == null || destIndex < dest.length;
-    // Make sure the value is within the quantile range, cutting off the tails
-    // see first parenthesis in equation: byte = (float - minQuantile) * 127/(maxQuantile -
-    // minQuantile)
-    float dx = v - minQuantile;
-    float dxc = Math.max(minQuantile, Math.min(maxQuantile, v)) - minQuantile;
-    // Scale the value to the range [0, 127], this is our quantized value
-    // scale = 127/(maxQuantile - minQuantile)
-    float dxs = scale * dxc;
-    // We multiply by `alpha` here to get the quantized value back into the original range
-    // to aid in calculating the corrective offset
-    float dxq = Math.round(dxs) * alpha;
-    if (dest != null) {
-      dest[destIndex] = (byte) Math.round(dxs);
-    }
-    // Calculate the corrective offset that needs to be applied to the score
-    // in addition to the `byte * minQuantile * alpha` term in the equation
-    // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized value
-    // will be rounded to the nearest whole number and lose some accuracy
-    // Additionally, we account for the global correction of `minQuantile^2` in the equation
-    return minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
   }
 
   /**
@@ -171,13 +146,14 @@ public class ScalarQuantizer {
     if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
       return 0f;
     }
-    float correctiveOffset = 0f;
-    for (int i = 0; i < quantizedVector.length; i++) {
-      // dequantize the old value in order to recalculate the corrective offset
-      float v = (oldQuantizer.alpha * quantizedVector[i]) + oldQuantizer.minQuantile;
-      correctiveOffset += quantizeFloat(v, null, 0);
-    }
-    return correctiveOffset;
+    return VectorUtil.recalculateOffset(
+        quantizedVector,
+        oldQuantizer.alpha,
+        oldQuantizer.minQuantile,
+        scale,
+        alpha,
+        minQuantile,
+        maxQuantile);
   }
 
   /**
