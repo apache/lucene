@@ -38,6 +38,8 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.fst.ByteSequenceOutputs;
+import org.apache.lucene.util.fst.Outputs;
 
 /**
  * A block-based terms index and dictionary that assigns terms to variable length blocks according
@@ -62,6 +64,15 @@ import org.apache.lucene.util.IOUtils;
  * @lucene.experimental
  */
 public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
+
+  static final Outputs<BytesRef> FST_OUTPUTS = ByteSequenceOutputs.getSingleton();
+
+  static final BytesRef NO_OUTPUT = FST_OUTPUTS.getNoOutput();
+
+  static final int OUTPUT_FLAGS_NUM_BITS = 2;
+  static final int OUTPUT_FLAGS_MASK = 0x3;
+  static final int OUTPUT_FLAG_IS_FLOOR = 0x1;
+  static final int OUTPUT_FLAG_HAS_TERMS = 0x2;
 
   /** Extension of terms file */
   static final String TERMS_EXTENSION = "tim";
@@ -174,6 +185,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
               throw new CorruptIndexException(
                   "Illegal numTerms for field number: " + field, metaIn);
             }
+            final BytesRef rootCode = readBytesRef(metaIn);
             final FieldInfo fieldInfo = state.fieldInfos.fieldInfo(field);
             if (fieldInfo == null) {
               throw new CorruptIndexException("invalid field number: " + field, metaIn);
@@ -208,6 +220,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
                   "invalid sumTotalTermFreq: " + sumTotalTermFreq + " sumDocFreq: " + sumDocFreq,
                   metaIn);
             }
+            final long indexStartFP = metaIn.readVLong();
             FieldReader previous =
                 fieldMap.put(
                     fieldInfo.number,
@@ -215,9 +228,11 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
                         this,
                         fieldInfo,
                         numTerms,
+                        rootCode,
                         sumTotalTermFreq,
                         sumDocFreq,
                         docCount,
+                        indexStartFP,
                         metaIn,
                         indexIn,
                         minTerm,

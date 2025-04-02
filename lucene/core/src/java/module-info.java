@@ -32,6 +32,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.codecs.lucene95;
   exports org.apache.lucene.codecs.lucene99;
   exports org.apache.lucene.codecs.lucene101;
+  exports org.apache.lucene.codecs.lucene103;
   exports org.apache.lucene.codecs.perfield;
   exports org.apache.lucene.codecs;
   exports org.apache.lucene.document;
