@@ -16,7 +16,7 @@
  */
 
 /**
- * Lucene 10.1 file format.
+ * Lucene 10.3 file format.
  *
  * <h2>Apache Lucene - Index File Formats</h2>
  *

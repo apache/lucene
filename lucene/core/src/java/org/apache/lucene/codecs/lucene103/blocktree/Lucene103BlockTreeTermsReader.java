@@ -71,16 +71,8 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
   /** Initial terms format. */
   public static final int VERSION_START = 0;
 
-  /**
-   * Version that encode output as MSB VLong for better outputs sharing in FST, see GITHUB#12620.
-   */
-  public static final int VERSION_MSB_VLONG_OUTPUT = 1;
-
-  /** The version that specialize arc store for continuous label in FST. */
-  public static final int VERSION_FST_CONTINUOUS_ARCS = 2;
-
   /** Current terms format. */
-  public static final int VERSION_CURRENT = VERSION_FST_CONTINUOUS_ARCS;
+  public static final int VERSION_CURRENT = VERSION_START;
 
   /** Extension of terms index file */
   static final String TERMS_INDEX_EXTENSION = "tip";

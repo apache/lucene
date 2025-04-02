@@ -35,7 +35,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
 
 /**
- * Lucene 10.1 postings format, which encodes postings in packed integer blocks for fast decode.
+ * Lucene 10.3 postings format, which encodes postings in packed integer blocks for fast decode.
  *
  * <p>Basic idea:
  *

@@ -141,7 +141,7 @@ final class IntersectTermsEnumFrame {
   void load(TrieReader.Node node) throws IOException {
     if (node != null) {
       // This block is the first one in a possible sequence of floor blocks corresponding to a
-      // single seek point from the FST terms index
+      // single seek point from the trie terms index
       if (node.isFloor()) {
         floorDataReader = node.floorData(ite.trieReader);
         // Floor frame
