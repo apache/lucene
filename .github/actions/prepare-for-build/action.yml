@@ -2,11 +2,12 @@
 # for java, gradle, caches, etc.
 
 name: Prepare Lucene build
+description: Creates a shared setup for other workflows
 
 inputs:
    java-version:
      required: false
-     default: 21
+     default: "23"
      description: "The default JDK version to set up."
 
    java-distribution:
@@ -26,4 +27,8 @@ runs:
 
     # This includes "smart" caching of the wrapper and dependencies.
     - name: Set up Gradle
-      uses: gradle/actions/setup-gradle@v3
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        # increase expiry time for the temp. develocity token.
+        # https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#increasing-the-expiry-time-for-develocity-access-tokens
+        develocity-token-expiry: 8

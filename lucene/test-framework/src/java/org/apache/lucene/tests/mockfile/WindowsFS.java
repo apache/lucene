@@ -67,8 +67,8 @@ public class WindowsFS extends HandleTrackingFS {
       final Object key = getKey(path);
       // we have to read the key under the lock otherwise me might leak the openFile handle
       // if we concurrently delete or move this file.
-      Map<Path, Integer> pathMap = openFiles.computeIfAbsent(key, k -> new HashMap<>());
-      pathMap.put(path, pathMap.computeIfAbsent(path, p -> 0).intValue() + 1);
+      Map<Path, Integer> pathMap = openFiles.computeIfAbsent(key, _ -> new HashMap<>());
+      pathMap.put(path, pathMap.computeIfAbsent(path, _ -> 0).intValue() + 1);
     }
   }
 
@@ -147,7 +147,7 @@ public class WindowsFS extends HandleTrackingFS {
             Integer v = map.remove(target);
             if (v != null) {
               Map<Path, Integer> pathIntegerMap =
-                  openFiles.computeIfAbsent(newKey, k -> new HashMap<>());
+                  openFiles.computeIfAbsent(newKey, _ -> new HashMap<>());
               Integer existingValue = pathIntegerMap.getOrDefault(target, 0);
               pathIntegerMap.put(target, existingValue + v);
             }

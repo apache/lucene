@@ -91,7 +91,7 @@ public class AnalysisChainDialogFactory implements DialogOpener.DialogFactory {
     JPanel footer = new JPanel(new FlowLayout(FlowLayout.TRAILING, 10, 5));
     footer.setOpaque(false);
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     footer.add(closeBtn);
     panel.add(footer, BorderLayout.PAGE_END);
 

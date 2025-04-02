@@ -231,7 +231,7 @@ public class NearestFuzzyQuery extends Query {
       ScoreTerm st = q.pop();
       if (st != null) {
         ArrayList<ScoreTerm> l =
-            variantQueries.computeIfAbsent(st.fuzziedSourceTerm, k -> new ArrayList<>());
+            variantQueries.computeIfAbsent(st.fuzziedSourceTerm, _ -> new ArrayList<>());
         l.add(st);
       }
     }

@@ -18,8 +18,11 @@ package org.apache.lucene.sandbox.search;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
@@ -119,15 +122,19 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
         }
         builder1.add(lower, upper);
         builder2.add(LongPoint.newRangeQuery("point", lower, upper), BooleanClause.Occur.SHOULD);
-        builder3.add(LongPoint.pack(lower), LongPoint.pack(upper));
+        if (Arrays.equals(lower, upper) && random().nextBoolean()) {
+          builder3.add(LongPoint.pack(lower));
+        } else {
+          builder3.add(LongPoint.pack(lower), LongPoint.pack(upper));
+        }
       }
 
       Query query1 = builder1.build();
       Query query2 = builder2.build();
       Query query3 = builder3.build();
-      TopDocs result1 = searcher.search(query1, maxDocs, Sort.INDEXORDER);
-      TopDocs result2 = searcher.search(query2, maxDocs, Sort.INDEXORDER);
-      TopDocs result3 = searcher.search(query3, maxDocs, Sort.INDEXORDER);
+      TopDocs result1 = searcher.search(query1, reader.maxDoc(), Sort.INDEXORDER);
+      TopDocs result2 = searcher.search(query2, reader.maxDoc(), Sort.INDEXORDER);
+      TopDocs result3 = searcher.search(query3, reader.maxDoc(), Sort.INDEXORDER);
       assertEquals(result2.totalHits, result1.totalHits);
       assertEquals(result2.totalHits, result3.totalHits);
       assertEquals(result2.scoreDocs.length, result1.scoreDocs.length);
@@ -160,8 +167,17 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       String field, int... ends) {
     DocValuesMultiRangeQuery.SortedSetStabbingBuilder b =
         new DocValuesMultiRangeQuery.SortedSetStabbingBuilder(field);
-    for (int j = 0; j < ends.length; j += 2) {
-      b.add(IntPoint.pack(ends[j]), IntPoint.pack(ends[j + 1]));
+    List<Integer> posns =
+        IntStream.range(0, ends.length / 2).map(i -> i * 2).boxed().collect(Collectors.toList());
+    Collections.shuffle(posns, random());
+    for (Integer pos : posns) {
+      int lower = ends[pos];
+      int upper = ends[pos + 1];
+      if (lower == upper && random().nextBoolean()) {
+        b.add(IntPoint.pack(lower));
+      } else {
+        b.add(IntPoint.pack(lower), IntPoint.pack(upper));
+      }
     }
     return b;
   }

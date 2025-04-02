@@ -2335,7 +2335,7 @@ public class TestIndexSorting extends LuceneTestCase {
       doc.add(new NumericDocValuesField("numeric", id));
       String value =
           IntStream.range(0, id)
-              .mapToObj(k -> Integer.toString(id))
+              .mapToObj(_ -> Integer.toString(id))
               .collect(Collectors.joining(" "));
       TextField norms = new TextField("norms", value, Store.NO);
       doc.add(norms);

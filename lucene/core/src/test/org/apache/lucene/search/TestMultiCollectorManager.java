@@ -210,7 +210,7 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     private final Predicate<Integer> predicate;
 
     SimpleCollectorManager() {
-      this.predicate = val -> true;
+      this.predicate = _ -> true;
     }
 
     SimpleCollectorManager(Predicate<Integer> predicate) {

@@ -44,7 +44,7 @@ import org.apache.lucene.util.automaton.RegExp;
 public class RegexpQuery extends AutomatonQuery {
 
   /** A provider that provides no named automata */
-  public static final AutomatonProvider DEFAULT_PROVIDER = name -> null;
+  public static final AutomatonProvider DEFAULT_PROVIDER = _ -> null;
 
   /**
    * Constructs a query for terms matching <code>term</code>.

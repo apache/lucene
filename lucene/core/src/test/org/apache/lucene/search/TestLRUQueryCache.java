@@ -107,7 +107,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         new LRUQueryCache(
             1 + random().nextInt(20),
             1 + random().nextInt(10000),
-            context -> random().nextBoolean(),
+            _ -> random().nextBoolean(),
             Float.POSITIVE_INFINITY);
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
@@ -251,7 +251,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = newSearcher(reader);
     final LRUQueryCache queryCache =
-        new LRUQueryCache(2, 100000, context -> true, Float.POSITIVE_INFINITY);
+        new LRUQueryCache(2, 100000, _ -> true, Float.POSITIVE_INFINITY);
 
     final Query blue = new TermQuery(new Term("color", "blue"));
     final Query red = new TermQuery(new Term("color", "red"));
@@ -341,7 +341,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final Query query2 = new TermQuery(new Term("color", "blue"));
 
     final LRUQueryCache queryCache =
-        new LRUQueryCache(Integer.MAX_VALUE, Long.MAX_VALUE, context -> true, 1);
+        new LRUQueryCache(Integer.MAX_VALUE, Long.MAX_VALUE, _ -> true, 1);
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
@@ -366,7 +366,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         new LRUQueryCache(
             1 + random().nextInt(5),
             1 + random().nextInt(10000),
-            context -> random().nextBoolean(),
+            _ -> random().nextBoolean(),
             Float.POSITIVE_INFINITY);
     // an accumulator that only sums up memory usage of referenced filters and doc id sets
     final RamUsageTester.Accumulator acc =
@@ -508,7 +508,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
   @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/LUCENE-7595")
   public void testRamBytesUsedConstantEntryOverhead() throws IOException {
     final LRUQueryCache queryCache =
-        new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+        new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
 
     final RamUsageTester.Accumulator acc =
         new RamUsageTester.Accumulator() {
@@ -575,7 +575,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
   public void testCachingAccountableQuery() throws IOException {
     final LRUQueryCache queryCache =
-        new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+        new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
 
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
@@ -604,7 +604,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
   }
 
   public void testConsistencyWithAccountableQueries() throws IOException {
-    var queryCache = new LRUQueryCache(1, 10000000, context -> true, Float.POSITIVE_INFINITY);
+    var queryCache = new LRUQueryCache(1, 10000000, _ -> true, Float.POSITIVE_INFINITY);
 
     var dir = newDirectory();
     var writer = new RandomIndexWriter(random(), dir);
@@ -645,7 +645,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         new LRUQueryCache(
             1 + random().nextInt(5),
             1 + random().nextInt(1000),
-            context -> random().nextBoolean(),
+            _ -> random().nextBoolean(),
             Float.POSITIVE_INFINITY);
 
     Directory dir = newDirectory();
@@ -715,7 +715,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
   }
 
   public void testStats() throws IOException {
-    final LRUQueryCache queryCache = new LRUQueryCache(1, 10000000, context -> true, 1);
+    final LRUQueryCache queryCache = new LRUQueryCache(1, 10000000, _ -> true, 1);
 
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
@@ -847,7 +847,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final AtomicLong cacheSize = new AtomicLong();
 
     final LRUQueryCache queryCache =
-        new LRUQueryCache(2, 10000000, context -> true, 1) {
+        new LRUQueryCache(2, 10000000, _ -> true, 1) {
           @Override
           protected void onHit(Object readerCoreKey, Query query) {
             super.onHit(readerCoreKey, query);
@@ -981,8 +981,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     query.add(new BoostQuery(expectedCacheKey, 42f), Occur.MUST);
 
     final LRUQueryCache queryCache =
-        new LRUQueryCache(
-            1000000, 10000000, context -> random().nextBoolean(), Float.POSITIVE_INFINITY);
+        new LRUQueryCache(1000000, 10000000, _ -> random().nextBoolean(), Float.POSITIVE_INFINITY);
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
@@ -1029,7 +1028,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     w.close();
 
     final LRUQueryCache queryCache =
-        new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+        new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
@@ -1135,7 +1134,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     final LRUQueryCache queryCache =
         new LRUQueryCache(
-            maxSize, maxRamBytesUsed, context -> random().nextBoolean(), Float.POSITIVE_INFINITY);
+            maxSize, maxRamBytesUsed, _ -> random().nextBoolean(), Float.POSITIVE_INFINITY);
     IndexSearcher uncachedSearcher = null;
     IndexSearcher cachedSearcher = null;
 
@@ -1226,7 +1225,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     // size of 1 so that 2nd query evicts from the cache
     final LRUQueryCache queryCache =
-        new LRUQueryCache(1, 10000, context -> true, Float.POSITIVE_INFINITY);
+        new LRUQueryCache(1, 10000, _ -> true, Float.POSITIVE_INFINITY);
     final IndexSearcher searcher = newSearcher(reader);
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
@@ -1263,7 +1262,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     // size of 1 byte
     final LRUQueryCache queryCache =
-        new LRUQueryCache(1, 1, context -> random().nextBoolean(), Float.POSITIVE_INFINITY);
+        new LRUQueryCache(1, 1, _ -> random().nextBoolean(), Float.POSITIVE_INFINITY);
     final IndexSearcher searcher = newSearcher(reader);
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
@@ -1305,8 +1304,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         final FrequencyCountingPolicy policy = new FrequencyCountingPolicy();
         final IndexSearcher indexSearcher = new IndexSearcher(indexReader);
         indexSearcher.setQueryCache(
-            new LRUQueryCache(
-                100, 10240, context -> random().nextBoolean(), Float.POSITIVE_INFINITY));
+            new LRUQueryCache(100, 10240, _ -> random().nextBoolean(), Float.POSITIVE_INFINITY));
         indexSearcher.setQueryCachingPolicy(policy);
         final Query foo = new TermQuery(new Term("f", "foo"));
         final Query bar = new TermQuery(new Term("f", "bar"));
@@ -1341,7 +1339,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     public void onUse(final Query query) {
       AtomicInteger count;
       synchronized (counts) {
-        count = counts.computeIfAbsent(query, k -> new AtomicInteger());
+        count = counts.computeIfAbsent(query, _ -> new AtomicInteger());
       }
       count.incrementAndGet();
     }
@@ -1401,8 +1399,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     LeafReaderContext leaf = searcher.getIndexReader().leaves().get(0);
     AtomicBoolean scorerCalled = new AtomicBoolean();
     AtomicBoolean bulkScorerCalled = new AtomicBoolean();
-    LRUQueryCache cache =
-        new LRUQueryCache(1, Long.MAX_VALUE, context -> true, Float.POSITIVE_INFINITY);
+    LRUQueryCache cache = new LRUQueryCache(1, Long.MAX_VALUE, _ -> true, Float.POSITIVE_INFINITY);
 
     // test that the bulk scorer is propagated when a scorer should not be cached
     Weight weight = searcher.createWeight(new MatchAllDocsQuery(), ScoreMode.COMPLETE_NO_SCORES, 1);
@@ -1424,7 +1421,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = newSearcher(reader);
     final LRUQueryCache queryCache =
-        new LRUQueryCache(2, 100000, context -> true, Float.POSITIVE_INFINITY) {
+        new LRUQueryCache(2, 100000, _ -> true, Float.POSITIVE_INFINITY) {
           @Override
           protected void onDocIdSetEviction(
               Object readerCoreKey, int numEntries, long sumRamBytesUsed) {
@@ -1538,7 +1535,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     // don't cache if the reader does not expose a cache helper
     assertNull(reader.leaves().get(0).reader().getCoreCacheHelper());
-    LRUQueryCache cache = new LRUQueryCache(2, 10000, context -> true, Float.POSITIVE_INFINITY);
+    LRUQueryCache cache = new LRUQueryCache(2, 10000, _ -> true, Float.POSITIVE_INFINITY);
     searcher.setQueryCache(cache);
     assertEquals(0, searcher.count(new DummyQuery()));
     assertEquals(0, cache.getCacheCount());
@@ -1599,7 +1596,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
-    LRUQueryCache cache = new LRUQueryCache(2, 10000, context -> true, Float.POSITIVE_INFINITY);
+    LRUQueryCache cache = new LRUQueryCache(2, 10000, _ -> true, Float.POSITIVE_INFINITY);
     searcher.setQueryCache(cache);
 
     assertEquals(0, searcher.count(new NoCacheQuery()));
@@ -1771,7 +1768,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     IndexSearcher searcher = new AssertingIndexSearcher(random(), reader);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
 
-    LRUQueryCache cache = new LRUQueryCache(1, 10000, context -> true, Float.POSITIVE_INFINITY);
+    LRUQueryCache cache = new LRUQueryCache(1, 10000, _ -> true, Float.POSITIVE_INFINITY);
     searcher.setQueryCache(cache);
 
     DVCacheQuery query = new DVCacheQuery("field");
@@ -1829,7 +1826,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     IndexWriterConfig iwc = newIndexWriterConfig().setSoftDeletesField("soft_delete");
     IndexWriter w = new IndexWriter(dir, iwc);
     LRUQueryCache queryCache =
-        new LRUQueryCache(10, 1000 * 1000, ctx -> true, Float.POSITIVE_INFINITY);
+        new LRUQueryCache(10, 1000 * 1000, _ -> true, Float.POSITIVE_INFINITY);
     IndexSearcher.setDefaultQueryCache(queryCache);
     IndexSearcher.setDefaultQueryCachingPolicy(ALWAYS_CACHE);
 
@@ -1910,7 +1907,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(w);
     DirectoryReader noCacheReader = new DummyDirectoryReader(reader);
 
-    LRUQueryCache cache = new LRUQueryCache(1, 100000, context -> true, Float.POSITIVE_INFINITY);
+    LRUQueryCache cache = new LRUQueryCache(1, 100000, _ -> true, Float.POSITIVE_INFINITY);
     IndexSearcher searcher = new AssertingIndexSearcher(random(), reader);
     searcher.setQueryCache(cache);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
@@ -1973,7 +1970,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     Set<Query> cacheSet = new HashSet<>();
 
     // only term query is cached
-    final LRUQueryCache partCache = new LRUQueryCache(1000000, 10000000, context -> true, 1);
+    final LRUQueryCache partCache = new LRUQueryCache(1000000, 10000000, _ -> true, 1);
     searcher.setQueryCache(partCache);
     searcher.search(query, 1);
     cacheSet.add(subQuery1);
@@ -1981,7 +1978,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     // both queries are cached
     final LRUQueryCache allCache =
-        new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+        new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
     searcher.setQueryCache(allCache);
     searcher.search(query, 1);
     cacheSet.add(subQuery2);
@@ -2062,14 +2059,14 @@ public class TestLRUQueryCache extends LuceneTestCase {
     Set<Query> cacheSet = new HashSet<>();
 
     // both queries are not cached
-    final LRUQueryCache partCache = new LRUQueryCache(1000000, 10000000, context -> true, 1);
+    final LRUQueryCache partCache = new LRUQueryCache(1000000, 10000000, _ -> true, 1);
     searcher.setQueryCache(partCache);
     searcher.search(query, 1);
     assertEquals(cacheSet, new HashSet<>(partCache.cachedQueries()));
 
     // only subQuery1 is cached
     final LRUQueryCache allCache =
-        new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+        new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
     searcher.setQueryCache(allCache);
     searcher.search(query, 1);
     cacheSet.add(subQuery1);
@@ -2100,7 +2097,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
       IndexSearcher searcher = newSearcher(reader);
       searcher.setQueryCachingPolicy(ALWAYS_CACHE);
       LRUQueryCache allCache =
-          new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+          new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
       searcher.setQueryCache(allCache);
       Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
       LeafReaderContext context = getOnlyLeafReader(reader).getContext();
@@ -2118,7 +2115,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
       IndexSearcher searcher = newSearcher(reader);
       searcher.setQueryCachingPolicy(ALWAYS_CACHE);
       LRUQueryCache allCache =
-          new LRUQueryCache(1000000, 10000000, context -> true, Float.POSITIVE_INFINITY);
+          new LRUQueryCache(1000000, 10000000, _ -> true, Float.POSITIVE_INFINITY);
       searcher.setQueryCache(allCache);
       Weight weight = searcher.createWeight(query, ScoreMode.COMPLETE_NO_SCORES, 1);
       LeafReaderContext context = getOnlyLeafReader(reader).getContext();
@@ -2132,6 +2129,69 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
 
     w.close();
+    dir.close();
+  }
+
+  public void testSkipCacheFactorWithDynamicValues() throws IOException {
+    Directory dir = newDirectory();
+    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc1 = new Document();
+    doc1.add(new StringField("name", "tom", Store.YES));
+    doc1.add(new StringField("hobby", "movie", Store.YES));
+    Document doc2 = new Document();
+    doc2.add(new StringField("name", "alice", Store.YES));
+    doc2.add(new StringField("hobby", "book", Store.YES));
+    Document doc3 = new Document();
+    doc3.add(new StringField("name", "alice", Store.YES));
+    doc3.add(new StringField("hobby", "movie", Store.YES));
+    w.addDocuments(Arrays.asList(doc1, doc2, doc3));
+    final IndexReader reader = w.getReader();
+    final IndexSearcher searcher = newSearcher(reader);
+    final QueryCachingPolicy policy =
+        new QueryCachingPolicy() {
+
+          @Override
+          public boolean shouldCache(Query query) throws IOException {
+            return query.getClass() != TermQuery.class;
+          }
+
+          @Override
+          public void onUse(Query query) {
+            // no-op
+          }
+        };
+    searcher.setQueryCachingPolicy(policy);
+    w.close();
+
+    // lead cost is 2, cost of subQuery1 is 3, cost of subQuery2 is 2
+    BooleanQuery.Builder inner = new BooleanQuery.Builder();
+    TermQuery innerSubQuery1 = new TermQuery(new Term("hobby", "book"));
+    TermQuery innerSubQuery2 = new TermQuery(new Term("hobby", "movie"));
+    BooleanQuery subQuery1 =
+        inner.add(innerSubQuery1, Occur.SHOULD).add(innerSubQuery2, Occur.SHOULD).build();
+
+    BooleanQuery.Builder bq = new BooleanQuery.Builder();
+    TermQuery subQuery2 = new TermQuery(new Term("name", "alice"));
+    BooleanQuery query =
+        bq.add(new ConstantScoreQuery(subQuery1), Occur.FILTER)
+            .add(subQuery2, Occur.FILTER)
+            .build();
+    Set<Query> cacheSet = new HashSet<>();
+
+    // Define skip cache factor to be 1, so that query is not cached.
+    final LRUQueryCache cache = new LRUQueryCache(1000000, 10000000, _ -> true, 1.0f);
+    searcher.setQueryCache(cache);
+    searcher.search(query, 1);
+    assertEquals(cacheSet, new HashSet<>(cache.cachedQueries()));
+    assertEquals(1.0, cache.getSkipCacheFactor(), 0);
+
+    // Now change the skipCacheFactor to 3.0f, now same query should get cached.
+    cache.setSkipCacheFactor(3.0f);
+    searcher.search(query, 1);
+    assertEquals(new HashSet<>(List.of(subQuery1)), new HashSet<>(cache.cachedQueries()));
+    assertEquals(3.0, cache.getSkipCacheFactor(), 0);
+
+    reader.close();
     dir.close();
   }
 }

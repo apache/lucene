@@ -476,7 +476,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
             }
           }
         };
-    try (Closeable finalizer = decRefDeleter) {
+    try (var _ = decRefDeleter) {
       // try to close each reader, even if an exception is thrown
       final List<? extends LeafReader> sequentialSubReaders = getSequentialSubReaders();
       IOUtils.applyToAll(sequentialSubReaders, LeafReader::decRef);

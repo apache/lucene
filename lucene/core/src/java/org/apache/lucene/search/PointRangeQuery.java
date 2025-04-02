@@ -212,28 +212,28 @@ public abstract class PointRangeQuery extends Query {
         };
       }
 
-      /** Create a visitor that clears documents that do NOT match the range. */
+      /** Create a visitor that sets documents that do NOT match the range. */
       private IntersectVisitor getInverseIntersectVisitor(FixedBitSet result, long[] cost) {
         return new IntersectVisitor() {
 
           @Override
           public void visit(int docID) {
-            result.clear(docID);
-            cost[0]--;
+            result.set(docID);
+            cost[0]++;
           }
 
           @Override
           public void visit(DocIdSetIterator iterator) throws IOException {
-            result.andNot(iterator);
-            cost[0] = Math.max(0, cost[0] - iterator.cost());
+            result.or(iterator);
+            cost[0] += iterator.cost();
           }
 
           @Override
           public void visit(IntsRef ref) {
             for (int i = ref.offset; i < ref.offset + ref.length; i++) {
-              result.clear(ref.ints[i]);
+              result.set(ref.ints[i]);
             }
-            cost[0] = Math.max(0, cost[0] - ref.length);
+            cost[0] += ref.length;
           }
 
           @Override
@@ -341,27 +341,16 @@ public abstract class PointRangeQuery extends Query {
 
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) {
-              return new ConstantScoreScorer(
-                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
-            }
-
-            @Override
-            public long cost() {
-              return reader.maxDoc();
-            }
-          };
+          return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, reader.maxDoc());
         } else {
-          return new ScorerSupplier() {
+          return new ConstantScoreScorerSupplier(score(), scoreMode, reader.maxDoc()) {
 
             final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
             final IntersectVisitor visitor = getIntersectVisitor(result);
             long cost = -1;
 
             @Override
-            public Scorer get(long leadCost) throws IOException {
+            public DocIdSetIterator iterator(long leadCost) throws IOException {
               if (values.getDocCount() == reader.maxDoc()
                   && values.getDocCount() == values.size()
                   && cost() > reader.maxDoc() / 2) {
@@ -369,16 +358,16 @@ public abstract class PointRangeQuery extends Query {
                 // than half the leaf size then maybe we can make things faster
                 // by computing the set of documents that do NOT match the range
                 final FixedBitSet result = new FixedBitSet(reader.maxDoc());
-                result.set(0, reader.maxDoc());
-                long[] cost = new long[] {reader.maxDoc()};
+                long[] cost = new long[1];
                 values.intersect(getInverseIntersectVisitor(result, cost));
-                final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-                return new ConstantScoreScorer(score(), scoreMode, iterator);
+                // Flip the bit set and cost
+                result.flip(0, reader.maxDoc());
+                cost[0] = Math.max(0, reader.maxDoc() - cost[0]);
+                return new BitSetIterator(result, cost[0]);
               }
 
               values.intersect(visitor);
-              DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(score(), scoreMode, iterator);
+              return result.build().iterator();
             }
 
             @Override

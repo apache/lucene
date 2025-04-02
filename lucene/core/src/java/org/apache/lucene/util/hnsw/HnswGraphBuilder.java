@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
@@ -68,12 +69,13 @@ public class HnswGraphBuilder implements HnswBuilder {
   private final GraphBuilderKnnCollector entryCandidates; // for upper levels of graph search
   private final GraphBuilderKnnCollector
       beamCandidates; // for levels of graph where we add the node
+  private final GraphBuilderKnnCollector beamCandidates0;
 
   protected final OnHeapHnswGraph hnsw;
   protected final HnswLock hnswLock;
 
-  private InfoStream infoStream = InfoStream.getDefault();
-  private boolean frozen;
+  protected InfoStream infoStream = InfoStream.getDefault();
+  protected boolean frozen;
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
@@ -152,6 +154,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.graphSearcher = graphSearcher;
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
+    beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth / 2, M * 3));
   }
 
   @Override
@@ -208,6 +211,11 @@ public class HnswGraphBuilder implements HnswBuilder {
   }
 
   public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
+    addGraphNodeInternal(node, scorer, null);
+  }
+
+  private void addGraphNodeInternal(int node, UpdateableRandomVectorScorer scorer, IntHashSet eps0)
+      throws IOException {
     if (frozen) {
       throw new IllegalStateException("Graph builder is already frozen");
     }
@@ -247,9 +255,13 @@ public class HnswGraphBuilder implements HnswBuilder {
       for (int i = scratchPerLevel.length - 1; i >= 0; i--) {
         int level = i + lowestUnsetLevel;
         candidates.clear();
+        if (level == 0 && eps0 != null && eps0.size() > 0) {
+          eps = eps0.toArray();
+          candidates = beamCandidates0;
+        }
         graphSearcher.searchLevel(candidates, scorer, level, eps, hnsw, null);
         eps = candidates.popUntilNearestKNodes();
-        scratchPerLevel[i] = new NeighborArray(Math.max(beamCandidates.k(), M + 1), false);
+        scratchPerLevel[i] = new NeighborArray(Math.max(candidates.k(), M + 1), false);
         popToScratch(candidates, scratchPerLevel[i]);
       }
 
@@ -302,7 +314,13 @@ public class HnswGraphBuilder implements HnswBuilder {
     */
     UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
     scorer.setScoringOrdinal(node);
-    addGraphNode(node, scorer);
+    addGraphNodeInternal(node, scorer, null);
+  }
+
+  public void addGraphNodeWithEps(int node, IntHashSet eps0) throws IOException {
+    UpdateableRandomVectorScorer scorer = scorerSupplier.scorer();
+    scorer.setScoringOrdinal(node);
+    addGraphNodeInternal(node, scorer, eps0);
   }
 
   private long printGraphBuildStatus(int node, long start, long t) {

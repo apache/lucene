@@ -29,6 +29,7 @@ import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
 import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.ShortVector;
 import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorMask;
@@ -58,6 +59,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
+  private static final VectorSpecies<Byte> BYTE_SPECIES_128 = ByteVector.SPECIES_128;
+  private static final VectorSpecies<Byte> BYTE_SPECIES_256 = ByteVector.SPECIES_256;
 
   static final int VECTOR_BITSIZE;
 
@@ -789,5 +792,213 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       }
     }
     return to;
+  }
+
+  @Override
+  public long int4BitDotProduct(byte[] q, byte[] d) {
+    assert q.length == d.length * 4;
+    // 128 / 8 == 16
+    if (d.length >= 16 && PanamaVectorConstants.HAS_FAST_INTEGER_VECTORS) {
+      if (VECTOR_BITSIZE >= 256) {
+        return int4BitDotProduct256(q, d);
+      } else if (VECTOR_BITSIZE == 128) {
+        return int4BitDotProduct128(q, d);
+      }
+    }
+    return DefaultVectorUtilSupport.int4BitDotProductImpl(q, d);
+  }
+
+  static long int4BitDotProduct256(byte[] q, byte[] d) {
+    long subRet0 = 0;
+    long subRet1 = 0;
+    long subRet2 = 0;
+    long subRet3 = 0;
+    int i = 0;
+
+    if (d.length >= ByteVector.SPECIES_256.vectorByteSize() * 2) {
+      int limit = ByteVector.SPECIES_256.loopBound(d.length);
+      var sum0 = LongVector.zero(LongVector.SPECIES_256);
+      var sum1 = LongVector.zero(LongVector.SPECIES_256);
+      var sum2 = LongVector.zero(LongVector.SPECIES_256);
+      var sum3 = LongVector.zero(LongVector.SPECIES_256);
+      for (; i < limit; i += ByteVector.SPECIES_256.length()) {
+        var vq0 = ByteVector.fromArray(BYTE_SPECIES_256, q, i).reinterpretAsLongs();
+        var vq1 = ByteVector.fromArray(BYTE_SPECIES_256, q, i + d.length).reinterpretAsLongs();
+        var vq2 = ByteVector.fromArray(BYTE_SPECIES_256, q, i + d.length * 2).reinterpretAsLongs();
+        var vq3 = ByteVector.fromArray(BYTE_SPECIES_256, q, i + d.length * 3).reinterpretAsLongs();
+        var vd = ByteVector.fromArray(BYTE_SPECIES_256, d, i).reinterpretAsLongs();
+        sum0 = sum0.add(vq0.and(vd).lanewise(VectorOperators.BIT_COUNT));
+        sum1 = sum1.add(vq1.and(vd).lanewise(VectorOperators.BIT_COUNT));
+        sum2 = sum2.add(vq2.and(vd).lanewise(VectorOperators.BIT_COUNT));
+        sum3 = sum3.add(vq3.and(vd).lanewise(VectorOperators.BIT_COUNT));
+      }
+      subRet0 += sum0.reduceLanes(VectorOperators.ADD);
+      subRet1 += sum1.reduceLanes(VectorOperators.ADD);
+      subRet2 += sum2.reduceLanes(VectorOperators.ADD);
+      subRet3 += sum3.reduceLanes(VectorOperators.ADD);
+    }
+
+    if (d.length - i >= ByteVector.SPECIES_128.vectorByteSize()) {
+      var sum0 = LongVector.zero(LongVector.SPECIES_128);
+      var sum1 = LongVector.zero(LongVector.SPECIES_128);
+      var sum2 = LongVector.zero(LongVector.SPECIES_128);
+      var sum3 = LongVector.zero(LongVector.SPECIES_128);
+      int limit = ByteVector.SPECIES_128.loopBound(d.length);
+      for (; i < limit; i += ByteVector.SPECIES_128.length()) {
+        var vq0 = ByteVector.fromArray(BYTE_SPECIES_128, q, i).reinterpretAsLongs();
+        var vq1 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length).reinterpretAsLongs();
+        var vq2 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 2).reinterpretAsLongs();
+        var vq3 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 3).reinterpretAsLongs();
+        var vd = ByteVector.fromArray(BYTE_SPECIES_128, d, i).reinterpretAsLongs();
+        sum0 = sum0.add(vq0.and(vd).lanewise(VectorOperators.BIT_COUNT));
+        sum1 = sum1.add(vq1.and(vd).lanewise(VectorOperators.BIT_COUNT));
+        sum2 = sum2.add(vq2.and(vd).lanewise(VectorOperators.BIT_COUNT));
+        sum3 = sum3.add(vq3.and(vd).lanewise(VectorOperators.BIT_COUNT));
+      }
+      subRet0 += sum0.reduceLanes(VectorOperators.ADD);
+      subRet1 += sum1.reduceLanes(VectorOperators.ADD);
+      subRet2 += sum2.reduceLanes(VectorOperators.ADD);
+      subRet3 += sum3.reduceLanes(VectorOperators.ADD);
+    }
+    // tail as bytes
+    for (; i < d.length; i++) {
+      subRet0 += Integer.bitCount((q[i] & d[i]) & 0xFF);
+      subRet1 += Integer.bitCount((q[i + d.length] & d[i]) & 0xFF);
+      subRet2 += Integer.bitCount((q[i + 2 * d.length] & d[i]) & 0xFF);
+      subRet3 += Integer.bitCount((q[i + 3 * d.length] & d[i]) & 0xFF);
+    }
+    return subRet0 + (subRet1 << 1) + (subRet2 << 2) + (subRet3 << 3);
+  }
+
+  public static long int4BitDotProduct128(byte[] q, byte[] d) {
+    long subRet0 = 0;
+    long subRet1 = 0;
+    long subRet2 = 0;
+    long subRet3 = 0;
+    int i = 0;
+
+    var sum0 = IntVector.zero(IntVector.SPECIES_128);
+    var sum1 = IntVector.zero(IntVector.SPECIES_128);
+    var sum2 = IntVector.zero(IntVector.SPECIES_128);
+    var sum3 = IntVector.zero(IntVector.SPECIES_128);
+    int limit = ByteVector.SPECIES_128.loopBound(d.length);
+    for (; i < limit; i += ByteVector.SPECIES_128.length()) {
+      var vd = ByteVector.fromArray(BYTE_SPECIES_128, d, i).reinterpretAsInts();
+      var vq0 = ByteVector.fromArray(BYTE_SPECIES_128, q, i).reinterpretAsInts();
+      var vq1 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length).reinterpretAsInts();
+      var vq2 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 2).reinterpretAsInts();
+      var vq3 = ByteVector.fromArray(BYTE_SPECIES_128, q, i + d.length * 3).reinterpretAsInts();
+      sum0 = sum0.add(vd.and(vq0).lanewise(VectorOperators.BIT_COUNT));
+      sum1 = sum1.add(vd.and(vq1).lanewise(VectorOperators.BIT_COUNT));
+      sum2 = sum2.add(vd.and(vq2).lanewise(VectorOperators.BIT_COUNT));
+      sum3 = sum3.add(vd.and(vq3).lanewise(VectorOperators.BIT_COUNT));
+    }
+    subRet0 += sum0.reduceLanes(VectorOperators.ADD);
+    subRet1 += sum1.reduceLanes(VectorOperators.ADD);
+    subRet2 += sum2.reduceLanes(VectorOperators.ADD);
+    subRet3 += sum3.reduceLanes(VectorOperators.ADD);
+    // tail as bytes
+    for (; i < d.length; i++) {
+      int dValue = d[i];
+      subRet0 += Integer.bitCount((dValue & q[i]) & 0xFF);
+      subRet1 += Integer.bitCount((dValue & q[i + d.length]) & 0xFF);
+      subRet2 += Integer.bitCount((dValue & q[i + 2 * d.length]) & 0xFF);
+      subRet3 += Integer.bitCount((dValue & q[i + 3 * d.length]) & 0xFF);
+    }
+    return subRet0 + (subRet1 << 1) + (subRet2 << 2) + (subRet3 << 3);
+  }
+
+  @Override
+  public float minMaxScalarQuantize(
+      float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
+    assert vector.length == dest.length;
+    float correction = 0;
+    int i = 0;
+    // only vectorize if we have a viable BYTE_SPECIES we can use for output
+    if (VECTOR_BITSIZE >= 256) {
+      FloatVector sum = FloatVector.zero(FLOAT_SPECIES);
+
+      for (; i < FLOAT_SPECIES.loopBound(vector.length); i += FLOAT_SPECIES.length()) {
+        FloatVector v = FloatVector.fromArray(FLOAT_SPECIES, vector, i);
+
+        // Make sure the value is within the quantile range, cutting off the tails
+        // see first parenthesis in equation: byte = (float - minQuantile) * 127/(maxQuantile -
+        // minQuantile)
+        FloatVector dxc = v.min(maxQuantile).max(minQuantile).sub(minQuantile);
+        // Scale the value to the range [0, 127], this is our quantized value
+        // scale = 127/(maxQuantile - minQuantile)
+        // Math.round rounds to positive infinity, so do the same by +0.5 then truncating to int
+        Vector<Integer> roundedDxs =
+            fma(dxc, dxc.broadcast(scale), dxc.broadcast(0.5f)).convert(VectorOperators.F2I, 0);
+        // output this to the array
+        ((ByteVector) roundedDxs.castShape(BYTE_SPECIES, 0)).intoArray(dest, i);
+        // We multiply by `alpha` here to get the quantized value back into the original range
+        // to aid in calculating the corrective offset
+        FloatVector dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
+        // Calculate the corrective offset that needs to be applied to the score
+        // in addition to the `byte * minQuantile * alpha` term in the equation
+        // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized value
+        // will be rounded to the nearest whole number and lose some accuracy
+        // Additionally, we account for the global correction of `minQuantile^2` in the equation
+        sum =
+            fma(
+                v.sub(minQuantile / 2f),
+                v.broadcast(minQuantile),
+                fma(v.sub(minQuantile).sub(dxq), dxq, sum));
+      }
+
+      correction = sum.reduceLanes(VectorOperators.ADD);
+    }
+
+    // complete the tail normally
+    correction +=
+        new DefaultVectorUtilSupport.ScalarQuantizer(alpha, scale, minQuantile, maxQuantile)
+            .quantize(vector, dest, i);
+
+    return correction;
+  }
+
+  @Override
+  public float recalculateScalarQuantizationOffset(
+      byte[] vector,
+      float oldAlpha,
+      float oldMinQuantile,
+      float scale,
+      float alpha,
+      float minQuantile,
+      float maxQuantile) {
+    float correction = 0;
+    int i = 0;
+    // only vectorize if we have a viable BYTE_SPECIES that we can use
+    if (VECTOR_BITSIZE >= 256) {
+      FloatVector sum = FloatVector.zero(FLOAT_SPECIES);
+
+      for (; i < BYTE_SPECIES.loopBound(vector.length); i += BYTE_SPECIES.length()) {
+        FloatVector fv =
+            (FloatVector) ByteVector.fromArray(BYTE_SPECIES, vector, i).castShape(FLOAT_SPECIES, 0);
+        // undo the old quantization
+        FloatVector v = fma(fv, fv.broadcast(oldAlpha), fv.broadcast(oldMinQuantile));
+
+        // same operations as in quantize above
+        FloatVector dxc = v.min(maxQuantile).max(minQuantile).sub(minQuantile);
+        Vector<Integer> roundedDxs =
+            fma(dxc, dxc.broadcast(scale), dxc.broadcast(0.5f)).convert(VectorOperators.F2I, 0);
+        FloatVector dxq = ((FloatVector) roundedDxs.castShape(FLOAT_SPECIES, 0)).mul(alpha);
+        sum =
+            fma(
+                v.sub(minQuantile / 2f),
+                v.broadcast(minQuantile),
+                fma(v.sub(minQuantile).sub(dxq), dxq, sum));
+      }
+
+      correction = sum.reduceLanes(VectorOperators.ADD);
+    }
+
+    // complete the tail normally
+    correction +=
+        new DefaultVectorUtilSupport.ScalarQuantizer(alpha, scale, minQuantile, maxQuantile)
+            .recalculateOffset(vector, i, oldAlpha, oldMinQuantile);
+
+    return correction;
   }
 }

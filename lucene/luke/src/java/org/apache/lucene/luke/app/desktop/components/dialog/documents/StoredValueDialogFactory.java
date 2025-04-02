@@ -115,7 +115,7 @@ public final class StoredValueDialogFactory implements DialogOpener.DialogFactor
             FontUtils.elegantIconHtml("&#xe0e6;", MessageUtils.getLocalizedMessage("button.copy")));
     copyBtn.setMargin(new Insets(3, 3, 3, 3));
     copyBtn.addActionListener(
-        e -> {
+        _ -> {
           Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
           StringSelection selection = new StringSelection(value);
           clipboard.setContents(selection, null);
@@ -124,7 +124,7 @@ public final class StoredValueDialogFactory implements DialogOpener.DialogFactor
 
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setMargin(new Insets(3, 3, 3, 3));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     footer.add(closeBtn);
     panel.add(footer, BorderLayout.PAGE_END);
 

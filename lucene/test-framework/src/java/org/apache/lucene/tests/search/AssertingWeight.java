@@ -95,7 +95,7 @@ class AssertingWeight extends FilterWeight {
         }
 
         return AssertingBulkScorer.wrap(
-            new Random(random.nextLong()), inScorer, context.reader().maxDoc(), scoreMode);
+            new Random(random.nextLong()), inScorer, context.reader().maxDoc());
       }
 
       @Override
@@ -106,7 +106,7 @@ class AssertingWeight extends FilterWeight {
       }
 
       @Override
-      public void setTopLevelScoringClause() throws IOException {
+      public void setTopLevelScoringClause() {
         assert getCalled == false;
         topLevelScoringClause = true;
         inScorerSupplier.setTopLevelScoringClause();
