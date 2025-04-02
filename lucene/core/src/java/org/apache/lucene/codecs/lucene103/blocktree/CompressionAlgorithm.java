@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90.blocktree;
+package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;

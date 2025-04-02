@@ -23,7 +23,7 @@
  * structure. It allows you to plug in your own {@link org.apache.lucene.codecs.PostingsWriterBase}
  * to implement the postings.
  *
- * <p>See {@link org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter} for the
+ * <p>See {@link org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter} for the
  * file format.
  */
-package org.apache.lucene.codecs.lucene90.blocktree;
+package org.apache.lucene.codecs.lucene103.blocktree;

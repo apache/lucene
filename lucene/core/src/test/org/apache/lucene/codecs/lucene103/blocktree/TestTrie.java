@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90.blocktree;
+package org.apache.lucene.codecs.lucene103.blocktree;
 
-import static org.apache.lucene.codecs.lucene90.blocktree.TrieBuilder.ChildSaveStrategy;
+import static org.apache.lucene.codecs.lucene103.blocktree.TrieBuilder.ChildSaveStrategy;
 
 import java.io.IOException;
 import java.util.Arrays;

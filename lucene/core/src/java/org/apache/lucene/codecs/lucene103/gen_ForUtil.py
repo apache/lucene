@@ -40,7 +40,7 @@ HEADER = """// This file has been automatically generated, DO NOT EDIT
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene101;
+package org.apache.lucene.codecs.lucene103;
 
 import java.io.IOException;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene101;
+package org.apache.lucene.codecs.lucene103;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
@@ -41,7 +41,7 @@ public class TestPForUtil extends LuceneTestCase {
 
     IndexInput in = d.openInput("test.bin", IOContext.READONCE);
     PostingDecodingUtil pdu =
-        Lucene101PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
+        Lucene103PostingsReader.VECTORIZATION_PROVIDER.newPostingDecodingUtil(in);
     final PForUtil pforUtil = new PForUtil();
     for (int i = 0; i < iterations; ++i) {
       if (random().nextInt(5) == 0) {

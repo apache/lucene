@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90.blocktree;
+package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -206,20 +206,20 @@ import org.apache.lucene.util.compress.LowercaseAsciiCompression;
  *       byte of each sub-block, and its file pointer.
  * </ul>
  *
- * @see Lucene90BlockTreeTermsReader
+ * @see Lucene103BlockTreeTermsReader
  * @lucene.experimental
  */
-public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
+public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
   /**
    * Suggested default value for the {@code minItemsInBlock} parameter to {@link
-   * #Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)}.
+   * #Lucene103BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)}.
    */
   public static final int DEFAULT_MIN_BLOCK_SIZE = 25;
 
   /**
    * Suggested default value for the {@code maxItemsInBlock} parameter to {@link
-   * #Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)}.
+   * #Lucene103BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)}.
    */
   public static final int DEFAULT_MAX_BLOCK_SIZE = 48;
 
@@ -246,7 +246,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
    * minItemsPerBlock and maxItemsPerBlock, though in some cases the blocks may be smaller than the
    * min.
    */
-  public Lucene90BlockTreeTermsWriter(
+  public Lucene103BlockTreeTermsWriter(
       SegmentWriteState state,
       PostingsWriterBase postingsWriter,
       int minItemsInBlock,
@@ -257,11 +257,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         postingsWriter,
         minItemsInBlock,
         maxItemsInBlock,
-        Lucene90BlockTreeTermsReader.VERSION_CURRENT);
+        Lucene103BlockTreeTermsReader.VERSION_CURRENT);
   }
 
   /** Expert constructor that allows configuring the version, used for bw tests. */
-  public Lucene90BlockTreeTermsWriter(
+  public Lucene103BlockTreeTermsWriter(
       SegmentWriteState state,
       PostingsWriterBase postingsWriter,
       int minItemsInBlock,
@@ -272,13 +272,13 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
     this.minItemsInBlock = minItemsInBlock;
     this.maxItemsInBlock = maxItemsInBlock;
-    if (version < Lucene90BlockTreeTermsReader.VERSION_START
-        || version > Lucene90BlockTreeTermsReader.VERSION_CURRENT) {
+    if (version < Lucene103BlockTreeTermsReader.VERSION_START
+        || version > Lucene103BlockTreeTermsReader.VERSION_CURRENT) {
       throw new IllegalArgumentException(
           "Expected version in range ["
-              + Lucene90BlockTreeTermsReader.VERSION_START
+              + Lucene103BlockTreeTermsReader.VERSION_START
               + ", "
-              + Lucene90BlockTreeTermsReader.VERSION_CURRENT
+              + Lucene103BlockTreeTermsReader.VERSION_CURRENT
               + "], but got "
               + version);
     }
@@ -292,14 +292,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene90BlockTreeTermsReader.TERMS_EXTENSION);
+            Lucene103BlockTreeTermsReader.TERMS_EXTENSION);
     termsOut = state.directory.createOutput(termsName, state.context);
     boolean success = false;
     IndexOutput metaOut = null, indexOut = null;
     try {
       CodecUtil.writeIndexHeader(
           termsOut,
-          Lucene90BlockTreeTermsReader.TERMS_CODEC_NAME,
+          Lucene103BlockTreeTermsReader.TERMS_CODEC_NAME,
           version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
@@ -308,11 +308,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
           IndexFileNames.segmentFileName(
               state.segmentInfo.name,
               state.segmentSuffix,
-              Lucene90BlockTreeTermsReader.TERMS_INDEX_EXTENSION);
+              Lucene103BlockTreeTermsReader.TERMS_INDEX_EXTENSION);
       indexOut = state.directory.createOutput(indexName, state.context);
       CodecUtil.writeIndexHeader(
           indexOut,
-          Lucene90BlockTreeTermsReader.TERMS_INDEX_CODEC_NAME,
+          Lucene103BlockTreeTermsReader.TERMS_INDEX_CODEC_NAME,
           version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
@@ -322,11 +322,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
           IndexFileNames.segmentFileName(
               state.segmentInfo.name,
               state.segmentSuffix,
-              Lucene90BlockTreeTermsReader.TERMS_META_EXTENSION);
+              Lucene103BlockTreeTermsReader.TERMS_META_EXTENSION);
       metaOut = state.directory.createOutput(metaName, state.context);
       CodecUtil.writeIndexHeader(
           metaOut,
-          Lucene90BlockTreeTermsReader.TERMS_META_CODEC_NAME,
+          Lucene103BlockTreeTermsReader.TERMS_META_CODEC_NAME,
           version,
           state.segmentInfo.getId(),
           state.segmentSuffix);

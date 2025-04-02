@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90.blocktree;
+package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
@@ -45,13 +45,13 @@ public final class FieldReader extends Terms {
   final long indexStart;
   final long rootFP;
   final long indexEnd;
-  final Lucene90BlockTreeTermsReader parent;
+  final Lucene103BlockTreeTermsReader parent;
   final IndexInput indexIn;
 
   // private boolean DEBUG;
 
   FieldReader(
-      Lucene90BlockTreeTermsReader parent,
+      Lucene103BlockTreeTermsReader parent,
       FieldInfo fieldInfo,
       long numTerms,
       long sumTotalTermFreq,

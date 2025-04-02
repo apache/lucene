@@ -14,15 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene101;
+package org.apache.lucene.codecs.lucene103;
 
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.*;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.DOC_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.LEVEL1_MASK;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.META_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.PAY_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.POS_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.*;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.LEVEL1_MASK;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.META_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.PAY_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.POS_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.TERMS_CODEC;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -32,7 +32,7 @@ import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.PushPostingsWriterBase;
-import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.IntBlockTermState;
+import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Impact;
@@ -49,8 +49,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 
-/** Writer for {@link Lucene101PostingsFormat}. */
-public class Lucene101PostingsWriter extends PushPostingsWriterBase {
+/** Writer for {@link Lucene103PostingsFormat}. */
+public class Lucene103PostingsWriter extends PushPostingsWriterBase {
 
   static final IntBlockTermState EMPTY_STATE = new IntBlockTermState();
 
@@ -136,19 +136,19 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
   private final FixedBitSet spareBitSet = new FixedBitSet(BLOCK_SIZE * Integer.SIZE);
 
   /** Sole public constructor. */
-  public Lucene101PostingsWriter(SegmentWriteState state) throws IOException {
-    this(state, Lucene101PostingsFormat.VERSION_CURRENT);
+  public Lucene103PostingsWriter(SegmentWriteState state) throws IOException {
+    this(state, Lucene103PostingsFormat.VERSION_CURRENT);
   }
 
   /** Constructor that takes a version. */
-  Lucene101PostingsWriter(SegmentWriteState state, int version) throws IOException {
+  Lucene103PostingsWriter(SegmentWriteState state, int version) throws IOException {
     this.version = version;
     String metaFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.META_EXTENSION);
     String docFileName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.DOC_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.DOC_EXTENSION);
     metaOut = state.directory.createOutput(metaFileName, state.context);
     IndexOutput posOut = null;
     IndexOutput payOut = null;
@@ -165,7 +165,7 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
         posDeltaBuffer = new int[BLOCK_SIZE];
         String posFileName =
             IndexFileNames.segmentFileName(
-                state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.POS_EXTENSION);
+                state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.POS_EXTENSION);
         posOut = state.directory.createOutput(posFileName, state.context);
         CodecUtil.writeIndexHeader(
             posOut, POS_CODEC, version, state.segmentInfo.getId(), state.segmentSuffix);
@@ -191,7 +191,7 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
               IndexFileNames.segmentFileName(
                   state.segmentInfo.name,
                   state.segmentSuffix,
-                  Lucene101PostingsFormat.PAY_EXTENSION);
+                  Lucene103PostingsFormat.PAY_EXTENSION);
           payOut = state.directory.createOutput(payFileName, state.context);
           CodecUtil.writeIndexHeader(
               payOut, PAY_CODEC, version, state.segmentInfo.getId(), state.segmentSuffix);
@@ -434,7 +434,7 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
       int numBitsNextBitsPerValue = Math.min(Integer.SIZE, bitsPerValue + 1) * BLOCK_SIZE;
       if (sum == BLOCK_SIZE) {
         level0Output.writeByte((byte) 0);
-      } else if (version < VERSION_DENSE_BLOCKS_AS_BITSETS || numBitsNextBitsPerValue <= sum) {
+      } else if (numBitsNextBitsPerValue <= sum) {
         level0Output.writeByte((byte) bitsPerValue);
         forDeltaUtil.encodeDeltas(bitsPerValue, docDeltaBuffer, level0Output);
       } else {

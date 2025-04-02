@@ -14,17 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene101;
+package org.apache.lucene.codecs.lucene103;
 
-import static org.apache.lucene.codecs.lucene101.ForUtil.BLOCK_SIZE;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.DOC_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.LEVEL1_NUM_DOCS;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.META_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.PAY_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.POS_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.TERMS_CODEC;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.VERSION_CURRENT;
-import static org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.VERSION_START;
+import static org.apache.lucene.codecs.lucene103.ForUtil.BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.DOC_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.LEVEL1_NUM_DOCS;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.META_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.PAY_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.POS_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.TERMS_CODEC;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.VERSION_CURRENT;
+import static org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.VERSION_START;
 
 import java.io.IOException;
 import java.util.AbstractList;
@@ -35,7 +35,7 @@ import java.util.RandomAccess;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
-import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.IntBlockTermState;
+import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat.IntBlockTermState;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
@@ -63,7 +63,7 @@ import org.apache.lucene.util.VectorUtil;
  *
  * @lucene.experimental
  */
-public final class Lucene101PostingsReader extends PostingsReaderBase {
+public final class Lucene103PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
   // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
@@ -83,10 +83,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
   private final int maxImpactNumBytesAtLevel1;
 
   /** Sole constructor. */
-  public Lucene101PostingsReader(SegmentReadState state) throws IOException {
+  public Lucene103PostingsReader(SegmentReadState state) throws IOException {
     String metaName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.META_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.META_EXTENSION);
     final long expectedDocFileLength, expectedPosFileLength, expectedPayFileLength;
     ChecksumIndexInput metaIn = null;
     boolean success = false;
@@ -146,7 +146,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     String docName =
         IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.DOC_EXTENSION);
+            state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.DOC_EXTENSION);
     try {
       // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
       // readahead.
@@ -158,7 +158,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       if (state.fieldInfos.hasProx()) {
         String proxName =
             IndexFileNames.segmentFileName(
-                state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.POS_EXTENSION);
+                state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.POS_EXTENSION);
         posIn = state.directory.openInput(proxName, state.context);
         CodecUtil.checkIndexHeader(
             posIn, POS_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
@@ -169,7 +169,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
               IndexFileNames.segmentFileName(
                   state.segmentInfo.name,
                   state.segmentSuffix,
-                  Lucene101PostingsFormat.PAY_EXTENSION);
+                  Lucene103PostingsFormat.PAY_EXTENSION);
           payIn = state.directory.openInput(payName, state.context);
           CodecUtil.checkIndexHeader(
               payIn, PAY_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
@@ -461,7 +461,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
 
       if (needsPos) {
-        this.posIn = Lucene101PostingsReader.this.posIn.clone();
+        this.posIn = Lucene103PostingsReader.this.posIn.clone();
         posInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(posIn);
         posDeltaBuffer = new int[BLOCK_SIZE];
       } else {
@@ -471,7 +471,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       }
 
       if (needsOffsets || needsPayloads) {
-        this.payIn = Lucene101PostingsReader.this.payIn.clone();
+        this.payIn = Lucene103PostingsReader.this.payIn.clone();
         payInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(payIn);
       } else {
         this.payIn = null;
@@ -501,7 +501,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
     public boolean canReuse(
         IndexInput docIn, FieldInfo fieldInfo, int flags, boolean needsImpacts) {
-      return docIn == Lucene101PostingsReader.this.docIn
+      return docIn == Lucene103PostingsReader.this.docIn
           && options == fieldInfo.getIndexOptions()
           && indexHasPayloads == fieldInfo.hasPayloads()
           && this.flags == flags
@@ -514,7 +514,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       if (docFreq > 1) {
         if (docIn == null) {
           // lazy init
-          docIn = Lucene101PostingsReader.this.docIn.clone();
+          docIn = Lucene103PostingsReader.this.docIn.clone();
           docInUtil = VECTORIZATION_PROVIDER.newPostingDecodingUtil(docIn);
         }
         prefetchPostings(docIn, termState);
@@ -1316,7 +1316,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
           private List<Impact> readImpacts(BytesRef serialized, MutableImpactList impactsList) {
             var scratch = this.scratch;
             scratch.reset(serialized.bytes, 0, serialized.length);
-            Lucene101PostingsReader.readImpacts(scratch, impactsList);
+            Lucene103PostingsReader.readImpacts(scratch, impactsList);
             return impactsList;
           }
         };
@@ -1329,7 +1329,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
   }
 
   /**
-   * @see Lucene101PostingsWriter#writeVInt15(org.apache.lucene.store.DataOutput, int)
+   * @see Lucene103PostingsWriter#writeVInt15(org.apache.lucene.store.DataOutput, int)
    */
   static int readVInt15(DataInput in) throws IOException {
     short s = in.readShort();
@@ -1341,7 +1341,7 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
   }
 
   /**
-   * @see Lucene101PostingsWriter#writeVLong15(org.apache.lucene.store.DataOutput, long)
+   * @see Lucene103PostingsWriter#writeVLong15(org.apache.lucene.store.DataOutput, long)
    */
   static long readVLong15(DataInput in) throws IOException {
     short s = in.readShort();

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene90.blocktree;
+package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,11 +57,11 @@ import org.apache.lucene.util.IOUtils;
  * <p>Use {@link org.apache.lucene.index.CheckIndex} with the <code>-verbose</code> option to see
  * summary statistics on the blocks in the dictionary.
  *
- * <p>See {@link Lucene90BlockTreeTermsWriter}.
+ * <p>See {@link Lucene103BlockTreeTermsWriter}.
  *
  * @lucene.experimental
  */
-public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
+public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
 
   /** Extension of terms file */
   static final String TERMS_EXTENSION = "tim";
@@ -112,7 +112,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   final int version;
 
   /** Sole constructor. */
-  public Lucene90BlockTreeTermsReader(PostingsReaderBase postingsReader, SegmentReadState state)
+  public Lucene103BlockTreeTermsReader(PostingsReaderBase postingsReader, SegmentReadState state)
       throws IOException {
     boolean success = false;
 

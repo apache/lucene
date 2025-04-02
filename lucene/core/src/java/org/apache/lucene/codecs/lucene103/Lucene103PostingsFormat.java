@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene101;
+package org.apache.lucene.codecs.lucene103;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.BlockTermState;
@@ -47,7 +47,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *       <p>In VInt blocks, integers are encoded as {@link DataOutput#writeVInt VInt}: the block
  *       size is variable.
  *   <li><b>Block structure</b>:
- *       <p>When the postings are long enough, Lucene101PostingsFormat will try to encode most
+ *       <p>When the postings are long enough, Lucene103PostingsFormat will try to encode most
  *       integer data as a packed block.
  *       <p>Take a term with 259 documents as an example, the first 256 document ids are encoded as
  *       two packed blocks, while the remaining 3 are encoded as one VInt block.
@@ -318,7 +318,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *
  * @lucene.experimental
  */
-public final class Lucene101PostingsFormat extends PostingsFormat {
+public final class Lucene103PostingsFormat extends PostingsFormat {
 
   /** Filename extension for some small metadata about how postings are encoded. */
   public static final String META_EXTENSION = "psm";
@@ -351,17 +351,17 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
 
   public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
-  static final String TERMS_CODEC = "Lucene90PostingsWriterTerms";
-  static final String META_CODEC = "Lucene101PostingsWriterMeta";
-  static final String DOC_CODEC = "Lucene101PostingsWriterDoc";
-  static final String POS_CODEC = "Lucene101PostingsWriterPos";
-  static final String PAY_CODEC = "Lucene101PostingsWriterPay";
+  static final String TERMS_CODEC = "Lucene103PostingsWriterTerms";
+  static final String META_CODEC = "Lucene103PostingsWriterMeta";
+  static final String DOC_CODEC = "Lucene103PostingsWriterDoc";
+  static final String POS_CODEC = "Lucene103PostingsWriterPos";
+  static final String PAY_CODEC = "Lucene103PostingsWriterPay";
 
   static final int VERSION_START = 0;
 
   /**
    * Version that started encoding dense blocks as bit sets. Note: the old format is a subset of the
-   * new format, so Lucene101PostingsReader is able to read the old format without checking the
+   * new format, so Lucene103PostingsReader is able to read the old format without checking the
    * version.
    */
   static final int VERSION_DENSE_BLOCKS_AS_BITSETS = 1;
@@ -372,27 +372,27 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
   private final int minTermBlockSize;
   private final int maxTermBlockSize;
 
-  /** Creates {@code Lucene101PostingsFormat} with default settings. */
-  public Lucene101PostingsFormat() {
+  /** Creates {@code Lucene103PostingsFormat} with default settings. */
+  public Lucene103PostingsFormat() {
     this(
         Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
         Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
   }
 
   /**
-   * Creates {@code Lucene101PostingsFormat} with custom values for {@code minBlockSize} and {@code
+   * Creates {@code Lucene103PostingsFormat} with custom values for {@code minBlockSize} and {@code
    * maxBlockSize} passed to block terms dictionary.
    *
    * @see
    *     Lucene90BlockTreeTermsWriter#Lucene90BlockTreeTermsWriter(SegmentWriteState,PostingsWriterBase,int,int)
    */
-  public Lucene101PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
+  public Lucene103PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
     this(minTermBlockSize, maxTermBlockSize, VERSION_CURRENT);
   }
 
   /** Expert constructor that allows setting the version. */
-  public Lucene101PostingsFormat(int minTermBlockSize, int maxTermBlockSize, int version) {
-    super("Lucene101");
+  public Lucene103PostingsFormat(int minTermBlockSize, int maxTermBlockSize, int version) {
+    super("Lucene103");
     if (version < VERSION_START || version > VERSION_CURRENT) {
       throw new IllegalArgumentException("Version out of range: " + version);
     }
@@ -404,7 +404,7 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene101PostingsWriter(state, version);
+    PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state, version);
     boolean success = false;
     try {
       FieldsConsumer ret =
@@ -421,7 +421,7 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene101PostingsReader(state);
+    PostingsReaderBase postingsReader = new Lucene103PostingsReader(state);
     boolean success = false;
     try {
       FieldsProducer ret = new Lucene90BlockTreeTermsReader(postingsReader, state);
@@ -435,7 +435,7 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
   }
 
   /**
-   * Holds all state required for {@link Lucene101PostingsReader} to produce a {@link
+   * Holds all state required for {@link Lucene103PostingsReader} to produce a {@link
    * org.apache.lucene.index.PostingsEnum} without re-seeking the terms dict.
    *
    * @lucene.internal
