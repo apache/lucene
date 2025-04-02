@@ -21,6 +21,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -190,8 +191,9 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public long offHeapByteSize() {
-        return 0;
+      public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+        // return reader.getOffHeapAccountable(field);
+        throw new AssertionError("implement me");
       }
 
       @Override

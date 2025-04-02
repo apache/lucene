@@ -21,8 +21,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -48,7 +48,6 @@ import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.OffHeapAccountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
@@ -251,20 +250,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public long offHeapByteSize() {
-    long bytes = 0L;
-    for (var field : fields.values()) {
-      bytes += field.value.vectorIndexLength();
-    }
-    return bytes;
-  }
-
-  @Override
-  public Collection<OffHeapAccountable> getChildOffHeapResources() {
-    return List.of(OffHeapAccountable.named("flat vectors", flatVectorsReader));
-  }
-
-  @Override
   public void checkIntegrity() throws IOException {
     flatVectorsReader.checkIntegrity();
     CodecUtil.checksumEntireFile(vectorIndex);
@@ -280,12 +265,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return flatVectorsReader.getByteVectorValues(field);
   }
 
-  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+  private FieldEntry getFieldEntryOrThrow(String field) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry;
-    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+    final FieldEntry entry;
+    if (info == null || (entry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
+    return entry;
+  }
+
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+    final FieldEntry fieldEntry = getFieldEntryOrThrow(field);
     if (fieldEntry.vectorEncoding != expectedEncoding) {
       throw new IllegalArgumentException(
           "field=\""
@@ -381,6 +371,14 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
     return new OffHeapHnswGraph(entry, vectorIndex);
+  }
+
+  @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
+    var flat = flatVectorsReader.getOffHeapByteSize(fieldInfo);
+    var graph = Map.of(HNSW_GRAPH, entry.vectorIndexLength);
+    return KnnVectorsReader.mergeOffHeapByteSizeMaps(flat, graph);
   }
 
   @Override
@@ -480,7 +478,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   /** Read the nearest-neighbors graph from the index input */
-  private static final class OffHeapHnswGraph extends HnswGraph implements OffHeapAccountable {
+  private static final class OffHeapHnswGraph extends HnswGraph {
 
     final IndexInput dataIn;
     final int[][] nodesByLevel;
@@ -582,11 +580,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       } else {
         return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
       }
-    }
-
-    @Override
-    public long offHeapByteSize() {
-      return dataIn.length();
     }
   }
 }

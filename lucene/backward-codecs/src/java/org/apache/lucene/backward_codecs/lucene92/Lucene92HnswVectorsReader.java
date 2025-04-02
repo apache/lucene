@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -264,13 +265,11 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public long offHeapByteSize() {
-    long bytes = 0L;
-    for (var field : fields.values()) {
-      var f = field.value;
-      bytes += f.vectorDataLength() + f.vectorIndexLength();
-    }
-    return bytes;
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    FieldEntry entry = getFieldEntry(fieldInfo.name);
+    var raw = Map.entry(RAW, entry.vectorDataLength);
+    var graph = Map.entry(HNSW_GRAPH, entry.vectorIndexLength);
+    return Map.ofEntries(raw, graph);
   }
 
   @Override

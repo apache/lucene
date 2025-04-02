@@ -19,6 +19,9 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -26,11 +29,11 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.OffHeapAccountable;
 
 /** Reads vectors from an index. */
-public abstract class KnnVectorsReader implements Closeable, OffHeapAccountable {
+public abstract class KnnVectorsReader implements Closeable {
 
   /** Sole constructor */
   protected KnnVectorsReader() {}
@@ -131,4 +134,56 @@ public abstract class KnnVectorsReader implements Closeable, OffHeapAccountable 
    * <p>The default implementation is empty
    */
   public void finishMerge() throws IOException {}
+
+  /** A string representing the off-heap category for quantized vectors. */
+  public static final String QUANTIZED = "QUANTIZED";
+
+  /** A string representing the off-heap category for the HNSW graph. */
+  public static final String HNSW_GRAPH = "HNSW_GRAPH";
+
+  /** A string representing the off-heap category for raw vectors. */
+  public static final String RAW = "RAW";
+
+  /**
+   * Returns the desired size of off-heap memory the given field. This size can be used to help
+   * determine the memory requirements for optimal search performance, which can be greatly affected
+   * by page faults when not enough memory is available.
+   *
+   * <p>For reporting purposes, the backing off-heap index structures are broken into three
+   * categories: 1. {@link #RAW}, 2. {@link #HNSW_GRAPH}, and 3. {@link #QUANTIZED}. The returned
+   * map will have zero or one entry for each of these categories.
+   *
+   * <p>The long value is the size in bytes of the off-heap space needed if the associated index
+   * structure were to be fully loaded in memory. While somewhat analogous to {@link
+   * Accountable#ramBytesUsed()} (which reports actual on-heap memory usage), the metrics reported
+   * by this method are not actual usage but rather the amount of available memory needed to fully
+   * load the index into memory, rather than an actual RAM usage requirement.
+   *
+   * <p>To determine the total desired off-heap memory size for the given field:
+   *
+   * <pre>{@code
+   * getOffHeapByteSize(field).values().stream().mapToLong(Long::longValue).sum();
+   * }</pre>
+   *
+   * @param fieldInfo the fieldInfo
+   * @return a map of the desired off-heap memory requirements by category
+   * @lucene.experimental
+   */
+  public abstract Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo);
+
+  /**
+   * Merges the Maps returned by {@link #getOffHeapByteSize(FieldInfo)}.
+   *
+   * <p>This method is a convenience for aggregating the desired off-heap memory requirements for
+   * several fields. The keys in the returned map are a union of the keys in the given maps. Entries
+   * with the same key are summed.
+   *
+   * @lucene.experimental
+   */
+  public static Map<String, Long> mergeOffHeapByteSizeMaps(
+      Map<String, Long> map1, Map<String, Long> map2) {
+    return Stream.of(map1, map2)
+        .flatMap(map -> map.entrySet().stream())
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, Long::sum));
+  }
 }

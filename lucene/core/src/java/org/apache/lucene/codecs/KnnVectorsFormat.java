@@ -18,8 +18,10 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -149,12 +151,12 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             }
 
             @Override
-            public void close() {}
+            public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+              return Map.of();
+            }
 
             @Override
-            public long offHeapByteSize() {
-              return 0L;
-            }
+            public void close() {}
           };
         }
 

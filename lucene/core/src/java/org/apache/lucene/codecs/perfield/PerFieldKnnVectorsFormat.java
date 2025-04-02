@@ -336,21 +336,18 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+      KnnVectorsReader knnVectorsReader = fields.get(fieldInfo.number);
+      return knnVectorsReader.getOffHeapByteSize(fieldInfo);
+    }
+
+    @Override
     public void close() throws IOException {
       List<KnnVectorsReader> readers = new ArrayList<>(fields.size());
       for (ObjectCursor<KnnVectorsReader> cursor : fields.values()) {
         readers.add(cursor.value);
       }
       IOUtils.close(readers);
-    }
-
-    @Override
-    public long offHeapByteSize() {
-      long bytes = 0L;
-      for (var field : fields.values()) {
-        bytes += field.value.offHeapByteSize();
-      }
-      return bytes;
     }
   }
 

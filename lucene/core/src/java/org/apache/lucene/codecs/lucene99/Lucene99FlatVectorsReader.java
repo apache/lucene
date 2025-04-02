@@ -22,6 +22,7 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -167,12 +168,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public long offHeapByteSize() {
-    long bytes = 0L;
-    for (var field : fields.values()) {
-      bytes += field.value.vectorDataLength();
-    }
-    return bytes;
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    final FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
+    return Map.of(RAW, entry.vectorDataLength());
   }
 
   @Override
@@ -191,12 +189,17 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     }
   }
 
-  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+  private FieldEntry getFieldEntryOrThrow(String field) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry;
-    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+    final FieldEntry entry;
+    if (info == null || (entry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
+    return entry;
+  }
+
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+    final FieldEntry fieldEntry = getFieldEntryOrThrow(field);
     if (fieldEntry.vectorEncoding != expectedEncoding) {
       throw new IllegalArgumentException(
           "field=\""

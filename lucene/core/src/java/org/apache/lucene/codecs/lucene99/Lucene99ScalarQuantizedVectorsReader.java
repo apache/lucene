@@ -21,9 +21,9 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSi
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -43,7 +43,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.OffHeapAccountable;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
@@ -286,17 +285,15 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   }
 
   @Override
-  public long offHeapByteSize() {
-    long bytes = 0L;
-    for (var field : fields.values()) {
-      bytes += field.value.vectorDataLength();
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    var raw = rawVectorsReader.getOffHeapByteSize(fieldInfo);
+    var fieldEntry = fields.get(fieldInfo.number);
+    if (fieldEntry == null) {
+      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+      return raw;
     }
-    return bytes;
-  }
-
-  @Override
-  public Collection<OffHeapAccountable> getChildOffHeapResources() {
-    return List.of(rawVectorsReader);
+    var quant = Map.of(QUANTIZED, fieldEntry.vectorDataLength());
+    return KnnVectorsReader.mergeOffHeapByteSizeMaps(raw, quant);
   }
 
   private FieldEntry readField(IndexInput input, int versionMeta, FieldInfo info)
