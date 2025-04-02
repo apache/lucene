@@ -529,7 +529,8 @@ public class IndexSearcher {
     LeafSlice[] res = leafSlices;
     if (res == null) {
       if (taskExecutor == TaskExecutor.DIRECT_TASK_EXECUTOR) {
-        res = leafContexts.isEmpty()
+        res =
+            leafContexts.isEmpty()
                 ? new LeafSlice[0]
                 : new LeafSlice[] {LeafSlice.entireSegments(leafContexts)};
       } else {
