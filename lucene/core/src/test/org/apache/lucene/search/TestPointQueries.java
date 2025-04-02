@@ -2567,12 +2567,12 @@ public class TestPointQueries extends LuceneTestCase {
     PointRangeQuery query = (PointRangeQuery) IntPoint.newRangeQuery("int", 0, 1);
     assertFalse(query.isEqualValues());
     Weight weight = query.createWeight(s, ScoreMode.COMPLETE_NO_SCORES, 1f);
-    assertTrue(weight instanceof PointRangeQuery.MultiPointsConstantScoreWeight);
+    assertTrue(weight instanceof PointRangeQuery.MultiPointRangeQueryWeight);
 
     query = (PointRangeQuery) IntPoint.newRangeQuery("int", 0, 0);
     assertTrue(query.isEqualValues());
     weight = query.createWeight(s, ScoreMode.COMPLETE_NO_SCORES, 1f);
-    assertTrue(weight instanceof PointRangeQuery.SinglePointConstantScoreWeight);
+    assertTrue(weight instanceof PointRangeQuery.SinglePointRangeQueryWeight);
 
     assertEquals(zeroCount, s.count(IntPoint.newRangeQuery("int", 0, 0)));
     assertEquals(oneCount, s.count(IntPoint.newRangeQuery("int", 1, 1)));

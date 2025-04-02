@@ -133,20 +133,23 @@ public abstract class PointRangeQuery extends Query {
       throws IOException {
 
     if (this.equalValues) { // lowerPoint==upperPoint
-      return new SinglePointConstantScoreWeight(this, scoreMode, boost);
+      return new SinglePointRangeQueryWeight(this, scoreMode, boost);
     }
     // We don't use RandomAccessWeight here: it's no good to approximate with "match all docs".
     // This is an inverted structure and should be used in the first pass:
-    return new MultiPointsConstantScoreWeight(this, scoreMode, boost);
+    return new MultiPointRangeQueryWeight(this, scoreMode, boost);
   }
 
   /**
-   * Essentially, it is to reduce the number of comparisons. This is an optimization, used for the
-   * case of lowerPoint==upperPoint.
+   * Single-point range query weight implementation class, used to handle the special case where the
+   * lower and upper bounds are equal (i.e. single-point query).
+   *
+   * <p>Optimize query performance by reducing the number of comparisons between dimensions. This
+   * implementation is used when the upper and lower bounds of all dimensions are exactly the same.
    */
-  protected class SinglePointConstantScoreWeight extends MultiPointsConstantScoreWeight {
+  protected class SinglePointRangeQueryWeight extends PointRangeQueryWeight {
 
-    public SinglePointConstantScoreWeight(Query query, ScoreMode scoreMode, float boost) {
+    protected SinglePointRangeQueryWeight(Query query, ScoreMode scoreMode, float boost) {
       super(query, scoreMode, boost);
     }
 
@@ -192,21 +195,20 @@ public abstract class PointRangeQuery extends Query {
   }
 
   /**
-   * A weight that used for lowerPoint != upperPoint case, the query range may include multiple
-   * points.
+   * Multiple-point range query weight implementation class, used to handle the situation where the
+   * query range contains multiple points.
+   *
+   * <p>When the lower bound (lowerPoint) of the query is not equal to the upper bound (upperPoint),
+   * this implementation is used to check whether each dimension is within the query range.
    */
-  protected class MultiPointsConstantScoreWeight extends ConstantScoreWeight {
+  protected class MultiPointRangeQueryWeight extends PointRangeQueryWeight {
 
-    protected ScoreMode scoreMode;
-    protected ByteArrayComparator comparator;
-
-    public MultiPointsConstantScoreWeight(Query query, ScoreMode scoreMode, float boost) {
-      super(query, boost);
-      this.scoreMode = scoreMode;
-      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+    protected MultiPointRangeQueryWeight(Query query, ScoreMode scoreMode, float boost) {
+      super(query, scoreMode, boost);
     }
 
-    public boolean matches(byte[] packedValue) {
+    @Override
+    protected boolean matches(byte[] packedValue) {
       int offset = 0;
       for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
         if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
@@ -221,7 +223,8 @@ public abstract class PointRangeQuery extends Query {
       return true;
     }
 
-    public Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
+    @Override
+    protected Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
 
       boolean crosses = false;
       int offset = 0;
@@ -244,6 +247,31 @@ public abstract class PointRangeQuery extends Query {
         return Relation.CELL_INSIDE_QUERY;
       }
     }
+  }
+
+  /**
+   * Basic weight class, inherited from {@link ConstantScoreWeight}, subclasses need to implement
+   * specific point value matching logic and range relationship judgment.
+   *
+   * @see SinglePointRangeQueryWeight for the specific implementation of single-point range query.
+   * @see MultiPointRangeQueryWeight for the specific implementation of multi-point range query.
+   */
+  protected abstract class PointRangeQueryWeight extends ConstantScoreWeight {
+
+    protected ScoreMode scoreMode;
+    protected ByteArrayComparator comparator;
+
+    protected PointRangeQueryWeight(Query query, ScoreMode scoreMode, float boost) {
+      super(query, boost);
+      this.scoreMode = scoreMode;
+      this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+    }
+
+    /** whether the point value matches the query range. */
+    protected abstract boolean matches(byte[] packedValue);
+
+    /** relation between the point value range and the query range. */
+    protected abstract Relation relate(byte[] minPackedValue, byte[] maxPackedValue);
 
     private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result) {
       return new IntersectVisitor() {
