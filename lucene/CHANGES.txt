@@ -65,6 +65,8 @@ New Features
 
 * GITHUB#14412: Allow skip cache factor to be updated dynamically. (Sagar Upadhyaya)
 
+* GITHUB#14094: New KNN query that early terminates when HNSW nearest neighbor queue saturates. (Tommaso Teofili)
+
 Improvements
 ---------------------
 
