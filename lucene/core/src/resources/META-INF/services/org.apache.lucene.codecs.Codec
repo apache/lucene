@@ -14,4 +14,3 @@
 #  limitations under the License.
 
 org.apache.lucene.codecs.lucene101.Lucene101Codec
-org.apache.lucene.codecs.lucene103.Lucene103Codec
