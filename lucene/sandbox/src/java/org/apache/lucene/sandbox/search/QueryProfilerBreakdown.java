@@ -17,7 +17,10 @@
 
 package org.apache.lucene.sandbox.search;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -26,11 +29,19 @@ import java.util.concurrent.ConcurrentMap;
  * time may be composed of several internal attributes (rewriting, weighting, scoring, etc).
  */
 class QueryProfilerBreakdown {
+  private static final Collection<QueryProfilerTimingType> QUERY_LEVEL_TIMING_TYPE =
+      Arrays.stream(QueryProfilerTimingType.values()).filter(t -> !t.isSliceLevel()).toList();
+  private final Map<QueryProfilerTimingType, QueryProfilerTimer> queryProfilerTimers;
   private final ConcurrentMap<Long, QuerySliceProfilerBreakdown> threadToSliceBreakdown;
 
   /** Sole constructor. */
   public QueryProfilerBreakdown() {
+    queryProfilerTimers = new HashMap<>();
     threadToSliceBreakdown = new ConcurrentHashMap<>();
+
+    for (QueryProfilerTimingType timingType : QUERY_LEVEL_TIMING_TYPE) {
+      queryProfilerTimers.put(timingType, new QueryProfilerTimer());
+    }
   }
 
   public final QuerySliceProfilerBreakdown getQuerySliceProfilerBreakdown(final long sliceId) {
@@ -42,11 +53,13 @@ class QueryProfilerBreakdown {
   }
 
   public final QueryProfilerTimer getTimer(QueryProfilerTimingType timingType) {
-    // What about Weight timer, ideally that should be shared across slices?
-    // Maybe we can pull the Weight timer up into query profiler breakdown instead
-    // of slice level breakdown? But how do we show that information in the profiler
-    // tree? Repeat the same weight information across slices across queries/child queries?
-    return getQuerySliceProfilerBreakdown().getTimer(timingType);
+    if (timingType.isSliceLevel()) {
+      return getQuerySliceProfilerBreakdown().getTimer(timingType);
+    }
+
+    // Return the query level profiler timer if not
+    // slice level
+    return queryProfilerTimers.get(timingType);
   }
 
   private QuerySliceProfilerBreakdown getQuerySliceProfilerBreakdown() {

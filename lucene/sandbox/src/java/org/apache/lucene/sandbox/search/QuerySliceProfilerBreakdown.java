@@ -17,6 +17,8 @@
 
 package org.apache.lucene.sandbox.search;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import org.apache.lucene.util.CollectionUtil;
@@ -26,12 +28,15 @@ import org.apache.lucene.util.CollectionUtil;
  * time may be composed of several internal attributes (rewriting, weighting, scoring, etc).
  */
 public class QuerySliceProfilerBreakdown {
+  private static final Collection<QueryProfilerTimingType> SLICE_LEVEL_TIMING_TYPE =
+      Arrays.stream(QueryProfilerTimingType.values()).filter(t -> t.isSliceLevel()).toList();
+
   /** The accumulated timings for this query node */
   private final QueryProfilerTimer[] timers;
 
   /** Sole constructor. */
   public QuerySliceProfilerBreakdown() {
-    timers = new QueryProfilerTimer[QueryProfilerTimingType.values().length];
+    timers = new QueryProfilerTimer[SLICE_LEVEL_TIMING_TYPE.size()];
     for (int i = 0; i < timers.length; ++i) {
       timers[i] = new QueryProfilerTimer();
     }
@@ -44,7 +49,7 @@ public class QuerySliceProfilerBreakdown {
   /** Build a timing count breakdown. */
   public final Map<String, Long> toBreakdownMap() {
     Map<String, Long> map = CollectionUtil.newHashMap(timers.length * 2);
-    for (QueryProfilerTimingType type : QueryProfilerTimingType.values()) {
+    for (QueryProfilerTimingType type : SLICE_LEVEL_TIMING_TYPE) {
       map.put(type.toString(), timers[type.ordinal()].getApproximateTiming());
       map.put(type.toString() + "_count", timers[type.ordinal()].getCount());
     }
