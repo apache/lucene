@@ -158,8 +158,8 @@ import org.apache.lucene.util.compress.LowercaseAsciiCompression;
  *   <li>TermIndexLength, TermDictLength --&gt; {@link DataOutput#writeLong Uint64}
  *   <li>MinTerm,MaxTerm --&gt; {@link DataOutput#writeVInt VInt} length followed by the byte[]
  *   <li>NumFields,FieldNumber,RootCodeLength,DocCount --&gt; {@link DataOutput#writeVInt VInt}
- *   <li>NumTerms,SumTotalTermFreq,SumDocFreq,IndexStartFP,TrieStartFP,TrieRootNodeFp,TrieEndFp
- *       --&gt; {@link DataOutput#writeVLong VLong}
+ *   <li>NumTerms,SumTotalTermFreq,SumDocFreq,IndexStartFP,TrieRootNodeFp,IndexEndFp --&gt; {@link
+ *       DataOutput#writeVLong VLong}
  *   <li>Footer --&gt; {@link CodecUtil#writeFooter CodecFooter}
  * </ul>
  *
