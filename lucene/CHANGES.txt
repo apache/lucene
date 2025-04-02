@@ -69,6 +69,8 @@ Optimizations
 
 * GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
 
+* GITHUB#14333: Introduce a specialized trie for block tree index, instead of FST. (Guo Feng)
+
 Bug Fixes
 ---------------------
 (No changes)
