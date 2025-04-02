@@ -418,6 +418,7 @@
  *       need skipping, especially conjunctions.
  *   <li>In version 10.1, block encoding changed to be optimized for int[] storage instead of
  *       long[].
+ *   <li>In version 10.3, the index of block tree changed to be specialized trie instead of FST.
  * </ul>
  *
  * <a id="Limitations"></a>
