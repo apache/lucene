@@ -18,7 +18,6 @@
 package org.apache.lucene.sandbox.search;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -27,45 +26,27 @@ import java.util.Objects;
  * the query tree. It is built after the query has finished executing and is merely a structured
  * representation, rather than the entity that collects the timing profile.
  *
- * <p>Each QueryProfilerResult has a List of QueryProfilerResult, which will contain "children"
- * queries if applicable
+ * <p>Each QuerySliceProfilerResult has a List of QuerySliceProfilerResult, which will contain
+ * "children" queries if applicable
  */
-public class QueryProfilerResult {
-  private final String type;
-  private final String description;
+public class QuerySliceProfilerResult {
+
+  private final long sliceId;
+  private final Map<String, Long> breakdown;
   private final long startTime;
   private final long totalTime;
-  private final Map<String, Long> breakdown;
-  private final List<QuerySliceProfilerResult> sliceBreakdowns;
-  private final List<QueryProfilerResult> childrenProfileResults;
 
-  public QueryProfilerResult(
-      String type,
-      String description,
-      Map<String, Long> breakdown,
-      List<QuerySliceProfilerResult> sliceBreakdowns,
-      List<QueryProfilerResult> childrenProfileResults,
-      long startTime,
-      long totalTime) {
-    this.type = type;
-    this.description = description;
+  public QuerySliceProfilerResult(
+      long sliceId, Map<String, Long> breakdown, long startTime, long totalTime) {
+    this.sliceId = sliceId;
     this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
-    this.sliceBreakdowns =
-        Objects.requireNonNull(sliceBreakdowns, "required slice breakdowns argument missing");
-    this.childrenProfileResults =
-        childrenProfileResults == null ? Collections.emptyList() : childrenProfileResults;
     this.startTime = startTime;
     this.totalTime = totalTime;
   }
 
   /** Retrieve the lucene description of this query (e.g. the "explain" text) */
-  public String getDescription() {
-    return description;
-  }
-
-  /** Retrieve the name of the entry (e.g. "TermQuery" or "LongTermsAggregator") */
-  public String getQueryName() {
-    return type;
+  public long getSliceId() {
+    return sliceId;
   }
 
   /** The timing breakdown for this node. */
@@ -84,14 +65,5 @@ public class QueryProfilerResult {
    */
   public long getTotalTime() {
     return totalTime;
-  }
-
-  public List<QuerySliceProfilerResult> getSliceBreakdowns() {
-    return Collections.unmodifiableList(sliceBreakdowns);
-  }
-
-  /** Returns a list of all profiled children queries */
-  public List<QueryProfilerResult> getProfiledChildren() {
-    return Collections.unmodifiableList(childrenProfileResults);
   }
 }
