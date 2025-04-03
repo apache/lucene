@@ -85,7 +85,7 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
   public void testEarlyExitRelation() {
     Random random = random();
     int numDocs = 10000;
-    int k = random.nextInt(100);
+    int k = random.nextInt(1, 100);
     KnnCollector delegate = new TopKnnCollector(k, random.nextInt(numDocs));
     HnswQueueSaturationCollector queueSaturationCollector =
         new HnswQueueSaturationCollector(delegate, 0.5, 1);
