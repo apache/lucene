@@ -17,12 +17,17 @@
 
 package org.apache.lucene.sandbox.search;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.util.CollectionUtil;
 
 /**
  * A record of timings for the various operations that may happen during query execution. A node's
@@ -42,14 +47,6 @@ class QueryProfilerBreakdown {
     for (QueryProfilerTimingType timingType : QUERY_LEVEL_TIMING_TYPE) {
       queryProfilerTimers.put(timingType, new QueryProfilerTimer());
     }
-  }
-
-  public final QuerySliceProfilerBreakdown getQuerySliceProfilerBreakdown(final long sliceId) {
-    return threadToSliceBreakdown.get(sliceId);
-  }
-
-  public final Collection<Long> getSlices() {
-    return threadToSliceBreakdown.keySet();
   }
 
   public final QueryProfilerTimer getTimer(QueryProfilerTimingType timingType) {
@@ -74,5 +71,57 @@ class QueryProfilerBreakdown {
 
     return threadToSliceBreakdown.computeIfAbsent(
         currentThreadId, _ -> new QuerySliceProfilerBreakdown());
+  }
+
+  /** Build a timing count breakdown. */
+  public final QueryProfilerResult getQueryProfilerResult(
+      Query query, List<QueryProfilerResult> childrenProfileResults) {
+    long queryStartTime = Long.MAX_VALUE;
+    long queryEndTime = Long.MIN_VALUE;
+    final Map<String, Long> breakdownMap =
+        CollectionUtil.newHashMap(QUERY_LEVEL_TIMING_TYPE.size() * 2);
+    for (QueryProfilerTimingType type : QUERY_LEVEL_TIMING_TYPE) {
+      final QueryProfilerTimer timer = queryProfilerTimers.get(type);
+      queryStartTime = Math.min(queryStartTime, timer.getEarliestTimerStartTime());
+      queryStartTime =
+          Math.max(
+              queryStartTime, timer.getEarliestTimerStartTime() + timer.getApproximateTiming());
+      breakdownMap.put(type.toString(), queryProfilerTimers.get(type).getApproximateTiming());
+      breakdownMap.put(type.toString() + "_count", queryProfilerTimers.get(type).getCount());
+    }
+
+    final List<QuerySliceProfilerResult> sliceProfilerResults = new ArrayList<>();
+    for (Long sliceId : threadToSliceBreakdown.keySet()) {
+      final QuerySliceProfilerResult querySliceProfilerResult =
+          threadToSliceBreakdown.get(sliceId).getSliceProfilerResult(sliceId);
+      queryStartTime = Math.min(queryStartTime, querySliceProfilerResult.getStartTime());
+      queryStartTime =
+          Math.max(
+              queryStartTime,
+              querySliceProfilerResult.getStartTime() + querySliceProfilerResult.getTotalTime());
+      sliceProfilerResults.add(querySliceProfilerResult);
+    }
+
+    return new QueryProfilerResult(
+        getTypeFromQuery(query),
+        getDescriptionFromQuery(query),
+        Collections.unmodifiableMap(breakdownMap),
+        sliceProfilerResults,
+        childrenProfileResults,
+        queryStartTime,
+        queryEndTime);
+  }
+
+  private String getTypeFromQuery(Query query) {
+    // Anonymous classes won't have a name,
+    // we need to get the super class
+    if (query.getClass().getSimpleName().isEmpty()) {
+      return query.getClass().getSuperclass().getSimpleName();
+    }
+    return query.getClass().getSimpleName();
+  }
+
+  private String getDescriptionFromQuery(Query query) {
+    return query.toString();
   }
 }

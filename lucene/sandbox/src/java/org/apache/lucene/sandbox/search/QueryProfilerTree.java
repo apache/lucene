@@ -19,12 +19,9 @@ package org.apache.lucene.sandbox.search;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.search.Query;
@@ -143,32 +140,17 @@ class QueryProfilerTree {
    *
    * @return a hierarchical representation of the profiled query tree
    */
-  public List<List<QuerySliceProfilerResult>> getTree() {
+  public List<QueryProfilerResult> getTree() {
     // The profiler tree is shared at query level and we need
     // to recursively collect all the children for single slice
     // Another way could be to show the slice level breakdown at
     // each query level for each child, which looks less intuitive
-    final Collection<Long> uniqueSlices = getUniqueSlices();
-    final List<List<QuerySliceProfilerResult>> results = new ArrayList<>();
-    for (long sliceId : uniqueSlices) {
-      final List<QuerySliceProfilerResult> sliceResults = new ArrayList<>(roots.size());
-      for (IntCursor root : roots) {
-        sliceResults.add(doGetTree(root.value, sliceId));
-      }
-
-      results.add(sliceResults);
-    }
-    return results;
-  }
-
-  private Collection<Long> getUniqueSlices() {
-    final Set<Long> uniqueSlices = new HashSet<>();
+    final List<QueryProfilerResult> results = new ArrayList<>(roots.size());
     for (IntCursor root : roots) {
-      final QueryProfilerBreakdown breakdown = breakdowns.get(root.value);
-      uniqueSlices.addAll(breakdown.getSlices());
+      results.add(doGetTree(root.value));
     }
 
-    return uniqueSlices;
+    return results;
   }
 
   /**
@@ -177,45 +159,24 @@ class QueryProfilerTree {
    * @param token The node we are currently finalizing
    * @return A hierarchical representation of the tree inclusive of children at this level
    */
-  private QuerySliceProfilerResult doGetTree(int token, long sliceId) {
+  private QueryProfilerResult doGetTree(int token) {
     Query query = queries.get(token);
     // Can query slice profiler breakdown be null??
-    QuerySliceProfilerBreakdown breakdown =
-        breakdowns.get(token).getQuerySliceProfilerBreakdown(sliceId);
+    QueryProfilerBreakdown breakdown = breakdowns.get(token);
     IntArrayList children = tree.get(token);
-    List<QuerySliceProfilerResult> childrenProfileResults = Collections.emptyList();
+    List<QueryProfilerResult> childrenProfileResults = Collections.emptyList();
 
     if (children != null) {
       childrenProfileResults = new ArrayList<>(children.size());
       for (IntCursor child : children) {
-        QuerySliceProfilerResult childNode = doGetTree(child.value, sliceId);
+        QueryProfilerResult childNode = doGetTree(child.value);
         childrenProfileResults.add(childNode);
       }
     }
 
     // TODO this would be better done bottom-up instead of top-down to avoid
     // calculating the same times over and over...but worth the effort?
-    String type = getTypeFromQuery(query);
-    String description = getDescriptionFromQuery(query);
-    return new QuerySliceProfilerResult(
-        type,
-        description,
-        breakdown.toBreakdownMap(),
-        breakdown.toTotalTime(),
-        childrenProfileResults);
-  }
-
-  private String getTypeFromQuery(Query query) {
-    // Anonymous classes won't have a name,
-    // we need to get the super class
-    if (query.getClass().getSimpleName().isEmpty()) {
-      return query.getClass().getSuperclass().getSimpleName();
-    }
-    return query.getClass().getSimpleName();
-  }
-
-  private String getDescriptionFromQuery(Query query) {
-    return query.toString();
+    return breakdown.getQueryProfilerResult(query, childrenProfileResults);
   }
 
   /**

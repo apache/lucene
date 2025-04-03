@@ -56,6 +56,21 @@ public class QuerySliceProfilerBreakdown {
     return Collections.unmodifiableMap(map);
   }
 
+  public final QuerySliceProfilerResult getSliceProfilerResult(long sliceId) {
+    final Map<String, Long> map = CollectionUtil.newHashMap(SLICE_LEVEL_TIMING_TYPE.size() * 2);
+    long sliceStartTime = Long.MAX_VALUE;
+    long sliceEndTime = Long.MIN_VALUE;
+    for (QueryProfilerTimingType type : SLICE_LEVEL_TIMING_TYPE) {
+      final QueryProfilerTimer timer = timers[type.ordinal()];
+      sliceStartTime = Math.min(sliceStartTime, timer.getEarliestTimerStartTime());
+      sliceEndTime =
+          Math.max(sliceEndTime, timer.getEarliestTimerStartTime() + timer.getApproximateTiming());
+      map.put(type.toString(), timer.getApproximateTiming());
+      map.put(type.toString() + "_count", timer.getCount());
+    }
+    return new QuerySliceProfilerResult(sliceId, map, sliceStartTime, sliceEndTime);
+  }
+
   public final long toTotalTime() {
     long total = 0;
     for (QueryProfilerTimer timer : timers) {

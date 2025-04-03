@@ -76,7 +76,7 @@ public class QueryProfilerIndexSearcher extends IndexSearcher {
   /**
    * @return a hierarchical representation of the profiled tree
    */
-  public List<List<QuerySliceProfilerResult>> getProfileResult() {
+  public List<QueryProfilerResult> getProfileResult() {
     return profiler.getTree();
   }
 }

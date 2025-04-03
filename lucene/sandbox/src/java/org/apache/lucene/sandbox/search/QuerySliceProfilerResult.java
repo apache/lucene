@@ -18,7 +18,6 @@
 package org.apache.lucene.sandbox.search;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -32,38 +31,31 @@ import java.util.Objects;
  */
 public class QuerySliceProfilerResult {
 
-  private final String type;
-  private final String description;
+  private final long sliceId;
   private final Map<String, Long> breakdown;
+  private final long startTime;
   private final long totalTime;
-  private final List<QuerySliceProfilerResult> children;
 
   public QuerySliceProfilerResult(
-      String type,
-      String description,
-      Map<String, Long> breakdown,
-      long totalTime,
-      List<QuerySliceProfilerResult> children) {
-    this.type = type;
-    this.description = description;
+      long sliceId, Map<String, Long> breakdown, long startTime, long totalTime) {
+    this.sliceId = Objects.requireNonNull(sliceId, "required sliceId argument missing");
     this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
-    this.children = children == null ? Collections.emptyList() : children;
+    this.startTime = startTime;
     this.totalTime = totalTime;
   }
 
   /** Retrieve the lucene description of this query (e.g. the "explain" text) */
-  public String getDescription() {
-    return description;
-  }
-
-  /** Retrieve the name of the entry (e.g. "TermQuery" or "LongTermsAggregator") */
-  public String getQueryName() {
-    return type;
+  public long getSliceId() {
+    return sliceId;
   }
 
   /** The timing breakdown for this node. */
   public Map<String, Long> getTimeBreakdown() {
     return Collections.unmodifiableMap(breakdown);
+  }
+
+  public long getStartTime() {
+    return startTime;
   }
 
   /**
@@ -73,10 +65,5 @@ public class QuerySliceProfilerResult {
    */
   public long getTotalTime() {
     return totalTime;
-  }
-
-  /** Returns a list of all profiled children queries */
-  public List<QuerySliceProfilerResult> getProfiledChildren() {
-    return Collections.unmodifiableList(children);
   }
 }
