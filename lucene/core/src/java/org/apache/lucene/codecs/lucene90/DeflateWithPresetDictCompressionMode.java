@@ -157,6 +157,11 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
     public Decompressor clone() {
       return new DeflateWithPresetDictDecompressor();
     }
+
+    @Override
+    public void close() throws IOException {
+      // no-op
+    }
   }
 
   private static class DeflateWithPresetDictCompressor extends Compressor {

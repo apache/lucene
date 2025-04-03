@@ -71,6 +71,11 @@ public class DummyCompressingCodec extends CompressingCodec {
         public Decompressor clone() {
           return this;
         }
+
+        @Override
+        public void close() throws IOException {
+          // no-op
+        }
       };
 
   private static final Compressor DUMMY_COMPRESSOR =

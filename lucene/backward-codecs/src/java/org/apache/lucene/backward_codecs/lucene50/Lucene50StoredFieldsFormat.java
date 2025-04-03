@@ -231,5 +231,10 @@ public class Lucene50StoredFieldsFormat extends StoredFieldsFormat {
         public Decompressor clone() {
           return this;
         }
+
+        @Override
+        public void close() throws IOException {
+          // no-op
+        }
       };
 }

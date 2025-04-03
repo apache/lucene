@@ -145,6 +145,11 @@ public abstract class CompressionMode {
         public Decompressor clone() {
           return this;
         }
+
+        @Override
+        public void close() throws IOException {
+          // no-op
+        }
       };
 
   private static final class LZ4FastCompressor extends Compressor {
@@ -249,6 +254,11 @@ public abstract class CompressionMode {
     @Override
     public Decompressor clone() {
       return new DeflateDecompressor();
+    }
+
+    @Override
+    public void close() throws IOException {
+      // no-op
     }
   }
 

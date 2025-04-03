@@ -147,6 +147,11 @@ public final class LZ4WithPresetDictCompressionMode extends CompressionMode {
     public Decompressor clone() {
       return new LZ4WithPresetDictDecompressor();
     }
+
+    @Override
+    public void close() throws IOException {
+      // no-op
+    }
   }
 
   private static class LZ4WithPresetDictCompressor extends Compressor {

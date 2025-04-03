@@ -72,6 +72,11 @@ final class SortingStoredFieldsConsumer extends StoredFieldsConsumer {
             public Decompressor clone() {
               return this;
             }
+
+            @Override
+            public void close() throws IOException {
+              // no-op
+            }
           };
         }
       };

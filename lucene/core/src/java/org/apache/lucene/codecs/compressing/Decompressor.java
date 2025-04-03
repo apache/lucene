@@ -16,12 +16,13 @@
  */
 package org.apache.lucene.codecs.compressing;
 
+import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.BytesRef;
 
 /** A decompressor. */
-public abstract class Decompressor implements Cloneable {
+public abstract class Decompressor implements Cloneable, Closeable {
 
   /** Sole constructor, typically called from sub-classes. */
   protected Decompressor() {}
