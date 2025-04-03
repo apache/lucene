@@ -27,6 +27,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RoaringDocIdSet;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Disk-based implementation of a {@link DocIdSetIterator} which can return the index of the current
@@ -107,6 +108,7 @@ public final class IndexedDISI extends DocIdSetIterator {
   public static final byte DEFAULT_DENSE_RANK_POWER = 9; // Every 512 docIDs / 8 longs
 
   static final int MAX_ARRAY_LENGTH = (1 << 12) - 1;
+  static final int BINARY_SEARCH_WINDOW_SIZE = 4;
 
   private static void flush(
       int block, FixedBitSet buffer, int cardinality, byte denseRankPower, IndexOutput out)
@@ -288,7 +290,7 @@ public final class IndexedDISI extends DocIdSetIterator {
   // Members are pkg-private to avoid synthetic accessors when accessed from the `Method` enum
 
   /** The slice that stores the {@link DocIdSetIterator}. */
-  final IndexInput slice;
+  public final IndexInput slice;
 
   final int jumpTableEntryCount;
   final byte denseRankPower;
@@ -416,18 +418,18 @@ public final class IndexedDISI extends DocIdSetIterator {
     }
   }
 
-  int block = -1;
+  public int block = -1;
   long blockEnd;
   long denseBitmapOffset = -1; // Only used for DENSE blocks
-  int nextBlockIndex = -1;
+  public int nextBlockIndex = -1;
   Method method;
 
-  int doc = -1;
-  int index = -1;
+  public int doc = -1;
+  public int index = -1;
 
   // SPARSE variables
-  boolean exists;
-  int nextExistDocInBlock = -1;
+  public boolean exists;
+  public int nextExistDocInBlock = -1;
 
   // DENSE variables
   long word;
@@ -496,12 +498,67 @@ public final class IndexedDISI extends DocIdSetIterator {
     return doc;
   }
 
+  @Override
+  public int advanceVector(int target) throws IOException {
+    final int targetBlock = target & 0xFFFF0000;
+    if (block < targetBlock) {
+      advanceBlock(targetBlock);
+    }
+    if (block == targetBlock) {
+      if (method.advanceWithinBlockVector(this, target)) {
+        return doc;
+      }
+      readBlockHeader();
+    }
+    boolean found = method.advanceWithinBlockVector(this, block);
+    assert found;
+    return doc;
+  }
+
+  @Override
+  public int advanceBinarySearch(int target) throws IOException {
+    final int targetBlock = target & 0xFFFF0000;
+    if (block < targetBlock) {
+      advanceBlock(targetBlock);
+    }
+    if (block == targetBlock) {
+      if (method.advanceWithinBlockBinarySearch(this, target)) {
+        return doc;
+      }
+      readBlockHeader();
+    }
+    boolean found = method.advanceWithinBlockBinarySearch(this, block);
+    assert found;
+    return doc;
+  }
+
   public boolean advanceExact(int target) throws IOException {
     final int targetBlock = target & 0xFFFF0000;
     if (block < targetBlock) {
       advanceBlock(targetBlock);
     }
     boolean found = block == targetBlock && method.advanceExactWithinBlock(this, target);
+    this.doc = target;
+    return found;
+  }
+
+  public boolean advanceExactVector(int target) throws IOException {
+    final int targetBlock = target & 0xFFFF0000;
+    if (block < targetBlock) {
+      advanceBlock(targetBlock);
+    }
+    boolean found = block == targetBlock && method.advanceExactWithinBlockVector(this, target);
+    this.doc = target;
+    return found;
+  }
+
+  public boolean advanceExactBinarySearch(int target) throws IOException {
+    final int targetBlock = target & 0xFFFF0000;
+    if (block < targetBlock) {
+      advanceBlock(targetBlock);
+    }
+    boolean found =
+        block == targetBlock && method.advanceExactWithinBlockBinarySearch(this, target);
     this.doc = target;
     return found;
   }
@@ -585,10 +642,76 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   enum Method {
     SPARSE {
+
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        // TODO: binary search
+
+        for (; disi.index < disi.nextBlockIndex; ) {
+          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          disi.index++;
+          if (doc >= targetInBlock) {
+            disi.doc = disi.block | doc;
+            disi.exists = true;
+            disi.nextExistDocInBlock = doc;
+            return true;
+          }
+        }
+        return false;
+      }
+
+      @Override
+      boolean advanceWithinBlockVector(IndexedDISI disi, int target) throws IOException {
+        return VectorUtil.advanceWithinBlock(disi, target);
+      }
+
+      @Override
+      boolean advanceWithinBlockBinarySearch(IndexedDISI disi, int target) throws IOException {
+        final int targetInBlock = target & 0xFFFF;
+
+        // binary search
+        long filePointer = disi.slice.getFilePointer();
+        int i = disi.index;
+        for (;
+            i + BINARY_SEARCH_WINDOW_SIZE <= disi.nextBlockIndex;
+            i += BINARY_SEARCH_WINDOW_SIZE) {
+          disi.slice.seek(
+              (long) (i - disi.index + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
+          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          // Since we have read last doc, compare it first.
+          if (doc == targetInBlock) {
+            disi.doc = disi.block | doc;
+            disi.nextExistDocInBlock = doc;
+            disi.index += (i - disi.index + BINARY_SEARCH_WINDOW_SIZE);
+            disi.exists = true;
+            return true;
+          } else if (doc > targetInBlock) {
+            disi.slice.seek((long) (i - disi.index + 1) * Short.BYTES + filePointer);
+            if (Short.toUnsignedInt(disi.slice.readShort()) < targetInBlock) {
+              i += 2;
+            }
+            disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
+            if (Short.toUnsignedInt(disi.slice.readShort()) < targetInBlock) {
+              i += 1;
+            }
+            disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
+            doc = Short.toUnsignedInt(disi.slice.readShort());
+            if (doc >= targetInBlock) {
+              disi.doc = disi.block | doc;
+              disi.nextExistDocInBlock = doc;
+              disi.index += (i - disi.index + 1);
+              disi.exists = true;
+              return true;
+            }
+          }
+        }
+
+        // Compare last.
+        if (i - disi.index > 0) {
+          disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
+          disi.index += (i - disi.index);
+        }
+
         for (; disi.index < disi.nextBlockIndex; ) {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           disi.index++;
@@ -605,7 +728,6 @@ public final class IndexedDISI extends DocIdSetIterator {
       @Override
       boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
-        // TODO: binary search
         if (disi.nextExistDocInBlock > targetInBlock) {
           assert !disi.exists;
           return false;
@@ -613,6 +735,7 @@ public final class IndexedDISI extends DocIdSetIterator {
         if (target == disi.doc) {
           return disi.exists;
         }
+
         for (; disi.index < disi.nextBlockIndex; ) {
           int doc = Short.toUnsignedInt(disi.slice.readShort());
           disi.index++;
@@ -629,6 +752,86 @@ public final class IndexedDISI extends DocIdSetIterator {
         }
         disi.exists = false;
         return false;
+      }
+
+      @Override
+      boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target) throws IOException {
+        final int targetInBlock = target & 0xFFFF;
+        if (disi.nextExistDocInBlock > targetInBlock) {
+          assert !disi.exists;
+          return false;
+        }
+        if (target == disi.doc) {
+          return disi.exists;
+        }
+        // binary search
+        long filePointer = disi.slice.getFilePointer();
+        int i = disi.index;
+        for (;
+            i + BINARY_SEARCH_WINDOW_SIZE <= disi.nextBlockIndex;
+            i += BINARY_SEARCH_WINDOW_SIZE) {
+          disi.slice.seek(
+              (long) (i - disi.index + BINARY_SEARCH_WINDOW_SIZE - 1) * Short.BYTES + filePointer);
+          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          // Since we have read last doc, compare it first.
+          if (doc == targetInBlock) {
+            disi.nextExistDocInBlock = doc;
+            disi.index += (i - disi.index + BINARY_SEARCH_WINDOW_SIZE);
+            disi.exists = true;
+            return true;
+          } else if (doc > targetInBlock) {
+            disi.slice.seek((long) (i - disi.index + 1) * Short.BYTES + filePointer);
+            if (Short.toUnsignedInt(disi.slice.readShort()) < targetInBlock) {
+              i += 2;
+            }
+            disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
+            if (Short.toUnsignedInt(disi.slice.readShort()) < targetInBlock) {
+              i += 1;
+            }
+            disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
+            doc = Short.toUnsignedInt(disi.slice.readShort());
+            if (doc >= targetInBlock) {
+              disi.nextExistDocInBlock = doc;
+              disi.index += (i - disi.index + 1);
+              if (doc != targetInBlock) {
+                disi.index--;
+                disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+                disi.exists = false;
+                return false;
+              }
+              disi.exists = true;
+              return true;
+            }
+          }
+        }
+
+        // Compare last.
+        if (i - disi.index > 0) {
+          disi.slice.seek((long) (i - disi.index) * Short.BYTES + filePointer);
+          disi.index += (i - disi.index);
+        }
+
+        for (; disi.index < disi.nextBlockIndex; ) {
+          int doc = Short.toUnsignedInt(disi.slice.readShort());
+          disi.index++;
+          if (doc >= targetInBlock) {
+            disi.nextExistDocInBlock = doc;
+            if (doc != targetInBlock) {
+              disi.index--;
+              disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+              break;
+            }
+            disi.exists = true;
+            return true;
+          }
+        }
+        disi.exists = false;
+        return false;
+      }
+
+      @Override
+      boolean advanceExactWithinBlockVector(IndexedDISI disi, int target) throws IOException {
+        return VectorUtil.advanceExactWithinBlock(disi, target);
       }
     },
     DENSE {
@@ -721,10 +924,42 @@ public final class IndexedDISI extends DocIdSetIterator {
     abstract boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException;
 
     /**
+     * Advance to the first doc from the block that is equal to or greater than {@code target}.
+     * Return true if there is such a doc and false otherwise.
+     */
+    boolean advanceWithinBlockVector(IndexedDISI disi, int target) throws IOException {
+      return false;
+    }
+
+    /**
+     * Advance to the first doc from the block that is equal to or greater than {@code target}.
+     * Return true if there is such a doc and false otherwise.
+     */
+    boolean advanceWithinBlockBinarySearch(IndexedDISI disi, int target) throws IOException {
+      return false;
+    }
+
+    /**
      * Advance the iterator exactly to the position corresponding to the given {@code target} and
      * return whether this document exists.
      */
     abstract boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException;
+
+    /**
+     * Advance the iterator exactly to the position corresponding to the given {@code target} and
+     * return whether this document exists.
+     */
+    boolean advanceExactWithinBlockBinarySearch(IndexedDISI disi, int target) throws IOException {
+      return false;
+    }
+
+    /**
+     * Advance to the first doc from the block that is equal to or greater than {@code target}.
+     * Return true if there is such a doc and false otherwise.
+     */
+    boolean advanceExactWithinBlockVector(IndexedDISI disi, int target) throws IOException {
+      return false;
+    }
   }
 
   /**
