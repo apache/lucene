@@ -187,6 +187,13 @@ public class TestIndexReaderFunctions extends LuceneTestCase {
     assertCacheable(vs, false);
   }
 
+  public void testPositionLength() throws Exception {
+    LongValuesSource vs = IndexReaderFunctions.positionLength("text");
+    assertHits(vs.toDoubleValuesSource(), new float[] {6, 2});
+    assertEquals("posLen(text)", vs.toString());
+    assertCacheable(vs, true);
+  }
+
   void assertCacheable(DoubleValuesSource vs, boolean expected) throws Exception {
     Query q = new FunctionScoreQuery(new MatchAllDocsQuery(), vs);
     Weight w = searcher.createWeight(q, ScoreMode.COMPLETE, 1);
