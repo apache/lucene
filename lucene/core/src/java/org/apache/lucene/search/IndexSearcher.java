@@ -220,7 +220,7 @@ public class IndexSearcher {
         : "IndexSearcher's ReaderContext must be topLevel for reader " + context.reader();
     reader = context.reader();
     this.taskExecutor =
-        executor == null ? new TaskExecutor(Runnable::run) : new TaskExecutor(executor);
+        executor == null ? TaskExecutor.DIRECT_TASK_EXECUTOR : new TaskExecutor(executor);
     this.readerContext = context;
     leafContexts = context.leaves();
   }
