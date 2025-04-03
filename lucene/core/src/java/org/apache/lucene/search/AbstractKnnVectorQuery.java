@@ -28,6 +28,7 @@ import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
@@ -89,16 +90,73 @@ abstract class AbstractKnnVectorQuery extends Query {
       filterWeight = null;
     }
 
-    TimeLimitingKnnCollectorManager knnCollectorManager =
-        new TimeLimitingKnnCollectorManager(
-            getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
     List<LeafReaderContext> leafReaderContexts = reader.leaves();
+
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
-    for (LeafReaderContext context : leafReaderContexts) {
-      tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
+
+    TopDocs[] perLeafResults;
+    if (leafReaderContexts.size() > 1) {
+      /* sort LRCs by segment size */
+      List<LeafReaderContext> sortedLeafReaderContexts =
+          leafReaderContexts.stream().sorted(Comparator.comparingInt(this::numVectors)).toList();
+
+      int noLRCs = sortedLeafReaderContexts.size();
+
+      // each worker has a budget range to spend, and we have no more than e.g., 16 workers
+      int minNumVectors = numVectors(sortedLeafReaderContexts.get(0));
+      int maxNumVectors = numVectors(sortedLeafReaderContexts.get(noLRCs - 1));
+
+      int minBudget = 100;
+      int maxBudget = 1_000_000;
+      int meanVectorsPerLeaf = (maxNumVectors + minNumVectors) / 2;
+      int approximateTotalVectorsCount = meanVectorsPerLeaf * noLRCs;
+      int numBins =
+          Math.max(
+                  approximateTotalVectorsCount / maxBudget,
+                  Math.min(approximateTotalVectorsCount / minBudget, 7))
+              + 1;
+
+      List<Callable<TopDocs>> binTasks = new ArrayList<>(numBins);
+
+      // each worker gets incrementally assigned a leaf if it's the one having the min current
+      // amount of work assigned
+      int[] runningWorkEstimates = new int[numBins];
+      List<List<LeafReaderContext>> perThreadLeaves = new ArrayList<>();
+      for (int i = 0; i < numBins; i++) {
+        perThreadLeaves.add(new ArrayList<>());
+      }
+
+      for (int i = 0; i < noLRCs; i++) {
+        LeafReaderContext leafReaderContext = sortedLeafReaderContexts.get(i);
+
+        // locate the thread with minimum assigned work
+        int min = argmin(runningWorkEstimates);
+
+        // update work assigned to selected thread
+        runningWorkEstimates[min] += (int) Math.log(numVectors(leafReaderContext));
+
+        // assign current leaf to selected thread
+        perThreadLeaves.get(min).add(leafReaderContext);
+      }
+      for (int nb = 0; nb < numBins; nb++) {
+        TimeLimitingKnnCollectorManager binKnnCollectorManager =
+            new TimeLimitingKnnCollectorManager(
+                getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
+        List<LeafReaderContext> binContexts = perThreadLeaves.get(nb);
+        binTasks.add(() -> searchLeaves(filterWeight, binKnnCollectorManager, binContexts));
+      }
+
+      perLeafResults = taskExecutor.invokeAll(binTasks).toArray(TopDocs[]::new);
+    } else {
+      for (LeafReaderContext context : leafReaderContexts) {
+        TimeLimitingKnnCollectorManager knnCollectorManager =
+            new TimeLimitingKnnCollectorManager(
+                getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
+        tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
+      }
+      perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
     }
-    TopDocs[] perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
 
     // Merge sort the results
     TopDocs topK = mergeLeafResults(perLeafResults);
@@ -106,6 +164,50 @@ abstract class AbstractKnnVectorQuery extends Query {
       return new MatchNoDocsQuery();
     }
     return createRewrittenQuery(reader, topK);
+  }
+
+  private int numVectors(LeafReaderContext value) {
+    try {
+      LeafReader leafReader = value.reader();
+      KnnVectorValues vectorValues;
+      if ((vectorValues = leafReader.getFloatVectorValues(field)) != null) {
+        return vectorValues.size();
+      } else if ((vectorValues = leafReader.getByteVectorValues(field)) != null) {
+        return vectorValues.size();
+      }
+    } catch (IOException e) {
+      // do nothing
+    }
+    return 0;
+  }
+
+  private static int argmin(int[] array) {
+    int minIndex = 0;
+    for (int i = 1; i < array.length; i++) {
+      if (array[i] < array[minIndex]) {
+        minIndex = i;
+      }
+    }
+    return minIndex;
+  }
+
+  private TopDocs searchLeaves(
+      Weight filterWeight,
+      TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager,
+      List<LeafReaderContext> ctxs)
+      throws IOException {
+    TopDocs[] results = new TopDocs[ctxs.size()];
+    int i = 0;
+    for (LeafReaderContext ctx : ctxs) {
+      results[i] = getLeafResults(ctx, filterWeight, timeLimitingKnnCollectorManager);
+      if (ctx.docBase > 0) {
+        for (ScoreDoc scoreDoc : results[i].scoreDocs) {
+          scoreDoc.doc += ctx.docBase;
+        }
+      }
+      i++;
+    }
+    return mergeLeafResults(results);
   }
 
   private TopDocs searchLeaf(
