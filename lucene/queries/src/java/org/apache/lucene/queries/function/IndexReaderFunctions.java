@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -30,6 +31,7 @@ import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.util.SmallFloat;
 
 /**
  * Class exposing static helper methods for generating DoubleValuesSource instances over some
@@ -301,6 +303,16 @@ public final class IndexReaderFunctions {
     return new IndexReaderDoubleValuesSource(r -> r.getDocCount(field), "docCount(" + field + ")");
   }
 
+  /**
+   * Creates a value source that returns the position length (number of terms) of a field,
+   * approximated from the "norm".
+   *
+   * @see org.apache.lucene.index.LeafReader#getNormValues(String)
+   */
+  public static LongValuesSource positionLength(String field) {
+    return new PositionLengthValuesSource(field);
+  }
+
   @FunctionalInterface
   private interface ReaderFunction {
     double apply(IndexReader reader) throws IOException;
@@ -411,6 +423,68 @@ public final class IndexReaderFunctions {
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return false;
+    }
+  }
+
+  private static class PositionLengthValuesSource extends LongValuesSource {
+    private final String field;
+
+    private PositionLengthValuesSource(String field) {
+      this.field = field;
+    }
+
+    @Override
+    public LongValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+      final NumericDocValues norms = ctx.reader().getNormValues(field);
+      if (norms == null) {
+        return LongValues.EMPTY;
+      }
+
+      return new LongValues() {
+        @Override
+        public long longValue() throws IOException {
+          // reverses Similarity.computeNorm, which could technically be overridden but nobody does
+          return SmallFloat.byte4ToInt((byte) norms.longValue());
+        }
+
+        @Override
+        public boolean advanceExact(int doc) throws IOException {
+          return norms.advanceExact(doc);
+        }
+      };
+    }
+
+    @Override
+    public boolean needsScores() {
+      return false;
+    }
+
+    @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return true;
+    }
+
+    @Override
+    public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
+      return this;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      PositionLengthValuesSource that = (PositionLengthValuesSource) o;
+      return Objects.equals(field, that.field);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(field);
+    }
+
+    @Override
+    public String toString() {
+      return "posLen(" + field + ")";
     }
   }
 }
