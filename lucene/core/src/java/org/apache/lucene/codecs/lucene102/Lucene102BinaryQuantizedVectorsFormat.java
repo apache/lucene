@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.store.ReadAdvice;
 
 /**
  * The binary quantization format used here is a per-vector optimized scalar quantization. These
@@ -103,15 +104,27 @@ public class Lucene102BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   static final String VECTOR_DATA_EXTENSION = "veb";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
+  /**
+   * Specifies the format used for storing, reading, and merging raw vectors on disk.
+   * Since these vectors are rarely accessed, we optimize for merge operations by using
+   * {@link ReadAdvice#SEQUENTIAL} when opening the underlying file.
+   */
   private static final FlatVectorsFormat rawVectorFormat =
-      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+      new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer(), ReadAdvice.SEQUENTIAL);
 
   private static final Lucene102BinaryFlatVectorsScorer scorer =
       new Lucene102BinaryFlatVectorsScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
+  private final ReadAdvice readAdvice;
+
   /** Creates a new instance with the default number of vectors per cluster. */
   public Lucene102BinaryQuantizedVectorsFormat() {
+    this(ReadAdvice.SEQUENTIAL);
+  }
+
+  public Lucene102BinaryQuantizedVectorsFormat(ReadAdvice readAdvice) {
     super(NAME);
+    this.readAdvice = readAdvice;
   }
 
   @Override
@@ -123,7 +136,7 @@ public class Lucene102BinaryQuantizedVectorsFormat extends FlatVectorsFormat {
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene102BinaryQuantizedVectorsReader(
-        state, rawVectorFormat.fieldsReader(state), scorer);
+        state, rawVectorFormat.fieldsReader(state), scorer, readAdvice);
   }
 
   @Override
