@@ -82,10 +82,12 @@ class QueryProfilerBreakdown {
         CollectionUtil.newHashMap(QUERY_LEVEL_TIMING_TYPE.size() * 2);
     for (QueryProfilerTimingType type : QUERY_LEVEL_TIMING_TYPE) {
       final QueryProfilerTimer timer = queryProfilerTimers.get(type);
-      queryStartTime = Math.min(queryStartTime, timer.getEarliestTimerStartTime());
-      queryStartTime =
-          Math.max(
-              queryStartTime, timer.getEarliestTimerStartTime() + timer.getApproximateTiming());
+      if (timer.getCount() > 0) {
+        queryStartTime = Math.min(queryStartTime, timer.getEarliestTimerStartTime());
+        queryEndTime =
+            Math.max(
+                queryEndTime, timer.getEarliestTimerStartTime() + timer.getApproximateTiming());
+      }
       breakdownMap.put(type.toString(), queryProfilerTimers.get(type).getApproximateTiming());
       breakdownMap.put(type.toString() + "_count", queryProfilerTimers.get(type).getCount());
     }
@@ -95,9 +97,9 @@ class QueryProfilerBreakdown {
       final QuerySliceProfilerResult querySliceProfilerResult =
           threadToSliceBreakdown.get(sliceId).getSliceProfilerResult(sliceId);
       queryStartTime = Math.min(queryStartTime, querySliceProfilerResult.getStartTime());
-      queryStartTime =
+      queryEndTime =
           Math.max(
-              queryStartTime,
+              queryEndTime,
               querySliceProfilerResult.getStartTime() + querySliceProfilerResult.getTotalTime());
       sliceProfilerResults.add(querySliceProfilerResult);
     }
@@ -109,7 +111,7 @@ class QueryProfilerBreakdown {
         sliceProfilerResults,
         childrenProfileResults,
         queryStartTime,
-        queryEndTime);
+        queryEndTime - queryStartTime);
   }
 
   private String getTypeFromQuery(Query query) {

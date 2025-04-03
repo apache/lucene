@@ -62,13 +62,19 @@ public class QuerySliceProfilerBreakdown {
     long sliceEndTime = Long.MIN_VALUE;
     for (QueryProfilerTimingType type : SLICE_LEVEL_TIMING_TYPE) {
       final QueryProfilerTimer timer = timers[type.ordinal()];
-      sliceStartTime = Math.min(sliceStartTime, timer.getEarliestTimerStartTime());
-      sliceEndTime =
-          Math.max(sliceEndTime, timer.getEarliestTimerStartTime() + timer.getApproximateTiming());
+      // Consider timer for updating start/total time only
+      // if it was used
+      if (timer.getCount() > 0) {
+        sliceStartTime = Math.min(sliceStartTime, timer.getEarliestTimerStartTime());
+        sliceEndTime =
+            Math.max(
+                sliceEndTime, timer.getEarliestTimerStartTime() + timer.getApproximateTiming());
+      }
       map.put(type.toString(), timer.getApproximateTiming());
       map.put(type.toString() + "_count", timer.getCount());
     }
-    return new QuerySliceProfilerResult(sliceId, map, sliceStartTime, sliceEndTime);
+    return new QuerySliceProfilerResult(
+        sliceId, map, sliceStartTime, sliceEndTime - sliceStartTime);
   }
 
   public final long toTotalTime() {

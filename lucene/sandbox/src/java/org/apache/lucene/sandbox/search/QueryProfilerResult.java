@@ -86,6 +86,10 @@ public class QueryProfilerResult {
     return totalTime;
   }
 
+  public List<QuerySliceProfilerResult> getSliceBreakdowns() {
+    return Collections.unmodifiableList(sliceBreakdowns);
+  }
+
   /** Returns a list of all profiled children queries */
   public List<QueryProfilerResult> getProfiledChildren() {
     return Collections.unmodifiableList(childrenProfileResults);
