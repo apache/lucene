@@ -38,7 +38,7 @@ public class QuerySliceProfilerResult {
 
   public QuerySliceProfilerResult(
       long sliceId, Map<String, Long> breakdown, long startTime, long totalTime) {
-    this.sliceId = Objects.requireNonNull(sliceId, "required sliceId argument missing");
+    this.sliceId = sliceId;
     this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
     this.startTime = startTime;
     this.totalTime = totalTime;
