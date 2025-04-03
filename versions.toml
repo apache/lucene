@@ -77,7 +77,7 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 benmanes-versions = "com.github.ben-manes.versions:0.51.0"
 dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.0.9"
 errorprone = "net.ltgt.errorprone:4.1.0"
-forbiddenapis = "de.thetaphi.forbiddenapis:3.8"
+forbiddenapis = "de.thetaphi.forbiddenapis:3.9"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
 owasp-dependencycheck = "org.owasp.dependencycheck:7.2.0"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
