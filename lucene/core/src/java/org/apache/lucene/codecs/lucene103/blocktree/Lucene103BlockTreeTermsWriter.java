@@ -43,7 +43,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.IntsRefBuilder;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.ToStringUtils;
 import org.apache.lucene.util.compress.LZ4;
@@ -456,10 +455,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
       return "BLOCK: prefix=" + ToStringUtils.bytesRefToString(prefix);
     }
 
-    public void compileIndex(
-        List<PendingBlock> blocks,
-        ByteBuffersDataOutput scratchBytes,
-        IntsRefBuilder scratchIntsRef)
+    public void compileIndex(List<PendingBlock> blocks, ByteBuffersDataOutput scratchBytes)
         throws IOException {
 
       assert (isFloor && blocks.size() > 1) || (isFloor == false && blocks.size() == 1)
@@ -513,7 +509,6 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
   }
 
   private final ByteBuffersDataOutput scratchBytes = ByteBuffersDataOutput.newResettableInstance();
-  private final IntsRefBuilder scratchIntsRef = new IntsRefBuilder();
 
   private static class StatsWriter {
 
@@ -688,7 +683,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
       assert firstBlock.isFloor || newBlocks.size() == 1;
 
-      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);
+      firstBlock.compileIndex(newBlocks, scratchBytes);
 
       // Remove slice from the top of the pending stack, that we just wrote:
       pending.subList(pending.size() - count, pending.size()).clear();
