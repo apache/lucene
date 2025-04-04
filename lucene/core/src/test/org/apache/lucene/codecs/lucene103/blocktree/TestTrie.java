@@ -170,7 +170,7 @@ public class TestTrie extends LuceneTestCase {
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
             IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
-          TrieReader reader = TrieReader.readersupplier(metaIn, indexIn).get();
+          TrieReader reader = TrieReader.readerSupplier(metaIn, indexIn).get();
 
           for (Map.Entry<BytesRef, TrieBuilder.Output> entry : expected.entrySet()) {
             assertResult(reader, entry.getKey(), entry.getValue());

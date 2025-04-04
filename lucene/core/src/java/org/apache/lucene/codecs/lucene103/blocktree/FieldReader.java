@@ -71,14 +71,8 @@ public final class FieldReader extends Terms {
     this.docCount = docCount;
     this.minTerm = minTerm;
     this.maxTerm = maxTerm;
-
-    // if (DEBUG) {
-    //   System.out.println("BTTR: seg=" + segment + " field=" + fieldInfo.name + " rootBlockCode="
-    // + rootCode + " divisor=" + indexDivisor);
-    // }
-
     this.indexIn = indexIn;
-    this.readerSupplier = TrieReader.readersupplier(metaIn, indexIn);
+    this.readerSupplier = TrieReader.readerSupplier(metaIn, indexIn);
     this.rootBlockFP = readerSupplier.get().root.outputFp;
   }
 

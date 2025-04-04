@@ -79,7 +79,7 @@ class TrieReader {
   final Node root;
   final int[] labelMap;
 
-  static IOSupplier<TrieReader> readersupplier(DataInput metaIn, IndexInput indexIn)
+  static IOSupplier<TrieReader> readerSupplier(DataInput metaIn, IndexInput indexIn)
       throws IOException {
     int[] labelMap = TrieReader.labelMap(metaIn);
     long start = metaIn.readVLong();
