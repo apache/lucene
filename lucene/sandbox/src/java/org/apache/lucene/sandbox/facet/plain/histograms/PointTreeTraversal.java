@@ -199,7 +199,7 @@ class PointTreeTraversal {
     }
   }
 
-  final static class Ranges {
+  static final class Ranges {
     byte[][] lowers; // inclusive
     byte[][] uppers; // exclusive
     int size;
