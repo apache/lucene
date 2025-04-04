@@ -58,6 +58,20 @@ final class HistogramCollector implements Collector {
       throw new IllegalStateException(
           "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
     }
+
+    // We can use multi range traversal logic to collect the histogram on numeric
+    // field indexed as point range query for MATCH_ALL cases. Even for non-match
+    // all cases like PointRangeQuery, if the query field == histogram field, this
+    // logic can be used. Need to supply the PointRangeQuery bounds for building
+    // the Ranges.
+
+    //    final PointValues pointValues = context.reader().getPointValues(field);
+    //    if (pointValues != null && !context.reader().hasDeletions()) {
+    //      PointTreeTraversal.multiRangesTraverse(pointValues.getPointTree(),
+    // PointTreeTraversal.buildRanges(bucketWidth), counts);
+    //      throw new CollectionTerminatedException();
+    //    }
+
     SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues singleton = DocValues.unwrapSingleton(values);
     if (singleton == null) {
