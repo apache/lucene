@@ -38,6 +38,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoDeletionPolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -755,7 +756,8 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     public IndexCommit getSearcherRefreshCommit(DirectoryReader reader) throws IOException {
       List<IndexCommit> commits = DirectoryReader.listCommits(reader.directory());
       IndexCommit current = reader.getIndexCommit();
-      for (IndexCommit commit : commits) {
+      for (int i = 0; i < commits.size(); i++) {
+        IndexCommit commit = commits.get(i);
         if (commit.getGeneration() > current.getGeneration()) {
           return commit;
         }
@@ -767,7 +769,10 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
 
   public void testStepWiseCommitRefresh() throws Exception {
     Directory dir = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    IndexWriter w = new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                    .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE));
     int docId = 0;
     // create initial commit
     for (int i = 0; i < 20; i++) {
@@ -799,6 +804,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
       stepsToCurrent++;
     }
     assertEquals(numCommits, stepsToCurrent);
+    sm.close();
+    w.close();
+    dir.close();
   }
 
   private boolean isSearcherManagerCurrent(SearcherManager sm) throws IOException {
