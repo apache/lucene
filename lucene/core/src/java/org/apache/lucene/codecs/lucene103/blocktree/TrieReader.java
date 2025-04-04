@@ -21,6 +21,7 @@ import java.util.Arrays;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.IOSupplier;
 
 class TrieReader {
 
@@ -78,7 +79,16 @@ class TrieReader {
   final Node root;
   final int[] labelMap;
 
-  TrieReader(IndexInput input, long rootFP, int[] labelMap) throws IOException {
+  static IOSupplier<TrieReader> readersupplier(DataInput metaIn, IndexInput indexIn)
+      throws IOException {
+    int[] labelMap = TrieReader.labelMap(metaIn);
+    long start = metaIn.readVLong();
+    long rootFP = metaIn.readVLong();
+    long end = metaIn.readVLong();
+    return () -> new TrieReader(indexIn.slice("outputs", start, end - start), rootFP, labelMap);
+  }
+
+  private TrieReader(IndexInput input, long rootFP, int[] labelMap) throws IOException {
     this.access = input.randomAccessSlice(0, input.length());
     this.labelMap = labelMap;
     this.input = input;
@@ -86,7 +96,7 @@ class TrieReader {
     load(root, rootFP);
   }
 
-  static int[] labelMap(DataInput in) throws IOException {
+  private static int[] labelMap(DataInput in) throws IOException {
     int cnt = in.readVInt();
     if (cnt == 0) {
       return null;

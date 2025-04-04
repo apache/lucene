@@ -128,7 +128,6 @@ public class TestTrie extends LuceneTestCase {
 
   private void testTrieLookup(Supplier<byte[]> randomBytesSupplier, int round) throws IOException {
     for (int iter = 1; iter <= round; iter++) {
-      System.out.println(iter);
       Map<BytesRef, TrieBuilder.Output> expected = new TreeMap<>();
       expected.put(
           new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
@@ -171,12 +170,7 @@ public class TestTrie extends LuceneTestCase {
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
             IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
-          int[] labelMap = TrieReader.labelMap(metaIn);
-          long start = metaIn.readVLong();
-          long rootFP = metaIn.readVLong();
-          long end = metaIn.readVLong();
-          TrieReader reader =
-              new TrieReader(indexIn.slice("outputs", start, end - start), rootFP, labelMap);
+          TrieReader reader = TrieReader.readersupplier(metaIn, indexIn).get();
 
           for (Map.Entry<BytesRef, TrieBuilder.Output> entry : expected.entrySet()) {
             assertResult(reader, entry.getKey(), entry.getValue());
