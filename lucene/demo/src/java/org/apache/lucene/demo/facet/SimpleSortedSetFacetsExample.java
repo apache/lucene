@@ -27,10 +27,10 @@ import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.sortedset.DefaultSortedSetDocValuesReaderState;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetCounts;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesFacetField;
 import org.apache.lucene.facet.sortedset.SortedSetDocValuesReaderState;
+import org.apache.lucene.facet.sortedset.SsdvReaderStatesManager;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -89,8 +89,8 @@ public class SimpleSortedSetFacetsExample {
   private List<FacetResult> search() throws IOException {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
-    SortedSetDocValuesReaderState state =
-        new DefaultSortedSetDocValuesReaderState(indexReader, config);
+    SsdvReaderStatesManager statesManager = new SsdvReaderStatesManager(config);
+    SortedSetDocValuesReaderState state = statesManager.getReaderState(indexReader);
 
     // Aggregates the facet counts
     FacetsCollectorManager fcm = new FacetsCollectorManager();
@@ -116,8 +116,8 @@ public class SimpleSortedSetFacetsExample {
   private FacetResult drillDown() throws IOException {
     DirectoryReader indexReader = DirectoryReader.open(indexDir);
     IndexSearcher searcher = new IndexSearcher(indexReader);
-    SortedSetDocValuesReaderState state =
-        new DefaultSortedSetDocValuesReaderState(indexReader, config);
+    SsdvReaderStatesManager statesManager = new SsdvReaderStatesManager(config);
+    SortedSetDocValuesReaderState state = statesManager.getReaderState(indexReader);
 
     // Now user drills down on Publish Year/2010:
     DrillDownQuery q = new DrillDownQuery(config);
