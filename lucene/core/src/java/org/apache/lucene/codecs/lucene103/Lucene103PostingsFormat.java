@@ -359,14 +359,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
 
   static final int VERSION_START = 0;
 
-  /**
-   * Version that started encoding dense blocks as bit sets. Note: the old format is a subset of the
-   * new format, so Lucene103PostingsReader is able to read the old format without checking the
-   * version.
-   */
-  static final int VERSION_DENSE_BLOCKS_AS_BITSETS = 1;
-
-  static final int VERSION_CURRENT = VERSION_DENSE_BLOCKS_AS_BITSETS;
+  static final int VERSION_CURRENT = VERSION_START;
 
   private final int version;
   private final int minTermBlockSize;

@@ -86,10 +86,10 @@ class TrieBuilder {
     }
   }
 
-  private Status status = Status.BUILDING;
-  final Node root = new Node(0, null);
+  private final Node root = new Node(0, null);
   private final BytesRef minKey;
   private BytesRef maxKey;
+  private Status status = Status.BUILDING;
 
   static TrieBuilder bytesRefToTrie(BytesRef k, Output v) {
     return new TrieBuilder(k, v);
