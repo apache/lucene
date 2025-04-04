@@ -796,10 +796,10 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     // maybeRefresh only refreshes on the next incremental commit
     // so it takes us numCommits to get to latest
     int stepsToCurrent = 0;
-    while (isSearcherManagerCurrent(sm) == false) {
-      long oldGen = getSearcherManagerGen(sm);
+    while (sm.isSearcherCurrent() == false) {
+      long oldGen = sm.getCurrentCommitGen();
       sm.maybeRefreshBlocking();
-      long newGen = getSearcherManagerGen(sm);
+      long newGen = sm.getCurrentCommitGen();
       assertTrue(newGen == oldGen + 1);
       stepsToCurrent++;
     }
@@ -807,21 +807,5 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     sm.close();
     w.close();
     dir.close();
-  }
-
-  private boolean isSearcherManagerCurrent(SearcherManager sm) throws IOException {
-    IndexSearcher s = sm.acquire();
-    DirectoryReader dr = (DirectoryReader) s.getIndexReader();
-    boolean isCurrent = dr.isCurrent();
-    sm.release(s);
-    return isCurrent;
-  }
-
-  private long getSearcherManagerGen(SearcherManager sm) throws IOException {
-    IndexSearcher s = sm.acquire();
-    DirectoryReader dr = (DirectoryReader) s.getIndexReader();
-    long gen = dr.getIndexCommit().getGeneration();
-    sm.release(s);
-    return gen;
   }
 }
