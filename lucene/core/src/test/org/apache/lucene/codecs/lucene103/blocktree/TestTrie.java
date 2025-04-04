@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree;
 
+import static org.apache.lucene.codecs.lucene103.blocktree.TrieBuilder.BYTE_RANGE;
 import static org.apache.lucene.codecs.lucene103.blocktree.TrieBuilder.ChildSaveStrategy;
 
 import java.io.IOException;
@@ -29,6 +30,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.junit.Assert;
 
 public class TestTrie extends LuceneTestCase {
@@ -71,6 +73,29 @@ public class TestTrie extends LuceneTestCase {
     }
   }
 
+  public void testLimitedValues() throws Exception {
+    for (int iter = 0; iter < 5; iter++) {
+      int valueCount = 1 + random().nextInt(100);
+      FixedBitSet bitSet = new FixedBitSet(TrieBuilder.BYTE_RANGE);
+      while (bitSet.cardinality() < valueCount) {
+        bitSet.set(random().nextInt(TrieBuilder.BYTE_RANGE));
+      }
+      testTrieLookup(
+          () -> {
+            byte[] bytes = new byte[128];
+            for (int i = 0; i < bytes.length; i++) {
+              int b = random().nextInt(BYTE_RANGE);
+              while (!bitSet.get(b)) {
+                b = random().nextInt(BYTE_RANGE);
+              }
+              bytes[i] = (byte) b;
+            }
+            return bytes;
+          },
+          10);
+    }
+  }
+
   private void testTrieBuilder(Supplier<byte[]> randomBytesSupplier, int count) {
     Map<BytesRef, TrieBuilder.Output> expected = new TreeMap<>();
     expected.put(new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
@@ -103,6 +128,7 @@ public class TestTrie extends LuceneTestCase {
 
   private void testTrieLookup(Supplier<byte[]> randomBytesSupplier, int round) throws IOException {
     for (int iter = 1; iter <= round; iter++) {
+      System.out.println(iter);
       Map<BytesRef, TrieBuilder.Output> expected = new TreeMap<>();
       expected.put(
           new BytesRef(""), new TrieBuilder.Output(0L, false, new BytesRef("emptyOutput")));
@@ -145,10 +171,12 @@ public class TestTrie extends LuceneTestCase {
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
             IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
+          int[] labelMap = TrieReader.labelMap(metaIn);
           long start = metaIn.readVLong();
           long rootFP = metaIn.readVLong();
           long end = metaIn.readVLong();
-          TrieReader reader = new TrieReader(indexIn.slice("outputs", start, end - start), rootFP);
+          TrieReader reader =
+              new TrieReader(indexIn.slice("outputs", start, end - start), rootFP, labelMap);
 
           for (Map.Entry<BytesRef, TrieBuilder.Output> entry : expected.entrySet()) {
             assertResult(reader, entry.getKey(), entry.getValue());

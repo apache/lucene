@@ -26,6 +26,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * A builder to build prefix tree (trie) as the index of block tree, and can be saved to disk.
@@ -43,6 +44,8 @@ class TrieBuilder {
   static final int LEAF_NODE_HAS_FLOOR = 1 << 6;
   static final long NON_LEAF_NODE_HAS_TERMS = 1L << 1;
   static final long NON_LEAF_NODE_HAS_FLOOR = 1L << 0;
+
+  static final int BYTE_RANGE = 256;
 
   /**
    * The output describing the term block the prefix point to.
@@ -63,7 +66,7 @@ class TrieBuilder {
   private static class Node {
 
     // The utf8 digit that leads to this Node, 0 for root node
-    private final int label;
+    private int label;
     // The output of this node.
     private Output output;
     // The number of children of this node.
@@ -86,10 +89,11 @@ class TrieBuilder {
     }
   }
 
-  private Status status = Status.BUILDING;
-  final Node root = new Node(0, null);
+  private final FixedBitSet labelsSeen = new FixedBitSet(BYTE_RANGE);
+  private final Node root = new Node(0, null);
   private final BytesRef minKey;
   private BytesRef maxKey;
+  private Status status = Status.BUILDING;
 
   static TrieBuilder bytesRefToTrie(BytesRef k, Output v) {
     return new TrieBuilder(k, v);
@@ -104,6 +108,7 @@ class TrieBuilder {
     Node parent = root;
     for (int i = 0; i < k.length; i++) {
       int b = k.bytes[i + k.offset] & 0xFF;
+      labelsSeen.set(b);
       Output output = i == k.length - 1 ? v : null;
       Node node = new Node(b, output);
       parent.firstChild = parent.lastChild = node;
@@ -164,6 +169,7 @@ class TrieBuilder {
     }
     assertChildrenLabelInOrder(a);
 
+    this.labelsSeen.or(trieBuilder.labelsSeen);
     this.maxKey = trieBuilder.maxKey;
     trieBuilder.status = Status.DESTROYED;
   }
@@ -200,17 +206,51 @@ class TrieBuilder {
     if (status != Status.BUILDING) {
       throw new IllegalStateException("only unsaved trie can be saved");
     }
+    int[] labelMap = saveLabelDictionary(meta);
     meta.writeVLong(index.getFilePointer());
-    saveNodes(index);
+    saveNodes(index, labelMap);
     meta.writeVLong(root.fp);
     index.writeLong(0L); // additional 8 bytes for over-reading
     meta.writeVLong(index.getFilePointer());
     status = Status.SAVED;
   }
 
-  void saveNodes(IndexOutput index) throws IOException {
+  /**
+   * Save label dictionary and return a label map that narrow labels' value to a constant value
+   * range starts from 0.
+   */
+  private int[] saveLabelDictionary(DataOutput out) throws IOException {
+    int cardinality = labelsSeen.cardinality();
+    if (cardinality == BYTE_RANGE) {
+      out.writeVInt(0);
+      return null;
+    }
+    int[] map = new int[BYTE_RANGE];
+    int[] counter = {0};
+    out.writeVInt(cardinality);
+    labelsSeen.forEach(
+        0,
+        labelsSeen.length(),
+        0,
+        label -> {
+          out.writeByte((byte) label);
+          map[label] = counter[0]++;
+        });
+    return map;
+  }
+
+  private void saveNodes(IndexOutput index, int[] labelMap) throws IOException {
     final long startFP = index.getFilePointer();
-    Deque<Node> stack = new ArrayDeque<>();
+    Deque<Node> stack =
+        new ArrayDeque<>() {
+          @Override
+          public void push(Node node) {
+            if (labelMap != null) {
+              node.label = labelMap[node.label];
+            }
+            super.push(node);
+          }
+        };
     stack.push(root);
 
     // Visit and save nodes of this trie in a post-order depth-first traversal.

@@ -42,6 +42,7 @@ public final class FieldReader extends Terms {
   final long rootBlockFP;
   final BytesRef minTerm;
   final BytesRef maxTerm;
+  final int[] labelMap;
   final long indexStart;
   final long rootFP;
   final long indexEnd;
@@ -78,6 +79,7 @@ public final class FieldReader extends Terms {
     // + rootCode + " divisor=" + indexDivisor);
     // }
 
+    this.labelMap = TrieReader.labelMap(metaIn);
     this.indexStart = metaIn.readVLong();
     this.rootFP = metaIn.readVLong();
     this.indexEnd = metaIn.readVLong();
@@ -88,7 +90,8 @@ public final class FieldReader extends Terms {
   }
 
   private TrieReader newReader() throws IOException {
-    return new TrieReader(indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP);
+    return new TrieReader(
+        indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP, labelMap);
   }
 
   @Override
