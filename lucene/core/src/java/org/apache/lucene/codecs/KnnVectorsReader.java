@@ -135,29 +135,21 @@ public abstract class KnnVectorsReader implements Closeable {
    */
   public void finishMerge() throws IOException {}
 
-  /** A string representing the off-heap category for quantized vectors. */
-  public static final String QUANTIZED = "QUANTIZED";
-
-  /** A string representing the off-heap category for the HNSW graph. */
-  public static final String HNSW_GRAPH = "HNSW_GRAPH";
-
-  /** A string representing the off-heap category for raw vectors. */
-  public static final String RAW = "RAW";
-
   /**
    * Returns the desired size of off-heap memory the given field. This size can be used to help
    * determine the memory requirements for optimal search performance, which can be greatly affected
    * by page faults when not enough memory is available.
    *
-   * <p>For reporting purposes, the backing off-heap index structures are broken into three
-   * categories: 1. {@link #RAW}, 2. {@link #HNSW_GRAPH}, and 3. {@link #QUANTIZED}. The returned
-   * map will have zero or one entry for each of these categories.
+   * <p>For reporting purposes, the size of the off-heap index structures is broken down by their
+   * file extension, which provides a logical categorization of their purpose, e.g. the {@code
+   * Lucene99HnswVectorsFormat} stores the HNSW graph neighbours lists in a file with the "vex"
+   * extension.
    *
    * <p>The long value is the size in bytes of the off-heap space needed if the associated index
    * structure were to be fully loaded in memory. While somewhat analogous to {@link
-   * Accountable#ramBytesUsed()} (which reports actual on-heap memory usage), the metrics reported
-   * by this method are not actual usage but rather the amount of available memory needed to fully
-   * load the index into memory, rather than an actual RAM usage requirement.
+   * Accountable#ramBytesUsed()} (which reports actual on-heap memory usage), the sizes reported by
+   * this method are not actual usage but rather the amount of available memory needed to fully load
+   * the index into memory, rather than an actual RAM usage requirement.
    *
    * <p>To determine the total desired off-heap memory size for the given field:
    *

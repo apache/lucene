@@ -2133,18 +2133,18 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertEquals(0L, totalByteSize);
         } else {
           assertTrue(totalByteSize > 0);
-          assertTrue(offHeap.get(KnnVectorsReader.RAW) > 0L);
+          assertTrue(offHeap.get("vec") > 0L);
 
           if (hasHNSW(knnVectorsReader, fieldInfo)) {
-            assertTrue(offHeap.get(KnnVectorsReader.HNSW_GRAPH) > 0L);
-            var quant = offHeap.get(KnnVectorsReader.QUANTIZED);
+            assertTrue(offHeap.get("vex") > 0L);
+            var quant = offHeap.getOrDefault("veq", offHeap.get("veb"));
             assertTrue(quant == null || quant > 0L);
           } else {
-            assertTrue(offHeap.get(KnnVectorsReader.HNSW_GRAPH) == null);
+            assertTrue(offHeap.get("vex") == null);
           }
 
           if (hasQuantized(knnVectorsReader, fieldInfo)) {
-            assertTrue(offHeap.get(KnnVectorsReader.QUANTIZED) > 0L);
+            assertTrue(offHeap.getOrDefault("veq", offHeap.get("veb")) > 0L);
           }
         }
       }

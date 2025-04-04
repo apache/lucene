@@ -17,6 +17,8 @@
 
 package org.apache.lucene.backward_codecs.lucene94;
 
+import static org.apache.lucene.backward_codecs.lucene94.Lucene94HnswVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.backward_codecs.lucene94.Lucene94HnswVectorsFormat.VECTOR_INDEX_EXTENSION;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
@@ -314,8 +316,8 @@ public final class Lucene94HnswVectorsReader extends KnnVectorsReader {
   @Override
   public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
     FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
-    var raw = Map.entry(RAW, entry.vectorDataLength);
-    var graph = Map.entry(HNSW_GRAPH, entry.vectorIndexLength);
+    var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
+    var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
     return Map.ofEntries(raw, graph);
   }
 

@@ -377,7 +377,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
     FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
     var flat = flatVectorsReader.getOffHeapByteSize(fieldInfo);
-    var graph = Map.of(HNSW_GRAPH, entry.vectorIndexLength);
+    var graph = Map.of(Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
     return KnnVectorsReader.mergeOffHeapByteSizeMaps(flat, graph);
   }
 

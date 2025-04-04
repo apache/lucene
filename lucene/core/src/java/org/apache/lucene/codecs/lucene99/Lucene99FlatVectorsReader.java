@@ -170,7 +170,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   @Override
   public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
     final FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
-    return Map.of(RAW, entry.vectorDataLength());
+    return Map.of(Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION, entry.vectorDataLength());
   }
 
   @Override

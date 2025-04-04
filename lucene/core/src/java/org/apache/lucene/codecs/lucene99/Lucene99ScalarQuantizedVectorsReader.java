@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 
 import java.io.IOException;
 import java.util.Map;
@@ -292,7 +293,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
       return raw;
     }
-    var quant = Map.of(QUANTIZED, fieldEntry.vectorDataLength());
+    var quant = Map.of(VECTOR_DATA_EXTENSION, fieldEntry.vectorDataLength());
     return KnnVectorsReader.mergeOffHeapByteSizeMaps(raw, quant);
   }
 
