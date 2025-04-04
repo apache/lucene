@@ -187,11 +187,11 @@ class PointTreeTraversal {
     }
 
     private boolean withinLowerBound(byte[] value) {
-      return Ranges.withinLowerBound(value, ranges.lowers[activeIndex]);
+      return ranges.withinLowerBound(value, ranges.lowers[activeIndex]);
     }
 
     private boolean withinUpperBound(byte[] value) {
-      return Ranges.withinUpperBound(value, ranges.uppers[activeIndex]);
+      return ranges.withinUpperBound(value, ranges.uppers[activeIndex]);
     }
 
     private boolean withinRange(byte[] value) {
@@ -204,7 +204,7 @@ class PointTreeTraversal {
     byte[][] uppers; // exclusive
     int size;
     int byteLen;
-    static ArrayUtil.ByteArrayComparator comparator;
+    ArrayUtil.ByteArrayComparator comparator;
 
     Ranges(byte[][] lowers, byte[][] uppers) {
       this.lowers = lowers;
@@ -229,15 +229,15 @@ class PointTreeTraversal {
       return i;
     }
 
-    public static int compareByteValue(byte[] value1, byte[] value2) {
+    private int compareByteValue(byte[] value1, byte[] value2) {
       return comparator.compare(value1, 0, value2, 0);
     }
 
-    public static boolean withinLowerBound(byte[] value, byte[] lowerBound) {
+    public boolean withinLowerBound(byte[] value, byte[] lowerBound) {
       return compareByteValue(value, lowerBound) >= 0;
     }
 
-    public static boolean withinUpperBound(byte[] value, byte[] upperBound) {
+    public boolean withinUpperBound(byte[] value, byte[] upperBound) {
       return compareByteValue(value, upperBound) < 0;
     }
   }
