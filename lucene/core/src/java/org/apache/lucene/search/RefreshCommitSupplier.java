@@ -36,23 +36,4 @@ public interface RefreshCommitSupplier {
   default IndexCommit getSearcherRefreshCommit(DirectoryReader reader) throws IOException {
     return null;
   }
-
-  /**
-   * Determines if taxonomy reader is ready for refresh on the latest commit
-   *
-   * <p>Expert: Taxonomy readers are always refreshed on the latest commit. Use this function to
-   * skip taxonomy refresh if the searcher commit returned by {@link
-   * RefreshCommitSupplier#getSearcherRefreshCommit(DirectoryReader)} is not yet ready for the
-   * latest taxonomy changes. Otherwise, you might get a new reader that references ords not yet
-   * known to the taxonomy reader
-   *
-   * <p>For example, a possible implementation could be to return false as long as
-   * getSearcherRefreshCommit selects a non-latest directory commit, and return true when it finally
-   * selects the latest commit.
-   *
-   * @return true if taxonomy reader should be refreshed to latest commit, false otherwise.
-   */
-  default boolean refreshTaxonomy() {
-    return true;
-  }
 }

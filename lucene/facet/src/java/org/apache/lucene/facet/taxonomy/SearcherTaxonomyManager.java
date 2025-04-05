@@ -166,7 +166,7 @@ public class SearcherTaxonomyManager
     IndexCommit refreshCommit = refreshCommitSupplier.getSearcherRefreshCommit(dr);
     IndexReader newReader = DirectoryReader.openIfChanged(dr, refreshCommit);
     DirectoryTaxonomyReader tr = null;
-    if (refreshCommitSupplier.refreshTaxonomy() == true) {
+    if (((DirectoryReader) newReader).isCurrent()) {
       try {
         tr = TaxonomyReader.openIfChanged(ref.taxonomyReader);
       } catch (Throwable t1) {

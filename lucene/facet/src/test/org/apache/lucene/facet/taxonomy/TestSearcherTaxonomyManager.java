@@ -397,15 +397,17 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     w.commit();
     tw.commit();
 
+    int colorIndex = 0;
+    final String[] colors = new String[] {"red", "green", "blue", "yellow"};
+    FacetsConfig config = new FacetsConfig();
     SearcherTaxonomyManager sat = new SearcherTaxonomyManager(dir, taxoDir, null);
     final int numCommits = 5;
-    final String[] colors = new String[] {"red", "green", "blue", "yellow"};
-    int colorIndex = 0;
     for (int i = 0; i < numCommits; i++) {
       for (int j = 0; j < 20; j++) {
         Document doc = new Document();
         doc.add(newStringField("docId", "doc-" + docId++, Field.Store.YES));
         doc.add(new FacetField("Color", colors[colorIndex++ % colors.length]));
+        doc = config.build(tw, doc);
         w.addDocument(doc);
       }
       w.commit();
