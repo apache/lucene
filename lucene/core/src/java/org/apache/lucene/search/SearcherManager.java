@@ -144,7 +144,7 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
   }
 
   /** Return index commit generation for current searcher */
-  public long getCurrentCommitGen() throws IOException {
+  public long getSearcherCommitGeneration() throws IOException {
     IndexSearcher s = acquire();
     long gen = ((DirectoryReader) s.getIndexReader()).getIndexCommit().getGeneration();
     release(s);

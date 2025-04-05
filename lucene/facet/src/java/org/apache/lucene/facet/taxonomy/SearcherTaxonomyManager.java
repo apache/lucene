@@ -202,6 +202,55 @@ public class SearcherTaxonomyManager
     return new SearcherAndTaxonomy(SearcherManager.getSearcher(searcherFactory, newReader, r), tr);
   }
 
+  /** Return index commit generation for current searcher */
+  public long getSearcherCommitGeneration() throws IOException {
+    SearcherAndTaxonomy sat = acquire();
+    long gen = ((DirectoryReader) sat.searcher.getIndexReader()).getIndexCommit().getGeneration();
+    release(sat);
+    return gen;
+  }
+
+  /** Return index commit generation for current taxonomy reader */
+  public long getTaxonomyCommitGeneration() throws IOException {
+    SearcherAndTaxonomy sat = acquire();
+    long gen = sat.taxonomyReader.getInternalIndexReader().getIndexCommit().getGeneration();
+    release(sat);
+    return gen;
+  }
+
+  /**
+   * Returns <code>true</code> if no new changes have occurred since the current
+   * searcher (i.e. reader) was opened; <code>false</code> otherwise
+   *
+   * @see DirectoryReader#isCurrent()
+   */
+  public boolean isSearcherCurrent() throws IOException {
+    final SearcherAndTaxonomy sat = acquire();
+    try {
+      final IndexReader r = sat.searcher.getIndexReader();
+      assert r instanceof DirectoryReader
+              : "searcher's IndexReader should be a DirectoryReader, but got " + r;
+      return ((DirectoryReader) r).isCurrent();
+    } finally {
+      release(sat);
+    }
+  }
+
+  /**
+   * Returns <code>true</code> if no new changes have occurred since the current
+   * taxonomy reader was opened; <code>false</code> otherwise
+   *
+   * @see DirectoryReader#isCurrent()
+   */
+  public boolean isTaxonomyCurrent() throws IOException {
+    final SearcherAndTaxonomy sat = acquire();
+    try {
+      return sat.taxonomyReader.getInternalIndexReader().isCurrent();
+    } finally {
+      release(sat);
+    }
+  }
+
   @Override
   protected int getRefCount(SearcherAndTaxonomy reference) {
     return reference.searcher.getIndexReader().getRefCount();
