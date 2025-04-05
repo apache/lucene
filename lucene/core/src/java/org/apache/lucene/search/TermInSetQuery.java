@@ -102,15 +102,6 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     return new IndexOrDocValuesQuery(indexQuery, dvQuery);
   }
 
-  /**
-   * Creates a new {@link IndexOrDocValuesQuery} combining two {@link TermInSetQuery} with the same
-   * terms using {@link MultiTermQuery#CONSTANT_SCORE_BLENDED_REWRITE} for indexed query.
-   */
-  public static IndexOrDocValuesQuery newIndexOrDocValuesQuery(
-      String field, Collection<BytesRef> terms) {
-    return newIndexOrDocValuesQuery(MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, field, terms);
-  }
-
   private TermInSetQuery(String field, PrefixCodedTerms termData) {
     this(MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, field, termData);
   }
