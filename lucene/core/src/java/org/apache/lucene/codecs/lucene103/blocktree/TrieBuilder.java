@@ -90,8 +90,8 @@ class TrieBuilder {
     }
   }
 
-  private final FixedBitSet labelsSeen = new FixedBitSet(BYTE_RANGE);
   private final Node root = new Node(0, null);
+  private final FixedBitSet labelsSeen = new FixedBitSet(BYTE_RANGE);
   private final BytesRef minKey;
   private BytesRef maxKey;
   private Status status = Status.BUILDING;
