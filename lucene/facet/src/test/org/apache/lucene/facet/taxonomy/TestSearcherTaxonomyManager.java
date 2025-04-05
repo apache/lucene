@@ -382,10 +382,11 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
   public void testStepWiseCommitRefresh() throws Exception {
     Directory dir = newDirectory();
     Directory taxoDir = newDirectory();
-    IndexWriter w = new IndexWriter(
+    IndexWriter w =
+        new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
-                    .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE));
+                .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE));
     DirectoryTaxonomyWriter tw = new DirectoryTaxonomyWriter(taxoDir);
     int docId = 0;
     // create initial commit
@@ -422,7 +423,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
       long oldGen = sat.getSearcherCommitGeneration();
       sat.maybeRefreshBlocking();
       long newGen = sat.getSearcherCommitGeneration();
-        assertEquals(newGen, oldGen + 1);
+      assertEquals(newGen, oldGen + 1);
       stepsToCurrent++;
       // taxonomy should refresh to latest commit only after searcher
       // becomes current
