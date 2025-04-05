@@ -73,6 +73,8 @@ Optimizations
 
 * GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
 
+* GITHUB#14425: KeywordField.newSetQuery() reuses prefixed terms (Mikhail Khludnev)
+
 Bug Fixes
 ---------------------
 (No changes)
