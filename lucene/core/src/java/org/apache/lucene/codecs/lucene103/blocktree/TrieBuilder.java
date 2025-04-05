@@ -21,6 +21,7 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.function.BiConsumer;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -220,22 +221,24 @@ class TrieBuilder {
    * range starts from 0.
    */
   private int[] saveLabelDictionary(DataOutput out) throws IOException {
-    int cardinality = labelsSeen.cardinality();
-    if (cardinality == BYTE_RANGE) {
+    int[] labels = new int[labelsSeen.cardinality()];
+    int label = -1;
+    for (int i = 0; i < labels.length; i++) {
+      label = labels[i] = labelsSeen.nextSetBit(label + 1);
+    }
+    assert label == labelsSeen.length() - 1
+        || labelsSeen.nextSetBit(label + 1) == DocIdSetIterator.NO_MORE_DOCS;
+    if (labels[labels.length - 1] - labels[0] + 1 == labels.length) {
       out.writeVInt(0);
       return null;
     }
     int[] map = new int[BYTE_RANGE];
-    int[] counter = {0};
-    out.writeVInt(cardinality);
-    labelsSeen.forEach(
-        0,
-        labelsSeen.length(),
-        0,
-        label -> {
-          out.writeByte((byte) label);
-          map[label] = counter[0]++;
-        });
+    out.writeVInt(labels.length);
+    for (int i = 0; i < labels.length; i++) {
+      int l = labels[i];
+      out.writeByte((byte) l);
+      map[l] = i;
+    }
     return map;
   }
 
@@ -583,7 +586,6 @@ class TrieBuilder {
      * <p>TODO: Can we use VectorAPI to speed up the lookup? we can check 64 labels once on AVX512!
      */
     REVERSE_ARRAY(0) {
-
       @Override
       int needBytes(int minLabel, int maxLabel, int labelCnt) {
         int byteDistance = maxLabel - minLabel + 1;

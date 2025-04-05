@@ -73,6 +73,23 @@ public class TestTrie extends LuceneTestCase {
     }
   }
 
+  public void testContinuousValues() throws Exception {
+    for (int iter = 0; iter < 5; iter++) {
+      int min = random().nextInt(128);
+      int max = random().nextInt(256 - min) + min;
+      testTrieLookup(
+          () -> {
+            byte[] bytes = new byte[256];
+            for (int i = 0; i < bytes.length; i++) {
+              int b = random().nextInt(max - min) + min;
+              bytes[i] = (byte) b;
+            }
+            return bytes;
+          },
+          10);
+    }
+  }
+
   public void testLimitedValues() throws Exception {
     for (int iter = 0; iter < 5; iter++) {
       int valueCount = 1 + random().nextInt(100);
