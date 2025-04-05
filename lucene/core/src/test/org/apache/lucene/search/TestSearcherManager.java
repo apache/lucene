@@ -797,9 +797,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     // so it takes us numCommits to get to latest
     int stepsToCurrent = 0;
     while (sm.isSearcherCurrent() == false) {
-      long oldGen = sm.getCurrentCommitGen();
+      long oldGen = sm.getSearcherCommitGeneration();
       sm.maybeRefreshBlocking();
-      long newGen = sm.getCurrentCommitGen();
+      long newGen = sm.getSearcherCommitGeneration();
       assertTrue(newGen == oldGen + 1);
       stepsToCurrent++;
     }
