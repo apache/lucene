@@ -165,41 +165,35 @@ public class SearcherTaxonomyManager
     DirectoryReader dr = (DirectoryReader) r;
     IndexCommit refreshCommit = refreshCommitSupplier.getSearcherRefreshCommit(dr);
     IndexReader newReader = DirectoryReader.openIfChanged(dr, refreshCommit);
-    DirectoryTaxonomyReader tr = null;
-    if (((DirectoryReader) newReader).isCurrent()) {
-      try {
-        tr = TaxonomyReader.openIfChanged(ref.taxonomyReader);
-      } catch (Throwable t1) {
-        try {
-          if (newReader != null) {
-            IOUtils.close(newReader);
-          }
-        } catch (Throwable t2) {
-          t2.addSuppressed(t2);
-        }
-        throw t1;
-      }
-      if (tr != null && taxoWriter != null && taxoWriter.getTaxonomyEpoch() != taxoEpoch) {
-        IOUtils.close(tr);
-        if (newReader != null) {
-          IOUtils.close(newReader);
-        }
-        throw new IllegalStateException(
-            "DirectoryTaxonomyWriter.replaceTaxonomy was called, which is not allowed when using SearcherTaxonomyManager");
-      }
-    }
-    if (newReader == null && tr == null) {
-      return null;
-    }
     if (newReader == null) {
-      ref.searcher.getIndexReader().incRef();
-      newReader = ref.searcher.getIndexReader();
+      return null;
+    } else {
+      DirectoryTaxonomyReader tr = null;
+      // refresh taxonomy is searcher was refreshed to latest commit
+      if (((DirectoryReader) newReader).isCurrent()) {
+        try {
+          tr = TaxonomyReader.openIfChanged(ref.taxonomyReader);
+        } catch (Throwable t1) {
+          try {
+            IOUtils.close(newReader);
+          } catch (Throwable t2) {
+            t2.addSuppressed(t2);
+          }
+          throw t1;
+        }
+      }
+      if (tr == null) {
+        ref.taxonomyReader.incRef();
+        tr = ref.taxonomyReader;
+      } else if (taxoWriter != null && taxoWriter.getTaxonomyEpoch() != taxoEpoch) {
+        IOUtils.close(newReader, tr);
+        throw new IllegalStateException(
+                "DirectoryTaxonomyWriter.replaceTaxonomy was called, which is not allowed when using SearcherTaxonomyManager");
+      }
+
+      return new SearcherAndTaxonomy(
+              SearcherManager.getSearcher(searcherFactory, newReader, r), tr);
     }
-    if (tr == null) {
-      ref.taxonomyReader.incRef();
-      tr = ref.taxonomyReader;
-    }
-    return new SearcherAndTaxonomy(SearcherManager.getSearcher(searcherFactory, newReader, r), tr);
   }
 
   /** Return index commit generation for current searcher */
