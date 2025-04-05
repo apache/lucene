@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ReferenceManager;
-import org.apache.lucene.search.RefreshCommitSupplier;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
 
@@ -32,8 +31,6 @@ import org.apache.lucene.store.Directory;
  * @lucene.experimental
  */
 public final class ReaderManager extends ReferenceManager<DirectoryReader> {
-
-  private RefreshCommitSupplier refreshCommitSupplier = new RefreshCommitSupplier() {};
 
   /**
    * Creates and returns a new ReaderManager from the given {@link IndexWriter}.
@@ -86,11 +83,6 @@ public final class ReaderManager extends ReferenceManager<DirectoryReader> {
     current = reader;
   }
 
-  /** Set supplier for selecting commits to refresh on */
-  public void setRefreshCommitSupplier(RefreshCommitSupplier refreshCommitSupplier) {
-    this.refreshCommitSupplier = refreshCommitSupplier;
-  }
-
   @Override
   protected void decRef(DirectoryReader reference) throws IOException {
     reference.decRef();
@@ -98,8 +90,7 @@ public final class ReaderManager extends ReferenceManager<DirectoryReader> {
 
   @Override
   protected DirectoryReader refreshIfNeeded(DirectoryReader referenceToRefresh) throws IOException {
-    IndexCommit refreshCommit = refreshCommitSupplier.getSearcherRefreshCommit(referenceToRefresh);
-    return DirectoryReader.openIfChanged(referenceToRefresh, refreshCommit);
+    return DirectoryReader.openIfChanged(referenceToRefresh);
   }
 
   @Override
