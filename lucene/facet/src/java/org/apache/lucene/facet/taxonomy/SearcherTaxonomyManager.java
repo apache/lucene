@@ -188,11 +188,11 @@ public class SearcherTaxonomyManager
       } else if (taxoWriter != null && taxoWriter.getTaxonomyEpoch() != taxoEpoch) {
         IOUtils.close(newReader, tr);
         throw new IllegalStateException(
-                "DirectoryTaxonomyWriter.replaceTaxonomy was called, which is not allowed when using SearcherTaxonomyManager");
+            "DirectoryTaxonomyWriter.replaceTaxonomy was called, which is not allowed when using SearcherTaxonomyManager");
       }
 
       return new SearcherAndTaxonomy(
-              SearcherManager.getSearcher(searcherFactory, newReader, r), tr);
+          SearcherManager.getSearcher(searcherFactory, newReader, r), tr);
     }
   }
 
@@ -213,8 +213,8 @@ public class SearcherTaxonomyManager
   }
 
   /**
-   * Returns <code>true</code> if no new changes have occurred since the current
-   * searcher (i.e. reader) was opened; <code>false</code> otherwise
+   * Returns <code>true</code> if no new changes have occurred since the current searcher (i.e.
+   * reader) was opened; <code>false</code> otherwise
    *
    * @see DirectoryReader#isCurrent()
    */
@@ -223,7 +223,7 @@ public class SearcherTaxonomyManager
     try {
       final IndexReader r = sat.searcher.getIndexReader();
       assert r instanceof DirectoryReader
-              : "searcher's IndexReader should be a DirectoryReader, but got " + r;
+          : "searcher's IndexReader should be a DirectoryReader, but got " + r;
       return ((DirectoryReader) r).isCurrent();
     } finally {
       release(sat);
@@ -231,8 +231,8 @@ public class SearcherTaxonomyManager
   }
 
   /**
-   * Returns <code>true</code> if no new changes have occurred since the current
-   * taxonomy reader was opened; <code>false</code> otherwise
+   * Returns <code>true</code> if no new changes have occurred since the current taxonomy reader was
+   * opened; <code>false</code> otherwise
    *
    * @see DirectoryReader#isCurrent()
    */

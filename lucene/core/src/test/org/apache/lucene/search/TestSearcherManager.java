@@ -769,10 +769,11 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
 
   public void testStepWiseCommitRefresh() throws Exception {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(
+    IndexWriter w =
+        new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
-                    .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE));
+                .setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE));
     int docId = 0;
     // create initial commit
     for (int i = 0; i < 20; i++) {
