@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.index.BinScoreLeafReader;
 import org.apache.lucene.index.BinScoreReader;
 import org.apache.lucene.index.IndexReader;
@@ -38,9 +37,10 @@ final class BinBoostCalculator {
 
     for (LeafReaderContext ctx : reader.leaves()) {
       LeafReader leaf = ctx.reader();
-      BinScoreReader binReader = (leaf instanceof BinScoreLeafReader)
-          ? ((BinScoreLeafReader) leaf).getBinScoreReader()
-          : null;
+      BinScoreReader binReader =
+          (leaf instanceof BinScoreLeafReader)
+              ? ((BinScoreLeafReader) leaf).getBinScoreReader()
+              : null;
       if (binReader == null) {
         continue;
       }

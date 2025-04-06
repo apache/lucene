@@ -18,7 +18,6 @@ package org.apache.lucene.codecs;
 
 import java.io.IOException;
 import java.util.Map;
-
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocValuesSkipper;
@@ -38,134 +37,129 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
 
-/**
- * Minimal LeafReader exposing term statistics for one or more fields.
- */
+/** Minimal LeafReader exposing term statistics for one or more fields. */
 public final class FieldsLeafReader extends LeafReader {
 
-    private final Map<String, Terms> fieldTerms;
-    private final int maxDoc;
+  private final Map<String, Terms> fieldTerms;
+  private final int maxDoc;
 
-    public FieldsLeafReader(Map<String, Terms> fieldTerms, int maxDoc) {
-        this.fieldTerms = fieldTerms;
-        this.maxDoc = maxDoc;
-    }
+  public FieldsLeafReader(Map<String, Terms> fieldTerms, int maxDoc) {
+    this.fieldTerms = fieldTerms;
+    this.maxDoc = maxDoc;
+  }
 
-    @Override
-    public CacheHelper getCoreCacheHelper() {
-        return null;
-    }
+  @Override
+  public CacheHelper getCoreCacheHelper() {
+    return null;
+  }
 
-    @Override
-    public Terms terms(String field) throws IOException {
-        return fieldTerms.get(field);
-    }
+  @Override
+  public Terms terms(String field) throws IOException {
+    return fieldTerms.get(field);
+  }
 
-    @Override
-    public int maxDoc() {
-        return maxDoc;
-    }
+  @Override
+  public int maxDoc() {
+    return maxDoc;
+  }
 
-    @Override
-    public StoredFields storedFields() throws IOException {
-        return null;
-    }
+  @Override
+  public StoredFields storedFields() throws IOException {
+    return null;
+  }
 
-    @Override
-    public TermVectors termVectors() throws IOException {
-        return null;
-    }
+  @Override
+  public TermVectors termVectors() throws IOException {
+    return null;
+  }
 
-    @Override
-    public int numDocs() {
-        return maxDoc;
-    }
+  @Override
+  public int numDocs() {
+    return maxDoc;
+  }
 
-    @Override
-    public Bits getLiveDocs() {
-        return null;
-    }
+  @Override
+  public Bits getLiveDocs() {
+    return null;
+  }
 
-    @Override
-    public FieldInfos getFieldInfos() {
-        throw new UnsupportedOperationException("field infos not supported");
-    }
+  @Override
+  public FieldInfos getFieldInfos() {
+    throw new UnsupportedOperationException("field infos not supported");
+  }
 
-    @Override
-    public NumericDocValues getNumericDocValues(String field) {
-        return null;
-    }
+  @Override
+  public NumericDocValues getNumericDocValues(String field) {
+    return null;
+  }
 
-    @Override
-    public BinaryDocValues getBinaryDocValues(String field) throws IOException {
-        return null;
-    }
+  @Override
+  public BinaryDocValues getBinaryDocValues(String field) throws IOException {
+    return null;
+  }
 
-    @Override
-    public SortedNumericDocValues getSortedNumericDocValues(String field) {
-        return null;
-    }
+  @Override
+  public SortedNumericDocValues getSortedNumericDocValues(String field) {
+    return null;
+  }
 
-    @Override
-    public SortedDocValues getSortedDocValues(String field) {
-        return null;
-    }
+  @Override
+  public SortedDocValues getSortedDocValues(String field) {
+    return null;
+  }
 
-    @Override
-    public SortedSetDocValues getSortedSetDocValues(String field) {
-        return null;
-    }
+  @Override
+  public SortedSetDocValues getSortedSetDocValues(String field) {
+    return null;
+  }
 
-    @Override
-    public NumericDocValues getNormValues(String field) throws IOException {
-        return null;
-    }
+  @Override
+  public NumericDocValues getNormValues(String field) throws IOException {
+    return null;
+  }
 
-    @Override
-    public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
-        return null;
-    }
+  @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    return null;
+  }
 
-    @Override
-    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-        return null;
-    }
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return null;
+  }
 
-    @Override
-    public ByteVectorValues getByteVectorValues(String field) throws IOException {
-        return null;
-    }
+  @Override
+  public ByteVectorValues getByteVectorValues(String field) throws IOException {
+    return null;
+  }
 
-    @Override
-    public void searchNearestVectors(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+  @Override
+  public void searchNearestVectors(
+      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+      throws IOException {}
 
-    }
+  @Override
+  public void searchNearestVectors(
+      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {}
 
-    @Override
-    public void searchNearestVectors(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+  @Override
+  public PointValues getPointValues(String field) {
+    return null;
+  }
 
-    }
+  @Override
+  public LeafMetaData getMetaData() {
+    return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
+  }
 
-    @Override
-    public PointValues getPointValues(String field) {
-        return null;
-    }
+  @Override
+  public void checkIntegrity() {}
 
-    @Override
-    public LeafMetaData getMetaData() {
-        return new LeafMetaData(Version.LATEST.major, Version.LATEST, null, false);
-    }
+  @Override
+  protected void doClose() {}
 
-    @Override
-    public void checkIntegrity() {
-    }
-
-    @Override
-    protected void doClose() {
-    }
-
-    @Override
-    public CacheHelper getReaderCacheHelper() {
-        return null;
-    }
+  @Override
+  public CacheHelper getReaderCacheHelper() {
+    return null;
+  }
 }

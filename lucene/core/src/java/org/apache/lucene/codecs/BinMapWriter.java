@@ -17,17 +17,13 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
-
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
-import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.codecs.CodecUtil;
 
-/**
- * Writes a binmap file that maps docIDs to bin IDs.
- */
+/** Writes a binmap file that maps docIDs to bin IDs. */
 public final class BinMapWriter implements AutoCloseable {
 
   public static final String EXTENSION = "binmap";
@@ -48,23 +44,21 @@ public final class BinMapWriter implements AutoCloseable {
     this.bins = docToBin;
   }
 
-  /**
-   * Returns the expected binmap file name for this writer's segment.
-   */
+  /** Returns the expected binmap file name for this writer's segment. */
   public String getBinMapFileName() {
     return IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, EXTENSION);
   }
 
   @Override
   public void close() throws IOException {
-    final String fileName = IndexFileNames.segmentFileName(
-        state.segmentInfo.name, state.segmentSuffix, EXTENSION);
+    final String fileName =
+        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, EXTENSION);
     IndexOutput out = null;
     boolean success = false;
     try {
       out = directory.createOutput(fileName, state.context);
-      CodecUtil.writeIndexHeader(out, CODEC_NAME, VERSION_START,
-          state.segmentInfo.getId(), state.segmentSuffix);
+      CodecUtil.writeIndexHeader(
+          out, CODEC_NAME, VERSION_START, state.segmentInfo.getId(), state.segmentSuffix);
       out.writeInt(maxDoc);
       out.writeInt(binCount);
       for (int i = 0; i < maxDoc; i++) {

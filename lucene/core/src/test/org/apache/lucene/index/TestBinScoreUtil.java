@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.nio.file.Path;
-
 import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;

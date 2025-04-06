@@ -39,9 +39,6 @@ public final class BinScoreUtil {
         return new MultiReader(wrapped.toArray(new LeafReader[0]), true);
     }
 
-    /**
-     * Wrap a LeafReader with bin reader if binmap is found.
-     */
     public static LeafReader wrap(LeafReader reader) throws IOException {
         SegmentReader sr = getSegmentReader(reader);
         if (sr == null) {
@@ -75,12 +72,21 @@ public final class BinScoreUtil {
         try {
             binMap = new BinMapReader(dir, state);
             BinScoreReader binScore = new BinScoreReader(binMap);
-            return new BinScoreLeafReader(reader, binScore, binMap, compoundReader);
+
+            final Closeable toClose = compoundReader; // capture for use in close
+            return new BinScoreLeafReader(reader, binScore, binMap) {
+                @Override
+                protected void doClose() throws IOException {
+                    IOUtils.close(toClose); // closes compoundReader if present
+                    super.doClose();        // closes binMap, etc.
+                }
+            };
         } catch (Throwable t) {
             IOUtils.closeWhileHandlingException(binMap, compoundReader);
             throw t;
         }
     }
+
 
     private static SegmentReader getSegmentReader(LeafReader reader) {
         if (reader instanceof SegmentReader) {

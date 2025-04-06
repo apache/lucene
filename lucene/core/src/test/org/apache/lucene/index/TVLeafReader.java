@@ -18,14 +18,13 @@ package org.apache.lucene.index;
 
 import java.util.Collections;
 import java.util.Iterator;
-
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
 
 /**
- * Minimal LeafReader backed only by term vectors for a single field.
- * Used for post-indexing processing such as document graph construction.
+ * Minimal LeafReader backed only by term vectors for a single field. Used for post-indexing
+ * processing such as document graph construction.
  */
 public final class TVLeafReader extends LeafReader {
 
@@ -65,25 +64,28 @@ public final class TVLeafReader extends LeafReader {
     if (hasPositions) options = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS;
     if (hasOffsets) options = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS;
 
-    FieldInfo fieldInfo = new FieldInfo(
-        field,
-        0,
-        true,
-        true,
-        hasPayloads,
-        options,
-        DocValuesType.NONE,
-        DocValuesSkipIndexType.NONE,
-        -1,
-        Collections.emptyMap(),
-        0, 0, 0, 0,
-        null,
-        null,
-        false,
-        false
-    );
+    FieldInfo fieldInfo =
+        new FieldInfo(
+            field,
+            0,
+            true,
+            true,
+            hasPayloads,
+            options,
+            DocValuesType.NONE,
+            DocValuesSkipIndexType.NONE,
+            -1,
+            Collections.emptyMap(),
+            0,
+            0,
+            0,
+            0,
+            null,
+            null,
+            false,
+            false);
 
-    this.fieldInfos = new FieldInfos(new FieldInfo[] { fieldInfo });
+    this.fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
   }
 
   @Override
@@ -165,10 +167,12 @@ public final class TVLeafReader extends LeafReader {
   }
 
   @Override
-  public void searchNearestVectors(String field, float[] target, KnnCollector collector, Bits acceptDocs) {}
+  public void searchNearestVectors(
+      String field, float[] target, KnnCollector collector, Bits acceptDocs) {}
 
   @Override
-  public void searchNearestVectors(String field, byte[] target, KnnCollector collector, Bits acceptDocs) {}
+  public void searchNearestVectors(
+      String field, byte[] target, KnnCollector collector, Bits acceptDocs) {}
 
   @Override
   public PointValues getPointValues(String field) {

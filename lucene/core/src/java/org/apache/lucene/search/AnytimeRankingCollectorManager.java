@@ -3,7 +3,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.PriorityQueue;
-
 import org.apache.lucene.index.IndexReader;
 
 /** CollectorManager that provides bin-aware SLA-constrained collectors. */
@@ -28,7 +27,8 @@ public final class AnytimeRankingCollectorManager
 
   @Override
   public TopDocs reduce(Collection<AnytimeRankingCollector> collectors) throws IOException {
-    PriorityQueue<ScoreDoc> queue = new PriorityQueue<>(topK, (a, b) -> Float.compare(a.score, b.score));
+    PriorityQueue<ScoreDoc> queue =
+        new PriorityQueue<>(topK, (a, b) -> Float.compare(a.score, b.score));
     long totalHits = 0;
 
     for (AnytimeRankingCollector collector : collectors) {

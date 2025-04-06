@@ -17,17 +17,13 @@
 
 package org.apache.lucene.search;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.nio.file.Files;
-import java.util.List;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene101.Lucene101Codec;
@@ -36,8 +32,8 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.StoredField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.BinScoreReader;
+import org.apache.lucene.index.BinScoreUtil;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
@@ -46,13 +42,11 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.index.BinScoreUtil;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Test;
 
@@ -125,6 +119,7 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
               BinScoreReader binReader = BinScoreUtil.getBinScoreReader(ctx.reader());
               if (binReader != null) {
                 int bin = binReader.getBinForDoc(segDoc);
+                System.out.println("doc" + segDoc + " bin " + bin);
                 if (bin == 0) {
                   bin0Hits++;
                 }
@@ -135,7 +130,8 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
           }
         }
 
-        assertTrue("Bin 0 should dominate in sparse distribution, got " + bin0Hits + " of " + total,
+        assertTrue(
+            "Bin 0 should dominate in sparse distribution, got " + bin0Hits + " of " + total,
             total > 0 && bin0Hits >= total / 2);
       } finally {
       }
@@ -148,7 +144,7 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
 
     Path indexPath = Files.createTempDirectory("testindex_sla_cutoff");
     try (Directory dir = FSDirectory.open(indexPath);
-         IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(new StandardAnalyzer()))) {
+        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(new StandardAnalyzer()))) {
 
       FieldType ft = newBinningFieldType();
       for (int i = 0; i < 500; i++) {
@@ -175,11 +171,12 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
   public void testMultiThreadedQueries() throws Exception {
     Path path = Files.createTempDirectory("multiThreadedQuery");
     try (Directory dir = FSDirectory.open(path);
-         IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(new StandardAnalyzer()))) {
+        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(new StandardAnalyzer()))) {
 
       FieldType ft = newBinningFieldType();
       for (int i = 0; i < 1000; i++) {
-        String content = "lucene relevance scoring performance content " + TestUtil.randomSimpleString(random());
+        String content =
+            "lucene relevance scoring performance content " + TestUtil.randomSimpleString(random());
         writer.addDocument(newDoc(i, content, ft));
       }
       writer.commit();
@@ -189,9 +186,11 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
       try {
         IndexSearcher searcher = newSearcher(wrapped);
         searcher.setSimilarity(new BM25Similarity(2.0f, 0.2f));
-        AnytimeRankingSearcher anytimeSearcher = new AnytimeRankingSearcher(searcher, 10, 100, "content");
+        AnytimeRankingSearcher anytimeSearcher =
+            new AnytimeRankingSearcher(searcher, 10, 100, "content");
 
-        ExecutorService exec = Executors.newFixedThreadPool(4, new NamedThreadFactory("test-search"));
+        ExecutorService exec =
+            Executors.newFixedThreadPool(4, new NamedThreadFactory("test-search"));
         List<Future<TopDocs>> futures = new ArrayList<>();
 
         Query query = new TermQuery(new Term("content", "lucene"));

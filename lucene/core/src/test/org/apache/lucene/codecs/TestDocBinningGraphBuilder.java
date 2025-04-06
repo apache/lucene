@@ -3,7 +3,6 @@ package org.apache.lucene.codecs;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDocBinningGraphBuilder extends LuceneTestCase {
@@ -76,14 +75,12 @@ public class TestDocBinningGraphBuilder extends LuceneTestCase {
   public void testInvalidBinCount() {
     SparseEdgeGraph graph = new InMemorySparseEdgeGraph();
     expectThrows(
-        IllegalArgumentException.class,
-        () -> DocBinningGraphBuilder.computeBins(graph, 10, 3));
+        IllegalArgumentException.class, () -> DocBinningGraphBuilder.computeBins(graph, 10, 3));
   }
 
   public void testZeroDocsFails() {
     SparseEdgeGraph graph = new InMemorySparseEdgeGraph();
     expectThrows(
-        IllegalArgumentException.class,
-        () -> DocBinningGraphBuilder.computeBins(graph, 0, 2));
+        IllegalArgumentException.class, () -> DocBinningGraphBuilder.computeBins(graph, 0, 2));
   }
 }

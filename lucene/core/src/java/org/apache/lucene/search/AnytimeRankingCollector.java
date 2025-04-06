@@ -1,7 +1,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-
 import org.apache.lucene.index.BinScoreLeafReader;
 import org.apache.lucene.index.BinScoreReader;
 import org.apache.lucene.index.LeafReader;
@@ -48,10 +47,9 @@ public final class AnytimeRankingCollector extends TopDocsCollector<ScoreDoc> {
             ? ((BinScoreLeafReader) reader).getBinScoreReader()
             : null;
 
-    int interval = Math.max(
-        MIN_CHECK_INTERVAL,
-        Math.min(MAX_CHECK_INTERVAL, reader.numDocs() / DOCS_PER_CHECK)
-    );
+    int interval =
+        Math.max(
+            MIN_CHECK_INTERVAL, Math.min(MAX_CHECK_INTERVAL, reader.numDocs() / DOCS_PER_CHECK));
 
     return new LeafCollector() {
       private Scorable scorer;

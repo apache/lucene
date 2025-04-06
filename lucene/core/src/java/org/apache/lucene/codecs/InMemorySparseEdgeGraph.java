@@ -20,8 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Simple in-memory implementation of {@link SparseEdgeGraph}.
- * Intended for unit testing and non-production use.
+ * Simple in-memory implementation of {@link SparseEdgeGraph}. Intended for unit testing and
+ * non-production use.
  */
 public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
 
@@ -48,9 +48,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
     weights.put(from, newWeights);
   }
 
-  /**
-   * Adds a symmetric edge between two documents with the given weight.
-   */
+  /** Adds a symmetric edge between two documents with the given weight. */
   @Override
   public void addEdge(int docA, int docB, float weight) {
     addDirectedEdge(docA, docB, weight);
@@ -67,15 +65,13 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
     return weights.getOrDefault(docID, new float[0]);
   }
 
-   @Override
+  @Override
   public void ensureVertex(int docID) {
     neighbors.computeIfAbsent(docID, k -> new int[0]);
     weights.computeIfAbsent(docID, k -> new float[0]);
   }
 
-  /**
-   * Returns the number of vertices in the graph with at least one edge.
-   */
+  /** Returns the number of vertices in the graph with at least one edge. */
   @Override
   public int size() {
     return neighbors.size();

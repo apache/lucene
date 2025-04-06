@@ -18,9 +18,7 @@ package org.apache.lucene.codecs;
 
 import java.io.IOException;
 
-/**
- * Computes document-to-bin assignments using recursive graph bisection.
- */
+/** Computes document-to-bin assignments using recursive graph bisection. */
 public final class DocBinningGraphBuilder {
 
   private DocBinningGraphBuilder() {}
@@ -33,7 +31,8 @@ public final class DocBinningGraphBuilder {
    * @param numBins must be a power of 2
    * @return array mapping docID to assigned bin
    */
-  public static int[] computeBins(SparseEdgeGraph adjacency, int maxDoc, int numBins) throws IOException {
+  public static int[] computeBins(SparseEdgeGraph adjacency, int maxDoc, int numBins)
+      throws IOException {
     if (maxDoc <= 0 || Integer.bitCount(numBins) != 1) {
       throw new IllegalArgumentException("maxDoc must be > 0 and numBins must be a power of 2");
     }
@@ -57,8 +56,15 @@ public final class DocBinningGraphBuilder {
     return docToBin;
   }
 
-  private static void partition(SparseEdgeGraph adjacency, int[] docToBin, int[] docIndices,
-                                int start, int end, int binOffset, int numBins, float[] scratch) {
+  private static void partition(
+      SparseEdgeGraph adjacency,
+      int[] docToBin,
+      int[] docIndices,
+      int start,
+      int end,
+      int binOffset,
+      int numBins,
+      float[] scratch) {
     final int size = end - start;
     if (numBins == 1 || size <= 1) {
       for (int i = start; i < end; i++) {
@@ -98,7 +104,8 @@ public final class DocBinningGraphBuilder {
     final int nextBinCount = numBins >>> 1;
 
     partition(adjacency, docToBin, docIndices, start, mid, binOffset, nextBinCount, scratch);
-    partition(adjacency, docToBin, docIndices, mid, end, binOffset + nextBinCount, nextBinCount, scratch);
+    partition(
+        adjacency, docToBin, docIndices, mid, end, binOffset + nextBinCount, nextBinCount, scratch);
   }
 
   private static float edgeWeight(SparseEdgeGraph graph, int docID, int targetDocID) {

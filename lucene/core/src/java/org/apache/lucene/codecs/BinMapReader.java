@@ -3,7 +3,6 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -27,14 +26,19 @@ public final class BinMapReader implements Closeable {
     boolean success = false;
     try {
       CodecUtil.checkIndexHeader(
-          in, CODEC_NAME, VERSION_START, VERSION_START,
-          state.segmentInfo.getId(), state.segmentSuffix);
+          in,
+          CODEC_NAME,
+          VERSION_START,
+          VERSION_START,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
 
       int maxDoc = in.readInt();
       this.binCount = in.readInt();
 
       if (maxDoc != state.segmentInfo.maxDoc()) {
-        throw new IOException("maxDoc mismatch: expected=" + state.segmentInfo.maxDoc() + " actual=" + maxDoc);
+        throw new IOException(
+            "maxDoc mismatch: expected=" + state.segmentInfo.maxDoc() + " actual=" + maxDoc);
       }
 
       this.bins = new int[maxDoc];
