@@ -82,49 +82,6 @@ final class BooleanScorer extends BulkScorer {
   final long cost;
   final boolean needsScores;
 
-  final class DocIdStreamView extends DocIdStream {
-
-    int base;
-
-    @Override
-    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      FixedBitSet matching = BooleanScorer.this.matching;
-      Bucket[] buckets = BooleanScorer.this.buckets;
-      int base = this.base;
-      long[] bitArray = matching.getBits();
-      for (int idx = 0; idx < bitArray.length; idx++) {
-        long bits = bitArray[idx];
-        while (bits != 0L) {
-          int ntz = Long.numberOfTrailingZeros(bits);
-          if (buckets != null) {
-            final int indexInWindow = (idx << 6) | ntz;
-            final Bucket bucket = buckets[indexInWindow];
-            if (bucket.freq >= minShouldMatch) {
-              score.score = (float) bucket.score;
-              consumer.accept(base | indexInWindow);
-            }
-            bucket.freq = 0;
-            bucket.score = 0;
-          } else {
-            consumer.accept(base | (idx << 6) | ntz);
-          }
-          bits ^= 1L << ntz;
-        }
-      }
-    }
-
-    @Override
-    public int count() throws IOException {
-      if (minShouldMatch > 1) {
-        // We can't just count bits in that case
-        return super.count();
-      }
-      return matching.cardinality();
-    }
-  }
-
-  private final DocIdStreamView docIdStreamView = new DocIdStreamView();
-
   BooleanScorer(Collection<Scorer> scorers, int minShouldMatch, boolean needsScores) {
     if (minShouldMatch < 1 || minShouldMatch > scorers.size()) {
       throw new IllegalArgumentException(
@@ -202,13 +159,32 @@ final class BooleanScorer extends BulkScorer {
       w.doc = it.docID();
     }
 
-    if (buckets == null && acceptDocs != null) {
-      // In this case, live docs have not been applied yet.
-      acceptDocs.applyMask(matching, base);
+    if (buckets == null) {
+      if (acceptDocs != null) {
+        // In this case, live docs have not been applied yet.
+        acceptDocs.applyMask(matching, base);
+      }
+      collector.collect(new BitSetDocIdStream(matching, base));
+    } else {
+      FixedBitSet matching = BooleanScorer.this.matching;
+      Bucket[] buckets = BooleanScorer.this.buckets;
+      long[] bitArray = matching.getBits();
+      for (int idx = 0; idx < bitArray.length; idx++) {
+        long bits = bitArray[idx];
+        while (bits != 0L) {
+          int ntz = Long.numberOfTrailingZeros(bits);
+          final int indexInWindow = (idx << 6) | ntz;
+          final Bucket bucket = buckets[indexInWindow];
+          if (bucket.freq >= minShouldMatch) {
+            score.score = (float) bucket.score;
+            collector.collect(base | indexInWindow);
+          }
+          bucket.freq = 0;
+          bucket.score = 0;
+          bits ^= 1L << ntz;
+        }
+      }
     }
-
-    docIdStreamView.base = base;
-    collector.collect(docIdStreamView);
 
     matching.clear();
   }
