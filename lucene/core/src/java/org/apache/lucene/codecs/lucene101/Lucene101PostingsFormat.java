@@ -17,20 +17,33 @@
 package org.apache.lucene.codecs.lucene101;
 
 import java.io.IOException;
+import java.util.Map;
+
+import org.apache.lucene.codecs.BinMapWriter;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.DocBinningGraphBuilder;
+import org.apache.lucene.codecs.DocGraphBuilder;
 import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.FieldsLeafReader;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
+import org.apache.lucene.codecs.SparseEdgeGraph;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermState;
+import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
@@ -413,22 +426,96 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
     this.maxTermBlockSize = maxTermBlockSize;
   }
 
-  @Override
-  public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene101PostingsWriter(state, version);
-    boolean success = false;
-    try {
-      FieldsConsumer ret =
-          new Lucene90BlockTreeTermsWriter(
-              state, postingsWriter, minTermBlockSize, maxTermBlockSize);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsWriter);
-      }
+  static void maybeWriteDocBinning(SegmentWriteState state) throws IOException {
+  final int maxDoc = state.segmentInfo.maxDoc();
+  if (maxDoc == 0) {
+    return;
+  }
+
+  final FieldInfos fieldInfos = state.fieldInfos;
+  String binningField = null;
+  int binCount = -1;
+
+  for (FieldInfo fi : fieldInfos) {
+    if ("true".equalsIgnoreCase(fi.getAttribute("doBinning"))) {
+      binningField = fi.name;
+      String binCountAttr = fi.getAttribute("bin.count");
+      binCount = binCountAttr != null
+          ? Integer.parseInt(binCountAttr)
+          : Math.max(1, Integer.highestOneBit(maxDoc >>> 4));
+      break;
     }
   }
+
+  if (binningField == null || binCount <= 0) {
+    return;
+  }
+
+  final PostingsFormat format = new Lucene101PostingsFormat();
+  try (FieldsProducer fields = format.fieldsProducer(new SegmentReadState(
+      state.directory,
+      state.segmentInfo,
+      state.fieldInfos,
+      state.context,
+      state.segmentSuffix
+  ))) {
+    Terms terms = fields.terms(binningField);
+    if (terms == null) {
+      return;
+    }
+
+    Map<String, Terms> singleField = Map.of(binningField, terms);
+    try (LeafReader reader = new FieldsLeafReader(singleField, maxDoc)) {
+      DocGraphBuilder builder = new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
+      SparseEdgeGraph graph = builder.build(reader);
+      int[] docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
+      BinMapWriter writer = new BinMapWriter(state.directory, state, docToBin, binCount);
+      writer.close();
+    }
+  }
+}
+
+@Override
+public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
+  final Lucene101PostingsWriter postingsWriter = new Lucene101PostingsWriter(state, version);
+
+  final FieldsConsumer delegate = new Lucene90BlockTreeTermsWriter(
+      state, postingsWriter, minTermBlockSize, maxTermBlockSize);
+
+  return new FieldsConsumer() {
+    @Override
+    public void write(Fields fields, NormsProducer normsProducer) throws IOException {
+      delegate.write(fields, normsProducer);
+    }
+
+    @Override
+    public void close() throws IOException {
+      IOException prior = null;
+      try {
+        delegate.close(); // flushes .psm/.doc/.pos/.pay
+      } catch (IOException e) {
+        prior = e;
+      }
+
+      try {
+        // Now that all outputs are flushed, perform binning safely
+        maybeWriteDocBinning(state);
+      } catch (IOException e) {
+        if (prior != null) {
+          prior.addSuppressed(e);
+          throw prior;
+        } else {
+          throw e;
+        }
+      }
+
+      if (prior != null) {
+        throw prior;
+      }
+    }
+  };
+}
+
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {

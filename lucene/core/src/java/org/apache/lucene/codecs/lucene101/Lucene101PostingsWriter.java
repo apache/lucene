@@ -28,22 +28,27 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.apache.lucene.codecs.BinningSupport;
 import org.apache.lucene.codecs.BlockTermState;
+import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.BinMapWriter;
 import org.apache.lucene.codecs.DocBinningGraphBuilder;
 import org.apache.lucene.codecs.DocGraphBuilder;
+import org.apache.lucene.codecs.FieldsLeafReader;
+import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PushPostingsWriterBase;
 import org.apache.lucene.codecs.SparseEdgeGraph;
-import org.apache.lucene.codecs.TVLeafReader;
-import org.apache.lucene.codecs.TermVectorsFormat;
-import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat.IntBlockTermState;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -53,6 +58,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ByteBuffersDataOutput;
@@ -727,8 +733,6 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
                 }
                 CodecUtil.writeFooter(metaOut);
             }
-
-            maybeWriteDocBinning();
             success = true;
         } finally {
             if (success) {
@@ -737,78 +741,6 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
                 IOUtils.closeWhileHandlingException(metaOut, docOut, posOut, payOut);
             }
             metaOut = docOut = posOut = payOut = null;
-        }
-    }
-
-    private void maybeWriteDocBinning() throws IOException {
-        final int maxDoc = segmentWriteState.segmentInfo.maxDoc();
-        if (maxDoc == 0) {
-            return;
-        }
-
-        final FieldInfos fieldInfos = segmentWriteState.fieldInfos;
-        String binningField = null;
-        int binCount = -1;
-
-        for (FieldInfo fi : fieldInfos) {
-            if ("true".equalsIgnoreCase(fi.getAttribute("doBinning"))) {
-                if (!fi.hasTermVectors()) {
-                    throw new IllegalStateException("Field \"" + fi.name + "\" is marked for binning but term vectors are not enabled");
-                }
-                binningField = fi.name;
-                String binCountAttr = fi.getAttribute("bin.count");
-                binCount = binCountAttr != null
-                        ? Integer.parseInt(binCountAttr)
-                        : Math.max(1, Integer.highestOneBit(maxDoc >>> 4));
-                break;
-            }
-        }
-
-        if (binningField == null || binCount <= 0) {
-            return;
-        }
-
-        final TermVectorsFormat tvFormat = segmentWriteState.segmentInfo.getCodec().termVectorsFormat();
-        if (tvFormat == null) {
-            return;
-        }
-
-        try (TermVectorsReader tvReader = tvFormat.vectorsReader(
-                segmentWriteState.directory,
-                segmentWriteState.segmentInfo,
-                fieldInfos,
-                segmentWriteState.context)) {
-
-            final Terms[] termVectors = new Terms[maxDoc];
-            boolean foundAnyVectors = false;
-
-            for (int docID = 0; docID < maxDoc; docID++) {
-                final Fields fields = tvReader.get(docID);
-                if (fields != null) {
-                    final Terms terms = fields.terms(binningField);
-                    termVectors[docID] = terms;
-                    if (terms != null) {
-                        foundAnyVectors = true;
-                    }
-                }
-            }
-
-            if (!foundAnyVectors) {
-                return;
-            }
-
-            final LeafReader leafReader = new TVLeafReader(binningField, termVectors);
-            final DocGraphBuilder graphBuilder = new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
-            final SparseEdgeGraph graph = graphBuilder.build(leafReader);
-            final int[] docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
-
-            BinMapWriter binWriter = new BinMapWriter(segmentWriteState.directory, segmentWriteState, docToBin, binCount);
-            binWriter.close();
-        } catch (FileNotFoundException fnfe) {
-            // likely a segment that does not have term vectors at all — skip binning
-            return;
-        } catch (IOException ioe) {
-            throw new IOException("Error while building binning graph for field \"" + binningField + "\"", ioe);
         }
     }
 }
