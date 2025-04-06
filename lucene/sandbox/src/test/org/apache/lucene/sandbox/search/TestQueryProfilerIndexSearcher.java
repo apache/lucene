@@ -81,17 +81,17 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     List<QueryProfilerResult> results = searcher.getProfileResult();
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
-    // Validate Query Level breakdowns first
+    // Validate query level breakdowns first
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString() + "_count"),
         greaterThan(0L));
 
-    // Validate Slice Level breakdowns now
-    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getThreadLevelBreakdowns();
-    assertEquals(1, sliceProfilerResults.size());
-    breakdown = sliceProfilerResults.get(0).getTimeBreakdown();
+    // Validate thread level breakdowns now
+    List<QuerySliceProfilerResult> queryThreadProfilerResults = results.get(0).getThreadLevelBreakdowns();
+    assertEquals(1, queryThreadProfilerResults.size());
+    breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.COUNT.toString()), equalTo(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.BUILD_SCORER.toString()), greaterThan(0L));
@@ -164,17 +164,17 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
 
-    // Validate Query Level breakdowns first
+    // Validate query level breakdowns first
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString() + "_count"),
         greaterThan(0L));
 
-    // Validate Slice Level breakdowns now
-    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getThreadLevelBreakdowns();
-    assertEquals(1, sliceProfilerResults.size());
-    breakdown = sliceProfilerResults.get(0).getTimeBreakdown();
+    // Validate thread level breakdowns now
+    List<QuerySliceProfilerResult> queryThreadProfilerResults = results.get(0).getThreadLevelBreakdowns();
+    assertEquals(1, queryThreadProfilerResults.size());
+    breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
 
     MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.COUNT.toString()), equalTo(0L));
     MatcherAssert.assertThat(
@@ -212,17 +212,17 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
 
-    // Validate Query Level breakdowns first
+    // Validate query level breakdowns first
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString() + "_count"),
         greaterThan(0L));
 
-    // Validate Slice Level breakdowns now
-    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getThreadLevelBreakdowns();
-    assertEquals(1, sliceProfilerResults.size());
-    breakdown = sliceProfilerResults.get(0).getTimeBreakdown();
+    // Validate thread level breakdowns now
+    List<QuerySliceProfilerResult> queryThreadProfilerResults = results.get(0).getThreadLevelBreakdowns();
+    assertEquals(1, queryThreadProfilerResults.size());
+    breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
 
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.COUNT.toString()), greaterThan(0L));
@@ -260,17 +260,17 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
     assertEquals(1, results.size());
     Map<String, Long> breakdown = results.get(0).getTimeBreakdown();
 
-    // Validate Query Level breakdowns first
+    // Validate query level breakdowns first
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString()), greaterThan(0L));
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.CREATE_WEIGHT.toString() + "_count"),
         greaterThan(0L));
 
-    // Validate Slice Level breakdowns now
-    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getThreadLevelBreakdowns();
-    assertEquals(1, sliceProfilerResults.size());
-    breakdown = sliceProfilerResults.get(0).getTimeBreakdown();
+    // Validate thread level breakdowns now
+    List<QuerySliceProfilerResult> queryThreadProfilerResults = results.get(0).getThreadLevelBreakdowns();
+    assertEquals(1, queryThreadProfilerResults.size());
+    breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
 
     MatcherAssert.assertThat(
         breakdown.get(QueryProfilerTimingType.COUNT.toString()), greaterThan(0L));
