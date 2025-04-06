@@ -89,7 +89,8 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate thread level breakdowns now
-    List<QuerySliceProfilerResult> queryThreadProfilerResults = results.get(0).getThreadLevelBreakdowns();
+    List<QuerySliceProfilerResult> queryThreadProfilerResults =
+        results.get(0).getThreadLevelBreakdowns();
     assertEquals(1, queryThreadProfilerResults.size());
     breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.COUNT.toString()), equalTo(0L));
@@ -172,7 +173,8 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate thread level breakdowns now
-    List<QuerySliceProfilerResult> queryThreadProfilerResults = results.get(0).getThreadLevelBreakdowns();
+    List<QuerySliceProfilerResult> queryThreadProfilerResults =
+        results.get(0).getThreadLevelBreakdowns();
     assertEquals(1, queryThreadProfilerResults.size());
     breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
 
@@ -220,7 +222,8 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate thread level breakdowns now
-    List<QuerySliceProfilerResult> queryThreadProfilerResults = results.get(0).getThreadLevelBreakdowns();
+    List<QuerySliceProfilerResult> queryThreadProfilerResults =
+        results.get(0).getThreadLevelBreakdowns();
     assertEquals(1, queryThreadProfilerResults.size());
     breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
 
@@ -268,7 +271,8 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate thread level breakdowns now
-    List<QuerySliceProfilerResult> queryThreadProfilerResults = results.get(0).getThreadLevelBreakdowns();
+    List<QuerySliceProfilerResult> queryThreadProfilerResults =
+        results.get(0).getThreadLevelBreakdowns();
     assertEquals(1, queryThreadProfilerResults.size());
     breakdown = queryThreadProfilerResults.get(0).getTimeBreakdown();
 
