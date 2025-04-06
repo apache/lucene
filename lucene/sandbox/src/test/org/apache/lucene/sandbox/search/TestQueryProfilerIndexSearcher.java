@@ -89,7 +89,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate Slice Level breakdowns now
-    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getSliceBreakdowns();
+    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getThreadLevelBreakdowns();
     assertEquals(1, sliceProfilerResults.size());
     breakdown = sliceProfilerResults.get(0).getTimeBreakdown();
     MatcherAssert.assertThat(breakdown.get(QueryProfilerTimingType.COUNT.toString()), equalTo(0L));
@@ -172,7 +172,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate Slice Level breakdowns now
-    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getSliceBreakdowns();
+    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getThreadLevelBreakdowns();
     assertEquals(1, sliceProfilerResults.size());
     breakdown = sliceProfilerResults.get(0).getTimeBreakdown();
 
@@ -220,7 +220,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate Slice Level breakdowns now
-    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getSliceBreakdowns();
+    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getThreadLevelBreakdowns();
     assertEquals(1, sliceProfilerResults.size());
     breakdown = sliceProfilerResults.get(0).getTimeBreakdown();
 
@@ -268,7 +268,7 @@ public class TestQueryProfilerIndexSearcher extends LuceneTestCase {
         greaterThan(0L));
 
     // Validate Slice Level breakdowns now
-    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getSliceBreakdowns();
+    List<QuerySliceProfilerResult> sliceProfilerResults = results.get(0).getThreadLevelBreakdowns();
     assertEquals(1, sliceProfilerResults.size());
     breakdown = sliceProfilerResults.get(0).getTimeBreakdown();
 

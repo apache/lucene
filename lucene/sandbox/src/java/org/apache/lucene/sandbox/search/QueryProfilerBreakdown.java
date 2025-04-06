@@ -37,12 +37,12 @@ class QueryProfilerBreakdown {
   private static final Collection<QueryProfilerTimingType> QUERY_LEVEL_TIMING_TYPE =
       Arrays.stream(QueryProfilerTimingType.values()).filter(t -> !t.isSliceLevel()).toList();
   private final Map<QueryProfilerTimingType, QueryProfilerTimer> queryProfilerTimers;
-  private final ConcurrentMap<Long, QuerySliceProfilerBreakdown> threadToSliceBreakdown;
+  private final ConcurrentMap<Long, QuerySliceProfilerBreakdown> queryThreadBreakdowns;
 
   /** Sole constructor. */
   public QueryProfilerBreakdown() {
     queryProfilerTimers = new HashMap<>();
-    threadToSliceBreakdown = new ConcurrentHashMap<>();
+    queryThreadBreakdowns = new ConcurrentHashMap<>();
 
     for (QueryProfilerTimingType timingType : QUERY_LEVEL_TIMING_TYPE) {
       queryProfilerTimers.put(timingType, new QueryProfilerTimer());
@@ -63,13 +63,13 @@ class QueryProfilerBreakdown {
     final long currentThreadId = Thread.currentThread().threadId();
     // See please https://bugs.openjdk.java.net/browse/JDK-8161372
     final QuerySliceProfilerBreakdown profilerBreakdown =
-        threadToSliceBreakdown.get(currentThreadId);
+        queryThreadBreakdowns.get(currentThreadId);
 
     if (profilerBreakdown != null) {
       return profilerBreakdown;
     }
 
-    return threadToSliceBreakdown.computeIfAbsent(
+    return queryThreadBreakdowns.computeIfAbsent(
         currentThreadId, _ -> new QuerySliceProfilerBreakdown());
   }
 
@@ -93,9 +93,9 @@ class QueryProfilerBreakdown {
     }
 
     final List<QuerySliceProfilerResult> sliceProfilerResults = new ArrayList<>();
-    for (Long sliceId : threadToSliceBreakdown.keySet()) {
+    for (Long sliceId : queryThreadBreakdowns.keySet()) {
       final QuerySliceProfilerResult querySliceProfilerResult =
-          threadToSliceBreakdown.get(sliceId).getSliceProfilerResult(sliceId);
+          queryThreadBreakdowns.get(sliceId).getSliceProfilerResult(sliceId);
       queryStartTime = Math.min(queryStartTime, querySliceProfilerResult.getStartTime());
       queryEndTime =
           Math.max(

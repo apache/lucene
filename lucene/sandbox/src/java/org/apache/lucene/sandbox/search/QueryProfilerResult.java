@@ -35,23 +35,24 @@ public class QueryProfilerResult {
   private final String description;
   private final long startTime;
   private final long totalTime;
-  private final Map<String, Long> breakdown;
-  private final List<QuerySliceProfilerResult> sliceBreakdowns;
+  private final Map<String, Long> queryLevelBreakdowns;
+  private final List<QuerySliceProfilerResult> threadLevelBreakdowns;
   private final List<QueryProfilerResult> childrenProfileResults;
 
   public QueryProfilerResult(
       String type,
       String description,
-      Map<String, Long> breakdown,
-      List<QuerySliceProfilerResult> sliceBreakdowns,
+      Map<String, Long> queryLevelBreakdowns,
+      List<QuerySliceProfilerResult> threadLevelBreakdowns,
       List<QueryProfilerResult> childrenProfileResults,
       long startTime,
       long totalTime) {
     this.type = type;
     this.description = description;
-    this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
-    this.sliceBreakdowns =
-        Objects.requireNonNull(sliceBreakdowns, "required slice breakdowns argument missing");
+    this.queryLevelBreakdowns =
+        Objects.requireNonNull(queryLevelBreakdowns, "required breakdown argument missing");
+    this.threadLevelBreakdowns =
+        Objects.requireNonNull(threadLevelBreakdowns, "required slice breakdowns argument missing");
     this.childrenProfileResults =
         childrenProfileResults == null ? Collections.emptyList() : childrenProfileResults;
     this.startTime = startTime;
@@ -70,7 +71,7 @@ public class QueryProfilerResult {
 
   /** The timing breakdown for this node. */
   public Map<String, Long> getTimeBreakdown() {
-    return Collections.unmodifiableMap(breakdown);
+    return Collections.unmodifiableMap(queryLevelBreakdowns);
   }
 
   public long getStartTime() {
@@ -86,8 +87,8 @@ public class QueryProfilerResult {
     return totalTime;
   }
 
-  public List<QuerySliceProfilerResult> getSliceBreakdowns() {
-    return Collections.unmodifiableList(sliceBreakdowns);
+  public List<QuerySliceProfilerResult> getThreadLevelBreakdowns() {
+    return Collections.unmodifiableList(threadLevelBreakdowns);
   }
 
   /** Returns a list of all profiled children queries */

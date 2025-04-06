@@ -25,28 +25,25 @@ import java.util.Objects;
  * This class is the internal representation of a profiled Query, corresponding to a single node in
  * the query tree. It is built after the query has finished executing and is merely a structured
  * representation, rather than the entity that collects the timing profile.
- *
- * <p>Each QuerySliceProfilerResult has a List of QuerySliceProfilerResult, which will contain
- * "children" queries if applicable
  */
 public class QuerySliceProfilerResult {
 
-  private final long sliceId;
+  private final long threadId;
   private final Map<String, Long> breakdown;
   private final long startTime;
   private final long totalTime;
 
   public QuerySliceProfilerResult(
-      long sliceId, Map<String, Long> breakdown, long startTime, long totalTime) {
-    this.sliceId = sliceId;
+      long threadId, Map<String, Long> breakdown, long startTime, long totalTime) {
+    this.threadId = threadId;
     this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
     this.startTime = startTime;
     this.totalTime = totalTime;
   }
 
   /** Retrieve the lucene description of this query (e.g. the "explain" text) */
-  public long getSliceId() {
-    return sliceId;
+  public long getThreadId() {
+    return threadId;
   }
 
   /** The timing breakdown for this node. */
