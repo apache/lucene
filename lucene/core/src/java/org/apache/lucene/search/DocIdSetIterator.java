@@ -61,13 +61,7 @@ public abstract class DocIdSetIterator {
 
   /** A {@link DocIdSetIterator} that matches all documents up to {@code maxDoc - 1}. */
   public static DocIdSetIterator all(int maxDoc) {
-    return new DocIdSetIterator() {
-      int doc = -1;
-
-      @Override
-      public int docID() {
-        return doc;
-      }
+    return new AbstractDocIdSetIterator() {
 
       @Override
       public int nextDoc() {
@@ -117,13 +111,7 @@ public abstract class DocIdSetIterator {
     if (minDoc < 0) {
       throw new IllegalArgumentException("minDoc must be >= 0 but got minDoc=" + minDoc);
     }
-    return new DocIdSetIterator() {
-      private int doc = -1;
-
-      @Override
-      public int docID() {
-        return doc;
-      }
+    return new AbstractDocIdSetIterator() {
 
       @Override
       public int nextDoc() {
