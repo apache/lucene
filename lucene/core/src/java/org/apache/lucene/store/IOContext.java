@@ -18,6 +18,8 @@ package org.apache.lucene.store;
 
 import org.apache.lucene.util.Constants;
 
+import java.util.Objects;
+
 /**
  * IOContext holds additional details on the merge/search context. An IOContext object can never be
  * passed as a {@code null} parameter to either {@link
@@ -55,12 +57,64 @@ public interface IOContext {
 
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {
-    return new MergeIOContext(mergeInfo);
+    Objects.requireNonNull(mergeInfo);
+    return new IOContext() {
+      @Override
+      public Context context() {
+        return Context.MERGE;
+      }
+
+      @Override
+      public MergeInfo mergeInfo() {
+        return mergeInfo;
+      }
+
+      @Override
+      public FlushInfo flushInfo() {
+        return null;
+      }
+
+      @Override
+      public ReadAdvice readAdvice() {
+        return ReadAdvice.SEQUENTIAL;
+      }
+
+      @Override
+      public IOContext withReadAdvice(ReadAdvice advice) {
+        return this;
+      }
+    };
   }
 
   /** Returns an {@link IOContext} for flushing with the specified {@link FlushInfo} */
   static IOContext flush(FlushInfo flushInfo) {
-    return new FlushIOContext(flushInfo);
+    Objects.requireNonNull(flushInfo);
+    return new IOContext() {
+      @Override
+      public Context context() {
+        return Context.FLUSH;
+      }
+
+      @Override
+      public MergeInfo mergeInfo() {
+        return null;
+      }
+
+      @Override
+      public FlushInfo flushInfo() {
+        return flushInfo;
+      }
+
+      @Override
+      public ReadAdvice readAdvice() {
+        return ReadAdvice.SEQUENTIAL;
+      }
+
+      @Override
+      public IOContext withReadAdvice(ReadAdvice advice) {
+        return this;
+      }
+    };
   }
 
   /** The {@link Context} this context is for */
