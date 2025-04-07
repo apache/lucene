@@ -47,6 +47,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Test;
 
@@ -134,6 +135,7 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
             "Bin 0 should dominate in sparse distribution, got " + bin0Hits + " of " + total,
             total > 0 && bin0Hits >= total / 2);
       } finally {
+        IOUtils.close(wrapped, base);
       }
     }
   }
@@ -163,6 +165,7 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
         assertNotNull(docs);
         assertTrue("Expect partial results under tight SLA", docs.scoreDocs.length > 0);
       } finally {
+        IOUtils.close(wrapped, base);
       }
     }
   }
@@ -205,6 +208,7 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
         }
         exec.shutdown();
       } finally {
+        IOUtils.close(wrapped, base);
       }
     }
   }
