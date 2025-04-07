@@ -438,5 +438,4 @@ public class TestLucene101PostingsFormat extends BasePostingsFormatTestCase {
             }
         }
     }
-
 }

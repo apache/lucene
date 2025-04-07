@@ -91,7 +91,6 @@ public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testPerformanceQueries() throws Exception {
     try (IndexReader reader =
         BinScoreUtil.wrap(DirectoryReader.open(FSDirectory.open(Paths.get(indexPath))))) {
