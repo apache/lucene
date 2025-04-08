@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.queries.function;
 
-import java.util.function.Function;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
@@ -65,8 +64,7 @@ public class TestLongNormValueSource extends LuceneTestCase {
         searcher = newSearcher(reader);
         searcher.setSimilarity(sim);
 
-        Query q =
-            new FunctionQuery(((Function<String, ValueSource>) NormValueSource::new).apply(field));
+        Query q = new FunctionQuery(new NormValueSource(field));
         TopDocs docs = searcher.search(q, searcher.getIndexReader().numDocs(), new Sort(), true);
         final var expectedDocIds = new int[] {1, 0};
         final var expectedScoreDocs =
