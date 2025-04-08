@@ -43,10 +43,49 @@ Bug Fixes
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
+Changes in Runtime Behavior
+---------------------
+* GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
+
 Other
 ---------------------
 
 * GITHUB#14229: Bump minimum required Java version to 25
+
+======================= Lucene 10.3.0 =======================
+
+API Changes
+---------------------
+* GITHUB#14401: Added LeafCollector#collectRange to enable collector to take
+  advantage of pre-aggregated data to speed up faceting. (Adrien Grand)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+* GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
+
+* GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
+
+* GITHUB#14425: KeywordField.newSetQuery() reuses prefixed terms (Mikhail Khludnev)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Build
+---------------------
+* Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
+
+Other
+---------------------
+(No changes)
 
 ======================= Lucene 10.2.0 =======================
 
@@ -108,6 +147,10 @@ New Features
 * GITHUB#13470: Added `TopDocs#rrf` to combine multiple TopDocs instances using
   reciprocal rank fusion. (Haren Lin, Adrien Grand)
 
+* GITHUB#14412: Allow skip cache factor to be updated dynamically. (Sagar Upadhyaya)
+
+* GITHUB#14094: New KNN query that early terminates when HNSW nearest neighbor queue saturates. (Tommaso Teofili)
+
 Improvements
 ---------------------
 
@@ -129,10 +172,6 @@ Improvements
 * GITHUB#14166: Log(ByteSize|Doc)MergePolicy now allow merging more than
   mergeFactor segments together when the merge is below the min merge size.
   (Adrien Grand)
-
-* GITHUB#14154: Add UnwrappingReuseStrategy for AnalyzerWrapper that consults
-  the wrapped analyzer's strategy to decide if components can be reused or need
-  to be updated. (Mayya Sharipova)
 
 * GITHUB#14192: Added support for RegExp to handle case insensitive matching
   across the full set of Unicode characters. (John Wagster)
@@ -218,6 +257,8 @@ Bug Fixes
 * GITHUB#14215, GITHUB#14249, GITHUB#14366: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent, Ignacio Vera)
 
 * GITHUB#14320: Fix DirectIOIndexInput seek to not read when position is within buffer (Chris Hegarty)
+
+* GITHUB#14436: Disable connectedComponents logic in HNSW graph building. Relates to GITHUB#14214, GITHUB#12627, GITHUB#13566. (Ben Trent)
 
 Changes in Runtime Behavior
 ---------------------

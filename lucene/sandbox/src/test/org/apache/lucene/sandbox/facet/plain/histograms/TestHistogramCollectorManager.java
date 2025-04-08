@@ -25,8 +25,11 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
@@ -136,6 +139,23 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     expectThrows(
         IllegalStateException.class,
         () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+
+    // Create a query so that bucket "1" (values from 4 to 8), which is in the middle of the range,
+    // doesn't match any docs. HistogramCollector should not add an entry with a count of 0 in this
+    // case.
+    Query query =
+        new BooleanQuery.Builder()
+            .add(NumericDocValuesField.newSlowRangeQuery("f", Long.MIN_VALUE, 2), Occur.SHOULD)
+            .add(NumericDocValuesField.newSlowRangeQuery("f", 10, Long.MAX_VALUE), Occur.SHOULD)
+            .build();
+    actualCounts = searcher.search(query, new HistogramCollectorManager("f", 4, 3));
+    expectedCounts = new LongIntHashMap();
+    for (long value : values) {
+      if (value <= 2 || value >= 10) {
+        expectedCounts.addTo(Math.floorDiv(value, 4), 1);
+      }
+    }
+    assertEquals(expectedCounts, actualCounts);
 
     reader.close();
     dir.close();

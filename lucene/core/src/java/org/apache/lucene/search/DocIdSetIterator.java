@@ -29,80 +29,15 @@ public abstract class DocIdSetIterator {
 
   /** An empty {@code DocIdSetIterator} instance */
   public static DocIdSetIterator empty() {
-    return new DocIdSetIterator() {
-      boolean exhausted = false;
-
-      @Override
-      public int advance(int target) {
-        assert !exhausted;
-        assert target >= 0;
-        exhausted = true;
-        return NO_MORE_DOCS;
-      }
-
-      @Override
-      public int docID() {
-        return exhausted ? NO_MORE_DOCS : -1;
-      }
-
-      @Override
-      public int nextDoc() {
-        assert !exhausted;
-        exhausted = true;
-        return NO_MORE_DOCS;
-      }
-
-      @Override
-      public long cost() {
-        return 0;
-      }
-    };
+    return new RangeDocIdSetIterator(0, 0);
   }
 
   /** A {@link DocIdSetIterator} that matches all documents up to {@code maxDoc - 1}. */
   public static DocIdSetIterator all(int maxDoc) {
-    return new DocIdSetIterator() {
-      int doc = -1;
-
-      @Override
-      public int docID() {
-        return doc;
-      }
-
-      @Override
-      public int nextDoc() {
-        return advance(doc + 1);
-      }
-
-      @Override
-      public int advance(int target) {
-        doc = target;
-        if (doc >= maxDoc) {
-          doc = NO_MORE_DOCS;
-        }
-        return doc;
-      }
-
-      @Override
-      public long cost() {
-        return maxDoc;
-      }
-
-      @Override
-      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
-        assert offset <= doc;
-        upTo = Math.min(upTo, maxDoc);
-        if (upTo > doc) {
-          bitSet.set(doc - offset, upTo - offset);
-          advance(upTo);
-        }
-      }
-
-      @Override
-      public int docIDRunEnd() throws IOException {
-        return maxDoc;
-      }
-    };
+    if (maxDoc < 0) {
+      throw new IllegalArgumentException("maxDoc must be >= 0, but got maxDoc=" + maxDoc);
+    }
+    return new RangeDocIdSetIterator(0, maxDoc);
   }
 
   /**
@@ -117,51 +52,62 @@ public abstract class DocIdSetIterator {
     if (minDoc < 0) {
       throw new IllegalArgumentException("minDoc must be >= 0 but got minDoc=" + minDoc);
     }
-    return new DocIdSetIterator() {
-      private int doc = -1;
+    return new RangeDocIdSetIterator(minDoc, maxDoc);
+  }
 
-      @Override
-      public int docID() {
-        return doc;
-      }
+  private static class RangeDocIdSetIterator extends DocIdSetIterator {
 
-      @Override
-      public int nextDoc() {
-        return advance(doc + 1);
-      }
+    private final int minDoc, maxDoc;
+    private int doc = -1;
 
-      @Override
-      public int advance(int target) {
-        if (target < minDoc) {
-          doc = minDoc;
-        } else if (target >= maxDoc) {
-          doc = NO_MORE_DOCS;
-        } else {
-          doc = target;
-        }
-        return doc;
-      }
+    RangeDocIdSetIterator(int minDoc, int maxDoc) {
+      // advance relies on minDoc <= maxDoc for correctness
+      assert minDoc <= maxDoc;
+      this.minDoc = minDoc;
+      this.maxDoc = maxDoc;
+    }
 
-      @Override
-      public long cost() {
-        return maxDoc - minDoc;
-      }
+    @Override
+    public int docID() {
+      return doc;
+    }
 
-      @Override
-      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
-        assert offset <= doc;
-        upTo = Math.min(upTo, maxDoc);
-        if (upTo > doc) {
-          bitSet.set(doc - offset, upTo - offset);
-          advance(upTo);
-        }
-      }
+    @Override
+    public int nextDoc() {
+      return advance(doc + 1);
+    }
 
-      @Override
-      public int docIDRunEnd() throws IOException {
-        return maxDoc;
+    @Override
+    public int advance(int target) {
+      if (target >= maxDoc) {
+        doc = NO_MORE_DOCS;
+      } else if (target < minDoc) {
+        doc = minDoc;
+      } else {
+        doc = target;
       }
-    };
+      return doc;
+    }
+
+    @Override
+    public long cost() {
+      return maxDoc - minDoc;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
+      assert offset <= doc;
+      upTo = Math.min(upTo, maxDoc);
+      if (upTo > doc) {
+        bitSet.set(doc - offset, upTo - offset);
+        advance(upTo);
+      }
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return maxDoc;
+    }
   }
 
   /**
