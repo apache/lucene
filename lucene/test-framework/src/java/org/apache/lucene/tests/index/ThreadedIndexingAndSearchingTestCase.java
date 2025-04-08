@@ -190,8 +190,9 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                     addedField = null;
                   }
 
-                  // Maybe advance segment counter
-                  if (random().nextBoolean()) {
+                  // Maybe advance segment counter. Run with a relatively low probability to avoid
+                  // testing slowdowns caused by synchronous operations.
+                  if (random().nextInt(7) == 5) {
                     long newSegmentCounter = writer.getSegmentInfosCounter() + 100;
                     writer.advanceSegmentInfosCounter(newSegmentCounter);
                     if (VERBOSE) {

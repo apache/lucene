@@ -22,6 +22,8 @@ API Changes
 
 * GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
 
+* GITHUB#14417: Support modifying segmentInfos.counter in IndexWriter (Jialiang Guo)
+
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
