@@ -17,7 +17,9 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.BaseBitSetTestCase;
@@ -713,5 +715,64 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         }
       }
     }
+  }
+
+  private static int slowCardinality(FixedBitSet bitSet, int from, int to) {
+    BitSetIterator iterator = new BitSetIterator(bitSet, bitSet.cardinality());
+    int cardinality = 0;
+    for (int i = iterator.advance(from); i < to; i = iterator.nextDoc()) {
+      cardinality += 1;
+    }
+    return cardinality;
+  }
+
+  public void testRangeCardinality() {
+    FixedBitSet bitSet = new FixedBitSet(0);
+    assertEquals(0, bitSet.cardinality(0, 0));
+
+    bitSet = new FixedBitSet(TestUtil.nextInt(random(), 64, 4096));
+    for (int i = 0; i < bitSet.length(); i += TestUtil.nextInt(random(), 1, 16)) {
+      bitSet.set(i);
+    }
+    assertEquals(0, bitSet.cardinality(0, 0));
+    assertEquals(0, bitSet.cardinality(bitSet.length(), bitSet.length()));
+    assertEquals(slowCardinality(bitSet, 0, 1), bitSet.cardinality(0, 1));
+    assertEquals(
+        slowCardinality(bitSet, bitSet.length() - 1, bitSet.length()),
+        bitSet.cardinality(bitSet.length() - 1, bitSet.length()));
+    assertEquals(slowCardinality(bitSet, 0, 63), bitSet.cardinality(0, 63));
+    assertEquals(
+        slowCardinality(bitSet, bitSet.length() - 63, bitSet.length()),
+        bitSet.cardinality(bitSet.length() - 63, bitSet.length()));
+    assertEquals(
+        slowCardinality(bitSet, 1, bitSet.length() - 1),
+        bitSet.cardinality(1, bitSet.length() - 1));
+  }
+
+  public void testForEach() throws IOException {
+    FixedBitSet bitSet = new FixedBitSet(TestUtil.nextInt(random(), 64, 4096));
+    for (int i = 0; i < bitSet.length(); i += TestUtil.nextInt(random(), 1, 16)) {
+      bitSet.set(i);
+    }
+    for (int iter = 0; iter < 100; ++iter) {
+      int from = TestUtil.nextInt(random(), 0, bitSet.length());
+      int to = TestUtil.nextInt(random(), from, bitSet.length());
+      doTestForEach(bitSet, from, to);
+    }
+  }
+
+  private void doTestForEach(FixedBitSet bitSet, int from, int to) throws IOException {
+    int base = TestUtil.nextInt(random(), 0, 100);
+
+    List<Integer> expected = new ArrayList<>();
+    BitSetIterator iterator = new BitSetIterator(bitSet, bitSet.approximateCardinality());
+    for (int doc = iterator.advance(from); doc < to; doc = iterator.nextDoc()) {
+      expected.add(base + doc);
+    }
+
+    List<Integer> actual = new ArrayList<>();
+    bitSet.forEach(from, to, base, actual::add);
+
+    assertEquals(expected, actual);
   }
 }

@@ -531,7 +531,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       return new ConcurrentHnswMerger(
           fieldInfo, scorerSupplier, M, beamWidth, mergeExec, numMergeWorkers);
     }
-    if (parallelMergeTaskExecutor != null) {
+    if (parallelMergeTaskExecutor != null && numParallelMergeWorkers > 1) {
       return new ConcurrentHnswMerger(
           fieldInfo,
           scorerSupplier,
