@@ -187,10 +187,10 @@ public class TestIndexReaderFunctions extends LuceneTestCase {
     assertCacheable(vs, false);
   }
 
-  public void testPositionLength() throws Exception {
-    LongValuesSource vs = IndexReaderFunctions.positionLength("text");
+  public void testFieldLength() throws Exception {
+    LongValuesSource vs = IndexReaderFunctions.fieldLength("text");
     assertHits(vs.toDoubleValuesSource(), new float[] {6, 2});
-    assertEquals("posLen(text)", vs.toString());
+    assertEquals("fieldLength(text)", vs.toString());
     assertCacheable(vs, true);
   }
 

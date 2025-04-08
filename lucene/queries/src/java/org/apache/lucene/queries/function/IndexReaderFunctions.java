@@ -19,6 +19,7 @@ package org.apache.lucene.queries.function;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
@@ -31,7 +32,7 @@ import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
-import org.apache.lucene.util.SmallFloat;
+import org.apache.lucene.search.similarities.Similarity;
 
 /**
  * Class exposing static helper methods for generating DoubleValuesSource instances over some
@@ -304,13 +305,14 @@ public final class IndexReaderFunctions {
   }
 
   /**
-   * Creates a value source that returns the position length (number of terms) of a field,
-   * approximated from the "norm".
+   * Creates a value source that returns a field's length measured in number of term positions. It
+   * comes from the "norm", and it's approximated, as determined by {@link
+   * Similarity#computeNorm(FieldInvertState)}.
    *
    * @see org.apache.lucene.index.LeafReader#getNormValues(String)
    */
-  public static LongValuesSource positionLength(String field) {
-    return new PositionLengthValuesSource(field);
+  public static LongValuesSource fieldLength(String field) {
+    return new FieldLengthValuesSource(field);
   }
 
   @FunctionalInterface
@@ -426,11 +428,18 @@ public final class IndexReaderFunctions {
     }
   }
 
-  private static class PositionLengthValuesSource extends LongValuesSource {
+  private static class FieldLengthValuesSource extends LongValuesSource {
     private final String field;
+    private Similarity similarity;
 
-    private PositionLengthValuesSource(String field) {
-      this.field = field;
+    private FieldLengthValuesSource(String field) {
+      this.field = Objects.requireNonNull(field);
+    }
+
+    @Override
+    public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
+      this.similarity = searcher.getSimilarity(); // isn't field-specific
+      return this;
     }
 
     @Override
@@ -443,8 +452,7 @@ public final class IndexReaderFunctions {
       return new LongValues() {
         @Override
         public long longValue() throws IOException {
-          // reverses Similarity.computeNorm, which could technically be overridden but nobody does
-          return SmallFloat.byte4ToInt((byte) norms.longValue());
+          return similarity.decodeNormToLength(norms.longValue());
         }
 
         @Override
@@ -465,26 +473,19 @@ public final class IndexReaderFunctions {
     }
 
     @Override
-    public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
-      return this;
-    }
-
-    @Override
     public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      PositionLengthValuesSource that = (PositionLengthValuesSource) o;
-      return Objects.equals(field, that.field);
+      if (!(o instanceof FieldLengthValuesSource that)) return false;
+      return field.equals(that.field);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(field);
+      return Objects.hash(getClass(), field);
     }
 
     @Override
     public String toString() {
-      return "posLen(" + field + ")";
+      return "fieldLength(" + field + ")";
     }
   }
 }
