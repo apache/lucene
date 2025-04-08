@@ -5758,7 +5758,7 @@ public class IndexWriter
     }
   }
 
-  void maybeCloseOnTragicEvent() throws IOException {
+  private void maybeCloseOnTragicEvent() throws IOException {
     // We cannot hold IW's lock here else it can lead to deadlock:
     assert Thread.holdsLock(this) == false;
     assert Thread.holdsLock(fullFlushLock) == false;

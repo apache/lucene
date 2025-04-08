@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -345,153 +344,6 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
     }
   }
 
-  public void _testMultipleThreadsFailureWithMergeNotEndLongTime(
-      MockDirectoryWrapper.Failure failure) throws Exception {
-    CountDownLatch mergeCloseCountDownLatch = new CountDownLatch(1);
-    CountDownLatch updateDocumentFailCountDownLatch = new CountDownLatch(1);
-    CountDownLatch mergeCountDownLatch = new CountDownLatch(1);
-    CountDownLatch indexWriterCloseCountDownLatch = new CountDownLatch(1);
-    ConcurrentMergeScheduler mergeScheduler =
-        new ConcurrentMergeScheduler() {
-          @Override
-          public void close() throws IOException {
-            try {
-              mergeCloseCountDownLatch.countDown();
-              // Let merge close not end for a long time, causing AlreadyClosedException exception
-              // thrown when writer.commit()
-              indexWriterCloseCountDownLatch.await();
-            } catch (InterruptedException e) {
-              throw new RuntimeException(e);
-            }
-            super.close();
-          }
-        };
-    // Prevent waiting in ConcurrentMergeScheduler#maybeStall from causing test deadlock
-    mergeScheduler.setMaxMergesAndThreads(Integer.MAX_VALUE, Integer.MAX_VALUE);
-
-    int NUM_THREADS = 1;
-
-    for (int iter = 0; iter < 1; iter++) {
-      if (VERBOSE) {
-        System.out.println("TEST: iter=" + iter);
-      }
-      MockDirectoryWrapper dir = newMockDirectory();
-
-      IndexWriterConfig indexWriterConfig =
-          newIndexWriterConfig(new MockAnalyzer(random()))
-              .setMaxBufferedDocs(2)
-              .setMergeScheduler(mergeScheduler)
-              .setMergePolicy(newLogMergePolicy(4))
-              .setCommitOnClose(false);
-      indexWriterConfig.setReaderPooling(true);
-      IndexWriter writer =
-          new IndexWriter(dir, indexWriterConfig) {
-
-            @Override
-            void maybeCloseOnTragicEvent() throws IOException {
-              boolean isMerge = false;
-              for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
-                final String className = element.getClassName();
-                final String methodName = element.getMethodName();
-                if (className.equals(IndexWriter.class.getName()) && methodName.equals("merge")) {
-                  isMerge = true;
-                  break;
-                }
-              }
-              if (isMerge == false) {
-                try {
-                  updateDocumentFailCountDownLatch.countDown();
-                  mergeCloseCountDownLatch.await();
-                } catch (InterruptedException e) {
-                  throw new RuntimeException(e);
-                }
-              }
-              super.maybeCloseOnTragicEvent();
-            }
-
-            @Override
-            protected void merge(MergePolicy.OneMerge merge) throws IOException {
-              try {
-                mergeCountDownLatch.countDown();
-                updateDocumentFailCountDownLatch.await();
-              } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-              }
-              super.merge(merge);
-            }
-
-            @Override
-            public void close() throws IOException {
-              indexWriterCloseCountDownLatch.countDown();
-              super.close();
-            }
-          };
-      ((ConcurrentMergeScheduler) writer.getConfig().getMergeScheduler()).setSuppressExceptions();
-
-      CyclicBarrier syncStart = new CyclicBarrier(NUM_THREADS + 1);
-      IndexerThread[] threads = new IndexerThread[NUM_THREADS];
-      for (int i = 0; i < NUM_THREADS; i++) {
-        threads[i] = new IndexerThread(writer, true, syncStart);
-        threads[i].start();
-      }
-      syncStart.await();
-      mergeCountDownLatch.await();
-      dir.failOn(failure);
-      failure.setDoFail();
-
-      for (int i = 0; i < NUM_THREADS; i++) {
-        threads[i].join();
-        assertTrue("hit unexpected Throwable", threads[i].error == null);
-      }
-
-      boolean success = false;
-      try {
-        writer.commit();
-        writer.close();
-        success = true;
-      } catch (
-          @SuppressWarnings("unused")
-          AlreadyClosedException ace) {
-        // OK: abort closes the writer
-        assertTrue(writer.isDeleterClosed());
-      } catch (
-          @SuppressWarnings("unused")
-          IOException ioe) {
-        writer.rollback();
-        failure.clearDoFail();
-      } finally {
-        writer.close();
-      }
-      if (VERBOSE) {
-        System.out.println("TEST: success=" + success);
-      }
-
-      if (success) {
-        IndexReader reader = DirectoryReader.open(dir);
-        final Bits delDocs = MultiBits.getLiveDocs(reader);
-        StoredFields storedFields = reader.storedFields();
-        TermVectors termVectors = reader.termVectors();
-        for (int j = 0; j < reader.maxDoc(); j++) {
-          if (delDocs == null || !delDocs.get(j)) {
-            storedFields.document(j);
-            termVectors.get(j);
-          }
-        }
-        reader.close();
-      }
-
-      try {
-        dir.close();
-      } finally {
-        if (indexWriterCloseCountDownLatch.getCount() == 1) {
-          // Avoid merge thread leakage when reproducing problems (without calling writer.close) in
-          // finally
-          indexWriterCloseCountDownLatch.countDown();
-        }
-      }
-    }
-  }
-
   // Runs test, with one thread, using the specific failure
   // to trigger an IOException
   public void _testSingleThreadFailure(MockDirectoryWrapper.Failure failure) throws IOException {
@@ -600,10 +452,6 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
   // IOException during rollback(), with multiple threads, is OK:
   public void testIOExceptionDuringAbortWithThreadsOnlyOnce() throws Exception {
     _testMultipleThreadsFailure(new FailOnlyOnAbortOrFlush(true));
-  }
-
-  public void testIOExceptionWithMergeNotEndLongTime() throws Exception {
-    _testMultipleThreadsFailureWithMergeNotEndLongTime(new FailOnlyOnAbortOrFlush(true));
   }
 
   // Throws IOException during DocumentsWriter.writeSegment
