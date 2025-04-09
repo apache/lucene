@@ -120,7 +120,8 @@ class TrieBuilder {
    */
   void append(TrieBuilder trieBuilder) {
     if (status != Status.BUILDING || trieBuilder.status != Status.BUILDING) {
-      throw new IllegalStateException("tries have wrong status.");
+      throw new IllegalStateException(
+          "tries have wrong status, got this: " + status + ", append: " + trieBuilder.status);
     }
     assert this.maxKey.compareTo(trieBuilder.minKey) < 0;
 
@@ -144,7 +145,7 @@ class TrieBuilder {
         aLast.next = bFirst.next;
         a.childrenNum += b.childrenNum - 1;
         a.lastChild = b.lastChild;
-        assertChildrenLabelInOrder(a);
+        assert assertChildrenLabelInOrder(a);
       }
 
       a = aLast;
@@ -162,7 +163,7 @@ class TrieBuilder {
       a.lastChild = b.lastChild;
       a.childrenNum += b.childrenNum;
     }
-    assertChildrenLabelInOrder(a);
+    assert assertChildrenLabelInOrder(a);
 
     this.maxKey = trieBuilder.maxKey;
     trieBuilder.status = Status.DESTROYED;
@@ -198,7 +199,7 @@ class TrieBuilder {
 
   void save(DataOutput meta, IndexOutput index) throws IOException {
     if (status != Status.BUILDING) {
-      throw new IllegalStateException("only unsaved trie can be saved");
+      throw new IllegalStateException("only unsaved trie can be saved, got: " + status);
     }
     meta.writeVLong(index.getFilePointer());
     saveNodes(index);
