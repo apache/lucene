@@ -169,18 +169,18 @@ public class SearcherTaxonomyManager
       return null;
     } else {
       DirectoryTaxonomyReader tr = null;
-      // refresh taxonomy is searcher was refreshed to latest commit
-      if (((DirectoryReader) newReader).isCurrent()) {
+      // taxonomy should always be ahead of searchers. Otherwise, searchers
+      // might reference ordinals that taxonomy doesn't know of.
+      // To ensure this, we always refresh taxonomy on the latest commit.
+      try {
+        tr = TaxonomyReader.openIfChanged(ref.taxonomyReader);
+      } catch (Throwable t1) {
         try {
-          tr = TaxonomyReader.openIfChanged(ref.taxonomyReader);
-        } catch (Throwable t1) {
-          try {
-            IOUtils.close(newReader);
-          } catch (Throwable t2) {
-            t2.addSuppressed(t2);
-          }
-          throw t1;
+          IOUtils.close(newReader);
+        } catch (Throwable t2) {
+          t2.addSuppressed(t2);
         }
+        throw t1;
       }
       if (tr == null) {
         ref.taxonomyReader.incRef();
