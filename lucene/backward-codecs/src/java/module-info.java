@@ -31,6 +31,7 @@ module org.apache.lucene.backward_codecs {
   exports org.apache.lucene.backward_codecs.lucene86;
   exports org.apache.lucene.backward_codecs.lucene87;
   exports org.apache.lucene.backward_codecs.lucene90;
+  exports org.apache.lucene.backward_codecs.lucene90.blocktree;
   exports org.apache.lucene.backward_codecs.lucene91;
   exports org.apache.lucene.backward_codecs.lucene92;
   exports org.apache.lucene.backward_codecs.lucene94;
@@ -38,6 +39,7 @@ module org.apache.lucene.backward_codecs {
   exports org.apache.lucene.backward_codecs.lucene99;
   exports org.apache.lucene.backward_codecs.lucene912;
   exports org.apache.lucene.backward_codecs.lucene100;
+  exports org.apache.lucene.backward_codecs.lucene101;
   exports org.apache.lucene.backward_codecs.packed;
   exports org.apache.lucene.backward_codecs.store;
 
