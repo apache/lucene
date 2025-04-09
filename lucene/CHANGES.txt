@@ -22,8 +22,6 @@ API Changes
 
 * GITHUB#14291: Remove IOException from ScorerSupplier#setTopLevelScoringClause signature (Luca Cavanna)
 
-* GITHUB#14417: Support modifying segmentInfos.counter in IndexWriter (Jialiang Guo)
-
 New Features
 ---------------------
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
@@ -60,6 +58,8 @@ API Changes
 ---------------------
 * GITHUB#14401: Added LeafCollector#collectRange to enable collector to take
   advantage of pre-aggregated data to speed up faceting. (Adrien Grand)
+
+* GITHUB#14417: Support modifying segmentInfos.counter in IndexWriter (Jialiang Guo)
 
 New Features
 ---------------------
