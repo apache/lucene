@@ -19,9 +19,7 @@ package org.apache.lucene.tests.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.util.FixedBitSet;
@@ -36,31 +34,27 @@ public class AssertingScorer extends Scorer {
     FINISHED
   };
 
-  public static Scorer wrap(
-      Random random, Scorer other, ScoreMode scoreMode, boolean canCallMinCompetitiveScore) {
+  public static Scorer wrap(Scorer other, boolean canScore, boolean canSetMinCompetitiveScore) {
     if (other == null) {
       return null;
     }
-    return new AssertingScorer(random, other, scoreMode, canCallMinCompetitiveScore);
+    return new AssertingScorer(other, canScore, canSetMinCompetitiveScore);
   }
 
-  final Random random;
   final Scorer in;
-  final ScoreMode scoreMode;
-  final boolean canCallMinCompetitiveScore;
+  final boolean canScore;
+  final boolean canSetMinCompetitiveScore;
 
   IteratorState state = IteratorState.ITERATING;
   int doc;
   float minCompetitiveScore = 0;
   int lastShallowTarget = -1;
 
-  private AssertingScorer(
-      Random random, Scorer in, ScoreMode scoreMode, boolean canCallMinCompetitiveScore) {
-    this.random = random;
+  private AssertingScorer(Scorer in, boolean canScore, boolean canSetMinCompetitiveScore) {
     this.in = in;
-    this.scoreMode = scoreMode;
+    this.canScore = canScore;
+    this.canSetMinCompetitiveScore = canSetMinCompetitiveScore;
     this.doc = in.docID();
-    this.canCallMinCompetitiveScore = canCallMinCompetitiveScore;
   }
 
   public Scorer getIn() {
@@ -80,8 +74,8 @@ public class AssertingScorer extends Scorer {
 
   @Override
   public void setMinCompetitiveScore(float score) throws IOException {
-    assert scoreMode == ScoreMode.TOP_SCORES;
-    assert canCallMinCompetitiveScore;
+    assert canScore;
+    assert canSetMinCompetitiveScore;
     assert Float.isNaN(score) == false;
     assert score >= minCompetitiveScore;
     in.setMinCompetitiveScore(score);
@@ -90,7 +84,7 @@ public class AssertingScorer extends Scorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    assert scoreMode.needsScores();
+    assert canScore;
     assert target >= lastShallowTarget
         : "called on decreasing targets: target = "
             + target
@@ -106,7 +100,7 @@ public class AssertingScorer extends Scorer {
 
   @Override
   public float getMaxScore(int upTo) throws IOException {
-    assert scoreMode.needsScores();
+    assert canScore;
     assert upTo >= lastShallowTarget : "uTo = " + upTo + " < last target = " + lastShallowTarget;
     assert docID() >= 0 || lastShallowTarget >= 0
         : "Cannot get max scores until the iterator is positioned or advanceShallow has been called";
@@ -116,7 +110,7 @@ public class AssertingScorer extends Scorer {
 
   @Override
   public float score() throws IOException {
-    assert scoreMode.needsScores();
+    assert canScore;
     assert iterating() : state;
     final float score = in.score();
     assert !Float.isNaN(score) : "NaN score for in=" + in;
