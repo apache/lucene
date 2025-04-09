@@ -30,6 +30,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -141,40 +142,22 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
 
   abstract static class DenseNormsIterator extends NumericDocValues {
 
-    final int maxDoc;
-    int doc = -1;
+    final DocIdSetIterator iterator;
 
     DenseNormsIterator(int maxDoc) {
-      this.maxDoc = maxDoc;
+      this.iterator = DocIdSetIterator.all(maxDoc);
     }
 
     @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target >= maxDoc) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      this.doc = target;
+      int r = iterator.advance(target);
+      assert r == target;
       return true;
-    }
-
-    @Override
-    public long cost() {
-      return maxDoc;
     }
   }
 
@@ -187,28 +170,13 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
     }
 
     @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return disi.advance(target);
+    public DocIdSetIterator iterator() {
+      return disi;
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
       return disi.advanceExact(target);
-    }
-
-    @Override
-    public long cost() {
-      return disi.cost();
     }
   }
 
@@ -396,28 +364,28 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
           return new DenseNormsIterator(maxDoc) {
             @Override
             public long longValue() throws IOException {
-              return slice.readByte(doc);
+              return slice.readByte(iterator.docID());
             }
           };
         case 2:
           return new DenseNormsIterator(maxDoc) {
             @Override
             public long longValue() throws IOException {
-              return slice.readShort(((long) doc) << 1);
+              return slice.readShort(((long) iterator.docID()) << 1);
             }
           };
         case 4:
           return new DenseNormsIterator(maxDoc) {
             @Override
             public long longValue() throws IOException {
-              return slice.readInt(((long) doc) << 2);
+              return slice.readInt(((long) iterator.docID()) << 2);
             }
           };
         case 8:
           return new DenseNormsIterator(maxDoc) {
             @Override
             public long longValue() throws IOException {
-              return slice.readLong(((long) doc) << 3);
+              return slice.readLong(((long) iterator.docID()) << 3);
             }
           };
         default:

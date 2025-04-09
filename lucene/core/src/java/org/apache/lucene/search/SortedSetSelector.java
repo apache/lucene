@@ -91,6 +91,7 @@ public class SortedSetSelector {
   /** Wraps a SortedSetDocValues and returns the first ordinal (min) */
   static class MinValue extends SortedDocValues {
     final SortedSetDocValues in;
+    private int lastDoc = -1;
     private int ord;
 
     MinValue(SortedSetDocValues in) {
@@ -98,40 +99,21 @@ public class SortedSetSelector {
     }
 
     @Override
-    public int docID() {
-      return in.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      in.nextDoc();
-      setOrd();
-      return docID();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      in.advance(target);
-      setOrd();
-      return docID();
+    public DocIdSetIterator iterator() {
+      return in.iterator();
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      if (in.advanceExact(target)) {
-        setOrd();
-        return true;
+      return in.advanceExact(target);
+    }
+
+    @Override
+    public int ordValue() throws IOException {
+      if (lastDoc != in.iterator().docID()) {
+        ord = (int) in.nextOrd();
+        lastDoc = in.iterator().docID();
       }
-      return false;
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
-    }
-
-    @Override
-    public int ordValue() {
       return ord;
     }
 
@@ -149,17 +131,12 @@ public class SortedSetSelector {
     public int lookupTerm(BytesRef key) throws IOException {
       return (int) in.lookupTerm(key);
     }
-
-    private void setOrd() throws IOException {
-      if (docID() != NO_MORE_DOCS) {
-        ord = (int) in.nextOrd();
-      }
-    }
   }
 
   /** Wraps a SortedSetDocValues and returns the last ordinal (max) */
   static class MaxValue extends SortedDocValues {
     final SortedSetDocValues in;
+    private int lastDoc = -1;
     private int ord;
 
     MaxValue(SortedSetDocValues in) {
@@ -167,40 +144,25 @@ public class SortedSetSelector {
     }
 
     @Override
-    public int docID() {
-      return in.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      in.nextDoc();
-      setOrd();
-      return docID();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      in.advance(target);
-      setOrd();
-      return docID();
+    public DocIdSetIterator iterator() {
+      return in.iterator();
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      if (in.advanceExact(target)) {
-        setOrd();
-        return true;
+      return in.advanceExact(target);
+    }
+
+    @Override
+    public int ordValue() throws IOException {
+      if (lastDoc != in.iterator().docID()) {
+        int docValueCount = in.docValueCount();
+        for (int i = 0; i < docValueCount - 1; i++) {
+          in.nextOrd();
+        }
+        ord = (int) in.nextOrd();
+        lastDoc = in.iterator().docID();
       }
-      return false;
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
-    }
-
-    @Override
-    public int ordValue() {
       return ord;
     }
 
@@ -218,21 +180,12 @@ public class SortedSetSelector {
     public int lookupTerm(BytesRef key) throws IOException {
       return (int) in.lookupTerm(key);
     }
-
-    private void setOrd() throws IOException {
-      if (docID() != NO_MORE_DOCS) {
-        int docValueCount = in.docValueCount();
-        for (int i = 0; i < docValueCount - 1; i++) {
-          in.nextOrd();
-        }
-        ord = (int) in.nextOrd();
-      }
-    }
   }
 
   /** Wraps a SortedSetDocValues and returns the middle ordinal (or min of the two) */
   static class MiddleMinValue extends SortedDocValues {
     final SortedSetDocValues in;
+    private int lastDoc = -1;
     private int ord;
 
     MiddleMinValue(SortedSetDocValues in) {
@@ -240,40 +193,26 @@ public class SortedSetSelector {
     }
 
     @Override
-    public int docID() {
-      return in.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      in.nextDoc();
-      setOrd();
-      return docID();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      in.advance(target);
-      setOrd();
-      return docID();
+    public DocIdSetIterator iterator() {
+      return in.iterator();
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      if (in.advanceExact(target)) {
-        setOrd();
-        return true;
+      return in.advanceExact(target);
+    }
+
+    @Override
+    public int ordValue() throws IOException {
+      if (lastDoc != in.iterator().docID()) {
+        int docValueCount = in.docValueCount();
+        int targetIdx = (docValueCount - 1) >>> 1;
+        for (int i = 0; i < targetIdx; i++) {
+          in.nextOrd();
+        }
+        ord = (int) in.nextOrd();
+        lastDoc = in.iterator().docID();
       }
-      return false;
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
-    }
-
-    @Override
-    public int ordValue() {
       return ord;
     }
 
@@ -291,22 +230,12 @@ public class SortedSetSelector {
     public int lookupTerm(BytesRef key) throws IOException {
       return (int) in.lookupTerm(key);
     }
-
-    private void setOrd() throws IOException {
-      if (docID() != NO_MORE_DOCS) {
-        int docValueCount = in.docValueCount();
-        int targetIdx = (docValueCount - 1) >>> 1;
-        for (int i = 0; i < targetIdx; i++) {
-          in.nextOrd();
-        }
-        ord = (int) in.nextOrd();
-      }
-    }
   }
 
   /** Wraps a SortedSetDocValues and returns the middle ordinal (or max of the two) */
   static class MiddleMaxValue extends SortedDocValues {
     final SortedSetDocValues in;
+    private int lastDoc = -1;
     private int ord;
 
     MiddleMaxValue(SortedSetDocValues in) {
@@ -314,40 +243,26 @@ public class SortedSetSelector {
     }
 
     @Override
-    public int docID() {
-      return in.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      in.nextDoc();
-      setOrd();
-      return docID();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      in.advance(target);
-      setOrd();
-      return docID();
+    public DocIdSetIterator iterator() {
+      return in.iterator();
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      if (in.advanceExact(target)) {
-        setOrd();
-        return true;
+      return in.advanceExact(target);
+    }
+
+    @Override
+    public int ordValue() throws IOException {
+      if (lastDoc != in.iterator().docID()) {
+        int docValueCount = in.docValueCount();
+        int targetIdx = docValueCount >>> 1;
+        for (int i = 0; i < targetIdx; i++) {
+          in.nextOrd();
+        }
+        ord = (int) in.nextOrd();
+        lastDoc = in.iterator().docID();
       }
-      return false;
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
-    }
-
-    @Override
-    public int ordValue() {
       return ord;
     }
 
@@ -364,17 +279,6 @@ public class SortedSetSelector {
     @Override
     public int lookupTerm(BytesRef key) throws IOException {
       return (int) in.lookupTerm(key);
-    }
-
-    private void setOrd() throws IOException {
-      if (docID() != NO_MORE_DOCS) {
-        int docValueCount = in.docValueCount();
-        int targetIdx = docValueCount >>> 1;
-        for (int i = 0; i < targetIdx; i++) {
-          in.nextOrd();
-        }
-        ord = (int) in.nextOrd();
-      }
     }
   }
 }

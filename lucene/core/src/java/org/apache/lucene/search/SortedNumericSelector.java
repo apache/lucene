@@ -103,6 +103,7 @@ public class SortedNumericSelector {
   /** Wraps a SortedNumericDocValues and returns the first value (min) */
   static class MinValue extends NumericDocValues {
     final SortedNumericDocValues in;
+    private int lastDoc = -1;
     private long value;
 
     MinValue(SortedNumericDocValues in) {
@@ -110,44 +111,21 @@ public class SortedNumericSelector {
     }
 
     @Override
-    public int docID() {
-      return in.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      int docID = in.nextDoc();
-      if (docID != NO_MORE_DOCS) {
-        value = in.nextValue();
-      }
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      int docID = in.advance(target);
-      if (docID != NO_MORE_DOCS) {
-        value = in.nextValue();
-      }
-      return docID;
+    public DocIdSetIterator iterator() {
+      return in.iterator();
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      if (in.advanceExact(target)) {
+      return in.advanceExact(target);
+    }
+
+    @Override
+    public long longValue() throws IOException {
+      if (lastDoc != in.iterator().docID()) {
         value = in.nextValue();
-        return true;
+        lastDoc = in.iterator().docID();
       }
-      return false;
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
-    }
-
-    @Override
-    public long longValue() {
       return value;
     }
   }
@@ -155,6 +133,7 @@ public class SortedNumericSelector {
   /** Wraps a SortedNumericDocValues and returns the last value (max) */
   static class MaxValue extends NumericDocValues {
     final SortedNumericDocValues in;
+    private int lastDoc = -1;
     private long value;
 
     MaxValue(SortedNumericDocValues in) {
@@ -162,51 +141,24 @@ public class SortedNumericSelector {
     }
 
     @Override
-    public int docID() {
-      return in.docID();
-    }
-
-    private void setValue() throws IOException {
-      int count = in.docValueCount();
-      for (int i = 0; i < count; i++) {
-        value = in.nextValue();
-      }
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      int docID = in.nextDoc();
-      if (docID != NO_MORE_DOCS) {
-        setValue();
-      }
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      int docID = in.advance(target);
-      if (docID != NO_MORE_DOCS) {
-        setValue();
-      }
-      return docID;
+    public DocIdSetIterator iterator() {
+      return in.iterator();
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      if (in.advanceExact(target)) {
-        setValue();
-        return true;
+      return in.advanceExact(target);
+    }
+
+    @Override
+    public long longValue() throws IOException {
+      if (lastDoc != in.iterator().docID()) {
+        int count = in.docValueCount();
+        for (int i = 0; i < count; i++) {
+          value = in.nextValue();
+        }
+        lastDoc = in.iterator().docID();
       }
-      return false;
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
-    }
-
-    @Override
-    public long longValue() {
       return value;
     }
   }

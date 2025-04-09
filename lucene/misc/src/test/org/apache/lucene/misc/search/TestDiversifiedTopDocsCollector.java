@@ -149,29 +149,37 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
 
       return new NumericDocValues() {
 
-        @Override
-        public int docID() {
-          return sdv.docID() - context.docBase;
-        }
+        final DocIdSetIterator iterator =
+            new DocIdSetIterator() {
+              @Override
+              public int docID() {
+                return sdv.docID() - context.docBase;
+              }
+
+              @Override
+              public int nextDoc() throws IOException {
+                return sdv.nextDoc() - context.docBase;
+              }
+
+              @Override
+              public int advance(int target) throws IOException {
+                return sdv.advance(target + context.docBase);
+              }
+
+              @Override
+              public long cost() {
+                return 0;
+              }
+            };
 
         @Override
-        public int nextDoc() throws IOException {
-          return sdv.nextDoc() - context.docBase;
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return sdv.advance(target + context.docBase);
+        public DocIdSetIterator iterator() {
+          return iterator;
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
           return sdv.advanceExact(target + context.docBase);
-        }
-
-        @Override
-        public long cost() {
-          return 0;
         }
 
         @Override
@@ -201,28 +209,13 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     protected NumericDocValues getKeys(LeafReaderContext context) {
       return new NumericDocValues() {
         @Override
-        public int docID() {
-          return vals.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return vals.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return vals.advance(target);
+        public DocIdSetIterator iterator() {
+          return vals;
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
           return vals.advanceExact(target);
-        }
-
-        @Override
-        public long cost() {
-          return vals.cost();
         }
 
         @Override

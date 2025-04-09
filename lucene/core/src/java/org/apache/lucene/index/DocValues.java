@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /** This class contains utility methods and constants for DocValues */
@@ -26,35 +27,50 @@ public final class DocValues {
   /* no instantiation */
   private DocValues() {}
 
+  private static class EmptyDocIdSetIterator extends DocIdSetIterator {
+
+    private int doc = -1;
+
+    @Override
+    public int advance(int target) {
+      return doc = NO_MORE_DOCS;
+    }
+
+    public boolean advanceExact(int target) throws IOException {
+      doc = target;
+      return false;
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    @Override
+    public int nextDoc() {
+      return doc = NO_MORE_DOCS;
+    }
+
+    @Override
+    public long cost() {
+      return 0;
+    }
+  }
+
   /** An empty {@link BinaryDocValues} which returns no documents */
   public static final BinaryDocValues emptyBinary() {
     return new BinaryDocValues() {
-      private int doc = -1;
+
+      private final EmptyDocIdSetIterator iterator = new EmptyDocIdSetIterator();
 
       @Override
-      public int advance(int target) {
-        return doc = NO_MORE_DOCS;
+      public DocIdSetIterator iterator() {
+        return iterator;
       }
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        doc = target;
-        return false;
-      }
-
-      @Override
-      public int docID() {
-        return doc;
-      }
-
-      @Override
-      public int nextDoc() {
-        return doc = NO_MORE_DOCS;
-      }
-
-      @Override
-      public long cost() {
-        return 0;
+        return iterator.advanceExact(target);
       }
 
       @Override
@@ -68,32 +84,17 @@ public final class DocValues {
   /** An empty NumericDocValues which returns no documents */
   public static final NumericDocValues emptyNumeric() {
     return new NumericDocValues() {
-      private int doc = -1;
+
+      private final EmptyDocIdSetIterator iterator = new EmptyDocIdSetIterator();
 
       @Override
-      public int advance(int target) {
-        return doc = NO_MORE_DOCS;
+      public DocIdSetIterator iterator() {
+        return iterator;
       }
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        doc = target;
-        return false;
-      }
-
-      @Override
-      public int docID() {
-        return doc;
-      }
-
-      @Override
-      public int nextDoc() {
-        return doc = NO_MORE_DOCS;
-      }
-
-      @Override
-      public long cost() {
-        return 0;
+        return iterator.advanceExact(target);
       }
 
       @Override
@@ -109,32 +110,16 @@ public final class DocValues {
     final BytesRef empty = new BytesRef();
     return new SortedDocValues() {
 
-      private int doc = -1;
+      private final EmptyDocIdSetIterator iterator = new EmptyDocIdSetIterator();
 
       @Override
-      public int advance(int target) {
-        return doc = NO_MORE_DOCS;
+      public DocIdSetIterator iterator() {
+        return iterator;
       }
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        doc = target;
-        return false;
-      }
-
-      @Override
-      public int docID() {
-        return doc;
-      }
-
-      @Override
-      public int nextDoc() {
-        return doc = NO_MORE_DOCS;
-      }
-
-      @Override
-      public long cost() {
-        return 0;
+        return iterator.advanceExact(target);
       }
 
       @Override

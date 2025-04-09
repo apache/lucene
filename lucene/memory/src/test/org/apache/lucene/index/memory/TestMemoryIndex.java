@@ -315,7 +315,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals("c", sortedSetDocValues.lookupOrd(0L).utf8ToString());
     assertEquals("d", sortedSetDocValues.lookupOrd(1L).utf8ToString());
     assertEquals("f", sortedSetDocValues.lookupOrd(2L).utf8ToString());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, sortedDocValues.nextDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, sortedSetDocValues.nextDoc());
   }
 
   public void testDocValues_resetIterator() throws Exception {

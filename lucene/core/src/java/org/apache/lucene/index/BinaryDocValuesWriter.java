@@ -153,6 +153,7 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     final PackedLongValues.Iterator lengthsIterator;
     final DocIdSetIterator docsWithField;
     final DataInput bytesIterator;
+    int lastDoc = -1;
 
     BufferedBinaryDocValues(
         PackedLongValues lengths,
@@ -167,24 +168,8 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     }
 
     @Override
-    public int docID() {
-      return docsWithField.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      int docID = docsWithField.nextDoc();
-      if (docID != NO_MORE_DOCS) {
-        int length = Math.toIntExact(lengthsIterator.next());
-        value.setLength(length);
-        bytesIterator.readBytes(value.bytes(), 0, length);
-      }
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException();
+    public DocIdSetIterator iterator() {
+      return docsWithField;
     }
 
     @Override
@@ -193,12 +178,13 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     }
 
     @Override
-    public long cost() {
-      return docsWithField.cost();
-    }
-
-    @Override
-    public BytesRef binaryValue() {
+    public BytesRef binaryValue() throws IOException {
+      if (lastDoc != docsWithField.docID()) {
+        int length = Math.toIntExact(lengthsIterator.next());
+        value.setLength(length);
+        bytesIterator.readBytes(value.bytes(), 0, length);
+        lastDoc = docsWithField.docID();
+      }
       return value.get();
     }
   }
@@ -213,24 +199,34 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     }
 
     @Override
-    public int nextDoc() {
-      do {
-        docID++;
-        if (docID == dvs.offsets.length) {
-          return docID = NO_MORE_DOCS;
+    public DocIdSetIterator iterator() {
+      return new DocIdSetIterator() {
+        @Override
+        public int nextDoc() {
+          do {
+            docID++;
+            if (docID == dvs.offsets.length) {
+              return docID = NO_MORE_DOCS;
+            }
+          } while (dvs.offsets[docID] <= 0);
+          return docID;
         }
-      } while (dvs.offsets[docID] <= 0);
-      return docID;
-    }
 
-    @Override
-    public int docID() {
-      return docID;
-    }
+        @Override
+        public int docID() {
+          return docID;
+        }
 
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException("use nextDoc instead");
+        @Override
+        public int advance(int target) {
+          throw new UnsupportedOperationException("use nextDoc instead");
+        }
+
+        @Override
+        public long cost() {
+          return dvs.values.size();
+        }
+      };
     }
 
     @Override
@@ -242,11 +238,6 @@ class BinaryDocValuesWriter extends DocValuesWriter<BinaryDocValues> {
     public BytesRef binaryValue() {
       dvs.values.get(spare, dvs.offsets[docID] - 1);
       return spare.get();
-    }
-
-    @Override
-    public long cost() {
-      return dvs.values.size();
     }
   }
 

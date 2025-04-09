@@ -776,43 +776,24 @@ public class RandomPostingsTester {
           @Override
           public NumericDocValues getNorms(FieldInfo field) throws IOException {
             if (newFieldInfos.fieldInfo(field.number).hasNorms()) {
+              final DocIdSetIterator iterator = DocIdSetIterator.all(segmentInfo.maxDoc());
               return new NumericDocValues() {
 
-                int doc = -1;
-
                 @Override
-                public int nextDoc() throws IOException {
-                  if (++doc == segmentInfo.maxDoc()) {
-                    return doc = NO_MORE_DOCS;
-                  }
-                  return doc;
-                }
-
-                @Override
-                public int docID() {
-                  return doc;
-                }
-
-                @Override
-                public long cost() {
-                  return segmentInfo.maxDoc();
-                }
-
-                @Override
-                public int advance(int target) throws IOException {
-                  return doc =
-                      target >= segmentInfo.maxDoc() ? DocIdSetIterator.NO_MORE_DOCS : target;
+                public DocIdSetIterator iterator() {
+                  return iterator;
                 }
 
                 @Override
                 public boolean advanceExact(int target) throws IOException {
-                  doc = target;
+                  int r = iterator.advance(target);
+                  assert r == target;
                   return true;
                 }
 
                 @Override
                 public long longValue() throws IOException {
-                  return DOC_TO_NORM.applyAsLong(doc);
+                  return DOC_TO_NORM.applyAsLong(iterator.docID());
                 }
               };
             } else {

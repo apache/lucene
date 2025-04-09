@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 
 /**
  * Exposes multi-valued view over a single-valued instance.
@@ -43,28 +44,13 @@ final class SingletonSortedNumericDocValues extends SortedNumericDocValues {
   }
 
   @Override
-  public int docID() {
-    return in.docID();
-  }
-
-  @Override
-  public int nextDoc() throws IOException {
-    return in.nextDoc();
-  }
-
-  @Override
-  public int advance(int target) throws IOException {
-    return in.advance(target);
+  public DocIdSetIterator iterator() {
+    return in.iterator();
   }
 
   @Override
   public boolean advanceExact(int target) throws IOException {
     return in.advanceExact(target);
-  }
-
-  @Override
-  public long cost() {
-    return in.cost();
   }
 
   @Override

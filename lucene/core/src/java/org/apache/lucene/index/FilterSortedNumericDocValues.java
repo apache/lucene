@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.search.DocIdSetIterator;
 
 /** Delegates all methods to a wrapped {@link SortedNumericDocValues}. */
 public abstract class FilterSortedNumericDocValues extends SortedNumericDocValues {
@@ -29,6 +30,11 @@ public abstract class FilterSortedNumericDocValues extends SortedNumericDocValue
   public FilterSortedNumericDocValues(SortedNumericDocValues in) {
     Objects.requireNonNull(in);
     this.in = in;
+  }
+
+  @Override
+  public DocIdSetIterator iterator() {
+    return in.iterator();
   }
 
   @Override
@@ -44,25 +50,5 @@ public abstract class FilterSortedNumericDocValues extends SortedNumericDocValue
   @Override
   public int docValueCount() {
     return in.docValueCount();
-  }
-
-  @Override
-  public int docID() {
-    return in.docID();
-  }
-
-  @Override
-  public int nextDoc() throws IOException {
-    return in.nextDoc();
-  }
-
-  @Override
-  public int advance(int target) throws IOException {
-    return in.advance(target);
-  }
-
-  @Override
-  public long cost() {
-    return in.cost();
   }
 }
