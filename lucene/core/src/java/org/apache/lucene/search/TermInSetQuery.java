@@ -84,8 +84,30 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     termDataHashCode = termData.hashCode();
   }
 
+  /**
+   * Creates a new {@link IndexOrDocValuesQuery} combining two {@link TermInSetQuery} with the same
+   * terms allowing to pack them only once that's faster. Doc Values query always uses {@link
+   * MultiTermQuery#DOC_VALUES_REWRITE}.
+   *
+   * @param field field name for indexed and doc values queries.
+   * @param indexRewriteMethod rewrite method used for indexed query.
+   * @param terms collection of {@link BytesRef}. Note: passing {@link SortedSet} with default
+   *     comparator let to bypass terms sorting.
+   */
+  public static IndexOrDocValuesQuery newIndexOrDocValuesQuery(
+      RewriteMethod indexRewriteMethod, String field, Collection<BytesRef> terms) {
+    PrefixCodedTerms packed = packTerms(field, terms);
+    Query indexQuery = new TermInSetQuery(indexRewriteMethod, field, packed);
+    Query dvQuery = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, packed);
+    return new IndexOrDocValuesQuery(indexQuery, dvQuery);
+  }
+
   private TermInSetQuery(String field, PrefixCodedTerms termData) {
-    super(field, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
+    this(MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, field, termData);
+  }
+
+  private TermInSetQuery(RewriteMethod rewrite, String field, PrefixCodedTerms termData) {
+    super(field, rewrite);
     this.field = field;
     this.termData = termData;
     termDataHashCode = termData.hashCode();
