@@ -34,6 +34,16 @@ public class AssertingScorer extends Scorer {
     FINISHED
   };
 
+  /**
+   * Wrap the given scorer with additional checks.
+   *
+   * @param other the scorer
+   * @param canScore whether the scorer is allowed to compute scores, typically true for scoring
+   *     clauses of the query if the collector needs scores
+   * @param canSetMinCompetitiveScore whether the scorer is allowed to set min competitive scores,
+   *     typically true if the score mode is TOP_SCORES and this scorer is the top-level scoring
+   *     clause
+   */
   public static Scorer wrap(Scorer other, boolean canScore, boolean canSetMinCompetitiveScore) {
     if (other == null) {
       return null;
