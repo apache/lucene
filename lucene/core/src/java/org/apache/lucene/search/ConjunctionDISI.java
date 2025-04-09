@@ -127,7 +127,7 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
     if (iterators.size() == 1) {
       disi = iterators.get(0);
     } else {
-      // Sort the array the first time to allow the least frequent DocsEnum to lead the matching.
+      // Sort the list first to allow the sparser iterator to lead the matching.
       CollectionUtil.timSort(iterators, (o1, o2) -> Long.compare(o1.cost(), o2.cost()));
       disi = new ConjunctionDISI(iterators);
     }
