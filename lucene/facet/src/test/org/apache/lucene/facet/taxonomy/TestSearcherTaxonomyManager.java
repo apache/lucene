@@ -425,9 +425,7 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
       long newGen = sat.getSearcherCommitGeneration();
       assertEquals(newGen, oldGen + 1);
       stepsToCurrent++;
-      // taxonomy should refresh to latest commit only after searcher
-      // becomes current
-      assertEquals(sat.isSearcherCurrent(), sat.isTaxonomyCurrent());
+      assertTrue(sat.isTaxonomyCurrent());
     }
     assertEquals(numCommits, stepsToCurrent);
     sat.close();
