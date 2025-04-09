@@ -59,6 +59,8 @@ API Changes
 * GITHUB#14401: Added LeafCollector#collectRange to enable collector to take
   advantage of pre-aggregated data to speed up faceting. (Adrien Grand)
 
+* GITHUB#14417: Support modifying segmentInfos.counter in IndexWriter (Jialiang Guo)
+
 New Features
 ---------------------
 (No changes)
