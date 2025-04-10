@@ -55,21 +55,15 @@ public abstract class DocIdSetIterator {
     return new RangeDocIdSetIterator(minDoc, maxDoc);
   }
 
-  private static class RangeDocIdSetIterator extends DocIdSetIterator {
+  private static class RangeDocIdSetIterator extends AbstractDocIdSetIterator {
 
     private final int minDoc, maxDoc;
-    private int doc = -1;
 
     RangeDocIdSetIterator(int minDoc, int maxDoc) {
       // advance relies on minDoc <= maxDoc for correctness
       assert minDoc <= maxDoc;
       this.minDoc = minDoc;
       this.maxDoc = maxDoc;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
 
     @Override
