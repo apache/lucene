@@ -805,6 +805,17 @@ public class TestDeletionPolicy extends LuceneTestCase {
     dir.close();
   }
 
+  public void testKeepLastNCommitsDeletionPolicyWithZeroCommits() throws IOException {
+    int numCommitsToKeep = 0;
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                conf.setIndexDeletionPolicy(new KeepLastNCommitsDeletionPolicy(numCommitsToKeep)));
+    assertTrue(expected.getMessage().contains("number of recent commits to keep must be positive"));
+  }
+
   private void addDocWithID(IndexWriter writer, int id) throws IOException {
     Document doc = new Document();
     doc.add(newTextField("content", "aaa", Field.Store.NO));
