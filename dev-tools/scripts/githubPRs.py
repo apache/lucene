@@ -83,7 +83,7 @@ def main():
     gh = Github(token)
   else:
     gh = Github()
-  jira = JIRA("https://issues.apache.org/jira")  # this ctor has broken types in jira library. # pyright: ignore[reportArgumentType]
+  jira = JIRA("https://issues.apache.org/jira")
   result: dict[str, Any] = {}
   repo = gh.get_repo("apache/lucene")
   open_prs = repo.get_pulls(state="open")
