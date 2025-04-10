@@ -25,6 +25,7 @@ import static jdk.incubator.vector.VectorOperators.LSHR;
 import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 
+import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.FloatVector;
@@ -36,6 +37,8 @@ import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.store.MemorySegmentIndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -58,7 +61,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   private static final VectorSpecies<Integer> INT_SPECIES =
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
-  private static final VectorSpecies<Short> SHORT_SPECIES;
+  private static final VectorSpecies<Short> SHORT_SPECIES =
+      PanamaVectorConstants.PRERERRED_SHORT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES_128 = ByteVector.SPECIES_128;
   private static final VectorSpecies<Byte> BYTE_SPECIES_256 = ByteVector.SPECIES_256;
 
@@ -70,11 +74,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // compute BYTE/SHORT sizes relative to preferred integer vector size
     if (VECTOR_BITSIZE >= 256) {
       BYTE_SPECIES = ByteVector.SPECIES_MAX.withShape(VectorShape.forBitSize(VECTOR_BITSIZE >> 2));
-      SHORT_SPECIES =
-          ShortVector.SPECIES_MAX.withShape(VectorShape.forBitSize(VECTOR_BITSIZE >> 1));
     } else {
       BYTE_SPECIES = null;
-      SHORT_SPECIES = null;
     }
   }
 
@@ -771,6 +772,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
   // approach and counting trues on vector masks pays off.
   private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = INT_SPECIES.length() >= 8;
 
+  // Experiments suggest that we need at least 16 lanes so that the overhead of going with the
+  // vector approach and counting trues on vector masks pays off.
+  private static final boolean ENABLE_ADVANCE_WITHIN_BLOCK_VECTOR_OPTO =
+      SHORT_SPECIES.length() >= 16;
+
   @Override
   public int findNextGEQ(int[] buffer, int target, int from, int to) {
     if (ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO) {
@@ -792,6 +798,110 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       }
     }
     return to;
+  }
+
+  @Override
+  public boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
+    final int targetInBlock = target & 0xFFFF;
+
+    if (disi.slice instanceof MemorySegmentIndexInput && ENABLE_ADVANCE_WITHIN_BLOCK_VECTOR_OPTO) {
+      for (;
+          disi.index + SHORT_SPECIES.length() < disi.nextBlockIndex;
+          disi.index += SHORT_SPECIES.length()) {
+        disi.slice.skipBytes((long) (SHORT_SPECIES.length() - 1) * Short.BYTES);
+        if (Short.toUnsignedInt(disi.slice.readShort()) >= targetInBlock) {
+          disi.slice.seek(
+              disi.slice.getFilePointer() - (long) (SHORT_SPECIES.length()) * Short.BYTES);
+          // TODO: handle vector cross memory segment (maybe would not in sparse block?) .
+          ShortVector shortVector =
+              ShortVector.fromMemorySegment(
+                  SHORT_SPECIES,
+                  ((MemorySegmentIndexInput) disi.slice).curSegment,
+                  disi.slice.getFilePointer(),
+                  LITTLE_ENDIAN);
+          VectorMask<Short> mask = shortVector.compare(VectorOperators.LT, targetInBlock);
+          disi.index += mask.trueCount() + 1;
+          disi.doc = shortVector.lane(mask.trueCount()) | disi.block;
+          disi.exists = true;
+          disi.nextExistDocInBlock = shortVector.lane(mask.trueCount());
+          disi.slice.skipBytes((long) (mask.trueCount() + 1) * Short.BYTES);
+          return true;
+        }
+      }
+    }
+
+    for (; disi.index < disi.nextBlockIndex; ) {
+      int doc = Short.toUnsignedInt(disi.slice.readShort());
+      disi.index++;
+      if (doc >= targetInBlock) {
+        disi.doc = disi.block | doc;
+        disi.exists = true;
+        disi.nextExistDocInBlock = doc;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException {
+    final int targetInBlock = target & 0xFFFF;
+    if (disi.nextExistDocInBlock > targetInBlock) {
+      assert !disi.exists;
+      return false;
+    }
+    if (target == disi.doc) {
+      return disi.exists;
+    }
+
+    if (disi.slice instanceof MemorySegmentIndexInput && ENABLE_ADVANCE_WITHIN_BLOCK_VECTOR_OPTO) {
+      for (;
+          disi.index + SHORT_SPECIES.length() < disi.nextBlockIndex;
+          disi.index += SHORT_SPECIES.length()) {
+        disi.slice.skipBytes((long) (SHORT_SPECIES.length() - 1) * Short.BYTES);
+        if (Short.toUnsignedInt(disi.slice.readShort()) >= targetInBlock) {
+          disi.slice.seek(
+              disi.slice.getFilePointer() - (long) (SHORT_SPECIES.length()) * Short.BYTES);
+          // TODO: handle vector cross memory segment (maybe would not in sparse block?) .
+          ShortVector shortVector =
+              ShortVector.fromMemorySegment(
+                  SHORT_SPECIES,
+                  ((MemorySegmentIndexInput) disi.slice).curSegment,
+                  disi.slice.getFilePointer(),
+                  LITTLE_ENDIAN);
+          VectorMask<Short> mask = shortVector.compare(VectorOperators.LT, targetInBlock);
+          disi.nextExistDocInBlock = shortVector.lane(mask.trueCount());
+          if (disi.nextExistDocInBlock == targetInBlock) {
+            disi.index += mask.trueCount() + 1;
+            disi.exists = true;
+            disi.slice.skipBytes((long) (mask.trueCount() + 1) * Short.BYTES);
+            return true;
+          } else {
+            disi.index += mask.trueCount();
+            disi.exists = false;
+            disi.slice.skipBytes((long) (mask.trueCount()) * Short.BYTES);
+            return false;
+          }
+        }
+      }
+    }
+
+    for (; disi.index < disi.nextBlockIndex; ) {
+      int doc = Short.toUnsignedInt(disi.slice.readShort());
+      disi.index++;
+      if (doc >= targetInBlock) {
+        disi.nextExistDocInBlock = doc;
+        if (doc != targetInBlock) {
+          disi.index--;
+          disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
+          break;
+        }
+        disi.exists = true;
+        return true;
+      }
+    }
+    disi.exists = false;
+    return false;
   }
 
   @Override

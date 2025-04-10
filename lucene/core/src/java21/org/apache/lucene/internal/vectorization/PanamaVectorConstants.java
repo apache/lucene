@@ -31,6 +31,7 @@ final class PanamaVectorConstants {
 
   static final VectorSpecies<Long> PRERERRED_LONG_SPECIES;
   static final VectorSpecies<Integer> PRERERRED_INT_SPECIES;
+  static final VectorSpecies<Short> PRERERRED_SHORT_SPECIES;
 
   static {
     // default to platform supported bitsize
@@ -49,6 +50,8 @@ final class PanamaVectorConstants {
         VectorSpecies.of(long.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
     PRERERRED_INT_SPECIES =
         VectorSpecies.of(int.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
+    PRERERRED_SHORT_SPECIES =
+        VectorSpecies.of(short.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
   }
 
   private PanamaVectorConstants() {}

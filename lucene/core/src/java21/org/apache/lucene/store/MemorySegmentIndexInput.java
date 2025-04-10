@@ -38,7 +38,7 @@ import org.apache.lucene.util.IOConsumer;
  * chunkSizePower</code>).
  */
 @SuppressWarnings("preview")
-abstract class MemorySegmentIndexInput extends IndexInput
+public abstract class MemorySegmentIndexInput extends IndexInput
     implements RandomAccessInput, MemorySegmentAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
@@ -59,7 +59,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   final MemorySegment[] segments;
 
   int curSegmentIndex = -1;
-  MemorySegment
+  public MemorySegment
       curSegment; // redundant for speed: segments[curSegmentIndex], also marker if closed!
   long curPosition; // relative to curSegment, not globally
   int consecutivePrefetchHitCount;
