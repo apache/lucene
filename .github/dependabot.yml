@@ -12,8 +12,9 @@ updates:
       actions:
         patterns: ["*"]
 
+  # python dependencies in /dev-tools/scripts
   - package-ecosystem: pip
-    directory: /
+    directory: /dev-tools/scripts/
     schedule:
       interval: daily
     commit-message:
