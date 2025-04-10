@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -69,9 +70,8 @@ public final class NotDocIdSet extends DocIdSet {
   @Override
   public DocIdSetIterator iterator() throws IOException {
     final DocIdSetIterator inIterator = in.iterator();
-    return new DocIdSetIterator() {
+    return new AbstractDocIdSetIterator() {
 
-      int doc = -1;
       int nextSkippedDoc = -1;
 
       @Override
@@ -96,11 +96,6 @@ public final class NotDocIdSet extends DocIdSet {
           doc += 1;
           nextSkippedDoc = inIterator.nextDoc();
         }
-      }
-
-      @Override
-      public int docID() {
-        return doc;
       }
 
       @Override
