@@ -8,9 +8,6 @@ updates:
       prefix: ci
     labels: [dependencies]
     open-pull-requests-limit: 1
-    groups:
-      actions:
-        patterns: ["*"]
 
   # python dependencies in /dev-tools/scripts
   - package-ecosystem: pip
@@ -21,6 +18,3 @@ updates:
       prefix: build(deps)
     labels:
       - dependencies
-    groups:
-      pip:
-        patterns: ["*"]
