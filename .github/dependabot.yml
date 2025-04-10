@@ -3,7 +3,8 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: daily
+      interval: weekly
+      day: tuesday
     commit-message:
       prefix: ci
     labels: [dependencies]
@@ -13,7 +14,8 @@ updates:
   - package-ecosystem: pip
     directory: /dev-tools/scripts/
     schedule:
-      interval: daily
+      interval: weekly
+      day: tuesday
     commit-message:
       prefix: build(deps)
     labels:
