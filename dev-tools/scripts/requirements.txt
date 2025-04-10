@@ -4,7 +4,7 @@ PyYAML==6.0.2
 holidays==0.70
 ics==0.7.2
 console-menu==0.8.0
-PyGithub==1.59.1
+PyGithub==2.6.1
 jira==3.8.0
 basedpyright==1.28.5
 ruff==0.11.5
