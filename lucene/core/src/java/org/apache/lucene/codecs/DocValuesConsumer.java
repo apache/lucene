@@ -195,6 +195,11 @@ public abstract class DocValuesConsumer implements Closeable {
         });
   }
 
+  /**
+   * Returns a merged numeric doc values instance from all producers in the provided merge state.
+   *
+   * @lucene.experimental
+   */
   protected static NumericDocValues getMergedNumericDocValues(
       MergeState mergeState, FieldInfo mergeFieldInfo) throws IOException {
     List<NumericDocValuesSub> subs = new ArrayList<>();
@@ -308,6 +313,11 @@ public abstract class DocValuesConsumer implements Closeable {
         });
   }
 
+  /**
+   * Returns a merged binary doc values instance from all producers in the provided merge state.
+   *
+   * @lucene.experimental
+   */
   protected static BinaryDocValues getMergedBinaryDocValues(
       FieldInfo mergeFieldInfo, final MergeState mergeState) throws IOException {
     List<BinaryDocValuesSub> subs = new ArrayList<>();
@@ -414,6 +424,12 @@ public abstract class DocValuesConsumer implements Closeable {
         });
   }
 
+  /**
+   * Returns a merged sorted numeric doc values instance from all producers in the provided merge
+   * state.
+   *
+   * @lucene.experimental
+   */
   protected static SortedNumericDocValues getMergedSortedNumericDocValues(
       FieldInfo mergeFieldInfo, MergeState mergeState) throws IOException {
     // We must make new iterators + DocIDMerger for each iterator:
@@ -638,6 +654,11 @@ public abstract class DocValuesConsumer implements Closeable {
         });
   }
 
+  /**
+   * Returns a merged sorted doc values instance from all producers in the provided merge state.
+   *
+   * @lucene.experimental
+   */
   protected static OrdinalMap createOrdinalMapForSortedDV(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     List<SortedDocValues> toMerge = new ArrayList<>();
@@ -686,6 +707,11 @@ public abstract class DocValuesConsumer implements Closeable {
     return OrdinalMap.build(null, liveTerms, weights, PackedInts.COMPACT);
   }
 
+  /**
+   * Returns a merged sorted doc values instance from all producers in the provided merge state.
+   *
+   * @lucene.experimental
+   */
   protected static SortedDocValues getMergedSortedSetDocValues(
       FieldInfo fieldInfo, MergeState mergeState, OrdinalMap map) throws IOException {
     // We must make new iterators + DocIDMerger for each iterator:
@@ -708,6 +734,11 @@ public abstract class DocValuesConsumer implements Closeable {
     return mergeSortedValues(subs, mergeState, map);
   }
 
+  /**
+   * Returns a merged sorted doc values instance from all producers in the provided merge state.
+   *
+   * @lucene.experimental
+   */
   protected static SortedDocValues mergeSortedValues(
       List<SortedDocValuesSub> subs, MergeState mergeState, OrdinalMap map) throws IOException {
     long cost = 0;
@@ -836,6 +867,11 @@ public abstract class DocValuesConsumer implements Closeable {
         });
   }
 
+  /**
+   * Creates an ordinal map based the provided sorted set doc values to merges
+   *
+   * @lucene.experimental
+   */
   protected static OrdinalMap createOrdinalMapForSortedSetDV(
       List<SortedSetDocValues> toMerge, FieldInfo mergeFieldInfo, MergeState mergeState)
       throws IOException {
@@ -880,6 +916,11 @@ public abstract class DocValuesConsumer implements Closeable {
     return OrdinalMap.build(null, liveTerms, weights, PackedInts.COMPACT);
   }
 
+  /**
+   * Returns a sorted set doc values instance from all producers in the provided merge state.
+   *
+   * @lucene.experimental
+   */
   protected static SortedSetDocValues getMergedSortedSetDocValues(
       FieldInfo mergeFieldInfo,
       MergeState mergeState,
