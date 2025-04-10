@@ -18,7 +18,7 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#14458 : Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
 
 Optimizations
 ---------------------
