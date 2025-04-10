@@ -49,6 +49,7 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -65,6 +66,9 @@ public class BinningIndexingLatencyBenchmark {
   @Param({"true", "false"})
   private boolean binningEnabled;
 
+  @Param({"exact", "approx", "auto"})
+  private String graphBuilder;
+
   private Path tempDir;
   private FieldType fieldType;
 
@@ -73,11 +77,14 @@ public class BinningIndexingLatencyBenchmark {
     fieldType = new FieldType(TextField.TYPE_NOT_STORED);
     fieldType.setTokenized(true);
     fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+
     if (binningEnabled) {
       fieldType.putAttribute("postingsFormat", "Lucene101");
       fieldType.putAttribute("doBinning", "true");
       fieldType.putAttribute("bin.count", "4");
+      fieldType.putAttribute("graph.builder", graphBuilder);
     }
+
     fieldType.freeze();
   }
 
@@ -88,6 +95,7 @@ public class BinningIndexingLatencyBenchmark {
       IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
       config.setCodec(new Lucene101Codec());
       config.setUseCompoundFile(false);
+
       try (IndexWriter writer = new IndexWriter(dir, config)) {
         for (int i = 0; i < docCount; i++) {
           Document doc = new Document();
@@ -110,14 +118,11 @@ public class BinningIndexingLatencyBenchmark {
     }
   }
 
-  /**
-   * Minimal custom analyzer to avoid dependency on analyzer modules.
-   */
   private static final class SingleTokenAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
       Tokenizer tokenizer = new Tokenizer() {
-        private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
+        private final CharTermAttribute attr = addAttribute(CharTermAttribute.class);
         private boolean emitted = false;
 
         @Override
@@ -126,7 +131,7 @@ public class BinningIndexingLatencyBenchmark {
             return false;
           }
           clearAttributes();
-          termAttr.append("lucene");
+          attr.append("lucene");
           emitted = true;
           return true;
         }

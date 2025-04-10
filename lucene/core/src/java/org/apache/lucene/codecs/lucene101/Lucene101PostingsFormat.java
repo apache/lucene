@@ -447,6 +447,7 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
 
         final FieldInfos fieldInfos = state.fieldInfos;
         String binningField = null;
+        String graphBuilderType = null;
         int binCount = -1;
 
         for (FieldInfo fi : fieldInfos) {
@@ -455,6 +456,8 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
                 String binCountAttr = fi.getAttribute("bin.count");
                 binCount = (binCountAttr != null) ? Integer.parseInt(binCountAttr)
                         : Math.max(1, Integer.highestOneBit(maxDoc >>> 4));
+                String graphBuilderAttr = fi.getAttribute("bin.builder");
+                graphBuilderType = (graphBuilderAttr != null) ? graphBuilderAttr : "auto";
                 break;
             }
         }
@@ -475,16 +478,30 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
             try (LeafReader reader = new FieldsLeafReader(
                     java.util.Collections.singletonMap(binningField, terms), maxDoc)) {
 
+
                 final int[] docToBin;
-                if (maxDoc > MAX_DOC_FOR_EXACT_BINNING) {
-                    ApproximateDocGraphBuilder builder = new ApproximateDocGraphBuilder(
-                            binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
-                    SparseEdgeGraph graph = builder.build(reader);
+
+                final SparseEdgeGraph graph;
+
+                if ("approx".equalsIgnoreCase(graphBuilderType)) {
+                    ApproximateDocGraphBuilder builder = new ApproximateDocGraphBuilder(binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
+                    graph = builder.build(reader);
                     docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
-                } else {
+                } else if ("exact".equalsIgnoreCase(graphBuilderType)) {
                     DocGraphBuilder builder = new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
-                    SparseEdgeGraph graph = builder.build(reader);
+                    graph = builder.build(reader);
                     docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
+                } else {
+                    // default: auto fallback based on doc count
+                    if (maxDoc > MAX_DOC_FOR_EXACT_BINNING) {
+                        ApproximateDocGraphBuilder builder = new ApproximateDocGraphBuilder(binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
+                        graph = builder.build(reader);
+                        docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
+                    } else {
+                        DocGraphBuilder builder = new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
+                        graph = builder.build(reader);
+                        docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
+                    }
                 }
 
                 BinMapWriter writer = new BinMapWriter(state.directory, state, docToBin, binCount);
