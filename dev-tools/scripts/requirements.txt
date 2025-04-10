@@ -7,4 +7,4 @@ console-menu==0.8.0
 PyGithub==1.59.1
 jira==3.4.1
 basedpyright==1.28.5
-ruff==0.9.10
+ruff==0.11.5
