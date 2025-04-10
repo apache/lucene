@@ -3,9 +3,7 @@ package org.apache.lucene.search;
 import java.util.Collections;
 import java.util.Set;
 
-/**
- * Represents a group of near-duplicate documents.
- */
+/** Represents a group of near-duplicate documents. */
 public final class DuplicateCluster {
 
   private final Set<Integer> docIDs;
@@ -14,9 +12,7 @@ public final class DuplicateCluster {
     this.docIDs = Collections.unmodifiableSet(docIDs);
   }
 
-  /**
-   * Returns the set of global document IDs in this cluster.
-   */
+  /** Returns the set of global document IDs in this cluster. */
   public Set<Integer> docIds() {
     return docIDs;
   }

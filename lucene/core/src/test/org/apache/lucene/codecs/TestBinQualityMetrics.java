@@ -3,9 +3,7 @@ package org.apache.lucene.codecs;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-/**
- * Unit tests for verifying bin balance and quality.
- */
+/** Unit tests for verifying bin balance and quality. */
 public class TestBinQualityMetrics extends LuceneTestCase {
 
   public void testStandardDeviationAndGini() {

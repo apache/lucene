@@ -2,16 +2,12 @@ package org.apache.lucene.codecs;
 
 import java.util.Arrays;
 
-/**
- * Computes bin quality metrics like balance, skewness, and Gini index.
- */
+/** Computes bin quality metrics like balance, skewness, and Gini index. */
 public final class BinQualityMetrics {
 
   private BinQualityMetrics() {}
 
-  /**
-   * Computes standard deviation of document counts across bins.
-   */
+  /** Computes standard deviation of document counts across bins. */
   public static double computeStdDev(int[] docCounts) {
     double mean = Arrays.stream(docCounts).average().orElse(0.0);
     double variance = 0.0;
@@ -22,9 +18,7 @@ public final class BinQualityMetrics {
     return Math.sqrt(variance / docCounts.length);
   }
 
-  /**
-   * Computes the Gini index to measure bin inequality.
-   */
+  /** Computes the Gini index to measure bin inequality. */
   public static double computeGiniIndex(int[] docCounts) {
     int n = docCounts.length;
     if (n == 0) return 0.0;

@@ -17,8 +17,6 @@
 package org.apache.lucene.codecs.lucene101;
 
 import java.io.IOException;
-import java.util.Map;
-
 import org.apache.lucene.codecs.ApproximateDocBinner;
 import org.apache.lucene.codecs.ApproximateDocGraphBuilder;
 import org.apache.lucene.codecs.BinMapWriter;
@@ -40,10 +38,8 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
-import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermState;
@@ -338,314 +334,307 @@ import org.apache.lucene.util.packed.PackedInts;
  */
 public final class Lucene101PostingsFormat extends PostingsFormat {
 
-    /**
-     * Filename extension for some small metadata about how postings are encoded.
-     */
-    public static final String META_EXTENSION = "psm";
+  /** Filename extension for some small metadata about how postings are encoded. */
+  public static final String META_EXTENSION = "psm";
 
-    /**
-     * Filename extension for document number, frequencies, and skip data. See chapter: <a
-     * href="#Frequencies">Frequencies and Skip Data</a>
-     */
-    public static final String DOC_EXTENSION = "doc";
+  /**
+   * Filename extension for document number, frequencies, and skip data. See chapter: <a
+   * href="#Frequencies">Frequencies and Skip Data</a>
+   */
+  public static final String DOC_EXTENSION = "doc";
 
-    /**
-     * Filename extension for positions. See chapter: <a href="#Positions">Positions</a>
-     */
-    public static final String POS_EXTENSION = "pos";
+  /** Filename extension for positions. See chapter: <a href="#Positions">Positions</a> */
+  public static final String POS_EXTENSION = "pos";
 
-    /**
-     * Filename extension for payloads and offsets. See chapter: <a href="#Payloads">Payloads and
-     * Offsets</a>
-     */
-    public static final String PAY_EXTENSION = "pay";
+  /**
+   * Filename extension for payloads and offsets. See chapter: <a href="#Payloads">Payloads and
+   * Offsets</a>
+   */
+  public static final String PAY_EXTENSION = "pay";
 
-    /**
-     * Size of blocks.
-     */
-    public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
+  /** Size of blocks. */
+  public static final int BLOCK_SIZE = ForUtil.BLOCK_SIZE;
 
-    public static final int BLOCK_MASK = BLOCK_SIZE - 1;
+  public static final int BLOCK_MASK = BLOCK_SIZE - 1;
 
-    /**
-     * We insert skip data on every block and every SKIP_FACTOR=32 blocks.
-     */
-    public static final int LEVEL1_FACTOR = 32;
+  /** We insert skip data on every block and every SKIP_FACTOR=32 blocks. */
+  public static final int LEVEL1_FACTOR = 32;
 
-    /**
-     * Total number of docs covered by level 1 skip data: 32 * 128 = 4,096
-     */
-    public static final int LEVEL1_NUM_DOCS = LEVEL1_FACTOR * BLOCK_SIZE;
+  /** Total number of docs covered by level 1 skip data: 32 * 128 = 4,096 */
+  public static final int LEVEL1_NUM_DOCS = LEVEL1_FACTOR * BLOCK_SIZE;
 
-    public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
-    static final String TERMS_CODEC = "Lucene90PostingsWriterTerms";
-    static final String META_CODEC = "Lucene101PostingsWriterMeta";
-    static final String DOC_CODEC = "Lucene101PostingsWriterDoc";
-    static final String POS_CODEC = "Lucene101PostingsWriterPos";
-    static final String PAY_CODEC = "Lucene101PostingsWriterPay";
-    static final int VERSION_START = 0;
-    /**
-     * Version that started encoding dense blocks as bit sets. Note: the old format is a subset of the
-     * new format, so Lucene101PostingsReader is able to read the old format without checking the
-     * version.
-     */
-    static final int VERSION_DENSE_BLOCKS_AS_BITSETS = 1;
-    static final int VERSION_CURRENT = VERSION_DENSE_BLOCKS_AS_BITSETS;
-    private static final int MAX_DOC_FOR_EXACT_BINNING = 10;
-    private final int version;
-    private final int minTermBlockSize;
-    private final int maxTermBlockSize;
+  public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
+  static final String TERMS_CODEC = "Lucene90PostingsWriterTerms";
+  static final String META_CODEC = "Lucene101PostingsWriterMeta";
+  static final String DOC_CODEC = "Lucene101PostingsWriterDoc";
+  static final String POS_CODEC = "Lucene101PostingsWriterPos";
+  static final String PAY_CODEC = "Lucene101PostingsWriterPay";
+  static final int VERSION_START = 0;
 
-    /**
-     * Creates {@code Lucene101PostingsFormat} with default settings.
-     */
-    public Lucene101PostingsFormat() {
-        this(
-                Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
-                Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
+  /**
+   * Version that started encoding dense blocks as bit sets. Note: the old format is a subset of the
+   * new format, so Lucene101PostingsReader is able to read the old format without checking the
+   * version.
+   */
+  static final int VERSION_DENSE_BLOCKS_AS_BITSETS = 1;
+
+  static final int VERSION_CURRENT = VERSION_DENSE_BLOCKS_AS_BITSETS;
+  private static final int MAX_DOC_FOR_EXACT_BINNING = 10;
+  private final int version;
+  private final int minTermBlockSize;
+  private final int maxTermBlockSize;
+
+  /** Creates {@code Lucene101PostingsFormat} with default settings. */
+  public Lucene101PostingsFormat() {
+    this(
+        Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
+        Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
+  }
+
+  /**
+   * Creates {@code Lucene101PostingsFormat} with custom values for {@code minBlockSize} and {@code
+   * maxBlockSize} passed to block terms dictionary.
+   *
+   * @see Lucene90BlockTreeTermsWriter#Lucene90BlockTreeTermsWriter(SegmentWriteState,
+   *     PostingsWriterBase, int, int)
+   */
+  public Lucene101PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
+    this(minTermBlockSize, maxTermBlockSize, VERSION_CURRENT);
+  }
+
+  /** Expert constructor that allows setting the version. */
+  public Lucene101PostingsFormat(int minTermBlockSize, int maxTermBlockSize, int version) {
+    super("Lucene101");
+    if (version < VERSION_START || version > VERSION_CURRENT) {
+      throw new IllegalArgumentException("Version out of range: " + version);
+    }
+    this.version = version;
+    Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
+    this.minTermBlockSize = minTermBlockSize;
+    this.maxTermBlockSize = maxTermBlockSize;
+  }
+
+  /**
+   * Return the class that implements {@link ImpactsEnum} in this {@link PostingsFormat}. This is
+   * internally used to help the JVM make good inlining decisions.
+   *
+   * @lucene.internal
+   */
+  public static Class<? extends ImpactsEnum> getImpactsEnumImpl() {
+    return Lucene101PostingsReader.BlockPostingsEnum.class;
+  }
+
+  static void maybeWriteDocBinning(SegmentWriteState state) throws IOException {
+    final int maxDoc = state.segmentInfo.maxDoc();
+    if (maxDoc == 0) {
+      return;
     }
 
-    /**
-     * Creates {@code Lucene101PostingsFormat} with custom values for {@code minBlockSize} and {@code
-     * maxBlockSize} passed to block terms dictionary.
-     *
-     * @see Lucene90BlockTreeTermsWriter#Lucene90BlockTreeTermsWriter(SegmentWriteState, PostingsWriterBase, int, int)
-     */
-    public Lucene101PostingsFormat(int minTermBlockSize, int maxTermBlockSize) {
-        this(minTermBlockSize, maxTermBlockSize, VERSION_CURRENT);
+    final FieldInfos fieldInfos = state.fieldInfos;
+    String binningField = null;
+    String graphBuilderType = null;
+    int binCount = -1;
+
+    for (FieldInfo fi : fieldInfos) {
+      if ("true".equalsIgnoreCase(fi.getAttribute("doBinning"))) {
+        binningField = fi.name;
+        String binCountAttr = fi.getAttribute("bin.count");
+        binCount =
+            (binCountAttr != null)
+                ? Integer.parseInt(binCountAttr)
+                : Math.max(1, Integer.highestOneBit(maxDoc >>> 4));
+        String graphBuilderAttr = fi.getAttribute("bin.builder");
+        graphBuilderType = (graphBuilderAttr != null) ? graphBuilderAttr : "auto";
+        break;
+      }
     }
 
-    /**
-     * Expert constructor that allows setting the version.
-     */
-    public Lucene101PostingsFormat(int minTermBlockSize, int maxTermBlockSize, int version) {
-        super("Lucene101");
-        if (version < VERSION_START || version > VERSION_CURRENT) {
-            throw new IllegalArgumentException("Version out of range: " + version);
+    if (binningField == null || binCount <= 0) {
+      return;
+    }
+
+    final PostingsFormat format = new Lucene101PostingsFormat();
+    try (FieldsProducer fields =
+        format.fieldsProducer(
+            new SegmentReadState(
+                state.directory,
+                state.segmentInfo,
+                state.fieldInfos,
+                state.context,
+                state.segmentSuffix))) {
+
+      Terms terms = fields.terms(binningField);
+      if (terms == null) {
+        return;
+      }
+
+      try (LeafReader reader =
+          new FieldsLeafReader(java.util.Collections.singletonMap(binningField, terms), maxDoc)) {
+
+        final int[] docToBin;
+
+        final SparseEdgeGraph graph;
+
+        if ("approx".equalsIgnoreCase(graphBuilderType)) {
+          ApproximateDocGraphBuilder builder =
+              new ApproximateDocGraphBuilder(
+                  binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
+          graph = builder.build(reader);
+          docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
+        } else if ("exact".equalsIgnoreCase(graphBuilderType)) {
+          DocGraphBuilder builder =
+              new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
+          graph = builder.build(reader);
+          docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
+        } else {
+          // default: auto fallback based on doc count
+          if (maxDoc > MAX_DOC_FOR_EXACT_BINNING) {
+            ApproximateDocGraphBuilder builder =
+                new ApproximateDocGraphBuilder(
+                    binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
+            graph = builder.build(reader);
+            docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
+          } else {
+            DocGraphBuilder builder =
+                new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
+            graph = builder.build(reader);
+            docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
+          }
         }
-        this.version = version;
-        Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
-        this.minTermBlockSize = minTermBlockSize;
-        this.maxTermBlockSize = maxTermBlockSize;
+
+        BinMapWriter writer = new BinMapWriter(state.directory, state, docToBin, binCount);
+        writer.close();
+      }
     }
+  }
 
-    /**
-     * Return the class that implements {@link ImpactsEnum} in this {@link PostingsFormat}. This is
-     * internally used to help the JVM make good inlining decisions.
-     *
-     * @lucene.internal
-     */
-    public static Class<? extends ImpactsEnum> getImpactsEnumImpl() {
-        return Lucene101PostingsReader.BlockPostingsEnum.class;
-    }
+  @Override
+  public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
+    final Lucene101PostingsWriter postingsWriter = new Lucene101PostingsWriter(state, version);
 
-    static void maybeWriteDocBinning(SegmentWriteState state) throws IOException {
-        final int maxDoc = state.segmentInfo.maxDoc();
-        if (maxDoc == 0) {
-            return;
-        }
+    final FieldsConsumer delegate =
+        new Lucene90BlockTreeTermsWriter(state, postingsWriter, minTermBlockSize, maxTermBlockSize);
 
-        final FieldInfos fieldInfos = state.fieldInfos;
-        String binningField = null;
-        String graphBuilderType = null;
-        int binCount = -1;
+    return new FieldsConsumer() {
+      @Override
+      public void write(Fields fields, NormsProducer normsProducer) throws IOException {
+        delegate.write(fields, normsProducer);
+      }
 
-        for (FieldInfo fi : fieldInfos) {
-            if ("true".equalsIgnoreCase(fi.getAttribute("doBinning"))) {
-                binningField = fi.name;
-                String binCountAttr = fi.getAttribute("bin.count");
-                binCount = (binCountAttr != null) ? Integer.parseInt(binCountAttr)
-                        : Math.max(1, Integer.highestOneBit(maxDoc >>> 4));
-                String graphBuilderAttr = fi.getAttribute("bin.builder");
-                graphBuilderType = (graphBuilderAttr != null) ? graphBuilderAttr : "auto";
-                break;
-            }
-        }
-
-        if (binningField == null || binCount <= 0) {
-            return;
-        }
-
-        final PostingsFormat format = new Lucene101PostingsFormat();
-        try (FieldsProducer fields = format.fieldsProducer(
-                new SegmentReadState(state.directory, state.segmentInfo, state.fieldInfos, state.context, state.segmentSuffix))) {
-
-            Terms terms = fields.terms(binningField);
-            if (terms == null) {
-                return;
-            }
-
-            try (LeafReader reader = new FieldsLeafReader(
-                    java.util.Collections.singletonMap(binningField, terms), maxDoc)) {
-
-
-                final int[] docToBin;
-
-                final SparseEdgeGraph graph;
-
-                if ("approx".equalsIgnoreCase(graphBuilderType)) {
-                    ApproximateDocGraphBuilder builder = new ApproximateDocGraphBuilder(binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
-                    graph = builder.build(reader);
-                    docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
-                } else if ("exact".equalsIgnoreCase(graphBuilderType)) {
-                    DocGraphBuilder builder = new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
-                    graph = builder.build(reader);
-                    docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
-                } else {
-                    // default: auto fallback based on doc count
-                    if (maxDoc > MAX_DOC_FOR_EXACT_BINNING) {
-                        ApproximateDocGraphBuilder builder = new ApproximateDocGraphBuilder(binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
-                        graph = builder.build(reader);
-                        docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
-                    } else {
-                        DocGraphBuilder builder = new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
-                        graph = builder.build(reader);
-                        docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
-                    }
-                }
-
-                BinMapWriter writer = new BinMapWriter(state.directory, state, docToBin, binCount);
-                writer.close();
-            }
-        }
-    }
-
-
-    @Override
-    public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-        final Lucene101PostingsWriter postingsWriter = new Lucene101PostingsWriter(state, version);
-
-        final FieldsConsumer delegate =
-                new Lucene90BlockTreeTermsWriter(state, postingsWriter, minTermBlockSize, maxTermBlockSize);
-
-        return new FieldsConsumer() {
-            @Override
-            public void write(Fields fields, NormsProducer normsProducer) throws IOException {
-                delegate.write(fields, normsProducer);
-            }
-
-            @Override
-            public void close() throws IOException {
-                IOException prior = null;
-                try {
-                    delegate.close(); // flushes .psm/.doc/.pos/.pay
-                } catch (IOException e) {
-                    prior = e;
-                }
-
-                try {
-                    // Now that all outputs are flushed, perform binning safely
-                    maybeWriteDocBinning(state);
-                } catch (IOException e) {
-                    if (prior != null) {
-                        prior.addSuppressed(e);
-                        throw prior;
-                    } else {
-                        throw e;
-                    }
-                }
-
-                if (prior != null) {
-                    throw prior;
-                }
-            }
-        };
-    }
-
-    @Override
-    public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-        PostingsReaderBase postingsReader = new Lucene101PostingsReader(state);
-        boolean success = false;
+      @Override
+      public void close() throws IOException {
+        IOException prior = null;
         try {
-            FieldsProducer ret = new Lucene90BlockTreeTermsReader(postingsReader, state);
-            success = true;
-            return ret;
-        } finally {
-            if (!success) {
-                IOUtils.closeWhileHandlingException(postingsReader);
-            }
+          delegate.close(); // flushes .psm/.doc/.pos/.pay
+        } catch (IOException e) {
+          prior = e;
         }
+
+        try {
+          // Now that all outputs are flushed, perform binning safely
+          maybeWriteDocBinning(state);
+        } catch (IOException e) {
+          if (prior != null) {
+            prior.addSuppressed(e);
+            throw prior;
+          } else {
+            throw e;
+          }
+        }
+
+        if (prior != null) {
+          throw prior;
+        }
+      }
+    };
+  }
+
+  @Override
+  public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
+    PostingsReaderBase postingsReader = new Lucene101PostingsReader(state);
+    boolean success = false;
+    try {
+      FieldsProducer ret = new Lucene90BlockTreeTermsReader(postingsReader, state);
+      success = true;
+      return ret;
+    } finally {
+      if (!success) {
+        IOUtils.closeWhileHandlingException(postingsReader);
+      }
     }
+  }
+
+  /**
+   * Holds all state required for {@link Lucene101PostingsReader} to produce a {@link
+   * org.apache.lucene.index.PostingsEnum} without re-seeking the terms dict.
+   *
+   * @lucene.internal
+   */
+  public static final class IntBlockTermState extends BlockTermState {
+    /** file pointer to the start of the doc ids enumeration, in {@link #DOC_EXTENSION} file */
+    public long docStartFP;
+
+    /** file pointer to the start of the positions enumeration, in {@link #POS_EXTENSION} file */
+    public long posStartFP;
+
+    /** file pointer to the start of the payloads enumeration, in {@link #PAY_EXTENSION} file */
+    public long payStartFP;
 
     /**
-     * Holds all state required for {@link Lucene101PostingsReader} to produce a {@link
-     * org.apache.lucene.index.PostingsEnum} without re-seeking the terms dict.
+     * file offset for the last position in the last block, if there are more than {@link
+     * ForUtil#BLOCK_SIZE} positions; otherwise -1
      *
-     * @lucene.internal
+     * <p>One might think to use total term frequency to track how many positions are left to read
+     * as we decode the blocks, and decode the last block differently when num_left_positions &lt;
+     * BLOCK_SIZE. Unfortunately this won't work since the tracking will be messed up when we skip
+     * blocks as the skipper will only tell us new position offset (start of block) and number of
+     * positions to skip for that block, without telling us how many positions it has skipped.
      */
-    public static final class IntBlockTermState extends BlockTermState {
-        /**
-         * file pointer to the start of the doc ids enumeration, in {@link #DOC_EXTENSION} file
-         */
-        public long docStartFP;
+    public long lastPosBlockOffset;
 
-        /**
-         * file pointer to the start of the positions enumeration, in {@link #POS_EXTENSION} file
-         */
-        public long posStartFP;
+    /**
+     * docid when there is a single pulsed posting, otherwise -1. freq is always implicitly
+     * totalTermFreq in this case.
+     */
+    public int singletonDocID;
 
-        /**
-         * file pointer to the start of the payloads enumeration, in {@link #PAY_EXTENSION} file
-         */
-        public long payStartFP;
-
-        /**
-         * file offset for the last position in the last block, if there are more than {@link
-         * ForUtil#BLOCK_SIZE} positions; otherwise -1
-         *
-         * <p>One might think to use total term frequency to track how many positions are left to read
-         * as we decode the blocks, and decode the last block differently when num_left_positions &lt;
-         * BLOCK_SIZE. Unfortunately this won't work since the tracking will be messed up when we skip
-         * blocks as the skipper will only tell us new position offset (start of block) and number of
-         * positions to skip for that block, without telling us how many positions it has skipped.
-         */
-        public long lastPosBlockOffset;
-
-        /**
-         * docid when there is a single pulsed posting, otherwise -1. freq is always implicitly
-         * totalTermFreq in this case.
-         */
-        public int singletonDocID;
-
-        /**
-         * Sole constructor.
-         */
-        public IntBlockTermState() {
-            lastPosBlockOffset = -1;
-            singletonDocID = -1;
-        }
-
-        @Override
-        public IntBlockTermState clone() {
-            IntBlockTermState other = new IntBlockTermState();
-            other.copyFrom(this);
-            return other;
-        }
-
-        @Override
-        public void copyFrom(TermState _other) {
-            super.copyFrom(_other);
-            IntBlockTermState other = (IntBlockTermState) _other;
-            docStartFP = other.docStartFP;
-            posStartFP = other.posStartFP;
-            payStartFP = other.payStartFP;
-            lastPosBlockOffset = other.lastPosBlockOffset;
-            singletonDocID = other.singletonDocID;
-        }
-
-        @Override
-        public String toString() {
-            return super.toString()
-                    + " docStartFP="
-                    + docStartFP
-                    + " posStartFP="
-                    + posStartFP
-                    + " payStartFP="
-                    + payStartFP
-                    + " lastPosBlockOffset="
-                    + lastPosBlockOffset
-                    + " singletonDocID="
-                    + singletonDocID;
-        }
+    /** Sole constructor. */
+    public IntBlockTermState() {
+      lastPosBlockOffset = -1;
+      singletonDocID = -1;
     }
+
+    @Override
+    public IntBlockTermState clone() {
+      IntBlockTermState other = new IntBlockTermState();
+      other.copyFrom(this);
+      return other;
+    }
+
+    @Override
+    public void copyFrom(TermState _other) {
+      super.copyFrom(_other);
+      IntBlockTermState other = (IntBlockTermState) _other;
+      docStartFP = other.docStartFP;
+      posStartFP = other.posStartFP;
+      payStartFP = other.payStartFP;
+      lastPosBlockOffset = other.lastPosBlockOffset;
+      singletonDocID = other.singletonDocID;
+    }
+
+    @Override
+    public String toString() {
+      return super.toString()
+          + " docStartFP="
+          + docStartFP
+          + " posStartFP="
+          + posStartFP
+          + " payStartFP="
+          + payStartFP
+          + " lastPosBlockOffset="
+          + lastPosBlockOffset
+          + " singletonDocID="
+          + singletonDocID;
+    }
+  }
 }

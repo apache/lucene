@@ -4,16 +4,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
-
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -27,7 +26,7 @@ public final class NearDuplicateFinder {
   /**
    * Create a new finder.
    *
-   * @param field     the field to analyze
+   * @param field the field to analyze
    * @param threshold similarity threshold between 0 and 1
    */
   public NearDuplicateFinder(String field, float threshold) {

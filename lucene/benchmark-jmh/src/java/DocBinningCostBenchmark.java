@@ -20,9 +20,7 @@ package org.apache.lucene.benchmark.jmh;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -30,6 +28,7 @@ import org.apache.lucene.codecs.ApproximateDocBinner;
 import org.apache.lucene.codecs.ApproximateDocGraphBuilder;
 import org.apache.lucene.codecs.DocBinningGraphBuilder;
 import org.apache.lucene.codecs.DocGraphBuilder;
+import org.apache.lucene.codecs.FieldsLeafReader;
 import org.apache.lucene.codecs.SparseEdgeGraph;
 import org.apache.lucene.codecs.lucene101.Lucene101Codec;
 import org.apache.lucene.document.Document;
@@ -37,8 +36,11 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -54,12 +56,6 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.index.Terms;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.codecs.FieldsLeafReader;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -121,7 +117,8 @@ public class DocBinningCostBenchmark {
 
   @Benchmark
   public int[] approximateGraphBinning() throws IOException {
-    ApproximateDocGraphBuilder builder = new ApproximateDocGraphBuilder(FIELD, DocGraphBuilder.DEFAULT_MAX_EDGES);
+    ApproximateDocGraphBuilder builder =
+        new ApproximateDocGraphBuilder(FIELD, DocGraphBuilder.DEFAULT_MAX_EDGES);
     SparseEdgeGraph graph = builder.build(leafReader);
     return ApproximateDocBinner.assign(graph, docCount, binCount);
   }
@@ -132,31 +129,30 @@ public class DocBinningCostBenchmark {
     directory.close();
   }
 
-  /**
-   * Minimal synthetic analyzer that emits a fixed token — avoids analyzer module dependency.
-   */
+  /** Minimal synthetic analyzer that emits a fixed token — avoids analyzer module dependency. */
   private static final class SingleTokenAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
-      Tokenizer tokenizer = new Tokenizer() {
-        private final CharTermAttribute attr = addAttribute(CharTermAttribute.class);
-        private boolean emitted = false;
+      Tokenizer tokenizer =
+          new Tokenizer() {
+            private final CharTermAttribute attr = addAttribute(CharTermAttribute.class);
+            private boolean emitted = false;
 
-        @Override
-        public boolean incrementToken() {
-          if (emitted) return false;
-          clearAttributes();
-          attr.append(TOKEN);
-          emitted = true;
-          return true;
-        }
+            @Override
+            public boolean incrementToken() {
+              if (emitted) return false;
+              clearAttributes();
+              attr.append(TOKEN);
+              emitted = true;
+              return true;
+            }
 
-        @Override
-        public void reset() throws IOException {
-          super.reset();
-          emitted = false;
-        }
-      };
+            @Override
+            public void reset() throws IOException {
+              super.reset();
+              emitted = false;
+            }
+          };
       return new TokenStreamComponents(tokenizer);
     }
   }

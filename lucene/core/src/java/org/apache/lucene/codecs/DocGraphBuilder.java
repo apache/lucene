@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
-
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
@@ -30,9 +29,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
-/**
- * Builds a sparse document similarity graph from postings lists.
- */
+/** Builds a sparse document similarity graph from postings lists. */
 public final class DocGraphBuilder {
 
   /** Default maximum outgoing edges per document */
@@ -55,9 +52,7 @@ public final class DocGraphBuilder {
     this.maxEdgesPerDoc = maxEdgesPerDoc;
   }
 
-  /**
-   * Constructs the sparse similarity graph using term overlap.
-   */
+  /** Constructs the sparse similarity graph using term overlap. */
   public SparseEdgeGraph build(LeafReader reader) throws IOException {
     final int maxDoc = reader.maxDoc();
     final SparseEdgeGraph graph = new InMemorySparseEdgeGraph();
@@ -163,9 +158,7 @@ public final class DocGraphBuilder {
     }
   }
 
-  /**
-   * Lightweight term frequency vector with string keys and int values.
-   */
+  /** Lightweight term frequency vector with string keys and int values. */
   private static final class IntVector {
     private final Map<String, Integer> tf = new HashMap<>();
 

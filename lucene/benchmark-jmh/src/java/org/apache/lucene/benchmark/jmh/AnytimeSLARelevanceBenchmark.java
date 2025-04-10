@@ -5,7 +5,6 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -26,7 +25,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
-
 import org.openjdk.jmh.annotations.*;
 
 @BenchmarkMode(Mode.Throughput)
@@ -46,7 +44,7 @@ public class AnytimeSLARelevanceBenchmark {
   @Param({"1000", "10000"})
   private int docCount;
 
- @Param({"1", "5", "10"})
+  @Param({"1", "5", "10"})
   private int slaScoreBudget;
 
   @Setup
@@ -114,31 +112,30 @@ public class AnytimeSLARelevanceBenchmark {
     directory.close();
   }
 
-  /**
-   * Analyzer that emits a single fixed token to eliminate dependency on analyzer modules.
-   */
+  /** Analyzer that emits a single fixed token to eliminate dependency on analyzer modules. */
   private static final class SingleTokenAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
-      Tokenizer tokenizer = new Tokenizer() {
-        private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
-        private boolean emitted = false;
+      Tokenizer tokenizer =
+          new Tokenizer() {
+            private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
+            private boolean emitted = false;
 
-        @Override
-        public boolean incrementToken() {
-          if (emitted) return false;
-          clearAttributes();
-          termAttr.append("lucene");
-          emitted = true;
-          return true;
-        }
+            @Override
+            public boolean incrementToken() {
+              if (emitted) return false;
+              clearAttributes();
+              termAttr.append("lucene");
+              emitted = true;
+              return true;
+            }
 
-        @Override
-        public void reset() throws IOException {
-          super.reset();
-          emitted = false;
-        }
-      };
+            @Override
+            public void reset() throws IOException {
+              super.reset();
+              emitted = false;
+            }
+          };
       return new TokenStreamComponents(tokenizer);
     }
 

@@ -18,9 +18,7 @@ package org.apache.lucene.codecs;
 
 import java.io.IOException;
 
-/**
- * Approximate binning for documents using locality-sensitive hashing over sparse edge graph.
- */
+/** Approximate binning for documents using locality-sensitive hashing over sparse edge graph. */
 public final class ApproximateDocBinner {
 
   private ApproximateDocBinner() {}
@@ -28,8 +26,8 @@ public final class ApproximateDocBinner {
   /**
    * Assign documents to bins approximately based on edge distribution.
    *
-   * @param graph   sparse edge graph
-   * @param maxDoc  number of documents
+   * @param graph sparse edge graph
+   * @param maxDoc number of documents
    * @param numBins number of bins (must be power of 2)
    * @return bin assignments for each document
    */

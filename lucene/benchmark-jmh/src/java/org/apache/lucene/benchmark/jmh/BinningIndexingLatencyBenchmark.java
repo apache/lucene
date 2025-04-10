@@ -23,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -37,7 +36,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
-
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -49,7 +47,6 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 @BenchmarkMode(Mode.AverageTime)
@@ -108,40 +105,42 @@ public class BinningIndexingLatencyBenchmark {
     } finally {
       Files.walk(tempDir)
           .sorted(Comparator.reverseOrder())
-          .forEach(path -> {
-            try {
-              Files.deleteIfExists(path);
-            } catch (IOException ignored) {
-              // best-effort cleanup
-            }
-          });
+          .forEach(
+              path -> {
+                try {
+                  Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                  // best-effort cleanup
+                }
+              });
     }
   }
 
   private static final class SingleTokenAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
-      Tokenizer tokenizer = new Tokenizer() {
-        private final CharTermAttribute attr = addAttribute(CharTermAttribute.class);
-        private boolean emitted = false;
+      Tokenizer tokenizer =
+          new Tokenizer() {
+            private final CharTermAttribute attr = addAttribute(CharTermAttribute.class);
+            private boolean emitted = false;
 
-        @Override
-        public boolean incrementToken() {
-          if (emitted) {
-            return false;
-          }
-          clearAttributes();
-          attr.append("lucene");
-          emitted = true;
-          return true;
-        }
+            @Override
+            public boolean incrementToken() {
+              if (emitted) {
+                return false;
+              }
+              clearAttributes();
+              attr.append("lucene");
+              emitted = true;
+              return true;
+            }
 
-        @Override
-        public void reset() throws IOException {
-          super.reset();
-          emitted = false;
-        }
-      };
+            @Override
+            public void reset() throws IOException {
+              super.reset();
+              emitted = false;
+            }
+          };
       return new TokenStreamComponents(tokenizer);
     }
 

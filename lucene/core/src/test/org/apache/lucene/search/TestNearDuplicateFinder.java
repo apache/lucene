@@ -9,7 +9,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -36,7 +35,9 @@ public class TestNearDuplicateFinder extends LuceneTestCase {
   }
 
   private Directory buildIndex(String... docs) throws IOException {
-    Directory dir = new MockDirectoryWrapper(random(), new MMapDirectory(createTempDir("TestNearDuplicateFinder")));
+    Directory dir =
+        new MockDirectoryWrapper(
+            random(), new MMapDirectory(createTempDir("TestNearDuplicateFinder")));
     IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
     try (IndexWriter writer = new IndexWriter(dir, config)) {
       FieldType fieldType = buildTextType();

@@ -2,11 +2,13 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.codecs.lucene101.Lucene101Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -24,12 +26,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
-
 import org.openjdk.jmh.annotations.*;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -109,25 +106,26 @@ public class AnytimeRankingBenchmark {
   private static final class SingleTokenAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
-      Tokenizer tokenizer = new Tokenizer() {
-        private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
-        private boolean done = false;
+      Tokenizer tokenizer =
+          new Tokenizer() {
+            private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
+            private boolean done = false;
 
-        @Override
-        public boolean incrementToken() {
-          if (done) return false;
-          clearAttributes();
-          termAttr.append("lucene"); // emit single fixed token
-          done = true;
-          return true;
-        }
+            @Override
+            public boolean incrementToken() {
+              if (done) return false;
+              clearAttributes();
+              termAttr.append("lucene"); // emit single fixed token
+              done = true;
+              return true;
+            }
 
-        @Override
-        public void reset() throws IOException {
-          super.reset();
-          done = false;
-        }
-      };
+            @Override
+            public void reset() throws IOException {
+              super.reset();
+              done = false;
+            }
+          };
       return new TokenStreamComponents(tokenizer);
     }
 

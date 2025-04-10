@@ -4,14 +4,13 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-/**
- * Non-recursive document binner using iterative graph bisection.
- */
+/** Non-recursive document binner using iterative graph bisection. */
 public final class DocBinningGraphBuilder {
 
   private DocBinningGraphBuilder() {}
 
-  public static int[] computeBins(SparseEdgeGraph graph, int maxDoc, int numBins) throws IOException {
+  public static int[] computeBins(SparseEdgeGraph graph, int maxDoc, int numBins)
+      throws IOException {
     if (maxDoc <= 0 || Integer.bitCount(numBins) != 1) {
       throw new IllegalArgumentException("maxDoc must be > 0 and numBins must be a power of 2");
     }

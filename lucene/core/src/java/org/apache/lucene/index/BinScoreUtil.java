@@ -4,7 +4,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.lucene.codecs.BinMapReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -31,7 +30,8 @@ public final class BinScoreUtil {
     for (LeafReaderContext ctx : reader.leaves()) {
       wrapped.add(wrap(ctx.reader()));
     }
-    // This MultiReader just wraps the readers — responsibility for cleanup is delegated to individual leaves.
+    // This MultiReader just wraps the readers — responsibility for cleanup is delegated to
+    // individual leaves.
     return new MultiReader(wrapped.toArray(new LeafReader[0]), true);
   }
 
@@ -62,8 +62,10 @@ public final class BinScoreUtil {
       return reader;
     }
 
-    String suffix = binmapFile.substring(name.length() + 1, binmapFile.length() - ".binmap".length());
-    SegmentReadState state = new SegmentReadState(dir, info, sr.getFieldInfos(), IOContext.READONCE, suffix);
+    String suffix =
+        binmapFile.substring(name.length() + 1, binmapFile.length() - ".binmap".length());
+    SegmentReadState state =
+        new SegmentReadState(dir, info, sr.getFieldInfos(), IOContext.READONCE, suffix);
 
     BinMapReader binMap = null;
     try {
@@ -75,7 +77,7 @@ public final class BinScoreUtil {
         @Override
         protected void doClose() throws IOException {
           IOUtils.close(closeOnClose); // closes compoundReader if present
-          super.doClose();             // closes binMap, etc.
+          super.doClose(); // closes binMap, etc.
         }
       };
     } catch (Throwable t) {

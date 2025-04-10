@@ -88,7 +88,9 @@ public final class ApproximateDocGraphBuilder {
       }
 
       int added = 0;
-      for (int docB = candidates.nextSetBit(0); docB >= 0 && added < maxEdgesPerDoc; docB = candidates.nextSetBit(docB + 1)) {
+      for (int docB = candidates.nextSetBit(0);
+          docB >= 0 && added < maxEdgesPerDoc;
+          docB = candidates.nextSetBit(docB + 1)) {
         if (docA == docB) {
           continue;
         }
