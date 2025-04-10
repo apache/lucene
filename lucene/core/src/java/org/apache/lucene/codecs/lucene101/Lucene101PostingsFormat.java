@@ -19,6 +19,8 @@ package org.apache.lucene.codecs.lucene101;
 import java.io.IOException;
 import java.util.Map;
 
+import org.apache.lucene.codecs.ApproximateDocBinner;
+import org.apache.lucene.codecs.ApproximateDocGraphBuilder;
 import org.apache.lucene.codecs.BinMapWriter;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
@@ -389,6 +391,7 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
      */
     static final int VERSION_DENSE_BLOCKS_AS_BITSETS = 1;
     static final int VERSION_CURRENT = VERSION_DENSE_BLOCKS_AS_BITSETS;
+    private static final int MAX_DOC_FOR_EXACT_BINNING = 10;
     private final int version;
     private final int minTermBlockSize;
     private final int maxTermBlockSize;
@@ -450,10 +453,8 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
             if ("true".equalsIgnoreCase(fi.getAttribute("doBinning"))) {
                 binningField = fi.name;
                 String binCountAttr = fi.getAttribute("bin.count");
-                binCount =
-                        binCountAttr != null
-                                ? Integer.parseInt(binCountAttr)
-                                : Math.max(1, Integer.highestOneBit(maxDoc >>> 4));
+                binCount = (binCountAttr != null) ? Integer.parseInt(binCountAttr)
+                        : Math.max(1, Integer.highestOneBit(maxDoc >>> 4));
                 break;
             }
         }
@@ -463,30 +464,35 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
         }
 
         final PostingsFormat format = new Lucene101PostingsFormat();
-        try (FieldsProducer fields =
-                     format.fieldsProducer(
-                             new SegmentReadState(
-                                     state.directory,
-                                     state.segmentInfo,
-                                     state.fieldInfos,
-                                     state.context,
-                                     state.segmentSuffix))) {
+        try (FieldsProducer fields = format.fieldsProducer(
+                new SegmentReadState(state.directory, state.segmentInfo, state.fieldInfos, state.context, state.segmentSuffix))) {
+
             Terms terms = fields.terms(binningField);
             if (terms == null) {
                 return;
             }
 
-            Map<String, Terms> singleField = Map.of(binningField, terms);
-            try (LeafReader reader = new FieldsLeafReader(singleField, maxDoc)) {
-                DocGraphBuilder builder =
-                        new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
-                SparseEdgeGraph graph = builder.build(reader);
-                int[] docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
+            try (LeafReader reader = new FieldsLeafReader(
+                    java.util.Collections.singletonMap(binningField, terms), maxDoc)) {
+
+                final int[] docToBin;
+                if (maxDoc > MAX_DOC_FOR_EXACT_BINNING) {
+                    ApproximateDocGraphBuilder builder = new ApproximateDocGraphBuilder(
+                            binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
+                    SparseEdgeGraph graph = builder.build(reader);
+                    docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
+                } else {
+                    DocGraphBuilder builder = new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
+                    SparseEdgeGraph graph = builder.build(reader);
+                    docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
+                }
+
                 BinMapWriter writer = new BinMapWriter(state.directory, state, docToBin, binCount);
                 writer.close();
             }
         }
     }
+
 
     @Override
     public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {

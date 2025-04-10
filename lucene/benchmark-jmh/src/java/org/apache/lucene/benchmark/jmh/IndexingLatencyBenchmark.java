@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
@@ -57,19 +56,21 @@ import org.openjdk.jmh.annotations.Warmup;
 @Warmup(iterations = 2)
 @Measurement(iterations = 5)
 @Fork(1)
-public class BinningIndexingLatencyBenchmark {
-
-  @Param({"10000"})
-  private int docCount;
+public class IndexingLatencyBenchmark {
 
   @Param({"true", "false"})
-  private boolean binningEnabled;
+  private String binningFlag;
 
-  private Path tempDir;
+  @Param({"1000", "10000"})
+  private int docCount;
+
+  private boolean binningEnabled;
   private FieldType fieldType;
+  private Path tempDir;
 
   @Setup(Level.Trial)
   public void setup() {
+    binningEnabled = Boolean.parseBoolean(binningFlag);
     fieldType = new FieldType(TextField.TYPE_NOT_STORED);
     fieldType.setTokenized(true);
     fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
@@ -83,7 +84,7 @@ public class BinningIndexingLatencyBenchmark {
 
   @Benchmark
   public void indexBatch() throws IOException {
-    tempDir = Files.createTempDirectory("lucene-binning-benchmark");
+    tempDir = Files.createTempDirectory("lucene-indexing-benchmark");
     try (Directory dir = new MMapDirectory(tempDir)) {
       IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
       config.setCodec(new Lucene101Codec());
@@ -91,7 +92,7 @@ public class BinningIndexingLatencyBenchmark {
       try (IndexWriter writer = new IndexWriter(dir, config)) {
         for (int i = 0; i < docCount; i++) {
           Document doc = new Document();
-          String content = (i % 200 == 0) ? "lucene relevant content" : "noise filler text " + i;
+          String content = (i % 200 == 0) ? "lucene high quality text" : "noise filler token " + i;
           doc.add(new Field("field", content, fieldType));
           writer.addDocument(doc);
         }
@@ -111,13 +112,13 @@ public class BinningIndexingLatencyBenchmark {
   }
 
   /**
-   * Minimal custom analyzer to avoid dependency on analyzer modules.
+   * Analyzer that emits a single token to avoid dependency on analyzer modules.
    */
   private static final class SingleTokenAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
       Tokenizer tokenizer = new Tokenizer() {
-        private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
+        private final CharTermAttribute attr = addAttribute(CharTermAttribute.class);
         private boolean emitted = false;
 
         @Override
@@ -126,7 +127,7 @@ public class BinningIndexingLatencyBenchmark {
             return false;
           }
           clearAttributes();
-          termAttr.append("lucene");
+          attr.append("lucene");
           emitted = true;
           return true;
         }

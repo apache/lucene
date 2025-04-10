@@ -1,38 +1,17 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
-/** Computes document-to-bin assignments using recursive graph bisection. */
+/**
+ * Non-recursive document binner using iterative graph bisection.
+ */
 public final class DocBinningGraphBuilder {
 
   private DocBinningGraphBuilder() {}
 
-  /**
-   * Partition documents into bins using recursive graph bisection.
-   *
-   * @param adjacency graph representation
-   * @param maxDoc number of documents
-   * @param numBins must be a power of 2
-   * @return array mapping docID to assigned bin
-   */
-  public static int[] computeBins(SparseEdgeGraph adjacency, int maxDoc, int numBins)
-      throws IOException {
+  public static int[] computeBins(SparseEdgeGraph graph, int maxDoc, int numBins) throws IOException {
     if (maxDoc <= 0 || Integer.bitCount(numBins) != 1) {
       throw new IllegalArgumentException("maxDoc must be > 0 and numBins must be a power of 2");
     }
@@ -40,83 +19,84 @@ public final class DocBinningGraphBuilder {
     final int[] docToBin = new int[maxDoc];
     final int[] docIndices = new int[maxDoc];
     for (int i = 0; i < maxDoc; i++) {
-      docToBin[i] = -1; // mark as unassigned
+      docToBin[i] = -1;
       docIndices[i] = i;
     }
-    final float[] scratch = new float[maxDoc];
 
-    partition(adjacency, docToBin, docIndices, 0, maxDoc, 0, numBins, scratch);
+    final Deque<PartitionTask> queue = new ArrayDeque<>();
+    queue.add(new PartitionTask(0, maxDoc, 0, numBins));
+
+    while (!queue.isEmpty()) {
+      PartitionTask task = queue.removeFirst();
+      final int size = task.end - task.start;
+      if (task.binCount == 1 || size <= 1) {
+        for (int i = task.start; i < task.end; i++) {
+          docToBin[docIndices[i]] = task.binBase;
+        }
+        continue;
+      }
+
+      final int seedA = docIndices[task.start];
+      final int seedB = docIndices[task.end - 1];
+
+      final int[] left = new int[size];
+      final int[] right = new int[size];
+      int leftSize = 0;
+      int rightSize = 0;
+
+      for (int i = 0; i < size; i++) {
+        final int docID = docIndices[task.start + i];
+        final float simA = similarity(graph, docID, seedA);
+        final float simB = similarity(graph, docID, seedB);
+        if (simA >= simB) {
+          left[leftSize++] = docID;
+        } else {
+          right[rightSize++] = docID;
+        }
+      }
+
+      System.arraycopy(left, 0, docIndices, task.start, leftSize);
+      System.arraycopy(right, 0, docIndices, task.start + leftSize, rightSize);
+
+      final int mid = task.start + leftSize;
+      final int nextBin = task.binCount >>> 1;
+
+      queue.add(new PartitionTask(task.start, mid, task.binBase, nextBin));
+      queue.add(new PartitionTask(mid, task.end, task.binBase + nextBin, nextBin));
+    }
 
     for (int i = 0; i < maxDoc; i++) {
       if (docToBin[i] == -1) {
-        throw new IllegalStateException("DocID " + i + " was not assigned to any bin");
+        throw new IllegalStateException("Unassigned docID: " + i);
       }
     }
 
     return docToBin;
   }
 
-  private static void partition(
-      SparseEdgeGraph adjacency,
-      int[] docToBin,
-      int[] docIndices,
-      int start,
-      int end,
-      int binOffset,
-      int numBins,
-      float[] scratch) {
-    final int size = end - start;
-    if (numBins == 1 || size <= 1) {
-      for (int i = start; i < end; i++) {
-        docToBin[docIndices[i]] = binOffset;
-      }
-      return;
-    }
-
-    final int seedDocA = docIndices[start];
-    final int seedDocB = docIndices[end - 1];
-
-    final int[] leftPartition = new int[size];
-    final int[] rightPartition = new int[size];
-    int leftSize = 0;
-    int rightSize = 0;
-
-    for (int i = 0; i < size; i++) {
-      final int docID = docIndices[start + i];
-      final float weightToA = edgeWeight(adjacency, docID, seedDocA);
-      final float weightToB = edgeWeight(adjacency, docID, seedDocB);
-
-      if (weightToA >= weightToB) {
-        leftPartition[leftSize++] = docID;
-      } else {
-        rightPartition[rightSize++] = docID;
+  private static float similarity(SparseEdgeGraph graph, int docA, int docB) {
+    int[] neighbors = graph.getNeighbors(docA);
+    float[] weights = graph.getWeights(docA);
+    float score = 0f;
+    for (int i = 0; i < neighbors.length; i++) {
+      if (neighbors[i] == docB) {
+        score += weights[i];
       }
     }
-
-    for (int i = 0; i < leftSize; i++) {
-      docIndices[start + i] = leftPartition[i];
-    }
-    for (int i = 0; i < rightSize; i++) {
-      docIndices[start + leftSize + i] = rightPartition[i];
-    }
-
-    final int mid = start + leftSize;
-    final int nextBinCount = numBins >>> 1;
-
-    partition(adjacency, docToBin, docIndices, start, mid, binOffset, nextBinCount, scratch);
-    partition(
-        adjacency, docToBin, docIndices, mid, end, binOffset + nextBinCount, nextBinCount, scratch);
+    return score;
   }
 
-  private static float edgeWeight(SparseEdgeGraph graph, int docID, int targetDocID) {
-    final int[] neighbors = graph.getNeighbors(docID);
-    final float[] weights = graph.getWeights(docID);
-    float totalWeight = 0f;
-    for (int i = 0; i < neighbors.length; i++) {
-      if (neighbors[i] == targetDocID) {
-        totalWeight += weights[i];
-      }
+  private static final class PartitionTask {
+    final int start;
+    final int end;
+    final int binBase;
+    final int binCount;
+
+    PartitionTask(int start, int end, int binBase, int binCount) {
+      this.start = start;
+      this.end = end;
+      this.binBase = binBase;
+      this.binCount = binCount;
     }
-    return totalWeight;
   }
 }
