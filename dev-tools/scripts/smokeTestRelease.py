@@ -29,7 +29,6 @@ import subprocess
 import sys
 import textwrap
 import traceback
-import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET

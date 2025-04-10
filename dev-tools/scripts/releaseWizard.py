@@ -1863,9 +1863,8 @@ class UserInput(SecretYamlObject):
 
 def create_ical(_todo: Todo):  # pylint: disable=unused-argument
   if ask_yes_no("Do you want to add a Calendar reminder for the close vote time?"):
-    # TODO: this library has broken typing and seems unmaintained, replace?
-    c = Calendar()  # pyright: ignore[reportArgumentType]
-    e = Event()  # pyright: ignore[reportArgumentType]
+    c = Calendar()
+    e = Event()
     e.name = "Lucene %s vote ends" % state.release_version
     e.begin = vote_close_72h_date()
     e.description = "Remember to sum up votes and continue release :)"

@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: ci
+    labels: [dependencies]
+    open-pull-requests-limit: 1
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: build(deps)
+    labels:
+      - dependencies
+    groups:
+      pip:
+        patterns: ["*"]
