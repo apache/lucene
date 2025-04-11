@@ -35,8 +35,8 @@ import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.search.similarities.Similarity;
 
 /**
- * Class exposing static helper methods for generating DoubleValuesSource instances over some
- * IndexReader statistics
+ * Static helper methods for generating {@link DoubleValuesSource} and {@link LongValuesSource}
+ * instances over some IndexReader statistics
  */
 public final class IndexReaderFunctions {
 
@@ -305,14 +305,15 @@ public final class IndexReaderFunctions {
   }
 
   /**
-   * Creates a value source that returns a field's length measured in number of term positions. It
-   * comes from the "norm", and it's approximated, as determined by {@link
-   * Similarity#computeNorm(FieldInvertState)}.
+   * Creates a value source that returns what the {@link Similarity} puts in the norm for this
+   * field. The default meaning is the field's position length, approximated.
    *
+   * @see Similarity#computeNorm(FieldInvertState)
+   * @see Similarity#decodeNorm(long)
    * @see org.apache.lucene.index.LeafReader#getNormValues(String)
    */
-  public static LongValuesSource fieldLength(String field) {
-    return new FieldLengthValuesSource(field);
+  public static LongValuesSource norm(String field) {
+    return new NormValuesSource(field);
   }
 
   @FunctionalInterface
@@ -428,11 +429,11 @@ public final class IndexReaderFunctions {
     }
   }
 
-  private static class FieldLengthValuesSource extends LongValuesSource {
+  private static class NormValuesSource extends LongValuesSource {
     private final String field;
     private Similarity similarity;
 
-    private FieldLengthValuesSource(String field) {
+    private NormValuesSource(String field) {
       this.field = Objects.requireNonNull(field);
     }
 
@@ -452,7 +453,7 @@ public final class IndexReaderFunctions {
       return new LongValues() {
         @Override
         public long longValue() throws IOException {
-          return similarity.decodeNormToLength(norms.longValue());
+          return similarity.decodeNorm(norms.longValue());
         }
 
         @Override
@@ -474,7 +475,7 @@ public final class IndexReaderFunctions {
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof FieldLengthValuesSource that)) return false;
+      if (!(o instanceof NormValuesSource that)) return false;
       return field.equals(that.field);
     }
 
@@ -485,7 +486,7 @@ public final class IndexReaderFunctions {
 
     @Override
     public String toString() {
-      return "fieldLength(" + field + ")";
+      return "norm(" + field + ")";
     }
   }
 }
