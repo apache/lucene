@@ -69,6 +69,8 @@ Improvements
 ---------------------
 * GITHUB#14458 : Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
 
+* GITHUB#14476: Removing unnecessary splitX in ComponentTree (Ankit Jain)
+
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
