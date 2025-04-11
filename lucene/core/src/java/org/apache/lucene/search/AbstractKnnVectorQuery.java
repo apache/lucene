@@ -108,7 +108,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK);
   }
 
-  private TopDocs searchLeaf(
+  protected TopDocs searchLeaf(
       LeafReaderContext ctx,
       Weight filterWeight,
       TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager)
@@ -264,7 +264,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     return TopDocs.merge(k, perLeafResults);
   }
 
-  private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
+  protected Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
     int len = topK.scoreDocs.length;
 
     assert len > 0;
@@ -278,7 +278,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       scores[i] = topK.scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader.leaves(), docs);
-    return new DocAndScoreQuery(docs, scores, maxScore, segmentStarts, reader.getContext().id());
+    return new DocAndScoreQuery(
+        docs, scores, maxScore, segmentStarts, topK.totalHits.value(), reader.getContext().id());
   }
 
   static int[] findSegmentStarts(List<LeafReaderContext> leaves, int[] docs) {
@@ -351,6 +352,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     private final float[] scores;
     private final float maxScore;
     private final int[] segmentStarts;
+    private final long visited;
     private final Object contextIdentity;
 
     /**
@@ -358,20 +360,38 @@ abstract class AbstractKnnVectorQuery extends Query {
      *
      * @param docs the global docids of documents that match, in ascending order
      * @param scores the scores of the matching documents
+     * @param maxScore the max of those scores? why do we need to pass in?
      * @param segmentStarts the indexes in docs and scores corresponding to the first matching
      *     document in each segment. If a segment has no matching documents, it should be assigned
      *     the index of the next segment that does. There should be a final entry that is always
      *     docs.length-1.
+     * @param visited the number of graph nodes that were visited, and for which vector distance
+     *     scores were evaluated.
      * @param contextIdentity an object identifying the reader context that was used to build this
      *     query
      */
     DocAndScoreQuery(
-        int[] docs, float[] scores, float maxScore, int[] segmentStarts, Object contextIdentity) {
+        int[] docs,
+        float[] scores,
+        float maxScore,
+        int[] segmentStarts,
+        long visited,
+        Object contextIdentity) {
       this.docs = docs;
       this.scores = scores;
       this.maxScore = maxScore;
       this.segmentStarts = segmentStarts;
+      this.visited = visited;
       this.contextIdentity = contextIdentity;
+    }
+
+    DocAndScoreQuery(DocAndScoreQuery other) {
+      this.docs = other.docs;
+      this.scores = other.scores;
+      this.maxScore = other.maxScore;
+      this.segmentStarts = other.segmentStarts;
+      this.visited = other.visited;
+      this.contextIdentity = other.contextIdentity;
     }
 
     @Override
@@ -485,6 +505,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     @Override
     public void visit(QueryVisitor visitor) {
       visitor.visitLeaf(this);
+    }
+
+    public long visited() {
+      return visited;
     }
 
     @Override
