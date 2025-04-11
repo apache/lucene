@@ -87,7 +87,7 @@ Build
 
 Other
 ---------------------
-(No changes)
+* GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
 
 ======================= Lucene 10.2.0 =======================
 

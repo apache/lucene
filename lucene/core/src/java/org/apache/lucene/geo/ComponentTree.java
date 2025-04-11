@@ -26,6 +26,13 @@ import org.apache.lucene.util.ArrayUtil;
  * <p>Construction takes {@code O(n log n)} time for sorting and tree construction.
  */
 final class ComponentTree implements Component2D {
+
+  private static final Comparator<Component2D> XComparator =
+      Comparator.comparingDouble(Component2D::getMinX).thenComparingDouble(Component2D::getMaxX);
+
+  private static final Comparator<Component2D> YComparator =
+      Comparator.comparingDouble(Component2D::getMinY).thenComparingDouble(Component2D::getMaxY);
+
   /** minimum Y of this geometry's bounding box area */
   private double minY;
 
@@ -94,9 +101,7 @@ final class ComponentTree implements Component2D {
       if (right != null
           && ((splitX == false && y >= this.component.getMinY())
               || (splitX && x >= this.component.getMinX()))) {
-        if (right.contains(x, y)) {
-          return true;
-        }
+        return right.contains(x, y);
       }
     }
     return false;
@@ -124,9 +129,7 @@ final class ComponentTree implements Component2D {
       if (right != null
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
-        if (right.intersectsLine(minX, maxX, minY, maxY, aX, aY, bX, bY)) {
-          return true;
-        }
+        return right.intersectsLine(minX, maxX, minY, maxY, aX, aY, bX, bY);
       }
     }
     return false;
@@ -156,9 +159,7 @@ final class ComponentTree implements Component2D {
       if (right != null
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
-        if (right.intersectsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY)) {
-          return true;
-        }
+        return right.intersectsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY);
       }
     }
     return false;
@@ -186,9 +187,7 @@ final class ComponentTree implements Component2D {
       if (right != null
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
-        if (right.containsLine(minX, maxX, minY, maxY, aX, aY, bX, bY)) {
-          return true;
-        }
+        return right.containsLine(minX, maxX, minY, maxY, aX, aY, bX, bY);
       }
     }
     return false;
@@ -218,9 +217,7 @@ final class ComponentTree implements Component2D {
       if (right != null
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
-        if (right.containsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY)) {
-          return true;
-        }
+        return right.containsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY);
       }
     }
     return false;
@@ -292,9 +289,7 @@ final class ComponentTree implements Component2D {
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
         relation = right.relate(minX, maxX, minY, maxY);
-        if (relation != Relation.CELL_OUTSIDE_QUERY) {
-          return relation;
-        }
+        return relation;
       }
     }
     return Relation.CELL_OUTSIDE_QUERY;
@@ -322,27 +317,11 @@ final class ComponentTree implements Component2D {
     }
     final int mid = (low + high) >>> 1;
     if (low < high) {
-      Comparator<Component2D> comparator;
       if (splitX) {
-        comparator =
-            (left, right) -> {
-              int ret = Double.compare(left.getMinX(), right.getMinX());
-              if (ret == 0) {
-                ret = Double.compare(left.getMaxX(), right.getMaxX());
-              }
-              return ret;
-            };
+        ArrayUtil.select(components, low, high + 1, mid, XComparator);
       } else {
-        comparator =
-            (left, right) -> {
-              int ret = Double.compare(left.getMinY(), right.getMinY());
-              if (ret == 0) {
-                ret = Double.compare(left.getMaxY(), right.getMaxY());
-              }
-              return ret;
-            };
+        ArrayUtil.select(components, low, high + 1, mid, YComparator);
       }
-      ArrayUtil.select(components, low, high + 1, mid, comparator);
     }
     ComponentTree newNode = new ComponentTree(components[mid], splitX);
     // find children
