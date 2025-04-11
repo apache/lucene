@@ -20,7 +20,7 @@ import org.apache.lucene.codecs.PostingsFormat;
 
 /**
  * {@link CompletionPostingsFormat} for {@link
- * org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat}
+ * org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat}
  *
  * @lucene.experimental
  */
@@ -32,6 +32,6 @@ public class Completion101PostingsFormat extends CompletionPostingsFormat {
 
   @Override
   protected PostingsFormat delegatePostingsFormat() {
-    return PostingsFormat.forName("Lucene101");
+    return PostingsFormat.forName("Lucene103");
   }
 }

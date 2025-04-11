@@ -18,7 +18,7 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
+import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermsEnum;
@@ -28,7 +28,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * Class that plugs into term dictionaries, such as {@link Lucene90BlockTreeTermsWriter}, and
+ * Class that plugs into term dictionaries, such as {@link Lucene103BlockTreeTermsWriter}, and
  * handles writing postings.
  *
  * @see PostingsReaderBase

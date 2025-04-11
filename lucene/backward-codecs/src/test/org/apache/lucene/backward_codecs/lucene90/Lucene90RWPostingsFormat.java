@@ -17,14 +17,14 @@
 package org.apache.lucene.backward_codecs.lucene90;
 
 import java.io.IOException;
+import org.apache.lucene.backward_codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader;
+import org.apache.lucene.backward_codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermState;

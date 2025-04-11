@@ -25,7 +25,7 @@ import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsWriterBase;
 import org.apache.lucene.codecs.blocktreeords.FSTOrdsOutputs.Output;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter; // javadocs
+import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter; // javadocs
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -80,9 +80,9 @@ import org.apache.lucene.util.fst.Util;
 */
 
 /**
- * This is just like {@link Lucene90BlockTreeTermsWriter}, except it also stores a version per term,
- * and adds a method to its TermsEnum implementation to seekExact only if the version is &gt;= the
- * specified version. The version is added to the terms index to avoid seeking if no term in the
+ * This is just like {@link Lucene103BlockTreeTermsWriter}, except it also stores a version per
+ * term, and adds a method to its TermsEnum implementation to seekExact only if the version is &gt;=
+ * the specified version. The version is added to the terms index to avoid seeking if no term in the
  * block has a high enough version. The term blocks file is .tiv and the terms index extension is
  * .tipv.
  *
@@ -170,7 +170,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
       int minItemsInBlock,
       int maxItemsInBlock)
       throws IOException {
-    Lucene90BlockTreeTermsWriter.validateSettings(minItemsInBlock, maxItemsInBlock);
+    Lucene103BlockTreeTermsWriter.validateSettings(minItemsInBlock, maxItemsInBlock);
 
     maxDoc = state.segmentInfo.maxDoc();
 
