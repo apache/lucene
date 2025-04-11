@@ -18,7 +18,6 @@
 package org.apache.lucene.sandbox.search;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -26,52 +25,30 @@ import java.util.Objects;
  * This class is the internal representation of a profiled Query, corresponding to a single node in
  * the query tree. It is built after the query has finished executing and is merely a structured
  * representation, rather than the entity that collects the timing profile.
- *
- * <p>Each QueryProfilerResult has a List of QueryProfilerResult, which will contain "children"
- * queries if applicable
  */
-public class QueryProfilerResult {
-  private final String type;
-  private final String description;
+public class QuerySliceProfilerResult {
+
+  private final long threadId;
+  private final Map<String, Long> breakdown;
   private final long startTime;
   private final long totalTime;
-  private final Map<String, Long> queryLevelBreakdowns;
-  private final List<QuerySliceProfilerResult> threadLevelBreakdowns;
-  private final List<QueryProfilerResult> childrenProfileResults;
 
-  public QueryProfilerResult(
-      String type,
-      String description,
-      Map<String, Long> queryLevelBreakdowns,
-      List<QuerySliceProfilerResult> threadLevelBreakdowns,
-      List<QueryProfilerResult> childrenProfileResults,
-      long startTime,
-      long totalTime) {
-    this.type = type;
-    this.description = description;
-    this.queryLevelBreakdowns =
-        Objects.requireNonNull(queryLevelBreakdowns, "required breakdown argument missing");
-    this.threadLevelBreakdowns =
-        Objects.requireNonNull(threadLevelBreakdowns, "required slice breakdowns argument missing");
-    this.childrenProfileResults =
-        childrenProfileResults == null ? Collections.emptyList() : childrenProfileResults;
+  public QuerySliceProfilerResult(
+      long threadId, Map<String, Long> breakdown, long startTime, long totalTime) {
+    this.threadId = threadId;
+    this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
     this.startTime = startTime;
     this.totalTime = totalTime;
   }
 
   /** Retrieve the lucene description of this query (e.g. the "explain" text) */
-  public String getDescription() {
-    return description;
-  }
-
-  /** Retrieve the name of the entry (e.g. "TermQuery" or "LongTermsAggregator") */
-  public String getQueryName() {
-    return type;
+  public long getThreadId() {
+    return threadId;
   }
 
   /** The timing breakdown for this node. */
   public Map<String, Long> getTimeBreakdown() {
-    return Collections.unmodifiableMap(queryLevelBreakdowns);
+    return Collections.unmodifiableMap(breakdown);
   }
 
   public long getStartTime() {
@@ -85,14 +62,5 @@ public class QueryProfilerResult {
    */
   public long getTotalTime() {
     return totalTime;
-  }
-
-  public List<QuerySliceProfilerResult> getThreadLevelBreakdowns() {
-    return Collections.unmodifiableList(threadLevelBreakdowns);
-  }
-
-  /** Returns a list of all profiled children queries */
-  public List<QueryProfilerResult> getProfiledChildren() {
-    return Collections.unmodifiableList(childrenProfileResults);
   }
 }
