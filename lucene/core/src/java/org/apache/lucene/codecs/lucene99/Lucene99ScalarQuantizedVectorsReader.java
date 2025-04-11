@@ -19,9 +19,12 @@ package org.apache.lucene.codecs.lucene99;
 
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 
 import java.io.IOException;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -280,6 +283,18 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   @Override
   public long ramBytesUsed() {
     return SHALLOW_SIZE + fields.ramBytesUsed() + rawVectorsReader.ramBytesUsed();
+  }
+
+  @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    var raw = rawVectorsReader.getOffHeapByteSize(fieldInfo);
+    var fieldEntry = fields.get(fieldInfo.number);
+    if (fieldEntry == null) {
+      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+      return raw;
+    }
+    var quant = Map.of(VECTOR_DATA_EXTENSION, fieldEntry.vectorDataLength());
+    return KnnVectorsReader.mergeOffHeapByteSizeMaps(raw, quant);
   }
 
   private FieldEntry readField(IndexInput input, int versionMeta, FieldInfo info)
