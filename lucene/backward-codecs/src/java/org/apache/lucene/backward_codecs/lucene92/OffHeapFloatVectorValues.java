@@ -256,7 +256,7 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
-      return null;
+      return new Bits.MatchNoBits(0);
     }
 
     @Override
