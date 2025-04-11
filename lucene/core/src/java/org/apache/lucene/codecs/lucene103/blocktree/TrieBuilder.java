@@ -229,7 +229,7 @@ class TrieBuilder {
     }
     assert label == labelsSeen.length() - 1
         || labelsSeen.nextSetBit(label + 1) == DocIdSetIterator.NO_MORE_DOCS;
-    if (labels[labels.length - 1] - labels[0] + 1 == labels.length) {
+    if (labels.length == 0 || labels[labels.length - 1] - labels[0] + 1 == labels.length) {
       out.writeVInt(0);
       return null;
     }
