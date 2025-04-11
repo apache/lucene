@@ -819,18 +819,11 @@ public class FSTCompiler<T> {
       final UnCompiledNode<T> node = frontier[idx];
       final int prevIdx = idx - 1;
       final UnCompiledNode<T> parent = frontier[prevIdx];
-
       final T nextFinalOutput = node.output;
 
-      // We "fake" the node as being final if it has no
-      // outgoing arcs; in theory we could leave it
-      // as non-final (the FST can represent this), but
-      // FSTEnum, Util, etc., have trouble w/ non-final
-      // dead-end states:
-
-      // node.numArcs == 0 happens on last node. But it is final, we still can remove node.numArcs
-      // == 0.
-      final boolean isFinal = node.isFinal || node.numArcs == 0;
+      // If this node has no outgoing arcs, it should be final.
+      assert node.numArcs != 0 || node.isFinal;
+      final boolean isFinal = node.isFinal;
 
       // this node makes it and we now compile it.  first,
       // compile any targets that were previously
