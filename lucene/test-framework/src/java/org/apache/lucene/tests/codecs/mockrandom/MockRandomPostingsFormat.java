@@ -35,10 +35,10 @@ import org.apache.lucene.codecs.blockterms.VariableGapTermsIndexReader;
 import org.apache.lucene.codecs.blockterms.VariableGapTermsIndexWriter;
 import org.apache.lucene.codecs.blocktreeords.OrdsBlockTreeTermsReader;
 import org.apache.lucene.codecs.blocktreeords.OrdsBlockTreeTermsWriter;
-import org.apache.lucene.codecs.lucene101.Lucene101PostingsReader;
-import org.apache.lucene.codecs.lucene101.Lucene101PostingsWriter;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
+import org.apache.lucene.codecs.lucene103.Lucene103PostingsReader;
+import org.apache.lucene.codecs.lucene103.Lucene103PostingsWriter;
+import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsReader;
+import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
 import org.apache.lucene.codecs.memory.FSTTermsReader;
 import org.apache.lucene.codecs.memory.FSTTermsWriter;
 import org.apache.lucene.index.FieldInfo;
@@ -121,7 +121,7 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
 
     random.nextInt(); // consume a random for buffersize
 
-    PostingsWriterBase postingsWriter = new Lucene101PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state);
 
     final FieldsConsumer fields;
     final int t1 = random.nextInt(4);
@@ -151,7 +151,7 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
       boolean success = false;
       try {
         fields =
-            new Lucene90BlockTreeTermsWriter(
+            new Lucene103BlockTreeTermsWriter(
                 state, postingsWriter, minTermsInBlock, maxTermsInBlock);
         success = true;
       } finally {
@@ -289,7 +289,7 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
       System.out.println("MockRandomCodec: readBufferSize=" + readBufferSize);
     }
 
-    PostingsReaderBase postingsReader = new Lucene101PostingsReader(state);
+    PostingsReaderBase postingsReader = new Lucene103PostingsReader(state);
 
     final FieldsProducer fields;
     final int t1 = random.nextInt(4);
@@ -311,7 +311,7 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
 
       boolean success = false;
       try {
-        fields = new Lucene90BlockTreeTermsReader(postingsReader, state);
+        fields = new Lucene103BlockTreeTermsReader(postingsReader, state);
         success = true;
       } finally {
         if (!success) {

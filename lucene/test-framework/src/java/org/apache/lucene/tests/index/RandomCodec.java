@@ -33,7 +33,6 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
-import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsReader;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsWriter;
@@ -235,7 +234,6 @@ public class RandomCodec extends AssertingCodec {
     add(
         avoidCodecs,
         TestUtil.getDefaultPostingsFormat(minItemsPerBlock, maxItemsPerBlock),
-        new Lucene103PostingsFormat(minItemsPerBlock, maxItemsPerBlock),
         new FSTPostingsFormat(),
         new DirectPostingsFormat(
             LuceneTestCase.rarely(random)
