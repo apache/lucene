@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -27,7 +28,6 @@ import org.apache.lucene.util.BytesRef;
  */
 final class SingletonSortedSetDocValues extends SortedSetDocValues {
   private final SortedDocValues in;
-  private long ord;
 
   /** Creates a multi-valued view over the provided SortedDocValues */
   public SingletonSortedSetDocValues(SortedDocValues in) {
@@ -46,13 +46,13 @@ final class SingletonSortedSetDocValues extends SortedSetDocValues {
   }
 
   @Override
-  public int docID() {
-    return in.docID();
+  public DocIdSetIterator iterator() {
+    return in.iterator();
   }
 
   @Override
-  public long nextOrd() {
-    return ord;
+  public long nextOrd() throws IOException {
+    return in.ordValue();
   }
 
   @Override
@@ -61,30 +61,8 @@ final class SingletonSortedSetDocValues extends SortedSetDocValues {
   }
 
   @Override
-  public int nextDoc() throws IOException {
-    int docID = in.nextDoc();
-    if (docID != NO_MORE_DOCS) {
-      ord = in.ordValue();
-    }
-    return docID;
-  }
-
-  @Override
-  public int advance(int target) throws IOException {
-    int docID = in.advance(target);
-    if (docID != NO_MORE_DOCS) {
-      ord = in.ordValue();
-    }
-    return docID;
-  }
-
-  @Override
   public boolean advanceExact(int target) throws IOException {
-    if (in.advanceExact(target)) {
-      ord = in.ordValue();
-      return true;
-    }
-    return false;
+    return in.advanceExact(target);
   }
 
   @Override
@@ -106,10 +84,5 @@ final class SingletonSortedSetDocValues extends SortedSetDocValues {
   @Override
   public TermsEnum termsEnum() throws IOException {
     return in.termsEnum();
-  }
-
-  @Override
-  public long cost() {
-    return in.cost();
   }
 }

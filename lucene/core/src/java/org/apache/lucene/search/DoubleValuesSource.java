@@ -623,6 +623,12 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
   private static NumericDocValues asNumericDocValues(
       DoubleValuesHolder in, DoubleToLongFunction converter) {
     return new NumericDocValues() {
+
+      @Override
+      public DocIdSetIterator iterator() {
+        throw new UnsupportedOperationException();
+      }
+
       @Override
       public long longValue() throws IOException {
         return converter.applyAsLong(in.values.doubleValue());
@@ -631,26 +637,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
       @Override
       public boolean advanceExact(int target) throws IOException {
         return in.values.advanceExact(target);
-      }
-
-      @Override
-      public int docID() {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public long cost() {
-        throw new UnsupportedOperationException();
       }
     };
   }

@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.NumericDocValuesWriter.BufferedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -231,31 +232,32 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
         PackedLongValues values, PackedLongValues valueCounts, DocIdSetIterator docsWithField) {
       valuesIter = values.iterator();
       valueCountsIter = valueCounts.iterator();
-      this.docsWithField = docsWithField;
+      this.docsWithField =
+          new FilterDocIdSetIterator(docsWithField) {
+            @Override
+            public int nextDoc() throws IOException {
+              for (int i = valueUpto; i < valueCount; ++i) {
+                valuesIter.next();
+              }
+
+              int docID = docsWithField.nextDoc();
+              if (docID != NO_MORE_DOCS) {
+                valueCount = Math.toIntExact(valueCountsIter.next());
+                valueUpto = 0;
+              }
+              return docID;
+            }
+
+            @Override
+            public int advance(int target) {
+              throw new UnsupportedOperationException();
+            }
+          };
     }
 
     @Override
-    public int docID() {
-      return docsWithField.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      for (int i = valueUpto; i < valueCount; ++i) {
-        valuesIter.next();
-      }
-
-      int docID = docsWithField.nextDoc();
-      if (docID != NO_MORE_DOCS) {
-        valueCount = Math.toIntExact(valueCountsIter.next());
-        valueUpto = 0;
-      }
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException();
+    public DocIdSetIterator iterator() {
+      return docsWithField;
     }
 
     @Override
@@ -273,46 +275,52 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       valueUpto++;
       return valuesIter.next();
     }
-
-    @Override
-    public long cost() {
-      return docsWithField.cost();
-    }
   }
 
   static class SortingSortedNumericDocValues extends SortedNumericDocValues {
-    private final SortedNumericDocValues in;
     private final LongValues values;
     private int docID = -1;
     private long upto;
     private int numValues = -1;
+    private final DocIdSetIterator iterator;
 
     SortingSortedNumericDocValues(SortedNumericDocValues in, LongValues values) {
-      this.in = in;
       this.values = values;
+      this.iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int docID() {
+              return docID;
+            }
+
+            @Override
+            public int nextDoc() {
+              do {
+                docID++;
+                if (docID >= values.offsets.length) {
+                  return docID = NO_MORE_DOCS;
+                }
+              } while (values.offsets[docID] <= 0);
+              upto = values.offsets[docID];
+              numValues = Math.toIntExact(values.values.get(upto - 1));
+              return docID;
+            }
+
+            @Override
+            public int advance(int target) {
+              throw new UnsupportedOperationException("use nextDoc instead");
+            }
+
+            @Override
+            public long cost() {
+              return in.iterator().cost();
+            }
+          };
     }
 
     @Override
-    public int docID() {
-      return docID;
-    }
-
-    @Override
-    public int nextDoc() {
-      do {
-        docID++;
-        if (docID >= values.offsets.length) {
-          return docID = NO_MORE_DOCS;
-        }
-      } while (values.offsets[docID] <= 0);
-      upto = values.offsets[docID];
-      numValues = Math.toIntExact(values.values.get(upto - 1));
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException("use nextDoc instead");
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
@@ -329,11 +337,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     @Override
     public long nextValue() {
       return values.values.get(upto++);
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
     }
 
     @Override

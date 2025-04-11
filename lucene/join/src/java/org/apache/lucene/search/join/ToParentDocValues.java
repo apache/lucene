@@ -51,8 +51,8 @@ class ToParentDocValues extends DocIdSetIterator {
     }
 
     @Override
-    public int docID() {
-      return iter.docID();
+    public DocIdSetIterator iterator() {
+      return iter;
     }
 
     @Override
@@ -69,16 +69,6 @@ class ToParentDocValues extends DocIdSetIterator {
       } else {
         throw new AssertionError();
       }
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return iter.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return iter.advance(target);
     }
 
     @Override
@@ -99,11 +89,6 @@ class ToParentDocValues extends DocIdSetIterator {
     @Override
     public int getValueCount() {
       return values.getValueCount();
-    }
-
-    @Override
-    public long cost() {
-      return values.cost();
     }
   }
 
@@ -144,13 +129,8 @@ class ToParentDocValues extends DocIdSetIterator {
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      return iter.nextDoc();
-    }
-
-    @Override
-    public int advance(int targetParentDocID) throws IOException {
-      return iter.advance(targetParentDocID);
+    public DocIdSetIterator iterator() {
+      return iter;
     }
 
     @Override
@@ -161,16 +141,6 @@ class ToParentDocValues extends DocIdSetIterator {
     @Override
     public long longValue() {
       return value;
-    }
-
-    @Override
-    public int docID() {
-      return iter.docID();
-    }
-
-    @Override
-    public long cost() {
-      return values.cost();
     }
   }
 

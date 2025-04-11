@@ -37,6 +37,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -386,27 +387,22 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
             return new BinaryDocValues() {
 
               @Override
-              public int nextDoc() throws IOException {
-                int doc = values.nextDoc();
-                setCurrentDoc();
-                return doc;
-              }
+              public DocIdSetIterator iterator() {
+                return new FilterDocIdSetIterator(values) {
+                  @Override
+                  public int nextDoc() throws IOException {
+                    int doc = values.nextDoc();
+                    setCurrentDoc();
+                    return doc;
+                  }
 
-              @Override
-              public int docID() {
-                return values.docID();
-              }
-
-              @Override
-              public long cost() {
-                return values.cost();
-              }
-
-              @Override
-              public int advance(int target) throws IOException {
-                int doc = values.advance(target);
-                setCurrentDoc();
-                return doc;
+                  @Override
+                  public int advance(int target) throws IOException {
+                    int doc = values.advance(target);
+                    setCurrentDoc();
+                    return doc;
+                  }
+                };
               }
 
               @Override

@@ -118,6 +118,11 @@ class NormValuesWriter {
     }
 
     @Override
+    public DocIdSetIterator iterator() {
+      return docsWithField;
+    }
+
+    @Override
     public int docID() {
       return docsWithField.docID();
     }

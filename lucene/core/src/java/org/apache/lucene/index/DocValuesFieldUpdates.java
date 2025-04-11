@@ -44,12 +44,7 @@ abstract class DocValuesFieldUpdates implements Accountable {
    * An iterator over documents and their updated values. Only documents with updates are returned
    * by this iterator, and the documents are returned in increasing order.
    */
-  abstract static class Iterator extends DocValuesIterator {
-
-    @Override
-    public final boolean advanceExact(int target) {
-      throw new UnsupportedOperationException();
-    }
+  abstract static class Iterator extends DocIdSetIterator {
 
     @Override
     public final int advance(int target) {
@@ -81,9 +76,10 @@ abstract class DocValuesFieldUpdates implements Accountable {
     /** Wraps the given iterator as a BinaryDocValues instance. */
     static BinaryDocValues asBinaryDocValues(Iterator iterator) {
       return new BinaryDocValues() {
+
         @Override
-        public int docID() {
-          return iterator.docID();
+        public DocIdSetIterator iterator() {
+          return iterator;
         }
 
         @Override
@@ -93,22 +89,7 @@ abstract class DocValuesFieldUpdates implements Accountable {
 
         @Override
         public boolean advanceExact(int target) {
-          return iterator.advanceExact(target);
-        }
-
-        @Override
-        public int nextDoc() {
-          return iterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) {
-          return iterator.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return iterator.cost();
+          throw new UnsupportedOperationException();
         }
       };
     }
@@ -117,6 +98,11 @@ abstract class DocValuesFieldUpdates implements Accountable {
     static NumericDocValues asNumericDocValues(Iterator iterator) {
       return new NumericDocValues() {
         @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+
+        @Override
         public long longValue() {
           return iterator.longValue();
         }
@@ -124,26 +110,6 @@ abstract class DocValuesFieldUpdates implements Accountable {
         @Override
         public boolean advanceExact(int target) {
           throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public int docID() {
-          return iterator.docID();
-        }
-
-        @Override
-        public int nextDoc() {
-          return iterator.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) {
-          return iterator.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return iterator.cost();
         }
       };
     }

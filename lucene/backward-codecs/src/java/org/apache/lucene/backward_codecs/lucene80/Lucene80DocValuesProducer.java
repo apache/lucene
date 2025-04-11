@@ -40,6 +40,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -431,40 +432,22 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
   private abstract static class DenseNumericDocValues extends NumericDocValues {
 
-    final int maxDoc;
-    int doc = -1;
+    final DocIdSetIterator iterator;
 
     DenseNumericDocValues(int maxDoc) {
-      this.maxDoc = maxDoc;
+      this.iterator = DocIdSetIterator.all(maxDoc);
     }
 
     @Override
-    public int docID() {
-      return doc;
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target >= maxDoc) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
-    }
-
-    @Override
-    public boolean advanceExact(int target) {
-      doc = target;
+    public boolean advanceExact(int target) throws IOException {
+      int r = iterator.advance(target);
+      assert r == target;
       return true;
-    }
-
-    @Override
-    public long cost() {
-      return maxDoc;
     }
   }
 
@@ -477,28 +460,13 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
     }
 
     @Override
-    public int advance(int target) throws IOException {
-      return disi.advance(target);
+    public DocIdSetIterator iterator() {
+      return disi;
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
       return disi.advanceExact(target);
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public long cost() {
-      return disi.cost();
     }
   }
 
@@ -525,7 +493,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
             @Override
             public long longValue() throws IOException {
-              return vBPVReader.getLongValue(doc);
+              return vBPVReader.getLongValue(iterator.docID());
             }
           };
         } else {
@@ -535,7 +503,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
             return new DenseNumericDocValues(maxDoc) {
               @Override
               public long longValue() throws IOException {
-                return table[(int) values.get(doc)];
+                return table[(int) values.get(iterator.docID())];
               }
             };
           } else {
@@ -544,7 +512,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
             return new DenseNumericDocValues(maxDoc) {
               @Override
               public long longValue() throws IOException {
-                return mul * values.get(doc) + delta;
+                return mul * values.get(iterator.docID()) + delta;
               }
             };
           }
@@ -666,39 +634,21 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
   private abstract static class DenseBinaryDocValues extends BinaryDocValues {
 
-    final int maxDoc;
-    int doc = -1;
+    final DocIdSetIterator iterator;
 
     DenseBinaryDocValues(int maxDoc) {
-      this.maxDoc = maxDoc;
+      this.iterator = DocIdSetIterator.all(maxDoc);
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public long cost() {
-      return maxDoc;
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      if (target >= maxDoc) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      doc = target;
+      int r = iterator.advance(target);
+      assert r == target;
       return true;
     }
   }
@@ -712,23 +662,8 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public long cost() {
-      return disi.cost();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return disi.advance(target);
+    public DocIdSetIterator iterator() {
+      return disi;
     }
 
     @Override
@@ -754,7 +689,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            bytesSlice.seek((long) doc * length);
+            bytesSlice.seek((long) iterator.docID() * length);
             bytesSlice.readBytes(bytes.bytes, 0, length);
             return bytes;
           }
@@ -770,8 +705,8 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            long startOffset = addresses.get(doc);
-            bytes.length = (int) (addresses.get(doc + 1L) - startOffset);
+            long startOffset = addresses.get(iterator.docID());
+            bytes.length = (int) (addresses.get(iterator.docID() + 1L) - startOffset);
             bytesSlice.seek(startOffset);
             bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
             return bytes;
@@ -940,7 +875,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
         @Override
         public BytesRef binaryValue() throws IOException {
-          return decoder.decode(doc);
+          return decoder.decode(iterator.docID());
         }
       };
     } else {
@@ -999,16 +934,11 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       // dense
       return new BaseSortedDocValues(entry, data) {
 
-        int doc = -1;
+        final DocIdSetIterator iterator = DocIdSetIterator.all(maxDoc);
 
         @Override
-        public int nextDoc() throws IOException {
-          return advance(doc + 1);
-        }
-
-        @Override
-        public int docID() {
-          return doc;
+        public DocIdSetIterator iterator() {
+          return iterator;
         }
 
         @Override
@@ -1017,22 +947,15 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         }
 
         @Override
-        public int advance(int target) throws IOException {
-          if (target >= maxDoc) {
-            return doc = NO_MORE_DOCS;
-          }
-          return doc = target;
-        }
-
-        @Override
-        public boolean advanceExact(int target) {
-          doc = target;
+        public boolean advanceExact(int target) throws IOException {
+          int r = iterator.advance(target);
+          assert r == target;
           return true;
         }
 
         @Override
         public int ordValue() {
-          return (int) ords.get(doc);
+          return (int) ords.get(iterator.docID());
         }
       };
     } else {
@@ -1048,23 +971,8 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       return new BaseSortedDocValues(entry, data) {
 
         @Override
-        public int nextDoc() throws IOException {
-          return disi.nextDoc();
-        }
-
-        @Override
-        public int docID() {
-          return disi.docID();
-        }
-
-        @Override
-        public long cost() {
-          return disi.cost();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return disi.advance(target);
+        public DocIdSetIterator iterator() {
+          return disi;
         }
 
         @Override
@@ -1422,52 +1330,45 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       // dense
       return new SortedNumericDocValues() {
 
-        int doc = -1;
-        long start, end;
+        final DocIdSetIterator iterator = DocIdSetIterator.all(maxDoc);
+
+        int lastDoc = -1;
+        long start;
         int count;
 
         @Override
-        public int nextDoc() throws IOException {
-          return advance(doc + 1);
-        }
-
-        @Override
-        public int docID() {
-          return doc;
-        }
-
-        @Override
-        public long cost() {
-          return maxDoc;
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          if (target >= maxDoc) {
-            return doc = NO_MORE_DOCS;
-          }
-          start = addresses.get(target);
-          end = addresses.get(target + 1L);
-          count = (int) (end - start);
-          return doc = target;
+        public DocIdSetIterator iterator() {
+          return iterator;
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
-          start = addresses.get(target);
-          end = addresses.get(target + 1L);
-          count = (int) (end - start);
-          doc = target;
+          int r = iterator.advance(target);
+          assert r == target;
           return true;
+        }
+
+        private void set() {
+          int doc = iterator.docID();
+          start = addresses.get(doc);
+          count = (int) (addresses.get(doc + 1L) - start);
         }
 
         @Override
         public long nextValue() throws IOException {
+          if (lastDoc != iterator.docID()) {
+            set();
+            lastDoc = iterator.docID();
+          }
           return values.get(start++);
         }
 
         @Override
         public int docValueCount() {
+          if (lastDoc != iterator.docID()) {
+            set();
+            lastDoc = iterator.docID();
+          }
           return count;
         }
       };
@@ -1483,58 +1384,42 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
               entry.numDocsWithField);
       return new SortedNumericDocValues() {
 
-        boolean set;
-        long start, end;
+        int lastDoc = -1;
+        long start;
         int count;
 
         @Override
-        public int nextDoc() throws IOException {
-          set = false;
-          return disi.nextDoc();
-        }
-
-        @Override
-        public int docID() {
-          return disi.docID();
-        }
-
-        @Override
-        public long cost() {
-          return disi.cost();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          set = false;
-          return disi.advance(target);
+        public DocIdSetIterator iterator() {
+          return disi;
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
-          set = false;
           return disi.advanceExact(target);
         }
 
         @Override
         public long nextValue() throws IOException {
-          set();
+          if (lastDoc != disi.docID()) {
+            set();
+            lastDoc = disi.docID();
+          }
           return values.get(start++);
         }
 
         @Override
         public int docValueCount() {
-          set();
+          if (lastDoc != disi.docID()) {
+            set();
+            lastDoc = disi.docID();
+          }
           return count;
         }
 
         private void set() {
-          if (set == false) {
-            final int index = disi.index();
-            start = addresses.get(index);
-            end = addresses.get(index + 1L);
-            count = (int) (end - start);
-            set = true;
-          }
+          final int index = disi.index();
+          start = addresses.get(index);
+          count = (int) (addresses.get(index + 1L) - start);
         }
       };
     }
@@ -1559,52 +1444,45 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       // dense
       return new BaseSortedSetDocValues(entry, data) {
 
-        int doc = -1;
+        final DocIdSetIterator iterator = DocIdSetIterator.all(maxDoc);
+        int lastDoc = -1;
         long curr;
         int count;
 
         @Override
-        public int nextDoc() throws IOException {
-          return advance(doc + 1);
-        }
-
-        @Override
-        public int docID() {
-          return doc;
-        }
-
-        @Override
-        public long cost() {
-          return maxDoc;
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          if (target >= maxDoc) {
-            return doc = NO_MORE_DOCS;
-          }
-          curr = addresses.get(target);
-          long end = addresses.get(target + 1L);
-          count = (int) (end - curr);
-          return doc = target;
+        public DocIdSetIterator iterator() {
+          return iterator;
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
-          curr = addresses.get(target);
-          long end = addresses.get(target + 1L);
-          count = (int) (end - curr);
-          doc = target;
+          int r = iterator.advance(target);
+          assert r == target;
           return true;
+        }
+
+        private void set() {
+          int doc = iterator.docID();
+          curr = addresses.get(doc);
+          long end = addresses.get(doc + 1L);
+          count = (int) (end - curr);
         }
 
         @Override
         public long nextOrd() throws IOException {
+          if (lastDoc != iterator.docID()) {
+            set();
+            lastDoc = iterator.docID();
+          }
           return ords.get(curr++);
         }
 
         @Override
         public int docValueCount() {
+          if (lastDoc != iterator.docID()) {
+            set();
+            lastDoc = iterator.docID();
+          }
           return count;
         }
       };
@@ -1620,57 +1498,42 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
               entry.numDocsWithField);
       return new BaseSortedSetDocValues(entry, data) {
 
-        boolean set;
+        int lastDoc = -1;
         long curr;
         int count;
 
         @Override
-        public int nextDoc() throws IOException {
-          set = false;
-          return disi.nextDoc();
-        }
-
-        @Override
-        public int docID() {
-          return disi.docID();
-        }
-
-        @Override
-        public long cost() {
-          return disi.cost();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          set = false;
-          return disi.advance(target);
+        public DocIdSetIterator iterator() {
+          return disi;
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
-          set = false;
           return disi.advanceExact(target);
         }
 
         private void set() {
-          if (set == false) {
-            final int index = disi.index();
-            curr = addresses.get(index);
-            long end = addresses.get(index + 1L);
-            count = (int) (end - curr);
-            set = true;
-          }
+          final int index = disi.index();
+          curr = addresses.get(index);
+          long end = addresses.get(index + 1L);
+          count = (int) (end - curr);
         }
 
         @Override
         public long nextOrd() throws IOException {
-          set();
+          if (lastDoc != disi.docID()) {
+            set();
+            lastDoc = disi.docID();
+          }
           return ords.get(curr++);
         }
 
         @Override
         public int docValueCount() {
-          set();
+          if (lastDoc != disi.docID()) {
+            set();
+            lastDoc = disi.docID();
+          }
           return count;
         }
       };

@@ -53,7 +53,6 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.compress.LZ4;
@@ -668,6 +667,12 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             SortedDocValues sorted = valuesProducer.getSorted(field);
             NumericDocValues sortedOrds =
                 new NumericDocValues() {
+
+                  @Override
+                  public DocIdSetIterator iterator() {
+                    return sorted.iterator();
+                  }
+
                   @Override
                   public long longValue() throws IOException {
                     return sorted.ordValue();
@@ -676,26 +681,6 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
                   @Override
                   public boolean advanceExact(int target) throws IOException {
                     return sorted.advanceExact(target);
-                  }
-
-                  @Override
-                  public int docID() {
-                    return sorted.docID();
-                  }
-
-                  @Override
-                  public int nextDoc() throws IOException {
-                    return sorted.nextDoc();
-                  }
-
-                  @Override
-                  public int advance(int target) throws IOException {
-                    return sorted.advance(target);
-                  }
-
-                  @Override
-                  public long cost() {
-                    return sorted.cost();
                   }
                 };
             return DocValues.singleton(sortedOrds);
@@ -953,51 +938,24 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
             SortedSetDocValues values = valuesProducer.getSortedSet(field);
             return new SortedNumericDocValues() {
 
-              long[] ords = LongsRef.EMPTY_LONGS;
-              int i, docValueCount;
+              @Override
+              public DocIdSetIterator iterator() {
+                return values.iterator();
+              }
 
               @Override
               public long nextValue() throws IOException {
-                return ords[i++];
+                return values.nextOrd();
               }
 
               @Override
               public int docValueCount() {
-                return docValueCount;
+                return values.docValueCount();
               }
 
               @Override
               public boolean advanceExact(int target) throws IOException {
                 throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public int docID() {
-                return values.docID();
-              }
-
-              @Override
-              public int nextDoc() throws IOException {
-                int doc = values.nextDoc();
-                if (doc != NO_MORE_DOCS) {
-                  docValueCount = values.docValueCount();
-                  ords = ArrayUtil.grow(ords, docValueCount);
-                  for (int j = 0; j < docValueCount; j++) {
-                    ords[j] = values.nextOrd();
-                  }
-                  i = 0;
-                }
-                return doc;
-              }
-
-              @Override
-              public int advance(int target) throws IOException {
-                throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public long cost() {
-                return values.cost();
               }
             };
           }

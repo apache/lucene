@@ -120,7 +120,7 @@ abstract class BinaryRangeFieldRangeQuery extends Query {
         iterator =
             new TwoPhaseIterator(values) {
               @Override
-              public boolean matches() {
+              public boolean matches() throws IOException {
                 return queryType.matches(
                     queryPackedValue,
                     values.getPackedValue(),

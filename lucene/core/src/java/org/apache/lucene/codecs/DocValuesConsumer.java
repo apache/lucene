@@ -42,6 +42,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -169,7 +170,7 @@ public abstract class DocValuesConsumer implements Closeable {
 
     @Override
     public int nextDoc() throws IOException {
-      return values.nextDoc();
+      return values.iterator().nextDoc();
     }
   }
 
@@ -227,34 +228,39 @@ public abstract class DocValuesConsumer implements Closeable {
       private NumericDocValuesSub current;
 
       @Override
-      public int docID() {
-        return docID;
-      }
+      public DocIdSetIterator iterator() {
+        return new DocIdSetIterator() {
+          @Override
+          public int docID() {
+            return docID;
+          }
 
-      @Override
-      public int nextDoc() throws IOException {
-        current = docIDMerger.next();
-        if (current == null) {
-          docID = NO_MORE_DOCS;
-        } else {
-          docID = current.mappedDocID;
-        }
-        return docID;
-      }
+          @Override
+          public int nextDoc() throws IOException {
+            current = docIDMerger.next();
+            if (current == null) {
+              docID = NO_MORE_DOCS;
+            } else {
+              docID = current.mappedDocID;
+            }
+            return docID;
+          }
 
-      @Override
-      public int advance(int target) throws IOException {
-        throw new UnsupportedOperationException();
+          @Override
+          public int advance(int target) throws IOException {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public long cost() {
+            return finalCost;
+          }
+        };
       }
 
       @Override
       public boolean advanceExact(int target) throws IOException {
         throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public long cost() {
-        return finalCost;
       }
 
       @Override
@@ -326,34 +332,39 @@ public abstract class DocValuesConsumer implements Closeable {
               private int docID = -1;
 
               @Override
-              public int docID() {
-                return docID;
-              }
+              public DocIdSetIterator iterator() {
+                return new DocIdSetIterator() {
+                  @Override
+                  public int docID() {
+                    return docID;
+                  }
 
-              @Override
-              public int nextDoc() throws IOException {
-                current = docIDMerger.next();
-                if (current == null) {
-                  docID = NO_MORE_DOCS;
-                } else {
-                  docID = current.mappedDocID;
-                }
-                return docID;
-              }
+                  @Override
+                  public int nextDoc() throws IOException {
+                    current = docIDMerger.next();
+                    if (current == null) {
+                      docID = NO_MORE_DOCS;
+                    } else {
+                      docID = current.mappedDocID;
+                    }
+                    return docID;
+                  }
 
-              @Override
-              public int advance(int target) throws IOException {
-                throw new UnsupportedOperationException();
+                  @Override
+                  public int advance(int target) throws IOException {
+                    throw new UnsupportedOperationException();
+                  }
+
+                  @Override
+                  public long cost() {
+                    return finalCost;
+                  }
+                };
               }
 
               @Override
               public boolean advanceExact(int target) throws IOException {
                 throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public long cost() {
-                return finalCost;
               }
 
               @Override
@@ -449,25 +460,35 @@ public abstract class DocValuesConsumer implements Closeable {
               private SortedNumericDocValuesSub currentSub;
 
               @Override
-              public int docID() {
-                return docID;
-              }
+              public DocIdSetIterator iterator() {
+                return new DocIdSetIterator() {
+                  @Override
+                  public int docID() {
+                    return docID;
+                  }
 
-              @Override
-              public int nextDoc() throws IOException {
-                currentSub = docIDMerger.next();
-                if (currentSub == null) {
-                  docID = NO_MORE_DOCS;
-                } else {
-                  docID = currentSub.mappedDocID;
-                }
+                  @Override
+                  public int nextDoc() throws IOException {
+                    currentSub = docIDMerger.next();
+                    if (currentSub == null) {
+                      docID = NO_MORE_DOCS;
+                    } else {
+                      docID = currentSub.mappedDocID;
+                    }
 
-                return docID;
-              }
+                    return docID;
+                  }
 
-              @Override
-              public int advance(int target) throws IOException {
-                throw new UnsupportedOperationException();
+                  @Override
+                  public int advance(int target) throws IOException {
+                    throw new UnsupportedOperationException();
+                  }
+
+                  @Override
+                  public long cost() {
+                    return finalCost;
+                  }
+                };
               }
 
               @Override
@@ -478,11 +499,6 @@ public abstract class DocValuesConsumer implements Closeable {
               @Override
               public int docValueCount() {
                 return currentSub.values.docValueCount();
-              }
-
-              @Override
-              public long cost() {
-                return finalCost;
               }
 
               @Override
@@ -703,19 +719,34 @@ public abstract class DocValuesConsumer implements Closeable {
       private SortedDocValuesSub current;
 
       @Override
-      public int docID() {
-        return docID;
-      }
+      public DocIdSetIterator iterator() {
+        return new DocIdSetIterator() {
+          @Override
+          public int docID() {
+            return docID;
+          }
 
-      @Override
-      public int nextDoc() throws IOException {
-        current = docIDMerger.next();
-        if (current == null) {
-          docID = NO_MORE_DOCS;
-        } else {
-          docID = current.mappedDocID;
-        }
-        return docID;
+          @Override
+          public int nextDoc() throws IOException {
+            current = docIDMerger.next();
+            if (current == null) {
+              docID = NO_MORE_DOCS;
+            } else {
+              docID = current.mappedDocID;
+            }
+            return docID;
+          }
+
+          @Override
+          public int advance(int target) {
+            throw new UnsupportedOperationException();
+          }
+
+          @Override
+          public long cost() {
+            return finalCost;
+          }
+        };
       }
 
       @Override
@@ -726,18 +757,8 @@ public abstract class DocValuesConsumer implements Closeable {
       }
 
       @Override
-      public int advance(int target) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
       public boolean advanceExact(int target) throws IOException {
         throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public long cost() {
-        return finalCost;
       }
 
       @Override
@@ -902,25 +923,35 @@ public abstract class DocValuesConsumer implements Closeable {
               private SortedSetDocValuesSub currentSub;
 
               @Override
-              public int docID() {
-                return docID;
-              }
+              public DocIdSetIterator iterator() {
+                return new DocIdSetIterator() {
+                  @Override
+                  public int docID() {
+                    return docID;
+                  }
 
-              @Override
-              public int nextDoc() throws IOException {
-                currentSub = docIDMerger.next();
-                if (currentSub == null) {
-                  docID = NO_MORE_DOCS;
-                } else {
-                  docID = currentSub.mappedDocID;
-                }
+                  @Override
+                  public int nextDoc() throws IOException {
+                    currentSub = docIDMerger.next();
+                    if (currentSub == null) {
+                      docID = NO_MORE_DOCS;
+                    } else {
+                      docID = currentSub.mappedDocID;
+                    }
 
-                return docID;
-              }
+                    return docID;
+                  }
 
-              @Override
-              public int advance(int target) throws IOException {
-                throw new UnsupportedOperationException();
+                  @Override
+                  public int advance(int target) throws IOException {
+                    throw new UnsupportedOperationException();
+                  }
+
+                  @Override
+                  public long cost() {
+                    return finalCost;
+                  }
+                };
               }
 
               @Override
@@ -937,11 +968,6 @@ public abstract class DocValuesConsumer implements Closeable {
               @Override
               public int docValueCount() {
                 return currentSub.values.docValueCount();
-              }
-
-              @Override
-              public long cost() {
-                return finalCost;
               }
 
               @Override

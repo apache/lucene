@@ -58,19 +58,19 @@ public class FieldExistsQuery extends Query {
           iterator = null;
           break;
         case NUMERIC:
-          iterator = reader.getNumericDocValues(field);
+          iterator = reader.getNumericDocValues(field).iterator();
           break;
         case BINARY:
-          iterator = reader.getBinaryDocValues(field);
+          iterator = reader.getBinaryDocValues(field).iterator();
           break;
         case SORTED:
-          iterator = reader.getSortedDocValues(field);
+          iterator = reader.getSortedDocValues(field).iterator();
           break;
         case SORTED_NUMERIC:
-          iterator = reader.getSortedNumericDocValues(field);
+          iterator = reader.getSortedNumericDocValues(field).iterator();
           break;
         case SORTED_SET:
-          iterator = reader.getSortedSetDocValues(field);
+          iterator = reader.getSortedSetDocValues(field).iterator();
           break;
         default:
           throw new AssertionError();

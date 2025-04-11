@@ -25,6 +25,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.search.DocIdSetIterator;
 
 /**
  * Abstract API that consumes normalization values. Concrete implementations of this actually do
@@ -137,34 +138,40 @@ public abstract class NormsConsumer implements Closeable {
               private NumericDocValuesSub current;
 
               @Override
-              public int docID() {
-                return docID;
-              }
+              public DocIdSetIterator iterator() {
+                return new DocIdSetIterator() {
 
-              @Override
-              public int nextDoc() throws IOException {
-                current = docIDMerger.next();
-                if (current == null) {
-                  docID = NO_MORE_DOCS;
-                } else {
-                  docID = current.mappedDocID;
-                }
-                return docID;
-              }
+                  @Override
+                  public int docID() {
+                    return docID;
+                  }
 
-              @Override
-              public int advance(int target) throws IOException {
-                throw new UnsupportedOperationException();
+                  @Override
+                  public int nextDoc() throws IOException {
+                    current = docIDMerger.next();
+                    if (current == null) {
+                      docID = NO_MORE_DOCS;
+                    } else {
+                      docID = current.mappedDocID;
+                    }
+                    return docID;
+                  }
+
+                  @Override
+                  public int advance(int target) throws IOException {
+                    throw new UnsupportedOperationException();
+                  }
+
+                  @Override
+                  public long cost() {
+                    return 0;
+                  }
+                };
               }
 
               @Override
               public boolean advanceExact(int target) throws IOException {
                 throw new UnsupportedOperationException();
-              }
-
-              @Override
-              public long cost() {
-                return 0;
               }
 
               @Override

@@ -1342,30 +1342,16 @@ public class MemoryIndex {
   // Nested classes:
   ///////////////////////////////////////////////////////////////////////////////
 
-  private static class MemoryDocValuesIterator {
-
-    int doc = -1;
-
-    int advance(int doc) {
-      this.doc = doc;
-      return docId();
-    }
-
-    int nextDoc() {
-      doc++;
-      return docId();
-    }
-
-    int docId() {
-      return doc > 0 ? NumericDocValues.NO_MORE_DOCS : doc;
-    }
-  }
-
   private static SortedNumericDocValues numericDocValues(long[] values, int count) {
-    MemoryDocValuesIterator it = new MemoryDocValuesIterator();
+    DocIdSetIterator it = DocIdSetIterator.all(1);
     return new SortedNumericDocValues() {
 
       int ord = 0;
+
+      @Override
+      public DocIdSetIterator iterator() {
+        return it;
+      }
 
       @Override
       public long nextValue() throws IOException {
@@ -1382,31 +1368,11 @@ public class MemoryIndex {
         ord = 0;
         return it.advance(target) == target;
       }
-
-      @Override
-      public int docID() {
-        return it.docId();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        return it.nextDoc();
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        return it.advance(target);
-      }
-
-      @Override
-      public long cost() {
-        return 1;
-      }
     };
   }
 
   private static NumericDocValues numericDocValues(long value) {
-    MemoryDocValuesIterator it = new MemoryDocValuesIterator();
+    DocIdSetIterator it = DocIdSetIterator.all(1);
     return new NumericDocValues() {
       @Override
       public long longValue() throws IOException {
@@ -1419,29 +1385,14 @@ public class MemoryIndex {
       }
 
       @Override
-      public int docID() {
-        return it.docId();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        return it.nextDoc();
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        return it.advance(target);
-      }
-
-      @Override
-      public long cost() {
-        return 1;
+      public DocIdSetIterator iterator() {
+        return it;
       }
     };
   }
 
   private static SortedDocValues sortedDocValues(BytesRef value) {
-    MemoryDocValuesIterator it = new MemoryDocValuesIterator();
+    DocIdSetIterator it = DocIdSetIterator.all(1);
     return new SortedDocValues() {
       @Override
       public int ordValue() {
@@ -1464,29 +1415,14 @@ public class MemoryIndex {
       }
 
       @Override
-      public int docID() {
-        return it.docId();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        return it.nextDoc();
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        return it.advance(target);
-      }
-
-      @Override
-      public long cost() {
-        return 1;
+      public DocIdSetIterator iterator() {
+        return it;
       }
     };
   }
 
   private static SortedSetDocValues sortedSetDocValues(BytesRefHash values, int[] bytesIds) {
-    MemoryDocValuesIterator it = new MemoryDocValuesIterator();
+    DocIdSetIterator it = DocIdSetIterator.all(1);
     BytesRef scratch = new BytesRef();
     return new SortedSetDocValues() {
       int ord = 0;
@@ -1518,23 +1454,8 @@ public class MemoryIndex {
       }
 
       @Override
-      public int docID() {
-        return it.docId();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        return it.nextDoc();
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        return it.advance(target);
-      }
-
-      @Override
-      public long cost() {
-        return 1;
+      public DocIdSetIterator iterator() {
+        return it;
       }
     };
   }
@@ -1638,23 +1559,8 @@ public class MemoryIndex {
         }
 
         @Override
-        public int docID() {
-          return in.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return in.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return in.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return in.cost();
+        public DocIdSetIterator iterator() {
+          return in.iterator();
         }
       };
     }

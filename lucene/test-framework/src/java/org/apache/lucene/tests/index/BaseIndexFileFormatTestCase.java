@@ -77,6 +77,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.internal.tests.IndexWriterAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
@@ -436,37 +437,19 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           new EmptyDocValuesProducer() {
             @Override
             public NumericDocValues getNumeric(FieldInfo field) {
+              final DocIdSetIterator iterator = DocIdSetIterator.all(1);
               return new NumericDocValues() {
-                int docID = -1;
 
                 @Override
-                public int docID() {
-                  return docID;
-                }
-
-                @Override
-                public int nextDoc() {
-                  docID++;
-                  if (docID == 1) {
-                    docID = NO_MORE_DOCS;
-                  }
-                  return docID;
-                }
-
-                @Override
-                public int advance(int target) {
-                  if (docID <= 0 && target == 0) {
-                    docID = 0;
-                  } else {
-                    docID = NO_MORE_DOCS;
-                  }
-                  return docID;
+                public DocIdSetIterator iterator() {
+                  return iterator;
                 }
 
                 @Override
                 public boolean advanceExact(int target) throws IOException {
-                  docID = target;
-                  return target == 0;
+                  int r = iterator.advance(target);
+                  assert r == target;
+                  return true;
                 }
 
                 @Override
@@ -496,37 +479,19 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           new NormsProducer() {
             @Override
             public NumericDocValues getNorms(FieldInfo field) {
+              final DocIdSetIterator iterator = DocIdSetIterator.all(1);
               return new NumericDocValues() {
-                int docID = -1;
 
                 @Override
-                public int docID() {
-                  return docID;
-                }
-
-                @Override
-                public int nextDoc() {
-                  docID++;
-                  if (docID == 1) {
-                    docID = NO_MORE_DOCS;
-                  }
-                  return docID;
-                }
-
-                @Override
-                public int advance(int target) {
-                  if (docID <= 0 && target == 0) {
-                    docID = 0;
-                  } else {
-                    docID = NO_MORE_DOCS;
-                  }
-                  return docID;
+                public DocIdSetIterator iterator() {
+                  return iterator;
                 }
 
                 @Override
                 public boolean advanceExact(int target) throws IOException {
-                  docID = target;
-                  return target == 0;
+                  int r = iterator.advance(target);
+                  assert r == target;
+                  return true;
                 }
 
                 @Override

@@ -161,43 +161,56 @@ public class TestBlockJoinSelector extends LuceneTestCase {
 
   private static class CannedSortedDocValues extends SortedDocValues {
     private final int[] ords;
+    private final DocIdSetIterator iterator;
     int docID = -1;
 
     public CannedSortedDocValues(int[] ords) {
       this.ords = ords;
+      this.iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int docID() {
+              return docID;
+            }
+
+            @Override
+            public int nextDoc() {
+              while (true) {
+                docID++;
+                if (docID == ords.length) {
+                  docID = NO_MORE_DOCS;
+                  break;
+                }
+                if (ords[docID] != -1) {
+                  break;
+                }
+              }
+              return docID;
+            }
+
+            @Override
+            public int advance(int target) {
+              if (target >= ords.length) {
+                docID = NO_MORE_DOCS;
+              } else {
+                docID = target;
+                if (ords[docID] == -1) {
+                  nextDoc();
+                }
+              }
+              return docID;
+            }
+
+            @Override
+            public long cost() {
+              return 5;
+            }
+          };
     }
 
     @Override
-    public int docID() {
-      return docID;
-    }
-
-    @Override
-    public int nextDoc() {
-      while (true) {
-        docID++;
-        if (docID == ords.length) {
-          docID = NO_MORE_DOCS;
-          break;
-        }
-        if (ords[docID] != -1) {
-          break;
-        }
-      }
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) {
-      if (target >= ords.length) {
-        docID = NO_MORE_DOCS;
-      } else {
-        docID = target;
-        if (ords[docID] == -1) {
-          nextDoc();
-        }
-      }
-      return docID;
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
@@ -210,11 +223,6 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     public int ordValue() {
       assert ords[docID] != -1;
       return ords[docID];
-    }
-
-    @Override
-    public long cost() {
-      return 5;
     }
 
     @Override
@@ -285,42 +293,55 @@ public class TestBlockJoinSelector extends LuceneTestCase {
   private static class CannedNumericDocValues extends NumericDocValues {
     final Bits docsWithValue;
     final long[] values;
+    final DocIdSetIterator iterator;
     int docID = -1;
 
     public CannedNumericDocValues(long[] values, Bits docsWithValue) {
       this.values = values;
       this.docsWithValue = docsWithValue;
+      this.iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int docID() {
+              return docID;
+            }
+
+            @Override
+            public int nextDoc() {
+              while (true) {
+                docID++;
+                if (docID == values.length) {
+                  docID = NO_MORE_DOCS;
+                  break;
+                }
+                if (docsWithValue.get(docID)) {
+                  break;
+                }
+              }
+              return docID;
+            }
+
+            @Override
+            public int advance(int target) {
+              if (target >= values.length) {
+                docID = NO_MORE_DOCS;
+                return docID;
+              } else {
+                docID = target - 1;
+                return nextDoc();
+              }
+            }
+
+            @Override
+            public long cost() {
+              return 5;
+            }
+          };
     }
 
     @Override
-    public int docID() {
-      return docID;
-    }
-
-    @Override
-    public int nextDoc() {
-      while (true) {
-        docID++;
-        if (docID == values.length) {
-          docID = NO_MORE_DOCS;
-          break;
-        }
-        if (docsWithValue.get(docID)) {
-          break;
-        }
-      }
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) {
-      if (target >= values.length) {
-        docID = NO_MORE_DOCS;
-        return docID;
-      } else {
-        docID = target - 1;
-        return nextDoc();
-      }
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
@@ -332,11 +353,6 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     @Override
     public long longValue() {
       return values[docID];
-    }
-
-    @Override
-    public long cost() {
-      return 5;
     }
   }
 }

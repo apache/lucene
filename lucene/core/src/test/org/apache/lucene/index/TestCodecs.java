@@ -864,35 +864,17 @@ public class TestCodecs extends LuceneTestCase {
           public NumericDocValues getNorms(FieldInfo field) throws IOException {
             return new NumericDocValues() {
 
-              int doc = -1;
+              final DocIdSetIterator iterator = DocIdSetIterator.all(si.maxDoc());
 
               @Override
-              public int nextDoc() throws IOException {
-                return advance(doc + 1);
-              }
-
-              @Override
-              public int docID() {
-                return doc;
-              }
-
-              @Override
-              public long cost() {
-                return si.maxDoc();
-              }
-
-              @Override
-              public int advance(int target) throws IOException {
-                if (target >= si.maxDoc()) {
-                  return doc = NO_MORE_DOCS;
-                } else {
-                  return doc = target;
-                }
+              public DocIdSetIterator iterator() {
+                return iterator;
               }
 
               @Override
               public boolean advanceExact(int target) throws IOException {
-                doc = target;
+                int r = iterator.advance(target);
+                assert r == target;
                 return true;
               }
 

@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -31,6 +32,11 @@ public abstract class FilterSortedDocValues extends SortedDocValues {
   public FilterSortedDocValues(SortedDocValues in) {
     Objects.requireNonNull(in);
     this.in = in;
+  }
+
+  @Override
+  public DocIdSetIterator iterator() {
+    return in.iterator();
   }
 
   @Override
@@ -66,25 +72,5 @@ public abstract class FilterSortedDocValues extends SortedDocValues {
   @Override
   public TermsEnum intersect(CompiledAutomaton automaton) throws IOException {
     return in.intersect(automaton);
-  }
-
-  @Override
-  public int docID() {
-    return in.docID();
-  }
-
-  @Override
-  public int nextDoc() throws IOException {
-    return in.nextDoc();
-  }
-
-  @Override
-  public int advance(int target) throws IOException {
-    return in.advance(target);
-  }
-
-  @Override
-  public long cost() {
-    return in.cost();
   }
 }

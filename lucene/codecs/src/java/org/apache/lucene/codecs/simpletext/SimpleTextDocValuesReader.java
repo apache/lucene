@@ -53,6 +53,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
@@ -182,23 +183,8 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       return new NumericDocValues() {
 
         @Override
-        public int nextDoc() throws IOException {
-          return docsWithField.nextDoc();
-        }
-
-        @Override
-        public int docID() {
-          return docsWithField.docID();
-        }
-
-        @Override
-        public long cost() {
-          return docsWithField.cost();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return docsWithField.advance(target);
+        public DocIdSetIterator iterator() {
+          return docsWithField;
         }
 
         @Override
@@ -367,23 +353,8 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     return new BinaryDocValues() {
 
       @Override
-      public int nextDoc() throws IOException {
-        return docsWithField.nextDoc();
-      }
-
-      @Override
-      public int docID() {
-        return docsWithField.docID();
-      }
-
-      @Override
-      public long cost() {
-        return docsWithField.cost();
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        return docsWithField.advance(target);
+      public DocIdSetIterator iterator() {
+        return docsWithField;
       }
 
       @Override
@@ -508,42 +479,47 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     return new SortedDocValues() {
 
       int doc = -1;
-
-      @Override
-      public int nextDoc() throws IOException {
-        return advance(docID() + 1);
-      }
-
-      @Override
-      public int docID() {
-        return doc;
-      }
-
-      @Override
-      public long cost() {
-        return maxDoc;
-      }
-
       int ord;
 
       @Override
-      public int advance(int target) throws IOException {
-        for (int i = target; i < maxDoc; ++i) {
-          in.seek(
-              field.dataStartFilePointer
-                  + field.numValues * (9 + field.pattern.length() + field.maxLength)
-                  + i * (long) (1 + field.ordPattern.length()));
-          SimpleTextUtil.readLine(in, scratch);
-          try {
-            ord = (int) ordDecoder.parse(scratch.get().utf8ToString()).longValue() - 1;
-          } catch (ParseException pe) {
-            throw new CorruptIndexException("failed to parse ord", in, pe);
+      public DocIdSetIterator iterator() {
+        return new DocIdSetIterator() {
+
+          @Override
+          public int nextDoc() throws IOException {
+            return advance(docID() + 1);
           }
-          if (ord >= 0) {
-            return doc = i;
+
+          @Override
+          public int docID() {
+            return doc;
           }
-        }
-        return doc = NO_MORE_DOCS;
+
+          @Override
+          public long cost() {
+            return maxDoc;
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            for (int i = target; i < maxDoc; ++i) {
+              in.seek(
+                  field.dataStartFilePointer
+                      + field.numValues * (9 + field.pattern.length() + field.maxLength)
+                      + i * (long) (1 + field.ordPattern.length()));
+              SimpleTextUtil.readLine(in, scratch);
+              try {
+                ord = (int) ordDecoder.parse(scratch.get().utf8ToString()).longValue() - 1;
+              } catch (ParseException pe) {
+                throw new CorruptIndexException("failed to parse ord", in, pe);
+              }
+              if (ord >= 0) {
+                return doc = i;
+              }
+            }
+            return doc = NO_MORE_DOCS;
+          }
+        };
       }
 
       @Override
@@ -614,27 +590,22 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     return new SortedNumericDocValues() {
 
       @Override
-      public int nextDoc() throws IOException {
-        int doc = binary.nextDoc();
-        setCurrentDoc();
-        return doc;
-      }
+      public DocIdSetIterator iterator() {
+        return new FilterDocIdSetIterator(binary.iterator()) {
+          @Override
+          public int nextDoc() throws IOException {
+            int doc = binary.nextDoc();
+            setCurrentDoc();
+            return doc;
+          }
 
-      @Override
-      public int docID() {
-        return binary.docID();
-      }
-
-      @Override
-      public long cost() {
-        return binary.cost();
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        int doc = binary.advance(target);
-        setCurrentDoc();
-        return doc;
+          @Override
+          public int advance(int target) throws IOException {
+            int doc = binary.advance(target);
+            setCurrentDoc();
+            return doc;
+          }
+        };
       }
 
       @Override
@@ -699,36 +670,42 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       int doc = -1;
 
       @Override
-      public int nextDoc() throws IOException {
-        return advance(doc + 1);
-      }
+      public DocIdSetIterator iterator() {
+        return new DocIdSetIterator() {
 
-      @Override
-      public int docID() {
-        return doc;
-      }
-
-      @Override
-      public long cost() {
-        return maxDoc;
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        for (int i = target; i < maxDoc; ++i) {
-          in.seek(
-              field.dataStartFilePointer
-                  + field.numValues * (long) (9 + field.pattern.length() + field.maxLength)
-                  + i * (long) (1 + field.ordPattern.length()));
-          SimpleTextUtil.readLine(in, scratch);
-          String ordList = scratch.get().utf8ToString().trim();
-          if (ordList.isEmpty() == false) {
-            currentOrds = ordList.split(",");
-            currentIndex = 0;
-            return doc = i;
+          @Override
+          public int nextDoc() throws IOException {
+            return advance(doc + 1);
           }
-        }
-        return doc = NO_MORE_DOCS;
+
+          @Override
+          public int docID() {
+            return doc;
+          }
+
+          @Override
+          public long cost() {
+            return maxDoc;
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            for (int i = target; i < maxDoc; ++i) {
+              in.seek(
+                  field.dataStartFilePointer
+                      + field.numValues * (long) (9 + field.pattern.length() + field.maxLength)
+                      + i * (long) (1 + field.ordPattern.length()));
+              SimpleTextUtil.readLine(in, scratch);
+              String ordList = scratch.get().utf8ToString().trim();
+              if (ordList.isEmpty() == false) {
+                currentOrds = ordList.split(",");
+                currentIndex = 0;
+                return doc = i;
+              }
+            }
+            return doc = NO_MORE_DOCS;
+          }
+        };
       }
 
       @Override
