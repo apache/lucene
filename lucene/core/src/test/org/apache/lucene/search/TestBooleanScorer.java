@@ -18,6 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -394,6 +396,105 @@ public class TestBooleanScorer extends LuceneTestCase {
         assertFalse(scorer instanceof ConstantScoreScorer);
       }
     }
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testDisjunctionAndTwoPhaseIterator() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    w.addDocuments(
+        IntStream.of(0, 1)
+            .mapToObj(
+                (i) -> {
+                  Document doc = new Document();
+                  doc.add(new StringField("id", String.valueOf(i), Store.NO));
+                  return doc;
+                })
+            .toList());
+
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    // This query matches everything via its TwoPhaseIterator, and increments a counter
+    AtomicInteger tpiMatchesCounter = new AtomicInteger(0);
+    Query tpiQuery =
+        new Query() {
+
+          @Override
+          public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+              throws IOException {
+            return new ConstantScoreWeight(this, 1f) {
+              @Override
+              public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+                return new ScorerSupplier() {
+                  @Override
+                  public Scorer get(long leadCost) {
+                    TwoPhaseIterator tpi =
+                        new TwoPhaseIterator(DocIdSetIterator.all(context.reader().maxDoc())) {
+                          @Override
+                          public boolean matches() {
+                            tpiMatchesCounter.incrementAndGet();
+                            return true;
+                          }
+
+                          @Override
+                          public float matchCost() {
+                            return 100;
+                          }
+                        };
+                    return new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, tpi);
+                  }
+
+                  @Override
+                  public long cost() {
+                    return 100;
+                  }
+                };
+              }
+
+              @Override
+              public boolean isCacheable(LeafReaderContext ctx) {
+                return false;
+              }
+            };
+          }
+
+          @Override
+          public String toString(String field) {
+            return toString();
+          }
+
+          @Override
+          public void visit(QueryVisitor visitor) {
+            visitor.visitLeaf(this);
+          }
+
+          @Override
+          public boolean equals(Object obj) {
+            return obj == this;
+          }
+
+          @Override
+          public int hashCode() {
+            return 0;
+          }
+        };
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("id", "0")), Occur.SHOULD)
+            .add(tpiQuery, Occur.SHOULD)
+            .build();
+    final var collectorManager = new TotalHitCountCollectorManager(searcher.getSlices());
+    final var totalHits = searcher.search(query, collectorManager);
+    assertEquals(reader.maxDoc(), totalHits.intValue());
+    // ideally the term query prevents the need to consult the tpiQuery, being more expensive
+    assertEquals(1L, tpiMatchesCounter.get());
 
     reader.close();
     w.close();
