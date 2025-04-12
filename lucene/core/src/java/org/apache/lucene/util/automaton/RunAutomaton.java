@@ -47,6 +47,7 @@ public abstract class RunAutomaton implements Accountable {
   final int alphabetSize;
   final int size;
   final FixedBitSet accept;
+  final FixedBitSet matchAllSuffix;
   final int[] transitions; // delta(state,c) = transitions[state*points.length +
   // getCharClass(c)]
   final int[] points; // char interval start points
@@ -67,12 +68,16 @@ public abstract class RunAutomaton implements Accountable {
     points = a.getStartPoints();
     size = Math.max(1, a.getNumStates());
     accept = new FixedBitSet(size);
+    matchAllSuffix = new FixedBitSet(size);
     transitions = new int[size * points.length];
     Arrays.fill(transitions, -1);
     Transition transition = new Transition();
     for (int n = 0; n < size; n++) {
       if (a.isAccept(n)) {
         accept.set(n);
+        if (detectMatchAllSuffix(n)) {
+          matchAllSuffix.set(n);
+        }
       }
       transition.source = n;
       transition.transitionUpto = -1;
@@ -96,6 +101,35 @@ public abstract class RunAutomaton implements Accountable {
     }
   }
 
+  /** Detect whether this state can accept everything(all remaining suffixes). */
+  private boolean detectMatchAllSuffix(int state) {
+    assert automaton.isAccept(state);
+    Transition transition = new Transition();
+    int numTransitions = automaton.getNumTransitions(state);
+    // Apply to PrefixQuery, TermRangeQuery, custom binary Automata.
+    if (numTransitions == 1) {
+      automaton.getTransition(state, 0, transition);
+      if (transition.dest == state && transition.min == 0 && transition.max == alphabetSize - 1) {
+        return true;
+      }
+    }
+
+    // Apply to RegexpQuery, WildcardQuery.
+    // TODO: Is it enough just check last transition is [0, 127]?.
+    for (int i = 0; i < numTransitions; i++) {
+      automaton.getTransition(state, i, transition);
+      if (transition.min == 0 && transition.max == 127) {
+        if (transition.dest == state) {
+          return true;
+        } else if (automaton.isAccept(transition.dest)) {
+          // recurse
+          return detectMatchAllSuffix(transition.dest);
+        }
+      }
+    }
+    return false;
+  }
+
   /** Returns a string representation of this automaton. */
   @Override
   public String toString() {
@@ -105,6 +139,8 @@ public abstract class RunAutomaton implements Accountable {
       b.append("state ").append(i);
       if (accept.get(i)) b.append(" [accept]:\n");
       else b.append(" [reject]:\n");
+      if (matchAllSuffix.get(i)) b.append(" [matchAllSuffix]:\n");
+      else b.append(" [can not matchAllSuffix]:\n");
       for (int j = 0; j < points.length; j++) {
         int k = transitions[i * points.length + j];
         if (k != -1) {
@@ -138,6 +174,16 @@ public abstract class RunAutomaton implements Accountable {
    */
   public final boolean isAccept(int state) {
     return accept.get(state);
+  }
+
+  /**
+   * Returns true if this state can accept all remaining suffixes from now on.
+   *
+   * @param state the state
+   * @return whether this state can accept all remaining suffixes.
+   */
+  public final boolean isMatchAllSuffix(int state) {
+    return matchAllSuffix.get(state);
   }
 
   /**
@@ -198,6 +244,7 @@ public abstract class RunAutomaton implements Accountable {
     if (size != other.size) return false;
     if (!Arrays.equals(points, other.points)) return false;
     if (!accept.equals(other.accept)) return false;
+    if (!matchAllSuffix.equals(other.matchAllSuffix)) return false;
     if (!Arrays.equals(transitions, other.transitions)) return false;
     return true;
   }
@@ -206,6 +253,7 @@ public abstract class RunAutomaton implements Accountable {
   public long ramBytesUsed() {
     return BASE_RAM_BYTES
         + accept.ramBytesUsed()
+        + matchAllSuffix.ramBytesUsed()
         + RamUsageEstimator.sizeOfObject(automaton)
         + RamUsageEstimator.sizeOfObject(classmap)
         + RamUsageEstimator.sizeOfObject(points)
