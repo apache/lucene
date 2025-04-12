@@ -59,6 +59,8 @@ abstract class FSTEnum<T> {
 
   protected abstract int getCurrentLabel();
 
+  protected abstract int getMismatch(int limit);
+
   protected abstract void setCurrentLabel(int label);
 
   protected abstract void grow();
@@ -75,22 +77,24 @@ abstract class FSTEnum<T> {
 
     final int currentLimit = upto;
     upto = 1;
-    while (upto < currentLimit && upto <= targetLength + 1) {
-      final int cmp = getCurrentLabel() - getTargetLabel();
-      if (cmp < 0) {
-        // seek forward
-        // System.out.println("    seek fwd");
-        break;
-      } else if (cmp > 0) {
-        // seek backwards -- reset this arc to the first arc
-        final FST.Arc<T> arc = getArc(upto);
-        fst.readFirstTargetArc(getArc(upto - 1), arc, fstReader);
-        // System.out.println("    seek first arc");
-        break;
+
+    int mismatch = getMismatch(Math.min(currentLimit, targetLength));
+    if (mismatch == -1) {
+      upto += Math.min(currentLimit, targetLength) - 1;
+    } else {
+      upto += mismatch;
+      if (upto < currentLimit && upto <= targetLength + 1) {
+        final int cmp = getCurrentLabel() - getTargetLabel();
+        if (cmp > 0) {
+          // seek backwards -- reset this arc to the first arc
+          final FST.Arc<T> arc = getArc(upto);
+          fst.readFirstTargetArc(getArc(upto - 1), arc, fstReader);
+          // System.out.println("    seek first arc");
+        }
       }
-      upto++;
     }
-    // System.out.println("  fall through upto=" + upto);
+
+    //     System.out.println("  fall through upto=" + upto);
   }
 
   protected void doNext() throws IOException {

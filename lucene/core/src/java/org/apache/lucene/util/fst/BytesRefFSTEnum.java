@@ -17,6 +17,7 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
@@ -101,6 +102,11 @@ public final class BytesRefFSTEnum<T> extends FSTEnum<T> {
   protected int getCurrentLabel() {
     // current.offset fixed at 1
     return current.bytes[upto] & 0xFF;
+  }
+
+  @Override
+  protected int getMismatch(int limit) {
+    return Arrays.mismatch(current.bytes, 1, limit, target.bytes, target.offset, limit);
   }
 
   @Override
