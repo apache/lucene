@@ -17,6 +17,9 @@
 
 package org.apache.lucene.backward_codecs.lucene99;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+
+import java.io.IOException;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
@@ -31,10 +34,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-import java.io.IOException;
-
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
-
 public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
   protected Codec getCodec() {
@@ -44,7 +43,7 @@ public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectors
   public void testSimpleOffHeapSize() throws IOException {
     float[] vector = randomVector(random().nextInt(12, 500));
     try (Directory dir = newDirectory();
-         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new KnnFloatVectorField("f", vector, DOT_PRODUCT));
       w.addDocument(doc);

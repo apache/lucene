@@ -77,7 +77,7 @@ public class TestLucene99HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   public void testSimpleOffHeapSize() throws IOException {
     float[] vector = randomVector(random().nextInt(12, 500));
     try (Directory dir = newDirectory();
-         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
       doc.add(new KnnFloatVectorField("f", vector, DOT_PRODUCT));
       w.addDocument(doc);
