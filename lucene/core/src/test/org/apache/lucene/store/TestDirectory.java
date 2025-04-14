@@ -134,18 +134,19 @@ public class TestDirectory extends LuceneTestCase {
           IllegalArgumentException.class,
           () ->
               fsDir.createOutput(
-                  "file", IOContext.defaultContext(FileTypeHint.DATA, FileTypeHint.METADATA)));
-      expectThrows(
-          IllegalArgumentException.class,
-          () ->
-              fsDir.createOutput(
-                  "file", IOContext.defaultContext(FileDataHint.VECTORS, FileDataHint.POSTINGS)));
+                  "file", IOContext.DEFAULT.withHints(FileTypeHint.DATA, FileTypeHint.METADATA)));
       expectThrows(
           IllegalArgumentException.class,
           () ->
               fsDir.createOutput(
                   "file",
-                  IOContext.defaultContext(DataAccessHint.RANDOM, DataAccessHint.SEQUENTIAL)));
+                  IOContext.DEFAULT.withHints(FileDataHint.VECTORS, FileDataHint.POSTINGS)));
+      expectThrows(
+          IllegalArgumentException.class,
+          () ->
+              fsDir.createOutput(
+                  "file",
+                  IOContext.DEFAULT.withHints(DataAccessHint.RANDOM, DataAccessHint.SEQUENTIAL)));
     }
   }
 }

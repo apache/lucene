@@ -129,13 +129,6 @@ public class MMapDirectory extends FSDirectory {
         return Optional.of(groupKey);
       };
 
-  /**
-   * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
-   * opening them if they use the {@link ReadAdvice#RANDOM_PRELOAD} advice.
-   */
-  public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
-      (_, context) -> context.readAdvice() == ReadAdvice.RANDOM_PRELOAD;
-
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
   /**
@@ -268,8 +261,9 @@ public class MMapDirectory extends FSDirectory {
     Path path = directory.resolve(name);
     return PROVIDER.openInput(
         path,
-        context,
         chunkSizePower,
+        toReadAdvice(context),
+        context == IOContext.READONCE,
         preload.test(name, context),
         groupingFunction.apply(name),
         attachment);
@@ -281,8 +275,9 @@ public class MMapDirectory extends FSDirectory {
   interface MMapIndexInputProvider<A> {
     IndexInput openInput(
         Path path,
-        IOContext context,
         int chunkSizePower,
+        ReadAdvice readAdvice,
+        boolean readOnce,
         boolean preload,
         Optional<String> group,
         A attachment)

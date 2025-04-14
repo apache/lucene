@@ -18,18 +18,16 @@ package org.apache.lucene.store;
 
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.util.Constants;
+import java.util.Optional;
 
-record DefaultIOContext(ReadAdvice readAdvice, FileOpenHint... hints) implements IOContext {
+record DefaultIOContext(Optional<ReadAdvice> readAdvice, FileOpenHint... hints)
+    implements IOContext {
 
   public DefaultIOContext {
     Objects.requireNonNull(readAdvice);
     Objects.requireNonNull(hints);
-
-    // either hints or readadvice should be specified, not both
-    if (hints.length > 0 && readAdvice != Constants.DEFAULT_READADVICE) {
-      throw new IllegalArgumentException("Either readAdvice or hints should be specified");
-    }
+    if (readAdvice.isPresent() && hints.length > 0)
+      throw new IllegalArgumentException("Either ReadAdvice or hints can be specified, not both");
   }
 
   @Override
@@ -47,9 +45,19 @@ record DefaultIOContext(ReadAdvice readAdvice, FileOpenHint... hints) implements
     return null;
   }
 
+  @Override
+  public IOContext withHints(FileOpenHint... hints) {
+    if (readAdvice.isPresent())
+      throw new IllegalArgumentException("ReadAdvice has been specified directly");
+    // TODO: see if this is needed or not
+    if (hints.length > 0)
+      throw new IllegalArgumentException("Hints have already been specified");
+    return new DefaultIOContext(Optional.empty(), hints);
+  }
+
   private static final DefaultIOContext[] READADVICE_TO_IOCONTEXT =
       Arrays.stream(ReadAdvice.values())
-          .map(DefaultIOContext::new)
+          .map(r -> new DefaultIOContext(Optional.of(r)))
           .toArray(DefaultIOContext[]::new);
 
   @Override

@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -103,6 +104,10 @@ public abstract class Directory implements Closeable {
     if (dataAccess.size() > 1) {
       throw new IllegalArgumentException("Multiple data access hints specified: " + dataAccess);
     }
+  }
+
+  protected ReadAdvice toReadAdvice(IOContext context) {
+    return context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
   }
 
   /**
