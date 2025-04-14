@@ -82,6 +82,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
   protected final AtomicInteger addCount = new AtomicInteger();
   protected final AtomicInteger delCount = new AtomicInteger();
   protected final AtomicInteger packCount = new AtomicInteger();
+  protected AtomicLong maxAdvancedSegmentCounter = new AtomicLong(0);
 
   protected Directory dir;
   protected IndexWriter writer;
@@ -187,6 +188,20 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                     doc.add(newTextField(addedField, "a random field", Field.Store.YES));
                   } else {
                     addedField = null;
+                  }
+
+                  // Maybe advance segment counter. Run with a relatively low probability to avoid
+                  // testing slowdowns caused by synchronous operations.
+                  if (random().nextInt(7) == 5) {
+                    long newSegmentCounter = writer.getSegmentInfosCounter() + 100;
+                    writer.advanceSegmentInfosCounter(newSegmentCounter);
+                    if (VERBOSE) {
+                      System.out.println(
+                          Thread.currentThread().getName()
+                              + " advance segment counter to "
+                              + newSegmentCounter);
+                    }
+                    maxAdvancedSegmentCounter.accumulateAndGet(newSegmentCounter, Math::max);
                   }
 
                   if (random().nextBoolean()) {
@@ -606,6 +621,8 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
       thread.join();
     }
 
+    assertTrue(writer.getSegmentInfosCounter() >= maxAdvancedSegmentCounter.get());
+
     if (VERBOSE) {
       System.out.println(
           "TEST: done join indexing threads ["
@@ -613,7 +630,9 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
               + " ms]; addCount="
               + addCount
               + " delCount="
-              + delCount);
+              + delCount
+              + " segmentCounter="
+              + writer.getSegmentInfosCounter());
     }
 
     final IndexSearcher s = getFinalSearcher();

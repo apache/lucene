@@ -23,6 +23,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
@@ -405,17 +406,15 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     @Override
     public DocIdSetIterator competitiveIterator() {
       if (enableSkipping == false) return null;
-      return new DocIdSetIterator() {
-        private int docID = competitiveIterator.docID();
+      return new AbstractDocIdSetIterator() {
 
-        @Override
-        public int nextDoc() throws IOException {
-          return advance(docID + 1);
+        {
+          doc = competitiveIterator.docID();
         }
 
         @Override
-        public int docID() {
-          return docID;
+        public int nextDoc() throws IOException {
+          return advance(doc + 1);
         }
 
         @Override
@@ -425,18 +424,18 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
         @Override
         public int advance(int target) throws IOException {
-          return docID = competitiveIterator.advance(target);
+          return doc = competitiveIterator.advance(target);
         }
 
         @Override
         public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
           // The competitive iterator is usually a BitSetIterator, which has an optimized
           // implementation of #intoBitSet.
-          if (competitiveIterator.docID() < docID) {
-            competitiveIterator.advance(docID);
+          if (competitiveIterator.docID() < doc) {
+            competitiveIterator.advance(doc);
           }
           competitiveIterator.intoBitSet(upTo, bitSet, offset);
-          docID = competitiveIterator.docID();
+          doc = competitiveIterator.docID();
         }
       };
     }
