@@ -39,6 +39,7 @@ public class QueryProfilerResult {
     // Aggregate leaf level breakdowns based on thread execution
     THREAD
   }
+
   private final String type;
   private final String description;
   private final long startTime;
@@ -63,7 +64,8 @@ public class QueryProfilerResult {
     this.queryBreakdowns =
         Objects.requireNonNull(queryBreakdowns, "required breakdown argument missing");
     this.aggregatedQueryLeafBreakdowns =
-        Objects.requireNonNull(aggregatedQueryLeafBreakdowns, "required slice breakdowns argument missing");
+        Objects.requireNonNull(
+            aggregatedQueryLeafBreakdowns, "required slice breakdowns argument missing");
     this.childrenProfileResults =
         childrenProfileResults == null ? Collections.emptyList() : childrenProfileResults;
     this.startTime = startTime;

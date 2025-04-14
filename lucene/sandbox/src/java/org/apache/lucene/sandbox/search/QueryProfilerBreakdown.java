@@ -76,7 +76,8 @@ class QueryProfilerBreakdown {
       breakdownMap.put(type.toString() + "_count", queryProfilerTimers.get(type).getCount());
     }
 
-    final List<AggregatedQueryLeafProfilerResult> sliceProfilerResults = queryLeafProfilerAggregator.getAggregatedQueryLeafProfilerResults();
+    final List<AggregatedQueryLeafProfilerResult> sliceProfilerResults =
+        queryLeafProfilerAggregator.getAggregatedQueryLeafProfilerResults();
     queryStartTime = Math.min(queryStartTime, queryLeafProfilerAggregator.getQueryStartTime());
     queryEndTime = Math.max(queryEndTime, queryLeafProfilerAggregator.getQueryEndTime());
 
