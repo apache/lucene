@@ -72,14 +72,19 @@ public class QueryProfilerResult {
     this.totalTime = totalTime;
   }
 
+  /** Retrieve the name of the entry (e.g. "TermQuery" or "LongTermsAggregator") */
+  public String getQueryName() {
+    return type;
+  }
+
   /** Retrieve the lucene description of this query (e.g. the "explain" text) */
   public String getDescription() {
     return description;
   }
 
-  /** Retrieve the name of the entry (e.g. "TermQuery" or "LongTermsAggregator") */
-  public String getQueryName() {
-    return type;
+  /** Retrieve the aggregation type of leaf level breakdowns for this query */
+  public AggregationType getAggregationType() {
+    return aggregationType;
   }
 
   /** The timing breakdown for this node. */
