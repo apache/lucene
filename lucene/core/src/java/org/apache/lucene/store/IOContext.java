@@ -16,9 +16,8 @@
  */
 package org.apache.lucene.store;
 
-import org.apache.lucene.util.Constants;
-
 import java.util.Objects;
+import org.apache.lucene.util.Constants;
 
 /**
  * IOContext holds additional details on the merge/search context. An IOContext object can never be
@@ -38,6 +37,9 @@ public interface IOContext {
     DEFAULT
   };
 
+  /** Implemented by classes that can specify hints on how the file will be used */
+  interface FileOpenHint {}
+
   /**
    * A default context for normal reads/writes. Use {@link #withReadAdvice(ReadAdvice)} to specify
    * another {@link ReadAdvice}.
@@ -54,6 +56,10 @@ public interface IOContext {
    * thread as the thread that opens the underlying storage.
    */
   IOContext READONCE = new DefaultIOContext(ReadAdvice.SEQUENTIAL);
+
+  static IOContext defaultContext(FileOpenHint... hints) {
+    return new DefaultIOContext(Constants.DEFAULT_READADVICE, hints);
+  }
 
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {
@@ -72,6 +78,11 @@ public interface IOContext {
       @Override
       public FlushInfo flushInfo() {
         return null;
+      }
+
+      @Override
+      public FileOpenHint[] hints() {
+        return new FileOpenHint[0];
       }
 
       @Override
@@ -106,6 +117,11 @@ public interface IOContext {
       }
 
       @Override
+      public FileOpenHint[] hints() {
+        return new FileOpenHint[0];
+      }
+
+      @Override
       public ReadAdvice readAdvice() {
         return ReadAdvice.SEQUENTIAL;
       }
@@ -126,7 +142,11 @@ public interface IOContext {
   /** Flush info, if {@link #context()} is {@link Context#FLUSH} */
   FlushInfo flushInfo();
 
+  /** Any hints on how the file will be opened */
+  FileOpenHint[] hints();
+
   /** Advice on the expected read access pattern */
+  @Deprecated
   ReadAdvice readAdvice();
 
   /**
@@ -136,5 +156,6 @@ public interface IOContext {
    * choice, while allowing {@link IndexInput}s open for searching to use arbitrary {@link
    * ReadAdvice}s.
    */
+  @Deprecated
   IOContext withReadAdvice(ReadAdvice advice);
 }

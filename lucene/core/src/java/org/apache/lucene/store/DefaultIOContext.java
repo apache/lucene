@@ -18,11 +18,18 @@ package org.apache.lucene.store;
 
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.util.Constants;
 
-record DefaultIOContext(ReadAdvice readAdvice) implements IOContext {
+record DefaultIOContext(ReadAdvice readAdvice, FileOpenHint... hints) implements IOContext {
 
   public DefaultIOContext {
     Objects.requireNonNull(readAdvice);
+    Objects.requireNonNull(hints);
+
+    // either hints or readadvice should be specified, not both
+    if (hints.length > 0 && readAdvice != Constants.DEFAULT_READADVICE) {
+      throw new IllegalArgumentException("Either readAdvice or hints should be specified");
+    }
   }
 
   @Override
