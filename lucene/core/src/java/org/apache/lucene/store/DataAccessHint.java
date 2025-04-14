@@ -17,7 +17,7 @@
 package org.apache.lucene.store;
 
 /** Hint on the data access pattern likely to be used */
-public enum DataAccessHint {
+public enum DataAccessHint implements IOContext.FileOpenHint {
   RANDOM,
   SEQUENTIAL
 }

@@ -262,6 +262,7 @@ public class MMapDirectory extends FSDirectory {
   /** Creates an IndexInput for the file with the given name. */
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
+    validateIOContext(context);
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);

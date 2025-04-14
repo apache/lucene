@@ -126,4 +126,26 @@ public class TestDirectory extends LuceneTestCase {
     assertTrue(files.contains(file1.getFileName().toString()));
     assertTrue(files.contains(file2.getFileName().toString()));
   }
+
+  public void testValidateIOContext() throws Exception {
+    Path path = createTempDir("testhints");
+    try (Directory fsDir = new NIOFSDirectory(path)) {
+      expectThrows(
+          IllegalArgumentException.class,
+          () ->
+              fsDir.createOutput(
+                  "file", IOContext.defaultContext(FileTypeHint.DATA, FileTypeHint.METADATA)));
+      expectThrows(
+          IllegalArgumentException.class,
+          () ->
+              fsDir.createOutput(
+                  "file", IOContext.defaultContext(FileDataHint.VECTORS, FileDataHint.POSTINGS)));
+      expectThrows(
+          IllegalArgumentException.class,
+          () ->
+              fsDir.createOutput(
+                  "file",
+                  IOContext.defaultContext(DataAccessHint.RANDOM, DataAccessHint.SEQUENTIAL)));
+    }
+  }
 }

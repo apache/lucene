@@ -153,6 +153,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
 
   @Override
   public IndexOutput createOutput(String name, IOContext context) throws IOException {
+    validateIOContext(context);
     ensureOpen();
     FileEntry e = new FileEntry(name);
     if (files.putIfAbsent(name, e) != null) {
@@ -164,6 +165,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
   @Override
   public IndexOutput createTempOutput(String prefix, String suffix, IOContext context)
       throws IOException {
+    validateIOContext(context);
     ensureOpen();
     while (true) {
       String name = IndexFileNames.segmentFileName(prefix, tempFileName.apply(suffix), "tmp");

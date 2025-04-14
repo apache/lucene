@@ -168,6 +168,7 @@ public class DirectIODirectory extends FilterDirectory {
 
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
+    validateIOContext(context);
     ensureOpen();
     if (useDirectIO(name, context, OptionalLong.of(fileLength(name)))) {
       return new DirectIOIndexInput(getDirectory().resolve(name), blockSize, mergeBufferSize);
@@ -178,6 +179,7 @@ public class DirectIODirectory extends FilterDirectory {
 
   @Override
   public IndexOutput createOutput(String name, IOContext context) throws IOException {
+    validateIOContext(context);
     ensureOpen();
     if (useDirectIO(name, context, OptionalLong.empty())) {
       return new DirectIOIndexOutput(

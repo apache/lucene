@@ -83,7 +83,7 @@ public abstract class Directory implements Closeable {
    */
   public abstract long fileLength(String name) throws IOException;
 
-  protected void validateFileOpenHints(IOContext context) {
+  protected void validateIOContext(IOContext context) {
     Map<Class<? extends IOContext.FileOpenHint>, List<IOContext.FileOpenHint>> hintClasses =
         Arrays.stream(context.hints())
             .collect(Collectors.groupingBy(IOContext.FileOpenHint::getClass));
