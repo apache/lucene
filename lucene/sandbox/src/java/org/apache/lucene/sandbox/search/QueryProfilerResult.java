@@ -31,28 +31,39 @@ import java.util.Objects;
  * queries if applicable
  */
 public class QueryProfilerResult {
+  enum AggregationType {
+    // Leaf level is most verbose, practically no aggregation
+    LEAF,
+    // Aggregate leaf level breakdowns based on slice
+    SLICE,
+    // Aggregate leaf level breakdowns based on thread execution
+    THREAD
+  }
   private final String type;
   private final String description;
   private final long startTime;
   private final long totalTime;
-  private final Map<String, Long> queryLevelBreakdowns;
-  private final List<QuerySliceProfilerResult> threadLevelBreakdowns;
+  private final AggregationType aggregationType;
+  private final Map<String, Long> queryBreakdowns;
+  private final List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns;
   private final List<QueryProfilerResult> childrenProfileResults;
 
   public QueryProfilerResult(
       String type,
       String description,
-      Map<String, Long> queryLevelBreakdowns,
-      List<QuerySliceProfilerResult> threadLevelBreakdowns,
+      AggregationType aggregationType,
+      Map<String, Long> queryBreakdowns,
+      List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns,
       List<QueryProfilerResult> childrenProfileResults,
       long startTime,
       long totalTime) {
     this.type = type;
     this.description = description;
-    this.queryLevelBreakdowns =
-        Objects.requireNonNull(queryLevelBreakdowns, "required breakdown argument missing");
-    this.threadLevelBreakdowns =
-        Objects.requireNonNull(threadLevelBreakdowns, "required slice breakdowns argument missing");
+    this.aggregationType = aggregationType;
+    this.queryBreakdowns =
+        Objects.requireNonNull(queryBreakdowns, "required breakdown argument missing");
+    this.aggregatedQueryLeafBreakdowns =
+        Objects.requireNonNull(aggregatedQueryLeafBreakdowns, "required slice breakdowns argument missing");
     this.childrenProfileResults =
         childrenProfileResults == null ? Collections.emptyList() : childrenProfileResults;
     this.startTime = startTime;
@@ -71,7 +82,7 @@ public class QueryProfilerResult {
 
   /** The timing breakdown for this node. */
   public Map<String, Long> getTimeBreakdown() {
-    return Collections.unmodifiableMap(queryLevelBreakdowns);
+    return Collections.unmodifiableMap(queryBreakdowns);
   }
 
   public long getStartTime() {
@@ -87,8 +98,8 @@ public class QueryProfilerResult {
     return totalTime;
   }
 
-  public List<QuerySliceProfilerResult> getThreadLevelBreakdowns() {
-    return Collections.unmodifiableList(threadLevelBreakdowns);
+  public List<AggregatedQueryLeafProfilerResult> getAggregatedQueryLeafBreakdowns() {
+    return Collections.unmodifiableList(aggregatedQueryLeafBreakdowns);
   }
 
   /** Returns a list of all profiled children queries */

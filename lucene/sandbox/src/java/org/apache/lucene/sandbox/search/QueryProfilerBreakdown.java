@@ -17,15 +17,12 @@
 
 package org.apache.lucene.sandbox.search;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.CollectionUtil;
 
@@ -35,14 +32,15 @@ import org.apache.lucene.util.CollectionUtil;
  */
 class QueryProfilerBreakdown {
   private static final Collection<QueryProfilerTimingType> QUERY_LEVEL_TIMING_TYPE =
-      Arrays.stream(QueryProfilerTimingType.values()).filter(t -> !t.isSliceLevel()).toList();
+      Arrays.stream(QueryProfilerTimingType.values()).filter(t -> !t.isLeafLevel()).toList();
   private final Map<QueryProfilerTimingType, QueryProfilerTimer> queryProfilerTimers;
-  private final ConcurrentMap<Long, QuerySliceProfilerBreakdown> queryThreadBreakdowns;
+
+  private final QueryLeafProfilerAggregator queryLeafProfilerAggregator;
 
   /** Sole constructor. */
   public QueryProfilerBreakdown() {
     queryProfilerTimers = new HashMap<>();
-    queryThreadBreakdowns = new ConcurrentHashMap<>();
+    this.queryLeafProfilerAggregator = new QueryLeafProfilerThreadAggregator();
 
     for (QueryProfilerTimingType timingType : QUERY_LEVEL_TIMING_TYPE) {
       queryProfilerTimers.put(timingType, new QueryProfilerTimer());
@@ -50,27 +48,13 @@ class QueryProfilerBreakdown {
   }
 
   public final QueryProfilerTimer getTimer(QueryProfilerTimingType timingType) {
-    if (timingType.isSliceLevel()) {
-      return getQuerySliceProfilerBreakdown().getTimer(timingType);
+    if (timingType.isLeafLevel()) {
+      return queryLeafProfilerAggregator.getTimer(timingType);
     }
 
     // Return the query level profiler timer if not
     // slice level
     return queryProfilerTimers.get(timingType);
-  }
-
-  private QuerySliceProfilerBreakdown getQuerySliceProfilerBreakdown() {
-    final long currentThreadId = Thread.currentThread().threadId();
-    // See please https://bugs.openjdk.java.net/browse/JDK-8161372
-    final QuerySliceProfilerBreakdown profilerBreakdown =
-        queryThreadBreakdowns.get(currentThreadId);
-
-    if (profilerBreakdown != null) {
-      return profilerBreakdown;
-    }
-
-    return queryThreadBreakdowns.computeIfAbsent(
-        currentThreadId, _ -> new QuerySliceProfilerBreakdown());
   }
 
   /** Build a timing count breakdown. */
@@ -92,21 +76,14 @@ class QueryProfilerBreakdown {
       breakdownMap.put(type.toString() + "_count", queryProfilerTimers.get(type).getCount());
     }
 
-    final List<QuerySliceProfilerResult> sliceProfilerResults = new ArrayList<>();
-    for (Long sliceId : queryThreadBreakdowns.keySet()) {
-      final QuerySliceProfilerResult querySliceProfilerResult =
-          queryThreadBreakdowns.get(sliceId).getSliceProfilerResult(sliceId);
-      queryStartTime = Math.min(queryStartTime, querySliceProfilerResult.getStartTime());
-      queryEndTime =
-          Math.max(
-              queryEndTime,
-              querySliceProfilerResult.getStartTime() + querySliceProfilerResult.getTotalTime());
-      sliceProfilerResults.add(querySliceProfilerResult);
-    }
+    final List<AggregatedQueryLeafProfilerResult> sliceProfilerResults = queryLeafProfilerAggregator.getAggregatedQueryLeafProfilerResults();
+    queryStartTime = Math.min(queryStartTime, queryLeafProfilerAggregator.getQueryStartTime());
+    queryEndTime = Math.max(queryEndTime, queryLeafProfilerAggregator.getQueryEndTime());
 
     return new QueryProfilerResult(
         getTypeFromQuery(query),
         getDescriptionFromQuery(query),
+        queryLeafProfilerAggregator.getAggregationType(),
         Collections.unmodifiableMap(breakdownMap),
         sliceProfilerResults,
         childrenProfileResults,

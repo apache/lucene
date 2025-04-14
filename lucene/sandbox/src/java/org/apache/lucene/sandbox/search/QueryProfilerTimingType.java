@@ -35,14 +35,14 @@ public enum QueryProfilerTimingType {
   // slice level timers to preserve the contiguous enum ordinals
   CREATE_WEIGHT(false);
 
-  private boolean sliceLevel;
+  private boolean leafLevel;
 
-  private QueryProfilerTimingType(boolean sliceLevel) {
-    this.sliceLevel = sliceLevel;
+  private QueryProfilerTimingType(boolean leafLevel) {
+    this.leafLevel = leafLevel;
   }
 
-  public boolean isSliceLevel() {
-    return sliceLevel;
+  public boolean isLeafLevel() {
+    return leafLevel;
   }
 
   @Override

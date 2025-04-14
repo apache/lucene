@@ -26,24 +26,23 @@ import java.util.Objects;
  * the query tree. It is built after the query has finished executing and is merely a structured
  * representation, rather than the entity that collects the timing profile.
  */
-public class QuerySliceProfilerResult {
-
-  private final long threadId;
+public class AggregatedQueryLeafProfilerResult {
+  private final long id;
   private final Map<String, Long> breakdown;
   private final long startTime;
   private final long totalTime;
 
-  public QuerySliceProfilerResult(
-      long threadId, Map<String, Long> breakdown, long startTime, long totalTime) {
-    this.threadId = threadId;
+  public AggregatedQueryLeafProfilerResult(
+      long id, Map<String, Long> breakdown, long startTime, long totalTime) {
+    this.id = id;
     this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
     this.startTime = startTime;
     this.totalTime = totalTime;
   }
 
   /** Retrieve the lucene description of this query (e.g. the "explain" text) */
-  public long getThreadId() {
-    return threadId;
+  public long getId() {
+    return id;
   }
 
   /** The timing breakdown for this node. */

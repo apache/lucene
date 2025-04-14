@@ -27,16 +27,16 @@ import org.apache.lucene.util.CollectionUtil;
  * A record of timings for the various operations that may happen during query execution. A node's
  * time may be composed of several internal attributes (rewriting, weighting, scoring, etc).
  */
-public class QuerySliceProfilerBreakdown {
-  private static final Collection<QueryProfilerTimingType> SLICE_LEVEL_TIMING_TYPE =
-      Arrays.stream(QueryProfilerTimingType.values()).filter(t -> t.isSliceLevel()).toList();
+public class QueryLeafProfilerBreakdown {
+  private static final Collection<QueryProfilerTimingType> LEAF_LEVEL_TIMING_TYPE =
+      Arrays.stream(QueryProfilerTimingType.values()).filter(t -> t.isLeafLevel()).toList();
 
   /** The accumulated timings for this query node */
   private final QueryProfilerTimer[] timers;
 
   /** Sole constructor. */
-  public QuerySliceProfilerBreakdown() {
-    timers = new QueryProfilerTimer[SLICE_LEVEL_TIMING_TYPE.size()];
+  public QueryLeafProfilerBreakdown() {
+    timers = new QueryProfilerTimer[LEAF_LEVEL_TIMING_TYPE.size()];
     for (int i = 0; i < timers.length; ++i) {
       timers[i] = new QueryProfilerTimer();
     }
@@ -49,18 +49,18 @@ public class QuerySliceProfilerBreakdown {
   /** Build a timing count breakdown. */
   public final Map<String, Long> toBreakdownMap() {
     Map<String, Long> map = CollectionUtil.newHashMap(timers.length * 2);
-    for (QueryProfilerTimingType type : SLICE_LEVEL_TIMING_TYPE) {
+    for (QueryProfilerTimingType type : LEAF_LEVEL_TIMING_TYPE) {
       map.put(type.toString(), timers[type.ordinal()].getApproximateTiming());
       map.put(type.toString() + "_count", timers[type.ordinal()].getCount());
     }
     return Collections.unmodifiableMap(map);
   }
 
-  public final QuerySliceProfilerResult getSliceProfilerResult(long sliceId) {
-    final Map<String, Long> map = CollectionUtil.newHashMap(SLICE_LEVEL_TIMING_TYPE.size() * 2);
+  public final AggregatedQueryLeafProfilerResult getSliceProfilerResult(long sliceId) {
+    final Map<String, Long> map = CollectionUtil.newHashMap(LEAF_LEVEL_TIMING_TYPE.size() * 2);
     long sliceStartTime = Long.MAX_VALUE;
     long sliceEndTime = Long.MIN_VALUE;
-    for (QueryProfilerTimingType type : SLICE_LEVEL_TIMING_TYPE) {
+    for (QueryProfilerTimingType type : LEAF_LEVEL_TIMING_TYPE) {
       final QueryProfilerTimer timer = timers[type.ordinal()];
       // Consider timer for updating start/total time only
       // if it was used
@@ -73,7 +73,7 @@ public class QuerySliceProfilerBreakdown {
       map.put(type.toString(), timer.getApproximateTiming());
       map.put(type.toString() + "_count", timer.getCount());
     }
-    return new QuerySliceProfilerResult(
+    return new AggregatedQueryLeafProfilerResult(
         sliceId, map, sliceStartTime, sliceEndTime - sliceStartTime);
   }
 
