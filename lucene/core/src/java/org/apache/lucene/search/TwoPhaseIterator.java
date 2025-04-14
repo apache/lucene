@@ -53,44 +53,33 @@ public abstract class TwoPhaseIterator {
     }
   }
 
-  private static class TwoPhaseIteratorAsDocIdSetIterator extends DocIdSetIterator {
+  private static class TwoPhaseIteratorAsDocIdSetIterator extends FilterDocIdSetIterator {
 
     final TwoPhaseIterator twoPhaseIterator;
-    final DocIdSetIterator approximation;
 
     TwoPhaseIteratorAsDocIdSetIterator(TwoPhaseIterator twoPhaseIterator) {
+      super(twoPhaseIterator.approximation());
       this.twoPhaseIterator = twoPhaseIterator;
-      this.approximation = twoPhaseIterator.approximation;
-    }
-
-    @Override
-    public int docID() {
-      return approximation.docID();
     }
 
     @Override
     public int nextDoc() throws IOException {
-      return doNext(approximation.nextDoc());
+      return doNext(in.nextDoc());
     }
 
     @Override
     public int advance(int target) throws IOException {
-      return doNext(approximation.advance(target));
+      return doNext(in.advance(target));
     }
 
     private int doNext(int doc) throws IOException {
-      for (; ; doc = approximation.nextDoc()) {
+      for (; ; doc = in.nextDoc()) {
         if (doc == NO_MORE_DOCS) {
           return NO_MORE_DOCS;
         } else if (twoPhaseIterator.matches()) {
           return doc;
         }
       }
-    }
-
-    @Override
-    public long cost() {
-      return approximation.cost();
     }
   }
 

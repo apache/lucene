@@ -59,19 +59,25 @@ API Changes
 * GITHUB#14401: Added LeafCollector#collectRange to enable collector to take
   advantage of pre-aggregated data to speed up faceting. (Adrien Grand)
 
+* GITHUB#14417: Support modifying segmentInfos.counter in IndexWriter (Jialiang Guo)
+
 New Features
 ---------------------
 (No changes)
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#14458 : Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
+
+* GITHUB#14476: Removing unnecessary splitX in ComponentTree (Ankit Jain)
 
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
 
 * GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
+
+* GITHUB#14425: KeywordField.newSetQuery() reuses prefixed terms (Mikhail Khludnev)
 
 Bug Fixes
 ---------------------
@@ -83,7 +89,7 @@ Build
 
 Other
 ---------------------
-(No changes)
+* GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
 
 ======================= Lucene 10.2.0 =======================
 

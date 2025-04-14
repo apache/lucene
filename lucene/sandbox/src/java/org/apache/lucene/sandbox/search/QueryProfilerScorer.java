@@ -20,6 +20,7 @@ package org.apache.lucene.sandbox.search;
 import java.io.IOException;
 import java.util.Collection;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 
@@ -73,7 +74,7 @@ class QueryProfilerScorer extends Scorer {
   @Override
   public DocIdSetIterator iterator() {
     final DocIdSetIterator in = scorer.iterator();
-    return new DocIdSetIterator() {
+    return new FilterDocIdSetIterator(in) {
 
       @Override
       public int advance(int target) throws IOException {
@@ -93,16 +94,6 @@ class QueryProfilerScorer extends Scorer {
         } finally {
           nextDocTimer.stop();
         }
-      }
-
-      @Override
-      public int docID() {
-        return in.docID();
-      }
-
-      @Override
-      public long cost() {
-        return in.cost();
       }
     };
   }

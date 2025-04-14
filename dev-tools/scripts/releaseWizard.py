@@ -124,7 +124,7 @@ def expand_jinja(text: str, vars: dict[str, Any] | None = None):
 
   try:
     env = Environment(lstrip_blocks=True, keep_trailing_newline=False, trim_blocks=True)
-    env.filters["path_join"] = lambda paths: os.path.join(*(cast(list[str], paths)))
+    env.filters["path_join"] = lambda paths: os.path.join(*(cast("list[str]", paths)))
     env.filters["expanduser"] = lambda path: os.path.expanduser(str(path))
     env.filters["formatdate"] = lambda date: (datetime.strftime(date, "%-d %B %Y") if date and isinstance(date, datetime) else "<date>")
     template = env.from_string(str(filled), globals=global_vars)
@@ -526,7 +526,7 @@ class ReleaseState:
     lst: list[Todo] = list(filter(lambda x: x.id == id, self.todos.values()))
     if len(lst) == 1:
       return lst[0].state
-    return cast(dict[Any, Any], {})
+    return cast("dict[Any, Any]", {})
 
   def get_release_folder(self):
     folder = os.path.join(self.config_path, self.release_version)
@@ -624,7 +624,7 @@ class TodoGroup(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return TodoGroup(**cast(dict[str, Any], fields))
+    return TodoGroup(**cast("dict[str, Any]", fields))
 
   def num_done(self):
     return sum(1 for x in self.todos if x.is_done() > 0)
@@ -733,7 +733,7 @@ class Todo(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return Todo(**cast(dict[str, Any], fields))
+    return Todo(**cast("dict[str, Any]", fields))
 
   def get_vars(self):
     myvars: dict[str, str] = {}
@@ -920,10 +920,10 @@ def help():
 
 def ensure_list(o: Any):
   if o is None:
-    return cast(list[Any], [])
+    return cast("list[Any]", [])
   if not isinstance(o, list):
     return [o]
-  return cast(list[Any], o)
+  return cast("list[Any]", o)
 
 
 def open_file(filename: str):
@@ -1030,9 +1030,9 @@ def load_rc():
   lucenerc = os.path.expanduser("~/.lucenerc")
   try:
     with open(lucenerc) as fp:
-      return cast(dict[str, Any], json.load(fp))
+      return cast("dict[str, Any]", json.load(fp))
   except Exception:
-    return cast(dict[str, Any], {})
+    return cast("dict[str, Any]", {})
 
 
 def store_rc(release_root: str, release_version: str | None = None):
@@ -1552,7 +1552,7 @@ class Commands(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return Commands(**cast(dict[str, Any], fields))
+    return Commands(**cast("dict[str, Any]", fields))
 
   def run(self):  # pylint: disable=inconsistent-return-statements # TODO
     root = self.get_root_folder()
@@ -1669,7 +1669,7 @@ class Commands(SecretYamlObject):
       return success
 
   def get_root_folder(self):
-    return cast(str, self.jinjaify(self.root_folder))
+    return cast("str", self.jinjaify(self.root_folder))
 
   def get_commands_text(self):
     return self.jinjaify(self.commands_text)
@@ -1769,7 +1769,7 @@ class Command(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return Command(**cast(dict[str, Any], fields))
+    return Command(**cast("dict[str, Any]", fields))
 
   def get_comment(self):
     return str(self.jinjaify(self.comment))
@@ -1843,7 +1843,7 @@ class UserInput(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return UserInput(**cast(dict[str, Any], fields))
+    return UserInput(**cast("dict[str, Any]", fields))
 
   def run(self, dict: dict[str, Any] | None = None):
     correct = False
@@ -1863,9 +1863,8 @@ class UserInput(SecretYamlObject):
 
 def create_ical(_todo: Todo):  # pylint: disable=unused-argument
   if ask_yes_no("Do you want to add a Calendar reminder for the close vote time?"):
-    # TODO: this library has broken typing and seems unmaintained, replace?
-    c = Calendar()  # pyright: ignore[reportArgumentType]
-    e = Event()  # pyright: ignore[reportArgumentType]
+    c = Calendar()
+    e = Event()
     e.name = "Lucene %s vote ends" % state.release_version
     e.begin = vote_close_72h_date()
     e.description = "Remember to sum up votes and continue release :)"
