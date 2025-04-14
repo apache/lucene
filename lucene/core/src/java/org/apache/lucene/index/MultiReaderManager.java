@@ -62,6 +62,15 @@ public final class MultiReaderManager extends ReferenceManager<MultiReader> {
     current = new MultiReader(subReaders, null, false);
   }
 
+  /**
+   * Creates and returns a new MultiReaderManager from the given already-opened {@link
+   * DirectoryReader}s, stealing their incoming reference. Accepts a sorter for the incoming
+   * subReaders.
+   *
+   * @param subReaders the directoryReader(s) to use for future reopens
+   * @param subReadersSorter a comparator, that if not {@code null} is used for sorting sub readers
+   * @throws IOException if there is a low-level I/O error
+   */
   public MultiReaderManager(DirectoryReader[] subReaders, Comparator<IndexReader> subReadersSorter)
       throws IOException {
     current = new MultiReader(subReaders, subReadersSorter, false);
