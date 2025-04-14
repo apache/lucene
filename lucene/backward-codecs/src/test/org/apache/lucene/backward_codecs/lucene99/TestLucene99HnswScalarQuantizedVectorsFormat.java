@@ -34,7 +34,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import java.io.IOException;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
 
 public class TestLucene99HnswScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
   @Override
