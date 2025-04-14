@@ -225,7 +225,7 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    * @see #decRef
    * @see #incRef
    */
-  public final boolean tryIncRef() {
+  public final boolean   tryIncRef() {
     int count;
     while ((count = refCount.get()) > 0) {
       if (refCount.compareAndSet(count, count + 1)) {
