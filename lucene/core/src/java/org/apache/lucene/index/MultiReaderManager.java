@@ -16,19 +16,21 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ReferenceManager;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
  * Utility class to safely share {@link MultiReader} instances across multiple threads, while
  * periodically reopening. This class ensures each multi-reader is closed only once all threads have
- * finished using it. Sub-readers for the reference managed multi-reader are instances of {@link DirectoryReader}
+ * finished using each of its sub-readers.
+ *
+ * <p>Sub-readers for the reference managed multi-reader must be instances of {@link DirectoryReader}.
  *
  * @see SearcherManager
  * @lucene.experimental
@@ -36,9 +38,9 @@ import java.util.List;
 public final class MultiReaderManager extends ReferenceManager<MultiReader> {
 
   /**
-   * Creates and returns a new ReaderManager from the given {@link Directory}.
+   * Creates and returns a new MultiReaderManager from the given {@link Directory} list.
    *
-   * @param dir directories to open the DirectoryReader(s) on.
+   * @param dir directories to open DirectoryReader(s) on.
    * @throws IOException If there is a low-level I/O error
    */
   public MultiReaderManager(Directory... dir) throws IOException {
@@ -46,50 +48,57 @@ public final class MultiReaderManager extends ReferenceManager<MultiReader> {
     for (int i = 0; i < dir.length; i++) {
       subReaders[i] = DirectoryReader.open(dir[i]);
     }
-    current = new MultiReader(subReaders);
+    current = new MultiReader(subReaders, null, false);
   }
 
   /**
-   * Creates and returns a new ReaderManager from the given already-opened {@link DirectoryReader},
+   * Creates and returns a new MultiReaderManager from the given already-opened {@link DirectoryReader}s,
    * stealing the incoming reference.
    *
    * @param subReaders the directoryReader(s) to use for future reopens
    * @throws IOException If there is a low-level I/O error
    */
   public MultiReaderManager(DirectoryReader... subReaders) throws IOException {
-    current = new MultiReader(subReaders);
+    current = new MultiReader(subReaders, null, false);
   }
-//
-//  @Override
-//  protected void decRef(DirectoryReader reference) throws IOException {
-//    reference.decRef();
-//  }
-//
-//  @Override
-//  protected DirectoryReader refreshIfNeeded(DirectoryReader referenceToRefresh) throws IOException {
-//    return DirectoryReader.openIfChanged(referenceToRefresh);
-//  }
-//
-//  @Override
-//  protected boolean tryIncRef(DirectoryReader reference) {
-//    return reference.tryIncRef();
-//  }
-//
-//  @Override
-//  protected int getRefCount(DirectoryReader reference) {
-//    return reference.getRefCount();
-//  }
 
+  public MultiReaderManager(DirectoryReader[] subReaders, Comparator<IndexReader> subReadersSorter) throws IOException {
+    current = new MultiReader(subReaders, subReadersSorter, false);
+  }
+
+  /**
+   * Decrements reference count for each sub-reader in the provided reference.
+   */
   @Override
   protected void decRef(MultiReader reference) throws IOException {
-    for (IndexReader reader: current.getSequentialSubReaders()) {
+    for (IndexReader reader: reference.getSequentialSubReaders()) {
       reader.decRef();
     }
   }
 
+  /**
+   * Refreshes sub-readers if needed.
+   * Returns a new MultiReader that references the refreshed sub-readers. If none of the
+   * sub-readers have changes, returns null.
+   */
   @Override
   protected MultiReader refreshIfNeeded(MultiReader referenceToRefresh) throws IOException {
-    return null;
+    IndexReader[] newSubReaders = new IndexReader[referenceToRefresh.getSequentialSubReaders().size()];
+    boolean refreshed = false;
+    for (int i = 0; i < referenceToRefresh.getSequentialSubReaders().size(); i++) {
+      DirectoryReader old = (DirectoryReader) referenceToRefresh.getSequentialSubReaders().get(i);
+      newSubReaders[i] = DirectoryReader.openIfChanged(old);
+      if (newSubReaders[i] == null) {
+        newSubReaders[i] = old;
+        newSubReaders[i].incRef();
+      } else {
+        refreshed = true;
+      }
+    }
+    if (refreshed == false) {
+      return null;
+    }
+    return new MultiReader(newSubReaders);
   }
 
   /**
@@ -101,14 +110,14 @@ public final class MultiReaderManager extends ReferenceManager<MultiReader> {
     List<IndexReader> refIncReaders = new ArrayList<>();
     boolean success = false;
     try {
-      for (IndexReader reader : current.getSequentialSubReaders()) {
+      for (IndexReader reader : reference.getSequentialSubReaders()) {
         if (reader.tryIncRef()) {
           refIncReaders.add(reader);
         } else {
           break;
         }
       }
-      if (refIncReaders.size() == current.getSequentialSubReaders().size()) {
+      if (refIncReaders.size() == reference.getSequentialSubReaders().size()) {
         success = true;
       }
     } finally {
@@ -129,8 +138,8 @@ public final class MultiReaderManager extends ReferenceManager<MultiReader> {
    */
   @Override
   protected int getRefCount(MultiReader reference) {
-    int minRefCount = Integer.MAX_VALUE;
-    for (IndexReader reader : current.getSequentialSubReaders()) {
+    int minRefCount = 0;
+    for (IndexReader reader : reference.getSequentialSubReaders()) {
       if (minRefCount > reader.getRefCount()) {
         minRefCount = reader.getRefCount();
       }
