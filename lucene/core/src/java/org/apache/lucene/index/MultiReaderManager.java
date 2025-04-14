@@ -16,21 +16,21 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.search.ReferenceManager;
-import org.apache.lucene.search.SearcherManager;
-import org.apache.lucene.store.Directory;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import org.apache.lucene.search.ReferenceManager;
+import org.apache.lucene.search.SearcherManager;
+import org.apache.lucene.store.Directory;
 
 /**
  * Utility class to safely share {@link MultiReader} instances across multiple threads, while
  * periodically reopening. This class ensures each multi-reader is closed only once all threads have
  * finished using each of its sub-readers.
  *
- * <p>Sub-readers for the reference managed multi-reader must be instances of {@link DirectoryReader}.
+ * <p>Sub-readers for the reference managed multi-reader must be instances of {@link
+ * DirectoryReader}.
  *
  * @see SearcherManager
  * @lucene.experimental
@@ -52,8 +52,8 @@ public final class MultiReaderManager extends ReferenceManager<MultiReader> {
   }
 
   /**
-   * Creates and returns a new MultiReaderManager from the given already-opened {@link DirectoryReader}s,
-   * stealing the incoming reference.
+   * Creates and returns a new MultiReaderManager from the given already-opened {@link
+   * DirectoryReader}s, stealing the incoming reference.
    *
    * @param subReaders the directoryReader(s) to use for future reopens
    * @throws IOException If there is a low-level I/O error
@@ -62,28 +62,27 @@ public final class MultiReaderManager extends ReferenceManager<MultiReader> {
     current = new MultiReader(subReaders, null, false);
   }
 
-  public MultiReaderManager(DirectoryReader[] subReaders, Comparator<IndexReader> subReadersSorter) throws IOException {
+  public MultiReaderManager(DirectoryReader[] subReaders, Comparator<IndexReader> subReadersSorter)
+      throws IOException {
     current = new MultiReader(subReaders, subReadersSorter, false);
   }
 
-  /**
-   * Decrements reference count for each sub-reader in the provided reference.
-   */
+  /** Decrements reference count for each sub-reader in the provided reference. */
   @Override
   protected void decRef(MultiReader reference) throws IOException {
-    for (IndexReader reader: reference.getSequentialSubReaders()) {
+    for (IndexReader reader : reference.getSequentialSubReaders()) {
       reader.decRef();
     }
   }
 
   /**
-   * Refreshes sub-readers if needed.
-   * Returns a new MultiReader that references the refreshed sub-readers. If none of the
-   * sub-readers have changes, returns null.
+   * Refreshes sub-readers if needed. Returns a new MultiReader that references the refreshed
+   * sub-readers. If none of the sub-readers have changes, returns null.
    */
   @Override
   protected MultiReader refreshIfNeeded(MultiReader referenceToRefresh) throws IOException {
-    IndexReader[] newSubReaders = new IndexReader[referenceToRefresh.getSequentialSubReaders().size()];
+    IndexReader[] newSubReaders =
+        new IndexReader[referenceToRefresh.getSequentialSubReaders().size()];
     boolean refreshed = false;
     for (int i = 0; i < referenceToRefresh.getSequentialSubReaders().size(); i++) {
       DirectoryReader old = (DirectoryReader) referenceToRefresh.getSequentialSubReaders().get(i);
@@ -102,8 +101,8 @@ public final class MultiReaderManager extends ReferenceManager<MultiReader> {
   }
 
   /**
-   * Tries to increment references on each of the sub-readers.
-   * Returns true if *all* sub-reader references can be incremented, false otherwise.
+   * Tries to increment references on each of the sub-readers. Returns true if *all* sub-reader
+   * references can be incremented, false otherwise.
    */
   @Override
   protected boolean tryIncRef(MultiReader reference) throws IOException {
@@ -132,9 +131,10 @@ public final class MultiReaderManager extends ReferenceManager<MultiReader> {
 
   /**
    * Returns the lowest reference count across all sub-readers.
-   * The multi-reader is closed if reference count for any of its sub-readers drops
-   * to 0. The minimum refCount returned here is hence, the number of references
-   * pending release before the MultiReader is closed.
+   *
+   * <p>The multi-reader is closed if reference count for any of its sub-readers drops to 0. The
+   * minimum refCount returned here is hence, the number of references pending release before the
+   * MultiReader is closed.
    */
   @Override
   protected int getRefCount(MultiReader reference) {
