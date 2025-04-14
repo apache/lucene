@@ -166,6 +166,7 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
           long corrections = Float.BYTES + Float.BYTES + Float.BYTES + Short.BYTES;
           long expected = discretize(fieldInfo.getVectorDimension(), 64) / Byte.SIZE + corrections;
           assertEquals(expected, (long) offHeap.get("veb"));
+          assertEquals(3, offHeap.size());
         }
       }
     }
