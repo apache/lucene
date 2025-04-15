@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -34,7 +35,9 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
+import org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -77,6 +80,7 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -85,6 +89,7 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.junit.Before;
 
 /**
@@ -450,6 +455,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertEquals(0, iterator.nextDoc());
           assertEquals(0, vectorValues.vectorValue(0)[0], 0);
           assertEquals(NO_MORE_DOCS, iterator.nextDoc());
+          assertOffHeapByteSize(r, fieldName);
         }
       }
     }
@@ -1066,6 +1072,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertNotNull(values);
         assertEquals(0, values.size());
         assertNull(values.scorer(new float[] {2, 3, 5, 6}));
+        assertOffHeapByteSize(r, "v");
       }
     }
   }
@@ -1092,6 +1099,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertNotNull(values);
         assertEquals(0, values.size());
         assertNull(values.scorer(new byte[] {2, 3, 5, 6}));
+        assertOffHeapByteSize(r, "v");
       }
     }
   }
@@ -1484,6 +1492,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
           assertTrue(results.totalHits.value() <= visitedLimit);
+          assertOffHeapByteSize(ctx.reader(), fieldName);
         }
       }
     }
@@ -1567,6 +1576,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
           }
+          assertOffHeapByteSize(ctx.reader(), fieldName);
         }
       }
     }
@@ -1760,6 +1770,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               i = iter.docID();
             }
           }
+          assertOffHeapByteSize(r, fieldName);
         }
       }
     }
@@ -1828,6 +1839,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       storedFields.document(byteVectorValues.ordToDoc(ord), Set.of("id"));
                   sumOrdToDocIds += Integer.parseInt(doc.get("id"));
                 }
+                assertOffHeapByteSize(ctx.reader(), "knn_vector");
               }
             }
           }
@@ -1848,6 +1860,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   Document doc = storedFields.document(vectorValues.ordToDoc(ord), Set.of("id"));
                   sumOrdToDocIds += Integer.parseInt(doc.get("id"));
                 }
+                assertOffHeapByteSize(ctx.reader(), "knn_vector");
               }
             }
           }
@@ -1913,5 +1926,93 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.nextDoc());
 
     IOUtils.close(reader, w2, dir1, dir2);
+  }
+
+  static void assertOffHeapByteSize(LeafReader r, String fieldName) throws IOException {
+    var fieldInfo = r.getFieldInfos().fieldInfo(fieldName);
+
+    if (r instanceof CodecReader codecReader) {
+      KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
+      if (knnVectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+        knnVectorsReader = fieldsReader.getFieldReader(fieldName);
+      }
+      var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
+      long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
+      if (knnVectorsReader instanceof SimpleTextKnnVectorsReader) {
+        assertEquals(0L, offHeap.size()); // all vectors are in memory
+        assertEquals(0L, totalByteSize);
+      } else {
+        if (getNumVectors(knnVectorsReader, fieldInfo) == 0) {
+          assertEquals(0L, totalByteSize);
+        } else {
+          assertTrue(totalByteSize > 0);
+          assertTrue(offHeap.get("vec") > 0L);
+
+          if (hasHNSW(knnVectorsReader, fieldInfo)) {
+            assertTrue(offHeap.get("vex") > 0L);
+            var quant = offHeap.getOrDefault("veq", offHeap.get("veb"));
+            assertTrue(quant == null || quant > 0L);
+          } else {
+            assertTrue(offHeap.get("vex") == null);
+          }
+
+          if (hasQuantized(knnVectorsReader, fieldInfo)) {
+            assertTrue(offHeap.getOrDefault("veq", offHeap.get("veb")) > 0L);
+          }
+        }
+      }
+    } else {
+      throw new AssertionError("unexpected:" + r.getClass());
+    }
+  }
+
+  static int getNumVectors(KnnVectorsReader reader, FieldInfo fieldInfo) throws IOException {
+    return switch (fieldInfo.getVectorEncoding()) {
+      case BYTE -> reader.getByteVectorValues(fieldInfo.getName()).size();
+      case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.getName()).size();
+    };
+  }
+
+  static boolean hasQuantized(KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo)
+      throws IOException {
+    if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
+      return false; // byte vectors are never auto-quantized
+    }
+    if (knnVectorsReader
+        instanceof AssertingKnnVectorsFormat.AssertingKnnVectorsReader assertingReader) {
+      knnVectorsReader = assertingReader.delegate;
+    }
+
+    if (knnVectorsReader instanceof QuantizedVectorsReader quantReader) {
+      return quantReader.getQuantizedVectorValues(fieldInfo.name) != null;
+    }
+
+    String name = knnVectorsReader.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    return name.contains("quantized");
+  }
+
+  static boolean hasHNSW(KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo)
+      throws IOException {
+    if (knnVectorsReader
+        instanceof AssertingKnnVectorsFormat.AssertingKnnVectorsReader assertingReader) {
+      knnVectorsReader = assertingReader.delegate;
+    }
+    if (knnVectorsReader instanceof HnswGraphProvider graphProvider) {
+      return graphProvider.getGraph(fieldInfo.name) != null;
+    }
+    String name = knnVectorsReader.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    return name.contains("hnsw");
+  }
+
+  public void testMergeOffHeapByteSizeMaps() {
+    Map<String, Long> map1 = Map.of("a", 0L, "b", 1L, "c", 100L);
+    Map<String, Long> map2 = Map.of("b", 2L, "c", 5L, "d", 101L, "e", 6L);
+    var r = KnnVectorsReader.mergeOffHeapByteSizeMaps(map1, map2);
+    assertEquals(r.size(), 5);
+    assertEquals(0L, (long) r.get("a"));
+    assertEquals(3L, (long) r.get("b"));
+    assertEquals(105L, (long) r.get("c"));
+    assertEquals(101L, (long) r.get("d"));
+    assertEquals(6L, (long) r.get("e"));
   }
 }
