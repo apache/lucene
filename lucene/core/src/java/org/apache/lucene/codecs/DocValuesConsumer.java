@@ -902,7 +902,7 @@ public abstract class DocValuesConsumer implements Closeable {
 
   /**
    * Selects the sorted set doc values to merge.
-   * 
+   *
    * @lucene.experimental
    */
   protected static List<SortedSetDocValues> selectLeavesToMerge(
