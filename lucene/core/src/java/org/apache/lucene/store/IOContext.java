@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * IOContext holds additional details on the merge/search context. An IOContext object can never be
@@ -77,8 +78,8 @@ public interface IOContext {
       }
 
       @Override
-      public FileOpenHint[] hints() {
-        return new FileOpenHint[0];
+      public Set<FileOpenHint> hints() {
+        return Set.of();
       }
 
       @Override
@@ -118,8 +119,8 @@ public interface IOContext {
       }
 
       @Override
-      public FileOpenHint[] hints() {
-        return new FileOpenHint[0];
+      public Set<FileOpenHint> hints() {
+        return Set.of();
       }
 
       @Override
@@ -149,7 +150,7 @@ public interface IOContext {
   FlushInfo flushInfo();
 
   /** Any hints on how the file will be opened */
-  FileOpenHint[] hints();
+  Set<FileOpenHint> hints();
 
   /** Sets the hints on this IOContext, if it makes sense to do so for this specific context */
   IOContext withHints(FileOpenHint... hints);

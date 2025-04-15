@@ -205,6 +205,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
 
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
+    validateIOContext(context);
     ensureOpen();
     FileEntry e = files.get(name);
     if (e == null) {

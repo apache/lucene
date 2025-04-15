@@ -20,7 +20,6 @@ import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
-import java.util.Arrays;
 import java.util.Collection; // for javadocs
 import java.util.List;
 import java.util.Map;
@@ -86,8 +85,7 @@ public abstract class Directory implements Closeable {
 
   protected void validateIOContext(IOContext context) {
     Map<Class<? extends IOContext.FileOpenHint>, List<IOContext.FileOpenHint>> hintClasses =
-        Arrays.stream(context.hints())
-            .collect(Collectors.groupingBy(IOContext.FileOpenHint::getClass));
+        context.hints().stream().collect(Collectors.groupingBy(IOContext.FileOpenHint::getClass));
 
     // there should only be one of FileType, FileData, DataAccess
     List<IOContext.FileOpenHint> fileTypes =
