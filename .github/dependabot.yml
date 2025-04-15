@@ -27,6 +27,6 @@ updates:
       interval: weekly
       day: tuesday
     commit-message:
-      prefix: java(deps)
+      prefix: deps(java)
     labels: [dependencies]
     open-pull-requests-limit: 1
