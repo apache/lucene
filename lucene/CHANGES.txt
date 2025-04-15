@@ -67,7 +67,9 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#14458 : Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
+
+* GITHUB#14476: Removing unnecessary splitX in ComponentTree (Ankit Jain)
 
 Optimizations
 ---------------------
@@ -89,7 +91,7 @@ Build
 
 Other
 ---------------------
-(No changes)
+* GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
 
 ======================= Lucene 10.2.0 =======================
 

@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.DataInput;
 import java.io.IOException;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -91,7 +92,7 @@ import org.apache.lucene.util.RoaringDocIdSet;
  *
  * @lucene.internal
  */
-public final class IndexedDISI extends DocIdSetIterator {
+public final class IndexedDISI extends AbstractDocIdSetIterator {
 
   // jump-table time/space trade-offs to consider:
   // The block offsets and the block indexes could be stored in more compressed form with
@@ -422,7 +423,6 @@ public final class IndexedDISI extends DocIdSetIterator {
   int nextBlockIndex = -1;
   Method method;
 
-  int doc = -1;
   int index = -1;
 
   // SPARSE variables
@@ -472,11 +472,6 @@ public final class IndexedDISI extends DocIdSetIterator {
         return disi.cost();
       }
     };
-  }
-
-  @Override
-  public int docID() {
-    return doc;
   }
 
   @Override

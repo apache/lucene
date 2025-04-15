@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -168,10 +169,9 @@ public class RoaringDocIdSet extends DocIdSet {
 
     @Override
     public DocIdSetIterator iterator() {
-      return new DocIdSetIterator() {
+      return new AbstractDocIdSetIterator() {
 
         int i = -1; // this is the index of the current document in the array
-        int doc = -1;
 
         private int docId(int i) {
           return docIDs[i] & 0xFFFF;
@@ -183,11 +183,6 @@ public class RoaringDocIdSet extends DocIdSet {
             return doc = NO_MORE_DOCS;
           }
           return doc = docId(i);
-        }
-
-        @Override
-        public int docID() {
-          return doc;
         }
 
         @Override
@@ -264,21 +259,14 @@ public class RoaringDocIdSet extends DocIdSet {
     return new Iterator();
   }
 
-  private class Iterator extends DocIdSetIterator {
+  private class Iterator extends AbstractDocIdSetIterator {
 
     int block;
     DocIdSetIterator sub;
-    int doc;
 
     Iterator() {
-      doc = -1;
       block = -1;
       sub = DocIdSetIterator.empty();
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
 
     @Override

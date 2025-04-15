@@ -587,6 +587,7 @@ class TrieBuilder {
      * <p>TODO: Can we use VectorAPI to speed up the lookup? we can check 64 labels once on AVX512!
      */
     REVERSE_ARRAY(0) {
+
       @Override
       int needBytes(int minLabel, int maxLabel, int labelCnt) {
         int byteDistance = maxLabel - minLabel + 1;
