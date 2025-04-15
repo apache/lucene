@@ -20,3 +20,13 @@ updates:
       prefix: build(deps)
     labels:
       - dependencies
+
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: tuesday
+    commit-message:
+      prefix: build(deps)
+    labels: [dependencies]
+    open-pull-requests-limit: 1
