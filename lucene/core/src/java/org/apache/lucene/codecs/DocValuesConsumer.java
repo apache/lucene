@@ -850,8 +850,8 @@ public abstract class DocValuesConsumer implements Closeable {
       throws IOException {
     // step 1: iterate thru each sub and mark terms still in use
     // step 2: create ordinal map (this conceptually does the "merging")
-    List<SortedSetDocValues> toMerge = new ArrayList<>();
-    OrdinalMap map = createOrdinalMapForSortedSetDV(toMerge, mergeFieldInfo, mergeState);
+    List<SortedSetDocValues> toMerge = selectLeavesToMerge(mergeFieldInfo, mergeState);
+    OrdinalMap map = createOrdinalMapForSortedSetDV(toMerge, mergeState);
     // step 3: add field
     addSortedSetField(
         mergeFieldInfo,
@@ -868,28 +868,12 @@ public abstract class DocValuesConsumer implements Closeable {
   }
 
   /**
-   * Creates an ordinal map based the provided sorted set doc values to merges
+   * Creates an ordinal map based on the provided sorted set doc values to merges
    *
    * @lucene.experimental
    */
   protected static OrdinalMap createOrdinalMapForSortedSetDV(
-      List<SortedSetDocValues> toMerge, FieldInfo mergeFieldInfo, MergeState mergeState)
-      throws IOException {
-    for (int i = 0; i < mergeState.docValuesProducers.length; i++) {
-      SortedSetDocValues values = null;
-      DocValuesProducer docValuesProducer = mergeState.docValuesProducers[i];
-      if (docValuesProducer != null) {
-        FieldInfo fieldInfo = mergeState.fieldInfos[i].fieldInfo(mergeFieldInfo.name);
-        if (fieldInfo != null && fieldInfo.getDocValuesType() == DocValuesType.SORTED_SET) {
-          values = docValuesProducer.getSortedSet(fieldInfo);
-        }
-      }
-      if (values == null) {
-        values = DocValues.emptySortedSet();
-      }
-      toMerge.add(values);
-    }
-
+      List<SortedSetDocValues> toMerge, MergeState mergeState) throws IOException {
     TermsEnum[] liveTerms = new TermsEnum[toMerge.size()];
     long[] weights = new long[liveTerms.length];
     for (int sub = 0; sub < liveTerms.length; sub++) {
@@ -914,6 +898,31 @@ public abstract class DocValuesConsumer implements Closeable {
     }
 
     return OrdinalMap.build(null, liveTerms, weights, PackedInts.COMPACT);
+  }
+
+  /**
+   * Selects the sorted set doc values to merge.
+   * 
+   * @lucene.experimental
+   */
+  protected static List<SortedSetDocValues> selectLeavesToMerge(
+      FieldInfo mergeFieldInfo, MergeState mergeState) throws IOException {
+    List<SortedSetDocValues> toMerge = new ArrayList<>();
+    for (int i = 0; i < mergeState.docValuesProducers.length; i++) {
+      SortedSetDocValues values = null;
+      DocValuesProducer docValuesProducer = mergeState.docValuesProducers[i];
+      if (docValuesProducer != null) {
+        FieldInfo fieldInfo = mergeState.fieldInfos[i].fieldInfo(mergeFieldInfo.name);
+        if (fieldInfo != null && fieldInfo.getDocValuesType() == DocValuesType.SORTED_SET) {
+          values = docValuesProducer.getSortedSet(fieldInfo);
+        }
+      }
+      if (values == null) {
+        values = DocValues.emptySortedSet();
+      }
+      toMerge.add(values);
+    }
+    return toMerge;
   }
 
   /**
