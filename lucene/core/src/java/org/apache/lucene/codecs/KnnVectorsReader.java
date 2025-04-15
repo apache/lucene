@@ -157,11 +157,15 @@ public abstract class KnnVectorsReader implements Closeable {
    * getOffHeapByteSize(field).values().stream().mapToLong(Long::longValue).sum();
    * }</pre>
    *
+   * <p>The default implementation returns an empty map.
+   *
    * @param fieldInfo the fieldInfo
    * @return a map of the desired off-heap memory requirements by category
    * @lucene.experimental
    */
-  public abstract Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo);
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    return Map.of();
+  }
 
   /**
    * Merges the Maps returned by {@link #getOffHeapByteSize(FieldInfo)}.
