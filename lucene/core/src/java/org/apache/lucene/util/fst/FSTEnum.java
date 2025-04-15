@@ -59,7 +59,7 @@ abstract class FSTEnum<T> {
 
   protected abstract int getCurrentLabel();
 
-  protected abstract int getMismatch(int limit);
+  protected abstract int getMismatch();
 
   protected abstract void setCurrentLabel(int label);
 
@@ -80,7 +80,7 @@ abstract class FSTEnum<T> {
 
     int limit = Math.min(currentLimit, targetLength);
     if (limit > upto) {
-      int mismatch = getMismatch(limit);
+      int mismatch = getMismatch();
       if (mismatch == -1) {
         upto += limit;
       } else {
