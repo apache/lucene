@@ -95,6 +95,7 @@ Build
 Other
 ---------------------
 * GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
+* GITHUB#14459: Minor refactoring of DocValuesConsumer to allow subclasses to reuse some of its merge logic. (Martijn van Groningen)
 
 ======================= Lucene 10.2.0 =======================
 
