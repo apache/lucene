@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+    commit-message:
+      prefix: ci
+    labels: [dependencies]
+    open-pull-requests-limit: 1
+
+  # python dependencies in /dev-tools/scripts
+  - package-ecosystem: pip
+    directory: /dev-tools/scripts/
+    schedule:
+      interval: weekly
+      day: tuesday
+    commit-message:
+      prefix: build(deps)
+    labels:
+      - dependencies

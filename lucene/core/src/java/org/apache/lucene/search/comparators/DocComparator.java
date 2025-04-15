@@ -19,6 +19,7 @@ package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
@@ -131,17 +132,15 @@ public class DocComparator extends FieldComparator<Integer> {
       if (enableSkipping == false) {
         return null;
       } else {
-        return new DocIdSetIterator() {
-          private int docID = competitiveIterator.docID();
+        return new AbstractDocIdSetIterator() {
 
-          @Override
-          public int nextDoc() throws IOException {
-            return advance(docID + 1);
+          {
+            doc = competitiveIterator.docID();
           }
 
           @Override
-          public int docID() {
-            return docID;
+          public int nextDoc() throws IOException {
+            return advance(doc + 1);
           }
 
           @Override
@@ -151,7 +150,7 @@ public class DocComparator extends FieldComparator<Integer> {
 
           @Override
           public int advance(int target) throws IOException {
-            return docID = competitiveIterator.advance(target);
+            return doc = competitiveIterator.advance(target);
           }
         };
       }

@@ -127,6 +127,9 @@ allprojects {
       // (if the runner JVM does not support them, it will fail tests):
       jvmArgs '--add-modules', 'jdk.management'
 
+      // dump heap on OOM.
+      jvmArgs "-XX:+HeapDumpOnOutOfMemoryError"
+
       // Enable the vector incubator module on supported Java versions:
       def prop = propertyOrDefault("org.apache.lucene.vectorization.upperJavaFeatureVersion", "1") as String
       def v = JavaVersion.toVersion(Integer.parseInt(prop)).majorVersion
