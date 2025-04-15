@@ -29,6 +29,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.junit.Assert;
@@ -76,12 +77,12 @@ public class TestTrie extends LuceneTestCase {
   public void testContinuousValues() throws Exception {
     for (int iter = 0; iter < 5; iter++) {
       int min = random().nextInt(128);
-      int max = random().nextInt(256 - min) + min;
+      int max = TestUtil.nextInt(random(), min, 255);
       testTrieLookup(
           () -> {
             byte[] bytes = new byte[256];
             for (int i = 0; i < bytes.length; i++) {
-              int b = random().nextInt(max - min) + min;
+              int b = TestUtil.nextInt(random(), min, max);
               bytes[i] = (byte) b;
             }
             return bytes;
