@@ -21,12 +21,12 @@ updates:
     labels:
       - dependencies
 
-  - package-ecosystem: "gradle"
-    directory: "/"
+  - package-ecosystem: gradle
+    directory: /
     schedule:
-      interval: "weekly"
+      interval: weekly
       day: tuesday
     commit-message:
-      prefix: build(deps)
+      prefix: java(deps)
     labels: [dependencies]
     open-pull-requests-limit: 1
