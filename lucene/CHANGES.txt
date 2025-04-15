@@ -12,6 +12,9 @@ API Changes
 
 * GITHUB#14417: Support modifying segmentInfos.counter in IndexWriter (Jialiang Guo)
 
+* GITHUB#14426: Support determining desired off-heap memory requirements through
+  KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
+
 New Features
 ---------------------
 (No changes)
