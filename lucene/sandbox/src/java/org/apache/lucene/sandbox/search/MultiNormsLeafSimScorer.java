@@ -26,6 +26,7 @@ import java.util.Set;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.sandbox.search.CombinedFieldQuery.FieldAndWeight;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.SmallFloat;
@@ -161,17 +162,7 @@ final class MultiNormsLeafSimScorer {
     }
 
     @Override
-    public int nextDoc() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long cost() {
+    public DocIdSetIterator iterator() {
       throw new UnsupportedOperationException();
     }
   }

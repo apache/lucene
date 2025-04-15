@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.packed.PackedInts;
 
@@ -74,67 +75,81 @@ public class MultiDocValues {
       private LeafReaderContext currentLeaf;
       private int docID = -1;
 
-      @Override
-      public int nextDoc() throws IOException {
-        while (true) {
-          if (currentValues == null) {
-            if (nextLeaf == leaves.size()) {
-              docID = NO_MORE_DOCS;
+      private final DocIdSetIterator iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int nextDoc() throws IOException {
+              while (true) {
+                if (currentValues == null) {
+                  if (nextLeaf == leaves.size()) {
+                    docID = NO_MORE_DOCS;
+                    return docID;
+                  }
+                  currentLeaf = leaves.get(nextLeaf);
+                  currentValues = currentLeaf.reader().getNormValues(field);
+                  nextLeaf++;
+                  continue;
+                }
+
+                int newDocID = currentValues.nextDoc();
+
+                if (newDocID == NO_MORE_DOCS) {
+                  currentValues = null;
+                } else {
+                  docID = currentLeaf.docBase + newDocID;
+                  return docID;
+                }
+              }
+            }
+
+            @Override
+            public int docID() {
               return docID;
             }
-            currentLeaf = leaves.get(nextLeaf);
-            currentValues = currentLeaf.reader().getNormValues(field);
-            nextLeaf++;
-            continue;
-          }
 
-          int newDocID = currentValues.nextDoc();
+            @Override
+            public int advance(int targetDocID) throws IOException {
+              if (targetDocID <= docID) {
+                throw new IllegalArgumentException(
+                    "can only advance beyond current document: on docID="
+                        + docID
+                        + " but targetDocID="
+                        + targetDocID);
+              }
+              int readerIndex = ReaderUtil.subIndex(targetDocID, leaves);
+              if (readerIndex >= nextLeaf) {
+                if (readerIndex == leaves.size()) {
+                  currentValues = null;
+                  docID = NO_MORE_DOCS;
+                  return docID;
+                }
+                currentLeaf = leaves.get(readerIndex);
+                currentValues = currentLeaf.reader().getNormValues(field);
+                if (currentValues == null) {
+                  return nextDoc();
+                }
+                nextLeaf = readerIndex + 1;
+              }
+              int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
+              if (newDocID == NO_MORE_DOCS) {
+                currentValues = null;
+                return nextDoc();
+              } else {
+                docID = currentLeaf.docBase + newDocID;
+                return docID;
+              }
+            }
 
-          if (newDocID == NO_MORE_DOCS) {
-            currentValues = null;
-          } else {
-            docID = currentLeaf.docBase + newDocID;
-            return docID;
-          }
-        }
-      }
+            @Override
+            public long cost() {
+              // TODO
+              return 0;
+            }
+          };
 
       @Override
-      public int docID() {
-        return docID;
-      }
-
-      @Override
-      public int advance(int targetDocID) throws IOException {
-        if (targetDocID <= docID) {
-          throw new IllegalArgumentException(
-              "can only advance beyond current document: on docID="
-                  + docID
-                  + " but targetDocID="
-                  + targetDocID);
-        }
-        int readerIndex = ReaderUtil.subIndex(targetDocID, leaves);
-        if (readerIndex >= nextLeaf) {
-          if (readerIndex == leaves.size()) {
-            currentValues = null;
-            docID = NO_MORE_DOCS;
-            return docID;
-          }
-          currentLeaf = leaves.get(readerIndex);
-          currentValues = currentLeaf.reader().getNormValues(field);
-          if (currentValues == null) {
-            return nextDoc();
-          }
-          nextLeaf = readerIndex + 1;
-        }
-        int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
-        if (newDocID == NO_MORE_DOCS) {
-          currentValues = null;
-          return nextDoc();
-        } else {
-          docID = currentLeaf.docBase + newDocID;
-          return docID;
-        }
+      public DocIdSetIterator iterator() {
+        return iterator;
       }
 
       @Override
@@ -165,12 +180,6 @@ public class MultiDocValues {
       @Override
       public long longValue() throws IOException {
         return currentValues.longValue();
-      }
-
-      @Override
-      public long cost() {
-        // TODO
-        return 0;
       }
     };
   }
@@ -207,67 +216,80 @@ public class MultiDocValues {
       private NumericDocValues currentValues;
       private LeafReaderContext currentLeaf;
       private int docID = -1;
-
-      @Override
-      public int docID() {
-        return docID;
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        while (true) {
-          while (currentValues == null) {
-            if (nextLeaf == leaves.size()) {
-              docID = NO_MORE_DOCS;
+      private final DocIdSetIterator iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int docID() {
               return docID;
             }
-            currentLeaf = leaves.get(nextLeaf);
-            currentValues = currentLeaf.reader().getNumericDocValues(field);
-            nextLeaf++;
-          }
 
-          int newDocID = currentValues.nextDoc();
+            @Override
+            public int nextDoc() throws IOException {
+              while (true) {
+                while (currentValues == null) {
+                  if (nextLeaf == leaves.size()) {
+                    docID = NO_MORE_DOCS;
+                    return docID;
+                  }
+                  currentLeaf = leaves.get(nextLeaf);
+                  currentValues = currentLeaf.reader().getNumericDocValues(field);
+                  nextLeaf++;
+                }
 
-          if (newDocID == NO_MORE_DOCS) {
-            currentValues = null;
-          } else {
-            docID = currentLeaf.docBase + newDocID;
-            return docID;
-          }
-        }
-      }
+                int newDocID = currentValues.nextDoc();
+
+                if (newDocID == NO_MORE_DOCS) {
+                  currentValues = null;
+                } else {
+                  docID = currentLeaf.docBase + newDocID;
+                  return docID;
+                }
+              }
+            }
+
+            @Override
+            public int advance(int targetDocID) throws IOException {
+              if (targetDocID <= docID) {
+                throw new IllegalArgumentException(
+                    "can only advance beyond current document: on docID="
+                        + docID
+                        + " but targetDocID="
+                        + targetDocID);
+              }
+              int readerIndex = ReaderUtil.subIndex(targetDocID, leaves);
+              if (readerIndex >= nextLeaf) {
+                if (readerIndex == leaves.size()) {
+                  currentValues = null;
+                  docID = NO_MORE_DOCS;
+                  return docID;
+                }
+                currentLeaf = leaves.get(readerIndex);
+                currentValues = currentLeaf.reader().getNumericDocValues(field);
+                nextLeaf = readerIndex + 1;
+                if (currentValues == null) {
+                  return nextDoc();
+                }
+              }
+              int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
+              if (newDocID == NO_MORE_DOCS) {
+                currentValues = null;
+                return nextDoc();
+              } else {
+                docID = currentLeaf.docBase + newDocID;
+                return docID;
+              }
+            }
+
+            @Override
+            public long cost() {
+              // TODO
+              return 0;
+            }
+          };
 
       @Override
-      public int advance(int targetDocID) throws IOException {
-        if (targetDocID <= docID) {
-          throw new IllegalArgumentException(
-              "can only advance beyond current document: on docID="
-                  + docID
-                  + " but targetDocID="
-                  + targetDocID);
-        }
-        int readerIndex = ReaderUtil.subIndex(targetDocID, leaves);
-        if (readerIndex >= nextLeaf) {
-          if (readerIndex == leaves.size()) {
-            currentValues = null;
-            docID = NO_MORE_DOCS;
-            return docID;
-          }
-          currentLeaf = leaves.get(readerIndex);
-          currentValues = currentLeaf.reader().getNumericDocValues(field);
-          nextLeaf = readerIndex + 1;
-          if (currentValues == null) {
-            return nextDoc();
-          }
-        }
-        int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
-        if (newDocID == NO_MORE_DOCS) {
-          currentValues = null;
-          return nextDoc();
-        } else {
-          docID = currentLeaf.docBase + newDocID;
-          return docID;
-        }
+      public DocIdSetIterator iterator() {
+        return iterator;
       }
 
       @Override
@@ -298,12 +320,6 @@ public class MultiDocValues {
       @Override
       public long longValue() throws IOException {
         return currentValues.longValue();
-      }
-
-      @Override
-      public long cost() {
-        // TODO
-        return 0;
       }
     };
   }
@@ -340,67 +356,80 @@ public class MultiDocValues {
       private BinaryDocValues currentValues;
       private LeafReaderContext currentLeaf;
       private int docID = -1;
+      private final DocIdSetIterator iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int nextDoc() throws IOException {
+              while (true) {
+                while (currentValues == null) {
+                  if (nextLeaf == leaves.size()) {
+                    docID = NO_MORE_DOCS;
+                    return docID;
+                  }
+                  currentLeaf = leaves.get(nextLeaf);
+                  currentValues = currentLeaf.reader().getBinaryDocValues(field);
+                  nextLeaf++;
+                }
 
-      @Override
-      public int nextDoc() throws IOException {
-        while (true) {
-          while (currentValues == null) {
-            if (nextLeaf == leaves.size()) {
-              docID = NO_MORE_DOCS;
+                int newDocID = currentValues.nextDoc();
+
+                if (newDocID == NO_MORE_DOCS) {
+                  currentValues = null;
+                } else {
+                  docID = currentLeaf.docBase + newDocID;
+                  return docID;
+                }
+              }
+            }
+
+            @Override
+            public int docID() {
               return docID;
             }
-            currentLeaf = leaves.get(nextLeaf);
-            currentValues = currentLeaf.reader().getBinaryDocValues(field);
-            nextLeaf++;
-          }
 
-          int newDocID = currentValues.nextDoc();
+            @Override
+            public int advance(int targetDocID) throws IOException {
+              if (targetDocID <= docID) {
+                throw new IllegalArgumentException(
+                    "can only advance beyond current document: on docID="
+                        + docID
+                        + " but targetDocID="
+                        + targetDocID);
+              }
+              int readerIndex = ReaderUtil.subIndex(targetDocID, leaves);
+              if (readerIndex >= nextLeaf) {
+                if (readerIndex == leaves.size()) {
+                  currentValues = null;
+                  docID = NO_MORE_DOCS;
+                  return docID;
+                }
+                currentLeaf = leaves.get(readerIndex);
+                currentValues = currentLeaf.reader().getBinaryDocValues(field);
+                nextLeaf = readerIndex + 1;
+                if (currentValues == null) {
+                  return nextDoc();
+                }
+              }
+              int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
+              if (newDocID == NO_MORE_DOCS) {
+                currentValues = null;
+                return nextDoc();
+              } else {
+                docID = currentLeaf.docBase + newDocID;
+                return docID;
+              }
+            }
 
-          if (newDocID == NO_MORE_DOCS) {
-            currentValues = null;
-          } else {
-            docID = currentLeaf.docBase + newDocID;
-            return docID;
-          }
-        }
-      }
+            @Override
+            public long cost() {
+              // TODO
+              return 0;
+            }
+          };
 
       @Override
-      public int docID() {
-        return docID;
-      }
-
-      @Override
-      public int advance(int targetDocID) throws IOException {
-        if (targetDocID <= docID) {
-          throw new IllegalArgumentException(
-              "can only advance beyond current document: on docID="
-                  + docID
-                  + " but targetDocID="
-                  + targetDocID);
-        }
-        int readerIndex = ReaderUtil.subIndex(targetDocID, leaves);
-        if (readerIndex >= nextLeaf) {
-          if (readerIndex == leaves.size()) {
-            currentValues = null;
-            docID = NO_MORE_DOCS;
-            return docID;
-          }
-          currentLeaf = leaves.get(readerIndex);
-          currentValues = currentLeaf.reader().getBinaryDocValues(field);
-          nextLeaf = readerIndex + 1;
-          if (currentValues == null) {
-            return nextDoc();
-          }
-        }
-        int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
-        if (newDocID == NO_MORE_DOCS) {
-          currentValues = null;
-          return nextDoc();
-        } else {
-          docID = currentLeaf.docBase + newDocID;
-          return docID;
-        }
+      public DocIdSetIterator iterator() {
+        return iterator;
       }
 
       @Override
@@ -431,12 +460,6 @@ public class MultiDocValues {
       @Override
       public BytesRef binaryValue() throws IOException {
         return currentValues.binaryValue();
-      }
-
-      @Override
-      public long cost() {
-        // TODO
-        return 0;
       }
     };
   }
@@ -483,64 +506,76 @@ public class MultiDocValues {
       private SortedNumericDocValues currentValues;
       private LeafReaderContext currentLeaf;
       private int docID = -1;
+      private final DocIdSetIterator iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int nextDoc() throws IOException {
+              while (true) {
+                if (currentValues == null) {
+                  if (nextLeaf == leaves.size()) {
+                    docID = NO_MORE_DOCS;
+                    return docID;
+                  }
+                  currentLeaf = leaves.get(nextLeaf);
+                  currentValues = values[nextLeaf];
+                  nextLeaf++;
+                }
 
-      @Override
-      public int nextDoc() throws IOException {
-        while (true) {
-          if (currentValues == null) {
-            if (nextLeaf == leaves.size()) {
-              docID = NO_MORE_DOCS;
+                int newDocID = currentValues.nextDoc();
+
+                if (newDocID == NO_MORE_DOCS) {
+                  currentValues = null;
+                } else {
+                  docID = currentLeaf.docBase + newDocID;
+                  return docID;
+                }
+              }
+            }
+
+            @Override
+            public int docID() {
               return docID;
             }
-            currentLeaf = leaves.get(nextLeaf);
-            currentValues = values[nextLeaf];
-            nextLeaf++;
-          }
 
-          int newDocID = currentValues.nextDoc();
+            @Override
+            public int advance(int targetDocID) throws IOException {
+              if (targetDocID <= docID) {
+                throw new IllegalArgumentException(
+                    "can only advance beyond current document: on docID="
+                        + docID
+                        + " but targetDocID="
+                        + targetDocID);
+              }
+              int readerIndex = ReaderUtil.subIndex(targetDocID, leaves);
+              if (readerIndex >= nextLeaf) {
+                if (readerIndex == leaves.size()) {
+                  currentValues = null;
+                  docID = NO_MORE_DOCS;
+                  return docID;
+                }
+                currentLeaf = leaves.get(readerIndex);
+                currentValues = values[readerIndex];
+                nextLeaf = readerIndex + 1;
+              }
+              int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
+              if (newDocID == NO_MORE_DOCS) {
+                currentValues = null;
+                return nextDoc();
+              } else {
+                docID = currentLeaf.docBase + newDocID;
+                return docID;
+              }
+            }
 
-          if (newDocID == NO_MORE_DOCS) {
-            currentValues = null;
-          } else {
-            docID = currentLeaf.docBase + newDocID;
-            return docID;
-          }
-        }
-      }
+            @Override
+            public long cost() {
+              return finalTotalCost;
+            }
+          };
 
       @Override
-      public int docID() {
-        return docID;
-      }
-
-      @Override
-      public int advance(int targetDocID) throws IOException {
-        if (targetDocID <= docID) {
-          throw new IllegalArgumentException(
-              "can only advance beyond current document: on docID="
-                  + docID
-                  + " but targetDocID="
-                  + targetDocID);
-        }
-        int readerIndex = ReaderUtil.subIndex(targetDocID, leaves);
-        if (readerIndex >= nextLeaf) {
-          if (readerIndex == leaves.size()) {
-            currentValues = null;
-            docID = NO_MORE_DOCS;
-            return docID;
-          }
-          currentLeaf = leaves.get(readerIndex);
-          currentValues = values[readerIndex];
-          nextLeaf = readerIndex + 1;
-        }
-        int newDocID = currentValues.advance(targetDocID - currentLeaf.docBase);
-        if (newDocID == NO_MORE_DOCS) {
-          currentValues = null;
-          return nextDoc();
-        } else {
-          docID = currentLeaf.docBase + newDocID;
-          return docID;
-        }
+      public DocIdSetIterator iterator() {
+        return iterator;
       }
 
       @Override
@@ -566,11 +601,6 @@ public class MultiDocValues {
           return false;
         }
         return currentValues.advanceExact(targetDocID - currentLeaf.docBase);
-      }
-
-      @Override
-      public long cost() {
-        return finalTotalCost;
       }
 
       @Override
@@ -691,12 +721,12 @@ public class MultiDocValues {
     /** ordinal map mapping ords from <code>values</code> to global ord space */
     public final OrdinalMap mapping;
 
-    private final long totalCost;
-
     private int nextLeaf;
     private SortedDocValues currentValues;
     private int currentDocStart;
     private int docID = -1;
+
+    private final DocIdSetIterator iterator;
 
     /** Creates a new MultiSortedDocValues over <code>values</code> */
     public MultiSortedDocValues(
@@ -705,66 +735,77 @@ public class MultiDocValues {
       this.values = values;
       this.docStarts = docStarts;
       this.mapping = mapping;
-      this.totalCost = totalCost;
+      this.iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int docID() {
+              return docID;
+            }
+
+            @Override
+            public int nextDoc() throws IOException {
+              while (true) {
+                while (currentValues == null) {
+                  if (nextLeaf == values.length) {
+                    docID = NO_MORE_DOCS;
+                    return docID;
+                  }
+                  currentDocStart = docStarts[nextLeaf];
+                  currentValues = values[nextLeaf];
+                  nextLeaf++;
+                }
+
+                int newDocID = currentValues.nextDoc();
+
+                if (newDocID == NO_MORE_DOCS) {
+                  currentValues = null;
+                } else {
+                  docID = currentDocStart + newDocID;
+                  return docID;
+                }
+              }
+            }
+
+            @Override
+            public int advance(int targetDocID) throws IOException {
+              if (targetDocID <= docID) {
+                throw new IllegalArgumentException(
+                    "can only advance beyond current document: on docID="
+                        + docID
+                        + " but targetDocID="
+                        + targetDocID);
+              }
+              int readerIndex = ReaderUtil.subIndex(targetDocID, docStarts);
+              if (readerIndex >= nextLeaf) {
+                if (readerIndex == values.length) {
+                  currentValues = null;
+                  docID = NO_MORE_DOCS;
+                  return docID;
+                }
+                currentDocStart = docStarts[readerIndex];
+                currentValues = values[readerIndex];
+                nextLeaf = readerIndex + 1;
+              }
+              int newDocID = currentValues.advance(targetDocID - currentDocStart);
+              if (newDocID == NO_MORE_DOCS) {
+                currentValues = null;
+                return nextDoc();
+              } else {
+                docID = currentDocStart + newDocID;
+                return docID;
+              }
+            }
+
+            @Override
+            public long cost() {
+              return totalCost;
+            }
+          };
     }
 
     @Override
-    public int docID() {
-      return docID;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      while (true) {
-        while (currentValues == null) {
-          if (nextLeaf == values.length) {
-            docID = NO_MORE_DOCS;
-            return docID;
-          }
-          currentDocStart = docStarts[nextLeaf];
-          currentValues = values[nextLeaf];
-          nextLeaf++;
-        }
-
-        int newDocID = currentValues.nextDoc();
-
-        if (newDocID == NO_MORE_DOCS) {
-          currentValues = null;
-        } else {
-          docID = currentDocStart + newDocID;
-          return docID;
-        }
-      }
-    }
-
-    @Override
-    public int advance(int targetDocID) throws IOException {
-      if (targetDocID <= docID) {
-        throw new IllegalArgumentException(
-            "can only advance beyond current document: on docID="
-                + docID
-                + " but targetDocID="
-                + targetDocID);
-      }
-      int readerIndex = ReaderUtil.subIndex(targetDocID, docStarts);
-      if (readerIndex >= nextLeaf) {
-        if (readerIndex == values.length) {
-          currentValues = null;
-          docID = NO_MORE_DOCS;
-          return docID;
-        }
-        currentDocStart = docStarts[readerIndex];
-        currentValues = values[readerIndex];
-        nextLeaf = readerIndex + 1;
-      }
-      int newDocID = currentValues.advance(targetDocID - currentDocStart);
-      if (newDocID == NO_MORE_DOCS) {
-        currentValues = null;
-        return nextDoc();
-      } else {
-        docID = currentDocStart + newDocID;
-        return docID;
-      }
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
@@ -808,11 +849,6 @@ public class MultiDocValues {
     public int getValueCount() {
       return (int) mapping.getValueCount();
     }
-
-    @Override
-    public long cost() {
-      return totalCost;
-    }
   }
 
   /**
@@ -830,12 +866,12 @@ public class MultiDocValues {
     /** ordinal map mapping ords from <code>values</code> to global ord space */
     public final OrdinalMap mapping;
 
-    private final long totalCost;
-
     private int nextLeaf;
     private SortedSetDocValues currentValues;
     private int currentDocStart;
     private int docID = -1;
+
+    private final DocIdSetIterator iterator;
 
     /** Creates a new MultiSortedSetDocValues over <code>values</code> */
     public MultiSortedSetDocValues(
@@ -844,66 +880,77 @@ public class MultiDocValues {
       this.values = values;
       this.docStarts = docStarts;
       this.mapping = mapping;
-      this.totalCost = totalCost;
+      this.iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int docID() {
+              return docID;
+            }
+
+            @Override
+            public int nextDoc() throws IOException {
+              while (true) {
+                while (currentValues == null) {
+                  if (nextLeaf == values.length) {
+                    docID = NO_MORE_DOCS;
+                    return docID;
+                  }
+                  currentDocStart = docStarts[nextLeaf];
+                  currentValues = values[nextLeaf];
+                  nextLeaf++;
+                }
+
+                int newDocID = currentValues.nextDoc();
+
+                if (newDocID == NO_MORE_DOCS) {
+                  currentValues = null;
+                } else {
+                  docID = currentDocStart + newDocID;
+                  return docID;
+                }
+              }
+            }
+
+            @Override
+            public int advance(int targetDocID) throws IOException {
+              if (targetDocID <= docID) {
+                throw new IllegalArgumentException(
+                    "can only advance beyond current document: on docID="
+                        + docID
+                        + " but targetDocID="
+                        + targetDocID);
+              }
+              int readerIndex = ReaderUtil.subIndex(targetDocID, docStarts);
+              if (readerIndex >= nextLeaf) {
+                if (readerIndex == values.length) {
+                  currentValues = null;
+                  docID = NO_MORE_DOCS;
+                  return docID;
+                }
+                currentDocStart = docStarts[readerIndex];
+                currentValues = values[readerIndex];
+                nextLeaf = readerIndex + 1;
+              }
+              int newDocID = currentValues.advance(targetDocID - currentDocStart);
+              if (newDocID == NO_MORE_DOCS) {
+                currentValues = null;
+                return nextDoc();
+              } else {
+                docID = currentDocStart + newDocID;
+                return docID;
+              }
+            }
+
+            @Override
+            public long cost() {
+              return totalCost;
+            }
+          };
     }
 
     @Override
-    public int docID() {
-      return docID;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      while (true) {
-        while (currentValues == null) {
-          if (nextLeaf == values.length) {
-            docID = NO_MORE_DOCS;
-            return docID;
-          }
-          currentDocStart = docStarts[nextLeaf];
-          currentValues = values[nextLeaf];
-          nextLeaf++;
-        }
-
-        int newDocID = currentValues.nextDoc();
-
-        if (newDocID == NO_MORE_DOCS) {
-          currentValues = null;
-        } else {
-          docID = currentDocStart + newDocID;
-          return docID;
-        }
-      }
-    }
-
-    @Override
-    public int advance(int targetDocID) throws IOException {
-      if (targetDocID <= docID) {
-        throw new IllegalArgumentException(
-            "can only advance beyond current document: on docID="
-                + docID
-                + " but targetDocID="
-                + targetDocID);
-      }
-      int readerIndex = ReaderUtil.subIndex(targetDocID, docStarts);
-      if (readerIndex >= nextLeaf) {
-        if (readerIndex == values.length) {
-          currentValues = null;
-          docID = NO_MORE_DOCS;
-          return docID;
-        }
-        currentDocStart = docStarts[readerIndex];
-        currentValues = values[readerIndex];
-        nextLeaf = readerIndex + 1;
-      }
-      int newDocID = currentValues.advance(targetDocID - currentDocStart);
-      if (newDocID == NO_MORE_DOCS) {
-        currentValues = null;
-        return nextDoc();
-      } else {
-        docID = currentDocStart + newDocID;
-        return docID;
-      }
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
@@ -952,11 +999,6 @@ public class MultiDocValues {
     @Override
     public long getValueCount() {
       return mapping.getValueCount();
-    }
-
-    @Override
-    public long cost() {
-      return totalCost;
     }
   }
 }

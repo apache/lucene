@@ -164,7 +164,37 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
   private static NumericDocValues docValues(long queryMin, long queryMax) {
     return new NumericDocValues() {
 
-      int doc = -1;
+      final DocIdSetIterator iterator =
+          new AbstractDocIdSetIterator() {
+
+            @Override
+            public int nextDoc() throws IOException {
+              return advance(doc + 1);
+            }
+
+            @Override
+            public int advance(int target) throws IOException {
+              if (target < 1024) {
+                // dense up to 1024
+                return doc = target;
+              } else if (doc < 2047) {
+                // 50% docs have a value up to 2048
+                return doc = target + (target & 1);
+              } else {
+                return doc = DocIdSetIterator.NO_MORE_DOCS;
+              }
+            }
+
+            @Override
+            public long cost() {
+              return 42;
+            }
+          };
+
+      @Override
+      public DocIdSetIterator iterator() {
+        return iterator;
+      }
 
       @Override
       public boolean advanceExact(int target) throws IOException {
@@ -172,31 +202,8 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
       }
 
       @Override
-      public int docID() {
-        return doc;
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        return advance(doc + 1);
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        if (target < 1024) {
-          // dense up to 1024
-          return doc = target;
-        } else if (doc < 2047) {
-          // 50% docs have a value up to 2048
-          return doc = target + (target & 1);
-        } else {
-          return doc = DocIdSetIterator.NO_MORE_DOCS;
-        }
-      }
-
-      @Override
       public long longValue() throws IOException {
-        int d = doc % 1024;
+        int d = iterator.docID() % 1024;
         if (d < 128) {
           return (queryMin + queryMax) >> 1;
         } else if (d < 256) {
@@ -211,11 +218,6 @@ public class TestDocValuesRangeIterator extends LuceneTestCase {
             default -> throw new AssertionError();
           };
         }
-      }
-
-      @Override
-      public long cost() {
-        return 42;
       }
     };
   }

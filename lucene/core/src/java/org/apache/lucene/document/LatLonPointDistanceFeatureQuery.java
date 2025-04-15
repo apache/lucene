@@ -166,41 +166,26 @@ final class LatLonPointDistanceFeatureQuery extends Query {
         }
         return new NumericDocValues() {
 
+          int lastDoc = -1;
           long value;
 
           @Override
+          public DocIdSetIterator iterator() {
+            return multiDocValues;
+          }
+
+          @Override
           public long longValue() throws IOException {
+            if (lastDoc != multiDocValues.iterator().docID()) {
+              value = selectValue(multiDocValues);
+              lastDoc = multiDocValues.iterator().docID();
+            }
             return value;
           }
 
           @Override
           public boolean advanceExact(int target) throws IOException {
-            if (multiDocValues.advanceExact(target)) {
-              value = selectValue(multiDocValues);
-              return true;
-            } else {
-              return false;
-            }
-          }
-
-          @Override
-          public int docID() {
-            return multiDocValues.docID();
-          }
-
-          @Override
-          public int nextDoc() throws IOException {
-            return multiDocValues.nextDoc();
-          }
-
-          @Override
-          public int advance(int target) throws IOException {
-            return multiDocValues.advance(target);
-          }
-
-          @Override
-          public long cost() {
-            return multiDocValues.cost();
+            return multiDocValues.advanceExact(target);
           }
         };
       }

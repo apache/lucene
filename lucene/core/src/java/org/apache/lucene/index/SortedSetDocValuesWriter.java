@@ -25,6 +25,7 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.SortedDocValuesWriter.BufferedSortedDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
@@ -284,27 +285,33 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
       this.hash = hash;
       this.ordsIter = ords.iterator();
       this.ordCountsIter = ordCounts.iterator();
-      this.docsWithField = docsWithField;
+      this.docsWithField =
+          new FilterDocIdSetIterator(docsWithField) {
+            @Override
+            public int nextDoc() throws IOException {
+              int docID = docsWithField.nextDoc();
+              if (docID != NO_MORE_DOCS) {
+                ordCount = (int) ordCountsIter.next();
+                assert ordCount > 0;
+                for (int i = 0; i < ordCount; i++) {
+                  currentDoc[i] = ordMap[Math.toIntExact(ordsIter.next())];
+                }
+                Arrays.sort(currentDoc, 0, ordCount);
+                ordUpto = 0;
+              }
+              return docID;
+            }
+
+            @Override
+            public int advance(int target) {
+              throw new UnsupportedOperationException();
+            }
+          };
     }
 
     @Override
-    public int docID() {
-      return docsWithField.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      int docID = docsWithField.nextDoc();
-      if (docID != NO_MORE_DOCS) {
-        ordCount = (int) ordCountsIter.next();
-        assert ordCount > 0;
-        for (int i = 0; i < ordCount; i++) {
-          currentDoc[i] = ordMap[Math.toIntExact(ordsIter.next())];
-        }
-        Arrays.sort(currentDoc, 0, ordCount);
-        ordUpto = 0;
-      }
-      return docID;
+    public DocIdSetIterator iterator() {
+      return docsWithField;
     }
 
     @Override
@@ -315,16 +322,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     @Override
     public int docValueCount() {
       return ordCount;
-    }
-
-    @Override
-    public long cost() {
-      return docsWithField.cost();
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException();
     }
 
     @Override
@@ -353,32 +350,45 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     private int docID = -1;
     private long ordUpto;
     private int count;
+    private final DocIdSetIterator iterator;
 
     SortingSortedSetDocValues(SortedSetDocValues in, DocOrds ords) {
       this.in = in;
       this.ords = ords;
+      this.iterator =
+          new DocIdSetIterator() {
+            @Override
+            public int docID() {
+              return docID;
+            }
+
+            @Override
+            public int nextDoc() {
+              do {
+                docID++;
+                if (docID == ords.offsets.length) {
+                  return docID = NO_MORE_DOCS;
+                }
+              } while (ords.offsets[docID] <= 0);
+              initCount();
+              return docID;
+            }
+
+            @Override
+            public int advance(int target) {
+              throw new UnsupportedOperationException("use nextDoc instead");
+            }
+
+            @Override
+            public long cost() {
+              return in.iterator().cost();
+            }
+          };
     }
 
     @Override
-    public int docID() {
-      return docID;
-    }
-
-    @Override
-    public int nextDoc() {
-      do {
-        docID++;
-        if (docID == ords.offsets.length) {
-          return docID = NO_MORE_DOCS;
-        }
-      } while (ords.offsets[docID] <= 0);
-      initCount();
-      return docID;
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException("use nextDoc instead");
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
@@ -398,11 +408,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     public int docValueCount() {
       assert docID >= 0;
       return count;
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
     }
 
     @Override

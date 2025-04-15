@@ -19,6 +19,7 @@ package org.apache.lucene.document;
 
 import java.io.IOException;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /** A binary representation of a range that wraps a BinaryDocValues field */
@@ -27,7 +28,7 @@ public class BinaryRangeDocValues extends BinaryDocValues {
   private byte[] packedValue;
   private final int numDims;
   private final int numBytesPerDimension;
-  private int docID = -1;
+  private int lastDoc = -1;
 
   /**
    * Constructor for BinaryRangeDocValues
@@ -45,44 +46,13 @@ public class BinaryRangeDocValues extends BinaryDocValues {
   }
 
   @Override
-  public int nextDoc() throws IOException {
-    docID = in.nextDoc();
-
-    if (docID != NO_MORE_DOCS) {
-      decodeRanges();
-    }
-
-    return docID;
-  }
-
-  @Override
-  public int docID() {
-    return in.docID();
-  }
-
-  @Override
-  public long cost() {
-    return in.cost();
-  }
-
-  @Override
-  public int advance(int target) throws IOException {
-    int res = in.advance(target);
-    if (res != NO_MORE_DOCS) {
-      decodeRanges();
-    }
-
-    return res;
+  public DocIdSetIterator iterator() {
+    return in.iterator();
   }
 
   @Override
   public boolean advanceExact(int target) throws IOException {
-    boolean res = in.advanceExact(target);
-    if (res) {
-      decodeRanges();
-    }
-
-    return res;
+    return in.advanceExact(target);
   }
 
   @Override
@@ -95,7 +65,11 @@ public class BinaryRangeDocValues extends BinaryDocValues {
    *
    * @return the packed value that represents this range
    */
-  public byte[] getPackedValue() {
+  public byte[] getPackedValue() throws IOException {
+    if (lastDoc != in.iterator().docID()) {
+      decodeRanges();
+      lastDoc = in.iterator().docID();
+    }
     return packedValue;
   }
 

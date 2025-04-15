@@ -21,11 +21,62 @@ import org.apache.lucene.search.DocIdSetIterator;
 
 abstract class DocValuesIterator extends DocIdSetIterator {
 
+  /** Return an iterator for these doc values. */
+  public abstract DocIdSetIterator iterator();
+
   /**
    * Advance the iterator to exactly {@code target} and return whether {@code target} has a value.
    * {@code target} must be greater than or equal to the current {@link #docID() doc ID} and must be
-   * a valid doc ID, ie. &ge; 0 and &lt; {@code maxDoc}. After this method returns, {@link #docID()}
-   * returns {@code target}.
+   * a valid doc ID, ie. &ge; 0 and &lt; {@code maxDoc}. After this method returns, calling {@link
+   * #docID()} on the {@link #iterator()} returns {@code target}.
    */
   public abstract boolean advanceExact(int target) throws IOException;
+
+  /**
+   * Advance to the next document and return it.
+   *
+   * @see #iterator()
+   * @deprecated Call iterator().nextDoc() instead.
+   */
+  @Deprecated
+  @Override
+  public int nextDoc() throws IOException {
+    return iterator().nextDoc();
+  }
+
+  /**
+   * Advance to the next document on or after {@code target}.
+   *
+   * @see #iterator()
+   * @deprecated Call iterator().advance(target) instead.
+   */
+  @Deprecated
+  @Override
+  public int advance(int target) throws IOException {
+    return iterator().advance(target);
+  }
+
+  /**
+   * Return the current doc ID.
+   *
+   * @see #iterator()
+   * @deprecated Call iterator().docID() instead.
+   */
+  @Deprecated
+  @Override
+  public int docID() {
+    return iterator().docID();
+  }
+
+  /**
+   * Return the cost of this iterator.
+   *
+   * @see #iterator()
+   * @deprecated Call iterator().cost() instead.
+   */
+  @Deprecated
+  @Override
+  public long cost() {
+    return iterator().cost();
+  }
 }

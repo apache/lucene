@@ -155,23 +155,28 @@ final class MultiNormsLeafSimScorer {
     }
 
     @Override
-    public int docID() {
-      return docID;
-    }
+    public DocIdSetIterator iterator() {
+      return new DocIdSetIterator() {
+        @Override
+        public int docID() {
+          return docID;
+        }
 
-    @Override
-    public int nextDoc() {
-      throw new UnsupportedOperationException();
-    }
+        @Override
+        public int nextDoc() {
+          throw new UnsupportedOperationException();
+        }
 
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException();
-    }
+        @Override
+        public int advance(int target) {
+          throw new UnsupportedOperationException();
+        }
 
-    @Override
-    public long cost() {
-      throw new UnsupportedOperationException();
+        @Override
+        public long cost() {
+          throw new UnsupportedOperationException();
+        }
+      };
     }
   }
 }

@@ -33,6 +33,8 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
@@ -361,6 +363,11 @@ final class ReadersAndUpdates {
                   // Merge sort of the original doc values with updated doc values:
                   return new BinaryDocValues() {
                     @Override
+                    public DocIdSetIterator iterator() {
+                      return mergedDocValues.iterator();
+                    }
+
+                    @Override
                     public BytesRef binaryValue() throws IOException {
                       return mergedDocValues.currentValuesSupplier.binaryValue();
                     }
@@ -368,26 +375,6 @@ final class ReadersAndUpdates {
                     @Override
                     public boolean advanceExact(int target) {
                       return mergedDocValues.advanceExact(target);
-                    }
-
-                    @Override
-                    public int docID() {
-                      return mergedDocValues.docID();
-                    }
-
-                    @Override
-                    public int nextDoc() throws IOException {
-                      return mergedDocValues.nextDoc();
-                    }
-
-                    @Override
-                    public int advance(int target) {
-                      return mergedDocValues.advance(target);
-                    }
-
-                    @Override
-                    public long cost() {
-                      return mergedDocValues.cost();
                     }
                   };
                 }
@@ -408,6 +395,11 @@ final class ReadersAndUpdates {
                   // Merge sort of the original doc values with updated doc values:
                   return new NumericDocValues() {
                     @Override
+                    public DocIdSetIterator iterator() {
+                      return mergedDocValues.iterator();
+                    }
+
+                    @Override
                     public long longValue() throws IOException {
                       return mergedDocValues.currentValuesSupplier.longValue();
                     }
@@ -415,26 +407,6 @@ final class ReadersAndUpdates {
                     @Override
                     public boolean advanceExact(int target) {
                       return mergedDocValues.advanceExact(target);
-                    }
-
-                    @Override
-                    public int docID() {
-                      return mergedDocValues.docID();
-                    }
-
-                    @Override
-                    public int nextDoc() throws IOException {
-                      return mergedDocValues.nextDoc();
-                    }
-
-                    @Override
-                    public int advance(int target) {
-                      return mergedDocValues.advance(target);
-                    }
-
-                    @Override
-                    public long cost() {
-                      return mergedDocValues.cost();
                     }
                   };
                 }
@@ -454,77 +426,77 @@ final class ReadersAndUpdates {
    */
   static final class MergedDocValues<DocValuesInstance extends DocValuesIterator>
       extends DocValuesIterator {
-    private final DocValuesFieldUpdates.Iterator updateIterator;
-    // merged docID
-    private int docIDOut = -1;
-    // docID from our original doc values
-    private int docIDOnDisk = -1;
-    // docID from our updates
-    private int updateDocID = -1;
 
-    private final DocValuesInstance onDiskDocValues;
-    private final DocValuesInstance updateDocValues;
     DocValuesInstance currentValuesSupplier;
+    private final DocIdSetIterator iterator;
 
     protected MergedDocValues(
         DocValuesInstance onDiskDocValues,
         DocValuesInstance updateDocValues,
         DocValuesFieldUpdates.Iterator updateIterator) {
-      this.onDiskDocValues = onDiskDocValues;
-      this.updateDocValues = updateDocValues;
-      this.updateIterator = updateIterator;
+      iterator =
+          new AbstractDocIdSetIterator() {
+
+            final DocIdSetIterator onDiskDocValuesIterator =
+                onDiskDocValues == null ? null : onDiskDocValues.iterator();
+            final DocIdSetIterator updateDocValuesIterator = updateDocValues.iterator();
+            // docID from our original doc values
+            private int docIDOnDisk = -1;
+            // docID from our updates
+            private int updateDocID = -1;
+
+            @Override
+            public int nextDoc() throws IOException {
+              boolean hasValue = false;
+              do {
+                if (docIDOnDisk == doc) {
+                  if (onDiskDocValues == null) {
+                    docIDOnDisk = NO_MORE_DOCS;
+                  } else {
+                    docIDOnDisk = onDiskDocValuesIterator.nextDoc();
+                  }
+                }
+                if (updateDocID == doc) {
+                  updateDocID = updateDocValuesIterator.nextDoc();
+                }
+                if (docIDOnDisk < updateDocID) {
+                  // no update to this doc - we use the on-disk values
+                  doc = docIDOnDisk;
+                  currentValuesSupplier = onDiskDocValues;
+                  hasValue = true;
+                } else {
+                  doc = updateDocID;
+                  if (doc != NO_MORE_DOCS) {
+                    currentValuesSupplier = updateDocValues;
+                    hasValue = updateIterator.hasValue();
+                  } else {
+                    hasValue = true;
+                  }
+                }
+              } while (hasValue == false);
+              return doc;
+            }
+
+            @Override
+            public int advance(int target) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public long cost() {
+              return onDiskDocValuesIterator.cost();
+            }
+          };
     }
 
     @Override
-    public int docID() {
-      return docIDOut;
-    }
-
-    @Override
-    public int advance(int target) {
-      throw new UnsupportedOperationException();
+    public DocIdSetIterator iterator() {
+      return iterator;
     }
 
     @Override
     public boolean advanceExact(int target) {
       throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public long cost() {
-      return onDiskDocValues.cost();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      boolean hasValue = false;
-      do {
-        if (docIDOnDisk == docIDOut) {
-          if (onDiskDocValues == null) {
-            docIDOnDisk = NO_MORE_DOCS;
-          } else {
-            docIDOnDisk = onDiskDocValues.nextDoc();
-          }
-        }
-        if (updateDocID == docIDOut) {
-          updateDocID = updateDocValues.nextDoc();
-        }
-        if (docIDOnDisk < updateDocID) {
-          // no update to this doc - we use the on-disk values
-          docIDOut = docIDOnDisk;
-          currentValuesSupplier = onDiskDocValues;
-          hasValue = true;
-        } else {
-          docIDOut = updateDocID;
-          if (docIDOut != NO_MORE_DOCS) {
-            currentValuesSupplier = updateDocValues;
-            hasValue = updateIterator.hasValue();
-          } else {
-            hasValue = true;
-          }
-        }
-      } while (hasValue == false);
-      return docIDOut;
     }
   }
 

@@ -380,6 +380,12 @@ public abstract class LongValuesSource implements SegmentCacheable {
 
   private static NumericDocValues asNumericDocValues(LongValuesHolder in) {
     return new NumericDocValues() {
+
+      @Override
+      public DocIdSetIterator iterator() {
+        throw new UnsupportedOperationException();
+      }
+
       @Override
       public long longValue() throws IOException {
         return in.values.longValue();
@@ -388,26 +394,6 @@ public abstract class LongValuesSource implements SegmentCacheable {
       @Override
       public boolean advanceExact(int target) throws IOException {
         return in.values.advanceExact(target);
-      }
-
-      @Override
-      public int docID() {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int nextDoc() throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int advance(int target) throws IOException {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public long cost() {
-        throw new UnsupportedOperationException();
       }
     };
   }
