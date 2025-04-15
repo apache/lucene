@@ -62,7 +62,8 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
   Lucene102BinaryQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene102BinaryFlatVectorsScorer vectorsScorer)
+      Lucene102BinaryFlatVectorsScorer vectorsScorer,
+      ReadAdvice readAdvice)
       throws IOException {
     super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
@@ -97,9 +98,7 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
               versionMeta,
               Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION,
               Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-              // graph.
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
+              state.context.withReadAdvice(readAdvice));
       success = true;
     } finally {
       if (success == false) {

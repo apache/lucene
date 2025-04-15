@@ -21,7 +21,6 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSi
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -60,8 +59,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final IndexInput vectorData;
   private final FieldInfos fieldInfos;
 
-  public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
-      throws IOException {
+  public Lucene99FlatVectorsReader(
+      SegmentReadState state, FlatVectorsScorer scorer, ReadAdvice readAdvice) throws IOException {
     super(scorer);
     int versionMeta = readMetadata(state);
     this.fieldInfos = state.fieldInfos;
@@ -73,9 +72,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               versionMeta,
               Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION,
               Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Flat formats are used to randomly access vectors from their node ID that is stored
-              // in the HNSW graph.
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
+              state.context.withReadAdvice(readAdvice));
       success = true;
     } finally {
       if (success == false) {
@@ -171,17 +168,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     CodecUtil.checksumEntireFile(vectorData);
   }
 
-  @Override
-  public FlatVectorsReader getMergeInstance() {
-    try {
-      // Update the read advice since vectors are guaranteed to be accessed sequentially for merge
-      this.vectorData.updateReadAdvice(ReadAdvice.SEQUENTIAL);
-      return this;
-    } catch (IOException exception) {
-      throw new UncheckedIOException(exception);
-    }
-  }
-
   private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
     final FieldEntry fieldEntry;
@@ -260,13 +246,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             fieldEntry.vectorDataLength,
             vectorData),
         target);
-  }
-
-  @Override
-  public void finishMerge() throws IOException {
-    // This makes sure that the access pattern hint is reverted back since HNSW implementation
-    // needs it
-    this.vectorData.updateReadAdvice(ReadAdvice.RANDOM);
   }
 
   @Override
