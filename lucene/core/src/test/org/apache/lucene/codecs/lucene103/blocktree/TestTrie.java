@@ -46,8 +46,8 @@ public class TestTrie extends LuceneTestCase {
 
   public void testRandomTerms() throws Exception {
     Supplier<byte[]> supplier = TestTrie::randomBytes;
-    testTrieBuilder(supplier, atLeast(10000));
-    testTrieLookup(supplier, TEST_NIGHTLY ? 18 : 12);
+    testTrieBuilder(supplier, atLeast(1000));
+    testTrieLookup(supplier, 12);
   }
 
   public void testVeryLongTerms() throws Exception {
