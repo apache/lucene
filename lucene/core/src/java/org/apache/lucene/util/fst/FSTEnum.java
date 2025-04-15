@@ -78,11 +78,14 @@ abstract class FSTEnum<T> {
     final int currentLimit = upto;
     upto = 1;
 
-    int mismatch = getMismatch(Math.min(currentLimit, targetLength));
-    if (mismatch == -1) {
-      upto += Math.min(currentLimit, targetLength) - 1;
-    } else {
-      upto += mismatch;
+    int limit = Math.min(currentLimit, targetLength);
+    if (limit > upto) {
+      int mismatch = getMismatch(limit);
+      if (mismatch == -1) {
+        upto += limit;
+      } else {
+        upto += mismatch;
+      }
       if (upto < currentLimit && upto <= targetLength + 1) {
         final int cmp = getCurrentLabel() - getTargetLabel();
         if (cmp > 0) {
