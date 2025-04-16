@@ -52,7 +52,8 @@ public class TestAnytimeRankingRelevanceMatch extends LuceneTestCase {
     try (IndexWriter writer = new IndexWriter(dir, config)) {
       for (int i = 0; i < DOC_COUNT; i++) {
         Document doc = new Document();
-        String content = (i % RELEVANT_FREQ == 0) ? "lucene precision recall document" : "random filler content";
+        String content =
+            (i % RELEVANT_FREQ == 0) ? "lucene precision recall document" : "random filler content";
         doc.add(new Field("field", content, ft));
         writer.addDocument(doc);
       }
@@ -78,9 +79,15 @@ public class TestAnytimeRankingRelevanceMatch extends LuceneTestCase {
     float baselineNDCG = computeNDCG(baseline);
     float anytimeNDCG = computeNDCG(anytimeResults);
 
-    System.out.printf(Locale.ROOT,
+    System.out.printf(
+        Locale.ROOT,
         "Recall: baseline=%.2f anytime=%.2f | MRR: baseline=%.2f anytime=%.2f | NDCG: baseline=%.2f anytime=%.2f%n",
-        baselineRecall, anytimeRecall, baselineMRR, anytimeMRR, baselineNDCG, anytimeNDCG);
+        baselineRecall,
+        anytimeRecall,
+        baselineMRR,
+        anytimeMRR,
+        baselineNDCG,
+        anytimeNDCG);
 
     assertTrue("Anytime recall should be >= baseline", anytimeRecall >= baselineRecall);
     assertTrue("Anytime MRR should be >= baseline", anytimeMRR >= baselineMRR);

@@ -29,17 +29,34 @@ import org.apache.lucene.util.BytesRef;
  */
 public final class ApproximateDocGraphBuilder {
 
-  /* Default max number of edges per doc */
+  /** Default number of edges retained per document in the similarity graph. */
   public static final int DEFAULT_MAX_EDGES = 10;
 
   private final String field;
   private final int maxEdgesPerDoc;
 
+  /**
+   * Creates a new graph builder for the specified field.
+   *
+   * @param field the indexed field to use for term overlap computation
+   * @param maxEdgesPerDoc maximum number of outgoing edges to retain per document
+   */
   public ApproximateDocGraphBuilder(String field, int maxEdgesPerDoc) {
     this.field = field;
     this.maxEdgesPerDoc = maxEdgesPerDoc;
   }
 
+  /**
+   * Constructs the similarity graph for documents in the provided reader using term co-occurrence.
+   *
+   * <p>Documents that share terms in the specified field are connected with an edge, with edge
+   * weights based on normalized overlap count. The number of outgoing edges per document is limited
+   * by {@code maxEdgesPerDoc}.
+   *
+   * @param reader a leaf reader over a single Lucene segment
+   * @return a sparse document similarity graph based on token overlap
+   * @throws IOException if an I/O error occurs during term enumeration or postings access
+   */
   public SparseEdgeGraph build(LeafReader reader) throws IOException {
     final int maxDoc = reader.maxDoc();
     final InMemorySparseEdgeGraph graph = new InMemorySparseEdgeGraph();

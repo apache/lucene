@@ -26,6 +26,7 @@ public class BinScoreLeafReader extends FilterLeafReader {
   private final BinScoreReader binScore;
   private final Closeable[] resources;
 
+  /** Default constructor */
   public BinScoreLeafReader(LeafReader in, BinScoreReader binScore, Closeable... resources) {
     super(in);
     this.binScore = binScore;

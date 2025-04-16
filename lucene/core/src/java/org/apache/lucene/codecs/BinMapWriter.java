@@ -23,11 +23,20 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 
-/** Writes a binmap file that maps docIDs to bin IDs. */
+/**
+ * Writes a binmap file for a segment.
+ *
+ * <p>The binmap assigns each document in the segment to a bin ID, typically used for scoring or
+ * early termination. The output is a binary file storing one integer bin ID per document.
+ */
 public final class BinMapWriter implements AutoCloseable {
 
+  /** File extension for binmap files. */
   public static final String EXTENSION = "binmap";
+
+  /** Initial file format version. */
   public static final int VERSION_START = 0;
+
   private static final String CODEC_NAME = "BinMap";
 
   private final Directory directory;
@@ -36,6 +45,14 @@ public final class BinMapWriter implements AutoCloseable {
   private final int binCount;
   private final int[] bins;
 
+  /**
+   * Creates a new {@link BinMapWriter} instance.
+   *
+   * @param directory output directory
+   * @param state current segment write state
+   * @param docToBin mapping from docID to bin ID
+   * @param binCount total number of bins
+   */
   public BinMapWriter(Directory directory, SegmentWriteState state, int[] docToBin, int binCount) {
     this.directory = directory;
     this.state = state;
@@ -44,11 +61,19 @@ public final class BinMapWriter implements AutoCloseable {
     this.bins = docToBin;
   }
 
-  /** Returns the expected binmap file name for this writer's segment. */
-  public String getBinMapFileName() {
-    return IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, EXTENSION);
-  }
-
+  /**
+   * Writes the binmap file to the index output directory.
+   *
+   * <p>The format is:
+   *
+   * <ul>
+   *   <li>Header (versioned with {@link org.apache.lucene.codecs.CodecUtil})
+   *   <li>maxDoc (int)
+   *   <li>binCount (int)
+   *   <li>{@code maxDoc} bin IDs, one int per document
+   *   <li>Footer
+   * </ul>
+   */
   @Override
   public void close() throws IOException {
     final String fileName =

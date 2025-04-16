@@ -21,7 +21,6 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -64,101 +63,101 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(1)
 public class AnytimeQueryLatencyVarianceBenchmark {
 
-    private Directory directory;
-    private IndexReader reader;
-    private IndexSearcher baselineSearcher;
-    private AnytimeRankingSearcher anytimeSearcher;
-    private TermQuery query;
+  private Directory directory;
+  private IndexReader reader;
+  private IndexSearcher baselineSearcher;
+  private AnytimeRankingSearcher anytimeSearcher;
+  private TermQuery query;
 
-    @Param({"1000", "10000"})
-    private int docCount;
+  @Param({"1000", "10000"})
+  private int docCount;
 
-    @Param({"true", "false"})
-    private boolean binningEnabled;
+  @Param({"true", "false"})
+  private boolean binningEnabled;
 
-    @Setup
-    public void setup() throws Exception {
-        Path tempDir = Files.createTempDirectory("query-latency-variance");
-        directory = new MMapDirectory(tempDir);
-        IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
-        config.setCodec(new Lucene101Codec());
-        config.setUseCompoundFile(false);
-        config.setMaxBufferedDocs(64);
+  @Setup
+  public void setup() throws Exception {
+    Path tempDir = Files.createTempDirectory("query-latency-variance");
+    directory = new MMapDirectory(tempDir);
+    IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
+    config.setCodec(new Lucene101Codec());
+    config.setUseCompoundFile(false);
+    config.setMaxBufferedDocs(64);
 
-        FieldType fieldType = new FieldType(TextField.TYPE_NOT_STORED);
-        fieldType.setTokenized(true);
-        fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-        if (binningEnabled) {
-            fieldType.putAttribute("doBinning", "true");
-            fieldType.putAttribute("bin.count", "4");
-        }
-        fieldType.freeze();
+    FieldType fieldType = new FieldType(TextField.TYPE_NOT_STORED);
+    fieldType.setTokenized(true);
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    if (binningEnabled) {
+      fieldType.putAttribute("doBinning", "true");
+      fieldType.putAttribute("bin.count", "4");
+    }
+    fieldType.freeze();
 
-        try (IndexWriter writer = new IndexWriter(directory, config)) {
-            for (int i = 0; i < docCount; i++) {
-                Document doc = new Document();
-                String content = (i % 3 == 0) ? "lucene latency benchmark" : "random filler content";
-                doc.add(new Field("field", content, fieldType));
-                writer.addDocument(doc);
+    try (IndexWriter writer = new IndexWriter(directory, config)) {
+      for (int i = 0; i < docCount; i++) {
+        Document doc = new Document();
+        String content = (i % 3 == 0) ? "lucene latency benchmark" : "random filler content";
+        doc.add(new Field("field", content, fieldType));
+        writer.addDocument(doc);
+      }
+      writer.commit();
+    }
+
+    reader = DirectoryReader.open(directory);
+    baselineSearcher = new IndexSearcher(reader);
+    baselineSearcher.setSimilarity(new BM25Similarity());
+
+    anytimeSearcher = new AnytimeRankingSearcher(baselineSearcher, 10, 5, "field");
+    query = new TermQuery(new Term("field", "lucene"));
+  }
+
+  @Benchmark
+  public TopDocs baselineQueryLatency() throws IOException {
+    return baselineSearcher.search(query, 10);
+  }
+
+  @Benchmark
+  public TopDocs anytimeQueryLatency() throws IOException {
+    return anytimeSearcher.search(query);
+  }
+
+  @TearDown
+  public void tearDown() throws IOException {
+    reader.close();
+    directory.close();
+  }
+
+  private static final class SingleTokenAnalyzer extends Analyzer {
+    @Override
+    protected TokenStreamComponents createComponents(String fieldName) {
+      Tokenizer tokenizer =
+          new Tokenizer() {
+            private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
+            private boolean emitted = false;
+
+            @Override
+            public boolean incrementToken() {
+              if (emitted) {
+                return false;
+              }
+              clearAttributes();
+              termAttr.append("lucene");
+              emitted = true;
+              return true;
             }
-            writer.commit();
-        }
 
-        reader = DirectoryReader.open(directory);
-        baselineSearcher = new IndexSearcher(reader);
-        baselineSearcher.setSimilarity(new BM25Similarity());
-
-        anytimeSearcher = new AnytimeRankingSearcher(baselineSearcher, 10, 5, "field");
-        query = new TermQuery(new Term("field", "lucene"));
+            @Override
+            public void reset() throws IOException {
+              super.reset();
+              emitted = false;
+            }
+          };
+      return new TokenStreamComponents(tokenizer);
     }
 
-    @Benchmark
-    public TopDocs baselineQueryLatency() throws IOException {
-        return baselineSearcher.search(query, 10);
+    @Override
+    protected Reader initReader(String fieldName, Reader reader) {
+      return reader;
     }
-
-    @Benchmark
-    public TopDocs anytimeQueryLatency() throws IOException {
-        return anytimeSearcher.search(query);
-    }
-
-    @TearDown
-    public void tearDown() throws IOException {
-        reader.close();
-        directory.close();
-    }
-
-    private static final class SingleTokenAnalyzer extends Analyzer {
-        @Override
-        protected TokenStreamComponents createComponents(String fieldName) {
-            Tokenizer tokenizer =
-                    new Tokenizer() {
-                        private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
-                        private boolean emitted = false;
-
-                        @Override
-                        public boolean incrementToken() {
-                            if (emitted) {
-                                return false;
-                            }
-                            clearAttributes();
-                            termAttr.append("lucene");
-                            emitted = true;
-                            return true;
-                        }
-
-                        @Override
-                        public void reset() throws IOException {
-                            super.reset();
-                            emitted = false;
-                        }
-                    };
-            return new TokenStreamComponents(tokenizer);
-        }
-
-        @Override
-        protected Reader initReader(String fieldName, Reader reader) {
-            return reader;
-        }
-    }
+  }
 }

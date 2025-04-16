@@ -1,14 +1,45 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-/** Non-recursive document binner using iterative graph bisection. */
+/**
+ * Partitions documents into bins using iterative graph bisection.
+ *
+ * <p>This utility approximates a balanced clustering of documents using a sparse similarity graph.
+ * It uses fixed seed points and edge weights to recursively assign documents to bins, ensuring that
+ * similar documents are grouped together.
+ */
 public final class DocBinningGraphBuilder {
 
   private DocBinningGraphBuilder() {}
 
+  /**
+   * Assigns each document to a bin by performing recursive bisection over a similarity graph.
+   *
+   * @param graph the sparse edge graph of document similarities
+   * @param maxDoc total number of documents
+   * @param numBins number of bins (must be a power of 2)
+   * @return an array mapping docID to bin ID
+   * @throws IOException if an error occurs during graph access
+   */
   public static int[] computeBins(SparseEdgeGraph graph, int maxDoc, int numBins)
       throws IOException {
     if (maxDoc <= 0 || Integer.bitCount(numBins) != 1) {
@@ -73,6 +104,11 @@ public final class DocBinningGraphBuilder {
     return docToBin;
   }
 
+  /**
+   * Computes similarity between two documents using the sparse graph.
+   *
+   * <p>The similarity is computed as the sum of edge weights from docA to docB.
+   */
   private static float similarity(SparseEdgeGraph graph, int docA, int docB) {
     int[] neighbors = graph.getNeighbors(docA);
     float[] weights = graph.getWeights(docA);
@@ -85,17 +121,6 @@ public final class DocBinningGraphBuilder {
     return score;
   }
 
-  private static final class PartitionTask {
-    final int start;
-    final int end;
-    final int binBase;
-    final int binCount;
-
-    PartitionTask(int start, int end, int binBase, int binCount) {
-      this.start = start;
-      this.end = end;
-      this.binBase = binBase;
-      this.binCount = binCount;
-    }
-  }
+  /** Internal task used to represent a partition step. */
+  private record PartitionTask(int start, int end, int binBase, int binCount) {}
 }

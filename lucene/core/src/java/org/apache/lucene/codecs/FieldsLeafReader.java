@@ -43,6 +43,12 @@ public final class FieldsLeafReader extends LeafReader {
   private final Map<String, Terms> fieldTerms;
   private final int maxDoc;
 
+  /**
+   * Creates a {@code FieldsLeafReader} for the given field terms.
+   *
+   * @param fieldTerms mapping of field names to {@link Terms} enumerations
+   * @param maxDoc total number of documents in this reader
+   */
   public FieldsLeafReader(Map<String, Terms> fieldTerms, int maxDoc) {
     this.fieldTerms = fieldTerms;
     this.maxDoc = maxDoc;

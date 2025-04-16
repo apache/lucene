@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -61,7 +60,8 @@ public class TestArcaneRelevanceBoost extends LuceneTestCase {
     try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir, iwc)) {
       for (int i = 0; i < totalDocs; i++) {
         Document doc = new Document();
-        String content = (i % relevantEvery == 0) ? "lucene highly relevant text" : "noise filler irrelevant";
+        String content =
+            (i % relevantEvery == 0) ? "lucene highly relevant text" : "noise filler irrelevant";
         doc.add(new StoredField("docID", i));
         doc.add(new Field("content", content, ft));
         writer.addDocument(doc);
@@ -79,37 +79,39 @@ public class TestArcaneRelevanceBoost extends LuceneTestCase {
     TermQuery query = new TermQuery(new Term("content", "lucene"));
 
     AtomicInteger baselineHits = new AtomicInteger();
-    baseline.search(query, new CollectorManager<SimpleCollector, Void>() {
-      @Override
-      public SimpleCollector newCollector() {
-        return new SimpleCollector() {
-          private int seen = 0;
-
+    baseline.search(
+        query,
+        new CollectorManager<SimpleCollector, Void>() {
           @Override
-          public void collect(int doc) throws IOException {
-            if (doc % relevantEvery == 0) {
-              baselineHits.incrementAndGet();
-            }
-            if (++seen >= truncationLimit) {
-              throw new CollectionTerminatedException();
-            }
+          public SimpleCollector newCollector() {
+            return new SimpleCollector() {
+              private int seen = 0;
+
+              @Override
+              public void collect(int doc) throws IOException {
+                if (doc % relevantEvery == 0) {
+                  baselineHits.incrementAndGet();
+                }
+                if (++seen >= truncationLimit) {
+                  throw new CollectionTerminatedException();
+                }
+              }
+
+              @Override
+              public void doSetNextReader(LeafReaderContext context) {}
+
+              @Override
+              public ScoreMode scoreMode() {
+                return ScoreMode.COMPLETE_NO_SCORES;
+              }
+            };
           }
 
           @Override
-          public void doSetNextReader(LeafReaderContext context) {}
-
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE_NO_SCORES;
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
           }
-        };
-      }
-
-      @Override
-      public Void reduce(Collection<SimpleCollector> collectors) {
-        return null;
-      }
-    });
+        });
 
     TopDocs arcaneResults = arcane.search(query);
     int arcaneHits = 0;
@@ -121,7 +123,10 @@ public class TestArcaneRelevanceBoost extends LuceneTestCase {
 
     assertTrue(
         "ARCANE should retrieve more relevant results under truncation. "
-            + "Baseline hits=" + baselineHits.get() + ", ARCANE hits=" + arcaneHits,
+            + "Baseline hits="
+            + baselineHits.get()
+            + ", ARCANE hits="
+            + arcaneHits,
         arcaneHits > baselineHits.get());
 
     reader.close();
