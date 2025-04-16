@@ -37,7 +37,7 @@ public class TestBinScoreUtil extends LuceneTestCase {
   private Directory dir;
   private IndexWriter writer;
 
-  @Before
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     Path path = createTempDir("binutil");
@@ -48,7 +48,7 @@ public class TestBinScoreUtil extends LuceneTestCase {
     writer = new IndexWriter(dir, iwc);
   }
 
-  @After
+  @Override
   public void tearDown() throws Exception {
     super.tearDown();
 
