@@ -13,10 +13,12 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
+
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Reads the binmap file for a segment and exposes per-document bin assignments.
@@ -28,82 +30,89 @@ import org.apache.lucene.store.Directory;
  */
 public final class BinMapReader implements Closeable {
 
-  private static final String EXTENSION = "binmap";
-  private static final int VERSION_START = 0;
-  private static final String CODEC_NAME = "BinMap";
+    private static final String EXTENSION = "binmap";
+    private static final int VERSION_START = 0;
+    private static final String CODEC_NAME = "BinMap";
 
-  private final int[] bins;
-  private final int binCount;
+    private final int[] bins;
+    private final int binCount;
 
-  /**
-   * Loads the binmap file for the given segment.
-   *
-   * @param dir directory containing the segment files
-   * @param state read state for the segment
-   * @throws IOException if the file cannot be read or fails validation
-   */
-  public BinMapReader(Directory dir, SegmentReadState state) throws IOException {
-    final String fileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, EXTENSION);
+    /**
+     * Loads the binmap file for the given segment.
+     *
+     * @param dir   directory containing the segment files
+     * @param state read state for the segment
+     * @throws IOException if the file cannot be read or fails validation
+     */
+    public BinMapReader(Directory dir, SegmentReadState state) throws IOException {
+        final String fileName =
+                IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, EXTENSION);
 
-    ChecksumIndexInput in = dir.openChecksumInput(fileName);
-    boolean success = false;
-    try {
-      CodecUtil.checkIndexHeader(
-          in,
-          CODEC_NAME,
-          VERSION_START,
-          VERSION_START,
-          state.segmentInfo.getId(),
-          state.segmentSuffix);
-
-      int maxDoc = in.readInt();
-      this.binCount = in.readInt();
-
-      if (maxDoc != state.segmentInfo.maxDoc()) {
-        throw new IOException(
-            "maxDoc mismatch: expected=" + state.segmentInfo.maxDoc() + " actual=" + maxDoc);
-      }
-
-      this.bins = new int[maxDoc];
-      for (int i = 0; i < maxDoc; i++) {
-        bins[i] = in.readInt();
-      }
-
-      CodecUtil.checkFooter(in);
-      success = true;
-    } finally {
-      if (success == false) {
+        ChecksumIndexInput in = dir.openChecksumInput(fileName);
+        boolean success = false;
         try {
-          in.close();
-        } catch (Throwable _) {
+            CodecUtil.checkIndexHeader(
+                    in,
+                    CODEC_NAME,
+                    VERSION_START,
+                    VERSION_START,
+                    state.segmentInfo.getId(),
+                    state.segmentSuffix);
+
+            int maxDoc = in.readInt();
+            this.binCount = in.readInt();
+
+            if (maxDoc != state.segmentInfo.maxDoc()) {
+                throw new IOException(
+                        "maxDoc mismatch: expected=" + state.segmentInfo.maxDoc() + " actual=" + maxDoc);
+            }
+
+            this.bins = new int[maxDoc];
+            for (int i = 0; i < maxDoc; i++) {
+                bins[i] = in.readInt();
+            }
+
+            CodecUtil.checkFooter(in);
+            success = true;
+        } finally {
+            if (success == false) {
+                try {
+                    in.close();
+                } catch (Throwable _) {
+                }
+            } else {
+                in.close();
+            }
         }
-      } else {
-        in.close();
-      }
     }
-  }
 
-  /**
-   * Returns the bin ID assigned to the given document.
-   *
-   * @param docID document ID
-   * @return the bin ID
-   */
-  public int getBin(int docID) {
-    return bins[docID];
-  }
+    /**
+     * Returns the bin ID assigned to the given document.
+     *
+     * @param docID document ID
+     * @return the bin ID
+     */
+    public int getBin(int docID) {
+        return bins[docID];
+    }
 
-  /** Returns the total number of bins used in this segment. */
-  public int getBinCount() {
-    return binCount;
-  }
+    /**
+     * Returns the total number of bins used in this segment.
+     */
+    public int getBinCount() {
+        return binCount;
+    }
 
-  /** Returns a copy of the full bin assignment array. */
-  public int[] getBinArrayCopy() {
-    return Arrays.copyOf(bins, bins.length);
-  }
+    /**
+     * Returns a copy of the full bin assignment array.
+     */
+    public int[] getBinArrayCopy() {
+        int[] copy = new int[bins.length];
+        System.arraycopy(bins, 0, copy, 0, bins.length);
+        return copy;
+    }
 
-  @Override
-  public void close() {}
+    @Override
+    public void close() {
+    }
 }
