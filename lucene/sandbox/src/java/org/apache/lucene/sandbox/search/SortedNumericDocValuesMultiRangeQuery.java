@@ -95,7 +95,7 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
         new PriorityQueue<>(clauses.size() * 2) {
           @Override
           protected boolean lessThan(Edge a, Edge b) {
-            return a.getValue() - b.getValue() < 0;
+            return Long.compare(a.getValue(), b.getValue()) < 0;
           }
         };
     for (DocValuesMultiRangeQuery.LongRange r : clauses) {
