@@ -29,6 +29,7 @@ import org.apache.lucene.util.BytesRef;
  */
 public final class ApproximateDocGraphBuilder {
 
+  /* Default max number of edges per doc */
   public static final int DEFAULT_MAX_EDGES = 10;
 
   private final String field;
