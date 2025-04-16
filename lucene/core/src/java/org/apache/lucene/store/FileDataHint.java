@@ -20,5 +20,6 @@ package org.apache.lucene.store;
 public enum FileDataHint implements IOContext.FileOpenHint {
   POSTINGS,
   STORED_FIELDS,
+  DOC_VALUES,
   VECTORS
 }

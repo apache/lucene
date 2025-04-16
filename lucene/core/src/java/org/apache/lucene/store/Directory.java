@@ -105,7 +105,28 @@ public abstract class Directory implements Closeable {
   }
 
   protected ReadAdvice toReadAdvice(IOContext context) {
-    return context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
+    if (context.context() == IOContext.Context.MERGE
+        || context.context() == IOContext.Context.FLUSH) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    if (context.hints().contains(DataAccessHint.RANDOM)) {
+      return ReadAdvice.RANDOM;
+    }
+    if (context.hints().contains(DataAccessHint.SEQUENTIAL)) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    if (context.hints().contains(FileTypeHint.DATA)) {
+      return ReadAdvice.NORMAL;
+    }
+    // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
+    // readahead.
+    if (context.hints().contains(FileDataHint.POSTINGS)) {
+      return ReadAdvice.NORMAL;
+    }
+
+    return Constants.DEFAULT_READADVICE;
   }
 
   /**
