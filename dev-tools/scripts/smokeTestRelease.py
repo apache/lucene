@@ -615,8 +615,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
       "help",
       "lucene",
       "settings.gradle",
-      "versions.lock",
-      "versions.toml",
+      "versions.lock"
     ]
     expected_src_lucene_files = ["build.gradle", "documentation", "distribution", "dev-docs"]
     is_in_list(in_root_folder, expected_src_root_files)
