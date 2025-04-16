@@ -56,7 +56,7 @@ public interface IOContext {
    * <p>This context should only be used when the read operations will be performed in the same
    * thread as the thread that opens the underlying storage.
    */
-  IOContext READONCE = new DefaultIOContext(Optional.of(ReadAdvice.SEQUENTIAL));
+  IOContext READONCE = new DefaultIOContext(Optional.empty(), ReadOnceHint.INSTANCE);
 
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {

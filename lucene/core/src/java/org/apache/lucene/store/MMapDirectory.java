@@ -263,7 +263,7 @@ public class MMapDirectory extends FSDirectory {
         path,
         chunkSizePower,
         toReadAdvice(context),
-        context == IOContext.READONCE,
+        ReadOnceHint.isReadOnce(context),
         preload.test(name, context),
         groupingFunction.apply(name),
         attachment);

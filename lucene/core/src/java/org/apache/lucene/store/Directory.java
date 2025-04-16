@@ -105,6 +105,7 @@ public abstract class Directory implements Closeable {
   }
 
   protected ReadAdvice toReadAdvice(IOContext context) {
+    if (ReadOnceHint.isReadOnce(context)) return ReadAdvice.SEQUENTIAL;
     return context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
   }
 
