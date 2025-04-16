@@ -18,7 +18,6 @@
 package org.apache.lucene.search;
 
 import java.util.Arrays;
-import java.util.Locale;
 import org.apache.lucene.codecs.lucene101.Lucene101Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -79,9 +78,6 @@ public class TestAnytimeRankingNDCG extends LuceneTestCase {
 
     double baselineNDCG = computeNDCG(baselineDocs);
     double anytimeNDCG = computeNDCG(anytimeDocs);
-
-    System.out.printf(
-        Locale.ROOT, "baselineNDCG=%.3f anytimeNDCG=%.3f%n", baselineNDCG, anytimeNDCG);
 
     // Ensure that NDCG does not diverge by more than 0.1
     assertEquals("NDCG values should be close", baselineNDCG, anytimeNDCG, 0.1);

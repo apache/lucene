@@ -36,9 +36,9 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-public class TestArcaneRelevanceBoost extends LuceneTestCase {
+public class TestBinningRelevanceBoost extends LuceneTestCase {
 
-  public void testArcaneImprovesRecallUnderTruncation() throws Exception {
+  public void testBinningImprovesRecallUnderTruncation() throws Exception {
     final int totalDocs = 5000;
     final int relevantEvery = 200;
     final int truncationLimit = 20;
@@ -73,7 +73,7 @@ public class TestArcaneRelevanceBoost extends LuceneTestCase {
     IndexSearcher baseline = newSearcher(reader);
     baseline.setSimilarity(new BM25Similarity());
 
-    AnytimeRankingSearcher arcane =
+    AnytimeRankingSearcher anytimeRankingSearcher =
         new AnytimeRankingSearcher(baseline, 10, truncationLimit, "content");
 
     TermQuery query = new TermQuery(new Term("content", "lucene"));
@@ -113,21 +113,21 @@ public class TestArcaneRelevanceBoost extends LuceneTestCase {
           }
         });
 
-    TopDocs arcaneResults = arcane.search(query);
-    int arcaneHits = 0;
-    for (ScoreDoc sd : arcaneResults.scoreDocs) {
+    TopDocs anytimeRankingResults = anytimeRankingSearcher.search(query);
+    int anytimeRankingHits = 0;
+    for (ScoreDoc sd : anytimeRankingResults.scoreDocs) {
       if (sd.doc % relevantEvery == 0) {
-        arcaneHits++;
+        anytimeRankingHits++;
       }
     }
 
     assertTrue(
-        "ARCANE should retrieve more relevant results under truncation. "
+        "AnytimeRankingSearch should retrieve more relevant results under truncation. "
             + "Baseline hits="
             + baselineHits.get()
-            + ", ARCANE hits="
-            + arcaneHits,
-        arcaneHits > baselineHits.get());
+            + ", AnytimeRankingSearch hits="
+            + anytimeRankingHits,
+        anytimeRankingHits > baselineHits.get());
 
     reader.close();
     dir.close();

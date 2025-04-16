@@ -6,11 +6,6 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
-import java.util.Locale;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.codecs.lucene101.Lucene101Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -24,6 +19,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
@@ -35,7 +31,7 @@ public class TestAnytimeRankingRelevanceMatch extends LuceneTestCase {
   @Test
   public void testRelevanceMetricsComparison() throws Exception {
     Directory dir = new MMapDirectory(createTempDir("relevance-test"));
-    IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
+    IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
     config.setCodec(new Lucene101Codec());
     config.setUseCompoundFile(false);
     config.setMaxBufferedDocs(100);
@@ -79,16 +75,6 @@ public class TestAnytimeRankingRelevanceMatch extends LuceneTestCase {
     float baselineNDCG = computeNDCG(baseline);
     float anytimeNDCG = computeNDCG(anytimeResults);
 
-    System.out.printf(
-        Locale.ROOT,
-        "Recall: baseline=%.2f anytime=%.2f | MRR: baseline=%.2f anytime=%.2f | NDCG: baseline=%.2f anytime=%.2f%n",
-        baselineRecall,
-        anytimeRecall,
-        baselineMRR,
-        anytimeMRR,
-        baselineNDCG,
-        anytimeNDCG);
-
     assertTrue("Anytime recall should be >= baseline", anytimeRecall >= baselineRecall);
     assertTrue("Anytime MRR should be >= baseline", anytimeMRR >= baselineMRR);
     assertTrue("Anytime NDCG should be >= baseline", anytimeNDCG >= baselineNDCG);
@@ -131,32 +117,5 @@ public class TestAnytimeRankingRelevanceMatch extends LuceneTestCase {
       idcg += (float) (1.0 / (Math.log(j + 1) / Math.log(2)));
     }
     return idcg > 0 ? dcg / idcg : 0f;
-  }
-
-  private static final class SingleTokenAnalyzer extends Analyzer {
-    @Override
-    protected TokenStreamComponents createComponents(String fieldName) {
-      Tokenizer tokenizer =
-          new Tokenizer() {
-            private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
-            private boolean emitted = false;
-
-            @Override
-            public boolean incrementToken() {
-              if (emitted) return false;
-              clearAttributes();
-              termAttr.append("lucene");
-              emitted = true;
-              return true;
-            }
-
-            @Override
-            public void reset() throws IOException {
-              super.reset();
-              emitted = false;
-            }
-          };
-      return new TokenStreamComponents(tokenizer);
-    }
   }
 }
