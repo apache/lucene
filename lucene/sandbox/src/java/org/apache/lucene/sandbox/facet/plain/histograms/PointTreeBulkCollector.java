@@ -103,8 +103,7 @@ class PointTreeBulkCollector {
     return f.apply(packedValue).intValue();
   }
 
-  private static PointValues.IntersectVisitor getIntersectVisitor(
-      BucketManager collector) {
+  private static PointValues.IntersectVisitor getIntersectVisitor(BucketManager collector) {
     return new PointValues.IntersectVisitor() {
       @Override
       public void visit(int docID) {
