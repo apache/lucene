@@ -130,7 +130,7 @@ public class MMapDirectory extends FSDirectory {
         return Optional.of(groupKey);
       };
 
-  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdvice =
+  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdviceOverride =
       (filename, context) -> Optional.empty();
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
@@ -242,7 +242,7 @@ public class MMapDirectory extends FSDirectory {
    */
   public void setReadAdviceOverride(
       BiFunction<String, IOContext, Optional<ReadAdvice>> toReadAdvice) {
-    this.readAdvice = toReadAdvice;
+    this.readAdviceOverride = toReadAdvice;
   }
 
   /**
@@ -269,18 +269,40 @@ public class MMapDirectory extends FSDirectory {
     return 1L << chunkSizePower;
   }
 
+  private static ReadAdvice toReadAdvice(IOContext context) {
+    if (context.context() == IOContext.Context.MERGE
+        || context.context() == IOContext.Context.FLUSH) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    if (context.hints().contains(DataAccessHint.RANDOM)) {
+      return ReadAdvice.RANDOM;
+    }
+    if (context.hints().contains(DataAccessHint.SEQUENTIAL)) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    if (context.hints().contains(FileTypeHint.DATA)
+        || context.hints().contains(FileTypeHint.INDEX)) {
+      return ReadAdvice.NORMAL;
+    }
+
+    return Constants.DEFAULT_READADVICE;
+  }
+
   /** Creates an IndexInput for the file with the given name. */
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
+    Function<IOContext, ReadAdvice> toReadAdvice =
+        c -> readAdviceOverride.apply(name, c).orElseGet(() -> toReadAdvice(c));
     return PROVIDER.openInput(
         path,
         chunkSizePower,
-        readAdvice
-            .apply(name, context)
-            .orElseGet(() -> context.readAdvice().orElse(Constants.DEFAULT_READADVICE)),
+        context,
+        toReadAdvice,
         context == IOContext.READONCE,
         preload.test(name, context),
         groupingFunction.apply(name),
@@ -294,7 +316,8 @@ public class MMapDirectory extends FSDirectory {
     IndexInput openInput(
         Path path,
         int chunkSizePower,
-        ReadAdvice readAdvice,
+        IOContext context,
+        Function<IOContext, ReadAdvice> toReadAdvice,
         boolean readOnce,
         boolean preload,
         Optional<String> group,

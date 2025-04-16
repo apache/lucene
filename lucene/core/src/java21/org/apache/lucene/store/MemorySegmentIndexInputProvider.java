@@ -25,6 +25,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
@@ -46,7 +47,8 @@ final class MemorySegmentIndexInputProvider
   public IndexInput openInput(
       Path path,
       int chunkSizePower,
-      ReadAdvice readAdvice,
+      IOContext context,
+      Function<IOContext, ReadAdvice> toReadAdvice,
       boolean confined,
       boolean preload,
       Optional<String> group,
@@ -65,10 +67,18 @@ final class MemorySegmentIndexInputProvider
           MemorySegmentIndexInput.newInstance(
               resourceDescription,
               arena,
-              map(arena, resourceDescription, fc, readAdvice, chunkSizePower, preload, fileSize),
+              map(
+                  arena,
+                  resourceDescription,
+                  fc,
+                  toReadAdvice.apply(context),
+                  chunkSizePower,
+                  preload,
+                  fileSize),
               fileSize,
               chunkSizePower,
-              confined);
+              confined,
+              toReadAdvice);
       success = true;
       return in;
     } finally {
