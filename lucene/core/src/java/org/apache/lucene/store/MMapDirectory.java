@@ -277,6 +277,34 @@ public class MMapDirectory extends FSDirectory {
     return 1L << chunkSizePower;
   }
 
+  public static ReadAdvice toReadAdvice(IOContext context) {
+    if (context.context() == IOContext.Context.MERGE
+        || context.context() == IOContext.Context.FLUSH) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    if (context.hints().contains(DataAccessHint.RANDOM)) {
+      if (context.hints().contains(FileTypeHint.INDEX)) {
+        return ReadAdvice.RANDOM_PRELOAD;
+      }
+      return ReadAdvice.RANDOM;
+    }
+    if (context.hints().contains(DataAccessHint.SEQUENTIAL)) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    if (context.hints().contains(FileTypeHint.DATA)) {
+      return ReadAdvice.NORMAL;
+    }
+    // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
+    // readahead.
+    if (context.hints().contains(FileDataHint.POSTINGS)) {
+      return ReadAdvice.NORMAL;
+    }
+
+    return Constants.DEFAULT_READADVICE;
+  }
+
   /** Creates an IndexInput for the file with the given name. */
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
@@ -290,10 +318,8 @@ public class MMapDirectory extends FSDirectory {
 
     boolean success = false;
     final boolean confined = context == IOContext.READONCE;
-    final ReadAdvice readAdvice =
-        readAdviceOverride
-            .apply(name, context)
-            .orElseGet(() -> context.readAdvice().orElse(Constants.DEFAULT_READADVICE));
+    Function<IOContext, ReadAdvice> toReadAdvice =
+        c -> readAdviceOverride.apply(name, c).orElseGet(() -> toReadAdvice(c));
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
@@ -305,13 +331,14 @@ public class MMapDirectory extends FSDirectory {
                   arena,
                   resourceDescription,
                   fc,
-                  readAdvice,
+                  toReadAdvice.apply(context),
                   chunkSizePower,
                   preload.test(name, context),
                   fileSize),
               fileSize,
               chunkSizePower,
-              confined);
+              confined,
+              toReadAdvice);
       success = true;
       return in;
     } finally {

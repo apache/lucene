@@ -25,9 +25,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.CloseableThreadLocal;
-import org.apache.lucene.util.Constants;
 
 /**
  * A {@link Directory} wrapper that counts the number of times that Lucene may wait for I/O to
@@ -72,7 +72,7 @@ public class SerialIOCountingDirectory extends FilterDirectory {
 
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
-    ReadAdvice readAdvice = context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
+    ReadAdvice readAdvice = MMapDirectory.toReadAdvice(context);
     if (readAdvice == ReadAdvice.RANDOM_PRELOAD) {
       // expected to be loaded in memory, only count 1 at open time
       counter.increment();
@@ -195,7 +195,7 @@ public class SerialIOCountingDirectory extends FilterDirectory {
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
         throws IOException {
-      return slice(offset, length, context.readAdvice().orElse(Constants.DEFAULT_READADVICE));
+      return slice(offset, length, MMapDirectory.toReadAdvice(context));
     }
 
     private IndexInput slice(long offset, long length, ReadAdvice readAdvice) throws IOException {

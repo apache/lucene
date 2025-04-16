@@ -20,8 +20,6 @@ package org.apache.lucene.store;
 public enum FileDataHint implements IOContext.FileOpenHint {
   /** The file contains postings data */
   POSTINGS,
-  /** The file contains stored fields */
-  STORED_FIELDS,
   /** The file contains vector data for kNN search */
   KNN_VECTORS
 }

@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -110,19 +111,19 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         MMapDirectory.supportsMadvise());
   }
 
-  // Opens the input with ReadAdvice.NORMAL to ensure basic code path coverage.
+  // RANDOM is the default (see Constants.DEFAULT_READADVICE), so test with NORMAL too
   public void testWithNormal() throws Exception {
     final int size = 8 * 1024;
     byte[] bytes = new byte[size];
     random().nextBytes(bytes);
 
-    try (Directory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         out.writeBytes(bytes, 0, bytes.length);
       }
 
-      try (final IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL))) {
+      dir.setReadAdviceOverride((_, _) -> Optional.of(ReadAdvice.NORMAL));
+      try (final IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
         final byte[] readBytes = new byte[size];
         in.readBytes(readBytes, 0, readBytes.length);
         assertArrayEquals(bytes, readBytes);
