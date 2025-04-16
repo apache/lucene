@@ -19,42 +19,63 @@ package org.apache.lucene.sandbox.facet.plain.histograms;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.function.Function;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 
-class PointTreeTraversal {
-  static void multiRangesTraverse(
-      final PointValues.PointTree tree, final Ranges ranges, final LongIntHashMap collectorCounts)
+class PointTreeBulkCollector {
+  static boolean collect(
+      final PointValues pointValues,
+      final long bucketWidth,
+      final LongIntHashMap collectorCounts,
+      final int maxBuckets)
       throws IOException {
-    int activeIndex = ranges.firstRangeIndex(tree.getMinPackedValue(), tree.getMaxPackedValue());
-
-    // No ranges match the query, skip the collection completely
-    if (activeIndex < 0) {
-      return;
+    // TODO: Do we really need pointValues.getDocCount() == pointValues.size()
+    if (pointValues == null
+        || pointValues.getNumDimensions() != 1
+        || pointValues.getDocCount() != pointValues.size()
+        || ArrayUtil.getValue(pointValues.getBytesPerDimension()) == null) {
+      return false;
     }
-    RangeCollectorForPointTree collector =
-        new RangeCollectorForPointTree(collectorCounts, ranges, activeIndex);
+
+    final Function<byte[], Long> byteToLong =
+        ArrayUtil.getValue(pointValues.getBytesPerDimension());
+    final long minValue = getLongFromByte(byteToLong, pointValues.getMinPackedValue());
+    final long maxValue = getLongFromByte(byteToLong, pointValues.getMaxPackedValue());
+    long leafMinBucket = Math.floorDiv(minValue, bucketWidth);
+    long leafMaxBucket = Math.floorDiv(maxValue, bucketWidth);
+
+    // We want that # leaf nodes is more than # buckets so that we can completely skip over
+    // some of the leaf nodes. Higher this ratio, more efficient it is than naive approach!
+    if ((pointValues.size() / 512) < (leafMaxBucket - leafMinBucket)) {
+      return false;
+    }
+
+    BucketManager collector =
+        new BucketManager(
+            collectorCounts,
+            minValue,
+            bucketWidth,
+            a -> getLongFromByte(byteToLong, a),
+            maxBuckets);
     PointValues.IntersectVisitor visitor = getIntersectVisitor(collector);
     try {
-      intersectWithRanges(visitor, tree, collector);
+      intersectWithRanges(visitor, pointValues.getPointTree(), collector);
     } catch (CollectionTerminatedException _) {
       // Early terminate since no more range to collect
     }
-    collector.finalizePreviousRange();
-  }
+    collector.finalizePreviousBucket(null);
 
-  static Ranges buildRanges(long bucketWidth) {
-    // TODO: Add logic for building ranges
-    return new Ranges(new byte[1][1], new byte[1][1]);
+    return true;
   }
 
   private static void intersectWithRanges(
       PointValues.IntersectVisitor visitor,
       PointValues.PointTree pointTree,
-      RangeCollectorForPointTree collector)
+      BucketManager collector)
       throws IOException {
     PointValues.Relation r =
         visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
@@ -77,8 +98,13 @@ class PointTreeTraversal {
     }
   }
 
+  private static long getLongFromByte(Function<byte[], Long> f, byte[] packedValue) {
+    // TODO: Read long correctly instead of downcasting to int
+    return f.apply(packedValue).intValue();
+  }
+
   private static PointValues.IntersectVisitor getIntersectVisitor(
-      RangeCollectorForPointTree collector) {
+      BucketManager collector) {
     return new PointValues.IntersectVisitor() {
       @Override
       public void visit(int docID) {
@@ -92,33 +118,25 @@ class PointTreeTraversal {
 
       @Override
       public void visit(int docID, byte[] packedValue) throws IOException {
-        visitPoints(packedValue, collector::count);
+        if (!collector.withinUpperBound(packedValue)) {
+          collector.finalizePreviousBucket(packedValue);
+        }
+
+        if (collector.withinRange(packedValue)) {
+          collector.count();
+        }
       }
 
       @Override
       public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
-        visitPoints(
-            packedValue,
-            () -> {
-              try {
-                for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
-                  collector.count();
-                }
-              } catch (Exception _) {
-              }
-            });
-      }
-
-      private void visitPoints(byte[] packedValue, Runnable collect) {
         if (!collector.withinUpperBound(packedValue)) {
-          collector.finalizePreviousRange();
-          if (collector.iterateRangeEnd(packedValue)) {
-            throw new CollectionTerminatedException();
-          }
+          collector.finalizePreviousBucket(packedValue);
         }
 
         if (collector.withinRange(packedValue)) {
-          collect.run();
+          for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+            collector.count();
+          }
         }
       }
 
@@ -126,16 +144,11 @@ class PointTreeTraversal {
       public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
         // try to find the first range that may collect values from this cell
         if (!collector.withinUpperBound(minPackedValue)) {
-          collector.finalizePreviousRange();
-          if (collector.iterateRangeEnd(minPackedValue)) {
-            throw new CollectionTerminatedException();
-          }
+          collector.finalizePreviousBucket(minPackedValue);
         }
-        // after the loop, min < upper
-        // cell could be outside [min max] lower
-        if (!collector.withinLowerBound(maxPackedValue)) {
-          return PointValues.Relation.CELL_OUTSIDE_QUERY;
-        }
+
+        // Not possible to have the CELL_OUTSIDE_QUERY, as bucket lower bound is updated
+        // while finalizing the previous bucket
         if (collector.withinRange(minPackedValue) && collector.withinRange(maxPackedValue)) {
           return PointValues.Relation.CELL_INSIDE_QUERY;
         }
@@ -144,17 +157,28 @@ class PointTreeTraversal {
     };
   }
 
-  private static class RangeCollectorForPointTree {
+  private static class BucketManager {
     private final LongIntHashMap collectorCounts;
     private int counter = 0;
-    private final Ranges ranges;
-    private int activeIndex;
+    private long startValue;
+    private long endValue;
+    private int nonZeroBuckets = 0;
+    private int maxBuckets;
+    private Function<byte[], Long> byteToLong;
+    private long bucketWidth;
 
-    public RangeCollectorForPointTree(
-        LongIntHashMap collectorCounts, Ranges ranges, int activeIndex) {
+    public BucketManager(
+        LongIntHashMap collectorCounts,
+        long minValue,
+        long bucketWidth,
+        Function<byte[], Long> byteToLong,
+        int maxBuckets) {
       this.collectorCounts = collectorCounts;
-      this.ranges = ranges;
-      this.activeIndex = activeIndex;
+      this.bucketWidth = bucketWidth;
+      this.startValue = Math.floorDiv(minValue, bucketWidth) * bucketWidth;
+      this.endValue = startValue + bucketWidth;
+      this.byteToLong = byteToLong;
+      this.maxBuckets = maxBuckets;
     }
 
     private void count() {
@@ -165,80 +189,32 @@ class PointTreeTraversal {
       counter += count;
     }
 
-    private void finalizePreviousRange() {
+    private void finalizePreviousBucket(byte[] packedValue) {
+      // TODO: Can counter ever be 0?
       if (counter > 0) {
-        collectorCounts.addTo(activeIndex, counter);
-        counter = 0;
-      }
-    }
-
-    /**
-     * @return true when iterator exhausted
-     */
-    private boolean iterateRangeEnd(byte[] value) {
-      // the new value may not be contiguous to the previous one
-      // so try to find the first next range that cross the new value
-      while (!withinUpperBound(value)) {
-        if (++activeIndex >= ranges.size) {
-          return true;
+        collectorCounts.addTo(Math.floorDiv(startValue, bucketWidth), counter);
+        if (packedValue != null) {
+          startValue = byteToLong.apply(packedValue);
+          // Align the start value with bucket width
+          startValue = Math.floorDiv(startValue, bucketWidth) * bucketWidth;
+          endValue = startValue + bucketWidth;
         }
+        nonZeroBuckets++;
+        counter = 0;
+        HistogramCollector.checkMaxBuckets(nonZeroBuckets, maxBuckets);
       }
-      return false;
     }
 
     private boolean withinLowerBound(byte[] value) {
-      return ranges.withinLowerBound(value, ranges.lowers[activeIndex]);
+      return byteToLong.apply(value) >= startValue;
     }
 
     private boolean withinUpperBound(byte[] value) {
-      return ranges.withinUpperBound(value, ranges.uppers[activeIndex]);
+      return byteToLong.apply(value) < endValue;
     }
 
     private boolean withinRange(byte[] value) {
       return withinLowerBound(value) && withinUpperBound(value);
-    }
-  }
-
-  static final class Ranges {
-    byte[][] lowers; // inclusive
-    byte[][] uppers; // exclusive
-    int size;
-    int byteLen;
-    ArrayUtil.ByteArrayComparator comparator;
-
-    Ranges(byte[][] lowers, byte[][] uppers) {
-      this.lowers = lowers;
-      this.uppers = uppers;
-      assert lowers.length == uppers.length;
-      this.size = lowers.length;
-      this.byteLen = lowers[0].length;
-      comparator = ArrayUtil.getUnsignedComparator(byteLen);
-    }
-
-    public int firstRangeIndex(byte[] globalMin, byte[] globalMax) {
-      if (compareByteValue(lowers[0], globalMax) > 0) {
-        return -1;
-      }
-      int i = 0;
-      while (compareByteValue(uppers[i], globalMin) <= 0) {
-        i++;
-        if (i >= size) {
-          return -1;
-        }
-      }
-      return i;
-    }
-
-    private int compareByteValue(byte[] value1, byte[] value2) {
-      return comparator.compare(value1, 0, value2, 0);
-    }
-
-    public boolean withinLowerBound(byte[] value, byte[] lowerBound) {
-      return compareByteValue(value, lowerBound) >= 0;
-    }
-
-    public boolean withinUpperBound(byte[] value, byte[] upperBound) {
-      return compareByteValue(value, upperBound) < 0;
     }
   }
 }

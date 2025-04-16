@@ -23,14 +23,18 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Weight;
 
 final class HistogramCollector implements Collector {
 
@@ -38,6 +42,8 @@ final class HistogramCollector implements Collector {
   private final long bucketWidth;
   private final int maxBuckets;
   private final LongIntHashMap counts;
+
+  private Query query;
 
   HistogramCollector(String field, long bucketWidth, int maxBuckets) {
     this.field = field;
@@ -53,24 +59,21 @@ final class HistogramCollector implements Collector {
       // The segment has no values, nothing to do.
       throw new CollectionTerminatedException();
     }
+
+    // We can use multi range traversal logic to collect the histogram on numeric
+    // field indexed as point range query for MATCH_ALL cases
+    final PointValues pointValues = context.reader().getPointValues(field);
+    if (query instanceof MatchAllDocsQuery && !context.reader().hasDeletions()) {
+      if (PointTreeBulkCollector.collect(pointValues, bucketWidth, counts, maxBuckets)) {
+        throw new CollectionTerminatedException();
+      }
+    }
+
     if (fi.getDocValuesType() != DocValuesType.NUMERIC
         && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
       throw new IllegalStateException(
           "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
     }
-
-    // We can use multi range traversal logic to collect the histogram on numeric
-    // field indexed as point range query for MATCH_ALL cases. Even for non-match
-    // all cases like PointRangeQuery, if the query field == histogram field, this
-    // logic can be used. Need to supply the PointRangeQuery bounds for building
-    // the Ranges.
-
-    //    final PointValues pointValues = context.reader().getPointValues(field);
-    //    if (pointValues != null && !context.reader().hasDeletions()) {
-    //      PointTreeTraversal.multiRangesTraverse(pointValues.getPointTree(),
-    // PointTreeTraversal.buildRanges(bucketWidth), counts);
-    //      throw new CollectionTerminatedException();
-    //    }
 
     SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues singleton = DocValues.unwrapSingleton(values);
@@ -309,5 +312,10 @@ final class HistogramCollector implements Collector {
               + " buckets, which is more than the configured max number of buckets: "
               + maxBuckets);
     }
+  }
+
+  @Override
+  public void setWeight(Weight weight) {
+    query = weight.getQuery();
   }
 }
