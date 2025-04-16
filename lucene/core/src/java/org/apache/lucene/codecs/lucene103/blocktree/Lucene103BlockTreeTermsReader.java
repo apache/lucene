@@ -34,8 +34,9 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
@@ -128,7 +129,7 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_INDEX_EXTENSION);
       indexIn =
           state.directory.openInput(
-              indexName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
+              indexName, state.context.withHints(FileTypeHint.INDEX, DataAccessHint.RANDOM));
       CodecUtil.checkIndexHeader(
           indexIn,
           TERMS_INDEX_CODEC_NAME,
