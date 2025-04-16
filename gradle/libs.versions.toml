@@ -32,7 +32,7 @@ randomizedtesting = "2.8.3"
 rat = "0.14"
 s2-geometry = "1.0.0"
 spatial4j = "0.8"
-xerces = "2.12.0"
+xerces = "2.12.2"
 zstd = "1.5.5-11"
 
 [libraries]
