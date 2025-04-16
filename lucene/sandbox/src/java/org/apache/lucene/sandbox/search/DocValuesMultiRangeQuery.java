@@ -175,7 +175,7 @@ public final class DocValuesMultiRangeQuery {
         return new MatchNoDocsQuery();
       }
       if (clauses.size() == 1) {
-        LongRange theOnlyOne = clauses.getFirst();
+        LongRange theOnlyOne = clauses.get(0);
         return SortedNumericDocValuesField.newSlowRangeQuery(
             fieldName, theOnlyOne.lower, theOnlyOne.upper);
       }
