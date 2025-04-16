@@ -28,7 +28,7 @@
  *       org.apache.lucene.search.PhraseQuery})
  *   <li>Quite efficient for {@link org.apache.lucene.search.PrefixQuery}
  *   <li>Not efficient for spell-check and {@link org.apache.lucene.search.FuzzyQuery}, in this case
- *       prefer {@link org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat}
+ *       prefer {@link org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat}
  * </ul>
  */
 package org.apache.lucene.codecs.uniformsplit;

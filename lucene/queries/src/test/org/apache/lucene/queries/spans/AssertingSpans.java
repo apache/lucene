@@ -18,6 +18,7 @@ package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.TwoPhaseIterator;
 
 /** Wraps a Spans with additional asserts */
@@ -246,11 +247,10 @@ class AssertingSpans extends Spans {
     }
   }
 
-  class AssertingDISI extends DocIdSetIterator {
-    final DocIdSetIterator in;
+  class AssertingDISI extends FilterDocIdSetIterator {
 
     AssertingDISI(DocIdSetIterator in) {
-      this.in = in;
+      super(in);
     }
 
     @Override
@@ -287,11 +287,6 @@ class AssertingSpans extends Spans {
       }
       doc = advanced;
       return docID();
-    }
-
-    @Override
-    public long cost() {
-      return in.cost();
     }
   }
 }

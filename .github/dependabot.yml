@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+    commit-message:
+      prefix: ci
+    labels: [dependencies]
+
+  # python dependencies in /dev-tools/scripts
+  - package-ecosystem: pip
+    directory: /dev-tools/scripts/
+    schedule:
+      interval: weekly
+      day: tuesday
+    commit-message:
+      prefix: build(deps)
+    labels: [dependencies]
+
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+    commit-message:
+      prefix: deps(java)
+    labels: [dependencies]

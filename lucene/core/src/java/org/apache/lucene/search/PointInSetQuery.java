@@ -62,6 +62,8 @@ public abstract class PointInSetQuery extends Query implements Accountable {
   final int numDims;
   final int bytesPerDim;
   final long ramBytesUsed; // cache
+  byte[] lowerPoint = null;
+  byte[] upperPoint = null;
 
   /** Iterator of encoded point values. */
   // TODO: if we want to stream, maybe we should use jdk stream class?
@@ -108,6 +110,9 @@ public abstract class PointInSetQuery extends Query implements Accountable {
       }
       if (previous == null) {
         previous = new BytesRefBuilder();
+        lowerPoint = new byte[bytesPerDim * numDims];
+        assert lowerPoint.length == current.length;
+        System.arraycopy(current.bytes, current.offset, lowerPoint, 0, current.length);
       } else {
         int cmp = previous.get().compareTo(current);
         if (cmp == 0) {
@@ -122,6 +127,12 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
     sortedPackedPoints = builder.finish();
     sortedPackedPointsHashCode = sortedPackedPoints.hashCode();
+    if (previous != null) {
+      BytesRef max = previous.get();
+      upperPoint = new byte[bytesPerDim * numDims];
+      assert upperPoint.length == max.length;
+      System.arraycopy(max.bytes, max.offset, upperPoint, 0, max.length);
+    }
     ramBytesUsed =
         BASE_RAM_BYTES
             + RamUsageEstimator.sizeOfObject(field)
@@ -170,6 +181,22 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                   + values.getBytesPerDimension()
                   + " but this query has bytesPerDim="
                   + bytesPerDim);
+        }
+
+        if (values.getDocCount() == 0) {
+          return null;
+        } else if (lowerPoint != null) {
+          assert upperPoint != null;
+          ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+          final byte[] fieldPackedLower = values.getMinPackedValue();
+          final byte[] fieldPackedUpper = values.getMaxPackedValue();
+          for (int i = 0; i < numDims; ++i) {
+            int offset = i * bytesPerDim;
+            if (comparator.compare(lowerPoint, offset, fieldPackedUpper, offset) > 0
+                || comparator.compare(upperPoint, offset, fieldPackedLower, offset) < 0) {
+              return null;
+            }
+          }
         }
 
         if (numDims == 1) {

@@ -24,6 +24,17 @@
 This parameter has no replacement, TieredMergePolicy no longer bounds the
 number of segments that may be merged together.
 
+### Query caching is now disabled by default
+
+Query caching is now disabled by default. To enable caching back, do something
+like below in a static initialization block:
+
+```
+int maxCachedQueries = 1_000;
+long maxRamBytesUsed = 50 * 1024 * 1024; // 50MB
+IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamBytesUsed));
+```
+
 ## Migration from Lucene 9.x to Lucene 10.0
 
 ### DataInput#readVLong() may now read negative vlongs

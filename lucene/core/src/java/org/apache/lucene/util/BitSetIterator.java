@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
@@ -24,7 +25,7 @@ import org.apache.lucene.search.DocIdSetIterator;
  *
  * @lucene.internal
  */
-public class BitSetIterator extends DocIdSetIterator {
+public class BitSetIterator extends AbstractDocIdSetIterator {
 
   private static <T extends BitSet> T getBitSet(
       DocIdSetIterator iterator, Class<? extends T> clazz) {
@@ -53,7 +54,6 @@ public class BitSetIterator extends DocIdSetIterator {
   private final BitSet bits;
   private final int length;
   private final long cost;
-  private int doc = -1;
 
   /** Sole constructor. */
   public BitSetIterator(BitSet bits, long cost) {
@@ -68,11 +68,6 @@ public class BitSetIterator extends DocIdSetIterator {
   /** Return the wrapped {@link BitSet}. */
   public BitSet getBitSet() {
     return bits;
-  }
-
-  @Override
-  public int docID() {
-    return doc;
   }
 
   /** Set the current doc id that this iterator is on. */

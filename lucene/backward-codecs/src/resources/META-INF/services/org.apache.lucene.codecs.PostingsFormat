@@ -18,3 +18,4 @@ org.apache.lucene.backward_codecs.lucene84.Lucene84PostingsFormat
 org.apache.lucene.backward_codecs.lucene90.Lucene90PostingsFormat
 org.apache.lucene.backward_codecs.lucene99.Lucene99PostingsFormat
 org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsFormat
+org.apache.lucene.backward_codecs.lucene101.Lucene101PostingsFormat

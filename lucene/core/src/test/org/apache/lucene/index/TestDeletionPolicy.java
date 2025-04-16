@@ -766,6 +766,56 @@ public class TestDeletionPolicy extends LuceneTestCase {
     }
   }
 
+  public void testKeepLastNCommitsDeletionPolicy() throws IOException {
+
+    int numCommitsToKeep = 3;
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    conf.setIndexDeletionPolicy(new KeepLastNCommitsDeletionPolicy(numCommitsToKeep));
+
+    assertEquals(KeepLastNCommitsDeletionPolicy.class, conf.getIndexDeletionPolicy().getClass());
+
+    // Create an index and make several commits
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, conf);
+
+    for (int i = 0; i < 5; i++) {
+      addDoc(writer);
+      writer.commit();
+    }
+
+    writer.close();
+
+    // Check that only the last N commits are kept
+    List<IndexCommit> commits = DirectoryReader.listCommits(dir);
+    assertEquals(numCommitsToKeep, commits.size());
+
+    // Verify that we can open and read from each of the remaining commits
+    for (IndexCommit commit : commits) {
+      try (DirectoryReader reader = DirectoryReader.open(commit)) {
+        assertTrue(reader.numDocs() > 0);
+      }
+    }
+
+    // Check that the retained commits are the most recent ones
+    long latestGen = commits.getLast().getGeneration();
+    for (int i = 0; i < numCommitsToKeep; i++) {
+      assertEquals(latestGen - i, commits.get(commits.size() - 1 - i).getGeneration());
+    }
+
+    dir.close();
+  }
+
+  public void testKeepLastNCommitsDeletionPolicyWithZeroCommits() throws IOException {
+    int numCommitsToKeep = 0;
+    IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                conf.setIndexDeletionPolicy(new KeepLastNCommitsDeletionPolicy(numCommitsToKeep)));
+    assertTrue(expected.getMessage().contains("number of recent commits to keep must be positive"));
+  }
+
   private void addDocWithID(IndexWriter writer, int id) throws IOException {
     Document doc = new Document();
     doc.add(newTextField("content", "aaa", Field.Store.NO));

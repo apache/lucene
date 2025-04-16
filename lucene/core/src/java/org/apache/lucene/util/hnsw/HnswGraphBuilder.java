@@ -440,10 +440,13 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   void finish() throws IOException {
     // System.out.println("finish " + frozen);
-    connectComponents();
+    // TODO: Connect components can be exceptionally expensive, disabling
+    //  see: https://github.com/apache/lucene/issues/14214
+    // connectComponents();
     frozen = true;
   }
 
+  @SuppressWarnings("unused")
   private void connectComponents() throws IOException {
     long start = System.nanoTime();
     for (int level = 0; level < hnsw.numLevels(); level++) {
@@ -634,7 +637,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
     @Override
     public KnnSearchStrategy getSearchStrategy() {
-      throw new IllegalArgumentException("Should not use unique strategy during graph building");
+      return null;
     }
   }
 }

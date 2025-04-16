@@ -21,6 +21,7 @@ import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
@@ -1027,12 +1028,11 @@ public class BKDReader extends PointValues {
   }
 
   /** Reusable {@link DocIdSetIterator} to handle low cardinality leaves. */
-  private static class BKDReaderDocIDSetIterator extends DocIdSetIterator {
+  private static class BKDReaderDocIDSetIterator extends AbstractDocIdSetIterator {
 
     private int idx;
     private int length;
     private int offset;
-    private int docID;
     final int[] docIDs;
     private final DocIdsWriter docIdsWriter;
 
@@ -1041,28 +1041,23 @@ public class BKDReader extends PointValues {
       this.docIdsWriter = new DocIdsWriter(maxPointsInLeafNode, version);
     }
 
-    @Override
-    public int docID() {
-      return docID;
-    }
-
     private void reset(int offset, int length) {
       this.offset = offset;
       this.length = length;
       assert offset + length <= docIDs.length;
-      this.docID = -1;
+      this.doc = -1;
       this.idx = 0;
     }
 
     @Override
     public int nextDoc() throws IOException {
       if (idx == length) {
-        docID = DocIdSetIterator.NO_MORE_DOCS;
+        doc = DocIdSetIterator.NO_MORE_DOCS;
       } else {
-        docID = docIDs[offset + idx];
+        doc = docIDs[offset + idx];
         idx++;
       }
-      return docID;
+      return doc;
     }
 
     @Override

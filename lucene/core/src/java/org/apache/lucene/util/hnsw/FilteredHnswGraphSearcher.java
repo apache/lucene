@@ -201,6 +201,9 @@ public class FilteredHnswGraphSearcher extends HnswGraphSearcher {
           }
         }
       }
+      if (results.getSearchStrategy() != null) {
+        results.getSearchStrategy().nextVectorsBlock();
+      }
     }
   }
 

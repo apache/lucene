@@ -29,7 +29,7 @@ import org.apache.lucene.util.FixedBitSet;
  *
  * @lucene.internal
  */
-public final class DisjunctionDISIApproximation extends DocIdSetIterator {
+public final class DisjunctionDISIApproximation extends AbstractDocIdSetIterator {
 
   public static DisjunctionDISIApproximation of(
       Collection<? extends DisiWrapper> subIterators, long leadCost) {
@@ -112,11 +112,6 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
   }
 
   @Override
-  public int docID() {
-    return Math.min(minOtherDoc, leadTop.doc);
-  }
-
-  @Override
   public int nextDoc() throws IOException {
     if (leadTop.doc < minOtherDoc) {
       int curDoc = leadTop.doc;
@@ -124,7 +119,7 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
         leadTop.doc = leadTop.approximation.nextDoc();
         leadTop = leadIterators.updateTop();
       } while (leadTop.doc == curDoc);
-      return Math.min(leadTop.doc, minOtherDoc);
+      return doc = Math.min(leadTop.doc, minOtherDoc);
     } else {
       return advance(minOtherDoc + 1);
     }
@@ -145,7 +140,7 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
       minOtherDoc = Math.min(minOtherDoc, w.doc);
     }
 
-    return Math.min(leadTop.doc, minOtherDoc);
+    return doc = Math.min(leadTop.doc, minOtherDoc);
   }
 
   @Override
@@ -162,6 +157,8 @@ public final class DisjunctionDISIApproximation extends DocIdSetIterator {
       w.doc = w.approximation.docID();
       minOtherDoc = Math.min(minOtherDoc, w.doc);
     }
+
+    doc = Math.min(leadTop.doc, minOtherDoc);
   }
 
   /** Return the linked list of iterators positioned on the current doc. */

@@ -19,8 +19,6 @@ import re
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from enum import Enum

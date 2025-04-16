@@ -27,6 +27,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
@@ -253,10 +254,34 @@ final class HistogramCollector implements Collector {
     }
 
     @Override
+    public void collect(DocIdStream stream) throws IOException {
+      for (; ; ) {
+        int upToExclusive = upToInclusive + 1;
+        if (upToExclusive < 0) { // overflow
+          upToExclusive = Integer.MAX_VALUE;
+        }
+
+        if (upToSameBucket) {
+          counts[upToBucketIndex] += stream.count(upToExclusive);
+        } else {
+          stream.forEach(upToExclusive, this::collect);
+        }
+
+        if (stream.mayHaveRemaining()) {
+          advanceSkipper(upToExclusive);
+        } else {
+          break;
+        }
+      }
+    }
+
+    @Override
     public void finish() throws IOException {
       // Put counts that we computed in the int[] back into the hash map.
       for (int i = 0; i < counts.length; ++i) {
-        collectorCounts.addTo(leafMinBucket + i, counts[i]);
+        if (counts[i] != 0) {
+          collectorCounts.addTo(leafMinBucket + i, counts[i]);
+        }
       }
       checkMaxBuckets(collectorCounts.size(), maxBuckets);
     }

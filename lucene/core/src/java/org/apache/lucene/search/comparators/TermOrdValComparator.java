@@ -26,6 +26,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.IndexSearcher;
@@ -467,7 +468,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
   private record PostingsEnumAndOrd(PostingsEnum postings, int ord) {}
 
-  private class CompetitiveIterator extends DocIdSetIterator {
+  private class CompetitiveIterator extends AbstractDocIdSetIterator {
 
     private static final int MAX_TERMS = 1024;
 
@@ -476,7 +477,6 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     private final String field;
     private final boolean dense;
     private final TermsEnum docValuesTerms;
-    private int doc = -1;
     private ArrayDeque<PostingsEnumAndOrd> postings;
     private DocIdSetIterator docsWithField;
     private PriorityQueue<PostingsEnumAndOrd> disjunction;
@@ -488,11 +488,6 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       this.field = field;
       this.dense = dense;
       this.docValuesTerms = docValuesTerms;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
 
     @Override

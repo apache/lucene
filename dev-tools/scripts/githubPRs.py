@@ -30,10 +30,10 @@ from typing import TYPE_CHECKING, Any, cast
 from github import Github
 from jinja2 import BaseLoader, Environment
 from jira import JIRA, Issue
-from jira.client import ResultList
 
 if TYPE_CHECKING:
   from github.PullRequest import PullRequest
+  from jira.client import ResultList
 
 
 def read_config():
@@ -83,7 +83,7 @@ def main():
     gh = Github(token)
   else:
     gh = Github()
-  jira = JIRA("https://issues.apache.org/jira")  # this ctor has broken types in jira library. # pyright: ignore[reportArgumentType]
+  jira = JIRA("https://issues.apache.org/jira")
   result: dict[str, Any] = {}
   repo = gh.get_repo("apache/lucene")
   open_prs = repo.get_pulls(state="open")
@@ -114,7 +114,7 @@ def main():
     issue_ids.append(jira_issue_str)
     issue_to_pr[jira_issue_str] = pr
 
-  resolved_jiras = cast(ResultList[Issue], jira.search_issues(jql_str="key in (%s) AND status in ('Closed', 'Resolved')" % ", ".join(issue_ids)))
+  resolved_jiras = cast("ResultList[Issue]", jira.search_issues(jql_str="key in (%s) AND status in ('Closed', 'Resolved')" % ", ".join(issue_ids)))
   closed_jiras: list[dict[str, Any]] = []
   for issue in resolved_jiras:
     pr_title = issue_to_pr[issue.key].title

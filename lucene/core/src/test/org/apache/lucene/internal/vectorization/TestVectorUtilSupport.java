@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static org.hamcrest.Matchers.closeTo;
-
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -210,9 +208,10 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
   }
 
   private void assertFloatReturningProviders(ToDoubleFunction<VectorUtilSupport> func) {
-    assertThat(
+    assertEquals(
+        func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()),
         func.applyAsDouble(PANAMA_PROVIDER.getVectorUtilSupport()),
-        closeTo(func.applyAsDouble(LUCENE_PROVIDER.getVectorUtilSupport()), delta));
+        delta);
   }
 
   private void assertIntReturningProviders(ToIntFunction<VectorUtilSupport> func) {

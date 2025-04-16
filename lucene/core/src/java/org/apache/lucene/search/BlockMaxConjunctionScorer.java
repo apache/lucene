@@ -97,20 +97,10 @@ final class BlockMaxConjunctionScorer extends Scorer {
   private DocIdSetIterator approximation() {
     final DocIdSetIterator lead = approximations[0];
 
-    return new DocIdSetIterator() {
+    return new FilterDocIdSetIterator(lead) {
 
       float maxScore;
       int upTo = -1;
-
-      @Override
-      public int docID() {
-        return lead.docID();
-      }
-
-      @Override
-      public long cost() {
-        return lead.cost();
-      }
 
       private void moveToNextBlock(int target) throws IOException {
         if (minScore == 0) {

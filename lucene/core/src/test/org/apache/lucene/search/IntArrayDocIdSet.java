@@ -45,14 +45,8 @@ class IntArrayDocIdSet extends DocIdSet {
 
   @Override
   public DocIdSetIterator iterator() {
-    return new DocIdSetIterator() {
+    return new AbstractDocIdSetIterator() {
       int i = 0;
-      int doc = -1;
-
-      @Override
-      public int docID() {
-        return doc;
-      }
 
       @Override
       public int nextDoc() {

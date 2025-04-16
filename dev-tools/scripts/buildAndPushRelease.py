@@ -22,8 +22,6 @@ import subprocess
 import sys
 import textwrap
 import time
-import urllib.error
-import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from subprocess import TimeoutExpired

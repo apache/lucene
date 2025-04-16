@@ -17,19 +17,19 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * A {@link DocIdSetIterator} like {@link BitSetIterator} but has a doc base in onder to avoid
+ * A {@link DocIdSetIterator} like {@link BitSetIterator} but has a doc base in order to avoid
  * storing previous 0s.
  */
-public class DocBaseBitSetIterator extends DocIdSetIterator {
+public class DocBaseBitSetIterator extends AbstractDocIdSetIterator {
 
   private final FixedBitSet bits;
   private final int length;
   private final long cost;
   private final int docBase;
-  private int doc = -1;
 
   public DocBaseBitSetIterator(FixedBitSet bits, long cost, int docBase) {
     if (cost < 0) {
@@ -52,11 +52,6 @@ public class DocBaseBitSetIterator extends DocIdSetIterator {
    */
   public FixedBitSet getBitSet() {
     return bits;
-  }
-
-  @Override
-  public int docID() {
-    return doc;
   }
 
   /**

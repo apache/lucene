@@ -455,11 +455,19 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
 
   public static void createIndex(Random random, Directory dir, boolean multiSegment)
       throws IOException {
+
+    MergePolicy mp;
+    if (multiSegment) {
+      mp = NoMergePolicy.INSTANCE;
+    } else {
+      mp = new LogDocMergePolicy();
+    }
+
     IndexWriter w =
         new IndexWriter(
             dir,
             LuceneTestCase.newIndexWriterConfig(random, new MockAnalyzer(random))
-                .setMergePolicy(new LogDocMergePolicy()));
+                .setMergePolicy(mp));
 
     for (int i = 0; i < 100; i++) {
       w.addDocument(createDocument(i, 4));
@@ -511,7 +519,11 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
           if (VERBOSE) {
             System.out.println("TEST: modify index");
           }
-          IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+          IndexWriter w =
+              new IndexWriter(
+                  dir,
+                  new IndexWriterConfig(new MockAnalyzer(random()))
+                      .setMergePolicy(NoMergePolicy.INSTANCE));
           w.deleteDocuments(new Term("field2", "a11"));
           w.deleteDocuments(new Term("field2", "b30"));
           w.close();
@@ -536,7 +548,11 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
         }
       case 3:
         {
-          IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+          IndexWriter w =
+              new IndexWriter(
+                  dir,
+                  new IndexWriterConfig(new MockAnalyzer(random()))
+                      .setMergePolicy(NoMergePolicy.INSTANCE));
           w.addDocument(createDocument(101, 4));
           w.close();
           break;

@@ -2131,4 +2131,67 @@ public class TestLRUQueryCache extends LuceneTestCase {
     w.close();
     dir.close();
   }
+
+  public void testSkipCacheFactorWithDynamicValues() throws IOException {
+    Directory dir = newDirectory();
+    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc1 = new Document();
+    doc1.add(new StringField("name", "tom", Store.YES));
+    doc1.add(new StringField("hobby", "movie", Store.YES));
+    Document doc2 = new Document();
+    doc2.add(new StringField("name", "alice", Store.YES));
+    doc2.add(new StringField("hobby", "book", Store.YES));
+    Document doc3 = new Document();
+    doc3.add(new StringField("name", "alice", Store.YES));
+    doc3.add(new StringField("hobby", "movie", Store.YES));
+    w.addDocuments(Arrays.asList(doc1, doc2, doc3));
+    final IndexReader reader = w.getReader();
+    final IndexSearcher searcher = newSearcher(reader);
+    final QueryCachingPolicy policy =
+        new QueryCachingPolicy() {
+
+          @Override
+          public boolean shouldCache(Query query) throws IOException {
+            return query.getClass() != TermQuery.class;
+          }
+
+          @Override
+          public void onUse(Query query) {
+            // no-op
+          }
+        };
+    searcher.setQueryCachingPolicy(policy);
+    w.close();
+
+    // lead cost is 2, cost of subQuery1 is 3, cost of subQuery2 is 2
+    BooleanQuery.Builder inner = new BooleanQuery.Builder();
+    TermQuery innerSubQuery1 = new TermQuery(new Term("hobby", "book"));
+    TermQuery innerSubQuery2 = new TermQuery(new Term("hobby", "movie"));
+    BooleanQuery subQuery1 =
+        inner.add(innerSubQuery1, Occur.SHOULD).add(innerSubQuery2, Occur.SHOULD).build();
+
+    BooleanQuery.Builder bq = new BooleanQuery.Builder();
+    TermQuery subQuery2 = new TermQuery(new Term("name", "alice"));
+    BooleanQuery query =
+        bq.add(new ConstantScoreQuery(subQuery1), Occur.FILTER)
+            .add(subQuery2, Occur.FILTER)
+            .build();
+    Set<Query> cacheSet = new HashSet<>();
+
+    // Define skip cache factor to be 1, so that query is not cached.
+    final LRUQueryCache cache = new LRUQueryCache(1000000, 10000000, _ -> true, 1.0f);
+    searcher.setQueryCache(cache);
+    searcher.search(query, 1);
+    assertEquals(cacheSet, new HashSet<>(cache.cachedQueries()));
+    assertEquals(1.0, cache.getSkipCacheFactor(), 0);
+
+    // Now change the skipCacheFactor to 3.0f, now same query should get cached.
+    cache.setSkipCacheFactor(3.0f);
+    searcher.search(query, 1);
+    assertEquals(new HashSet<>(List.of(subQuery1)), new HashSet<>(cache.cachedQueries()));
+    assertEquals(3.0, cache.getSkipCacheFactor(), 0);
+
+    reader.close();
+    dir.close();
+  }
 }

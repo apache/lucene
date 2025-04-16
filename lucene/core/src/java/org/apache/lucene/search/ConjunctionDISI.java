@@ -33,7 +33,7 @@ import org.apache.lucene.util.CollectionUtil;
  *
  * @lucene.internal
  */
-final class ConjunctionDISI extends DocIdSetIterator {
+final class ConjunctionDISI extends FilterDocIdSetIterator {
 
   /**
    * Adds the scorer, possibly splitting up into two phases or collapsing if it is another
@@ -127,6 +127,8 @@ final class ConjunctionDISI extends DocIdSetIterator {
     if (iterators.size() == 1) {
       disi = iterators.get(0);
     } else {
+      // Sort the list first to allow the sparser iterator to lead the matching.
+      CollectionUtil.timSort(iterators, (o1, o2) -> Long.compare(o1.cost(), o2.cost()));
       disi = new ConjunctionDISI(iterators);
     }
 
@@ -152,11 +154,9 @@ final class ConjunctionDISI extends DocIdSetIterator {
   final DocIdSetIterator[] others;
 
   private ConjunctionDISI(List<? extends DocIdSetIterator> iterators) {
+    super(iterators.get(0));
     assert iterators.size() >= 2;
 
-    // Sort the array the first time to allow the least frequent DocsEnum to
-    // lead the matching.
-    CollectionUtil.timSort(iterators, (o1, o2) -> Long.compare(o1.cost(), o2.cost()));
     lead1 = iterators.get(0);
     lead2 = iterators.get(1);
     others = iterators.subList(2, iterators.size()).toArray(new DocIdSetIterator[0]);
@@ -206,20 +206,10 @@ final class ConjunctionDISI extends DocIdSetIterator {
   }
 
   @Override
-  public int docID() {
-    return lead1.docID();
-  }
-
-  @Override
   public int nextDoc() throws IOException {
     assert assertItersOnSameDoc()
         : "Sub-iterators of ConjunctionDISI are not on the same document!";
     return doNext(lead1.nextDoc());
-  }
-
-  @Override
-  public long cost() {
-    return lead1.cost(); // overestimate
   }
 
   // Returns {@code true} if all sub-iterators are on the same doc ID, {@code false} otherwise
@@ -233,7 +223,7 @@ final class ConjunctionDISI extends DocIdSetIterator {
   }
 
   /** Conjunction between a {@link DocIdSetIterator} and one or more {@link BitSetIterator}s. */
-  private static class BitSetConjunctionDISI extends DocIdSetIterator {
+  private static class BitSetConjunctionDISI extends FilterDocIdSetIterator {
 
     private final DocIdSetIterator lead;
     private final BitSetIterator[] bitSetIterators;
@@ -241,6 +231,7 @@ final class ConjunctionDISI extends DocIdSetIterator {
     private final int minLength;
 
     BitSetConjunctionDISI(DocIdSetIterator lead, Collection<BitSetIterator> bitSetIterators) {
+      super(lead);
       this.lead = lead;
       assert bitSetIterators.size() > 0;
 
@@ -255,11 +246,6 @@ final class ConjunctionDISI extends DocIdSetIterator {
         minLen = Math.min(minLen, bitSet.length());
       }
       this.minLength = minLen;
-    }
-
-    @Override
-    public int docID() {
-      return lead.docID();
     }
 
     @Override
@@ -295,11 +281,6 @@ final class ConjunctionDISI extends DocIdSetIterator {
         }
         return doc;
       }
-    }
-
-    @Override
-    public long cost() {
-      return lead.cost();
     }
 
     // Returns {@code true} if all sub-iterators are on the same doc ID, {@code false} otherwise
