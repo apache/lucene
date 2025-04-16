@@ -44,6 +44,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -72,6 +73,11 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
   // less than 128 docs left to evaluate anyway.
   private static final List<Impact> DUMMY_IMPACTS =
       Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+
+  // We stopped storing a placeholder impact with freq=1 for fields with IndexOptions.DOCS
+  // from 9.12.0 onwards with @org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsReader
+  private static final List<Impact> NON_COMPETITIVE_IMPACTS =
+          Collections.singletonList(new Impact(1, 1L));
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -282,6 +288,10 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
   @Override
   public ImpactsEnum impacts(FieldInfo fieldInfo, BlockTermState state, int flags)
       throws IOException {
+    if (state.docFreq <= BLOCK_SIZE) {
+      // no skip data
+      return new SlowImpactsEnum(postings(fieldInfo, state, null, flags));
+    }
     return new BlockPostingsEnum(fieldInfo, flags, true).reset((IntBlockTermState) state, flags);
   }
 
@@ -1286,14 +1296,11 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
 
           @Override
           public int numLevels() {
-            return indexHasFreq == false || level1LastDocID == NO_MORE_DOCS ? 1 : 2;
+            return level1LastDocID == NO_MORE_DOCS ? 1 : 2;
           }
 
           @Override
           public int getDocIdUpTo(int level) {
-            if (indexHasFreq == false) {
-              return NO_MORE_DOCS;
-            }
             if (level == 0) {
               return level0LastDocID;
             }
@@ -1310,7 +1317,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
                 return readImpacts(level1SerializedImpacts, level1Impacts);
               }
             }
-            return DUMMY_IMPACTS;
+            return NON_COMPETITIVE_IMPACTS;
           }
 
           private List<Impact> readImpacts(BytesRef serialized, MutableImpactList impactsList) {
