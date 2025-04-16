@@ -24,7 +24,7 @@
       "org.ow2.asm:asm-tree:9.6" : "d9953130,refs=4",
       "org.slf4j:slf4j-api:2.0.16" : "2f760bab,refs=4",
       "ua.net.nlp:morfologik-ukrainian-search:4.9.1" : "fe494320,refs=3",
-      "xerces:xercesImpl:2.12.0" : "5ce8cdc6,refs=2"
+      "xerces:xercesImpl:2.12.2" : "5ce8cdc6,refs=2"
     },
     "test_dependencies" : {
       "com.carrotsearch.randomizedtesting:randomizedtesting-runner:2.8.1" : "b35e5d7a,refs=74",
@@ -75,7 +75,7 @@
       "org.pcollections:pcollections:4.0.1" : "6897bc09,refs=38",
       "org.slf4j:slf4j-api:2.0.16" : "b91715f0,refs=6",
       "ua.net.nlp:morfologik-ukrainian-search:4.9.1" : "cb00cecf,refs=5",
-      "xerces:xercesImpl:2.12.0" : "6f16ff86,refs=2"
+      "xerces:xercesImpl:2.12.2" : "6f16ff86,refs=2"
     }
   },
   "because" : {
