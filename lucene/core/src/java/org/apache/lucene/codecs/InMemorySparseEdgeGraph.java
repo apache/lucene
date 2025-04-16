@@ -67,8 +67,8 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
 
   @Override
   public void ensureVertex(int docID) {
-    neighbors.computeIfAbsent(docID, k -> new int[0]);
-    weights.computeIfAbsent(docID, k -> new float[0]);
+    neighbors.computeIfAbsent(docID, _ -> new int[0]);
+    weights.computeIfAbsent(docID, _ -> new float[0]);
   }
 
   /** Returns the number of vertices in the graph with at least one edge. */

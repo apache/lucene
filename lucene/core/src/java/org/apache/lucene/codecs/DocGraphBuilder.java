@@ -54,7 +54,6 @@ public final class DocGraphBuilder {
 
   /** Constructs the sparse similarity graph using term overlap. */
   public SparseEdgeGraph build(LeafReader reader) throws IOException {
-    final int maxDoc = reader.maxDoc();
     final SparseEdgeGraph graph = new InMemorySparseEdgeGraph();
     final Map<String, ArrayList<Integer>> termToDocList = new HashMap<>();
 
@@ -75,8 +74,8 @@ public final class DocGraphBuilder {
         int docID = postings.docID();
         int freq = postings.freq();
 
-        docTermVectors.computeIfAbsent(docID, k -> new IntVector()).add(termStr, freq);
-        termToDocList.computeIfAbsent(termStr, k -> new ArrayList<>()).add(docID);
+        docTermVectors.computeIfAbsent(docID, _ -> new IntVector()).add(termStr, freq);
+        termToDocList.computeIfAbsent(termStr, _ -> new ArrayList<>()).add(docID);
       }
     }
 

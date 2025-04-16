@@ -122,7 +122,6 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
   private int maxImpactNumBytesAtLevel0;
   private int maxNumImpactsAtLevel1;
   private int maxImpactNumBytesAtLevel1;
-  private SegmentWriteState segmentWriteState;
 
   /** Sole public constructor. */
   public Lucene101PostingsWriter(SegmentWriteState state) throws IOException {
@@ -203,7 +202,6 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
 
     docDeltaBuffer = new int[BLOCK_SIZE];
     freqBuffer = new int[BLOCK_SIZE];
-    segmentWriteState = state;
   }
 
   /**
