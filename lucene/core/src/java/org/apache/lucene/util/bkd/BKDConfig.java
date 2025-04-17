@@ -17,6 +17,7 @@
 
 package org.apache.lucene.util.bkd;
 
+import java.util.List;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -37,6 +38,20 @@ public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxP
 
   /** Maximum number of index dimensions */
   public static final int MAX_INDEX_DIMS = 8;
+
+  private static final List<BKDConfig> DEFAULT_CONFIGS =
+      List.of(
+          // cover the most common types for 1 and 2 dimensions.
+          new BKDConfig(1, 1, 2, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(1, 1, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(1, 1, 8, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(1, 1, 16, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(2, 2, 2, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(2, 2, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(2, 2, 8, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(2, 2, 16, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          // cover lucene shapes
+          new BKDConfig(7, 4, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE));
 
   public BKDConfig {
     // Check inputs are on bounds
@@ -65,6 +80,17 @@ public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxP
               + ArrayUtil.MAX_ARRAY_LENGTH
               + "); got "
               + maxPointsInLeafNode);
+    }
+  }
+
+  public static BKDConfig of(
+      int numDims, int numIndexDims, int bytesPerDim, int maxPointsInLeafNode) {
+    final BKDConfig config = new BKDConfig(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
+    final int defaultConfigIndex = BKDConfig.DEFAULT_CONFIGS.indexOf(config);
+    if (defaultConfigIndex != -1) {
+      return BKDConfig.DEFAULT_CONFIGS.get(defaultConfigIndex);
+    } else {
+      return config;
     }
   }
 

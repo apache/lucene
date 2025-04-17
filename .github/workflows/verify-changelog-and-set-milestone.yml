@@ -16,14 +16,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          fetch-depth: 2
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: ChangeLog Entry Verifier and Milestone Setter
         run: |
           echo "################## STEP 1 ##################"
-          echo "Get all labels from the PR"
+          echo "Get all labels from PR #${{ github.event.number }}"
           mapfile -t labels < <(gh pr view ${{ github.event.number }} --json labels -q '.labels[].name')
           IFS=','; echo "${labels[*]}"
           for label in "${labels[@]}"; do
@@ -37,6 +38,7 @@ jobs:
           echo -e "\n"
           echo "################## STEP 2 ##################"
           echo "Checking for change log entry in ${{ env.CHANGE_LOG_FILE }}"
+          git fetch origin ${{ github.event.pull_request.base.ref }}
           git log  --pretty=oneline | tail -n 2 | cat
           echo "merge base sha: ${{ github.event.pull_request.base.sha }}, merge head sha: ${{ github.event.pull_request.head.sha }}"
           if ! git diff ${{ github.event.pull_request.base.sha }} --name-only | grep -q "${{ env.CHANGE_LOG_FILE }}"; then

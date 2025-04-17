@@ -20,7 +20,6 @@ import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.assertTok
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.startsWith;
 
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -949,9 +948,7 @@ public class TestSuggestField extends LuceneTestCase {
     iwc.setMergePolicy(newLogMergePolicy());
     Codec filterCodec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          final CompletionPostingsFormat.FSTLoadMode fstLoadMode =
-              RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
-          final PostingsFormat postingsFormat = new Completion101PostingsFormat(fstLoadMode);
+          final PostingsFormat postingsFormat = new Completion101PostingsFormat();
 
           @Override
           public PostingsFormat postingsFormat() {

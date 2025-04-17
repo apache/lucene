@@ -1580,14 +1580,26 @@ public abstract class LuceneTestCase extends Assert {
         availableLanguageTags[random.nextInt(availableLanguageTags.length)]);
   }
 
+  /** Time zone IDs that cause a deprecation warning in JDK 25. */
+  private static final Set<String> DEPRECATED_TIME_ZONE_IDS_JDK25 =
+      Set.of(
+          "ACT", "AET", "AGT", "ART", "AST", "BET", "BST", "CAT", "CNT", "CST", "CTT", "EAT", "ECT",
+          "EST", "HST", "IET", "IST", "JST", "MIT", "MST", "NET", "NST", "PLT", "PNT", "PRT", "PST",
+          "SST", "VST");
+
   /**
    * Return a random TimeZone from the available timezones on the system
    *
    * @see <a href="http://issues.apache.org/jira/browse/LUCENE-4020">LUCENE-4020</a>
    */
   public static TimeZone randomTimeZone(Random random) {
-    String[] tzIds = TimeZone.getAvailableIDs();
-    return TimeZone.getTimeZone(tzIds[random.nextInt(tzIds.length)]);
+    List<String> tzIds = Arrays.asList(TimeZone.getAvailableIDs());
+    // Remove time zones that cause deprecation warnings as these can break
+    // certain tests that expect exact output.
+    if (Runtime.version().feature() >= 25) {
+      tzIds = tzIds.stream().filter(id -> !DEPRECATED_TIME_ZONE_IDS_JDK25.contains(id)).toList();
+    }
+    return TimeZone.getTimeZone(RandomPicks.randomFrom(random, tzIds));
   }
 
   /** return a Locale object equivalent to its programmatic name */

@@ -1428,6 +1428,25 @@ public class IndexWriter
   }
 
   /**
+   * If {@link SegmentInfos#counter} is below {@code newCounter} then update it to this value.
+   *
+   * @lucene.internal
+   */
+  public synchronized void advanceSegmentInfosCounter(long newCounter) {
+    this.ensureOpen();
+    if (segmentInfos.counter < newCounter) {
+      segmentInfos.counter = newCounter;
+    }
+    changed();
+  }
+
+  /** Returns the {@link SegmentInfos#counter}. */
+  public long getSegmentInfosCounter() {
+    this.ensureOpen();
+    return segmentInfos.counter;
+  }
+
+  /**
    * Returns true if this index has deletions (including buffered deletions). Note that this will
    * return true if there are buffered Term/Query deletions, even if it turns out those buffered
    * deletions don't match any documents.

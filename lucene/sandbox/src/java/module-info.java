@@ -35,6 +35,7 @@ module org.apache.lucene.sandbox {
   exports org.apache.lucene.sandbox.facet.cutters;
   exports org.apache.lucene.sandbox.facet.labels;
   exports org.apache.lucene.sandbox.facet.plain.histograms;
+  exports org.apache.lucene.sandbox.facet.utils;
 
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.sandbox.codecs.idversion.IDVersionPostingsFormat;
