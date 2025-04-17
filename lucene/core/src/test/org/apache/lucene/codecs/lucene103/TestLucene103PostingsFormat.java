@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import org.apache.lucene.codecs.BinMapReader;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsReader.MutableImpactList;
@@ -27,10 +29,18 @@ import org.apache.lucene.codecs.lucene103.blocktree.FieldReader;
 import org.apache.lucene.codecs.lucene103.blocktree.Stats;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.Directory;
@@ -132,6 +142,243 @@ public class TestLucene103PostingsFormat extends BasePostingsFormatTestCase {
             new Impact(50, -100L),
             new Impact(1000, -80L),
             new Impact(1005, -3L)));
+  }
+
+    public void testBinMapIsWrittenOnFlush() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(getCodec());
+      iwc.setUseCompoundFile(false);
+
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 3; i++) {
+          Document doc = new Document();
+          FieldType ft = new FieldType(TextField.TYPE_STORED);
+          ft.setStoreTermVectors(true);
+          ft.putAttribute("doBinning", "true");
+          Field field = new Field("field", "value" + i, ft);
+          doc.add(field);
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+
+      SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
+      SegmentCommitInfo info = infos.info(0);
+      String segmentName = info.info.name;
+      String segmentSuffix = null;
+      String binmapFile = null;
+
+      for (String file : dir.listAll()) {
+        if (file.startsWith(segmentName + "_") && file.endsWith(".binmap")) {
+          binmapFile = file;
+          segmentSuffix =
+              file.substring(segmentName.length() + 1, file.length() - ".binmap".length());
+          break;
+        }
+      }
+
+      assertNotNull("binmap file should exist", binmapFile);
+
+      SegmentReadState readState =
+          new SegmentReadState(dir, info.info, null, newIOContext(random()), segmentSuffix);
+
+      try (BinMapReader binMap = new BinMapReader(dir, readState)) {
+        assertEquals(3, binMap.getBinArrayCopy().length);
+        for (int i = 0; i < 3; i++) {
+          int bin = binMap.getBin(i);
+          assertTrue("Bin should be non-negative", bin >= 0);
+        }
+      }
+    }
+  }
+
+  public void testBinMapWithCompoundFileFormat() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(getCodec());
+      iwc.setUseCompoundFile(true);
+
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 4; i++) {
+          Document doc = new Document();
+          FieldType ft = new FieldType(TextField.TYPE_STORED);
+          ft.setStoreTermVectors(true);
+          ft.putAttribute("doBinning", "true");
+          Field field = new Field("field", "term" + i, ft);
+          doc.add(field);
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+
+      SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
+      SegmentCommitInfo info = infos.info(0);
+      String segmentName = info.info.name;
+
+      try (Directory cfsDir =
+          info.info.getCodec().compoundFormat().getCompoundReader(dir, info.info)) {
+        String binmapFile = null;
+        String segmentSuffix = null;
+        for (String file : cfsDir.listAll()) {
+          if (file.startsWith(segmentName + "_") && file.endsWith(".binmap")) {
+            binmapFile = file;
+            segmentSuffix =
+                file.substring(segmentName.length() + 1, file.length() - ".binmap".length());
+            break;
+          }
+        }
+
+        assertNotNull("compound file should contain binmap", binmapFile);
+
+        SegmentReadState readState =
+            new SegmentReadState(cfsDir, info.info, null, newIOContext(random()), segmentSuffix);
+
+        try (BinMapReader binMap = new BinMapReader(cfsDir, readState)) {
+          assertEquals(4, binMap.getBinArrayCopy().length);
+          for (int i = 0; i < 4; i++) {
+            int bin = binMap.getBin(i);
+            assertTrue("Bin should be non-negative", bin >= 0);
+          }
+        }
+      }
+    }
+  }
+
+  public void testBinMapBinningDisabled() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(getCodec());
+      iwc.setUseCompoundFile(false); // standalone files
+
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        Document doc = new Document();
+        doc.add(newTextField("field", "term value relevance", Field.Store.NO)); // no binning
+        writer.addDocument(doc);
+        writer.commit();
+      }
+
+      for (String file : dir.listAll()) {
+        assertFalse(
+            "binmap should not exist when binning is not enabled", file.endsWith(".binmap"));
+      }
+    }
+  }
+
+  public void testExplicitBinCountIsHonored() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(getCodec());
+      iwc.setUseCompoundFile(false);
+
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 12; i++) {
+          Document doc = new Document();
+          FieldType ft = new FieldType(TextField.TYPE_STORED);
+          ft.setStoreTermVectors(true);
+          ft.putAttribute("doBinning", "true");
+          ft.putAttribute("bin.count", "4");
+          Field field = new Field("field", "lucene term doc", ft);
+          doc.add(field);
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+
+      SegmentInfos infos = SegmentInfos.readLatestCommit(dir);
+      SegmentCommitInfo info = infos.info(0);
+
+      String segmentName = info.info.name;
+      String segmentSuffix = null;
+      String binmapFile = null;
+
+      for (String file : dir.listAll()) {
+        if (file.startsWith(segmentName + "_") && file.endsWith(".binmap")) {
+          binmapFile = file;
+          segmentSuffix =
+              file.substring(segmentName.length() + 1, file.length() - ".binmap".length());
+          break;
+        }
+      }
+
+      assertNotNull("binmap file should exist", binmapFile);
+
+      SegmentReadState readState =
+          new SegmentReadState(dir, info.info, null, newIOContext(random()), segmentSuffix);
+
+      try (BinMapReader binMap = new BinMapReader(dir, readState)) {
+        assertEquals("Expected 4 bins", 4, binMap.getBinCount());
+        int[] bins = binMap.getBinArrayCopy();
+        assertEquals(12, bins.length);
+        for (int bin : bins) {
+          assertTrue("bin id should be in [0, 3]", bin >= 0 && bin < 4);
+        }
+      }
+    }
+  }
+
+  public void testBinMapIsPreservedAndUsableAfterMerge() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(getCodec());
+      iwc.setUseCompoundFile(random().nextBoolean());
+      iwc.setMaxBufferedDocs(2);
+
+      FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
+      ft.setStoreTermVectors(false);
+      ft.putAttribute("postingsFormat", "Lucene103");
+      ft.putAttribute("doBinning", "true");
+      ft.putAttribute("bin.count", "4");
+      ft.freeze();
+
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 24; i++) {
+          Document doc = new Document();
+          doc.add(new Field("field", "lucene merge binning test", ft));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+        writer.forceMerge(1);
+      }
+
+      // Confirm single merged segment exists
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertEquals("Expected single merged segment", 1, reader.leaves().size());
+
+        LeafReader leaf = reader.leaves().get(0).reader();
+        SegmentReader segmentReader = (SegmentReader) FilterLeafReader.unwrap(leaf);
+        SegmentCommitInfo info = segmentReader.getSegmentInfo();
+        String segmentName = info.info.name;
+
+        // Extract actual binmap file from Directory
+        String binmapFile = null;
+        for (String file : dir.listAll()) {
+          if (file.startsWith(segmentName + "_") && file.endsWith(".binmap")) {
+            binmapFile = file;
+            break;
+          }
+        }
+
+        assertNotNull("Expected .binmap file after merge", binmapFile);
+
+        String suffix =
+            binmapFile.substring(
+                segmentName.length() + 1, binmapFile.length() - ".binmap".length());
+
+        SegmentReadState readState =
+            new SegmentReadState(
+                dir, info.info, segmentReader.getFieldInfos(), newIOContext(random()), suffix);
+
+        try (BinMapReader binMap = new BinMapReader(dir, readState)) {
+          assertEquals("Expected 4 bins", 4, binMap.getBinCount());
+          int[] bins = binMap.getBinArrayCopy();
+          assertEquals("Unexpected number of docs", 24, bins.length);
+          for (int bin : bins) {
+            assertTrue("Invalid bin ID", bin >= 0 && bin < 4);
+          }
+        }
+      }
+    }
   }
 
   private void doTestImpactSerialization(List<Impact> impacts) throws IOException {
