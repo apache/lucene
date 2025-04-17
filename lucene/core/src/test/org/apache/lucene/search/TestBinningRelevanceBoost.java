@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
+import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -32,10 +35,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-
-import java.io.IOException;
-import java.util.Collection;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestBinningRelevanceBoost extends LuceneTestCase {
 

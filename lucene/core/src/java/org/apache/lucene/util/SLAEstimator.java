@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.Query;
-
-import java.io.IOException;
 
 /** Interface to implement SLA Estimator */
 public interface SLAEstimator {

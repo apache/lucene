@@ -16,12 +16,11 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import org.apache.lucene.index.BinScoreLeafReader;
 import org.apache.lucene.index.BinScoreReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-
-import java.io.IOException;
 
 /** SLA-aware collector that boosts score based on bin distribution. */
 public final class AnytimeRankingCollector extends TopDocsCollector<ScoreDoc> {

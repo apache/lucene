@@ -17,6 +17,7 @@
 
 package org.apache.lucene.search;
 
+import java.util.Arrays;
 import org.apache.lucene.codecs.lucene103.Lucene103Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -33,8 +34,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-
-import java.util.Arrays;
 
 public class TestAnytimeRankingNDCG extends LuceneTestCase {
 

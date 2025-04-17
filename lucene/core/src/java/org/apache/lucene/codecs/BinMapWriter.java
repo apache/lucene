@@ -16,13 +16,12 @@
  */
 package org.apache.lucene.codecs;
 
+import java.io.IOException;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
-
-import java.io.IOException;
 
 /**
  * Writes a binmap file for a segment.

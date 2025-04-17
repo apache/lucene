@@ -16,14 +16,13 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import org.apache.lucene.index.BinScoreLeafReader;
 import org.apache.lucene.index.BinScoreReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.ArrayUtil;
-
-import java.io.IOException;
 
 /** Computes per-bin score boosts using inverse frequency heuristics. */
 final class BinBoostCalculator {

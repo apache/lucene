@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -32,9 +34,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.nio.file.Path;
 
 /** Unit test for {@link DocGraphBuilder} without external analyzer dependencies. */
 public class TestDocGraphBuilder extends LuceneTestCase {

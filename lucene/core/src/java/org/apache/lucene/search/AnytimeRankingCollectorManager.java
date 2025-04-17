@@ -16,11 +16,10 @@
  */
 package org.apache.lucene.search;
 
-import org.apache.lucene.index.IndexReader;
-
 import java.io.IOException;
 import java.util.Collection;
 import java.util.PriorityQueue;
+import org.apache.lucene.index.IndexReader;
 
 /** CollectorManager that provides bin-aware SLA-constrained collectors. */
 public final class AnytimeRankingCollectorManager

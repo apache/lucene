@@ -16,11 +16,10 @@
  */
 package org.apache.lucene.codecs;
 
-import org.apache.lucene.tests.util.LuceneTestCase;
-
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestDocBinningGraphBuilder extends LuceneTestCase {
 

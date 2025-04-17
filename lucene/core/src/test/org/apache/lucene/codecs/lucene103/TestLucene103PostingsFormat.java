@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.lucene.codecs.BinMapReader;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompetitiveImpactAccumulator;
@@ -144,7 +143,7 @@ public class TestLucene103PostingsFormat extends BasePostingsFormatTestCase {
             new Impact(1005, -3L)));
   }
 
-    public void testBinMapIsWrittenOnFlush() throws Exception {
+  public void testBinMapIsWrittenOnFlush() throws Exception {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       iwc.setCodec(getCodec());

@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.util.IOUtils;
-
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.util.IOUtils;
 
 /** Reader wrapper that exposes bin-aware scoring. */
 public class BinScoreLeafReader extends FilterLeafReader {

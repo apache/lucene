@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import java.nio.file.Path;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -26,8 +27,6 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-
-import java.nio.file.Path;
 
 public class TestBinScoreUtil extends LuceneTestCase {
 

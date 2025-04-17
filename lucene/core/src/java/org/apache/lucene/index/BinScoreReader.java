@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.codecs.BinMapReader;
-
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.codecs.BinMapReader;
 
 /**
  * Provides per-document bin assignments for scoring adjustments.

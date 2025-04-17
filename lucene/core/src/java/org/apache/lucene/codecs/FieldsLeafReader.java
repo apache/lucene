@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.codecs;
 
+import java.io.IOException;
+import java.util.Map;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocValuesSkipper;
@@ -34,9 +36,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
-
-import java.io.IOException;
-import java.util.Map;
 
 /** Minimal LeafReader exposing term statistics for one or more fields. */
 public final class FieldsLeafReader extends LeafReader {

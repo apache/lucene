@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import org.apache.lucene.util.HeuristicSLAEstimator;
 import org.apache.lucene.util.SLAEstimator;
-
-import java.io.IOException;
 
 /** SLA-aware searcher that applies bin-aware boosting and early termination. */
 public final class AnytimeRankingSearcher {

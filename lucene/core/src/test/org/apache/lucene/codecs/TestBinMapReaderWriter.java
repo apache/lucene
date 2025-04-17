@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.codecs;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Collections;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -28,10 +31,6 @@ import org.apache.lucene.util.Version;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Collections;
 
 /**
  * Unit tests for {@link BinMapWriter} and {@link BinMapReader} using {@link

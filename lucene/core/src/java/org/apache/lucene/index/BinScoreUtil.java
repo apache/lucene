@@ -16,15 +16,14 @@
  */
 package org.apache.lucene.index;
 
-import org.apache.lucene.codecs.BinMapReader;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.IOUtils;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.codecs.BinMapReader;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.util.IOUtils;
 
 /** Utilities for wrapping readers with binning support. */
 public final class BinScoreUtil {

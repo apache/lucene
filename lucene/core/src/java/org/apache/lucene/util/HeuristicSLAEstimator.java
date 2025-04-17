@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Terms;
@@ -31,8 +32,6 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermQuery;
-
-import java.io.IOException;
 
 /**
  * Estimate SLA based the number of query terms, query complexity, and average document frequency

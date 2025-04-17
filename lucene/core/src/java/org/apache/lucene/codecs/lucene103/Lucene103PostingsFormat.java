@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene103;
 
 import java.io.IOException;
-
 import org.apache.lucene.codecs.ApproximateDocBinner;
 import org.apache.lucene.codecs.ApproximateDocGraphBuilder;
 import org.apache.lucene.codecs.BinMapWriter;
@@ -517,43 +516,25 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
               state, postingsWriter, minTermBlockSize, maxTermBlockSize);
       success = true;
 
-          return new FieldsConsumer() {
-      @Override
-      public void write(Fields fields, NormsProducer normsProducer) throws IOException {
-        ret.write(fields, normsProducer);
-      }
-
-      @Override
-      public void close() throws IOException {
-        IOException prior = null;
-        try {
-          ret.close();
-        } catch (IOException e) {
-          prior = e;
+      return new FieldsConsumer() {
+        @Override
+        public void write(Fields fields, NormsProducer normsProducer) throws IOException {
+          ret.write(fields, normsProducer);
         }
 
-        try {
-          if (prior == null) {
-            // Now that all outputs are flushed, perform binning safely
+        @Override
+        public void close() throws IOException {
+          IOException prior = null;
+          try {
+            ret.close();
             maybeWriteDocBinning(state);
-          }
-        } catch (IOException e) {
-          if (prior != null) {
-            prior.addSuppressed(e);
-            throw prior;
-          } else {
+          } catch (IOException e) {
+            IOUtils.closeWhileHandlingException(ret);
             throw e;
           }
         }
-
-        if (prior != null) {
-          IOUtils.closeWhileHandlingException(ret);
-
-          throw prior;
-        }
-      }
-    };
-      //return ret;
+      };
+      // return ret;
     } finally {
       if (!success) {
         IOUtils.closeWhileHandlingException(postingsWriter);
