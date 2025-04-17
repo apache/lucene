@@ -17,20 +17,34 @@
 package org.apache.lucene.codecs.lucene103;
 
 import java.io.IOException;
+
+import org.apache.lucene.codecs.ApproximateDocBinner;
+import org.apache.lucene.codecs.ApproximateDocGraphBuilder;
+import org.apache.lucene.codecs.BinMapWriter;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.DocBinningGraphBuilder;
+import org.apache.lucene.codecs.DocGraphBuilder;
 import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.FieldsLeafReader;
 import org.apache.lucene.codecs.FieldsProducer;
+import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
+import org.apache.lucene.codecs.SparseEdgeGraph;
 import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsReader;
 import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.TermState;
+import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
@@ -369,6 +383,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
   static final String PAY_CODEC = "Lucene103PostingsWriterPay";
 
   static final int VERSION_START = 0;
+  private static final int MAX_DOC_FOR_EXACT_BINNING = 10;
 
   static final int VERSION_CURRENT = VERSION_START;
 
@@ -406,6 +421,92 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
     this.maxTermBlockSize = maxTermBlockSize;
   }
 
+  static void maybeWriteDocBinning(SegmentWriteState state) throws IOException {
+    final int maxDoc = state.segmentInfo.maxDoc();
+    if (maxDoc == 0) {
+      return;
+    }
+
+    final FieldInfos fieldInfos = state.fieldInfos;
+    String binningField = null;
+    String graphBuilderType = null;
+    int binCount = -1;
+
+    for (FieldInfo fi : fieldInfos) {
+      if ("true".equalsIgnoreCase(fi.getAttribute("doBinning"))) {
+        binningField = fi.name;
+        String binCountAttr = fi.getAttribute("bin.count");
+        binCount =
+            (binCountAttr != null)
+                ? Integer.parseInt(binCountAttr)
+                : Math.max(1, Integer.highestOneBit(maxDoc >>> 4));
+        String graphBuilderAttr = fi.getAttribute("bin.builder");
+        graphBuilderType = (graphBuilderAttr != null) ? graphBuilderAttr : "auto";
+        break;
+      }
+    }
+
+    if (binningField == null || binCount <= 0) {
+      return;
+    }
+
+    final PostingsFormat format = new Lucene103PostingsFormat();
+    try (FieldsProducer fields =
+        format.fieldsProducer(
+            new SegmentReadState(
+                state.directory,
+                state.segmentInfo,
+                state.fieldInfos,
+                state.context,
+                state.segmentSuffix))) {
+
+      Terms terms = fields.terms(binningField);
+      if (terms == null) {
+        return;
+      }
+
+      try (LeafReader reader =
+          new FieldsLeafReader(java.util.Collections.singletonMap(binningField, terms), maxDoc)) {
+
+        final int[] docToBin;
+
+        final SparseEdgeGraph graph;
+
+        if ("approx".equalsIgnoreCase(graphBuilderType)) {
+          ApproximateDocGraphBuilder builder =
+              new ApproximateDocGraphBuilder(
+                  binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
+          graph = builder.build(reader);
+          docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
+        } else if ("exact".equalsIgnoreCase(graphBuilderType)) {
+          DocGraphBuilder builder =
+              new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
+          graph = builder.build(reader);
+          docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
+        } else {
+          // default: auto fallback based on doc count
+          if (maxDoc > MAX_DOC_FOR_EXACT_BINNING) {
+            ApproximateDocGraphBuilder builder =
+                new ApproximateDocGraphBuilder(
+                    binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
+            graph = builder.build(reader);
+            docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
+          } else {
+            DocGraphBuilder builder =
+                new DocGraphBuilder(binningField, DocGraphBuilder.DEFAULT_MAX_EDGES);
+            graph = builder.build(reader);
+            docToBin = DocBinningGraphBuilder.computeBins(graph, maxDoc, binCount);
+          }
+        }
+
+        try (BinMapWriter writer = new BinMapWriter(state.directory, state, docToBin, binCount)) {
+          // Trigger side-effect and keep compiler happy
+          assert writer != null;
+        }
+      }
+    }
+  }
+
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state, version);
@@ -415,7 +516,42 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
           new Lucene103BlockTreeTermsWriter(
               state, postingsWriter, minTermBlockSize, maxTermBlockSize);
       success = true;
-      return ret;
+
+          return new FieldsConsumer() {
+      @Override
+      public void write(Fields fields, NormsProducer normsProducer) throws IOException {
+        ret.write(fields, normsProducer);
+      }
+
+      @Override
+      public void close() throws IOException {
+        IOException prior = null;
+        try {
+          ret.close();
+        } catch (IOException e) {
+          prior = e;
+        }
+
+        /*try {
+          if (prior == null) {
+            // Now that all outputs are flushed, perform binning safely
+            maybeWriteDocBinning(state);
+          }
+        } catch (IOException e) {
+          if (prior != null) {
+            prior.addSuppressed(e);
+            throw prior;
+          } else {
+            throw e;
+          }
+        }*/
+
+        if (prior != null) {
+          throw prior;
+        }
+      }
+    };
+      //return ret;
     } finally {
       if (!success) {
         IOUtils.closeWhileHandlingException(postingsWriter);
