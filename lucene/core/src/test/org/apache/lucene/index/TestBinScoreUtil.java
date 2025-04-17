@@ -27,8 +27,6 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.junit.After;
-import org.junit.Before;
 
 public class TestBinScoreUtil extends LuceneTestCase {
 
