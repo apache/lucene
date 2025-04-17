@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
+
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.store.Directory;
@@ -31,73 +32,84 @@ import org.apache.lucene.util.IOUtils;
  */
 public final class BinMapWriter implements AutoCloseable {
 
-  /** File extension for binmap files. */
-  public static final String EXTENSION = "binmap";
+    /**
+     * File extension for binmap files.
+     */
+    public static final String EXTENSION = "binmap";
 
-  /** Initial file format version. */
-  public static final int VERSION_START = 0;
+    /**
+     * Initial file format version.
+     */
+    public static final int VERSION_START = 0;
 
-  private static final String CODEC_NAME = "BinMap";
+    private static final String CODEC_NAME = "BinMap";
 
-  private final Directory directory;
-  private final SegmentWriteState state;
-  private final int maxDoc;
-  private final int binCount;
-  private final int[] bins;
+    private final Directory directory;
+    private final SegmentWriteState state;
+    private final int maxDoc;
+    private final int binCount;
+    private final int[] bins;
 
-  /**
-   * Creates a new {@link BinMapWriter} instance.
-   *
-   * @param directory output directory
-   * @param state current segment write state
-   * @param docToBin mapping from docID to bin ID
-   * @param binCount total number of bins
-   */
-  public BinMapWriter(Directory directory, SegmentWriteState state, int[] docToBin, int binCount) {
-    this.directory = directory;
-    this.state = state;
-    this.maxDoc = state.segmentInfo.maxDoc();
-    this.binCount = binCount;
-    this.bins = docToBin;
-  }
-
-  /**
-   * Writes the binmap file to the index output directory.
-   *
-   * <p>The format is:
-   *
-   * <ul>
-   *   <li>Header (versioned with {@link org.apache.lucene.codecs.CodecUtil})
-   *   <li>maxDoc (int)
-   *   <li>binCount (int)
-   *   <li>{@code maxDoc} bin IDs, one int per document
-   *   <li>Footer
-   * </ul>
-   */
-  @Override
-  public void close() throws IOException {
-    final String fileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, EXTENSION);
-    IndexOutput out = null;
-    boolean success = false;
-    try {
-      out = directory.createOutput(fileName, state.context);
-      CodecUtil.writeIndexHeader(
-          out, CODEC_NAME, VERSION_START, state.segmentInfo.getId(), state.segmentSuffix);
-      out.writeInt(maxDoc);
-      out.writeInt(binCount);
-      for (int i = 0; i < maxDoc; i++) {
-        out.writeInt(bins[i]);
-      }
-      CodecUtil.writeFooter(out);
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(out);
-      } else {
-        IOUtils.closeWhileHandlingException(out);
-        IOUtils.deleteFilesIgnoringExceptions(directory, fileName);
-      }
+    /**
+     * Creates a new {@link BinMapWriter} instance.
+     *
+     * @param directory output directory
+     * @param state     current segment write state
+     * @param docToBin  mapping from docID to bin ID
+     * @param binCount  total number of bins
+     */
+    public BinMapWriter(Directory directory, SegmentWriteState state, int[] docToBin, int binCount) {
+        this.directory = directory;
+        this.state = state;
+        this.maxDoc = state.segmentInfo.maxDoc();
+        this.binCount = binCount;
+        this.bins = docToBin;
     }
-  }
+
+    /**
+     * Writes the binmap file to the index output directory.
+     *
+     * <p>The format is:
+     *
+     * <ul>
+     *   <li>Header (versioned with {@link org.apache.lucene.codecs.CodecUtil})
+     *   <li>maxDoc (int)
+     *   <li>binCount (int)
+     *   <li>{@code maxDoc} bin IDs, one int per document
+     *   <li>Footer
+     * </ul>
+     */
+    @Override
+    public void close() throws IOException {
+        final String fileName =
+                IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, EXTENSION);
+
+        // Prevent double-write in case close() is called multiple times
+        for (String existing : directory.listAll()) {
+            if (existing.equals(fileName)) {
+                return; // already written
+            }
+        }
+        IndexOutput out = null;
+        boolean success = false;
+        try {
+            out = directory.createOutput(fileName, state.context);
+            CodecUtil.writeIndexHeader(
+                    out, CODEC_NAME, VERSION_START, state.segmentInfo.getId(), state.segmentSuffix);
+            out.writeInt(maxDoc);
+            out.writeInt(binCount);
+            for (int i = 0; i < maxDoc; i++) {
+                out.writeInt(bins[i]);
+            }
+            CodecUtil.writeFooter(out);
+            success = true;
+        } finally {
+            if (success) {
+                IOUtils.close(out);
+            } else {
+                IOUtils.closeWhileHandlingException(out);
+                IOUtils.deleteFilesIgnoringExceptions(directory, fileName);
+            }
+        }
+    }
 }
