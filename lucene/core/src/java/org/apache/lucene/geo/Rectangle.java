@@ -16,9 +16,6 @@
  */
 package org.apache.lucene.geo;
 
-import static java.lang.Math.PI;
-import static java.lang.Math.max;
-import static java.lang.Math.min;
 import static org.apache.lucene.geo.GeoUtils.EARTH_MEAN_RADIUS_METERS;
 import static org.apache.lucene.geo.GeoUtils.MAX_LAT_INCL;
 import static org.apache.lucene.geo.GeoUtils.MAX_LAT_RADIANS;
@@ -28,9 +25,6 @@ import static org.apache.lucene.geo.GeoUtils.MIN_LAT_RADIANS;
 import static org.apache.lucene.geo.GeoUtils.MIN_LON_RADIANS;
 import static org.apache.lucene.geo.GeoUtils.checkLatitude;
 import static org.apache.lucene.geo.GeoUtils.checkLongitude;
-import static org.apache.lucene.geo.GeoUtils.sloppySin;
-import static org.apache.lucene.util.SloppyMath.asin;
-import static org.apache.lucene.util.SloppyMath.cos;
 
 /** Represents a lat/lon rectangle. */
 public class Rectangle extends LatLonGeometry {
@@ -106,34 +100,44 @@ public class Rectangle extends LatLonGeometry {
     return lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon;
   }
 
-  /** Compute Bounding Box for a circle using WGS-84 parameters */
+  /**
+   * Creates a bounding box for a circle using standard trigonometric functions.
+   *
+   * @param centerLat Latitude of center point in degrees [-90, 90]
+   * @param centerLon Longitude of center point in degrees [-180, 180]
+   * @param radiusMeters Radius in meters
+   * @return Rectangle representing the bounding box
+   */
   public static Rectangle fromPointDistance(
       final double centerLat, final double centerLon, final double radiusMeters) {
     checkLatitude(centerLat);
     checkLongitude(centerLon);
+
     final double radLat = Math.toRadians(centerLat);
     final double radLon = Math.toRadians(centerLon);
-    // LUCENE-7143
+    // Small buffer added for safety (from original LUCENE-7143)
     double radDistance = (radiusMeters + 7E-2) / EARTH_MEAN_RADIUS_METERS;
+
     double minLat = radLat - radDistance;
     double maxLat = radLat + radDistance;
     double minLon;
     double maxLon;
 
     if (minLat > MIN_LAT_RADIANS && maxLat < MAX_LAT_RADIANS) {
-      double deltaLon = asin(sloppySin(radDistance) / cos(radLat));
+      // Standard case - use accurate Math.sin
+      double deltaLon = Math.asin(Math.sin(radDistance) / Math.cos(radLat));
       minLon = radLon - deltaLon;
       if (minLon < MIN_LON_RADIANS) {
-        minLon += 2d * PI;
+        minLon += 2d * Math.PI;
       }
       maxLon = radLon + deltaLon;
       if (maxLon > MAX_LON_RADIANS) {
-        maxLon -= 2d * PI;
+        maxLon -= 2d * Math.PI;
       }
     } else {
-      // a pole is within the distance
-      minLat = max(minLat, MIN_LAT_RADIANS);
-      maxLat = min(maxLat, MAX_LAT_RADIANS);
+      // Pole is within the distance
+      minLat = Math.max(minLat, MIN_LAT_RADIANS);
+      maxLat = Math.min(maxLat, MAX_LAT_RADIANS);
       minLon = MIN_LON_RADIANS;
       maxLon = MAX_LON_RADIANS;
     }
