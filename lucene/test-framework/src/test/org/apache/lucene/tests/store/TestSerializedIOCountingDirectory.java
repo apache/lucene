@@ -29,22 +29,28 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
 
   private record OverrideReadAdvice(ReadAdvice readAdvice) implements IOContext.FileOpenHint {}
 
+  private static class ReadAdviceSerialIOCountingDirectory extends SerialIOCountingDirectory {
+    public ReadAdviceSerialIOCountingDirectory(Directory in) {
+      super(in);
+    }
+
+    @Override
+    protected ReadAdvice toReadAdvice(IOContext context) {
+      return context
+          .hints(OverrideReadAdvice.class)
+          .findAny()
+          .map(OverrideReadAdvice::readAdvice)
+          .orElseGet(() -> super.toReadAdvice(context));
+    }
+  }
+
   @Override
   protected Directory getDirectory(Path path) throws IOException {
-    return new SerialIOCountingDirectory(FSDirectory.open(path)) {
-      @Override
-      protected ReadAdvice toReadAdvice(IOContext context) {
-        return context
-            .hints(OverrideReadAdvice.class)
-            .findAny()
-            .map(OverrideReadAdvice::readAdvice)
-            .orElseGet(() -> super.toReadAdvice(context));
-      }
-    };
+    return new ReadAdviceSerialIOCountingDirectory(FSDirectory.open(path));
   }
 
   public void testSequentialReads() throws IOException {
-    try (SerialIOCountingDirectory dir = new SerialIOCountingDirectory(newDirectory())) {
+    try (SerialIOCountingDirectory dir = new ReadAdviceSerialIOCountingDirectory(newDirectory())) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         for (int i = 0; i < 10; ++i) {
           out.writeBytes(new byte[4096], 4096);
@@ -76,7 +82,7 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
   }
 
   public void testParallelReads() throws IOException {
-    try (SerialIOCountingDirectory dir = new SerialIOCountingDirectory(newDirectory())) {
+    try (SerialIOCountingDirectory dir = new ReadAdviceSerialIOCountingDirectory(newDirectory())) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         for (int i = 0; i < 10; ++i) {
           out.writeBytes(new byte[4096], 4096);
