@@ -96,6 +96,7 @@ public final class BinMapWriter implements AutoCloseable {
         IOUtils.close(out);
       } else {
         IOUtils.closeWhileHandlingException(out);
+        IOUtils.deleteFilesIgnoringExceptions(directory, fileName);
       }
     }
   }

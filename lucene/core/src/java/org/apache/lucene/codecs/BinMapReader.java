@@ -16,6 +16,7 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * Reads the binmap file for a segment and exposes per-document bin assignments.
@@ -45,9 +46,10 @@ public final class BinMapReader implements Closeable {
     final String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, EXTENSION);
 
-    ChecksumIndexInput in = dir.openChecksumInput(fileName);
+    ChecksumIndexInput in = null;
     boolean success = false;
     try {
+      in = dir.openChecksumInput(fileName);
       CodecUtil.checkIndexHeader(
           in,
           CODEC_NAME,
@@ -72,13 +74,10 @@ public final class BinMapReader implements Closeable {
       CodecUtil.checkFooter(in);
       success = true;
     } finally {
-      if (success == false) {
-        try {
-          in.close();
-        } catch (Throwable _) {
-        }
+      if (success) {
+        IOUtils.close(in);
       } else {
-        in.close();
+        IOUtils.closeWhileHandlingException(in);
       }
     }
   }
