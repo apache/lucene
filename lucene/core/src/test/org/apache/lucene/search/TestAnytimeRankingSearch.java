@@ -101,39 +101,40 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
         IndexSearcher searcher = newSearcher(wrapped);
         searcher.setSimilarity(new BM25Similarity());
 
-        AnytimeRankingSearcher rankingSearcher =
-            new AnytimeRankingSearcher(searcher, 10, 100, "content");
+        try (AnytimeRankingSearcher rankingSearcher =
+            new AnytimeRankingSearcher(base, 10, 100, "content")) {
 
-        TopDocs topDocs = rankingSearcher.search(new TermQuery(new Term("content", "lucene")));
+          TopDocs topDocs = rankingSearcher.search(new TermQuery(new Term("content", "lucene")));
 
-        assertNotNull(topDocs);
-        assertTrue("Expected some results", topDocs.scoreDocs.length > 0);
+          assertNotNull(topDocs);
+          assertTrue("Expected some results", topDocs.scoreDocs.length > 0);
 
-        int bin0Hits = 0;
-        int total = 0;
+          int bin0Hits = 0;
+          int total = 0;
 
-        for (ScoreDoc sd : topDocs.scoreDocs) {
-          int docID = sd.doc;
-          for (LeafReaderContext ctx : wrapped.leaves()) {
-            if (docID >= ctx.docBase && docID < ctx.docBase + ctx.reader().maxDoc()) {
-              int segDoc = docID - ctx.docBase;
-              BinScoreReader binReader = BinScoreUtil.getBinScoreReader(ctx.reader());
-              if (binReader != null) {
-                int bin = binReader.getBinForDoc(segDoc);
-                System.out.println("doc" + segDoc + " bin " + bin);
-                if (bin == 0) {
-                  bin0Hits++;
+          for (ScoreDoc sd : topDocs.scoreDocs) {
+            int docID = sd.doc;
+            for (LeafReaderContext ctx : wrapped.leaves()) {
+              if (docID >= ctx.docBase && docID < ctx.docBase + ctx.reader().maxDoc()) {
+                int segDoc = docID - ctx.docBase;
+                BinScoreReader binReader = BinScoreUtil.getBinScoreReader(ctx.reader());
+                if (binReader != null) {
+                  int bin = binReader.getBinForDoc(segDoc);
+                  System.out.println("doc" + segDoc + " bin " + bin);
+                  if (bin == 0) {
+                    bin0Hits++;
+                  }
+                  total++;
                 }
-                total++;
+                break;
               }
-              break;
             }
           }
-        }
 
-        assertTrue(
-            "Bin 0 should dominate in sparse distribution, got " + bin0Hits + " of " + total,
-            total > 0 && bin0Hits >= total / 2);
+          assertTrue(
+              "Bin 0 should dominate in sparse distribution, got " + bin0Hits + " of " + total,
+              total > 0 && bin0Hits >= total / 2);
+        }
       } finally {
         IOUtils.close(wrapped, base);
       }
@@ -159,11 +160,12 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
       try {
         IndexSearcher searcher = newSearcher(wrapped);
         searcher.setSimilarity(new BM25Similarity());
-        AnytimeRankingSearcher s = new AnytimeRankingSearcher(searcher, 10, 1, "content");
+        try (AnytimeRankingSearcher s = new AnytimeRankingSearcher(base, 10, 1, "content")) {
 
-        TopDocs docs = s.search(new TermQuery(new Term("content", "lucene")));
-        assertNotNull(docs);
-        assertTrue("Expect partial results under tight SLA", docs.scoreDocs.length > 0);
+          TopDocs docs = s.search(new TermQuery(new Term("content", "lucene")));
+          assertNotNull(docs);
+          assertTrue("Expect partial results under tight SLA", docs.scoreDocs.length > 0);
+        }
       } finally {
         IOUtils.close(wrapped, base);
       }
@@ -189,24 +191,25 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
       try {
         IndexSearcher searcher = newSearcher(wrapped);
         searcher.setSimilarity(new BM25Similarity(2.0f, 0.2f));
-        AnytimeRankingSearcher anytimeSearcher =
-            new AnytimeRankingSearcher(searcher, 10, 100, "content");
+        try (AnytimeRankingSearcher anytimeSearcher =
+            new AnytimeRankingSearcher(base, 10, 100, "content")) {
 
-        ExecutorService exec =
-            Executors.newFixedThreadPool(4, new NamedThreadFactory("test-search"));
-        List<Future<TopDocs>> futures = new ArrayList<>();
+          ExecutorService exec =
+              Executors.newFixedThreadPool(4, new NamedThreadFactory("test-search"));
+          List<Future<TopDocs>> futures = new ArrayList<>();
 
-        Query query = new TermQuery(new Term("content", "lucene"));
-        for (int i = 0; i < 4; i++) {
-          futures.add(exec.submit(() -> anytimeSearcher.search(query)));
+          Query query = new TermQuery(new Term("content", "lucene"));
+          for (int i = 0; i < 4; i++) {
+            futures.add(exec.submit(() -> anytimeSearcher.search(query)));
+          }
+
+          for (Future<TopDocs> f : futures) {
+            TopDocs d = f.get();
+            assertNotNull(d);
+            assertTrue(d.scoreDocs.length > 0);
+          }
+          exec.shutdown();
         }
-
-        for (Future<TopDocs> f : futures) {
-          TopDocs d = f.get();
-          assertNotNull(d);
-          assertTrue(d.scoreDocs.length > 0);
-        }
-        exec.shutdown();
       } finally {
         IOUtils.close(wrapped, base);
       }

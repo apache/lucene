@@ -60,27 +60,28 @@ public class TestAnytimeRankingRelevanceMatch extends LuceneTestCase {
     IndexSearcher baselineSearcher = new IndexSearcher(reader);
     baselineSearcher.setSimilarity(new BM25Similarity());
 
-    AnytimeRankingSearcher anytime = new AnytimeRankingSearcher(baselineSearcher, 10, 3, "field");
+    try (AnytimeRankingSearcher anytime = new AnytimeRankingSearcher(reader, 10, 3, "field")) {
 
-    TermQuery query = new TermQuery(new Term("field", "lucene"));
-    TopDocs baseline = baselineSearcher.search(query, 10);
-    TopDocs anytimeResults = anytime.search(query);
+      TermQuery query = new TermQuery(new Term("field", "lucene"));
+      TopDocs baseline = baselineSearcher.search(query, 10);
+      TopDocs anytimeResults = anytime.search(query);
 
-    float baselineRecall = countRelevant(baseline) / 10.0f;
-    float anytimeRecall = countRelevant(anytimeResults) / 10.0f;
+      float baselineRecall = countRelevant(baseline) / 10.0f;
+      float anytimeRecall = countRelevant(anytimeResults) / 10.0f;
 
-    float baselineMRR = computeMRR(baseline);
-    float anytimeMRR = computeMRR(anytimeResults);
+      float baselineMRR = computeMRR(baseline);
+      float anytimeMRR = computeMRR(anytimeResults);
 
-    float baselineNDCG = computeNDCG(baseline);
-    float anytimeNDCG = computeNDCG(anytimeResults);
+      float baselineNDCG = computeNDCG(baseline);
+      float anytimeNDCG = computeNDCG(anytimeResults);
 
-    assertTrue("Anytime recall should be >= baseline", anytimeRecall >= baselineRecall);
-    assertTrue("Anytime MRR should be >= baseline", anytimeMRR >= baselineMRR);
-    assertTrue("Anytime NDCG should be >= baseline", anytimeNDCG >= baselineNDCG);
+      assertTrue("Anytime recall should be >= baseline", anytimeRecall >= baselineRecall);
+      assertTrue("Anytime MRR should be >= baseline", anytimeMRR >= baselineMRR);
+      assertTrue("Anytime NDCG should be >= baseline", anytimeNDCG >= baselineNDCG);
 
-    reader.close();
-    dir.close();
+      reader.close();
+      dir.close();
+    }
   }
 
   private int countRelevant(TopDocs topDocs) {

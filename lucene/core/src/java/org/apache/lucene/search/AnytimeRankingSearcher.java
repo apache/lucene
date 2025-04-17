@@ -17,23 +17,28 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.index.BinScoreUtil;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.util.HeuristicSLAEstimator;
 import org.apache.lucene.util.SLAEstimator;
 
 /** SLA-aware searcher that applies bin-aware boosting and early termination. */
-public final class AnytimeRankingSearcher {
+public final class AnytimeRankingSearcher implements AutoCloseable {
 
   private final IndexSearcher searcher;
   private final int topK;
   private final long baseSlaMs;
   private final SLAEstimator estimator;
+  private final IndexReader reader;
 
   /** Constructs a searcher with SLA cutoff and bin boosting. */
-  public AnytimeRankingSearcher(IndexSearcher searcher, int topK, long baseSlaMs, String field) {
-    this.searcher = searcher;
+  public AnytimeRankingSearcher(IndexReader reader, int topK, long baseSlaMs, String field)
+      throws IOException {
+    this.searcher = new IndexSearcher(BinScoreUtil.wrap(reader));
     this.topK = topK;
     this.baseSlaMs = baseSlaMs;
     this.estimator = new HeuristicSLAEstimator(field);
+    this.reader = reader;
   }
 
   /** Executes a search with bin-aware scoring and SLA cutoff. */
@@ -47,5 +52,10 @@ public final class AnytimeRankingSearcher {
   /** Returns the wrapped IndexSearcher. */
   public IndexSearcher getSearcher() {
     return searcher;
+  }
+
+  @Override
+  public void close() throws IOException {
+    reader.close();
   }
 }

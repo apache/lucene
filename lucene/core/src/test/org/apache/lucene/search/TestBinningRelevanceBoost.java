@@ -73,63 +73,64 @@ public class TestBinningRelevanceBoost extends LuceneTestCase {
     IndexSearcher baseline = newSearcher(reader);
     baseline.setSimilarity(new BM25Similarity());
 
-    AnytimeRankingSearcher anytimeRankingSearcher =
-        new AnytimeRankingSearcher(baseline, 10, truncationLimit, "content");
+    try (AnytimeRankingSearcher anytimeRankingSearcher =
+        new AnytimeRankingSearcher(reader, 10, truncationLimit, "content")) {
 
-    TermQuery query = new TermQuery(new Term("content", "lucene"));
+      TermQuery query = new TermQuery(new Term("content", "lucene"));
 
-    AtomicInteger baselineHits = new AtomicInteger();
-    baseline.search(
-        query,
-        new CollectorManager<SimpleCollector, Void>() {
-          @Override
-          public SimpleCollector newCollector() {
-            return new SimpleCollector() {
-              private int seen = 0;
+      AtomicInteger baselineHits = new AtomicInteger();
+      baseline.search(
+          query,
+          new CollectorManager<SimpleCollector, Void>() {
+            @Override
+            public SimpleCollector newCollector() {
+              return new SimpleCollector() {
+                private int seen = 0;
 
-              @Override
-              public void collect(int doc) throws IOException {
-                if (doc % relevantEvery == 0) {
-                  baselineHits.incrementAndGet();
+                @Override
+                public void collect(int doc) throws IOException {
+                  if (doc % relevantEvery == 0) {
+                    baselineHits.incrementAndGet();
+                  }
+                  if (++seen >= truncationLimit) {
+                    throw new CollectionTerminatedException();
+                  }
                 }
-                if (++seen >= truncationLimit) {
-                  throw new CollectionTerminatedException();
+
+                @Override
+                public void doSetNextReader(LeafReaderContext context) {}
+
+                @Override
+                public ScoreMode scoreMode() {
+                  return ScoreMode.COMPLETE_NO_SCORES;
                 }
-              }
+              };
+            }
 
-              @Override
-              public void doSetNextReader(LeafReaderContext context) {}
+            @Override
+            public Void reduce(Collection<SimpleCollector> collectors) {
+              return null;
+            }
+          });
 
-              @Override
-              public ScoreMode scoreMode() {
-                return ScoreMode.COMPLETE_NO_SCORES;
-              }
-            };
-          }
-
-          @Override
-          public Void reduce(Collection<SimpleCollector> collectors) {
-            return null;
-          }
-        });
-
-    TopDocs anytimeRankingResults = anytimeRankingSearcher.search(query);
-    int anytimeRankingHits = 0;
-    for (ScoreDoc sd : anytimeRankingResults.scoreDocs) {
-      if (sd.doc % relevantEvery == 0) {
-        anytimeRankingHits++;
+      TopDocs anytimeRankingResults = anytimeRankingSearcher.search(query);
+      int anytimeRankingHits = 0;
+      for (ScoreDoc sd : anytimeRankingResults.scoreDocs) {
+        if (sd.doc % relevantEvery == 0) {
+          anytimeRankingHits++;
+        }
       }
+
+      assertTrue(
+          "AnytimeRankingSearch should retrieve more relevant results under truncation. "
+              + "Baseline hits="
+              + baselineHits.get()
+              + ", AnytimeRankingSearch hits="
+              + anytimeRankingHits,
+          anytimeRankingHits > baselineHits.get());
+
+      reader.close();
+      dir.close();
     }
-
-    assertTrue(
-        "AnytimeRankingSearch should retrieve more relevant results under truncation. "
-            + "Baseline hits="
-            + baselineHits.get()
-            + ", AnytimeRankingSearch hits="
-            + anytimeRankingHits,
-        anytimeRankingHits > baselineHits.get());
-
-    reader.close();
-    dir.close();
   }
 }

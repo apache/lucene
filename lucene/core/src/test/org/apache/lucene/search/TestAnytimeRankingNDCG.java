@@ -71,19 +71,20 @@ public class TestAnytimeRankingNDCG extends LuceneTestCase {
     IndexSearcher baseline = new IndexSearcher(reader);
     baseline.setSimilarity(new BM25Similarity());
 
-    AnytimeRankingSearcher anytime = new AnytimeRankingSearcher(baseline, 10, 5, "field");
+    try (AnytimeRankingSearcher anytime = new AnytimeRankingSearcher(reader, 10, 5, "field")) {
 
-    TopDocs baselineDocs = baseline.search(new TermQuery(new Term("field", "lucene")), 10);
-    TopDocs anytimeDocs = anytime.search(new TermQuery(new Term("field", "lucene")));
+      TopDocs baselineDocs = baseline.search(new TermQuery(new Term("field", "lucene")), 10);
+      TopDocs anytimeDocs = anytime.search(new TermQuery(new Term("field", "lucene")));
 
-    double baselineNDCG = computeNDCG(baselineDocs);
-    double anytimeNDCG = computeNDCG(anytimeDocs);
+      double baselineNDCG = computeNDCG(baselineDocs);
+      double anytimeNDCG = computeNDCG(anytimeDocs);
 
-    // Ensure that NDCG does not diverge by more than 0.1
-    assertEquals("NDCG values should be close", baselineNDCG, anytimeNDCG, 0.1);
+      // Ensure that NDCG does not diverge by more than 0.1
+      assertEquals("NDCG values should be close", baselineNDCG, anytimeNDCG, 0.1);
 
-    reader.close();
-    dir.close();
+      reader.close();
+      dir.close();
+    }
   }
 
   private double computeNDCG(TopDocs topDocs) {

@@ -26,7 +26,6 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.BinScoreUtil;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
@@ -76,68 +75,68 @@ public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
 
   @Test
   public void testRelevanceAcrossDiverseDocuments() throws Exception {
-    try (IndexReader reader =
-        BinScoreUtil.wrap(DirectoryReader.open(FSDirectory.open(Paths.get(indexPath))))) {
+    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
       IndexSearcher searcher = newSearcher(reader);
       searcher.setSimilarity(new BM25Similarity());
 
       Query query = new TermQuery(new Term("content", "lucene"));
-      AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(searcher, 10, 20, "content");
-      TopDocs results = anytimeSearcher.search(query);
+      try (AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(reader, 10, 20, "content")) {
+        TopDocs results = anytimeSearcher.search(query);
 
-      assertNotNull("Results should not be null", results);
-      assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
+        assertNotNull("Results should not be null", results);
+        assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
+      }
     }
   }
 
   public void testPerformanceQueries() throws Exception {
-    try (IndexReader reader =
-        BinScoreUtil.wrap(DirectoryReader.open(FSDirectory.open(Paths.get(indexPath))))) {
+    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
       IndexSearcher searcher = newSearcher(reader);
       searcher.setSimilarity(new BM25Similarity());
 
-      AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(searcher, 15, 30, "content");
-      Query query = new TermQuery(new Term("content", "performance"));
-      TopDocs results = anytimeSearcher.search(query);
+      try (AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(reader, 15, 30, "content")) {
+        Query query = new TermQuery(new Term("content", "performance"));
+        TopDocs results = anytimeSearcher.search(query);
 
-      assertNotNull("Results should not be null", results);
-      assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
+        assertNotNull("Results should not be null", results);
+        assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
+      }
     }
   }
 
   @Test
   public void testBM25ScoringDiversity() throws Exception {
-    try (IndexReader reader =
-        BinScoreUtil.wrap(DirectoryReader.open(FSDirectory.open(Paths.get(indexPath))))) {
+    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
       IndexSearcher searcher = newSearcher(reader);
       searcher.setSimilarity(new BM25Similarity());
 
-      AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(searcher, 10, 50, "content");
-      Query query = new TermQuery(new Term("content", "scoring"));
-      TopDocs results = anytimeSearcher.search(query);
+      try (AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(reader, 10, 50, "content")) {
+        Query query = new TermQuery(new Term("content", "scoring"));
+        TopDocs results = anytimeSearcher.search(query);
 
-      assertNotNull("Results should not be null", results);
-      assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
+        assertNotNull("Results should not be null", results);
+        assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
+      }
     }
   }
 
   @Test
   public void testEmptyQuery() throws Exception {
-    try (IndexReader reader =
-        BinScoreUtil.wrap(DirectoryReader.open(FSDirectory.open(Paths.get(indexPath))))) {
+    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
       IndexSearcher searcher = newSearcher(reader);
       searcher.setSimilarity(new BM25Similarity());
 
-      AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(searcher, 5, 20, "content");
-      Query query = new TermQuery(new Term("content", " "));
-      TopDocs results = anytimeSearcher.search(query);
+      try (AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(reader, 5, 20, "content")) {
+        Query query = new TermQuery(new Term("content", " "));
+        TopDocs results = anytimeSearcher.search(query);
 
-      assertNotNull("Empty queries should return zero results", results);
-      assertEquals("Results should be zero for an empty query", 0, results.scoreDocs.length);
+        assertNotNull("Empty queries should return zero results", results);
+        assertEquals("Results should be zero for an empty query", 0, results.scoreDocs.length);
+      }
     }
   }
 
@@ -155,12 +154,11 @@ public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
       writer.commit();
     }
 
-    try (IndexReader reader =
-        BinScoreUtil.wrap(DirectoryReader.open(FSDirectory.open(Paths.get(indexPath))))) {
-      IndexSearcher searcher = newSearcher(reader);
-      AnytimeRankingSearcher ars = new AnytimeRankingSearcher(searcher, 5, 20, "content");
-      TopDocs results = ars.search(new TermQuery(new Term("content", "lucene")));
-      assertTrue(results.scoreDocs.length > 0);
+    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
+      try (AnytimeRankingSearcher ars = new AnytimeRankingSearcher(reader, 5, 20, "content")) {
+        TopDocs results = ars.search(new TermQuery(new Term("content", "lucene")));
+        assertTrue(results.scoreDocs.length > 0);
+      }
     }
   }
 
@@ -183,12 +181,13 @@ public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
       assertTrue("Should have multiple segments", reader.leaves().size() > 1);
 
       IndexSearcher searcher = newSearcher(reader);
-      AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(searcher, 10, 50, "content");
-      TopDocs topDocs = anytimeSearcher.search(new TermQuery(new Term("content", "lucene")));
+      try (AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(reader, 10, 50, "content")) {
+        TopDocs topDocs = anytimeSearcher.search(new TermQuery(new Term("content", "lucene")));
 
-      assertNotNull("TopDocs should not be null", topDocs);
-      assertTrue("Should return some results", topDocs.scoreDocs.length > 0);
+        assertNotNull("TopDocs should not be null", topDocs);
+        assertTrue("Should return some results", topDocs.scoreDocs.length > 0);
+      }
     }
 
     dir.close();
