@@ -531,8 +531,10 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
         }
 
         try {
-          // Now that all outputs are flushed, perform binning safely
-          maybeWriteDocBinning(state);
+          if (prior == null) {
+            // Now that all outputs are flushed, perform binning safely
+            maybeWriteDocBinning(state);
+          }
         } catch (IOException e) {
           if (prior != null) {
             prior.addSuppressed(e);
