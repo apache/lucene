@@ -502,8 +502,10 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
           }
         }
 
-        BinMapWriter writer = new BinMapWriter(state.directory, state, docToBin, binCount);
-        writer.close();
+        try (BinMapWriter writer = new BinMapWriter(state.directory, state, docToBin, binCount)) {
+          // Trigger side-effect and keep compiler happy
+          assert writer != null;
+        }
       }
     }
   }
@@ -530,7 +532,7 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
           prior = e;
         }
 
-        try {
+        /*try {
           if (prior == null) {
             // Now that all outputs are flushed, perform binning safely
             maybeWriteDocBinning(state);
@@ -542,7 +544,7 @@ public final class Lucene101PostingsFormat extends PostingsFormat {
           } else {
             throw e;
           }
-        }
+        }*/
 
         if (prior != null) {
           throw prior;
