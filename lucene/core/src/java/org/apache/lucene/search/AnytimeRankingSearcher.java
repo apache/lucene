@@ -34,11 +34,11 @@ public final class AnytimeRankingSearcher implements AutoCloseable {
   /** Constructs a searcher with SLA cutoff and bin boosting. */
   public AnytimeRankingSearcher(IndexReader reader, int topK, long baseSlaMs, String field)
       throws IOException {
-    this.searcher = new IndexSearcher(BinScoreUtil.wrap(reader));
+    this.reader = BinScoreUtil.wrap(reader);
+    this.searcher = new IndexSearcher(this.reader);
     this.topK = topK;
     this.baseSlaMs = baseSlaMs;
     this.estimator = new HeuristicSLAEstimator(field);
-    this.reader = reader;
   }
 
   /** Executes a search with bin-aware scoring and SLA cutoff. */

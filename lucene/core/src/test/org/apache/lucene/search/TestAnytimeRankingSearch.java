@@ -95,10 +95,10 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
       }
 
       IndexReader base = DirectoryReader.open(dir);
-      IndexReader wrapped = BinScoreUtil.wrap(base);
+      //IndexReader wrapped = BinScoreUtil.wrap(base);
 
       try {
-        IndexSearcher searcher = newSearcher(wrapped);
+        IndexSearcher searcher = newSearcher(base);
         searcher.setSimilarity(new BM25Similarity());
 
         try (AnytimeRankingSearcher rankingSearcher =
@@ -111,7 +111,7 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
 
           int bin0Hits = 0;
           int total = 0;
-
+          IndexReader wrapped = rankingSearcher.getSearcher().getIndexReader();
           for (ScoreDoc sd : topDocs.scoreDocs) {
             int docID = sd.doc;
             for (LeafReaderContext ctx : wrapped.leaves()) {
@@ -136,7 +136,6 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
               total > 0 && bin0Hits >= total / 2);
         }
       } finally {
-        IOUtils.close(wrapped, base);
       }
     }
   }
@@ -211,7 +210,7 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
           exec.shutdown();
         }
       } finally {
-        IOUtils.close(wrapped, base);
+        IOUtils.close(base);
       }
     }
   }

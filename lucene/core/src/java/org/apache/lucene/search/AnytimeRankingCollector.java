@@ -24,7 +24,15 @@ import org.apache.lucene.index.BinScoreReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 
-/** SLA-aware collector that boosts score based on bin distribution. */
+/**
+ * SLA-aware collector that boosts score based on bin distribution.
+ *
+ * <p>This collector integrates bin-based scoring boosts with SLA-aware early termination. It wraps
+ * segment-level LeafReaders that support bin lookups using {@link BinScoreReader}.
+ *
+ * <p>The caller must ensure the IndexReader is wrapped with {@code BinScoreUtil.wrap(...)},
+ * otherwise bin information will not be available and boosting will be skipped.
+ */
 public final class AnytimeRankingCollector extends TopDocsCollector<ScoreDoc> {
 
   private static final int DOCS_PER_CHECK = 100;
@@ -37,6 +45,13 @@ public final class AnytimeRankingCollector extends TopDocsCollector<ScoreDoc> {
 
   private int count = 0;
 
+  /**
+   * Constructs a ranking collector with SLA cutoff and per-bin boosting.
+   *
+   * @param topK maximum number of documents to return
+   * @param cutoffNanos SLA budget in nanoseconds
+   * @param binBoosts array of boost multipliers by bin index
+   */
   AnytimeRankingCollector(int topK, long cutoffNanos, float[] binBoosts) {
     super(new HitQueue(topK, false));
     this.cutoffNanos = cutoffNanos;
@@ -61,13 +76,12 @@ public final class AnytimeRankingCollector extends TopDocsCollector<ScoreDoc> {
     final int base = ctx.docBase;
     final LeafReader reader = ctx.reader();
     final BinScoreReader binReader =
-        reader instanceof BinScoreLeafReader
+        (reader instanceof BinScoreLeafReader)
             ? ((BinScoreLeafReader) reader).getBinScoreReader()
             : null;
 
-    int interval =
-        Math.max(
-            MIN_CHECK_INTERVAL, Math.min(MAX_CHECK_INTERVAL, reader.numDocs() / DOCS_PER_CHECK));
+    final int interval =
+        Math.max(MIN_CHECK_INTERVAL, Math.min(MAX_CHECK_INTERVAL, reader.numDocs() / DOCS_PER_CHECK));
 
     return new LeafCollector() {
       private Scorable scorer;
@@ -79,29 +93,30 @@ public final class AnytimeRankingCollector extends TopDocsCollector<ScoreDoc> {
 
       @Override
       public void collect(int doc) throws IOException {
-          float rawScore = scorer.score();
-  int bin2 = binReader.getBinForDoc(doc);
-  float boost = binBoosts[bin2];
-  float finalScore = rawScore * boost;
+        float rawScore = scorer.score();
 
-  System.out.printf(Locale.ROOT,
-    "doc=%d raw=%.4f boost=%.2f bin=%d final=%.4f%n",
-    doc, rawScore, boost, bin2, finalScore
-  );
-        float score = scorer.score();
-        if (score <= 0 || Float.isNaN(score)) {
-          return;
-        }
-
-        int globalDoc = doc + base;
+        float boost = 1.0f;
+        int bin = -1;
         if (binReader != null && binBoosts != null) {
-          int bin = binReader.getBinForDoc(doc);
+          bin = binReader.getBinForDoc(doc);
           if (bin >= 0 && bin < binBoosts.length) {
-            score *= binBoosts[bin];
+            boost = binBoosts[bin];
           }
         }
 
-        if (pq.insertWithOverflow(new ScoreDoc(globalDoc, score)) != null) {
+        float finalScore = rawScore * boost;
+
+        System.out.printf(
+            Locale.ROOT,
+            "doc=%d raw=%.4f boost=%.2f bin=%d final=%.4f%n",
+            doc + base, rawScore, boost, bin, finalScore
+        );
+
+        if (finalScore <= 0 || Float.isNaN(finalScore)) {
+          return;
+        }
+
+        if (pq.insertWithOverflow(new ScoreDoc(doc + base, finalScore)) != null) {
           totalHits++;
         }
 
