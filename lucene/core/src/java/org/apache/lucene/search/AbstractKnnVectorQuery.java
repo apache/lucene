@@ -111,9 +111,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (topK.scoreDocs.length > 0 && perLeafResults.size() > 1) {
       float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
       TimeLimitingKnnCollectorManager knnCollectorManagerInner =
-        new TimeLimitingKnnCollectorManager(
-          new ReentrantKnnCollectorManager(getKnnCollectorManager(k, indexSearcher), perLeafResults),
-          indexSearcher.getTimeout());
+          new TimeLimitingKnnCollectorManager(
+              new ReentrantKnnCollectorManager(
+                  getKnnCollectorManager(k, indexSearcher), perLeafResults),
+              indexSearcher.getTimeout());
       Iterator<LeafReaderContext> ctxIter = leafReaderContexts.iterator();
       while (ctxIter.hasNext()) {
         LeafReaderContext ctx = ctxIter.next();
@@ -139,8 +140,12 @@ abstract class AbstractKnnVectorQuery extends Query {
     return createRewrittenQuery(reader, topK, reentryCount);
   }
 
-  private TopDocs runSearchTasks(List<Callable<TopDocs>> tasks, TaskExecutor taskExecutor, Map<Integer, TopDocs> perLeafResults, List<LeafReaderContext> leafReaderContexts)
-          throws IOException {
+  private TopDocs runSearchTasks(
+      List<Callable<TopDocs>> tasks,
+      TaskExecutor taskExecutor,
+      Map<Integer, TopDocs> perLeafResults,
+      List<LeafReaderContext> leafReaderContexts)
+      throws IOException {
     List<TopDocs> taskResults = taskExecutor.invokeAll(tasks);
     for (int i = 0; i < taskResults.size(); i++) {
       perLeafResults.put(leafReaderContexts.get(i).ord, taskResults.get(i));
@@ -384,10 +389,16 @@ abstract class AbstractKnnVectorQuery extends Query {
     for (int i = 0; i < len; i++) {
       docs[i] = topK.scoreDocs[i].doc;
       scores[i] = topK.scoreDocs[i].score;
-     }
+    }
     int[] segmentStarts = findSegmentStarts(reader.leaves(), docs);
     return new DocAndScoreQuery(
-      docs, scores, maxScore, segmentStarts, topK.totalHits.value(), reader.getContext().id(), reentryCount);
+        docs,
+        scores,
+        maxScore,
+        segmentStarts,
+        topK.totalHits.value(),
+        reader.getContext().id(),
+        reentryCount);
   }
 
   static int[] findSegmentStarts(List<LeafReaderContext> leaves, int[] docs) {

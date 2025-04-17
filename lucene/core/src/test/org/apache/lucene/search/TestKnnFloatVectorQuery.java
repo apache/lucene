@@ -236,7 +236,13 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
         AbstractKnnVectorQuery.DocAndScoreQuery query =
             new AbstractKnnVectorQuery.DocAndScoreQuery(
-                docs, scores, maxScore, segments, scoreDocs.length, indexReader.getContext().id(), 0);
+                docs,
+                scores,
+                maxScore,
+                segments,
+                scoreDocs.length,
+                indexReader.getContext().id(),
+                0);
         final Weight w = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0f);
         TopDocs topDocs = searcher.search(query, 100);
         assertEquals(scoreDocs.length, topDocs.totalHits.value());
