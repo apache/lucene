@@ -524,7 +524,6 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
 
         @Override
         public void close() throws IOException {
-          IOException prior = null;
           try {
             ret.close();
             maybeWriteDocBinning(state);
@@ -534,7 +533,6 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
           }
         }
       };
-      // return ret;
     } finally {
       if (!success) {
         IOUtils.closeWhileHandlingException(postingsWriter);
