@@ -46,8 +46,7 @@ record DefaultIOContext(Set<FileOpenHint> hints) implements IOContext {
 
   @Override
   public IOContext withHints(FileOpenHint... hints) {
-    // TODO: see if this is needed or not
-    if (!hints().isEmpty()) throw new IllegalArgumentException("Hints have already been specified");
+    // replaces any existing hints
     return new DefaultIOContext(hints);
   }
 }

@@ -111,6 +111,9 @@ public abstract class Directory implements Closeable {
     }
 
     if (context.hints().contains(DataAccessHint.RANDOM)) {
+      if (context.hints().contains(FileTypeHint.INDEX)) {
+        return ReadAdvice.RANDOM_PRELOAD;
+      }
       return ReadAdvice.RANDOM;
     }
     if (context.hints().contains(DataAccessHint.SEQUENTIAL)) {
