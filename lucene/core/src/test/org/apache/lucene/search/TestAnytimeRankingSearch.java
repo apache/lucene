@@ -19,7 +19,7 @@ package org.apache.lucene.search;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
+import org.apache.lucene.codecs.lucene103.Lucene103Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -143,7 +143,7 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
 
   @Test
   public void testSlaCutoffTriggersEarlyTermination() throws Exception {
-    Codec.setDefault(new Lucene101Codec());
+    Codec.setDefault(new Lucene103Codec());
 
     Path indexPath = Files.createTempDirectory("testindex_sla_cutoff");
     try (Directory dir = FSDirectory.open(indexPath);

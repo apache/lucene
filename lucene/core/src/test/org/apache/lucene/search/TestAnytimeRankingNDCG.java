@@ -17,7 +17,7 @@
 
 package org.apache.lucene.search;
 
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
+import org.apache.lucene.codecs.lucene103.Lucene103Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -41,7 +41,7 @@ public class TestAnytimeRankingNDCG extends LuceneTestCase {
   public void testNDCGDoesNotDiverge() throws Exception {
     MockDirectoryWrapper dir = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    iwc.setCodec(new Lucene101Codec());
+    iwc.setCodec(new Lucene103Codec());
 
     FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);
     ft.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);

@@ -532,7 +532,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
           prior = e;
         }
 
-        /*try {
+        try {
           if (prior == null) {
             // Now that all outputs are flushed, perform binning safely
             maybeWriteDocBinning(state);
@@ -544,9 +544,11 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
           } else {
             throw e;
           }
-        }*/
+        }
 
         if (prior != null) {
+          IOUtils.closeWhileHandlingException(ret);
+
           throw prior;
         }
       }

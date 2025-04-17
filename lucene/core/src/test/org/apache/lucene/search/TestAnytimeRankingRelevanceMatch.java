@@ -6,7 +6,7 @@
  */
 package org.apache.lucene.search;
 
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
+import org.apache.lucene.codecs.lucene103.Lucene103Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -32,7 +32,7 @@ public class TestAnytimeRankingRelevanceMatch extends LuceneTestCase {
   public void testRelevanceMetricsComparison() throws Exception {
     Directory dir = new MMapDirectory(createTempDir("relevance-test"));
     IndexWriterConfig config = new IndexWriterConfig(new MockAnalyzer(random()));
-    config.setCodec(new Lucene101Codec());
+    config.setCodec(new Lucene103Codec());
     config.setUseCompoundFile(false);
     config.setMaxBufferedDocs(100);
 
