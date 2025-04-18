@@ -20,10 +20,12 @@ import java.io.IOException;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ReferenceManager;
+import org.apache.lucene.search.RefreshCommitSupplier;
 import org.apache.lucene.search.SearcherFactory;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.store.Directory;
@@ -50,6 +52,7 @@ public class SearcherTaxonomyManager
   private final SearcherFactory searcherFactory;
   private final long taxoEpoch;
   private final DirectoryTaxonomyWriter taxoWriter;
+  private RefreshCommitSupplier refreshCommitSupplier = new RefreshCommitSupplier() {};
 
   /** Creates near-real-time searcher and taxonomy reader from the corresponding writers. */
   public SearcherTaxonomyManager(
@@ -122,6 +125,11 @@ public class SearcherTaxonomyManager
     taxoEpoch = -1;
   }
 
+  /** Set supplier for selecting commits to refresh on */
+  public void setRefreshCommitSupplier(RefreshCommitSupplier refreshCommitSupplier) {
+    this.refreshCommitSupplier = refreshCommitSupplier;
+  }
+
   @Override
   protected void decRef(SearcherAndTaxonomy ref) throws IOException {
     ref.searcher.getIndexReader().decRef();
@@ -154,11 +162,16 @@ public class SearcherTaxonomyManager
     // new reader that references ords not yet known to the
     // taxonomy reader:
     final IndexReader r = ref.searcher.getIndexReader();
-    final IndexReader newReader = DirectoryReader.openIfChanged((DirectoryReader) r);
+    DirectoryReader dr = (DirectoryReader) r;
+    IndexCommit refreshCommit = refreshCommitSupplier.getSearcherRefreshCommit(dr);
+    IndexReader newReader = DirectoryReader.openIfChanged(dr, refreshCommit);
     if (newReader == null) {
       return null;
     } else {
-      DirectoryTaxonomyReader tr;
+      DirectoryTaxonomyReader tr = null;
+      // taxonomy should always be ahead of searchers. Otherwise, searchers
+      // might reference ordinals that taxonomy doesn't know of.
+      // To ensure this, we always refresh taxonomy on the latest commit.
       try {
         tr = TaxonomyReader.openIfChanged(ref.taxonomyReader);
       } catch (Throwable t1) {
@@ -180,6 +193,55 @@ public class SearcherTaxonomyManager
 
       return new SearcherAndTaxonomy(
           SearcherManager.getSearcher(searcherFactory, newReader, r), tr);
+    }
+  }
+
+  /** Return index commit generation for current searcher */
+  public long getSearcherCommitGeneration() throws IOException {
+    SearcherAndTaxonomy sat = acquire();
+    long gen = ((DirectoryReader) sat.searcher.getIndexReader()).getIndexCommit().getGeneration();
+    release(sat);
+    return gen;
+  }
+
+  /** Return index commit generation for current taxonomy reader */
+  public long getTaxonomyCommitGeneration() throws IOException {
+    SearcherAndTaxonomy sat = acquire();
+    long gen = sat.taxonomyReader.getInternalIndexReader().getIndexCommit().getGeneration();
+    release(sat);
+    return gen;
+  }
+
+  /**
+   * Returns <code>true</code> if no new changes have occurred since the current searcher (i.e.
+   * reader) was opened; <code>false</code> otherwise
+   *
+   * @see DirectoryReader#isCurrent()
+   */
+  public boolean isSearcherCurrent() throws IOException {
+    final SearcherAndTaxonomy sat = acquire();
+    try {
+      final IndexReader r = sat.searcher.getIndexReader();
+      assert r instanceof DirectoryReader
+          : "searcher's IndexReader should be a DirectoryReader, but got " + r;
+      return ((DirectoryReader) r).isCurrent();
+    } finally {
+      release(sat);
+    }
+  }
+
+  /**
+   * Returns <code>true</code> if no new changes have occurred since the current taxonomy reader was
+   * opened; <code>false</code> otherwise
+   *
+   * @see DirectoryReader#isCurrent()
+   */
+  public boolean isTaxonomyCurrent() throws IOException {
+    final SearcherAndTaxonomy sat = acquire();
+    try {
+      return sat.taxonomyReader.getInternalIndexReader().isCurrent();
+    } finally {
+      release(sat);
     }
   }
 
