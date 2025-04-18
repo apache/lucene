@@ -18,14 +18,11 @@ package org.apache.lucene.sandbox.facet.plain.histograms;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
@@ -47,10 +44,14 @@ final class HistogramCollector implements Collector {
   private final long bucketWidth;
   private final int maxBuckets;
   private final LongIntHashMap counts;
-  private final Map<LeafReaderContext, Boolean> leafBulkCollected;
+  private final ConcurrentMap<LeafReaderContext, Boolean> leafBulkCollected;
   private Query query;
 
-  HistogramCollector(String field, long bucketWidth, int maxBuckets, Map<LeafReaderContext, Boolean> leafBulkCollected) {
+  HistogramCollector(
+      String field,
+      long bucketWidth,
+      int maxBuckets,
+      ConcurrentMap<LeafReaderContext, Boolean> leafBulkCollected) {
     this.field = field;
     this.bucketWidth = bucketWidth;
     this.maxBuckets = maxBuckets;
@@ -67,8 +68,21 @@ final class HistogramCollector implements Collector {
     }
 
     // We can use multi range traversal logic to collect the histogram on numeric
-    // field indexed as point range query for MATCH_ALL cases
-    bulkCollectHistogram(field, bucketWidth, maxBuckets, query, counts, context, leafBulkCollected);
+    // field indexed as point for MATCH_ALL cases. In future, this can be extended
+    // for Point Range Query cases as well
+    if (query instanceof MatchAllDocsQuery && context.reader().hasDeletions() == false) {
+      final PointValues pointValues = context.reader().getPointValues(field);
+      if (PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
+        // In case of intra segment concurrency, only one collector should collect
+        // documents for all the partitions to avoid duplications across collectors
+        if (leafBulkCollected.putIfAbsent(context, true) == null) {
+          PointTreeBulkCollector.collect(pointValues, bucketWidth, counts, maxBuckets);
+        }
+        // Either the collection is finished on this collector, or some other collector
+        // already started that collection, so this collector can finish early!
+        throw new CollectionTerminatedException();
+      }
+    }
 
     if (fi.getDocValuesType() != DocValuesType.NUMERIC
         && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
@@ -106,19 +120,15 @@ final class HistogramCollector implements Collector {
     return counts;
   }
 
-  private static synchronized void bulkCollectHistogram(String field, long bucketWidth, int maxBuckets, Query query, LongIntHashMap counts, LeafReaderContext context, Map<LeafReaderContext, Boolean> leafBulkCollected) throws IOException {
-    if (leafBulkCollected.containsKey(context) == false && query instanceof MatchAllDocsQuery && context.reader().hasDeletions() == false) {
-      final PointValues pointValues = context.reader().getPointValues(field);
-      if (PointTreeBulkCollector.collect(pointValues, bucketWidth, counts, maxBuckets)) {
-        leafBulkCollected.put(context, true);
-        throw new CollectionTerminatedException();
-      }
-    } else if (leafBulkCollected.get(context) == true) {
-      throw new CollectionTerminatedException();
-    }
-
-    leafBulkCollected.put(context, false);
-  }
+  private static synchronized void bulkCollectHistogram(
+      String field,
+      long bucketWidth,
+      int maxBuckets,
+      Query query,
+      LongIntHashMap counts,
+      LeafReaderContext context,
+      Map<LeafReaderContext, Boolean> leafBulkCollected)
+      throws IOException {}
 
   /**
    * Naive implementation of a histogram {@link LeafCollector}, which iterates all maches and looks

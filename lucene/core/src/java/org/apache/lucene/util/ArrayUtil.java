@@ -19,7 +19,6 @@ package org.apache.lucene.util;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.function.Function;
 
 /**
  * Methods for manipulating arrays.
@@ -801,17 +800,5 @@ public final class ArrayUtil {
   public static int compareUnsigned4(byte[] a, int aOffset, byte[] b, int bOffset) {
     return Integer.compareUnsigned(
         (int) BitUtil.VH_BE_INT.get(a, aOffset), (int) BitUtil.VH_BE_INT.get(b, bOffset));
-  }
-
-  public static Function<byte[], Long> getValue(int numBytes) {
-    if (numBytes == Long.BYTES) {
-      // Used by LongPoint, DoublePoint
-      return a -> (long) BitUtil.VH_BE_LONG.get(a, 0);
-    } else if (numBytes == Integer.BYTES) {
-      // Used by IntPoint, FloatPoint, LatLonPoint, LatLonShape
-      return a -> (long) BitUtil.VH_BE_INT.get(a, 0);
-    }
-
-    return null;
   }
 }

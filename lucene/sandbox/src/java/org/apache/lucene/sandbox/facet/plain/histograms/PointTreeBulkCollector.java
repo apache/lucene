@@ -22,20 +22,26 @@ import java.io.IOException;
 import java.util.function.Function;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
-import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 
 class PointTreeBulkCollector {
-  static boolean collect(
-      final PointValues pointValues,
-      final long bucketWidth,
-      final LongIntHashMap collectorCounts,
-      final int maxBuckets)
+  private static Function<byte[], Long> getValue(int numBytes) {
+    if (numBytes == Long.BYTES) {
+      // Used by LongPoint, DoublePoint
+      return a -> (long) BitUtil.VH_BE_LONG.get(a, 0);
+    } else if (numBytes == Integer.BYTES) {
+      // Used by IntPoint, FloatPoint, LatLonPoint, LatLonShape
+      return a -> (long) BitUtil.VH_BE_INT.get(a, 0);
+    }
+
+    return null;
+  }
+
+  static boolean canCollectEfficiently(final PointValues pointValues, final long bucketWidth)
       throws IOException {
-    final Function<byte[], Long> byteToLong =
-            ArrayUtil.getValue(pointValues.getBytesPerDimension());
-    // TODO: Do we really need pointValues.getDocCount() == pointValues.size()
+    final Function<byte[], Long> byteToLong = getValue(pointValues.getBytesPerDimension());
+    // TODO: Do we really need pointValues.getDocCount() == pointValues.size() for this optimization
     if (pointValues == null
         || pointValues.getNumDimensions() != 1
         || pointValues.getDocCount() != pointValues.size()
@@ -54,6 +60,17 @@ class PointTreeBulkCollector {
       return false;
     }
 
+    return true;
+  }
+
+  static void collect(
+      final PointValues pointValues,
+      final long bucketWidth,
+      final LongIntHashMap collectorCounts,
+      final int maxBuckets)
+      throws IOException {
+    final Function<byte[], Long> byteToLong = getValue(pointValues.getBytesPerDimension());
+    final long minValue = getLongFromByte(byteToLong, pointValues.getMinPackedValue());
     BucketManager collector =
         new BucketManager(
             collectorCounts,
@@ -62,14 +79,8 @@ class PointTreeBulkCollector {
             a -> getLongFromByte(byteToLong, a),
             maxBuckets);
     PointValues.IntersectVisitor visitor = getIntersectVisitor(collector);
-    try {
-      intersectWithRanges(visitor, pointValues.getPointTree(), collector);
-    } catch (CollectionTerminatedException _) {
-      // Early terminate since no more range to collect
-    }
+    intersectWithRanges(visitor, pointValues.getPointTree(), collector);
     collector.finalizePreviousBucket(null);
-
-    return true;
   }
 
   private static void intersectWithRanges(
