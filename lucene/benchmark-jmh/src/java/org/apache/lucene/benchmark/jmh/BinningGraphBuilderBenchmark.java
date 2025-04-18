@@ -100,7 +100,6 @@ public class BinningGraphBuilderBenchmark {
 
   @Setup(Level.Invocation)
   public void clean() throws IOException {
-    leaf.close();
     directory.close();
     Files.walk(tempDir)
         .sorted(Comparator.reverseOrder())
@@ -109,7 +108,7 @@ public class BinningGraphBuilderBenchmark {
               try {
                 Files.deleteIfExists(path);
               } catch (IOException e) {
-                // ignore
+                assert e instanceof IOException;
               }
             });
   }
