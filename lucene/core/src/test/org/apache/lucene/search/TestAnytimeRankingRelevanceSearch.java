@@ -75,34 +75,32 @@ public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
 
   @Test
   public void testRelevanceAcrossDiverseDocuments() throws Exception {
-    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
-      IndexSearcher searcher = newSearcher(reader);
-      searcher.setSimilarity(new BM25Similarity());
+    DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(new BM25Similarity());
 
-      Query query = new TermQuery(new Term("content", "lucene"));
-      try (AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(reader, 10, 20, "content")) {
-        TopDocs results = anytimeSearcher.search(query);
+    Query query = new TermQuery(new Term("content", "lucene"));
+    try (AnytimeRankingSearcher anytimeSearcher =
+        new AnytimeRankingSearcher(reader, 10, 20, "content")) {
+      TopDocs results = anytimeSearcher.search(query);
 
-        assertNotNull("Results should not be null", results);
-        assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
-      }
+      assertNotNull("Results should not be null", results);
+      assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
     }
   }
 
   public void testPerformanceQueries() throws Exception {
-    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
-      IndexSearcher searcher = newSearcher(reader);
-      searcher.setSimilarity(new BM25Similarity());
+    DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(new BM25Similarity());
 
-      try (AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(reader, 15, 30, "content")) {
-        Query query = new TermQuery(new Term("content", "performance"));
-        TopDocs results = anytimeSearcher.search(query);
+    try (AnytimeRankingSearcher anytimeSearcher =
+        new AnytimeRankingSearcher(reader, 15, 30, "content")) {
+      Query query = new TermQuery(new Term("content", "performance"));
+      TopDocs results = anytimeSearcher.search(query);
 
-        assertNotNull("Results should not be null", results);
-        assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
-      }
+      assertNotNull("Results should not be null", results);
+      assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
     }
   }
 
@@ -124,18 +122,17 @@ public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
 
   @Test
   public void testEmptyQuery() throws Exception {
-    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
-      IndexSearcher searcher = newSearcher(reader);
-      searcher.setSimilarity(new BM25Similarity());
+    DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(new BM25Similarity());
 
-      try (AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(reader, 5, 20, "content")) {
-        Query query = new TermQuery(new Term("content", " "));
-        TopDocs results = anytimeSearcher.search(query);
+    try (AnytimeRankingSearcher anytimeSearcher =
+        new AnytimeRankingSearcher(reader, 5, 20, "content")) {
+      Query query = new TermQuery(new Term("content", " "));
+      TopDocs results = anytimeSearcher.search(query);
 
-        assertNotNull("Empty queries should return zero results", results);
-        assertEquals("Results should be zero for an empty query", 0, results.scoreDocs.length);
-      }
+      assertNotNull("Empty queries should return zero results", results);
+      assertEquals("Results should be zero for an empty query", 0, results.scoreDocs.length);
     }
   }
 
@@ -153,11 +150,10 @@ public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
       writer.commit();
     }
 
-    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
-      try (AnytimeRankingSearcher ars = new AnytimeRankingSearcher(reader, 5, 20, "content")) {
-        TopDocs results = ars.search(new TermQuery(new Term("content", "lucene")));
-        assertTrue(results.scoreDocs.length > 0);
-      }
+    DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
+    try (AnytimeRankingSearcher ars = new AnytimeRankingSearcher(reader, 5, 20, "content")) {
+      TopDocs results = ars.search(new TermQuery(new Term("content", "lucene")));
+      assertTrue(results.scoreDocs.length > 0);
     }
   }
 
