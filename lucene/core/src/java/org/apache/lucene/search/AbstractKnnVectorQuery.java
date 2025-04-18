@@ -38,6 +38,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
+import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
@@ -113,7 +114,7 @@ abstract class AbstractKnnVectorQuery extends Query {
       TimeLimitingKnnCollectorManager knnCollectorManagerInner =
           new TimeLimitingKnnCollectorManager(
               new ReentrantKnnCollectorManager(
-                  getKnnCollectorManager(k, indexSearcher), perLeafResults),
+                  new TopKnnCollectorManager(k, indexSearcher), perLeafResults),
               indexSearcher.getTimeout());
       Iterator<LeafReaderContext> ctxIter = leafReaderContexts.iterator();
       while (ctxIter.hasNext()) {
