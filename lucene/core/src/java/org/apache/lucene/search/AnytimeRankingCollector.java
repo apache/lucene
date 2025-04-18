@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Locale;
 import org.apache.lucene.index.BinScoreLeafReader;
 import org.apache.lucene.index.BinScoreReader;
 import org.apache.lucene.index.LeafReader;
@@ -105,15 +104,6 @@ public final class AnytimeRankingCollector extends TopDocsCollector<ScoreDoc> {
         }
 
         float finalScore = rawScore * boost;
-
-        System.out.printf(
-            Locale.ROOT,
-            "doc=%d raw=%.4f boost=%.2f bin=%d final=%.4f%n",
-            doc + base,
-            rawScore,
-            boost,
-            bin,
-            finalScore);
 
         if (finalScore <= 0 || Float.isNaN(finalScore)) {
           return;
