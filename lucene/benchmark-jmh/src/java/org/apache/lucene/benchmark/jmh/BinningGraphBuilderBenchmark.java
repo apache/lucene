@@ -7,6 +7,11 @@
  * the License. You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.apache.lucene.benchmark.jmh;
@@ -17,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -34,18 +40,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.BenchmarkMode;
-import org.openjdk.jmh.annotations.Fork;
-import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Measurement;
-import org.openjdk.jmh.annotations.Mode;
-import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.annotations.*;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -70,8 +65,8 @@ public class BinningGraphBuilderBenchmark {
     tempDir = Files.createTempDirectory("binning-benchmark");
     directory = new MMapDirectory(tempDir);
     FieldType fieldType = new FieldType(TextField.TYPE_NOT_STORED);
-    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     fieldType.setTokenized(true);
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     fieldType.freeze();
 
     IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
@@ -91,26 +86,31 @@ public class BinningGraphBuilderBenchmark {
 
   @Benchmark
   public SparseEdgeGraph buildGraph() throws IOException {
-    if (mode.equals("approx")) {
+    if ("approx".equals(mode)) {
       return new ApproximateDocGraphBuilder("field", 10).build(leaf);
     } else {
       return new DocGraphBuilder("field", 10).build(leaf);
     }
   }
 
-  @Setup(Level.Invocation)
-  public void clean() throws IOException {
-    directory.close();
-    Files.walk(tempDir)
-        .sorted(Comparator.reverseOrder())
-        .forEach(
-            path -> {
-              try {
-                Files.deleteIfExists(path);
-              } catch (IOException e) {
-                assert e instanceof IOException;
-              }
-            });
+  @TearDown(Level.Invocation)
+  public void cleanup() throws IOException {
+    if (directory != null) {
+      directory.close();
+    }
+    if (tempDir != null && Files.exists(tempDir)) {
+      try (Stream<Path> paths = Files.walk(tempDir)) {
+        paths
+            .sorted(Comparator.reverseOrder())
+            .forEach(
+                path -> {
+                  try {
+                    Files.deleteIfExists(path);
+                  } catch (IOException ignored) {
+                  }
+                });
+      }
+    }
   }
 
   private static final class SingleTokenAnalyzer extends Analyzer {
