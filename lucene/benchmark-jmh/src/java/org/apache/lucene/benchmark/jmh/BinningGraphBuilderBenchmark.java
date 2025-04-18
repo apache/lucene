@@ -106,7 +106,7 @@ public class BinningGraphBuilderBenchmark {
                 path -> {
                   try {
                     Files.deleteIfExists(path);
-                  } catch (IOException ignored) {
+                  } catch (IOException _) {
                   }
                 });
       }
