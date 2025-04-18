@@ -145,7 +145,7 @@ public class BinningIndexingLatencyBenchmark {
                 try {
                   Files.deleteIfExists(path);
                 } catch (IOException ignored) {
-                  // Best-effort cleanup
+                  assert ignored != null;
                 }
               });
     }
