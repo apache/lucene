@@ -236,10 +236,13 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       windowMatches.set(0, windowMax - windowBase);
     } else {
       DocIdSetIterator lead = iterators.get(0);
+      int intoBitSetBase = windowBase;
       if (lead.docID() < windowBase) {
-        lead.advance(windowBase);
+        intoBitSetBase = lead.advance(windowBase);
       }
-      lead.intoBitSet(windowMax, windowMatches, windowBase);
+      if (intoBitSetBase < windowMax) {
+        lead.intoBitSet(windowMax, windowMatches, intoBitSetBase);
+      }
     }
 
     if (acceptDocs != null) {
