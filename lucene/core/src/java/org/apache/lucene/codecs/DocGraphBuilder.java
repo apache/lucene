@@ -116,6 +116,11 @@ public final class DocGraphBuilder {
       }
     }
 
+    // Ensure all documents are represented in the graph, even if they have no edges
+    for (int docID = 0; docID < reader.maxDoc(); docID++) {
+      graph.ensureVertex(docID);
+    }
+
     return graph;
   }
 
