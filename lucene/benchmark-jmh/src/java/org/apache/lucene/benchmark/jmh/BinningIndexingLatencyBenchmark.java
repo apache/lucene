@@ -116,6 +116,50 @@ public class BinningIndexingLatencyBenchmark {
     }
   }
 
+  /**
+   * Benchmarks baseline Lucene indexing (no binning, no extra attributes). Used as a strict
+   * baseline against bin-aware indexing modes.
+   */
+  @Benchmark
+  public void indexBatchBaseline() throws IOException {
+    tempDir = Files.createTempDirectory("lucene-baseline-benchmark");
+    try (Directory dir = new MMapDirectory(tempDir)) {
+      IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
+      config.setCodec(new Lucene103Codec());
+      config.setUseCompoundFile(false);
+
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        for (int i = 0; i < docCount; i++) {
+          Document doc = new Document();
+          String content = (i % 200 == 0) ? "lucene relevant content" : "noise filler text " + i;
+          doc.add(new Field("field", content, getBaselineFieldType()));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+    } finally {
+      Files.walk(tempDir)
+          .sorted(Comparator.reverseOrder())
+          .forEach(
+              path -> {
+                try {
+                  Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                  // Best-effort cleanup
+                }
+              });
+    }
+  }
+
+  /** Returns a clean field type with no binning attributes for baseline indexing. */
+  private FieldType getBaselineFieldType() {
+    FieldType baseline = new FieldType(TextField.TYPE_NOT_STORED);
+    baseline.setTokenized(true);
+    baseline.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    baseline.freeze();
+    return baseline;
+  }
+
   private static final class SingleTokenAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
