@@ -532,6 +532,10 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       // hasn't nailed down a disjunction of competitive terms yet.
       if (disjunction == null) {
         if (docsWithField != null) {
+          // Paranoid check, we need to be absolutely sure that the iterator is at least at offset
+          if (docsWithField.docID() < offset) {
+            docsWithField.advance(offset);
+          }
           docsWithField.intoBitSet(upTo, bitSet, offset);
           doc = docsWithField.docID();
         } else {
