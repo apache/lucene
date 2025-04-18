@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.sandbox.facet.plain.histograms;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
@@ -124,7 +123,7 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     long[] values = new long[5000];
 
     for (int i = 0; i < values.length; i++) {
-      values[i] = RandomizedTest.between(0, 5000); // Generates a random integer
+      values[i] = random().nextInt(0, 5000); // Generates a random integer
     }
 
     for (long value : values) {

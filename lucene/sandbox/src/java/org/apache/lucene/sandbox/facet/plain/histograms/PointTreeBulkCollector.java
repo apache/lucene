@@ -33,16 +33,16 @@ class PointTreeBulkCollector {
       final LongIntHashMap collectorCounts,
       final int maxBuckets)
       throws IOException {
+    final Function<byte[], Long> byteToLong =
+            ArrayUtil.getValue(pointValues.getBytesPerDimension());
     // TODO: Do we really need pointValues.getDocCount() == pointValues.size()
     if (pointValues == null
         || pointValues.getNumDimensions() != 1
         || pointValues.getDocCount() != pointValues.size()
-        || ArrayUtil.getValue(pointValues.getBytesPerDimension()) == null) {
+        || byteToLong == null) {
       return false;
     }
 
-    final Function<byte[], Long> byteToLong =
-        ArrayUtil.getValue(pointValues.getBytesPerDimension());
     final long minValue = getLongFromByte(byteToLong, pointValues.getMinPackedValue());
     final long maxValue = getLongFromByte(byteToLong, pointValues.getMaxPackedValue());
     long leafMinBucket = Math.floorDiv(minValue, bucketWidth);
