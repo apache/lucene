@@ -56,6 +56,7 @@ public final class AnytimeRankingSearcher implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
+    BinScoreUtil.closeResources(reader);
     reader.close();
   }
 }

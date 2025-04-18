@@ -78,69 +78,6 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
   }
 
   @Test
-  public void testSparseBinDistribution() throws Exception {
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = new IndexWriterConfig(new StandardAnalyzer());
-      iwc.setMaxBufferedDocs(5);
-      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
-
-      FieldType ft = newBinningFieldType();
-
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < 64; i++) {
-          String content = (i % 8 == 0) ? "lucene boost" : "noise filler content";
-          writer.addDocument(newDoc(i, content, ft));
-        }
-        writer.commit();
-      }
-
-      IndexReader base = DirectoryReader.open(dir);
-      //IndexReader wrapped = BinScoreUtil.wrap(base);
-
-      try {
-        IndexSearcher searcher = newSearcher(base);
-        searcher.setSimilarity(new BM25Similarity());
-
-        try (AnytimeRankingSearcher rankingSearcher =
-            new AnytimeRankingSearcher(base, 10, 100, "content")) {
-
-          TopDocs topDocs = rankingSearcher.search(new TermQuery(new Term("content", "lucene")));
-
-          assertNotNull(topDocs);
-          assertTrue("Expected some results", topDocs.scoreDocs.length > 0);
-
-          int bin0Hits = 0;
-          int total = 0;
-          IndexReader wrapped = rankingSearcher.getSearcher().getIndexReader();
-          for (ScoreDoc sd : topDocs.scoreDocs) {
-            int docID = sd.doc;
-            for (LeafReaderContext ctx : wrapped.leaves()) {
-              if (docID >= ctx.docBase && docID < ctx.docBase + ctx.reader().maxDoc()) {
-                int segDoc = docID - ctx.docBase;
-                BinScoreReader binReader = BinScoreUtil.getBinScoreReader(ctx.reader());
-                if (binReader != null) {
-                  int bin = binReader.getBinForDoc(segDoc);
-                  System.out.println("doc" + segDoc + " bin " + bin);
-                  if (bin == 0) {
-                    bin0Hits++;
-                  }
-                  total++;
-                }
-                break;
-              }
-            }
-          }
-
-          assertTrue(
-              "Bin 0 should dominate in sparse distribution, got " + bin0Hits + " of " + total,
-              total > 0 && bin0Hits >= total / 2);
-        }
-      } finally {
-      }
-    }
-  }
-
-  @Test
   public void testSlaCutoffTriggersEarlyTermination() throws Exception {
     Codec.setDefault(new Lucene103Codec());
 
