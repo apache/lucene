@@ -40,6 +40,7 @@ import static org.apache.lucene.codecs.lucene90.compressing.Lucene90CompressingS
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.StoredFieldsReader;
@@ -104,6 +105,13 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     this.version = reader.version;
     this.fieldInfos = reader.fieldInfos;
     this.fieldsStream = reader.fieldsStream.clone();
+    if (merging) {
+      try {
+        this.fieldsStream.updateReadAdvice(ReadAdvice.SEQUENTIAL);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
     this.indexReader = reader.indexReader.clone();
     this.maxPointer = reader.maxPointer;
     this.chunkSize = reader.chunkSize;
@@ -255,6 +263,11 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       IOUtils.close(indexReader, fieldsStream);
       closed = true;
     }
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    this.fieldsStream.updateReadAdvice(ReadAdvice.RANDOM);
   }
 
   private static void readField(DataInput in, StoredFieldVisitor visitor, FieldInfo info, int bits)
