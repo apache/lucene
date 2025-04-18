@@ -7,13 +7,8 @@
  * the License. You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
+
 package org.apache.lucene.index;
 
 import java.nio.file.Path;
@@ -25,9 +20,11 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
+/** Tests bin-aware reader wrapping and cleanup. */
 public class TestBinScoreUtil extends LuceneTestCase {
 
   private static final String FIELD = "field";
@@ -48,10 +45,12 @@ public class TestBinScoreUtil extends LuceneTestCase {
 
   @Override
   public void tearDown() throws Exception {
-    super.tearDown();
-
-    writer.close();
-    dir.close();
+    try {
+      writer.close();
+      dir.close();
+    } finally {
+      super.tearDown();
+    }
   }
 
   public void testSingleSegmentWrapping() throws Exception {
@@ -64,15 +63,20 @@ public class TestBinScoreUtil extends LuceneTestCase {
 
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
       IndexReader wrapped = BinScoreUtil.wrap(reader);
-      for (LeafReaderContext ctx : wrapped.leaves()) {
-        LeafReader leaf = ctx.reader();
-        assertTrue(leaf instanceof BinScoreLeafReader);
-        BinScoreReader bin = ((BinScoreLeafReader) leaf).getBinScoreReader();
-        assertTrue(bin.getBinCount() > 0);
-        for (int docID = 0; docID < leaf.maxDoc(); docID++) {
-          int b = bin.getBinForDoc(docID);
-          assertTrue("bin must be non-negative", b >= 0);
+      try {
+        for (LeafReaderContext ctx : wrapped.leaves()) {
+          LeafReader leaf = ctx.reader();
+          assertTrue(leaf instanceof BinScoreLeafReader);
+          BinScoreReader bin = ((BinScoreLeafReader) leaf).getBinScoreReader();
+          assertTrue(bin.getBinCount() > 0);
+          for (int docID = 0; docID < leaf.maxDoc(); docID++) {
+            int b = bin.getBinForDoc(docID);
+            assertTrue("bin must be non-negative", b >= 0);
+          }
         }
+      } finally {
+        BinScoreUtil.closeResources(wrapped);
+        wrapped.close();
       }
     }
   }
@@ -87,9 +91,14 @@ public class TestBinScoreUtil extends LuceneTestCase {
 
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
       IndexReader wrapped = BinScoreUtil.wrap(reader);
-      for (LeafReaderContext ctx : wrapped.leaves()) {
-        LeafReader leaf = ctx.reader();
-        assertTrue(leaf instanceof BinScoreLeafReader);
+      try {
+        for (LeafReaderContext ctx : wrapped.leaves()) {
+          LeafReader leaf = ctx.reader();
+          assertTrue(leaf instanceof BinScoreLeafReader);
+        }
+      } finally {
+        BinScoreUtil.closeResources(wrapped);
+        wrapped.close();
       }
     }
   }
@@ -105,9 +114,49 @@ public class TestBinScoreUtil extends LuceneTestCase {
 
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
       IndexReader wrapped = BinScoreUtil.wrap(reader);
-      for (LeafReaderContext ctx : wrapped.leaves()) {
-        LeafReader leaf = ctx.reader();
-        assertTrue(leaf instanceof BinScoreLeafReader);
+      try {
+        for (LeafReaderContext ctx : wrapped.leaves()) {
+          LeafReader leaf = ctx.reader();
+          assertTrue(leaf instanceof BinScoreLeafReader);
+        }
+      } finally {
+        BinScoreUtil.closeResources(wrapped);
+        wrapped.close();
+      }
+    }
+  }
+
+  public void testCompoundReaderClosure() throws Exception {
+    Path path = createTempDir("compound-close");
+    try (MockDirectoryWrapper mockDir = newMockFSDirectory(path)) {
+
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setCodec(TestUtil.alwaysPostingsFormat(new Lucene103PostingsFormat()));
+      iwc.setUseCompoundFile(true);
+
+      try (IndexWriter writer = new IndexWriter(mockDir, iwc)) {
+        for (int i = 0; i < 3; i++) {
+          Document doc = new Document();
+          doc.add(newBinningField(FIELD, "compound " + i));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+
+      DirectoryReader original = DirectoryReader.open(mockDir);
+      IndexReader wrapped = BinScoreUtil.wrap(original);
+
+      try {
+        for (LeafReaderContext ctx : wrapped.leaves()) {
+          LeafReader leaf = ctx.reader();
+          assertTrue(leaf instanceof BinScoreLeafReader);
+          BinScoreReader bin = ((BinScoreLeafReader) leaf).getBinScoreReader();
+          assertNotNull("bin score reader must not be null", bin);
+        }
+      } finally {
+        BinScoreUtil.closeResources(wrapped); // close any tracked compound readers
+        wrapped.close(); // close the wrapped reader itself
+        original.close(); // close the original reader
       }
     }
   }
