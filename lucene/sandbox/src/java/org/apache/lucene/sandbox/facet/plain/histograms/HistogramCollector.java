@@ -17,7 +17,6 @@
 package org.apache.lucene.sandbox.facet.plain.histograms;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
@@ -119,16 +118,6 @@ final class HistogramCollector implements Collector {
   LongIntHashMap getCounts() {
     return counts;
   }
-
-  private static synchronized void bulkCollectHistogram(
-      String field,
-      long bucketWidth,
-      int maxBuckets,
-      Query query,
-      LongIntHashMap counts,
-      LeafReaderContext context,
-      Map<LeafReaderContext, Boolean> leafBulkCollected)
-      throws IOException {}
 
   /**
    * Naive implementation of a histogram {@link LeafCollector}, which iterates all maches and looks

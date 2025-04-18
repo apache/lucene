@@ -23,16 +23,16 @@ import java.util.function.Function;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.BitUtil;
+import org.apache.lucene.util.NumericUtils;
 
 class PointTreeBulkCollector {
-  private static Function<byte[], Long> getValue(int numBytes) {
+  private static Function<byte[], Long> bytesToLong(int numBytes) {
     if (numBytes == Long.BYTES) {
       // Used by LongPoint, DoublePoint
-      return a -> (long) BitUtil.VH_BE_LONG.get(a, 0);
+      return a -> NumericUtils.sortableBytesToLong(a, 0);
     } else if (numBytes == Integer.BYTES) {
       // Used by IntPoint, FloatPoint, LatLonPoint, LatLonShape
-      return a -> (long) BitUtil.VH_BE_INT.get(a, 0);
+      return a -> (long) NumericUtils.sortableBytesToInt(a, 0);
     }
 
     return null;
@@ -40,19 +40,22 @@ class PointTreeBulkCollector {
 
   static boolean canCollectEfficiently(final PointValues pointValues, final long bucketWidth)
       throws IOException {
-    final Function<byte[], Long> byteToLong = getValue(pointValues.getBytesPerDimension());
     // TODO: Do we really need pointValues.getDocCount() == pointValues.size() for this optimization
     if (pointValues == null
         || pointValues.getNumDimensions() != 1
-        || pointValues.getDocCount() != pointValues.size()
-        || byteToLong == null) {
+        || pointValues.getDocCount() != pointValues.size()) {
       return false;
     }
 
-    final long minValue = getLongFromByte(byteToLong, pointValues.getMinPackedValue());
-    final long maxValue = getLongFromByte(byteToLong, pointValues.getMaxPackedValue());
-    long leafMinBucket = Math.floorDiv(minValue, bucketWidth);
-    long leafMaxBucket = Math.floorDiv(maxValue, bucketWidth);
+    final Function<byte[], Long> byteToLong = bytesToLong(pointValues.getBytesPerDimension());
+    if (byteToLong == null) {
+      return false;
+    }
+
+    long leafMinBucket =
+        Math.floorDiv(byteToLong.apply(pointValues.getMinPackedValue()), bucketWidth);
+    long leafMaxBucket =
+        Math.floorDiv(byteToLong.apply(pointValues.getMaxPackedValue()), bucketWidth);
 
     // We want that # leaf nodes is more than # buckets so that we can completely skip over
     // some of the leaf nodes. Higher this ratio, more efficient it is than naive approach!
@@ -69,14 +72,13 @@ class PointTreeBulkCollector {
       final LongIntHashMap collectorCounts,
       final int maxBuckets)
       throws IOException {
-    final Function<byte[], Long> byteToLong = getValue(pointValues.getBytesPerDimension());
-    final long minValue = getLongFromByte(byteToLong, pointValues.getMinPackedValue());
+    final Function<byte[], Long> byteToLong = bytesToLong(pointValues.getBytesPerDimension());
     BucketManager collector =
         new BucketManager(
             collectorCounts,
-            minValue,
+            byteToLong.apply(pointValues.getMinPackedValue()),
             bucketWidth,
-            a -> getLongFromByte(byteToLong, a),
+            byteToLong,
             maxBuckets);
     PointValues.IntersectVisitor visitor = getIntersectVisitor(collector);
     intersectWithRanges(visitor, pointValues.getPointTree(), collector);
@@ -107,11 +109,6 @@ class PointTreeBulkCollector {
         break;
       case CELL_OUTSIDE_QUERY:
     }
-  }
-
-  private static long getLongFromByte(Function<byte[], Long> f, byte[] packedValue) {
-    // TODO: Read long correctly instead of downcasting to int
-    return f.apply(packedValue).intValue();
   }
 
   private static PointValues.IntersectVisitor getIntersectVisitor(BucketManager collector) {
