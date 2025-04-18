@@ -6,17 +6,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.Random;
-
+import java.util.WeakHashMap;
 import org.apache.lucene.codecs.BinMapReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.IOUtils;
 
 /**
- * Utility methods for wrapping readers with bin-aware scoring support.
- * Enables loading bin map metadata and injecting scoring logic at search time.
+ * Utility methods for wrapping readers with bin-aware scoring support. Enables loading bin map
+ * metadata and injecting scoring logic at search time.
  */
 public final class BinScoreUtil {
 
@@ -29,8 +28,8 @@ public final class BinScoreUtil {
   private BinScoreUtil() {}
 
   /**
-   * Wraps an IndexReader with bin-aware scoring if binmap metadata is present.
-   * Supports both LeafReader and CompositeReader types.
+   * Wraps an IndexReader with bin-aware scoring if binmap metadata is present. Supports both
+   * LeafReader and CompositeReader types.
    *
    * @param reader the input IndexReader
    * @return wrapped reader if binmap is found; otherwise original reader
@@ -47,10 +46,9 @@ public final class BinScoreUtil {
   }
 
   /**
-   * Wraps a CompositeReader (e.g., DirectoryReader) with bin-aware logic.
-   * Leaf readers are shuffled to mitigate early termination bias, and each is
-   * wrapped individually. All associated compound readers are tracked and must
-   * be closed via {@link #closeResources}.
+   * Wraps a CompositeReader (e.g., DirectoryReader) with bin-aware logic. Leaf readers are shuffled
+   * to mitigate early termination bias, and each is wrapped individually. All associated compound
+   * readers are tracked and must be closed via {@link #closeResources}.
    *
    * @param reader composite reader to wrap
    * @return MultiReader with bin-aware leaves
@@ -78,8 +76,8 @@ public final class BinScoreUtil {
   }
 
   /**
-   * Wraps a single LeafReader with bin-aware scoring logic, collecting any
-   * compound readers created for later cleanup.
+   * Wraps a single LeafReader with bin-aware scoring logic, collecting any compound readers created
+   * for later cleanup.
    *
    * @param reader the input LeafReader
    * @param closables list to track compound readers for external cleanup
@@ -110,8 +108,10 @@ public final class BinScoreUtil {
       return reader;
     }
 
-    String suffix = binmapFile.substring(name.length() + 1, binmapFile.length() - ".binmap".length());
-    SegmentReadState state = new SegmentReadState(dir, info, sr.getFieldInfos(), IOContext.READONCE, suffix);
+    String suffix =
+        binmapFile.substring(name.length() + 1, binmapFile.length() - ".binmap".length());
+    SegmentReadState state =
+        new SegmentReadState(dir, info, sr.getFieldInfos(), IOContext.READONCE, suffix);
 
     BinMapReader binMap = null;
     try {
@@ -130,8 +130,8 @@ public final class BinScoreUtil {
   }
 
   /**
-   * Wraps a LeafReader and tracks compound files internally.
-   * This method is intended for direct wrapping of single-segment readers.
+   * Wraps a LeafReader and tracks compound files internally. This method is intended for direct
+   * wrapping of single-segment readers.
    *
    * @param reader input reader
    * @return bin-aware reader or original
@@ -141,18 +141,14 @@ public final class BinScoreUtil {
     return wrap(reader, new ArrayList<>());
   }
 
-  /**
-   * Extracts the SegmentReader from the given reader if available.
-   */
+  /** Extracts the SegmentReader from the given reader if available. */
   private static SegmentReader getSegmentReader(LeafReader reader) {
     if (reader instanceof SegmentReader) return (SegmentReader) reader;
     LeafReader unwrapped = FilterLeafReader.unwrap(reader);
     return (unwrapped instanceof SegmentReader) ? (SegmentReader) unwrapped : null;
   }
 
-  /**
-   * Finds a binmap file in the given directory for the specified segment.
-   */
+  /** Finds a binmap file in the given directory for the specified segment. */
   private static String findBinmapFile(Directory dir, String segmentName) throws IOException {
     for (String file : dir.listAll()) {
       if (file.startsWith(segmentName + "_") && file.endsWith(".binmap")) {
@@ -180,8 +176,8 @@ public final class BinScoreUtil {
   }
 
   /**
-   * Closes all resources (e.g., compound readers) associated with the wrapped IndexReader.
-   * This method must be invoked before or during IndexReader#close to ensure full cleanup.
+   * Closes all resources (e.g., compound readers) associated with the wrapped IndexReader. This
+   * method must be invoked before or during IndexReader#close to ensure full cleanup.
    *
    * @param reader the top-level MultiReader returned by {@link #wrap(IndexReader)}
    * @throws IOException on error

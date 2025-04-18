@@ -178,15 +178,15 @@ public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
     }
 
     IndexReader reader = DirectoryReader.open(dir);
-      assertTrue("Should have multiple segments", reader.leaves().size() > 1);
+    assertTrue("Should have multiple segments", reader.leaves().size() > 1);
 
-      try (AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(reader, 10, 50, "content")) {
-        TopDocs topDocs = anytimeSearcher.search(new TermQuery(new Term("content", "lucene")));
+    try (AnytimeRankingSearcher anytimeSearcher =
+        new AnytimeRankingSearcher(reader, 10, 50, "content")) {
+      TopDocs topDocs = anytimeSearcher.search(new TermQuery(new Term("content", "lucene")));
 
-        assertNotNull("TopDocs should not be null", topDocs);
-        assertTrue("Should return some results", topDocs.scoreDocs.length > 0);
-      }
+      assertNotNull("TopDocs should not be null", topDocs);
+      assertTrue("Should return some results", topDocs.scoreDocs.length > 0);
+    }
     dir.close();
   }
 

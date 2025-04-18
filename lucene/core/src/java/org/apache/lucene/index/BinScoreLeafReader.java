@@ -21,8 +21,8 @@ import java.io.IOException;
 import org.apache.lucene.util.IOUtils;
 
 /**
- * Reader wrapper that exposes bin-aware scoring.
- * Supports resource tracking for clean closure of auxiliary components.
+ * Reader wrapper that exposes bin-aware scoring. Supports resource tracking for clean closure of
+ * auxiliary components.
  */
 public class BinScoreLeafReader extends FilterLeafReader {
 

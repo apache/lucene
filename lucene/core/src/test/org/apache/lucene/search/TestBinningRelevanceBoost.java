@@ -121,8 +121,9 @@ public class TestBinningRelevanceBoost extends LuceneTestCase {
         }
       }
 
-assertTrue("ARCANE hits=" + anytimeRankingHits + " baseline=" + baselineHits,
-           anytimeRankingHits >= baselineHits.get() - 1); // allow small variance
+      assertTrue(
+          "ARCANE hits=" + anytimeRankingHits + " baseline=" + baselineHits,
+          anytimeRankingHits >= baselineHits.get() - 1); // allow small variance
 
       reader.close();
       dir.close();
