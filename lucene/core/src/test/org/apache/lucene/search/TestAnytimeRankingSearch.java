@@ -120,31 +120,26 @@ public class TestAnytimeRankingSearch extends LuceneTestCase {
       writer.commit();
 
       IndexReader base = DirectoryReader.open(dir);
-      IndexReader wrapped = BinScoreUtil.wrap(base);
-      try {
-        IndexSearcher searcher = newSearcher(wrapped);
-        searcher.setSimilarity(new BM25Similarity(2.0f, 0.2f));
-        try (AnytimeRankingSearcher anytimeSearcher =
-            new AnytimeRankingSearcher(base, 10, 100, "content")) {
+      IndexSearcher searcher = newSearcher(base);
+      searcher.setSimilarity(new BM25Similarity(2.0f, 0.2f));
+      try (AnytimeRankingSearcher anytimeSearcher =
+          new AnytimeRankingSearcher(base, 10, 100, "content")) {
 
-          ExecutorService exec =
-              Executors.newFixedThreadPool(4, new NamedThreadFactory("test-search"));
-          List<Future<TopDocs>> futures = new ArrayList<>();
+        ExecutorService exec =
+            Executors.newFixedThreadPool(4, new NamedThreadFactory("test-search"));
+        List<Future<TopDocs>> futures = new ArrayList<>();
 
-          Query query = new TermQuery(new Term("content", "lucene"));
-          for (int i = 0; i < 4; i++) {
-            futures.add(exec.submit(() -> anytimeSearcher.search(query)));
-          }
-
-          for (Future<TopDocs> f : futures) {
-            TopDocs d = f.get();
-            assertNotNull(d);
-            assertTrue(d.scoreDocs.length > 0);
-          }
-          exec.shutdown();
+        Query query = new TermQuery(new Term("content", "lucene"));
+        for (int i = 0; i < 4; i++) {
+          futures.add(exec.submit(() -> anytimeSearcher.search(query)));
         }
-      } finally {
-        IOUtils.close(base);
+
+        for (Future<TopDocs> f : futures) {
+          TopDocs d = f.get();
+          assertNotNull(d);
+          assertTrue(d.scoreDocs.length > 0);
+        }
+        exec.shutdown();
       }
     }
   }
