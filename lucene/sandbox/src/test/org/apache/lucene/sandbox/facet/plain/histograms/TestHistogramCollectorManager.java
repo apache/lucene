@@ -117,36 +117,18 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
   }
 
   public void testMultiRangePointTreeCollector() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
-
-    long[] values = new long[5000];
-
-    for (int i = 0; i < values.length; i++) {
-      values[i] = random().nextInt(0, 5000); // Generates a random integer
-    }
-
-    for (long value : values) {
-      Document doc = new Document();
-      // Adding indexed point field to verify multi range collector
-      doc.add(new LongPoint("f", value));
-      w.addDocument(doc);
-    }
-
-    DirectoryReader reader = DirectoryReader.open(w);
-    w.close();
-    IndexSearcher searcher = newSearcher(reader);
-    LongIntHashMap actualCounts =
-        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000));
-    LongIntHashMap expectedCounts = new LongIntHashMap();
-    for (long value : values) {
-      expectedCounts.addTo(Math.floorDiv(value, 1000), 1);
-    }
-    assertEquals(expectedCounts, actualCounts);
-
-    reader.close();
-    dir.close();
+    doTestManyDocuments(true, 2000, 1000);
   }
+
+  // TODO: We can remove this test
+  //  public void testBulkCollectorAgainstSkipIndex() throws IOException {
+  //    long bulkCollectorTime = doTestManyDocuments(true, 250000, 10000);
+  //    long skipIndexTime = doTestManyDocuments(false, 250000, 10000);
+  //
+  //    System.out.println("Bulk time was : " + bulkCollectorTime + " vs skip index time : " +
+  // skipIndexTime);
+  //    assert false;
+  //  }
 
   private void doTestSkipIndex(IndexWriterConfig cfg) throws IOException {
     Directory dir = newDirectory();
@@ -192,5 +174,45 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  private long doTestManyDocuments(boolean pointsEnabled, int numOfDocs, int bucketWidth)
+      throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+
+    long[] values = new long[numOfDocs];
+
+    for (int i = 0; i < values.length; i++) {
+      values[i] = random().nextInt(0, numOfDocs); // Generates a random integer
+    }
+
+    for (long value : values) {
+      Document doc = new Document();
+      if (pointsEnabled) {
+        // Adding indexed point field to verify multi range collector
+        doc.add(new LongPoint("f", value));
+      } else {
+        doc.add(NumericDocValuesField.indexedField("f", value));
+      }
+      w.addDocument(doc);
+    }
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    w.close();
+    final long startTime = System.nanoTime();
+    IndexSearcher searcher = newSearcher(reader);
+    LongIntHashMap actualCounts =
+        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", bucketWidth));
+    final long endTime = System.nanoTime();
+    LongIntHashMap expectedCounts = new LongIntHashMap();
+    for (long value : values) {
+      expectedCounts.addTo(Math.floorDiv(value, bucketWidth), 1);
+    }
+    assertEquals(expectedCounts, actualCounts);
+
+    reader.close();
+    dir.close();
+    return endTime - startTime;
   }
 }
