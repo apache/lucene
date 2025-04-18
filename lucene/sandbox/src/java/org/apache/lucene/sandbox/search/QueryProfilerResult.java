@@ -31,29 +31,45 @@ import java.util.Objects;
  * queries if applicable
  */
 public class QueryProfilerResult {
+  enum AggregationType {
+    // Leaf level is most verbose, practically no aggregation
+    LEAF,
+    // Aggregate leaf level breakdowns based on slice
+    SLICE,
+    // Aggregate leaf level breakdowns based on thread execution
+    THREAD
+  }
 
   private final String type;
   private final String description;
-  private final Map<String, Long> breakdown;
+  private final long startTime;
   private final long totalTime;
-  private final List<QueryProfilerResult> children;
+  private final AggregationType aggregationType;
+  private final Map<String, Long> queryBreakdowns;
+  private final List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns;
+  private final List<QueryProfilerResult> childrenProfileResults;
 
   public QueryProfilerResult(
       String type,
       String description,
-      Map<String, Long> breakdown,
-      long totalTime,
-      List<QueryProfilerResult> children) {
+      AggregationType aggregationType,
+      Map<String, Long> queryBreakdowns,
+      List<AggregatedQueryLeafProfilerResult> aggregatedQueryLeafBreakdowns,
+      List<QueryProfilerResult> childrenProfileResults,
+      long startTime,
+      long totalTime) {
     this.type = type;
     this.description = description;
-    this.breakdown = Objects.requireNonNull(breakdown, "required breakdown argument missing");
-    this.children = children == null ? Collections.emptyList() : children;
+    this.aggregationType = aggregationType;
+    this.queryBreakdowns =
+        Objects.requireNonNull(queryBreakdowns, "required breakdown argument missing");
+    this.aggregatedQueryLeafBreakdowns =
+        Objects.requireNonNull(
+            aggregatedQueryLeafBreakdowns, "required slice breakdowns argument missing");
+    this.childrenProfileResults =
+        childrenProfileResults == null ? Collections.emptyList() : childrenProfileResults;
+    this.startTime = startTime;
     this.totalTime = totalTime;
-  }
-
-  /** Retrieve the lucene description of this query (e.g. the "explain" text) */
-  public String getDescription() {
-    return description;
   }
 
   /** Retrieve the name of the entry (e.g. "TermQuery" or "LongTermsAggregator") */
@@ -61,9 +77,23 @@ public class QueryProfilerResult {
     return type;
   }
 
+  /** Retrieve the lucene description of this query (e.g. the "explain" text) */
+  public String getDescription() {
+    return description;
+  }
+
+  /** Retrieve the aggregation type of leaf level breakdowns for this query */
+  public AggregationType getAggregationType() {
+    return aggregationType;
+  }
+
   /** The timing breakdown for this node. */
   public Map<String, Long> getTimeBreakdown() {
-    return Collections.unmodifiableMap(breakdown);
+    return Collections.unmodifiableMap(queryBreakdowns);
+  }
+
+  public long getStartTime() {
+    return startTime;
   }
 
   /**
@@ -75,8 +105,12 @@ public class QueryProfilerResult {
     return totalTime;
   }
 
+  public List<AggregatedQueryLeafProfilerResult> getAggregatedQueryLeafBreakdowns() {
+    return Collections.unmodifiableList(aggregatedQueryLeafBreakdowns);
+  }
+
   /** Returns a list of all profiled children queries */
   public List<QueryProfilerResult> getProfiledChildren() {
-    return Collections.unmodifiableList(children);
+    return Collections.unmodifiableList(childrenProfileResults);
   }
 }
