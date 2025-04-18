@@ -96,6 +96,14 @@ Other
 ---------------------
 * GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
 
+======================= Lucene 10.2.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14522: Fix DISIDocIdStream::count so that it does not try to count beyond max.
+  (Chris Hegarty}
+
 ======================= Lucene 10.2.0 =======================
 
 API Changes
