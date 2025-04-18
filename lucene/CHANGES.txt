@@ -59,13 +59,20 @@ API Changes
 * GITHUB#14401: Added LeafCollector#collectRange to enable collector to take
   advantage of pre-aggregated data to speed up faceting. (Adrien Grand)
 
+* GITHUB#14417: Support modifying segmentInfos.counter in IndexWriter (Jialiang Guo)
+
+* GITHUB#14426: Support determining desired off-heap memory requirements through
+  KnnVectorsReader::getOffHeapByteSize (Chris Hegarty)
+
 New Features
 ---------------------
 (No changes)
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#14458 : Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
+
+* GITHUB#14476: Removing unnecessary splitX in ComponentTree (Ankit Jain)
 
 Optimizations
 ---------------------
@@ -73,13 +80,22 @@ Optimizations
 
 * GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
 
+* GITHUB#14425: KeywordField.newSetQuery() reuses prefixed terms (Mikhail Khludnev)
+
+* GITHUB#14333: Introduce a specialized trie for block tree index, instead of FST. (Guo Feng)
+
 Bug Fixes
 ---------------------
 (No changes)
 
+Build
+---------------------
+* Upgrade forbiddenapis to version 3.9.  (Uwe Schindler)
+
 Other
 ---------------------
-(No changes)
+* GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
+* GITHUB#14459: Minor refactoring of DocValuesConsumer to allow subclasses to reuse some of its merge logic. (Martijn van Groningen)
 
 ======================= Lucene 10.2.0 =======================
 
@@ -251,6 +267,8 @@ Bug Fixes
 * GITHUB#14215, GITHUB#14249, GITHUB#14366: Fix degenerate case in HNSW where all vectors have the same score. (Ben Trent, Ignacio Vera)
 
 * GITHUB#14320: Fix DirectIOIndexInput seek to not read when position is within buffer (Chris Hegarty)
+
+* GITHUB#14436: Disable connectedComponents logic in HNSW graph building. Relates to GITHUB#14214, GITHUB#12627, GITHUB#13566. (Ben Trent)
 
 Changes in Runtime Behavior
 ---------------------
