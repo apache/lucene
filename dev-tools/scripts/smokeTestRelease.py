@@ -603,21 +603,7 @@ def verifyUnpacked(java: Any, artifact: str, unpackPath: str, gitRevision: str, 
     "licenses",
   ]
   if isSrc:
-    expected_src_root_files = [
-      "build.gradle",
-      "build-tools",
-      "CONTRIBUTING.md",
-      "dev-docs",
-      "dev-tools",
-      "gradle",
-      "gradlew",
-      "gradlew.bat",
-      "help",
-      "lucene",
-      "settings.gradle",
-      "versions.lock",
-      "versions.toml",
-    ]
+    expected_src_root_files = ["build.gradle", "build-tools", "CONTRIBUTING.md", "dev-docs", "dev-tools", "gradle", "gradlew", "gradlew.bat", "help", "lucene", "settings.gradle", "versions.lock"]
     expected_src_lucene_files = ["build.gradle", "documentation", "distribution", "dev-docs"]
     is_in_list(in_root_folder, expected_src_root_files)
     is_in_list(in_lucene_folder, expected_folders)
