@@ -108,18 +108,17 @@ public class TestAnytimeRankingRelevanceSearch extends LuceneTestCase {
 
   @Test
   public void testBM25ScoringDiversity() throws Exception {
-    try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)))) {
-      IndexSearcher searcher = newSearcher(reader);
+    IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
+
+    try (AnytimeRankingSearcher anytime = new AnytimeRankingSearcher(reader, 10, 50, "content")) {
+      IndexSearcher searcher = anytime.getSearcher();
       searcher.setSimilarity(new BM25Similarity());
 
-      try (AnytimeRankingSearcher anytimeSearcher =
-          new AnytimeRankingSearcher(reader, 10, 50, "content")) {
-        Query query = new TermQuery(new Term("content", "scoring"));
-        TopDocs results = anytimeSearcher.search(query);
+      Query query = new TermQuery(new Term("content", "scoring"));
+      TopDocs results = anytime.search(query);
 
-        assertNotNull("Results should not be null", results);
-        assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
-      }
+      assertNotNull("Results should not be null", results);
+      assertTrue("Results should be greater than zero", results.scoreDocs.length > 0);
     }
   }
 
