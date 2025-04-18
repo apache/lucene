@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
+import org.apache.lucene.codecs.lucene103.Lucene103Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -80,7 +80,7 @@ public class AnytimeRankingBenchmark {
     Path tempDir = Files.createTempDirectory("anytime-benchmark");
     directory = new MMapDirectory(tempDir);
     IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
-    config.setCodec(new Lucene101Codec());
+    config.setCodec(new Lucene103Codec());
     config.setUseCompoundFile(false);
 
     FieldType fieldType = new FieldType(TextField.TYPE_NOT_STORED);
@@ -107,7 +107,7 @@ public class AnytimeRankingBenchmark {
     reader = DirectoryReader.open(directory);
     baselineSearcher = new IndexSearcher(reader);
     baselineSearcher.setSimilarity(new BM25Similarity());
-    anytimeSearcher = new AnytimeRankingSearcher(baselineSearcher, 10, 5, "field");
+    anytimeSearcher = new AnytimeRankingSearcher(reader, 10, 5, "field");
     query = new TermQuery(new Term("field", "lucene"));
   }
 

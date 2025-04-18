@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
+import org.apache.lucene.codecs.lucene103.Lucene103Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -80,7 +80,7 @@ public class AnytimeMultiSegmentBenchmark {
     Path path = Files.createTempDirectory("benchmark-segments");
     dir = new MMapDirectory(path);
     IndexWriterConfig iwc = new IndexWriterConfig(new FixedTokenAnalyzer());
-    iwc.setCodec(new Lucene101Codec());
+    iwc.setCodec(new Lucene103Codec());
     iwc.setUseCompoundFile(false);
     iwc.setMaxBufferedDocs(50); // force multiple flushes
 
@@ -108,7 +108,7 @@ public class AnytimeMultiSegmentBenchmark {
     searcher = new IndexSearcher(reader);
     searcher.setSimilarity(new BM25Similarity());
 
-    anytimeSearcher = new AnytimeRankingSearcher(searcher, 10, 5, "field");
+    anytimeSearcher = new AnytimeRankingSearcher(reader, 10, 5, "field");
     query = new TermQuery(new Term("field", "lucene"));
   }
 

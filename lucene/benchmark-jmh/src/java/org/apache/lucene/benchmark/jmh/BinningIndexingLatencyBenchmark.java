@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
+import org.apache.lucene.codecs.lucene103.Lucene103Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -90,7 +90,7 @@ public class BinningIndexingLatencyBenchmark {
     tempDir = Files.createTempDirectory("lucene-binning-benchmark");
     try (Directory dir = new MMapDirectory(tempDir)) {
       IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
-      config.setCodec(new Lucene101Codec());
+      config.setCodec(new Lucene103Codec());
       config.setUseCompoundFile(false);
 
       try (IndexWriter writer = new IndexWriter(dir, config)) {
