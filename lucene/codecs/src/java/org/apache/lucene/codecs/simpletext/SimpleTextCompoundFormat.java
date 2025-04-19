@@ -140,7 +140,7 @@ public class SimpleTextCompoundFormat extends CompoundFormat {
             name,
             startOffsets[index],
             endOffsets[index] - startOffsets[index],
-            context.readAdvice());
+            toReadAdvice(context));
       }
 
       @Override

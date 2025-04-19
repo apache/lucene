@@ -175,6 +175,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockFactory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
+import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.AlcoholicMergePolicy;
 import org.apache.lucene.tests.index.AssertingDirectoryReader;
@@ -1806,38 +1807,38 @@ public abstract class LuceneTestCase extends Assert {
 
   /** TODO: javadoc */
   public static IOContext newIOContext(Random random, IOContext oldContext) {
-    if (oldContext == IOContext.READONCE) {
-      return oldContext; // don't mess with the READONCE singleton
+    if (ReadOnceHint.isReadOnce(oldContext)) {
+      return oldContext; // just return as-is
     }
     final int randomNumDocs = random.nextInt(4192);
     final int size = random.nextInt(512) * randomNumDocs;
     if (oldContext.flushInfo() != null) {
       // Always return at least the estimatedSegmentSize of
       // the incoming IOContext:
-      return new IOContext(
+      return IOContext.flush(
           new FlushInfo(
               randomNumDocs, Math.max(oldContext.flushInfo().estimatedSegmentSize(), size)));
     } else if (oldContext.mergeInfo() != null) {
       // Always return at least the estimatedMergeBytes of
       // the incoming IOContext:
-      return new IOContext(
+      return IOContext.merge(
           new MergeInfo(
               randomNumDocs,
               Math.max(oldContext.mergeInfo().estimatedMergeBytes(), size),
               random.nextBoolean(),
               TestUtil.nextInt(random, 1, 100)));
     } else {
-      // Make a totally random IOContext, except READONCE which has semantic implications
+      // Make a totally random IOContext
       final IOContext context;
       switch (random.nextInt(3)) {
         case 0:
           context = IOContext.DEFAULT;
           break;
         case 1:
-          context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
+          context = IOContext.merge(new MergeInfo(randomNumDocs, size, true, -1));
           break;
         case 2:
-          context = new IOContext(new FlushInfo(randomNumDocs, size));
+          context = IOContext.flush(new FlushInfo(randomNumDocs, size));
           break;
         default:
           context = IOContext.DEFAULT;

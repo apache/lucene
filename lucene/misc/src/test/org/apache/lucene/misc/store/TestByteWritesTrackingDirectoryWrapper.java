@@ -43,7 +43,7 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
     int expectedMergeBytes = random().nextInt(100);
 
     IndexOutput output =
-        dir.createOutput("write", new IOContext(new FlushInfo(10, expectedFlushBytes)));
+        dir.createOutput("write", IOContext.flush(new FlushInfo(10, expectedFlushBytes)));
     byte[] flushBytesArr = new byte[expectedFlushBytes];
     for (int i = 0; i < expectedFlushBytes; i++) {
       flushBytesArr[i] = (byte) random().nextInt(127);
@@ -55,7 +55,7 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
 
     // now merge bytes
     output =
-        dir.createOutput("merge", new IOContext(new MergeInfo(10, expectedMergeBytes, false, 2)));
+        dir.createOutput("merge", IOContext.merge(new MergeInfo(10, expectedMergeBytes, false, 2)));
     byte[] mergeBytesArr = new byte[expectedMergeBytes];
     for (int i = 0; i < expectedMergeBytes; i++) {
       mergeBytesArr[i] = (byte) random().nextInt(127);
@@ -77,7 +77,8 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
     int expectedMergeBytes = random().nextInt(100);
 
     IndexOutput output =
-        dir.createTempOutput("temp", "write", new IOContext(new FlushInfo(10, expectedFlushBytes)));
+        dir.createTempOutput(
+            "temp", "write", IOContext.flush(new FlushInfo(10, expectedFlushBytes)));
     byte[] flushBytesArr = new byte[expectedFlushBytes];
     for (int i = 0; i < expectedFlushBytes; i++) {
       flushBytesArr[i] = (byte) random().nextInt(127);
@@ -90,7 +91,7 @@ public class TestByteWritesTrackingDirectoryWrapper extends BaseDirectoryTestCas
     // now merge bytes
     output =
         dir.createTempOutput(
-            "temp", "merge", new IOContext(new MergeInfo(10, expectedMergeBytes, false, 2)));
+            "temp", "merge", IOContext.merge(new MergeInfo(10, expectedMergeBytes, false, 2)));
     byte[] mergeBytesArr = new byte[expectedMergeBytes];
     for (int i = 0; i < expectedMergeBytes; i++) {
       mergeBytesArr[i] = (byte) random().nextInt(127);

@@ -210,7 +210,7 @@ public class TestDoc extends LuceneTestCase {
       String merged,
       boolean useCompoundFile)
       throws Exception {
-    IOContext context = newIOContext(random(), new IOContext(new MergeInfo(-1, -1, false, -1)));
+    IOContext context = newIOContext(random(), IOContext.merge(new MergeInfo(-1, -1, false, -1)));
     SegmentReader r1 = new SegmentReader(si1, Version.LATEST.major, context);
     SegmentReader r2 = new SegmentReader(si2, Version.LATEST.major, context);
 

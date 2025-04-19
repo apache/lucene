@@ -54,6 +54,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.ThrottledIndexOutput;
@@ -814,9 +815,9 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
     }
 
     // record the read advice before randomizing the context
-    ReadAdvice readAdvice = context.readAdvice();
+    ReadAdvice readAdvice = toReadAdvice(context);
     context = LuceneTestCase.newIOContext(randomState, context);
-    final boolean confined = context == IOContext.READONCE;
+    final boolean confined = ReadOnceHint.isReadOnce(context);
     if (name.startsWith(IndexFileNames.SEGMENTS) && confined == false) {
       throw new RuntimeException(
           "MockDirectoryWrapper: opening segments file ["
