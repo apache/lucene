@@ -111,19 +111,32 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         MMapDirectory.supportsMadvise());
   }
 
-  // Opens the input with ReadAdvice.NORMAL to ensure basic code path coverage.
+  private record OverrideReadAdvice(ReadAdvice readAdvice) implements IOContext.FileOpenHint {}
+
+  // RANDOM is the default (see Constants.DEFAULT_READADVICE), so test with NORMAL too
   public void testWithNormal() throws Exception {
     final int size = 8 * 1024;
     byte[] bytes = new byte[size];
     random().nextBytes(bytes);
 
-    try (Directory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
+    try (Directory dir =
+        new MMapDirectory(createTempDir("testWithRandom")) {
+          @Override
+          protected ReadAdvice toReadAdvice(IOContext context) {
+            return context
+                .hints(OverrideReadAdvice.class)
+                .findAny()
+                .map(OverrideReadAdvice::readAdvice)
+                .orElseGet(() -> super.toReadAdvice(context));
+          }
+        }) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         out.writeBytes(bytes, 0, bytes.length);
       }
 
       try (final IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL))) {
+          dir.openInput(
+              "test", IOContext.DEFAULT.withHints(new OverrideReadAdvice(ReadAdvice.NORMAL)))) {
         final byte[] readBytes = new byte[size];
         in.readBytes(readBytes, 0, readBytes.length);
         assertArrayEquals(bytes, readBytes);

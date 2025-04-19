@@ -21,8 +21,12 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.Collection; // for javadocs
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -78,6 +82,55 @@ public abstract class Directory implements Closeable {
    * @throws IOException in case of I/O error
    */
   public abstract long fileLength(String name) throws IOException;
+
+  protected void validateIOContext(IOContext context) {
+    Map<Class<? extends IOContext.FileOpenHint>, List<IOContext.FileOpenHint>> hintClasses =
+        context.hints().stream().collect(Collectors.groupingBy(IOContext.FileOpenHint::getClass));
+
+    // there should only be one of FileType, FileData, DataAccess
+    List<IOContext.FileOpenHint> fileTypes =
+        hintClasses.getOrDefault(FileTypeHint.class, List.of());
+    if (fileTypes.size() > 1) {
+      throw new IllegalArgumentException("Multiple file type hints specified: " + fileTypes);
+    }
+    List<IOContext.FileOpenHint> fileData = hintClasses.getOrDefault(FileDataHint.class, List.of());
+    if (fileData.size() > 1) {
+      throw new IllegalArgumentException("Multiple file data hints specified: " + fileData);
+    }
+    List<IOContext.FileOpenHint> dataAccess =
+        hintClasses.getOrDefault(DataAccessHint.class, List.of());
+    if (dataAccess.size() > 1) {
+      throw new IllegalArgumentException("Multiple data access hints specified: " + dataAccess);
+    }
+  }
+
+  protected ReadAdvice toReadAdvice(IOContext context) {
+    if (context.context() == IOContext.Context.MERGE
+        || context.context() == IOContext.Context.FLUSH) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    if (context.hints().contains(DataAccessHint.RANDOM)) {
+      if (context.hints().contains(FileTypeHint.INDEX)) {
+        return ReadAdvice.RANDOM_PRELOAD;
+      }
+      return ReadAdvice.RANDOM;
+    }
+    if (context.hints().contains(DataAccessHint.SEQUENTIAL)) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    if (context.hints().contains(FileTypeHint.DATA)) {
+      return ReadAdvice.NORMAL;
+    }
+    // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
+    // readahead.
+    if (context.hints().contains(FileDataHint.POSTINGS)) {
+      return ReadAdvice.NORMAL;
+    }
+
+    return Constants.DEFAULT_READADVICE;
+  }
 
   /**
    * Creates a new, empty file in the directory and returns an {@link IndexOutput} instance for

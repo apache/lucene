@@ -814,7 +814,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
     }
 
     // record the read advice before randomizing the context
-    ReadAdvice readAdvice = context.readAdvice();
+    ReadAdvice readAdvice = toReadAdvice(context);
     context = LuceneTestCase.newIOContext(randomState, context);
     final boolean confined = context == IOContext.READONCE;
     if (name.startsWith(IndexFileNames.SEGMENTS) && confined == false) {

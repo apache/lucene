@@ -27,20 +27,38 @@ import org.apache.lucene.store.ReadAdvice;
 
 public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
 
+  private record OverrideReadAdvice(ReadAdvice readAdvice) implements IOContext.FileOpenHint {}
+
+  private static class ReadAdviceSerialIOCountingDirectory extends SerialIOCountingDirectory {
+    public ReadAdviceSerialIOCountingDirectory(Directory in) {
+      super(in);
+    }
+
+    @Override
+    protected ReadAdvice toReadAdvice(IOContext context) {
+      return context
+          .hints(OverrideReadAdvice.class)
+          .findAny()
+          .map(OverrideReadAdvice::readAdvice)
+          .orElseGet(() -> super.toReadAdvice(context));
+    }
+  }
+
   @Override
   protected Directory getDirectory(Path path) throws IOException {
-    return new SerialIOCountingDirectory(FSDirectory.open(path));
+    return new ReadAdviceSerialIOCountingDirectory(FSDirectory.open(path));
   }
 
   public void testSequentialReads() throws IOException {
-    try (SerialIOCountingDirectory dir = new SerialIOCountingDirectory(newDirectory())) {
+    try (SerialIOCountingDirectory dir = new ReadAdviceSerialIOCountingDirectory(newDirectory())) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         for (int i = 0; i < 10; ++i) {
           out.writeBytes(new byte[4096], 4096);
         }
       }
       try (IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL))) {
+          dir.openInput(
+              "test", IOContext.DEFAULT.withHints(new OverrideReadAdvice(ReadAdvice.NORMAL)))) {
         in.readByte();
         long count = dir.count();
         while (in.getFilePointer() < in.length()) {
@@ -50,7 +68,8 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
         assertEquals(count, dir.count());
       }
       try (IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.RANDOM))) {
+          dir.openInput(
+              "test", IOContext.DEFAULT.withHints(new OverrideReadAdvice(ReadAdvice.RANDOM)))) {
         in.readByte();
         long count = dir.count();
         while (in.getFilePointer() < in.length()) {
@@ -63,14 +82,15 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
   }
 
   public void testParallelReads() throws IOException {
-    try (SerialIOCountingDirectory dir = new SerialIOCountingDirectory(newDirectory())) {
+    try (SerialIOCountingDirectory dir = new ReadAdviceSerialIOCountingDirectory(newDirectory())) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         for (int i = 0; i < 10; ++i) {
           out.writeBytes(new byte[4096], 4096);
         }
       }
       try (IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.RANDOM))) {
+          dir.openInput(
+              "test", IOContext.DEFAULT.withHints(new OverrideReadAdvice(ReadAdvice.RANDOM)))) {
         long count = dir.count();
 
         // count is incremented on the first prefetch
