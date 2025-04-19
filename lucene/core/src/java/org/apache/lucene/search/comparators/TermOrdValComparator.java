@@ -529,6 +529,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      upTo = Math.min(upTo, maxDoc);
       if (upTo <= doc) {
         return;
       }
@@ -536,10 +537,13 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       // hasn't nailed down a disjunction of competitive terms yet.
       if (disjunction == null) {
         if (docsWithField != null) {
+          // we need to be absolutely sure that the iterator is at least at offset
+          if (docsWithField.docID() < offset) {
+            docsWithField.advance(offset);
+          }
           docsWithField.intoBitSet(upTo, bitSet, offset);
           doc = docsWithField.docID();
         } else {
-          upTo = Math.min(upTo, maxDoc);
           bitSet.set(doc - offset, upTo - offset);
           doc = upTo;
         }
