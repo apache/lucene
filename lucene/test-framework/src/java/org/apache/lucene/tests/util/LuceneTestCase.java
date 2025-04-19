@@ -205,6 +205,8 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
+import org.hamcrest.Matcher;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -2084,6 +2086,15 @@ public abstract class LuceneTestCase extends Assert {
   /** Gets a resource from the test's classpath as {@link InputStream}. */
   protected InputStream getDataInputStream(String name) throws IOException {
     return IOUtils.requireResourceNonNull(this.getClass().getResourceAsStream(name), name);
+  }
+
+  // these hide the deprecated Assert.assertThat method
+  public static <T> void assertThat(T actual, Matcher<? super T> matcher) {
+    MatcherAssert.assertThat(actual, matcher);
+  }
+
+  public static <T> void assertThat(String reason, T actual, Matcher<? super T> matcher) {
+    MatcherAssert.assertThat(reason, actual, matcher);
   }
 
   public void assertReaderEquals(String info, IndexReader leftReader, IndexReader rightReader)

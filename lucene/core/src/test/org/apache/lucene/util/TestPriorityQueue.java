@@ -16,6 +16,10 @@
  */
 package org.apache.lucene.util;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -24,7 +28,6 @@ import java.util.NoSuchElementException;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 
 @SuppressWarnings("BoxedPrimitiveEquality")
@@ -94,7 +97,7 @@ public class TestPriorityQueue extends LuceneTestCase {
 
     // All elements are "equal" so we should have exactly the indexes of those elements that were
     // added first.
-    MatcherAssert.assertThat(indexes, Matchers.containsInAnyOrder(0, 1, 2, 3, 4));
+    assertThat(indexes, Matchers.containsInAnyOrder(0, 1, 2, 3, 4));
   }
 
   public void testPQ() throws Exception {
@@ -114,7 +117,7 @@ public class TestPriorityQueue extends LuceneTestCase {
     int last = Integer.MIN_VALUE;
     for (int i = 0; i < count; i++) {
       Integer next = pq.pop();
-      assertTrue(next.intValue() >= last);
+      assertThat(next, greaterThanOrEqualTo(last));
       last = next.intValue();
       sum2 += last;
     }
@@ -158,10 +161,10 @@ public class TestPriorityQueue extends LuceneTestCase {
     assertNull(pq.insertWithOverflow(i2));
     assertNull(pq.insertWithOverflow(i3));
     assertNull(pq.insertWithOverflow(i4));
-    assertTrue(pq.insertWithOverflow(i5) == i3); // i3 should have been dropped
-    assertTrue(pq.insertWithOverflow(i6) == i6); // i6 should not have been inserted
-    assertEquals(size, pq.size());
-    assertEquals((Integer) 2, pq.top());
+    assertThat(pq.insertWithOverflow(i5), equalTo(i3)); // i3 should have been dropped
+    assertThat(pq.insertWithOverflow(i6), equalTo(i6)); // i6 should not have been inserted
+    assertThat(pq.size(), equalTo(size));
+    assertThat(pq.top(), equalTo(2));
   }
 
   public void testAddAllToEmptyQueue() {
@@ -236,8 +239,8 @@ public class TestPriorityQueue extends LuceneTestCase {
       if ((lastLeast != null) && (newLeast != newEntry) && (newLeast != lastLeast)) {
         // If there has been a change of least entry and it wasn't our new
         // addition we expect the scores to increase
-        assertTrue(newLeast <= newEntry);
-        assertTrue(newLeast >= lastLeast);
+        assertThat(newLeast, lessThanOrEqualTo(newEntry));
+        assertThat(newLeast, greaterThanOrEqualTo(lastLeast));
       }
       lastLeast = newLeast;
     }
@@ -259,8 +262,8 @@ public class TestPriorityQueue extends LuceneTestCase {
         // If there has been a change of least entry and it wasn't our new
         // addition or the loss of our randomly removed entry we expect the
         // scores to increase
-        assertTrue(newLeast <= newEntry);
-        assertTrue(newLeast >= lastLeast);
+        assertThat(newLeast, lessThanOrEqualTo(newEntry));
+        assertThat(newLeast, greaterThanOrEqualTo(lastLeast));
       }
       lastLeast = newLeast;
     }
