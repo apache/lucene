@@ -108,7 +108,7 @@ public final class ApproximateDocGraphBuilder {
       }
 
       int tokenId =
-          tokenIdMap.computeIfAbsent(BytesRef.deepCopyOf(term), t -> nextTokenId.getAndIncrement());
+          tokenIdMap.computeIfAbsent(BytesRef.deepCopyOf(term), _ -> nextTokenId.getAndIncrement());
       BitSet seen = new BitSet(maxDoc);
 
       while (postings.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
