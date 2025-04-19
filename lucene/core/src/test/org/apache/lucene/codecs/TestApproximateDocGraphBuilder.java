@@ -40,17 +40,19 @@ public class TestApproximateDocGraphBuilder extends LuceneTestCase {
 
     try (IndexWriter writer =
         new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
-      writer.addDocument(singleFieldDoc("alpha beta gamma", ft));
-      writer.addDocument(singleFieldDoc("beta gamma delta", ft));
-      writer.addDocument(singleFieldDoc("zeta eta theta", ft));
-      writer.addDocument(singleFieldDoc("alpha delta epsilon", ft));
-      writer.addDocument(singleFieldDoc("rho sigma phi", ft));
+      writer.addDocument(singleFieldDoc("alpha beta gamma", ft)); // doc 0
+      writer.addDocument(singleFieldDoc("beta gamma delta", ft)); // doc 1
+      writer.addDocument(singleFieldDoc("zeta eta theta", ft)); // doc 2
+      writer.addDocument(singleFieldDoc("alpha delta epsilon", ft)); // doc 3
+      writer.addDocument(singleFieldDoc("rho sigma phi", ft)); // doc 4
       writer.commit();
     }
 
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
-      ApproximateDocGraphBuilder builder = new ApproximateDocGraphBuilder("field", 3);
-      SparseEdgeGraph graph = builder.build(reader.leaves().get(0).reader());
+      // Use lower threshold to force connectivity
+      SparseEdgeGraph graph =
+          new ApproximateDocGraphBuilder("field", 5 /* max edges */)
+              .build(reader.leaves().get(0).reader());
 
       assertEquals("Each doc should be represented in the graph", 5, graph.size());
 
@@ -68,7 +70,8 @@ public class TestApproximateDocGraphBuilder extends LuceneTestCase {
       Set<Integer> connected =
           Arrays.stream(graph.getNeighbors(0)).boxed().collect(Collectors.toSet());
       assertTrue(
-          "Doc 1 should be connected to doc 0", connected.contains(1) || connected.contains(3));
+          "Doc 1 or 3 should be connected to doc 0",
+          connected.contains(1) || connected.contains(3));
     }
 
     dir.close();

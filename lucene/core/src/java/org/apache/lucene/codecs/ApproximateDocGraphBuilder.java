@@ -25,12 +25,12 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Approximates a sparse similarity graph from token co-occurrence using compact token ID
- * representations and edge pruning heuristics.
+ * Approximates a sparse document similarity graph based on token co-occurrence patterns.
  *
- * <p>This builder avoids full term vector reconstruction and uses BitSets to identify candidate
- * overlaps efficiently. Token frequency pruning and early edge rejection are used to scale to large
- * corpora.
+ * <p>This builder avoids full term vector reconstruction and uses BitSets and edge pruning
+ * heuristics to efficiently compute sparse edges for each document. Tokens are internally remapped
+ * to compact integer IDs. Terms with very high document frequency are skipped to avoid noisy or
+ * global tokens.
  */
 public final class ApproximateDocGraphBuilder {
 
@@ -40,53 +40,55 @@ public final class ApproximateDocGraphBuilder {
   /** Minimum shared token overlap required to retain an edge. */
   private static final int MIN_TOKEN_OVERLAP = 2;
 
-  /** Skip tokens with DF ratio above this threshold (i.e., stopword-like). */
-  private static final float MAX_DOC_FREQ_RATIO = 0.05f;
-
   private final String field;
   private final int maxEdgesPerDoc;
   private final boolean useParallel;
+  private final float maxDocFreqRatio;
 
   /**
-   * Creates a new graph builder for the specified field.
+   * Constructs a builder using the default document frequency pruning threshold.
    *
-   * @param field the indexed field to use for term overlap computation
-   * @param maxEdgesPerDoc maximum number of outgoing edges to retain per document
+   * @param field indexed field name
+   * @param maxEdgesPerDoc maximum number of edges per document
    */
   public ApproximateDocGraphBuilder(String field, int maxEdgesPerDoc) {
-    this(field, maxEdgesPerDoc, false);
+    this(field, maxEdgesPerDoc, false, 1.0f /* Disable pruning high frequency terms */);
   }
 
   /**
-   * Creates a new graph builder with optional parallel edge generation.
+   * Constructs a builder with parallelism and frequency filtering options.
    *
-   * @param field the indexed field
-   * @param maxEdgesPerDoc maximum edges per doc
-   * @param useParallel whether to parallelize edge construction
+   * @param field indexed field name
+   * @param maxEdgesPerDoc maximum number of edges per document
+   * @param useParallel whether to parallelize graph construction
+   * @param maxDocFreqRatio max allowed DF as a fraction of total docs
    */
-  public ApproximateDocGraphBuilder(String field, int maxEdgesPerDoc, boolean useParallel) {
+  public ApproximateDocGraphBuilder(
+      String field, int maxEdgesPerDoc, boolean useParallel, float maxDocFreqRatio) {
     this.field = field;
     this.maxEdgesPerDoc = maxEdgesPerDoc;
     this.useParallel = useParallel;
+    this.maxDocFreqRatio = maxDocFreqRatio;
   }
 
   /**
-   * Constructs a sparse document similarity graph from token co-occurrence.
+   * Builds a sparse document similarity graph using token co-occurrence statistics. Each document
+   * is connected to up to {@code maxEdgesPerDoc} other documents that share at least {@code
+   * MIN_TOKEN_OVERLAP} tokens. Edge weights are computed as: {@code overlap / max(tokensA.size(),
+   * tokensB.size())}.
    *
-   * <p>Documents that share tokens are considered candidates for similarity, and edges are added
-   * based on normalized token overlap.
-   *
-   * @param reader a leaf reader over a single Lucene segment
-   * @return a sparse document similarity graph based on token overlap
-   * @throws IOException if an I/O error occurs
+   * @param reader a leaf reader for a single segment
+   * @return a sparse similarity graph over the segment
+   * @throws IOException on low-level I/O error
    */
   @SuppressWarnings("unchecked")
   public SparseEdgeGraph build(LeafReader reader) throws IOException {
     final int maxDoc = reader.maxDoc();
     final InMemorySparseEdgeGraph graph = new InMemorySparseEdgeGraph();
+
     final Set<Integer>[] docTokens = (Set<Integer>[]) new Set<?>[maxDoc];
-    final Map<Integer, BitSet> tokenBitsets = new HashMap<>();
-    final Map<BytesRef, Integer> tokenIdMap = new HashMap<>();
+    final Map<Integer, BitSet> tokenToDocs = new HashMap<>();
+    final Map<BytesRef, Integer> tokenIds = new HashMap<>();
     final AtomicInteger nextTokenId = new AtomicInteger();
 
     Terms terms = reader.terms(field);
@@ -97,8 +99,8 @@ public final class ApproximateDocGraphBuilder {
     TermsEnum termsEnum = terms.iterator();
     BytesRef term;
     while ((term = termsEnum.next()) != null) {
-      int docFreq = termsEnum.docFreq();
-      if (docFreq > maxDoc * MAX_DOC_FREQ_RATIO) {
+      final int docFreq = termsEnum.docFreq();
+      if (maxDocFreqRatio < 1.0f && docFreq > maxDoc * maxDocFreqRatio) {
         continue;
       }
 
@@ -107,12 +109,12 @@ public final class ApproximateDocGraphBuilder {
         continue;
       }
 
-      int tokenId =
-          tokenIdMap.computeIfAbsent(BytesRef.deepCopyOf(term), _ -> nextTokenId.getAndIncrement());
-      BitSet seen = new BitSet(maxDoc);
+      final int tokenId =
+          tokenIds.computeIfAbsent(BytesRef.deepCopyOf(term), _ -> nextTokenId.getAndIncrement());
+      final BitSet seen = new BitSet(maxDoc);
 
       while (postings.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-        int docID = postings.docID();
+        final int docID = postings.docID();
         seen.set(docID);
         Set<Integer> tokens = docTokens[docID];
         if (tokens == null) {
@@ -122,7 +124,7 @@ public final class ApproximateDocGraphBuilder {
         tokens.add(tokenId);
       }
 
-      tokenBitsets.put(tokenId, seen);
+      tokenToDocs.put(tokenId, seen);
     }
 
     IntStream docStream = IntStream.range(0, maxDoc);
@@ -137,16 +139,12 @@ public final class ApproximateDocGraphBuilder {
             return;
           }
 
-          BitSet candidates = new BitSet(maxDoc);
+          final BitSet candidates = new BitSet(maxDoc);
           for (int tokenId : tokensA) {
-            BitSet seen = tokenBitsets.get(tokenId);
-            if (seen != null && candidates.cardinality() <= maxEdgesPerDoc * 2) {
+            BitSet seen = tokenToDocs.get(tokenId);
+            if (seen != null) {
               candidates.or(seen);
             }
-          }
-
-          if (candidates.cardinality() > maxEdgesPerDoc * 4) {
-            return;
           }
 
           int added = 0;
@@ -171,7 +169,7 @@ public final class ApproximateDocGraphBuilder {
             }
 
             if (overlap >= MIN_TOKEN_OVERLAP) {
-              float weight = (float) overlap / Math.max(tokensA.size(), tokensB.size());
+              final float weight = (float) overlap / Math.max(tokensA.size(), tokensB.size());
               synchronized (graph) {
                 graph.addEdge(docA, docB, weight);
               }
