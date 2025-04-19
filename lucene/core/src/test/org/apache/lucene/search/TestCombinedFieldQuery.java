@@ -42,54 +42,78 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 
 public class TestCombinedFieldQuery extends LuceneTestCase {
   public void testInvalid() {
-    CombinedFieldQuery.Builder builder = new CombinedFieldQuery.Builder("foo");
+    CombinedFieldQuery.Builder builder = new CombinedFieldQuery.Builder();
     IllegalArgumentException exc =
         expectThrows(IllegalArgumentException.class, () -> builder.addField("foo", 0.5f));
     assertEquals(exc.getMessage(), "weight must be greater or equal to 1");
   }
 
   public void testRewrite() throws IOException {
-    CombinedFieldQuery.Builder builder = new CombinedFieldQuery.Builder("foo");
+    CombinedFieldQuery.Builder builder = new CombinedFieldQuery.Builder();
     IndexReader reader = new MultiReader();
     IndexSearcher searcher = new IndexSearcher(reader);
     Query actual = searcher.rewrite(builder.build());
-    assertEquals(new MatchNoDocsQuery(), actual);
+    assertEquals(actual, new MatchNoDocsQuery());
     builder.addField("field", 1f);
-    Query query = builder.build();
     actual = searcher.rewrite(builder.build());
-    assertEquals(query, actual);
+    assertEquals(actual, new MatchNoDocsQuery());
+    builder.addTerm(new BytesRef("foo"));
+    Query query = builder.build();
+    actual = searcher.rewrite(query);
+    assertEquals(actual, query);
   }
 
   public void testEqualsAndHashCode() {
     CombinedFieldQuery query1 =
-        new CombinedFieldQuery.Builder("value").addField("field1").addField("field2").build();
+        new CombinedFieldQuery.Builder()
+            .addField("field1")
+            .addField("field2")
+            .addTerm(new BytesRef("value"))
+            .build();
 
     CombinedFieldQuery query2 =
-        new CombinedFieldQuery.Builder("value").addField("field1").addField("field2", 1.3f).build();
+        new CombinedFieldQuery.Builder()
+            .addField("field1")
+            .addField("field2", 1.3f)
+            .addTerm(new BytesRef("value"))
+            .build();
     assertNotEquals(query1, query2);
     assertNotEquals(query1.hashCode(), query2.hashCode());
 
     CombinedFieldQuery query3 =
-        new CombinedFieldQuery.Builder("value").addField("field3").addField("field4").build();
+        new CombinedFieldQuery.Builder()
+            .addField("field3")
+            .addField("field4")
+            .addTerm(new BytesRef("value"))
+            .build();
     assertNotEquals(query1, query3);
     assertNotEquals(query1.hashCode(), query2.hashCode());
 
     CombinedFieldQuery duplicateQuery1 =
-        new CombinedFieldQuery.Builder("value").addField("field1").addField("field2").build();
+        new CombinedFieldQuery.Builder()
+            .addField("field1")
+            .addField("field2")
+            .addTerm(new BytesRef("value"))
+            .build();
     assertEquals(query1, duplicateQuery1);
     assertEquals(query1.hashCode(), duplicateQuery1.hashCode());
   }
 
   public void testToString() {
-    CombinedFieldQuery.Builder builder = new CombinedFieldQuery.Builder("bar");
-    assertEquals("CombinedFieldQuery(()(bar))", builder.build().toString());
+    assertEquals("CombinedFieldQuery(()())", new CombinedFieldQuery.Builder().build().toString());
+    CombinedFieldQuery.Builder builder = new CombinedFieldQuery.Builder();
     builder.addField("foo", 1f);
+    assertEquals("CombinedFieldQuery((foo)())", builder.build().toString());
+    builder.addTerm(new BytesRef("bar"));
     assertEquals("CombinedFieldQuery((foo)(bar))", builder.build().toString());
     builder.addField("title", 3f);
     assertEquals("CombinedFieldQuery((foo title^3.0)(bar))", builder.build().toString());
+    builder.addTerm(new BytesRef("baz"));
+    assertEquals("CombinedFieldQuery((foo title^3.0)(bar baz))", builder.build().toString());
   }
 
   public void testSameScore() throws IOException {
@@ -114,7 +138,11 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     searcher.setSimilarity(similarity);
     CombinedFieldQuery query =
-        new CombinedFieldQuery.Builder("a").addField("f", 1f).addField("g", 1f).build();
+        new CombinedFieldQuery.Builder()
+            .addField("f", 1f)
+            .addField("g", 1f)
+            .addTerm(new BytesRef("a"))
+            .build();
     TopScoreDocCollectorManager collectorManager =
         new TopScoreDocCollectorManager(
             Math.min(reader.numDocs(), Integer.MAX_VALUE), Integer.MAX_VALUE);
@@ -188,9 +216,11 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     searcher.setSimilarity(similarity);
 
     CombinedFieldQuery query =
-        new CombinedFieldQuery.Builder("foo")
+        new CombinedFieldQuery.Builder()
             .addField("a", (float) boost1)
             .addField("b", (float) boost2)
+            .addTerm(new BytesRef("foo"))
+            .addTerm(new BytesRef("zoo"))
             .build();
 
     CollectorManager<TopScoreDocCollector, TopDocs> completeManager =
@@ -231,12 +261,20 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     TopScoreDocCollectorManager collectorManager = new TopScoreDocCollectorManager(10, 10);
 
     CombinedFieldQuery query =
-        new CombinedFieldQuery.Builder("value").addField("a", 1.0f).addField("b", 1.0f).build();
+        new CombinedFieldQuery.Builder()
+            .addField("a", 1.0f)
+            .addField("b", 1.0f)
+            .addTerm(new BytesRef("value"))
+            .build();
     TopDocs topDocs = searcher.search(query, collectorManager);
     assertEquals(new TotalHits(2, TotalHits.Relation.EQUAL_TO), topDocs.totalHits);
 
     CombinedFieldQuery invalidQuery =
-        new CombinedFieldQuery.Builder("value").addField("b", 1.0f).addField("c", 1.0f).build();
+        new CombinedFieldQuery.Builder()
+            .addField("b", 1.0f)
+            .addField("c", 1.0f)
+            .addTerm(new BytesRef("value"))
+            .build();
     IllegalArgumentException e =
         expectThrows(
             IllegalArgumentException.class, () -> searcher.search(invalidQuery, collectorManager));
@@ -288,9 +326,57 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
 
     searcher.setSimilarity(similarity);
     CombinedFieldQuery query =
-        new CombinedFieldQuery.Builder("foo")
+        new CombinedFieldQuery.Builder()
             .addField("a", (float) boost1)
             .addField("b", (float) boost2)
+            .addTerm(new BytesRef("foo"))
+            .build();
+
+    checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("ab", "foo")));
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testCopyFieldWithMultipleTerms() throws IOException {
+    Directory dir = newDirectory();
+    Similarity similarity = randomCompatibleSimilarity();
+
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    iwc.setSimilarity(similarity);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numMatch = atLeast(10);
+    int boost1 = Math.max(1, random().nextInt(5));
+    int boost2 = Math.max(1, random().nextInt(5));
+    for (int i = 0; i < numMatch; i++) {
+      Document doc = new Document();
+
+      int freqA = random().nextInt(5) + 1;
+      for (int j = 0; j < freqA; j++) {
+        doc.add(new TextField("a", "foo", Store.NO));
+      }
+      int freqB = random().nextInt(5) + 1;
+      for (int j = 0; j < freqB; j++) {
+        doc.add(new TextField("b", "bar", Store.NO));
+      }
+      int freqAB = freqA * boost1 + freqB * boost2;
+      for (int j = 0; j < freqAB; j++) {
+        doc.add(new TextField("ab", "foo", Store.NO));
+      }
+      w.addDocument(doc);
+    }
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+
+    searcher.setSimilarity(similarity);
+    CombinedFieldQuery query =
+        new CombinedFieldQuery.Builder()
+            .addField("a", (float) boost1)
+            .addField("b", (float) boost2)
+            .addTerm(new BytesRef("foo"))
+            .addTerm(new BytesRef("bar"))
             .build();
 
     checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("ab", "foo")));
@@ -329,7 +415,10 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     searcher.setSimilarity(similarity);
     CombinedFieldQuery query =
-        new CombinedFieldQuery.Builder("foo").addField("a", (float) boost).build();
+        new CombinedFieldQuery.Builder()
+            .addField("a", (float) boost)
+            .addTerm(new BytesRef("foo"))
+            .build();
 
     checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("b", "foo")));
 
@@ -374,9 +463,10 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     searcher.setSimilarity(similarity);
     CombinedFieldQuery query =
-        new CombinedFieldQuery.Builder("foo")
+        new CombinedFieldQuery.Builder()
             .addField("a", (float) boost1)
             .addField("b", (float) boost2)
+            .addTerm(new BytesRef("foo"))
             .build();
 
     checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("ab", "foo")));
@@ -428,7 +518,11 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     searcher.setSimilarity(new BM25Similarity());
     CombinedFieldQuery query =
-        new CombinedFieldQuery.Builder(queryString).addField("f").addField("g").build();
+        new CombinedFieldQuery.Builder()
+            .addField("f")
+            .addField("g")
+            .addTerm(new BytesRef(queryString))
+            .build();
     TopDocs topDocs = searcher.search(query, 10);
     CheckHits.checkDocIds("queried docs do not match", new int[] {0}, topDocs.scoreDocs);
 
@@ -460,7 +554,11 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
     searcher.setSimilarity(new BM25Similarity());
     CombinedFieldQuery query =
-        new CombinedFieldQuery.Builder(queryString).addField("f").addField("g").build();
+        new CombinedFieldQuery.Builder()
+            .addField("f")
+            .addField("g")
+            .addTerm(new BytesRef(queryString))
+            .build();
     TopDocs topDocs = searcher.search(query, 10);
     // Return doc1 ahead of doc0 since its tf is higher
     CheckHits.checkDocIds("queried docs do not match", new int[] {1, 0}, topDocs.scoreDocs);
@@ -552,7 +650,11 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
         };
     searcher.setSimilarity(similarity);
     CombinedFieldQuery query =
-        new CombinedFieldQuery.Builder("foo").addField("a").addField("b").build();
+        new CombinedFieldQuery.Builder()
+            .addField("a")
+            .addField("b")
+            .addTerm(new BytesRef("foo"))
+            .build();
 
     checkExpectedHits(searcher, numMatch, query, new TermQuery(new Term("ab", "foo")));
 
