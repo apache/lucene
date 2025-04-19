@@ -1859,6 +1859,20 @@ public class IndexWriter
   }
 
   /**
+   * Similar to {@link #updateDocuments(Term, Iterable)}, but only apply deletion once for all
+   * flushed segments. This is useful for unique filed like ES's _id.
+   *
+   * @lucene.experimental
+   */
+  // TODO: If it is unnecessary to validate unique constraint, we can add a isUnique setting to
+  // Term.
+  public long updateDocument(Term term, boolean isUnique, Iterable<? extends IndexableField> doc)
+      throws IOException {
+    return updateDocuments(
+        term == null ? null : DocumentsWriterDeleteQueue.newNode(term, isUnique), List.of(doc));
+  }
+
+  /**
    * Expert: Updates a document by first updating the document(s) containing <code>term</code> with
    * the given doc-values fields and then adding the new document. The doc-values update and the
    * subsequent addition are atomic, as seen by a reader on the same index (a flush may happen only
