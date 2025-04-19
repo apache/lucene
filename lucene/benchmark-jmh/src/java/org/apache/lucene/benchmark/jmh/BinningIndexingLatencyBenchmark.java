@@ -7,6 +7,12 @@
  * the License. You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.apache.lucene.benchmark.jmh;
@@ -33,11 +39,13 @@ import org.apache.lucene.store.MMapDirectory;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
@@ -49,36 +57,36 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(1)
 public class BinningIndexingLatencyBenchmark {
 
-  @Param({"1000000"})
+  @Param({"10000"})
   private int docCount;
 
+  @Param({"true", "false"})
+  private boolean binningEnabled;
+
+  @Param({"exact", "approx", "auto"})
+  private String graphBuilder;
+
   private Path tempDir;
+  private FieldType fieldType;
 
-  @Benchmark
-  public void indexBaseline() throws IOException {
-    FieldType fieldType = getFieldTypeBaseline();
-    indexDocuments(fieldType);
+  @Setup(Level.Trial)
+  public void setup() {
+    fieldType = new FieldType(TextField.TYPE_NOT_STORED);
+    fieldType.setTokenized(true);
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+
+    if (binningEnabled) {
+      fieldType.putAttribute("postingsFormat", "Lucene101");
+      fieldType.putAttribute("doBinning", "true");
+      fieldType.putAttribute("bin.count", "4");
+      fieldType.putAttribute("bin.builder", graphBuilder);
+    }
+
+    fieldType.freeze();
   }
 
   @Benchmark
-  public void indexWithExactBinning() throws IOException {
-    FieldType fieldType = getFieldTypeWithBinning("exact");
-    indexDocuments(fieldType);
-  }
-
-  @Benchmark
-  public void indexWithApproxBinning() throws IOException {
-    FieldType fieldType = getFieldTypeWithBinning("approx");
-    indexDocuments(fieldType);
-  }
-
-  @Benchmark
-  public void indexWithAutoBinning() throws IOException {
-    FieldType fieldType = getFieldTypeWithBinning("auto");
-    indexDocuments(fieldType);
-  }
-
-  private void indexDocuments(FieldType fieldType) throws IOException {
+  public void indexBatch() throws IOException {
     tempDir = Files.createTempDirectory("lucene-binning-benchmark");
     try (Directory dir = new MMapDirectory(tempDir)) {
       IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
@@ -101,31 +109,55 @@ public class BinningIndexingLatencyBenchmark {
               path -> {
                 try {
                   Files.deleteIfExists(path);
-                } catch (IOException e) {
-                  assert e != null;
+                } catch (IOException _) {
+                  // best-effort cleanup
                 }
               });
     }
   }
 
-  private FieldType getFieldTypeBaseline() {
-    FieldType type = new FieldType(TextField.TYPE_NOT_STORED);
-    type.setTokenized(true);
-    type.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-    type.freeze();
-    return type;
+  /**
+   * Benchmarks baseline Lucene indexing (no binning, no extra attributes). Used as a strict
+   * baseline against bin-aware indexing modes.
+   */
+  @Benchmark
+  public void indexBatchBaseline() throws IOException {
+    tempDir = Files.createTempDirectory("lucene-baseline-benchmark");
+    try (Directory dir = new MMapDirectory(tempDir)) {
+      IndexWriterConfig config = new IndexWriterConfig(new SingleTokenAnalyzer());
+      config.setCodec(new Lucene103Codec());
+      config.setUseCompoundFile(false);
+
+      try (IndexWriter writer = new IndexWriter(dir, config)) {
+        for (int i = 0; i < docCount; i++) {
+          Document doc = new Document();
+          String content = (i % 200 == 0) ? "lucene relevant content" : "noise filler text " + i;
+          doc.add(new Field("field", content, getBaselineFieldType()));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+    } finally {
+      Files.walk(tempDir)
+          .sorted(Comparator.reverseOrder())
+          .forEach(
+              path -> {
+                try {
+                  Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                  assert ignored != null;
+                }
+              });
+    }
   }
 
-  private FieldType getFieldTypeWithBinning(String builder) {
-    FieldType type = new FieldType(TextField.TYPE_NOT_STORED);
-    type.setTokenized(true);
-    type.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
-    type.putAttribute("postingsFormat", "Lucene101");
-    type.putAttribute("doBinning", "true");
-    type.putAttribute("bin.count", "4");
-    type.putAttribute("graph.builder", builder);
-    type.freeze();
-    return type;
+  /** Returns a clean field type with no binning attributes for baseline indexing. */
+  private FieldType getBaselineFieldType() {
+    FieldType baseline = new FieldType(TextField.TYPE_NOT_STORED);
+    baseline.setTokenized(true);
+    baseline.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    baseline.freeze();
+    return baseline;
   }
 
   private static final class SingleTokenAnalyzer extends Analyzer {
@@ -137,7 +169,7 @@ public class BinningIndexingLatencyBenchmark {
             private boolean emitted = false;
 
             @Override
-            public boolean incrementToken() throws IOException {
+            public boolean incrementToken() {
               if (emitted) {
                 return false;
               }

@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Terms;
@@ -25,7 +27,12 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Approximates a sparse similarity graph from token co-occurrence without exact vector comparison.
+ * Approximates a sparse similarity graph from token co-occurrence using
+ * compact token ID representations and edge pruning heuristics.
+ *
+ * This builder avoids full term vector reconstruction and uses BitSets
+ * to identify candidate overlaps efficiently. Token frequency pruning
+ * and early edge rejection are used to scale to large corpora.
  */
 public final class ApproximateDocGraphBuilder {
 
@@ -34,6 +41,9 @@ public final class ApproximateDocGraphBuilder {
 
   private final String field;
   private final int maxEdgesPerDoc;
+
+  /** Minimum shared token overlap required to retain an edge. */
+  private static final int MIN_TOKEN_OVERLAP = 2;
 
   /**
    * Creates a new graph builder for the specified field.
@@ -47,11 +57,11 @@ public final class ApproximateDocGraphBuilder {
   }
 
   /**
-   * Constructs the similarity graph for documents in the provided reader using term co-occurrence.
+   * Constructs the similarity graph for documents in the provided reader using token co-occurrence.
    *
-   * <p>Documents that share terms in the specified field are connected with an edge, with edge
-   * weights based on normalized overlap count. The number of outgoing edges per document is limited
-   * by {@code maxEdgesPerDoc}.
+   * Documents that share multiple tokens in the specified field are connected with an edge,
+   * with edge weights based on normalized token overlap. Candidate set expansion is limited
+   * by heuristics for scalability.
    *
    * @param reader a leaf reader over a single Lucene segment
    * @return a sparse document similarity graph based on token overlap
@@ -61,8 +71,10 @@ public final class ApproximateDocGraphBuilder {
     final int maxDoc = reader.maxDoc();
     final InMemorySparseEdgeGraph graph = new InMemorySparseEdgeGraph();
     @SuppressWarnings("unchecked")
-    final Set<String>[] docTokens = (Set<String>[]) new Set<?>[maxDoc];
-    final Map<String, BitSet> tokenBitsets = new HashMap<>();
+    final Set<Integer>[] docTokens = (Set<Integer>[]) new Set<?>[maxDoc];
+    final Map<Integer, BitSet> tokenBitsets = new HashMap<>();
+    final Map<BytesRef, Integer> tokenIdMap = new HashMap<>();
+    AtomicInteger nextTokenId = new AtomicInteger();
 
     Terms terms = reader.terms(field);
     if (terms == null) {
@@ -77,55 +89,62 @@ public final class ApproximateDocGraphBuilder {
         continue;
       }
 
+      int tokenId = tokenIdMap.computeIfAbsent(BytesRef.deepCopyOf(term), t -> nextTokenId.getAndIncrement());
       final BitSet seen = new BitSet(maxDoc);
+
       while (postings.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
         int docID = postings.docID();
         seen.set(docID);
-        Set<String> tokens = docTokens[docID];
+        Set<Integer> tokens = docTokens[docID];
         if (tokens == null) {
           tokens = new HashSet<>();
           docTokens[docID] = tokens;
         }
-        tokens.add(term.utf8ToString());
+        tokens.add(tokenId);
       }
-      tokenBitsets.put(term.utf8ToString(), seen);
+      tokenBitsets.put(tokenId, seen);
     }
 
     for (int docA = 0; docA < maxDoc; docA++) {
-      Set<String> tokensA = docTokens[docA];
+      Set<Integer> tokensA = docTokens[docA];
       if (tokensA == null || tokensA.isEmpty()) {
         continue;
       }
 
       final BitSet candidates = new BitSet(maxDoc);
-      for (String token : tokensA) {
-        BitSet seen = tokenBitsets.get(token);
+      for (int tokenId : tokensA) {
+        BitSet seen = tokenBitsets.get(tokenId);
         if (seen != null) {
           candidates.or(seen);
         }
       }
 
+      if (candidates.cardinality() > maxEdgesPerDoc * 4) {
+        continue;
+      }
+
       int added = 0;
       for (int docB = candidates.nextSetBit(0);
-          docB >= 0 && added < maxEdgesPerDoc;
-          docB = candidates.nextSetBit(docB + 1)) {
+           docB >= 0 && added < maxEdgesPerDoc;
+           docB = candidates.nextSetBit(docB + 1)) {
+
         if (docA == docB) {
           continue;
         }
 
-        Set<String> tokensB = docTokens[docB];
+        Set<Integer> tokensB = docTokens[docB];
         if (tokensB == null || tokensB.isEmpty()) {
           continue;
         }
 
         int overlap = 0;
-        for (String token : tokensA) {
+        for (int token : tokensA) {
           if (tokensB.contains(token)) {
             overlap++;
           }
         }
 
-        if (overlap > 0) {
+        if (overlap >= MIN_TOKEN_OVERLAP) {
           float weight = (float) overlap / Math.max(tokensA.size(), tokensB.size());
           graph.addEdge(docA, docB, weight);
           added++;
@@ -133,10 +152,10 @@ public final class ApproximateDocGraphBuilder {
       }
     }
 
-    // Ensure all documents are represented in the graph, even if they have no edges
-    for (int docID = 0; docID < reader.maxDoc(); docID++) {
+    for (int docID = 0; docID < maxDoc; docID++) {
       graph.ensureVertex(docID);
     }
+
     return graph;
   }
 }
