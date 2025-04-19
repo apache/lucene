@@ -33,7 +33,7 @@ rat = "0.14"
 s2-geometry = "1.0.0"
 spatial4j = "0.8"
 xerces = "2.12.2"
-zstd = "1.5.5-11"
+zstd = "1.5.7-2"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
