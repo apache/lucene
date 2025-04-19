@@ -854,6 +854,19 @@ public class RegExp {
     return b.toString();
   }
 
+  StringBuilder escapeCharIfNeeded(StringBuilder b, int codePoint) {
+    // From https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#bs
+    // "It is an error to use a backslash prior to any alphabetic character that does not denote
+    // an escaped
+    // construct;"
+    // Plus, ASCII characters conflict with character classes.
+    // Escape only characters which are NOT in [A-Za-z]
+    if (!((codePoint >= 65 && codePoint <= 90) || (codePoint >= 97 && codePoint <= 122))) {
+      b.append("\\");
+    }
+    return b.appendCodePoint(codePoint);
+  }
+
   void toStringBuilder(StringBuilder b) {
     switch (kind) {
       case REGEXP_UNION:
@@ -901,10 +914,14 @@ public class RegExp {
         b.append(")");
         break;
       case REGEXP_CHAR:
-        b.append("\\").appendCodePoint(c);
+        escapeCharIfNeeded(b, c);
         break;
       case REGEXP_CHAR_RANGE:
-        b.append("[\\").appendCodePoint(from[0]).append("-\\").appendCodePoint(to[0]).append("]");
+        b.append("[");
+        escapeCharIfNeeded(b, from[0]);
+        b.append("-");
+        escapeCharIfNeeded(b, to[0]);
+        b.append("]");
         break;
       case REGEXP_CHAR_CLASS:
         b.append("[");
