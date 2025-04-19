@@ -51,7 +51,7 @@ public class TestApproximateDocGraphBuilder extends LuceneTestCase {
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
       // Use lower threshold to force connectivity
       SparseEdgeGraph graph =
-          new ApproximateDocGraphBuilder("field", 5 /* max edges */)
+          new ApproximateDocGraphBuilder("field", 5 /* max edges */, false, 0.5f)
               .build(reader.leaves().get(0).reader());
 
       assertEquals("Each doc should be represented in the graph", 5, graph.size());

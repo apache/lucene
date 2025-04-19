@@ -365,6 +365,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
 
   public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
+  public static final float DEFAULT_APPROX_BINNING_PRUNING_THRESHOLD = 0.5f;
   /**
    * Return the class that implements {@link ImpactsEnum} in this {@link PostingsFormat}. This is
    * internally used to help the JVM make good inlining decisions.
@@ -429,6 +430,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
     final FieldInfos fieldInfos = state.fieldInfos;
     String binningField = null;
     String graphBuilderType = null;
+    float approxFreqDocPruningThreshold = DEFAULT_APPROX_BINNING_PRUNING_THRESHOLD;
     int binCount = -1;
 
     for (FieldInfo fi : fieldInfos) {
@@ -440,7 +442,10 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
                 ? Integer.parseInt(binCountAttr)
                 : Math.max(1, Integer.highestOneBit(maxDoc >>> 4));
         String graphBuilderAttr = fi.getAttribute("bin.builder");
+        String approxFreqDocPruningThresholdAttr = fi.getAttribute("bin.approxthreshold");
         graphBuilderType = (graphBuilderAttr != null) ? graphBuilderAttr : "auto";
+        approxFreqDocPruningThreshold = (approxFreqDocPruningThresholdAttr != null) ? Float.parseFloat(approxFreqDocPruningThresholdAttr) :
+                DEFAULT_APPROX_BINNING_PRUNING_THRESHOLD;
         break;
       }
     }
@@ -474,7 +479,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
         if ("approx".equalsIgnoreCase(graphBuilderType)) {
           ApproximateDocGraphBuilder builder =
               new ApproximateDocGraphBuilder(
-                  binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES, true, 1.0f);
+                  binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES, true, approxFreqDocPruningThreshold);
           graph = builder.build(reader);
           docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
         } else if ("exact".equalsIgnoreCase(graphBuilderType)) {
