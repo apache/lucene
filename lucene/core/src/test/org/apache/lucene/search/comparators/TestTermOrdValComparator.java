@@ -52,8 +52,7 @@ public class TestTermOrdValComparator extends LuceneTestCase {
         // initialized with `docsWithField` rather than specific (< 1024) terms
         for (int i = 0; i < maxDoc; ++i) {
           Document doc = new Document();
-          // We need the field to be sparse, so that the competitive iterator is initialized with
-          // `docsWithField`
+          // make the field to be sparse, so that the iterator is initialized with `docsWithField`
           if (i % 2 == 0) {
             doc.add(new StringField("field", "value", Field.Store.NO));
             doc.add(new KeywordField("sort", Integer.toString(i), Field.Store.NO));
@@ -74,11 +73,9 @@ public class TestTermOrdValComparator extends LuceneTestCase {
         Collector collector = new TopFieldCollectorManager(sort, 10, 10).newCollector();
         LeafCollector leafCollector = collector.getLeafCollector(context);
         BulkScorer bulkScorer = weight.bulkScorer(context);
-        // We need to split on this specific doc ID so that the current doc of the competitive
-        // iterator
-        // and the current doc of `docsWithField` are out of sync, because the competitive iterator
-        // was
-        // just updated.
+        // split on this specific doc ID so that the current doc of the competitive iterator
+        // and the current doc of `docsWithField` are out of sync,
+        // because the competitive iterator was just updated.
         bulkScorer.score(leafCollector, null, 0, 22);
         bulkScorer.score(leafCollector, null, 22, maxDoc);
       }
