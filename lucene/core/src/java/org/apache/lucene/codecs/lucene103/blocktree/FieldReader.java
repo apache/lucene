@@ -23,6 +23,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
@@ -42,9 +43,7 @@ public final class FieldReader extends Terms {
   final long rootBlockFP;
   final BytesRef minTerm;
   final BytesRef maxTerm;
-  final long indexStart;
-  final long rootFP;
-  final long indexEnd;
+  final IOSupplier<TrieReader> readerSupplier;
   final Lucene103BlockTreeTermsReader parent;
   final IndexInput indexIn;
 
@@ -72,23 +71,9 @@ public final class FieldReader extends Terms {
     this.docCount = docCount;
     this.minTerm = minTerm;
     this.maxTerm = maxTerm;
-
-    // if (DEBUG) {
-    //   System.out.println("BTTR: seg=" + segment + " field=" + fieldInfo.name + " rootBlockCode="
-    // + rootCode + " divisor=" + indexDivisor);
-    // }
-
-    this.indexStart = metaIn.readVLong();
-    this.rootFP = metaIn.readVLong();
-    this.indexEnd = metaIn.readVLong();
     this.indexIn = indexIn;
-
-    TrieReader trieReader = newReader();
-    this.rootBlockFP = trieReader.root.outputFp;
-  }
-
-  private TrieReader newReader() throws IOException {
-    return new TrieReader(indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP);
+    this.readerSupplier = TrieReader.readerSupplier(metaIn, indexIn);
+    this.rootBlockFP = readerSupplier.get().root.outputFp;
   }
 
   @Override
@@ -114,7 +99,7 @@ public final class FieldReader extends Terms {
   /** For debugging -- used by CheckIndex too */
   @Override
   public Stats getStats() throws IOException {
-    return new SegmentTermsEnum(this, newReader()).computeBlockStats();
+    return new SegmentTermsEnum(this, readerSupplier.get()).computeBlockStats();
   }
 
   @Override
@@ -142,7 +127,7 @@ public final class FieldReader extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    return new SegmentTermsEnum(this, newReader());
+    return new SegmentTermsEnum(this, readerSupplier.get());
   }
 
   @Override
@@ -177,7 +162,7 @@ public final class FieldReader extends Terms {
     }
     return new IntersectTermsEnum(
         this,
-        newReader(),
+        readerSupplier.get(),
         compiled.getTransitionAccessor(),
         compiled.getByteRunnable(),
         compiled.commonSuffixRef,
