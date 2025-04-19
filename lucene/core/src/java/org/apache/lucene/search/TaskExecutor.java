@@ -44,7 +44,7 @@ import org.apache.lucene.util.ThreadInterruptedException;
  *
  * @lucene.experimental
  */
-public final class TaskExecutor {
+public class TaskExecutor {
   private final Executor executor;
 
   /**
