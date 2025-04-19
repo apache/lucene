@@ -763,7 +763,7 @@ public class RandomPostingsTester {
             segmentInfo,
             newFieldInfos,
             null,
-            new IOContext(new FlushInfo(maxDoc, bytes)));
+            IOContext.flush(new FlushInfo(maxDoc, bytes)));
 
     Fields seedFields = new SeedFields(fields, newFieldInfos, maxAllowed, allowPayloads);
 

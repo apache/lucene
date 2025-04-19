@@ -149,7 +149,7 @@ public class TestNRTCachingDirectory extends BaseDirectoryTestCase {
             return cache;
           }
         };
-    IOContext ioContext = new IOContext(new FlushInfo(3, 42));
+    IOContext ioContext = IOContext.flush(new FlushInfo(3, 42));
     nrtDir1.createOutput("foo", ioContext).close();
     nrtDir1.createTempOutput("bar", "baz", ioContext).close();
 
@@ -170,7 +170,7 @@ public class TestNRTCachingDirectory extends BaseDirectoryTestCase {
   }
 
   public void testCacheSizeAfterDelete() throws IOException {
-    IOContext ioContext = new IOContext(new FlushInfo(3, 40));
+    IOContext ioContext = IOContext.flush(new FlushInfo(3, 40));
     String fn = "f1";
     try (Directory dir = newDirectory();
         NRTCachingDirectory nrt = new NRTCachingDirectory(dir, 1, 1); ) {

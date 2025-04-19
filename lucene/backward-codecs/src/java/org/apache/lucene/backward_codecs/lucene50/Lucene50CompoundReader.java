@@ -153,6 +153,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
 
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
+    validateIOContext(context);
     ensureOpen();
     final String id = IndexFileNames.stripSegmentName(name);
     final FileEntry entry = entries.get(id);
@@ -170,7 +171,7 @@ final class Lucene50CompoundReader extends CompoundDirectory {
               + entries.keySet()
               + ")");
     }
-    return handle.slice(name, entry.offset, entry.length, context.readAdvice());
+    return handle.slice(name, entry.offset, entry.length, toReadAdvice(context));
   }
 
   /** Returns an array of strings, one for each file in the directory. */
