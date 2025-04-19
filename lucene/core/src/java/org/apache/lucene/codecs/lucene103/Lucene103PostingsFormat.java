@@ -384,7 +384,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
   static final String PAY_CODEC = "Lucene103PostingsWriterPay";
 
   static final int VERSION_START = 0;
-  private static final int MAX_DOC_FOR_EXACT_BINNING = 10;
+  private static final int MAX_DOC_FOR_EXACT_BINNING = 100_000;
 
   static final int VERSION_CURRENT = VERSION_START;
 
