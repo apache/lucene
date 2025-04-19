@@ -146,9 +146,6 @@ public final class DisjunctionDISIApproximation extends AbstractDocIdSetIterator
   @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     while (leadTop.doc < upTo) {
-      if (leadTop.approximation.docID() < offset) {
-        leadTop.approximation.advance(offset);
-      }
       leadTop.approximation.intoBitSet(upTo, bitSet, offset);
       leadTop.doc = leadTop.approximation.docID();
       leadTop = leadIterators.updateTop();

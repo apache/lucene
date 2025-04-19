@@ -434,9 +434,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           if (competitiveIterator.docID() < doc) {
             competitiveIterator.advance(doc);
           }
-          if (doc >= upTo) {
-            return;
-          }
           competitiveIterator.intoBitSet(upTo, bitSet, offset);
           doc = competitiveIterator.docID();
         }
