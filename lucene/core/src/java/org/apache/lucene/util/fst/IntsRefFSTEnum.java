@@ -105,9 +105,9 @@ public final class IntsRefFSTEnum<T> extends FSTEnum<T> {
   }
 
   @Override
-  protected int getMismatch() {
+  protected int getMismatch(int uptoLimit) {
     return Arrays.mismatch(
-        current.ints, 1, current.length + 1, target.ints, target.offset, target.length);
+        current.ints, 1, uptoLimit + 1, target.ints, target.offset, target.offset + uptoLimit);
   }
 
   @Override

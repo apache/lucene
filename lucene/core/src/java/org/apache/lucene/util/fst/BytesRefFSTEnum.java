@@ -105,9 +105,9 @@ public final class BytesRefFSTEnum<T> extends FSTEnum<T> {
   }
 
   @Override
-  protected int getMismatch() {
+  protected int getMismatch(int uptoLimit) {
     return Arrays.mismatch(
-        current.bytes, 1, current.length + 1, target.bytes, target.offset, target.length);
+        current.bytes, 1, uptoLimit + 1, target.bytes, target.offset, target.offset + uptoLimit);
   }
 
   @Override
