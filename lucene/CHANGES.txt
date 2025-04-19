@@ -46,6 +46,8 @@ Other
 * GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
 * GITHUB#14459: Minor refactoring of DocValuesConsumer to allow subclasses to reuse some of its merge logic. (Martijn van Groningen)
 
+* GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
+
 ======================= Lucene 10.2.1 =======================
 
 Bug Fixes
