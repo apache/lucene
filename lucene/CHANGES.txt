@@ -97,6 +97,8 @@ Other
 * GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
 * GITHUB#14459: Minor refactoring of DocValuesConsumer to allow subclasses to reuse some of its merge logic. (Martijn van Groningen)
 
+* GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
+
 ======================= Lucene 10.2.1 =======================
 
 Bug Fixes
@@ -302,8 +304,6 @@ Other
 * GITHUB#14386: Bump analysis/icu's icu4j dependency to 77.1 (Robert Muir)
 
 * GITHUB#14388: Bump expression's antlr dependency to 4.13.2 (Dawid Weiss, Robert Muir)
-
-* GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
 
 ======================= Lucene 10.1.0 =======================
 
