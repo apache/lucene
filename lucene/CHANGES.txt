@@ -303,6 +303,8 @@ Other
 
 * GITHUB#14388: Bump expression's antlr dependency to 4.13.2 (Dawid Weiss, Robert Muir)
 
+* GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
+
 ======================= Lucene 10.1.0 =======================
 
 API Changes
