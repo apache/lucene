@@ -22,12 +22,17 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
@@ -53,6 +58,9 @@ import org.apache.lucene.util.Bits;
 abstract class AbstractKnnVectorQuery extends Query {
 
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;
+  // Constant controlling the degree of additional result exploration done during
+  // pro-rata search of segments.
+  private static final int LAMBDA = 16;
 
   protected final String field;
   protected final int k;
@@ -93,22 +101,62 @@ abstract class AbstractKnnVectorQuery extends Query {
         new TimeLimitingKnnCollectorManager(
             getKnnCollectorManager(k, indexSearcher), indexSearcher.getTimeout());
     TaskExecutor taskExecutor = indexSearcher.getTaskExecutor();
-    List<LeafReaderContext> leafReaderContexts = reader.leaves();
+    List<LeafReaderContext> leafReaderContexts = new ArrayList<>(reader.leaves());
     List<Callable<TopDocs>> tasks = new ArrayList<>(leafReaderContexts.size());
     for (LeafReaderContext context : leafReaderContexts) {
       tasks.add(() -> searchLeaf(context, filterWeight, knnCollectorManager));
     }
-    TopDocs[] perLeafResults = taskExecutor.invokeAll(tasks).toArray(TopDocs[]::new);
-
-    // Merge sort the results
-    TopDocs topK = mergeLeafResults(perLeafResults);
+    Map<Integer, TopDocs> perLeafResults = new HashMap<>();
+    TopDocs topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+    int reentryCount = 0;
+    if (topK.scoreDocs.length > 0 && perLeafResults.size() > 1) {
+      float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
+      TimeLimitingKnnCollectorManager knnCollectorManagerInner =
+          new TimeLimitingKnnCollectorManager(
+              new ReentrantKnnCollectorManager(
+                  new TopKnnCollectorManager(k, indexSearcher), perLeafResults),
+              indexSearcher.getTimeout());
+      Iterator<LeafReaderContext> ctxIter = leafReaderContexts.iterator();
+      while (ctxIter.hasNext()) {
+        LeafReaderContext ctx = ctxIter.next();
+        TopDocs perLeaf = perLeafResults.get(ctx.ord);
+        if (perLeaf.scoreDocs.length > 0
+            && perLeaf.scoreDocs[perLeaf.scoreDocs.length - 1].score >= minTopKScore) {
+          // All this leaf's hits are at or above the global topK min score; explore it further
+          ++reentryCount;
+          tasks.add(() -> searchLeaf(ctx, filterWeight, knnCollectorManagerInner));
+        } else {
+          // This leaf is tapped out; discard the context from the active list so we maintain
+          // correspondence between tasks and leaves
+          ctxIter.remove();
+        }
+      }
+      assert leafReaderContexts.size() == tasks.size();
+      assert perLeafResults.size() == reader.leaves().size();
+      topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+    }
     if (topK.scoreDocs.length == 0) {
       return new MatchNoDocsQuery();
     }
-    return createRewrittenQuery(reader, topK);
+    return createRewrittenQuery(reader, topK, reentryCount);
   }
 
-  private TopDocs searchLeaf(
+  private TopDocs runSearchTasks(
+      List<Callable<TopDocs>> tasks,
+      TaskExecutor taskExecutor,
+      Map<Integer, TopDocs> perLeafResults,
+      List<LeafReaderContext> leafReaderContexts)
+      throws IOException {
+    List<TopDocs> taskResults = taskExecutor.invokeAll(tasks);
+    for (int i = 0; i < taskResults.size(); i++) {
+      perLeafResults.put(leafReaderContexts.get(i).ord, taskResults.get(i));
+    }
+    tasks.clear();
+    // Merge sort the results
+    return mergeLeafResults(perLeafResults.values().toArray(TopDocs[]::new));
+  }
+
+  protected TopDocs searchLeaf(
       LeafReaderContext ctx,
       Weight filterWeight,
       TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager)
@@ -184,7 +232,29 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return new TopKnnCollectorManager(k, searcher);
+    KnnCollectorManager manager =
+        (visitedLimit, strategy, context) -> {
+          @SuppressWarnings("resource")
+          float leafProportion =
+              context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
+          int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
+          // if we divided by zero above, leafProportion can be NaN and then this would be 0
+          assert perLeafTopK > 0;
+          return new TopKnnCollector(perLeafTopK, visitedLimit, strategy);
+        };
+    return manager;
+  }
+
+  /*
+   * Returns perLeafTopK, the expected number (K * leafProportion) of hits in a leaf with the given
+   * proportion of the entire index, plus three standard deviations of a binomial distribution. Math
+   * says there is a 95% probability that this segment's contribution to the global top K hits are
+   * <= perLeafTopK.
+   */
+  private static int perLeafTopKCalculation(int k, float leafProportion) {
+    return (int)
+        Math.max(
+            1, k * leafProportion + LAMBDA * Math.sqrt(k * leafProportion * (1 - leafProportion)));
   }
 
   protected abstract TopDocs approximateSearch(
@@ -264,12 +334,56 @@ abstract class AbstractKnnVectorQuery extends Query {
     return TopDocs.merge(k, perLeafResults);
   }
 
-  private Query createRewrittenQuery(IndexReader reader, TopDocs topK) {
-    int len = topK.scoreDocs.length;
+  // forked from SeededKnnVectorQuery.SeededCollectorManager
+  private class ReentrantKnnCollectorManager implements KnnCollectorManager {
+    final KnnCollectorManager knnCollectorManager;
+    final Map<Integer, TopDocs> perLeafResults;
 
+    ReentrantKnnCollectorManager(
+        KnnCollectorManager knnCollectorManager, Map<Integer, TopDocs> perLeafResults) {
+      this.knnCollectorManager = knnCollectorManager;
+      this.perLeafResults = perLeafResults;
+    }
+
+    @Override
+    public KnnCollector newCollector(
+        int visitLimit, KnnSearchStrategy searchStrategy, LeafReaderContext ctx)
+        throws IOException {
+      KnnCollector delegateCollector =
+          knnCollectorManager.newCollector(visitLimit, searchStrategy, ctx);
+      TopDocs seedTopDocs = perLeafResults.get(ctx.ord);
+      VectorScorer scorer = createVectorScorer(ctx, ctx.reader().getFieldInfos().fieldInfo(field));
+      if (seedTopDocs.totalHits.value() == 0 || scorer == null) {
+        // shouldn't happen - we only come here when there are results
+        assert false;
+        // on the other hand, it should be safe to return no results?
+        return delegateCollector;
+      }
+      DocIdSetIterator vectorIterator = scorer.iterator();
+      // Handle sparse
+      if (vectorIterator instanceof IndexedDISI indexedDISI) {
+        vectorIterator = IndexedDISI.asDocIndexIterator(indexedDISI);
+      }
+      // Most underlying iterators are indexed, so we can map the seed docs to the vector docs
+      if (vectorIterator instanceof KnnVectorValues.DocIndexIterator indexIterator) {
+        DocIdSetIterator seedDocs =
+            new SeededKnnVectorQuery.MappedDISI(
+                indexIterator, new SeededKnnVectorQuery.TopDocsDISI(seedTopDocs, ctx));
+        return knnCollectorManager.newCollector(
+            visitLimit,
+            new KnnSearchStrategy.Seeded(seedDocs, seedTopDocs.scoreDocs.length, searchStrategy),
+            ctx);
+      }
+      // could lead to an infinite loop if this ever happens
+      assert false;
+      return delegateCollector;
+    }
+  }
+
+  protected Query createRewrittenQuery(IndexReader reader, TopDocs topK, int reentryCount) {
+    int len = topK.scoreDocs.length;
     assert len > 0;
     float maxScore = topK.scoreDocs[0].score;
-
     Arrays.sort(topK.scoreDocs, Comparator.comparingInt(a -> a.doc));
     int[] docs = new int[len];
     float[] scores = new float[len];
@@ -278,7 +392,14 @@ abstract class AbstractKnnVectorQuery extends Query {
       scores[i] = topK.scoreDocs[i].score;
     }
     int[] segmentStarts = findSegmentStarts(reader.leaves(), docs);
-    return new DocAndScoreQuery(docs, scores, maxScore, segmentStarts, reader.getContext().id());
+    return new DocAndScoreQuery(
+        docs,
+        scores,
+        maxScore,
+        segmentStarts,
+        topK.totalHits.value(),
+        reader.getContext().id(),
+        reentryCount);
   }
 
   static int[] findSegmentStarts(List<LeafReaderContext> leaves, int[] docs) {
@@ -351,27 +472,56 @@ abstract class AbstractKnnVectorQuery extends Query {
     private final float[] scores;
     private final float maxScore;
     private final int[] segmentStarts;
+    private final long visited;
     private final Object contextIdentity;
+    private final int reentryCount;
 
     /**
      * Constructor
      *
      * @param docs the global docids of documents that match, in ascending order
      * @param scores the scores of the matching documents
+     * @param maxScore the max of those scores? why do we need to pass in?
      * @param segmentStarts the indexes in docs and scores corresponding to the first matching
      *     document in each segment. If a segment has no matching documents, it should be assigned
      *     the index of the next segment that does. There should be a final entry that is always
      *     docs.length-1.
+     * @param visited the number of graph nodes that were visited, and for which vector distance
+     *     scores were evaluated.
      * @param contextIdentity an object identifying the reader context that was used to build this
      *     query
      */
     DocAndScoreQuery(
-        int[] docs, float[] scores, float maxScore, int[] segmentStarts, Object contextIdentity) {
+        int[] docs,
+        float[] scores,
+        float maxScore,
+        int[] segmentStarts,
+        long visited,
+        Object contextIdentity,
+        int reentryCount) {
       this.docs = docs;
       this.scores = scores;
       this.maxScore = maxScore;
       this.segmentStarts = segmentStarts;
+      this.visited = visited;
       this.contextIdentity = contextIdentity;
+      this.reentryCount = reentryCount;
+    }
+
+    /*
+    DocAndScoreQuery(DocAndScoreQuery other) {
+      this.docs = other.docs;
+      this.scores = other.scores;
+      this.maxScore = other.maxScore;
+      this.segmentStarts = other.segmentStarts;
+      this.visited = other.visited;
+      this.contextIdentity = other.contextIdentity;
+      this.reentryCount = other.reentryCount;
+    }
+    */
+
+    int reentryCount() {
+      return reentryCount;
     }
 
     @Override
@@ -485,6 +635,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     @Override
     public void visit(QueryVisitor visitor) {
       visitor.visitLeaf(this);
+    }
+
+    public long visited() {
+      return visited;
     }
 
     @Override

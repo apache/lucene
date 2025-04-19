@@ -236,13 +236,21 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
         AbstractKnnVectorQuery.DocAndScoreQuery query =
             new AbstractKnnVectorQuery.DocAndScoreQuery(
-                docs, scores, maxScore, segments, indexReader.getContext().id());
+                docs,
+                scores,
+                maxScore,
+                segments,
+                scoreDocs.length,
+                indexReader.getContext().id(),
+                0);
         final Weight w = query.createWeight(searcher, ScoreMode.TOP_SCORES, 1.0f);
         TopDocs topDocs = searcher.search(query, 100);
         assertEquals(scoreDocs.length, topDocs.totalHits.value());
+        assertEquals(query.visited(), topDocs.totalHits.value());
         assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
         Arrays.sort(topDocs.scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
         assertEquals(scoreDocs.length, topDocs.scoreDocs.length);
+        assertEquals(0, query.reentryCount());
         for (int i = 0; i < scoreDocs.length; i++) {
           assertEquals(scoreDocs[i].doc, topDocs.scoreDocs[i].doc);
           assertEquals(scoreDocs[i].score, topDocs.scoreDocs[i].score, 0.0001f);
