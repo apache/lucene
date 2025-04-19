@@ -105,7 +105,10 @@ Bug Fixes
 ---------------------
 
 * GITHUB#14522: Fix DISIDocIdStream::count so that it does not try to count beyond max.
-  (Chris Hegarty}
+  (Chris Hegarty)
+
+* GITHUB#14523: Correct TermOrdValComparator competitive iterator so that it forces sparse
+  field iteration to be at least scoring window baseline when doing intoBitSet. (Ben Trent, Adrien Grand)
 
 ======================= Lucene 10.2.0 =======================
 
