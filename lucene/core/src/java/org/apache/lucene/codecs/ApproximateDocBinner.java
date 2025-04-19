@@ -1,32 +1,26 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- */
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
 
 /**
- * Approximate binning for documents using hash-based encoding of sparse graph connectivity
- * patterns. Documents with similar edge structure are likely to hash into the same bin.
+ * Assigns approximate bin IDs to documents based on their neighbors in a sparse similarity graph.
+ * Documents with similar neighbors will likely be assigned to the same bin.
+ *
+ * <p>This implementation hashes neighbor IDs and edge weights to compute a stable bin ID. It is
+ * useful for approximate grouping without clustering.
  */
 public final class ApproximateDocBinner {
 
   private ApproximateDocBinner() {}
 
   /**
-   * Assigns each document to a bin based on hashed connectivity to neighbors. Hashing incorporates
-   * neighbor IDs and edge weights. This approximates locality by ensuring similar documents hash to
-   * similar bins.
+   * Computes bin assignments based on hashed neighborhood structure.
    *
-   * @param graph sparse document similarity graph
-   * @param maxDoc total number of documents
-   * @param numBins total bins to assign (must be power of 2 for masking)
-   * @return array of bin IDs per document
+   * @param graph the sparse graph over documents
+   * @param maxDoc number of documents in the segment
+   * @param numBins total bins (must be power of 2)
+   * @return array of bin IDs per document in [0, numBins)
+   * @throws IOException if graph access fails
    */
   public static int[] assign(SparseEdgeGraph graph, int maxDoc, int numBins) throws IOException {
     if (Integer.bitCount(numBins) != 1) {
@@ -37,35 +31,34 @@ public final class ApproximateDocBinner {
     final int mask = numBins - 1;
 
     for (int docID = 0; docID < maxDoc; docID++) {
-      int[] neighbors = graph.getNeighbors(docID);
+      final int[] neighbors = graph.getNeighbors(docID);
+      final float[] weights = graph.getWeights(docID);
+
       if (neighbors.length == 0) {
         bins[docID] = 0;
         continue;
       }
 
-      float[] weights = graph.getWeights(docID);
       int hash = 0;
       for (int i = 0; i < neighbors.length; i++) {
-        if (weights[i] < 0.01f) continue;
-        hash = mix(hash, neighbors[i], weights[i]);
+        if (weights[i] < 0.01f) {
+          continue;
+        }
+        hash = mixHash(hash, neighbors[i], weights[i]);
       }
 
-      if (hash == 0) {
-        bins[docID] = 0; // fallback for fully pruned
-      } else {
-        bins[docID] = finalizeHash(hash) & mask;
-      }
+      bins[docID] = finalizeHash(hash) & mask;
     }
 
     return bins;
   }
 
-  private static int mix(int h, int neighbor, float weight) {
-    int scaled = (int) (weight * 1_000);
-    int x = neighbor * 31 + scaled;
-    h ^= Integer.rotateLeft(x, 13);
-    h *= 0x5bd1e995;
-    return h;
+  private static int mixHash(int current, int neighborID, float weight) {
+    int scaledWeight = (int) (weight * 1000);
+    int combined = neighborID * 31 + scaledWeight;
+    current ^= Integer.rotateLeft(combined, 13);
+    current *= 0x5bd1e995;
+    return current;
   }
 
   private static int finalizeHash(int h) {

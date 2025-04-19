@@ -365,7 +365,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
 
   public static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
 
-  public static final float DEFAULT_APPROX_BINNING_PRUNING_THRESHOLD = 0.5f;
+  public static final float DEFAULT_APPROX_BINNING_PRUNING_THRESHOLD = 0.1f;
 
   /**
    * Return the class that implements {@link ImpactsEnum} in this {@link PostingsFormat}. This is
