@@ -474,7 +474,7 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
         if ("approx".equalsIgnoreCase(graphBuilderType)) {
           ApproximateDocGraphBuilder builder =
               new ApproximateDocGraphBuilder(
-                  binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES);
+                  binningField, ApproximateDocGraphBuilder.DEFAULT_MAX_EDGES, true);
           graph = builder.build(reader);
           docToBin = ApproximateDocBinner.assign(graph, maxDoc, binCount);
         } else if ("exact".equalsIgnoreCase(graphBuilderType)) {
