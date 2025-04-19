@@ -17,6 +17,7 @@
 package org.apache.lucene.backward_codecs.lucene90.blocktree;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -37,6 +38,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
 import org.apache.lucene.util.fst.Outputs;
@@ -306,6 +308,27 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       // app hangs onto us:
       fieldMap.clear();
     }
+  }
+
+  /**
+   * Returns an instance optimized for merging. This instance may only be consumed in the thread
+   * that called {@link #getMergeInstance()}.
+   *
+   * <p>The default implementation returns {@code this}
+   */
+  @Override
+  public FieldsProducer getMergeInstance() {
+    try {
+      this.termsIn.updateReadAdvice(ReadAdvice.SEQUENTIAL);
+    } catch (IOException exception) {
+      throw new UncheckedIOException(exception);
+    }
+    return this;
+  }
+
+  @Override
+  public void finishMerge() throws IOException {
+    this.termsIn.updateReadAdvice(Constants.DEFAULT_READADVICE);
   }
 
   @Override
