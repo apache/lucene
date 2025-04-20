@@ -8,7 +8,7 @@
  */
 package org.apache.lucene.codecs;
 
-import org.apache.lucene.util.ArrayUtil;
+import java.util.Arrays;
 
 /**
  * Optimized in-memory implementation of {@link SparseEdgeGraph}. All edges are symmetric.
@@ -25,7 +25,6 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
   private int maxDocHint = DEFAULT_INITIAL_SIZE;
   private final Object[] locks;
 
-  /** Default constructor. Table grows as needed. */
   public InMemorySparseEdgeGraph() {
     this.locks = new Object[LOCK_STRIPES];
     for (int i = 0; i < LOCK_STRIPES; i++) {
@@ -33,7 +32,6 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
     }
   }
 
-  /** Constructor that optionally preallocates space for known document count. */
   public InMemorySparseEdgeGraph(int maxDocHint) {
     this.maxDocHint = Math.max(maxDocHint, DEFAULT_INITIAL_SIZE);
     this.locks = new Object[LOCK_STRIPES];
@@ -44,8 +42,13 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
 
   @Override
   public void addEdge(int docA, int docB, float weight) {
+    if (docA == docB) {
+      return; // prevent self-loops
+    }
+
     int maxID = Math.max(docA, docB);
     ensureCapacity(maxID);
+
     Object lockA = lockForDoc(docA);
     Object lockB = lockForDoc(docB);
 
@@ -86,7 +89,9 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       return new int[0];
     }
     DocEdges edges = edgeTable[docID];
-    return (edges == null || edges.size == 0) ? new int[0] : ArrayUtil.copyArray(edges.neighbors);
+    return (edges == null || edges.size == 0)
+        ? new int[0]
+        : Arrays.copyOf(edges.neighbors, edges.size);
   }
 
   @Override
@@ -95,7 +100,9 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       return new float[0];
     }
     DocEdges edges = edgeTable[docID];
-    return (edges == null || edges.size == 0) ? new float[0] : ArrayUtil.copyArray(edges.weights);
+    return (edges == null || edges.size == 0)
+        ? new float[0]
+        : Arrays.copyOf(edges.weights, edges.size);
   }
 
   @Override
@@ -132,7 +139,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       synchronized (this) {
         if (docID >= edgeTable.length) {
           int newSize = Math.max(edgeTable.length << 1, docID + 1);
-          edgeTable = ArrayUtil.grow(edgeTable, newSize);
+          edgeTable = Arrays.copyOf(edgeTable, newSize);
         }
       }
     }
@@ -142,7 +149,6 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
     return locks[docID & LOCK_MASK];
   }
 
-  /** Per-document adjacency structure. */
   private static final class DocEdges {
     static final DocEdges EMPTY = new DocEdges(true);
 
@@ -168,8 +174,8 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       }
       if (size == neighbors.length) {
         int newCap = size << 1;
-        neighbors = ArrayUtil.grow(neighbors, newCap);
-        weights = ArrayUtil.grow(weights, newCap);
+        neighbors = Arrays.copyOf(neighbors, newCap);
+        weights = Arrays.copyOf(weights, newCap);
       }
       neighbors[size] = neighbor;
       weights[size] = weight;

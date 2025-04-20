@@ -6,7 +6,6 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package org.apache.lucene.codecs;
 
 /**

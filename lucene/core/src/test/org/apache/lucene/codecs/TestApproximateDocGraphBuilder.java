@@ -49,29 +49,31 @@ public class TestApproximateDocGraphBuilder extends LuceneTestCase {
     }
 
     try (DirectoryReader reader = DirectoryReader.open(dir)) {
-      // Use lower threshold to force connectivity
       SparseEdgeGraph graph =
-          new ApproximateDocGraphBuilder("field", 5 /* max edges */, false, 0.5f)
+          new ApproximateDocGraphBuilder("field", 5 /* maxEdges */, false, 0.5f)
               .build(reader.leaves().get(0).reader());
 
-      assertEquals("Each doc should be represented in the graph", 5, graph.size());
+      assertEquals("All docs should be present in graph", 5, graph.size());
 
       for (int doc = 0; doc < 5; doc++) {
         int[] neighbors = graph.getNeighbors(doc);
         float[] weights = graph.getWeights(doc);
 
-        assertEquals("Neighbor and weight array must match", neighbors.length, weights.length);
+        assertEquals(
+            "Mismatch in neighbors and weights array length", neighbors.length, weights.length);
+
         for (int i = 0; i < neighbors.length; i++) {
-          assertNotEquals("No self-loop expected", doc, neighbors[i]);
-          assertTrue("Weight must be positive", weights[i] > 0f);
+          assertNotEquals("Self-loop detected at doc " + doc, doc, neighbors[i]);
+          assertTrue("Edge weight must be > 0", weights[i] > 0f);
         }
       }
 
-      Set<Integer> connected =
+      Set<Integer> connectedTo0 =
           Arrays.stream(graph.getNeighbors(0)).boxed().collect(Collectors.toSet());
+
       assertTrue(
-          "Doc 1 or 3 should be connected to doc 0",
-          connected.contains(1) || connected.contains(3));
+          "Doc 0 should connect to either doc 1 or doc 3 based on shared terms",
+          connectedTo0.contains(1) || connectedTo0.contains(3));
     }
 
     dir.close();
