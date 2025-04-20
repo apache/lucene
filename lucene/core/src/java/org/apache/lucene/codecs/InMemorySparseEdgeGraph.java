@@ -10,8 +10,6 @@ package org.apache.lucene.codecs;
 
 import org.apache.lucene.util.ArrayUtil;
 
-import java.util.Arrays;
-
 /**
  * Optimized in-memory implementation of {@link SparseEdgeGraph}. All edges are symmetric.
  * Internally uses expandable per-doc arrays.
@@ -88,9 +86,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       return new int[0];
     }
     DocEdges edges = edgeTable[docID];
-    return (edges == null || edges.size == 0)
-        ? new int[0]
-    : ArrayUtil.copyArray(edges.neighbors);
+    return (edges == null || edges.size == 0) ? new int[0] : ArrayUtil.copyArray(edges.neighbors);
   }
 
   @Override
@@ -99,9 +95,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       return new float[0];
     }
     DocEdges edges = edgeTable[docID];
-    return (edges == null || edges.size == 0)
-        ? new float[0]
-        : ArrayUtil.copyArray(edges.weights);
+    return (edges == null || edges.size == 0) ? new float[0] : ArrayUtil.copyArray(edges.weights);
   }
 
   @Override
