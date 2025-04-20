@@ -62,6 +62,17 @@ public class HeavyDocIndexingBenchmark {
   private FieldType idType;
   private Random random;
 
+  private static final String[] STOPWORDS =
+      new String[] {
+        "the", "is", "at", "which", "on", "and", "a", "an", "for", "with", "to", "in", "of", "by",
+        "as"
+      };
+
+  private static final String[] KEYWORDS =
+      new String[] {
+        "lucene", "indexing", "benchmark", "token", "field", "document", "term", "position", "boost"
+      };
+
   @Setup(Level.Trial)
   public void setup() {
     this.random = new Random(42);
@@ -81,7 +92,7 @@ public class HeavyDocIndexingBenchmark {
 
     if (mode.startsWith("binning")) {
       String builder = mode.equals("binning-exact") ? "exact" : "approx";
-      this.contentType.putAttribute("postingsFormat", "Lucene101");
+      this.contentType.putAttribute("postingsFormat", "Lucene103");
       this.contentType.putAttribute("doBinning", "true");
       this.contentType.putAttribute("bin.count", "4");
       this.contentType.putAttribute("bin.builder", builder);
@@ -95,7 +106,7 @@ public class HeavyDocIndexingBenchmark {
 
   @Benchmark
   public void indexDocuments() throws IOException {
-    this.tempDir = Files.createTempDirectory("lucene-ext-benchmark");
+    this.tempDir = Files.createTempDirectory("lucene-heavy-benchmark");
     try (Directory dir = new MMapDirectory(tempDir)) {
       IndexWriterConfig config = new IndexWriterConfig(new HeavyDocAnalyzer());
       config.setCodec(new Lucene103Codec());
@@ -107,7 +118,7 @@ public class HeavyDocIndexingBenchmark {
 
           String id = "doc-" + i;
           String title = "Lucene indexing benchmark test title " + i;
-          String content = generateRandomParagraph(i);
+          String content = generateHeavyContent(i);
           String tags = "benchmark binning lucene";
 
           doc.add(new Field("id", id, idType));
@@ -126,22 +137,35 @@ public class HeavyDocIndexingBenchmark {
               path -> {
                 try {
                   Files.deleteIfExists(path);
-                } catch (IOException _) {
+                } catch (IOException ignored) {
                 }
               });
     }
   }
 
-  private String generateRandomParagraph(int seed) {
+  private String generateHeavyContent(int seed) {
     StringBuilder sb = new StringBuilder();
-    int sentenceCount = 5 + random.nextInt(10);
+    random.setSeed(seed);
+    int sentenceCount = 8 + random.nextInt(9);
     for (int i = 0; i < sentenceCount; i++) {
-      sb.append("This is sentence ").append(i).append(" from document ").append(seed).append(". ");
+      int tokenCount = 10 + random.nextInt(11);
+      for (int j = 0; j < tokenCount; j++) {
+        double r = random.nextDouble();
+        if (r < 0.15) {
+          sb.append(KEYWORDS[random.nextInt(KEYWORDS.length)]);
+        } else if (r < 0.5) {
+          sb.append(STOPWORDS[random.nextInt(STOPWORDS.length)]);
+        } else {
+          sb.append("term").append(random.nextInt(10000));
+        }
+        sb.append(" ");
+      }
+      sb.append(". ");
     }
     return sb.toString();
   }
 
-  /** Analyzer that returns a single token per field for fast benchmarks. */
+  /** Simple analyzer that emits a single fixed token to avoid analyzer overhead in JMH. */
   private static final class HeavyDocAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
