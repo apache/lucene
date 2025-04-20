@@ -1,19 +1,7 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- */
 package org.apache.lucene.codecs;
 
 import org.apache.lucene.util.ArrayUtil;
 
-/**
- * Optimized in-memory implementation of {@link SparseEdgeGraph}. All edges are symmetric.
- * Internally uses expandable per-doc arrays.
- */
 public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
 
   private static final int INITIAL_CAPACITY = 4;
@@ -43,7 +31,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
   @Override
   public void addEdge(int docA, int docB, float weight) {
     if (docA == docB) {
-      return; // prevent self-loops
+      return; // Prevent self-loop
     }
 
     int maxID = Math.max(docA, docB);
@@ -89,7 +77,9 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       return new int[0];
     }
     DocEdges edges = edgeTable[docID];
-    return (edges == null || edges.size == 0) ? new int[0] : ArrayUtil.copyArray(edges.neighbors);
+    return (edges == null || edges.size == 0)
+        ? new int[0]
+        : ArrayUtil.copyOfSubArray(edges.neighbors, 0, edges.size);
   }
 
   @Override
@@ -98,7 +88,9 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       return new float[0];
     }
     DocEdges edges = edgeTable[docID];
-    return (edges == null || edges.size == 0) ? new float[0] : ArrayUtil.copyArray(edges.weights);
+    return (edges == null || edges.size == 0)
+        ? new float[0]
+        : ArrayUtil.copyOfSubArray(edges.weights, 0, edges.size);
   }
 
   @Override
@@ -153,15 +145,14 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
     int size;
 
     DocEdges(int capacity) {
-      int cap = Math.max(1, capacity);
-      this.neighbors = new int[cap];
-      this.weights = new float[cap];
+      neighbors = new int[Math.max(1, capacity)];
+      weights = new float[Math.max(1, capacity)];
     }
 
     private DocEdges(boolean empty) {
-      this.neighbors = new int[0];
-      this.weights = new float[0];
-      this.size = 0;
+      neighbors = new int[0];
+      weights = new float[0];
+      size = 0;
     }
 
     void add(int neighbor, float weight) {
@@ -169,9 +160,8 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
         throw new UnsupportedOperationException("Cannot add to EMPTY DocEdges");
       }
       if (size == neighbors.length) {
-        int newCap = size << 1;
-        neighbors = ArrayUtil.grow(neighbors, newCap);
-        weights = ArrayUtil.grow(weights, newCap);
+        neighbors = ArrayUtil.grow(neighbors, size + 1);
+        weights = ArrayUtil.grow(weights, size + 1);
       }
       neighbors[size] = neighbor;
       weights[size] = weight;

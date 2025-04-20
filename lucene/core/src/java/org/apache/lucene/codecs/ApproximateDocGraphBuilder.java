@@ -1,11 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- */
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
@@ -75,7 +67,6 @@ public final class ApproximateDocGraphBuilder {
       return graph;
     }
 
-    // Collect all terms up front for deterministic parallelism
     List<BytesRef> allTerms = new ArrayList<>();
     TermsEnum termsEnum = terms.iterator();
     BytesRef term;
@@ -141,7 +132,7 @@ public final class ApproximateDocGraphBuilder {
 
           BitSet candidates = new BitSet(maxDoc);
           List<Integer> sortedTokens = new ArrayList<>(tokensA);
-          sortedTokens.sort(Comparator.naturalOrder()); // deterministic sampling
+          sortedTokens.sort(Comparator.naturalOrder());
           int sampleCount = 0;
 
           for (int tokenId : sortedTokens) {
@@ -159,7 +150,7 @@ public final class ApproximateDocGraphBuilder {
               docB >= 0 && added < maxEdgesPerDoc;
               docB = candidates.nextSetBit(docB + 1)) {
 
-            if (docA == docB) {
+            if (docB == docA) {
               continue;
             }
 
