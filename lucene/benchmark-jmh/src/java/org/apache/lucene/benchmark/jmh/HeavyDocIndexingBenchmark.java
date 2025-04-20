@@ -137,7 +137,7 @@ public class HeavyDocIndexingBenchmark {
               path -> {
                 try {
                   Files.deleteIfExists(path);
-                } catch (IOException ignored) {
+                } catch (IOException _) {
                 }
               });
     }
