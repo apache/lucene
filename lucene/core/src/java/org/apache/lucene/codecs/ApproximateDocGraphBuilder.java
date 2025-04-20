@@ -34,9 +34,16 @@ import org.apache.lucene.util.BytesRef;
  */
 public final class ApproximateDocGraphBuilder {
 
+  /** Maximum edges allowed */
   public static final int DEFAULT_MAX_EDGES = 10;
+
+  /* Minimum token overlap to be considered for an edge */
   private static final int MIN_TOKEN_OVERLAP = 2;
+
+  /** Maximum samples to be used for token set creation */
   private static final int MAX_SAMPLE_TOKENS = 12;
+
+  /** Number of lock stripes to be used */
   private static final int LOCK_STRIPES = 32;
 
   private final String field;
@@ -45,10 +52,12 @@ public final class ApproximateDocGraphBuilder {
   private final float maxDocFreqRatio;
   private final Object[] locks;
 
+  /** Constructor that disables edge pruning and disables parallel edge construction */
   public ApproximateDocGraphBuilder(String field, int maxEdgesPerDoc) {
     this(field, maxEdgesPerDoc, false, 1.0f);
   }
 
+  /** Default constructor */
   public ApproximateDocGraphBuilder(
       String field, int maxEdgesPerDoc, boolean useParallel, float maxDocFreqRatio) {
     this.field = field;
@@ -61,6 +70,7 @@ public final class ApproximateDocGraphBuilder {
     }
   }
 
+  /** Construct a graph based on document token overlap using LSH and sampling based techniques */
   @SuppressWarnings("unchecked")
   public SparseEdgeGraph build(LeafReader reader) throws IOException {
     final int maxDoc = reader.maxDoc();
@@ -148,7 +158,7 @@ public final class ApproximateDocGraphBuilder {
             if (seen != null) {
               candidates.or(seen);
             }
-            if (++sampleCount >= MAX_SAMPLE_TOKENS) {
+            if (sampleCount++ >= MAX_SAMPLE_TOKENS) {
               break;
             }
           }

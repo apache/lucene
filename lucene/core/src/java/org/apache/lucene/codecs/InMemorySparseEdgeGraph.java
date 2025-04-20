@@ -10,6 +10,15 @@ package org.apache.lucene.codecs;
 
 import org.apache.lucene.util.ArrayUtil;
 
+/**
+ * In-memory implementation of {@link SparseEdgeGraph} for use in binning and similarity tasks.
+ *
+ * <p>This graph stores undirected edges between documents, where each edge is represented by a
+ * symmetric pair of directed connections (A→B and B→A).
+ *
+ * <p>Internally, it maintains expandable arrays per docID for neighbors and weights. Thread safety
+ * is ensured via lock striping.
+ */
 public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
 
   private static final int INITIAL_CAPACITY = 4;
@@ -21,6 +30,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
   private int maxDocHint = DEFAULT_INITIAL_SIZE;
   private final Object[] locks;
 
+  /** Creates a new graph with default capacity. */
   public InMemorySparseEdgeGraph() {
     this.locks = new Object[LOCK_STRIPES];
     for (int i = 0; i < LOCK_STRIPES; i++) {
@@ -28,6 +38,11 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
     }
   }
 
+  /**
+   * Creates a new graph with initial allocation hint.
+   *
+   * @param maxDocHint expected number of documents (used to size internal table)
+   */
   public InMemorySparseEdgeGraph(int maxDocHint) {
     this.maxDocHint = Math.max(maxDocHint, DEFAULT_INITIAL_SIZE);
     this.locks = new Object[LOCK_STRIPES];
@@ -152,6 +167,10 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
     float[] weights;
     int size;
 
+    /**
+     * Internal structure for storing a document’s adjacency list. Stores neighbor docIDs and
+     * corresponding edge weights.
+     */
     DocEdges(int capacity) {
       neighbors = new int[Math.max(1, capacity)];
       weights = new float[Math.max(1, capacity)];
