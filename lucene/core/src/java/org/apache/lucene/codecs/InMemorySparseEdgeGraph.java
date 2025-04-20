@@ -8,7 +8,7 @@
  */
 package org.apache.lucene.codecs;
 
-import java.util.Arrays;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Optimized in-memory implementation of {@link SparseEdgeGraph}. All edges are symmetric.
@@ -89,9 +89,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       return new int[0];
     }
     DocEdges edges = edgeTable[docID];
-    return (edges == null || edges.size == 0)
-        ? new int[0]
-        : Arrays.copyOf(edges.neighbors, edges.size);
+    return (edges == null || edges.size == 0) ? new int[0] : ArrayUtil.copyArray(edges.neighbors);
   }
 
   @Override
@@ -100,9 +98,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       return new float[0];
     }
     DocEdges edges = edgeTable[docID];
-    return (edges == null || edges.size == 0)
-        ? new float[0]
-        : Arrays.copyOf(edges.weights, edges.size);
+    return (edges == null || edges.size == 0) ? new float[0] : ArrayUtil.copyArray(edges.weights);
   }
 
   @Override
@@ -139,7 +135,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       synchronized (this) {
         if (docID >= edgeTable.length) {
           int newSize = Math.max(edgeTable.length << 1, docID + 1);
-          edgeTable = Arrays.copyOf(edgeTable, newSize);
+          edgeTable = ArrayUtil.grow(edgeTable, newSize);
         }
       }
     }
@@ -174,8 +170,8 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       }
       if (size == neighbors.length) {
         int newCap = size << 1;
-        neighbors = Arrays.copyOf(neighbors, newCap);
-        weights = Arrays.copyOf(weights, newCap);
+        neighbors = ArrayUtil.grow(neighbors, newCap);
+        weights = ArrayUtil.grow(weights, newCap);
       }
       neighbors[size] = neighbor;
       weights[size] = weight;
