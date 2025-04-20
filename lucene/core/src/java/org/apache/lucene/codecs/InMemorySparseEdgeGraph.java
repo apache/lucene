@@ -174,7 +174,7 @@ public final class InMemorySparseEdgeGraph implements SparseEdgeGraph {
       }
       if (size == neighbors.length) {
         int newCap = size << 1;
-        neighbors = ArrayUtil.grow(neighbors, newCap);g
+        neighbors = ArrayUtil.grow(neighbors, newCap);
         weights = ArrayUtil.grow(weights, newCap);
       }
       neighbors[size] = neighbor;
