@@ -17,6 +17,8 @@
 
 plugins {
   id "java-gradle-plugin"
+  id "groovy-gradle-plugin"
+
   alias(deps.plugins.spotless) apply false
   alias(deps.plugins.forbiddenapis) apply false
 }
