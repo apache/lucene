@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.geo;
 
+import static org.apache.lucene.util.SloppyMath.cos;
 import static org.apache.lucene.util.SloppyMath.haversinMeters;
 
 import org.apache.lucene.index.PointValues;
@@ -84,6 +85,30 @@ public final class GeoUtils {
               + " and "
               + MAX_LON_INCL);
     }
+  }
+
+  // some sloppyish stuff, do we really need this to be done in a sloppy way?
+  // unless it is performance sensitive, we should try to remove.
+  private static final double PIO2 = Math.PI / 2D;
+
+  /**
+   * Returns the trigonometric sine of an angle converted as a cos operation.
+   *
+   * <p>Note that this is not quite right... e.g. sin(0) != 0
+   *
+   * <p>Special cases:
+   *
+   * <ul>
+   *   <li>If the argument is {@code NaN} or an infinity, then the result is {@code NaN}.
+   * </ul>
+   *
+   * @param a an angle, in radians.
+   * @return the sine of the argument.
+   * @see Math#sin(double)
+   */
+  // TODO: deprecate/remove this? at least its no longer public.
+  public static double sloppySin(double a) {
+    return cos(a - PIO2);
   }
 
   /**
