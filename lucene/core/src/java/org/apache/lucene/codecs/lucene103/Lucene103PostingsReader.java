@@ -67,17 +67,11 @@ import org.apache.lucene.util.VectorUtil;
 public final class Lucene103PostingsReader extends PostingsReaderBase {
 
   static final VectorizationProvider VECTORIZATION_PROVIDER = VectorizationProvider.getInstance();
-  // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
-  // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
-  // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
-  // less than 128 docs left to evaluate anyway.
-  private static final List<Impact> DUMMY_IMPACTS =
-      Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
 
-  // We stopped storing a placeholder impact with freq=1 for fields with IndexOptions.DOCS
-  // from 9.12.0 onwards with @org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsReader
+  // We stopped storing a placeholder impact with freq=1 for fields with IndexOptions.DOCS after
+  // 9.12.0
   private static final List<Impact> NON_COMPETITIVE_IMPACTS =
-          Collections.singletonList(new Impact(1, 1L));
+      Collections.singletonList(new Impact(1, 1L));
 
   private final IndexInput docIn;
   private final IndexInput posIn;
