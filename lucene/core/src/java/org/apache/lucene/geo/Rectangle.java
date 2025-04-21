@@ -28,9 +28,9 @@ import static org.apache.lucene.geo.GeoUtils.MIN_LAT_RADIANS;
 import static org.apache.lucene.geo.GeoUtils.MIN_LON_RADIANS;
 import static org.apache.lucene.geo.GeoUtils.checkLatitude;
 import static org.apache.lucene.geo.GeoUtils.checkLongitude;
-import static org.apache.lucene.geo.GeoUtils.sloppySin;
 import static org.apache.lucene.util.SloppyMath.asin;
 import static org.apache.lucene.util.SloppyMath.cos;
+import static org.apache.lucene.util.SloppyMath.sin;
 
 /** Represents a lat/lon rectangle. */
 public class Rectangle extends LatLonGeometry {
@@ -121,7 +121,7 @@ public class Rectangle extends LatLonGeometry {
     double maxLon;
 
     if (minLat > MIN_LAT_RADIANS && maxLat < MAX_LAT_RADIANS) {
-      double deltaLon = asin(sloppySin(radDistance) / cos(radLat));
+      double deltaLon = asin(sin(radDistance) / cos(radLat));
       minLon = radLon - deltaLon;
       if (minLon < MIN_LON_RADIANS) {
         minLon += 2d * PI;
