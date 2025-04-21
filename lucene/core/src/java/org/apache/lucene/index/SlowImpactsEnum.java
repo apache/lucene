@@ -30,11 +30,6 @@ public final class SlowImpactsEnum extends ImpactsEnum {
 
   private static final Impacts DUMMY_IMPACTS =
       new Impacts() {
-        // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
-        // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
-        // impacts as the storage overhead would not be worth any query evaluation speedup, since
-        // there's
-        // less than 128 docs left to evaluate anyway.
         private final List<Impact> impacts =
             Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
 
