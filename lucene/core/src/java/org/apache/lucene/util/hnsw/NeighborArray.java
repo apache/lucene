@@ -19,7 +19,8 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.internal.hppc.FloatArrayList;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * NeighborArray encodes the neighbors of a node and their mutual scores in the HNSW graph as a pair
@@ -32,13 +33,15 @@ import org.apache.lucene.util.ArrayUtil;
 public class NeighborArray {
   private final boolean scoresDescOrder;
   private int size;
-  private final float[] scores;
-  private final int[] nodes;
+  private final int maxSize;
+  private final FloatArrayList scores;
+  private final IntArrayList nodes;
   private int sortedNodeSize;
 
   public NeighborArray(int maxSize, boolean descOrder) {
-    nodes = new int[maxSize];
-    scores = new float[maxSize];
+    this.maxSize = maxSize;
+    nodes = new IntArrayList();
+    scores = new FloatArrayList();
     this.scoresDescOrder = descOrder;
   }
 
@@ -48,32 +51,32 @@ public class NeighborArray {
    */
   public void addInOrder(int newNode, float newScore) {
     assert size == sortedNodeSize : "cannot call addInOrder after addOutOfOrder";
-    if (size == nodes.length) {
+    if (size == maxSize) {
       throw new IllegalStateException("No growth is allowed");
     }
     if (size > 0) {
-      float previousScore = scores[size - 1];
+      float previousScore = scores.get(size - 1);
       assert ((scoresDescOrder && (previousScore >= newScore))
               || (scoresDescOrder == false && (previousScore <= newScore)))
           : "Nodes are added in the incorrect order! Comparing "
               + newScore
               + " to "
-              + Arrays.toString(ArrayUtil.copyOfSubArray(scores, 0, size));
+              + Arrays.toString(scores.toArray());
     }
-    nodes[size] = newNode;
-    scores[size] = newScore;
+    nodes.add(newNode);
+    scores.add(newScore);
     ++size;
     ++sortedNodeSize;
   }
 
   /** Add node and newScore but do not insert as sorted */
   public void addOutOfOrder(int newNode, float newScore) {
-    if (size == nodes.length) {
+    if (size == maxSize) {
       throw new IllegalStateException("No growth is allowed");
     }
 
-    scores[size] = newScore;
-    nodes[size] = newNode;
+    nodes.add(newNode);
+    scores.add(newScore);
     size++;
   }
 
@@ -90,13 +93,13 @@ public class NeighborArray {
       int newNode, float newScore, int nodeId, UpdateableRandomVectorScorer scorer)
       throws IOException {
     addOutOfOrder(newNode, newScore);
-    if (size < nodes.length) {
+    if (size < maxSize) {
       return;
     }
     // we're oversize, need to do diversity check and pop out the least diverse neighbour
     scorer.setScoringOrdinal(nodeId);
     removeIndex(findWorstNonDiverse(scorer));
-    assert size == nodes.length - 1;
+    assert size == maxSize - 1;
   }
 
   /**
@@ -134,8 +137,8 @@ public class NeighborArray {
   /** insert the first unsorted node into its sorted position */
   private int insertSortedInternal(RandomVectorScorer scorer) throws IOException {
     assert sortedNodeSize < size : "Call this method only when there's unsorted node";
-    int tmpNode = nodes[sortedNodeSize];
-    float tmpScore = scores[sortedNodeSize];
+    int tmpNode = nodes.get(sortedNodeSize);
+    float tmpScore = scores.get(sortedNodeSize);
 
     if (Float.isNaN(tmpScore)) {
       tmpScore = scorer.score(tmpNode);
@@ -146,11 +149,19 @@ public class NeighborArray {
             ? descSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize)
             : ascSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize);
     System.arraycopy(
-        nodes, insertionPoint, nodes, insertionPoint + 1, sortedNodeSize - insertionPoint);
+        nodes.buffer,
+        insertionPoint,
+        nodes.buffer,
+        insertionPoint + 1,
+        sortedNodeSize - insertionPoint);
     System.arraycopy(
-        scores, insertionPoint, scores, insertionPoint + 1, sortedNodeSize - insertionPoint);
-    nodes[insertionPoint] = tmpNode;
-    scores[insertionPoint] = tmpScore;
+        scores.buffer,
+        insertionPoint,
+        scores.buffer,
+        insertionPoint + 1,
+        sortedNodeSize - insertionPoint);
+    nodes.buffer[insertionPoint] = tmpNode;
+    scores.buffer[insertionPoint] = tmpScore;
     ++sortedNodeSize;
     return insertionPoint;
   }
@@ -171,19 +182,23 @@ public class NeighborArray {
    * @lucene.internal
    */
   public int[] nodes() {
-    return nodes;
+    return nodes.buffer;
   }
 
   public float[] scores() {
-    return scores;
+    return scores.buffer;
   }
 
   public void clear() {
     size = 0;
     sortedNodeSize = 0;
+    nodes.clear();
+    scores.clear();
   }
 
   void removeLast() {
+    nodes.removeLast();
+    scores.removeLast();
     size--;
     sortedNodeSize = Math.min(sortedNodeSize, size);
   }
@@ -193,8 +208,8 @@ public class NeighborArray {
       removeLast();
       return;
     }
-    System.arraycopy(nodes, idx + 1, nodes, idx, size - idx - 1);
-    System.arraycopy(scores, idx + 1, scores, idx, size - idx - 1);
+    nodes.removeAt(idx);
+    scores.removeAt(idx);
     if (idx < sortedNodeSize) {
       sortedNodeSize--;
     }
@@ -207,11 +222,11 @@ public class NeighborArray {
   }
 
   private int ascSortFindRightMostInsertionPoint(float newScore, int bound) {
-    int insertionPoint = Arrays.binarySearch(scores, 0, bound, newScore);
+    int insertionPoint = Arrays.binarySearch(scores.buffer, 0, bound, newScore);
     if (insertionPoint >= 0) {
       // find the right most position with the same score
       while ((insertionPoint < bound - 1)
-          && (scores[insertionPoint + 1] == scores[insertionPoint])) {
+          && (scores.get(insertionPoint + 1) == scores.get(insertionPoint))) {
         insertionPoint++;
       }
       insertionPoint++;
@@ -226,7 +241,7 @@ public class NeighborArray {
     int end = bound - 1;
     while (start <= end) {
       int mid = (start + end) / 2;
-      if (scores[mid] < newScore) end = mid - 1;
+      if (scores.get(mid) < newScore) end = mid - 1;
       else start = mid + 1;
     }
     return start;
@@ -245,7 +260,7 @@ public class NeighborArray {
         // no unchecked node left
         break;
       }
-      scorer.setScoringOrdinal(nodes[i]);
+      scorer.setScoringOrdinal(nodes.get(i));
       if (isWorstNonDiverse(i, uncheckedIndexes, uncheckedCursor, scorer)) {
         return i;
       }
@@ -259,11 +274,11 @@ public class NeighborArray {
   private boolean isWorstNonDiverse(
       int candidateIndex, int[] uncheckedIndexes, int uncheckedCursor, RandomVectorScorer scorer)
       throws IOException {
-    float minAcceptedSimilarity = scores[candidateIndex];
+    float minAcceptedSimilarity = scores.get(candidateIndex);
     if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
       // the candidate itself is unchecked
       for (int i = candidateIndex - 1; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(nodes[i]);
+        float neighborSimilarity = scorer.score(nodes.get(i));
         // candidate node is too similar to node i given its score relative to the base node
         if (neighborSimilarity >= minAcceptedSimilarity) {
           return true;
@@ -274,7 +289,7 @@ public class NeighborArray {
       // inserted) unchecked nodes
       assert candidateIndex > uncheckedIndexes[uncheckedCursor];
       for (int i = uncheckedCursor; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(nodes[uncheckedIndexes[i]]);
+        float neighborSimilarity = scorer.score(nodes.get(uncheckedIndexes[i]));
         // candidate node is too similar to node i given its score relative to the base node
         if (neighborSimilarity >= minAcceptedSimilarity) {
           return true;
@@ -282,5 +297,9 @@ public class NeighborArray {
       }
     }
     return false;
+  }
+
+  public int maxSize() {
+    return maxSize;
   }
 }

@@ -538,7 +538,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     // must subtract 1 here since the nodes array is one larger than the configured
     // max neighbors (M / 2M).
     // We should have taken care of this check by searching for not-full nodes
-    int maxConn = nbr0.nodes().length - 1;
+    int maxConn = nbr0.maxSize() - 1;
     assert notFullyConnected.get(n0);
     assert nbr0.size() < maxConn : "node " + n0 + " is full, has " + nbr0.size() + " friends";
     nbr0.addOutOfOrder(n1, score);
