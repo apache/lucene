@@ -18,78 +18,106 @@ package org.apache.lucene.benchmark.jmh;
 
 import org.apache.lucene.geo.Rectangle;
 import org.openjdk.jmh.annotations.*;
-import org.openjdk.jmh.runner.Runner;
-import org.openjdk.jmh.runner.RunnerException;
-import org.openjdk.jmh.runner.options.Options;
-import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.MICROSECONDS)
+import static java.lang.Math.PI;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+import static org.apache.lucene.geo.GeoUtils.EARTH_MEAN_RADIUS_METERS;
+import static org.apache.lucene.geo.GeoUtils.MAX_LAT_RADIANS;
+import static org.apache.lucene.geo.GeoUtils.MAX_LON_RADIANS;
+import static org.apache.lucene.geo.GeoUtils.MIN_LAT_RADIANS;
+import static org.apache.lucene.geo.GeoUtils.MIN_LON_RADIANS;
+import static org.apache.lucene.geo.GeoUtils.checkLatitude;
+import static org.apache.lucene.geo.GeoUtils.checkLongitude;
+import static org.apache.lucene.util.SloppyMath.asin;
+import static org.apache.lucene.util.SloppyMath.cos;
+
 @State(Scope.Thread)
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(value = 1, warmups = 1)
-@Warmup(iterations = 3)
-@Measurement(iterations = 5)
+@Warmup(iterations = 1, time = 1)
+@Measurement(iterations = 3, time = 2)
 public class RectangleBenchmark {
 
-    // Test cases representing different geographical scenarios
-    @Param({
-            "0.0",    // Equator
-            "45.0",   // Mid-latitude
-            "89.0",   // Near pole
-            "-45.0",  // Southern hemisphere
-            "-89.0"   // Near south pole
-    })
-    private double latitude;
+    @State(Scope.Benchmark)
+    public static class ExecutionPlan {
+        // Test cases representing different geographical scenarios
+        @Param({
+                "0.0",    // Equator
+                "45.0",   // Mid-latitude
+                "89.0",   // Near pole
+                "-45.0",  // Southern hemisphere
+                "-89.0"   // Near south pole
+        })
+        private double latitude;
 
-    @Param({
-            "0.0",     // Prime meridian
-            "179.0",   // Near dateline
-            "-179.0",  // Near dateline other side
-            "90.0",    // Mid-longitude
-            "-90.0"    // Mid-longitude west
-    })
-    private double longitude;
+        @Param({
+                "0.0",     // Prime meridian
+                "179.0",   // Near dateline
+                "-179.0",  // Near dateline other side
+                "90.0",    // Mid-longitude
+                "-90.0"    // Mid-longitude west
+        })
+        private double longitude;
 
-    @Param({
-            "100",      // Small radius (100m)
-            "1000",     // 1km
-            "10000",    // 10km
-            "100000",   // 100km
-            "1000000"   // 1000km
-    })
-    private double radiusMeters;
-
-    @Benchmark
-    public Rectangle benchmarkFromPointDistance() {
-        return Rectangle.fromPointDistance(latitude, longitude, radiusMeters);
+        @Param({
+                "100",      // Small radius (100m)
+                "1000",     // 1km
+                "10000",    // 10km
+                "100000",   // 100km
+                "1000000"   // 1000km
+        })
+        private double radiusMeters;
     }
 
     @Benchmark
-    public Rectangle benchmarkFromPointDistanceNearDateline() {
-        // Test specific case near the dateline
-        return Rectangle.fromPointDistance(0.0, 179.9, 10000);
+    public Rectangle benchmarkFromPointDistanceSloppySin(ExecutionPlan plan) {
+        return Rectangle.fromPointDistance(plan.latitude, plan.longitude, plan.radiusMeters);
     }
 
     @Benchmark
-    public Rectangle benchmarkFromPointDistanceNearPole() {
-        // Test specific case near the pole
-        return Rectangle.fromPointDistance(89.9, 0.0, 10000);
+    public Rectangle benchmarkFromPointDistanceStandardSin(ExecutionPlan plan) {
+        return fromPointDistanceStandardSin(plan.latitude, plan.longitude, plan.radiusMeters);
     }
 
-    @Benchmark
-    public Rectangle benchmarkFromPointDistanceEquator() {
-        // Test specific case at equator
-        return Rectangle.fromPointDistance(0.0, 0.0, 10000);
-    }
+    private static Rectangle fromPointDistanceStandardSin(
+            final double centerLat, final double centerLon, final double radiusMeters) {
+        checkLatitude(centerLat);
+        checkLongitude(centerLon);
+        final double radLat = Math.toRadians(centerLat);
+        final double radLon = Math.toRadians(centerLon);
+        // LUCENE-7143
+        double radDistance = (radiusMeters + 7E-2) / EARTH_MEAN_RADIUS_METERS;
+        double minLat = radLat - radDistance;
+        double maxLat = radLat + radDistance;
+        double minLon;
+        double maxLon;
 
-    // Method to run the benchmark from IDE
-    public static void main(String[] args) throws RunnerException {
-        Options opt = new OptionsBuilder()
-                .include(RectangleBenchmark.class.getSimpleName())
-                .forks(1)
-                .build();
-        new Runner(opt).run();
+        if (minLat > MIN_LAT_RADIANS && maxLat < MAX_LAT_RADIANS) {
+            double deltaLon = asin(Math.sin(radDistance) / cos(radLat));
+            minLon = radLon - deltaLon;
+            if (minLon < MIN_LON_RADIANS) {
+                minLon += 2d * PI;
+            }
+            maxLon = radLon + deltaLon;
+            if (maxLon > MAX_LON_RADIANS) {
+                maxLon -= 2d * PI;
+            }
+        } else {
+            // a pole is within the distance
+            minLat = max(minLat, MIN_LAT_RADIANS);
+            maxLat = min(maxLat, MAX_LAT_RADIANS);
+            minLon = MIN_LON_RADIANS;
+            maxLon = MAX_LON_RADIANS;
+        }
+
+        return new Rectangle(
+                Math.toDegrees(minLat),
+                Math.toDegrees(maxLat),
+                Math.toDegrees(minLon),
+                Math.toDegrees(maxLon));
     }
 }

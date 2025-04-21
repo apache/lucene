@@ -17,30 +17,25 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.util.concurrent.TimeUnit;
+
+import org.apache.lucene.geo.GeoUtils;
 import org.openjdk.jmh.annotations.*;
 
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
-@OutputTimeUnit(TimeUnit.SECONDS)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(value = 1, warmups = 1)
-@Warmup(iterations = 3)
-@Measurement(iterations = 5)
-public class SloppyMathBenchmark {
-    private static double sloppySin(double a) {
-        // Common sloppySin implementation
-        return Math.abs(a) <= Math.PI/4
-                ? a * (0.9992947 + a * a * (-0.16161097 + a * a * 0.0066208798))
-                : Math.sin(a);
-    }
-
+@Warmup(iterations = 1, time = 1)
+@Measurement(iterations = 3, time = 2)
+public class SloppySinBenchmark {
     @Benchmark
     public double standardSin(ExecutionPlan plan) {
         return Math.sin(plan.value);
     }
 
     @Benchmark
-    public double approximateSin(ExecutionPlan plan) {
-        return sloppySin(plan.value);
+    public double sloppySin(ExecutionPlan plan) {
+        return GeoUtils.sloppySin(plan.value);
     }
 
     @State(Scope.Benchmark)
