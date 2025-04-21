@@ -185,8 +185,14 @@ public class NeighborArray {
     return nodes.buffer;
   }
 
-  public float[] scores() {
-    return scores.buffer;
+  /**
+   * Get the score at the given index
+   *
+   * @param i index of the score to get
+   * @return the score at the given index
+   */
+  public float getScores(int i) {
+    return scores.get(i);
   }
 
   public void clear() {

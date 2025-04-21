@@ -362,13 +362,13 @@ public class HnswGraphBuilder implements HnswBuilder {
         Lock lock = hnswLock.write(level, nbr);
         try {
           NeighborArray nbrsOfNbr = getGraph().getNeighbors(level, nbr);
-          nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorer);
+          nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
         } finally {
           lock.unlock();
         }
       } else {
         NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        nbrsOfNbr.addAndEnsureDiversity(node, candidates.scores()[i], nbr, scorer);
+        nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
       }
     }
   }
@@ -389,7 +389,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.nodes()[i];
-      float cScore = candidates.scores()[i];
+      float cScore = candidates.getScores(i);
       assert cNode <= hnsw.maxNodeId();
       scorer.setScoringOrdinal(cNode);
       if (diversityCheck(cScore, neighbors, scorer)) {

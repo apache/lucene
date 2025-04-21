@@ -215,7 +215,7 @@ public class TestNeighborArray extends LuceneTestCase {
 
   private void assertScoresEqual(float[] scores, NeighborArray neighbors) {
     for (int i = 0; i < scores.length; i++) {
-      assertEquals(scores[i], neighbors.scores()[i], 0.01f);
+      assertEquals(scores[i], neighbors.getScores(i), 0.01f);
     }
   }
 
