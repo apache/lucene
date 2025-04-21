@@ -54,10 +54,16 @@ gradlePlugin {
   }
 }
 
+def Provider<String> plugin(Provider<PluginDependency> plugin) {
+  return plugin.map { "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString() }
+}
+
 dependencies {
   implementation gradleApi()
   implementation localGroovy()
   implementation deps.commons.codec
+
+  implementation plugin(deps.plugins.spotless)
 }
 
 if (!hasJavaFlightRecorder) {

@@ -24,6 +24,7 @@ plugins {
 
   // Apply convention plugins.
   id "lucene.help"
+  id "lucene.spotless-groovy"
 
   // Apply other plugins.
   alias(deps.plugins.dependencychecks)
