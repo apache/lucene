@@ -75,6 +75,6 @@ abstract class CompilerArgsProvider implements CommandLineArgumentProvider {
 
   @Override
   Iterable<String> asArguments() {
-    return ["--patch-module", "java.base=${apiJarFile.get().asFile.absolutePath}"]
+    return ["--patch-module", "java.base=${apiJarFile.get().asFile.absolutePath}".toString()]
   }
 }
