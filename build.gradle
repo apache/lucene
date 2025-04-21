@@ -21,8 +21,11 @@ import java.time.format.DateTimeFormatter
 plugins {
   id "base"
   id "lucene.build-infra"
-  id "lucene.foo"
 
+  // Apply convention plugins.
+  id "lucene.help"
+
+  // Apply other plugins.
   alias(deps.plugins.dependencychecks)
   alias(deps.plugins.spotless) apply false
   alias(deps.plugins.benmanes.versions)
@@ -193,7 +196,6 @@ apply from: file('gradle/testing/failed-tests-at-end.gradle')
 apply from: file('gradle/testing/profiling.gradle')
 apply from: file('gradle/testing/beasting.gradle')
 apply from: file('gradle/testing/coverage.gradle')
-apply from: file('gradle/help.gradle')
 
 apply from: file('gradle/documentation/documentation.gradle')
 apply from: file('gradle/documentation/changes-to-html.gradle')
