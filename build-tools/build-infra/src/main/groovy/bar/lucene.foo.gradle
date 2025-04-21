@@ -1,0 +1,12 @@
+
+allprojects {
+    println("Project: " + it.path)
+}
+
+configure(rootProject) {
+    tasks.register("foo", {
+        doLast {
+            println "Foo!"
+        }
+    })
+}
