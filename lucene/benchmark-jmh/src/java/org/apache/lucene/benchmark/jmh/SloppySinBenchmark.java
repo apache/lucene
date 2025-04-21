@@ -17,7 +17,7 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.geo.GeoUtils;
+import org.apache.lucene.util.SloppyMath;
 import org.openjdk.jmh.annotations.*;
 
 @State(Scope.Thread)
@@ -34,7 +34,7 @@ public class SloppySinBenchmark {
 
   @Benchmark
   public double sloppySin(ExecutionPlan plan) {
-    return GeoUtils.sloppySin(plan.value);
+    return SloppyMath.sin(plan.value);
   }
 
   @State(Scope.Benchmark)
