@@ -602,11 +602,9 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
             disi.doc = disi.block | doc;
             disi.exists = true;
             disi.nextExistDocInBlock = doc;
-
             return true;
           }
         }
-
         return false;
       }
 
