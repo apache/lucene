@@ -590,7 +590,6 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
 
   enum Method {
     SPARSE {
-
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
         final int targetInBlock = target & 0xFFFF;
