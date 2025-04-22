@@ -16,12 +16,13 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -91,17 +92,20 @@ public class HistogramCollectorBenchmark {
       dir = null;
     }
 
-    deleteDirectory(new File(path.toString()));
-  }
-
-  public static void deleteDirectory(File directoryToBeDeleted) {
-    File[] allContents = directoryToBeDeleted.listFiles();
-    if (allContents != null) {
-      for (File file : allContents) {
-        deleteDirectory(file);
+    // Clean up the segment files before next run
+    if (Files.exists(path)) {
+      try (Stream<Path> walk = Files.walk(path)) {
+        walk.sorted(Comparator.reverseOrder())
+            .forEach(
+                path -> {
+                  try {
+                    Files.delete(path);
+                  } catch (IOException e) {
+                    // Do nothing
+                  }
+                });
       }
     }
-    directoryToBeDeleted.delete();
   }
 
   @State(Scope.Benchmark)
