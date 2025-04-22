@@ -633,12 +633,10 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
               disi.slice.seek(disi.slice.getFilePointer() - Short.BYTES);
               break;
             }
-
             disi.exists = true;
             return true;
           }
         }
-
         disi.exists = false;
         return false;
       }
@@ -654,18 +652,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
           bitSet.set(disi.doc - offset);
         }
 
-        boolean unbound = upTo > (disi.block | 0xFFFF);
-        int i = disi.index;
-        for (int to = disi.nextBlockIndex - (BATCH_SIZE - 1); i < to; i += BATCH_SIZE) {
-          if (unbound == false && peakLastOfBlock(disi) >= upTo) {
-            break;
-          }
-          if (disi.sparseBuffer == null) {
-            disi.sparseBuffer = new int[BATCH_SIZE];
-          }
-          batchIntoBitset(disi.slice, disi.sparseBuffer, bitSet, offset, disi.block);
-        }
-        for (int to = disi.nextBlockIndex; i < to; i++) {
+        for (int i = disi.index, to = disi.nextBlockIndex; i < to; i++) {
           int docInBlock = disi.slice.readShort() & 0xFFFF;
           int doc = disi.block | docInBlock;
           if (doc >= upTo) {
@@ -673,37 +660,12 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
             disi.doc = doc;
             disi.exists = true;
             disi.nextExistDocInBlock = docInBlock;
-
             return true;
           }
           bitSet.set(doc - offset);
         }
-
         disi.exists = false;
         return false;
-      }
-
-      private static int peakLastOfBlock(IndexedDISI disi) throws IOException {
-        long fp = disi.slice.getFilePointer();
-        disi.slice.seek(fp + (BATCH_SIZE - 1) * Short.BYTES);
-        int doc = disi.block | (disi.slice.readShort() & 0xFFFF);
-        disi.slice.seek(fp);
-        return doc;
-      }
-
-      private static void batchIntoBitset(
-          IndexInput in, int[] buffer, FixedBitSet bitSet, int offset, int block)
-          throws IOException {
-        in.readInts(buffer, 0, BATCH_SIZE / 2);
-        // auto-vectorized loop
-        for (int i = 0; i < BATCH_SIZE / 2; i++) {
-          int doc = buffer[i];
-          buffer[i] = (block | (doc & 0xFFFF)) - offset;
-          buffer[i + BATCH_SIZE / 2] = (block | (doc >>> 16)) - offset;
-        }
-        for (int doc : buffer) {
-          bitSet.set(doc);
-        }
       }
     },
     DENSE {
