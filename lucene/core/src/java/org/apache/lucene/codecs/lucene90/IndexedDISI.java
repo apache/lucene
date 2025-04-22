@@ -428,7 +428,6 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
   // SPARSE variables
   boolean exists;
   int nextExistDocInBlock = -1;
-  int[] sparseBuffer;
 
   // DENSE variables
   long word;
