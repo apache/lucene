@@ -359,10 +359,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return scorer;
     }
 
-    long leadCost =
+    long mustLeadCost =
         subs.get(Occur.MUST).stream().mapToLong(ScorerSupplier::cost).min().orElse(Long.MAX_VALUE);
-    leadCost =
-        subs.get(Occur.FILTER).stream().mapToLong(ScorerSupplier::cost).min().orElse(leadCost);
+    long filterLeadCost =
+        subs.get(Occur.FILTER).stream()
+            .mapToLong(ScorerSupplier::cost)
+            .min()
+            .orElse(Long.MAX_VALUE);
+    long leadCost = Math.min(mustLeadCost, filterLeadCost);
 
     List<Scorer> requiredNoScoring = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
