@@ -20,19 +20,22 @@ package org.apache.lucene.geo;
  * Represents a circle on the Earth's surface defined by a center point and radius.
  *
  * <p>The circle is defined using:
+ *
  * <ul>
- *   <li>Center point (latitude/longitude in degrees)</li>
- *   <li>Radius in meters</li>
+ *   <li>Center point (latitude/longitude in degrees)
+ *   <li>Radius in meters
  * </ul>
  *
  * <p>Important Notes:
+ *
  * <ul>
- *   <li>The circle is approximated on the spherical Earth model</li>
- *   <li>For very large circles or circles near poles, consider using polygons instead</li>
- *   <li>Dateline crossing is handled automatically</li>
+ *   <li>The circle is approximated on the spherical Earth model
+ *   <li>For very large circles or circles near poles, consider using polygons instead
+ *   <li>Dateline crossing is handled automatically
  * </ul>
  *
  * <p>Example usage:
+ *
  * <pre>{@code
  * // Create a circle with 1km radius around the Eiffel Tower
  * Circle circle = new Circle(48.8584, 2.2945, 1000);

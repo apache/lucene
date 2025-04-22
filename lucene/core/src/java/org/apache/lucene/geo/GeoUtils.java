@@ -27,23 +27,25 @@ import org.apache.lucene.util.SloppyMath;
  * Utility methods for geo-spatial calculations and coordinate validation.
  *
  * <p>This class provides:
+ *
  * <ul>
- *   <li>Coordinate validation methods</li>
- *   <li>Earth model constants</li>
- *   <li>Common geometric calculations</li>
- *   <li>Coordinate normalization utilities</li>
+ *   <li>Coordinate validation methods
+ *   <li>Earth model constants
+ *   <li>Common geometric calculations
+ *   <li>Coordinate normalization utilities
  * </ul>
  *
  * <p>Important Constants:
+ *
  * <ul>
- *   <li>Earth's mean radius: 6,371,008.7714 meters</li>
- *   <li>Latitude range: -90° to +90°</li>
- *   <li>Longitude range: -180° to +180°</li>
+ *   <li>Earth's mean radius: 6,371,008.7714 meters
+ *   <li>Latitude range: -90° to +90°
+ *   <li>Longitude range: -180° to +180°
  * </ul>
  *
- * <p>Note: This class uses a spherical Earth model for simplicity and performance.
- * For applications requiring higher precision, consider using a geodetic library
- * that implements the WGS84 ellipsoid model.
+ * <p>Note: This class uses a spherical Earth model for simplicity and performance. For applications
+ * requiring higher precision, consider using a geodetic library that implements the WGS84 ellipsoid
+ * model.
  *
  * @lucene.experimental
  */

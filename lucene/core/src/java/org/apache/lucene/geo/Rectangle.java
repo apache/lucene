@@ -35,18 +35,20 @@ import static org.apache.lucene.util.SloppyMath.cos;
 /**
  * Represents a rectangular bounding box on Earth's surface.
  *
- * <p>A rectangle is defined by its minimum and maximum latitude/longitude coordinates.
- * It can cross the dateline, in which case minLon &gt; maxLon.
+ * <p>A rectangle is defined by its minimum and maximum latitude/longitude coordinates. It can cross
+ * the dateline, in which case minLon &gt; maxLon.
  *
  * <p>Key Features:
+ *
  * <ul>
- *   <li>Handles dateline crossing automatically</li>
- *   <li>Supports point-in-box testing</li>
- *   <li>Can be used to create spatial queries</li>
- *   <li>Useful for creating bounding boxes around other shapes</li>
+ *   <li>Handles dateline crossing automatically
+ *   <li>Supports point-in-box testing
+ *   <li>Can be used to create spatial queries
+ *   <li>Useful for creating bounding boxes around other shapes
  * </ul>
  *
  * <p>Example usage:
+ *
  * <pre>{@code
  * // Create a rectangle covering central London
  * Rectangle bbox = new Rectangle(51.4, 51.6, -0.2, 0.0);
@@ -58,23 +60,23 @@ import static org.apache.lucene.util.SloppyMath.cos;
  * Rectangle circle = Rectangle.fromPointDistance(lat, lon, radiusMeters);
  * }</pre>
  *
- * <p>Note: When working with areas near poles, consider that rectangles
- * become highly distorted and may not provide accurate representation
- * of the actual area.
+ * <p>Note: When working with areas near poles, consider that rectangles become highly distorted and
+ * may not provide accurate representation of the actual area.
  */
 public class Rectangle extends LatLonGeometry {
   /** Minimum latitude in degrees (-90 to 90) */
   public final double minLat;
+
   /** Maximum latitude in degrees (-90 to 90) */
   public final double maxLat;
+
   /**
-   * Minimum longitude in degrees (-180 to 180).
-   * May be greater than maxLon when crossing the dateline.
+   * Minimum longitude in degrees (-180 to 180). May be greater than maxLon when crossing the
+   * dateline.
    */
   public final double minLon;
-  /**
-   * Maximum longitude in degrees (-180 to 180)
-   */
+
+  /** Maximum longitude in degrees (-180 to 180) */
   public final double maxLon;
 
   /**
