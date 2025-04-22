@@ -35,7 +35,7 @@ spotless.format("gradleScripts", GroovyGradleExtension.class, { ext ->
   ext.target("build-tools/build-infra/src/main/groovy/**/*.gradle")
 })
 
-tasks.matching { it.name == "tidy" }.configureEach {
+tasks.named("tidy").configure {
   dependsOn ":spotlessGradleScriptsApply"
 }
 

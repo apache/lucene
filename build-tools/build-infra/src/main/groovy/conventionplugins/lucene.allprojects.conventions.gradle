@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import org.apache.lucene.gradle.buildoptions.*
+
 // Common setup for all projects.
 
 if (project != project.rootProject) {
@@ -25,8 +27,15 @@ allprojects {project ->
   // all projects have the base plugin (convention tasks like 'check', etc.)
   apply plugin: 'base'
 
+  // all projects may declare 'build options', which may have some defaults but
+  // can be overridden via command line (via -Poption=value, -Doption=value) or
+  // via developer-local 'build-options.local.properties' file.
+  project.plugins.apply(BuildOptionsPlugin)
+
+  // Project group and version.
   group "org.apache"
 
+  // Source repositories for dependencies.
   repositories {
     mavenCentral()
   }
@@ -34,4 +43,11 @@ allprojects {project ->
   // Common archive artifact naming.
   var baseExt = project.getExtensions().getByType(BasePluginExtension)
   baseExt.archivesName.convention(project.path.replaceAll("^:", "").replace(':', '-'))
+
+  // Common tasks or meta-tasks.
+
+  tasks.register("tidy", {
+    description "Applies all code formatters and other enforced cleanups to the project."
+    group "verification"
+  })
 }
