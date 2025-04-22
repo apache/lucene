@@ -74,6 +74,8 @@ Improvements
 
 * GITHUB#14476: Removing unnecessary splitX in ComponentTree (Ankit Jain)
 
+* GITHUB#14534: Improve user-facing docs for geo package (Ankit Jain)
+
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
