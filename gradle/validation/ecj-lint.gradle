@@ -52,6 +52,9 @@ allprojects {
         // that don't have any Java source directories.
         enabled = !srcDirs.isEmpty()
 
+        // FIXME: ecj does not support Java 24 yet.
+        enabled = false
+
         // Ignore MR-JAR sourceSets.
         if (sourceSet.name ==~ /main\d+/) {
           enabled = false
