@@ -2,7 +2,7 @@
 [versions]
 antlr = "4.13.2"
 asm = "9.6"
-assertj = "3.21.0"
+assertj = "3.27.3"
 commons-codec = "1.17.2"
 commons-compress = "1.19"
 ecj = "3.40.0"
