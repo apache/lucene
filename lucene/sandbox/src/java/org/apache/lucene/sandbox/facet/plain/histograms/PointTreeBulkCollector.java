@@ -25,6 +25,13 @@ import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.NumericUtils;
 
+/**
+ * Logic for bulk collecting histogram using multi range traversal on PointTree. If current range
+ * being collected contains the TreeNode range completely, we can completely skip traversing the
+ * TreeNodes individually
+ *
+ * @lucene.experimental
+ */
 class PointTreeBulkCollector {
   private static Function<byte[], Long> bytesToLong(int numBytes) {
     if (numBytes == Long.BYTES) {
