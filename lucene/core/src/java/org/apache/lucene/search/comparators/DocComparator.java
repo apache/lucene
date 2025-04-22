@@ -153,6 +153,8 @@ public class DocComparator extends FieldComparator<Integer> {
           competitiveIterator.update(DocIdSetIterator.empty()); // skip this segment
         } else {
           int segmentMinDoc = Math.max(competitiveIterator.docID(), minDoc - docBase);
+          // The competitive iterator may not be positioned yet.
+          segmentMinDoc = Math.max(0, segmentMinDoc);
           competitiveIterator.update(DocIdSetIterator.range(segmentMinDoc, maxDoc));
         }
       }
