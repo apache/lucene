@@ -18,7 +18,8 @@ import com.diffplug.gradle.spotless.SpotlessPlugin
  * limitations under the License.
  */
 
-// Apply spotless formatter to groovy code in the build-infra plugin.
+// Apply spotless formatter to groovy code (gradle scripts in the build-infra plugin
+// and possibly other places).
 
 if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)

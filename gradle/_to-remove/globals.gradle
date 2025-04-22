@@ -16,19 +16,6 @@
  */
 
 allprojects {
-  apply plugin: 'base'
-
-  group "org.apache"
-
-  // Repositories to fetch dependencies from.
-  repositories {
-    mavenCentral()
-  }
-
-  // Artifacts will have names after full gradle project path
-  // so :solr:core will have solr-core.jar, etc.
-  project.base.archivesName = project.path.replaceAll("^:", "").replace(':', '-')
-
   ext {
     // Utility method to support passing overrides via -P or -D.
     propertyOrDefault = { propName, defValue ->

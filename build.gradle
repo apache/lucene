@@ -19,12 +19,13 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 plugins {
-  id "base"
-  id "lucene.build-infra"
-
   // Apply convention plugins.
+  id "lucene.allprojects.conventions"
   id "lucene.help"
-  id "lucene.spotless-groovy"
+  id "lucene.validation.spotless-groovy"
+
+  // perhaps move this to a convention plugin or remove entirely?
+  id "lucene.build-infra"
 
   // Apply other plugins.
   alias(deps.plugins.dependencychecks)
@@ -39,7 +40,7 @@ plugins {
   alias(deps.plugins.jacocolog) apply false
 }
 
-apply from: file('gradle/globals.gradle')
+apply from: file('gradle/_to-remove/globals.gradle')
 
 // General metadata.
 
