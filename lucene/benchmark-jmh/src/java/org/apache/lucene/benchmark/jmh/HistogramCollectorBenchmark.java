@@ -100,7 +100,7 @@ public class HistogramCollectorBenchmark {
                 path -> {
                   try {
                     Files.delete(path);
-                  } catch (IOException e) {
+                  } catch (IOException _) {
                     // Do nothing
                   }
                 });
