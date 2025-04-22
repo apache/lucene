@@ -365,7 +365,9 @@ public class MMapDirectory extends FSDirectory {
       // access through the lookup:
       final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class, int.class));
       try {
-        return (MMapIndexInputProvider<A>) constr.invoke(maxPermits);
+        @SuppressWarnings("unchecked")
+        var res = (MMapIndexInputProvider<A>) constr.invoke(maxPermits);
+        return res;
       } catch (RuntimeException | Error e) {
         throw e;
       } catch (Throwable th) {
