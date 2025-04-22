@@ -590,7 +590,6 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
 
   enum Method {
     SPARSE {
-      private static final int BATCH_SIZE = 128;
 
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
