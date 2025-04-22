@@ -642,7 +642,6 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
           throws IOException {
         if (disi.exists) {
           if (disi.doc >= upTo) {
-
             return true;
           }
           bitSet.set(disi.doc - offset);
@@ -660,7 +659,6 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
           }
           bitSet.set(doc - offset);
         }
-        disi.exists = false;
         return false;
       }
     },
