@@ -32,49 +32,18 @@ import static org.apache.lucene.geo.GeoUtils.sloppySin;
 import static org.apache.lucene.util.SloppyMath.asin;
 import static org.apache.lucene.util.SloppyMath.cos;
 
-/**
- * Represents a rectangular bounding box on Earth's surface.
- *
- * <p>A rectangle is defined by its minimum and maximum latitude/longitude coordinates.
- * It can cross the dateline, in which case minLon &gt; maxLon.
- *
- * <p>Key Features:
- * <ul>
- *   <li>Handles dateline crossing automatically</li>
- *   <li>Supports point-in-box testing</li>
- *   <li>Can be used to create spatial queries</li>
- *   <li>Useful for creating bounding boxes around other shapes</li>
- * </ul>
- *
- * <p>Example usage:
- * <pre>{@code
- * // Create a rectangle covering central London
- * Rectangle bbox = new Rectangle(51.4, 51.6, -0.2, 0.0);
- *
- * // Create a rectangle crossing the dateline
- * Rectangle datelineBox = new Rectangle(20, 30, 170, -170);
- *
- * // Create a bounding box around a point with given radius
- * Rectangle circle = Rectangle.fromPointDistance(lat, lon, radiusMeters);
- * }</pre>
- *
- * <p>Note: When working with areas near poles, consider that rectangles
- * become highly distorted and may not provide accurate representation
- * of the actual area.
- */
+/** Represents a lat/lon rectangle. */
 public class Rectangle extends LatLonGeometry {
-  /** Minimum latitude in degrees (-90 to 90) */
+  /** maximum longitude value (in degrees) */
   public final double minLat;
-  /** Maximum latitude in degrees (-90 to 90) */
-  public final double maxLat;
-  /**
-   * Minimum longitude in degrees (-180 to 180).
-   * May be greater than maxLon when crossing the dateline.
-   */
+
+  /** minimum longitude value (in degrees) */
   public final double minLon;
-  /**
-   * Maximum longitude in degrees (-180 to 180)
-   */
+
+  /** maximum latitude value (in degrees) */
+  public final double maxLat;
+
+  /** minimum latitude value (in degrees) */
   public final double maxLon;
 
   /**
