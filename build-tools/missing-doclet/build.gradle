@@ -47,3 +47,5 @@ tasks.withType(JavaCompile).configureEach {
   options.compilerArgs += ["--release", java.targetCompatibility.toString()]
   options.encoding = "UTF-8"
 }
+
+tasks.register("tidy", {})

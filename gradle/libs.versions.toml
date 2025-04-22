@@ -19,6 +19,8 @@ jgit = "6.10.0.202406032230-r"
 jmh = "1.37"
 jts = "1.17.0"
 junit = "4.13.1"
+# @keep This is Lucene's base version.
+lucene = "11.0.0"
 # @keep Minimum gradle version to run the build
 minGradle = "8.10"
 # @keep This is the minimum required Java version.

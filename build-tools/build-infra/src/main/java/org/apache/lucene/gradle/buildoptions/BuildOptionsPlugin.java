@@ -12,7 +12,6 @@ import org.gradle.api.Describable;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.problems.Problems;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
@@ -30,8 +29,7 @@ public class BuildOptionsPlugin implements Plugin<Project> {
   public static final String OPTIONS_EXTENSION_NAME = "buildOptions";
 
   @Inject
-  public BuildOptionsPlugin() {
-  }
+  public BuildOptionsPlugin() {}
 
   public abstract static class OptionFileValueSource
       implements ValueSource<String, OptionFileValueSource.Parameters>, Describable {

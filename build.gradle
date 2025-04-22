@@ -40,30 +40,11 @@ plugins {
   alias(deps.plugins.jacocolog) apply false
 }
 
-apply from: file('gradle/_to-remove/globals.gradle')
-
-// General metadata.
-
-// Calculate project version:
-version = {
-  // Release manager: update base version here after release:
-  String baseVersion = '11.0.0'
-
-  // On a release explicitly set release version in one go:
-  //  -Dversion.release=x.y.z
-  
-  // Jenkins can just set just a suffix, overriding SNAPSHOT, e.g. using build id:
-  //  -Dversion.suffix=jenkins123
-  
-  String versionSuffix = propertyOrDefault('version.suffix', 'SNAPSHOT')
-  return propertyOrDefault('version.release', "${baseVersion}-${versionSuffix}")
-}()
 description = 'Grandparent project for Apache Lucene Core'
 
-// Propagate version and derived properties across projects.
-allprojects {
-  version = rootProject.version
-}
+// TODO: STOPPED cleaning here.
+
+apply from: file('gradle/_to-remove/globals.gradle')
 
 ext {
   // "base" version is stripped of the qualifier. Compute it.

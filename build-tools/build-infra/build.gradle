@@ -72,3 +72,5 @@ if (!hasJavaFlightRecorder) {
     exclude('**/ProfileResults.java')
   }
 }
+
+tasks.register("tidy", {})

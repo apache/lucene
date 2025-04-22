@@ -23,6 +23,20 @@ if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
+// Determine project version.
+project.plugins.apply(BuildOptionsPlugin)
+def buildOptions = rootProject.getExtensions().getByType(BuildOptionsExtension.class)
+
+String luceneVersion = deps.versions.lucene.get()
+def versionReleaseProperty = buildOptions.addOption("version.release", "Explicitly sets project version to the provided string (x.y.z).").getValue()
+def versionSuffixProperty = buildOptions.addOption("version.suffix", "Appends project version suffix to base version (${luceneVersion}).", "SNAPSHOT").getValue()
+
+if (versionReleaseProperty.isPresent()) {
+  project.version = versionReleaseProperty
+} else {
+  project.version = "${luceneVersion}-${versionSuffixProperty}"
+}
+
 allprojects {project ->
   // all projects have the base plugin (convention tasks like 'check', etc.)
   apply plugin: 'base'
@@ -33,7 +47,8 @@ allprojects {project ->
   project.plugins.apply(BuildOptionsPlugin)
 
   // Project group and version.
-  group "org.apache"
+  group = "org.apache"
+  version = rootProject.version
 
   // Source repositories for dependencies.
   repositories {
