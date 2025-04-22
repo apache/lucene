@@ -26,6 +26,15 @@ import org.apache.lucene.util.ArrayUtil;
  * <p>Construction takes {@code O(n log n)} time for sorting and tree construction.
  */
 final class ComponentTree implements Component2D {
+
+  private static final Comparator<Component2D> X_COMPARATOR =
+      Comparator.comparingDouble(Component2D::getMinX).thenComparingDouble(Component2D::getMaxX);
+
+  private static final Comparator<Component2D> Y_COMPARATOR =
+      Comparator.comparingDouble(Component2D::getMinY).thenComparingDouble(Component2D::getMaxY);
+
+  private static final boolean ROOT_SPLITX = false;
+
   /** minimum Y of this geometry's bounding box area */
   private double minY;
 
@@ -41,23 +50,18 @@ final class ComponentTree implements Component2D {
   // child components, or null. Note internal nodes might mot have
   // a consistent bounding box. Internal nodes should not be accessed
   // outside if this class.
-  private Component2D left;
-  private Component2D right;
-
-  /** which dimension was this node split on */
-  // TODO: its implicit based on level, but boolean keeps code simple
-  private final boolean splitX;
+  private ComponentTree left;
+  private ComponentTree right;
 
   /** root node of edge tree */
   private final Component2D component;
 
-  private ComponentTree(Component2D component, boolean splitX) {
+  private ComponentTree(Component2D component) {
     this.minY = component.getMinY();
     this.maxY = component.getMaxY();
     this.minX = component.getMinX();
     this.maxX = component.getMaxX();
     this.component = component;
-    this.splitX = splitX;
   }
 
   @Override
@@ -82,21 +86,23 @@ final class ComponentTree implements Component2D {
 
   @Override
   public boolean contains(double x, double y) {
+    return contains(x, y, ROOT_SPLITX);
+  }
+
+  private boolean contains(double x, double y, boolean splitX) {
     if (y <= this.maxY && x <= this.maxX) {
       if (component.contains(x, y)) {
         return true;
       }
       if (left != null) {
-        if (left.contains(x, y)) {
+        if (left.contains(x, y, !splitX)) {
           return true;
         }
       }
       if (right != null
           && ((splitX == false && y >= this.component.getMinY())
               || (splitX && x >= this.component.getMinX()))) {
-        if (right.contains(x, y)) {
-          return true;
-        }
+        return right.contains(x, y, !splitX);
       }
     }
     return false;
@@ -112,21 +118,32 @@ final class ComponentTree implements Component2D {
       double aY,
       double bX,
       double bY) {
+    return intersectsLine(minX, maxX, minY, maxY, aX, aY, bX, bY, ROOT_SPLITX);
+  }
+
+  private boolean intersectsLine(
+      double minX,
+      double maxX,
+      double minY,
+      double maxY,
+      double aX,
+      double aY,
+      double bX,
+      double bY,
+      boolean splitX) {
     if (minY <= this.maxY && minX <= this.maxX) {
       if (component.intersectsLine(minX, maxX, minY, maxY, aX, aY, bX, bY)) {
         return true;
       }
       if (left != null) {
-        if (left.intersectsLine(minX, maxX, minY, maxY, aX, aY, bX, bY)) {
+        if (left.intersectsLine(minX, maxX, minY, maxY, aX, aY, bX, bY, !splitX)) {
           return true;
         }
       }
       if (right != null
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
-        if (right.intersectsLine(minX, maxX, minY, maxY, aX, aY, bX, bY)) {
-          return true;
-        }
+        return right.intersectsLine(minX, maxX, minY, maxY, aX, aY, bX, bY, !splitX);
       }
     }
     return false;
@@ -144,21 +161,34 @@ final class ComponentTree implements Component2D {
       double bY,
       double cX,
       double cY) {
+    return intersectsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY, ROOT_SPLITX);
+  }
+
+  private boolean intersectsTriangle(
+      double minX,
+      double maxX,
+      double minY,
+      double maxY,
+      double aX,
+      double aY,
+      double bX,
+      double bY,
+      double cX,
+      double cY,
+      boolean splitX) {
     if (minY <= this.maxY && minX <= this.maxX) {
       if (component.intersectsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY)) {
         return true;
       }
       if (left != null) {
-        if (left.intersectsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY)) {
+        if (left.intersectsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY, !splitX)) {
           return true;
         }
       }
       if (right != null
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
-        if (right.intersectsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY)) {
-          return true;
-        }
+        return right.intersectsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY, !splitX);
       }
     }
     return false;
@@ -174,21 +204,32 @@ final class ComponentTree implements Component2D {
       double aY,
       double bX,
       double bY) {
+    return containsLine(minX, maxX, minY, maxY, aX, aY, bX, bY, ROOT_SPLITX);
+  }
+
+  private boolean containsLine(
+      double minX,
+      double maxX,
+      double minY,
+      double maxY,
+      double aX,
+      double aY,
+      double bX,
+      double bY,
+      boolean splitX) {
     if (minY <= this.maxY && minX <= this.maxX) {
       if (component.containsLine(minX, maxX, minY, maxY, aX, aY, bX, bY)) {
         return true;
       }
       if (left != null) {
-        if (left.containsLine(minX, maxX, minY, maxY, aX, aY, bX, bY)) {
+        if (left.containsLine(minX, maxX, minY, maxY, aX, aY, bX, bY, !splitX)) {
           return true;
         }
       }
       if (right != null
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
-        if (right.containsLine(minX, maxX, minY, maxY, aX, aY, bX, bY)) {
-          return true;
-        }
+        return right.containsLine(minX, maxX, minY, maxY, aX, aY, bX, bY, !splitX);
       }
     }
     return false;
@@ -206,21 +247,34 @@ final class ComponentTree implements Component2D {
       double bY,
       double cX,
       double cY) {
+    return containsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY, ROOT_SPLITX);
+  }
+
+  private boolean containsTriangle(
+      double minX,
+      double maxX,
+      double minY,
+      double maxY,
+      double aX,
+      double aY,
+      double bX,
+      double bY,
+      double cX,
+      double cY,
+      boolean splitX) {
     if (minY <= this.maxY && minX <= this.maxX) {
       if (component.containsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY)) {
         return true;
       }
       if (left != null) {
-        if (left.containsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY)) {
+        if (left.containsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY, !splitX)) {
           return true;
         }
       }
       if (right != null
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
-        if (right.containsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY)) {
-          return true;
-        }
+        return right.containsTriangle(minX, maxX, minY, maxY, aX, aY, bX, bY, cX, cY, !splitX);
       }
     }
     return false;
@@ -277,13 +331,17 @@ final class ComponentTree implements Component2D {
 
   @Override
   public Relation relate(double minX, double maxX, double minY, double maxY) {
+    return relate(minX, maxX, minY, maxY, ROOT_SPLITX);
+  }
+
+  private Relation relate(double minX, double maxX, double minY, double maxY, boolean splitX) {
     if (minY <= this.maxY && minX <= this.maxX) {
       Relation relation = component.relate(minX, maxX, minY, maxY);
       if (relation != Relation.CELL_OUTSIDE_QUERY) {
         return relation;
       }
       if (left != null) {
-        relation = left.relate(minX, maxX, minY, maxY);
+        relation = left.relate(minX, maxX, minY, maxY, !splitX);
         if (relation != Relation.CELL_OUTSIDE_QUERY) {
           return relation;
         }
@@ -291,10 +349,8 @@ final class ComponentTree implements Component2D {
       if (right != null
           && ((splitX == false && maxY >= this.component.getMinY())
               || (splitX && maxX >= this.component.getMinX()))) {
-        relation = right.relate(minX, maxX, minY, maxY);
-        if (relation != Relation.CELL_OUTSIDE_QUERY) {
-          return relation;
-        }
+        relation = right.relate(minX, maxX, minY, maxY, !splitX);
+        return relation;
       }
     }
     return Relation.CELL_OUTSIDE_QUERY;
@@ -305,7 +361,7 @@ final class ComponentTree implements Component2D {
     if (components.length == 1) {
       return components[0];
     }
-    ComponentTree root = createTree(components, 0, components.length - 1, false);
+    ComponentTree root = createTree(components, 0, components.length - 1, ROOT_SPLITX);
     // pull up min values for the root node so it contains a consistent bounding box
     for (Component2D component : components) {
       root.minY = Math.min(root.minY, component.getMinY());
@@ -322,29 +378,13 @@ final class ComponentTree implements Component2D {
     }
     final int mid = (low + high) >>> 1;
     if (low < high) {
-      Comparator<Component2D> comparator;
       if (splitX) {
-        comparator =
-            (left, right) -> {
-              int ret = Double.compare(left.getMinX(), right.getMinX());
-              if (ret == 0) {
-                ret = Double.compare(left.getMaxX(), right.getMaxX());
-              }
-              return ret;
-            };
+        ArrayUtil.select(components, low, high + 1, mid, X_COMPARATOR);
       } else {
-        comparator =
-            (left, right) -> {
-              int ret = Double.compare(left.getMinY(), right.getMinY());
-              if (ret == 0) {
-                ret = Double.compare(left.getMaxY(), right.getMaxY());
-              }
-              return ret;
-            };
+        ArrayUtil.select(components, low, high + 1, mid, Y_COMPARATOR);
       }
-      ArrayUtil.select(components, low, high + 1, mid, comparator);
     }
-    ComponentTree newNode = new ComponentTree(components[mid], splitX);
+    ComponentTree newNode = new ComponentTree(components[mid]);
     // find children
     newNode.left = createTree(components, low, mid - 1, !splitX);
     newNode.right = createTree(components, mid + 1, high, !splitX);

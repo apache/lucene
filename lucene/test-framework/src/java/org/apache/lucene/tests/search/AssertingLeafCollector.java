@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -75,23 +76,13 @@ class AssertingLeafCollector extends FilterLeafCollector {
     if (in == null) {
       return null;
     }
-    return new DocIdSetIterator() {
+    return new FilterDocIdSetIterator(in) {
 
       @Override
       public int nextDoc() throws IOException {
         assert in.docID() < max
             : "advancing beyond the end of the scored window: docID=" + in.docID() + ", max=" + max;
         return in.nextDoc();
-      }
-
-      @Override
-      public int docID() {
-        return in.docID();
-      }
-
-      @Override
-      public long cost() {
-        return in.cost();
       }
 
       @Override
