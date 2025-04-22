@@ -40,7 +40,8 @@ class PointTreeBulkCollector {
 
   static boolean canCollectEfficiently(final PointValues pointValues, final long bucketWidth)
       throws IOException {
-    // TODO: Do we really need pointValues.getDocCount() == pointValues.size() for this optimization
+    // We need pointValues.getDocCount() == pointValues.size() to count each doc only
+    // once, including docs that have two values that fall into the same bucket.
     if (pointValues == null
         || pointValues.getNumDimensions() != 1
         || pointValues.getDocCount() != pointValues.size()) {
