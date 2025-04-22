@@ -472,7 +472,6 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     private static final int MAX_TERMS = 1024;
 
     private final LeafReaderContext context;
-    private final int maxDoc;
     private final String field;
     private final boolean dense;
     private final TermsEnum docValuesTerms;
@@ -486,7 +485,6 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     CompetitiveState(
         LeafReaderContext context, String field, boolean dense, TermsEnum docValuesTerms) {
       this.context = context;
-      this.maxDoc = context.reader().maxDoc();
       this.field = field;
       this.dense = dense;
       this.docValuesTerms = docValuesTerms;
