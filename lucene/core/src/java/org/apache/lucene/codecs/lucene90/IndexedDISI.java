@@ -662,8 +662,6 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       }
     },
     DENSE {
-      private static final int BITS_BATCH_SIZE = 8192;
-      private static final int LONGS_BATCH_SIZE = BITS_BATCH_SIZE / Long.SIZE;
 
       @Override
       boolean advanceWithinBlock(IndexedDISI disi, int target) throws IOException {
@@ -742,36 +740,29 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         }
 
         int sourceFrom = docBase & 0xFFFF;
+        int sourceStartWord = sourceFrom >>> 6;
         int sourceTo = Math.min(upTo - disi.block, BLOCK_SIZE);
-        int sourceFromWord = sourceFrom >>> 6;
-        int sourceToWordInclusive = (sourceTo - 1) >>> 6;
-
-        long fp = disi.slice.getFilePointer();
-        disi.slice.seek(disi.denseBitmapOffset + (sourceFromWord << 3));
+        int numWords = FixedBitSet.bits2words(sourceTo) - sourceStartWord;
 
         if (disi.bitSet == null) {
-          disi.bitSet = new FixedBitSet(BITS_BATCH_SIZE);
+          disi.bitSet = new FixedBitSet(numWords << 6);
+        } else {
+          disi.bitSet = FixedBitSet.ensureCapacity(disi.bitSet, numWords << 6);
         }
 
-        boolean unbound = upTo > (disi.block | 0xFFFF);
-        for (int i = sourceFromWord; i <= sourceToWordInclusive; i += LONGS_BATCH_SIZE) {
+        long fp = disi.slice.getFilePointer();
+        disi.slice.seek(disi.denseBitmapOffset + (sourceStartWord << 3));
+        disi.slice.readLongs(disi.bitSet.getBits(), 0, numWords);
 
-          int word = Math.min(LONGS_BATCH_SIZE, sourceToWordInclusive - i + 1);
-          disi.slice.readLongs(disi.bitSet.getBits(), 0, word);
+        int destFrom = disi.block - offset + sourceFrom;
+        int relativeFrom = sourceFrom & 0x3F;
+        int length = sourceTo - sourceFrom;
+        FixedBitSet.orRange(disi.bitSet, relativeFrom, bitSet, destFrom, length);
 
-          int batchSourceFrom = i != sourceFromWord ? 0 : sourceFrom & 0x3F;
-          int bitsI = batchSourceFrom + (i << 6);
-          int batchLength = Math.min(BITS_BATCH_SIZE - batchSourceFrom, sourceTo - bitsI);
-          int batchDestFrom = bitsI + disi.block - offset;
-
-          FixedBitSet.orRange(disi.bitSet, batchSourceFrom, bitSet, batchDestFrom, batchLength);
-          if (unbound) {
-            disi.index += disi.bitSet.cardinality(batchSourceFrom, batchSourceFrom + batchLength);
-          }
-        }
-
-        if (unbound) {
+        int blockEnd = disi.block | 0xFFFF;
+        if (upTo > blockEnd) {
           disi.slice.seek(disi.blockEnd);
+          disi.index += disi.bitSet.cardinality(relativeFrom, relativeFrom + length);
           return false;
         } else {
           disi.slice.seek(fp);
