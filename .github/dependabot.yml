@@ -2,7 +2,7 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
-    open-pull-requests-limit: 20
+    open-pull-requests-limit: 25
     schedule:
       interval: monthly
     commit-message:
@@ -12,7 +12,7 @@ updates:
   # python dependencies in /dev-tools/scripts
   - package-ecosystem: pip
     directory: /dev-tools/scripts/
-    open-pull-requests-limit: 20
+    open-pull-requests-limit: 25
     schedule:
       interval: monthly
     commit-message:
@@ -21,7 +21,7 @@ updates:
 
   - package-ecosystem: gradle
     directory: /
-    open-pull-requests-limit: 20
+    open-pull-requests-limit: 25
     schedule:
       interval: weekly
       day: tuesday
