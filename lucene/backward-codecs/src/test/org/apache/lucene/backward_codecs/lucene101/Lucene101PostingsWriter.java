@@ -429,13 +429,12 @@ public class Lucene101PostingsWriter extends PushPostingsWriterBase {
       // storage-efficient than the next number of bits per value (which effectively slightly biases
       // towards the bit set approach).
       int bitsPerValue = forDeltaUtil.bitsRequired(docDeltaBuffer);
-      int docRange = lastDocID - level0LastDocID;
-      assert docRange == Arrays.stream(docDeltaBuffer).sum();
-      int numBitSetLongs = FixedBitSet.bits2words(docRange);
+      int sum = Math.toIntExact(Arrays.stream(docDeltaBuffer).sum());
+      int numBitSetLongs = FixedBitSet.bits2words(sum);
       int numBitsNextBitsPerValue = Math.min(Integer.SIZE, bitsPerValue + 1) * BLOCK_SIZE;
-      if (docRange == BLOCK_SIZE) {
+      if (sum == BLOCK_SIZE) {
         level0Output.writeByte((byte) 0);
-      } else if (version < VERSION_DENSE_BLOCKS_AS_BITSETS || numBitsNextBitsPerValue <= docRange) {
+      } else if (version < VERSION_DENSE_BLOCKS_AS_BITSETS || numBitsNextBitsPerValue <= sum) {
         level0Output.writeByte((byte) bitsPerValue);
         forDeltaUtil.encodeDeltas(bitsPerValue, docDeltaBuffer, level0Output);
       } else {
