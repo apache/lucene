@@ -99,6 +99,9 @@ Other
 
 * GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
 
+* GITHUB#14516: Move sloppySin into SloppyMath from GeoUtils (Ankit Jain)
+
+
 ======================= Lucene 10.2.1 =======================
 
 Bug Fixes
