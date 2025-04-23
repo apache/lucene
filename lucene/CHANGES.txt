@@ -84,6 +84,8 @@ Optimizations
 
 * GITHUB#14333: Introduce a specialized trie for block tree index, instead of FST. (Guo Feng)
 
+* GITHUB#14447: Compute the doc range more efficiently when flushing doc block. (Pan Guixin)
+
 Bug Fixes
 ---------------------
 (No changes)
