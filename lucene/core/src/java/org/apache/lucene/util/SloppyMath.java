@@ -186,6 +186,8 @@ public class SloppyMath {
   /**
    * Returns the trigonometric sine of an angle converted as a cos operation.
    *
+   * <p>Error is around 1E-12.
+   *
    * <p>Note that this is not quite right... e.g. sin(0) != 0
    *
    * <p>Special cases:
