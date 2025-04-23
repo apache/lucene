@@ -20,7 +20,9 @@ import java.time.format.DateTimeFormatter
 
 plugins {
   // Apply convention plugins.
+  id "lucene.rootproject.utilities"
   id "lucene.allprojects.conventions"
+
   id "lucene.help"
   id "lucene.validation.spotless-groovy"
 
@@ -83,7 +85,7 @@ ext {
   buildTime = DateTimeFormatter.ofPattern("HH:mm:ss").format(tstamp)
   buildYear = DateTimeFormatter.ofPattern("yyyy").format(tstamp)
 
-  // Allow definiting external tool locations using system props.
+  // Allow defining external tool locations using system props.
   externalTool = { name ->
     def resolved = propertyOrDefault("${name}.exe", name as String)
     logger.info("External tool '${name}' resolved to: ${resolved}")
@@ -105,8 +107,7 @@ dependencies {
 // The order of inclusion of these files shouldn't matter (but may
 // if the build file is incorrectly written and evaluates something
 // eagerly).
-apply from: file('gradle/conventions.gradle')
-apply from: file('gradle/generation/local-settings.gradle')
+apply from: file('gradle/_to-remove/conventions.gradle')
 
 // Make sure the build environment is consistent.
 apply from: file('gradle/validation/check-environment.gradle')

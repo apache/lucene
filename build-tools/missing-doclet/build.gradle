@@ -30,7 +30,7 @@ group = "org.apache.lucene.tools"
 description = 'Doclet-based javadoc validation'
 
 // Make sure the build environment is consistent.
-apply from: file('../../gradle/conventions.gradle')
+apply from: file('../../gradle/_to-remove/conventions.gradle')
 apply from: file('../../gradle/validation/check-environment.gradle')
 
 // Add spotless/ tidy.
