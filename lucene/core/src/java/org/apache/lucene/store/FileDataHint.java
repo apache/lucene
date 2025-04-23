@@ -18,7 +18,10 @@ package org.apache.lucene.store;
 
 /** Hints on the type of data stored in the file */
 public enum FileDataHint implements IOContext.FileOpenHint {
+  /** The file contains postings data */
   POSTINGS,
+  /** The file contains stored fields */
   STORED_FIELDS,
+  /** The file contains vector data */
   VECTORS
 }

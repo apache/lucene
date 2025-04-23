@@ -83,6 +83,12 @@ public abstract class Directory implements Closeable {
    */
   public abstract long fileLength(String name) throws IOException;
 
+  /**
+   * Checks that the {@link IOContext} is valid, specifically that the hints on the context are of a
+   * sensible combination.
+   *
+   * @throws IllegalArgumentException if there's something invalid about the IOContext.
+   */
   protected void validateIOContext(IOContext context) {
     Map<Class<? extends IOContext.FileOpenHint>, List<IOContext.FileOpenHint>> hintClasses =
         context.hints().stream().collect(Collectors.groupingBy(IOContext.FileOpenHint::getClass));
@@ -104,6 +110,10 @@ public abstract class Directory implements Closeable {
     }
   }
 
+  /**
+   * Returns a {@link ReadAdvice} to use to read or write a file from information in the {@link
+   * IOContext}.
+   */
   protected ReadAdvice toReadAdvice(IOContext context) {
     return context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
   }

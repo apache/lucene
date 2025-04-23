@@ -18,7 +18,10 @@ package org.apache.lucene.store;
 
 /** Hints on the type of file being opened */
 public enum FileTypeHint implements IOContext.FileOpenHint {
+  /** The file contains metadata */
   METADATA,
+  /** The file contains field data */
   DATA,
+  /** The file contains indexes */
   INDEX
 }
