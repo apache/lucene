@@ -744,10 +744,9 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         int sourceTo = Math.min(upTo - disi.block, BLOCK_SIZE);
         int numWords = FixedBitSet.bits2words(sourceTo) - sourceStartWord;
 
-        if (disi.bitSet == null) {
-          disi.bitSet = new FixedBitSet(numWords << 6);
-        } else {
-          disi.bitSet = FixedBitSet.ensureCapacity(disi.bitSet, (numWords << 6) - 1);
+        if (disi.bitSet == null || disi.bitSet.getBits().length < numWords) {
+          int bits = Math.min(BLOCK_SIZE, ArrayUtil.oversize(numWords, Long.BYTES) << 6);
+          disi.bitSet = new FixedBitSet(bits);
         }
 
         long fp = disi.slice.getFilePointer();
