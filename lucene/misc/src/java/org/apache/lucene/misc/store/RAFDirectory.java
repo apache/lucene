@@ -72,7 +72,6 @@ public class RAFDirectory extends FSDirectory {
   /** Creates an IndexInput for the file with the given name. */
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
-    validateIOContext(context);
     ensureOpen();
     ensureCanRead(name);
     final File path = directory.resolve(name).toFile();

@@ -153,7 +153,6 @@ final class Lucene50CompoundReader extends CompoundDirectory {
 
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
-    validateIOContext(context);
     ensureOpen();
     final String id = IndexFileNames.stripSegmentName(name);
     final FileEntry entry = entries.get(id);

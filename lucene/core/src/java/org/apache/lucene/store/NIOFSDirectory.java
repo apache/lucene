@@ -72,7 +72,6 @@ public class NIOFSDirectory extends FSDirectory {
 
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
-    validateIOContext(context);
     ensureOpen();
     ensureCanRead(name);
     Path path = getDirectory().resolve(name);

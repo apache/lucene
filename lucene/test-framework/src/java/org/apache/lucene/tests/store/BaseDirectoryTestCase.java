@@ -17,7 +17,6 @@
 package org.apache.lucene.tests.store;
 
 import static com.carrotsearch.randomizedtesting.generators.RandomPicks.randomFrom;
-import static org.hamcrest.Matchers.containsString;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
@@ -50,11 +49,8 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexNotFoundException;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.FileDataHint;
-import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -69,7 +65,6 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
-import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
 import org.junit.Assert;
@@ -82,42 +77,6 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
    * the specified path, else it can ignore it.
    */
   protected abstract Directory getDirectory(Path path) throws IOException;
-
-  public void testValidateIOContext() throws Exception {
-    try (Directory dir = getDirectory(createTempDir("testValidate"))) {
-      // all these methods should validate the IOContext before doing anything
-      Set<IOConsumer<IOContext>> methods =
-          Set.of(
-              c -> dir.createOutput("file", c),
-              c -> dir.createTempOutput("pre", "suf", c),
-              c -> dir.openInput("file", c));
-
-      for (IOConsumer<IOContext> method : methods) {
-        Exception ex =
-            expectThrows(
-                IllegalArgumentException.class,
-                () ->
-                    method.accept(
-                        IOContext.DEFAULT.withHints(FileTypeHint.DATA, FileTypeHint.METADATA)));
-        assertThat(ex.getMessage(), containsString("Multiple file type hints specified"));
-        ex =
-            expectThrows(
-                IllegalArgumentException.class,
-                () ->
-                    method.accept(
-                        IOContext.DEFAULT.withHints(FileDataHint.VECTORS, FileDataHint.POSTINGS)));
-        assertThat(ex.getMessage(), containsString("Multiple file data hints specified"));
-        ex =
-            expectThrows(
-                IllegalArgumentException.class,
-                () ->
-                    method.accept(
-                        IOContext.DEFAULT.withHints(
-                            DataAccessHint.RANDOM, DataAccessHint.SEQUENTIAL)));
-        assertThat(ex.getMessage(), containsString("Multiple data access hints specified"));
-      }
-    }
-  }
 
   public void testCopyFrom() throws Exception {
     try (Directory source = getDirectory(createTempDir("testCopy"));

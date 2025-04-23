@@ -17,9 +17,12 @@
 package org.apache.lucene.store;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 record DefaultIOContext(Optional<ReadAdvice> readAdvice, Set<FileOpenHint> hints)
     implements IOContext {
@@ -29,6 +32,20 @@ record DefaultIOContext(Optional<ReadAdvice> readAdvice, Set<FileOpenHint> hints
     Objects.requireNonNull(hints);
     if (readAdvice.isPresent() && !hints.isEmpty())
       throw new IllegalArgumentException("Either ReadAdvice or hints can be specified, not both");
+
+    assert assertHintTypes(hints);
+  }
+
+  private static boolean assertHintTypes(Set<FileOpenHint> hints) {
+    // there should only be one hint of each type in the IOContext
+    Map<Class<? extends FileOpenHint>, List<FileOpenHint>> hintClasses =
+        hints.stream().collect(Collectors.groupingBy(IOContext.FileOpenHint::getClass));
+    for (var hintType : hintClasses.entrySet()) {
+      if (hintType.getValue().size() > 1) {
+        throw new AssertionError("Multiple hints of type " + hintType.getKey() + " specified");
+      }
+    }
+    return true;
   }
 
   public DefaultIOContext(Optional<ReadAdvice> readAdvice, FileOpenHint... hints) {

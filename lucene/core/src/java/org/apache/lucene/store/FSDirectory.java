@@ -205,7 +205,6 @@ public abstract class FSDirectory extends BaseDirectory {
 
   @Override
   public IndexOutput createOutput(String name, IOContext context) throws IOException {
-    validateIOContext(context);
     ensureOpen();
     maybeDeletePendingFiles();
     // If this file was pending delete, we are now bringing it back to life:
@@ -219,7 +218,6 @@ public abstract class FSDirectory extends BaseDirectory {
   @Override
   public IndexOutput createTempOutput(String prefix, String suffix, IOContext context)
       throws IOException {
-    validateIOContext(context);
     ensureOpen();
     maybeDeletePendingFiles();
     while (true) {

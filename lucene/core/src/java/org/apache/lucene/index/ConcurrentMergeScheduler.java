@@ -299,7 +299,6 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     return new FilterDirectory(in) {
       @Override
       public IndexOutput createOutput(String name, IOContext context) throws IOException {
-        validateIOContext(context);
         ensureOpen();
 
         // This Directory is only supposed to be used during merging,

@@ -71,11 +71,6 @@ public abstract class FilterDirectory extends Directory {
   }
 
   @Override
-  protected void validateIOContext(IOContext context) {
-    in.validateIOContext(context);
-  }
-
-  @Override
   public IndexOutput createOutput(String name, IOContext context) throws IOException {
     return in.createOutput(name, context);
   }
