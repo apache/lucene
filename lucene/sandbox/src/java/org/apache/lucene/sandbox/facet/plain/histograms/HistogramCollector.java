@@ -67,8 +67,7 @@ final class HistogramCollector implements Collector {
     // We can use multi range traversal logic to collect the histogram on numeric
     // field indexed as point for MATCH_ALL cases. In future, this can be extended
     // for Point Range Query cases as well
-    if (context.reader().hasDeletions() == false
-        && weight.count(context) == context.reader().maxDoc()) {
+    if (weight != null && weight.count(context) == context.reader().maxDoc()) {
       final PointValues pointValues = context.reader().getPointValues(field);
       if (PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
         // In case of intra segment concurrency, only one collector should collect
