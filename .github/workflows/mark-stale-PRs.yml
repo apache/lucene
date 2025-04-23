@@ -33,7 +33,7 @@ jobs:
             If the PR is waiting for review, notify the dev@lucene.apache.org list.
             Thank you for your contribution!
 
-          debug-only: true              # turn on to run the action without applying changes
+          debug-only: false             # turn on to run the action without applying changes
           operations-per-run: 500       # operations budget
 
 # The table shows the cost in operations of all combinations of stale / not-stale for a PR.
