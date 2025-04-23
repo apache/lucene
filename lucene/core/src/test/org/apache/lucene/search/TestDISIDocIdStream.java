@@ -111,6 +111,24 @@ public class TestDISIDocIdStream extends LuceneTestCase {
     assertEquals(bitSet.cardinality(60, 80), stream.count(120));
 
     assertFalse(stream.mayHaveRemaining());
+
+    assertEquals(0, stream.count(40)); // we're well past this doc
+    assertEquals(0, stream.count(100)); // we're well past this doc/max
+    assertEquals(0, stream.count()); // we're well past this doc/max
+  }
+
+  // Tests that count when the iterator, but not the external interaction with the stream,
+  // is past max does not fail, returns 0.
+  public void testCountUpTo2() throws IOException {
+    FixedBitSet bitSet = new FixedBitSet(100);
+    bitSet.set(1);
+    bitSet.set(85);
+    BitSetIterator iterator = new BitSetIterator(bitSet, bitSet.approximateCardinality());
+    DocIdStream stream = new DISIDocIdStream(iterator, 80, new FixedBitSet(100));
+    iterator.advance(1);
+
+    assertEquals(1, stream.count(79));
+    assertEquals(0, stream.count());
   }
 
   public void testMixForEachCountUpTo() throws IOException {

@@ -97,6 +97,19 @@ Other
 * GITHUB#14474: Minor refactor of ComponentTree (Ankit Jain)
 * GITHUB#14459: Minor refactoring of DocValuesConsumer to allow subclasses to reuse some of its merge logic. (Martijn van Groningen)
 
+* GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
+
+======================= Lucene 10.2.1 =======================
+
+Bug Fixes
+---------------------
+
+* GITHUB#14522: Fix DISIDocIdStream::count so that it does not try to count beyond max.
+  (Chris Hegarty)
+
+* GITHUB#14523: Correct TermOrdValComparator competitive iterator so that it forces sparse
+  field iteration to be at least scoring window baseline when doing intoBitSet. (Ben Trent, Adrien Grand)
+
 ======================= Lucene 10.2.0 =======================
 
 API Changes
