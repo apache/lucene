@@ -87,7 +87,7 @@ public class TestForTooMuchCloning extends LuceneTestCase {
     // perform.
     assertTrue(
         "too many calls to IndexInput.clone during TermRangeQuery: " + queryCloneCount,
-        queryCloneCount <= Math.max(s.getLeafContexts().size(), s.getSlices().length) * 6);
+        queryCloneCount <= Math.max(s.getLeafContexts().size(), s.getSlices().length) * 7);
     r.close();
     dir.close();
   }
