@@ -31,8 +31,6 @@ import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.LeafCollector;
-import org.apache.lucene.search.MatchAllDocsQuery;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Weight;
@@ -44,7 +42,7 @@ final class HistogramCollector implements Collector {
   private final int maxBuckets;
   private final LongIntHashMap counts;
   private final ConcurrentMap<LeafReaderContext, Boolean> leafBulkCollected;
-  private Query query;
+  private Weight weight;
 
   HistogramCollector(
       String field,
@@ -69,7 +67,8 @@ final class HistogramCollector implements Collector {
     // We can use multi range traversal logic to collect the histogram on numeric
     // field indexed as point for MATCH_ALL cases. In future, this can be extended
     // for Point Range Query cases as well
-    if (query instanceof MatchAllDocsQuery && context.reader().hasDeletions() == false) {
+    if (context.reader().hasDeletions() == false
+        && weight.count(context) == context.reader().maxDoc()) {
       final PointValues pointValues = context.reader().getPointValues(field);
       if (PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
         // In case of intra segment concurrency, only one collector should collect
@@ -330,6 +329,6 @@ final class HistogramCollector implements Collector {
 
   @Override
   public void setWeight(Weight weight) {
-    query = weight.getQuery();
+    this.weight = weight;
   }
 }
