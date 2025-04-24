@@ -35,7 +35,8 @@ Adding a library dependency
 ---------------------------
 
 Lucene dependencies and their versions are managed globally using version
-catalogs (in versions.toml) [https://docs.gradle.org/current/userguide/platforms.html].
+catalogs (in gradle/libs.versions.toml) 
+[https://docs.gradle.org/current/userguide/platforms.html].
 
 Let's say we wish to add a dependency on library "foo.bar:baz" in
 version 1.2 to :lucene:core. Let's assume this library is only
@@ -61,7 +62,7 @@ baz = "1.2"
 baz = { module = "foo.bar:baz", version.ref = "baz" }
 
 The version defined in the "versions" section is the preferred version of the library
-we wish to use. Finally, run tidy to sort all entries in versions.toml:
+we wish to use. Finally, run tidy to sort all entries in libs.versions.toml:
 
 gradlew tidy
 

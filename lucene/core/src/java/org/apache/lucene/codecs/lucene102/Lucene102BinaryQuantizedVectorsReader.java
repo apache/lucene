@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene102;
 
+import static org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
@@ -23,7 +24,9 @@ import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discr
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
@@ -255,6 +258,19 @@ class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
             fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
     size += rawVectorsReader.ramBytesUsed();
     return size;
+  }
+
+  @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    Objects.requireNonNull(fieldInfo);
+    var raw = rawVectorsReader.getOffHeapByteSize(fieldInfo);
+    var fieldEntry = fields.get(fieldInfo.name);
+    if (fieldEntry == null) {
+      assert fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+      return raw;
+    }
+    var quant = Map.of(VECTOR_DATA_EXTENSION, fieldEntry.vectorDataLength());
+    return KnnVectorsReader.mergeOffHeapByteSizeMaps(raw, quant);
   }
 
   public float[] getCentroid(String field) {

@@ -51,13 +51,13 @@ final class DISIDocIdStream extends DocIdStream {
 
   @Override
   public int count(int upTo) throws IOException {
+    upTo = Math.min(upTo, max);
     if (iterator.docID() >= upTo) {
       return 0;
     }
     // If the collector is just interested in the count, loading in a bit set and counting bits is
     // often faster than incrementing a counter on every call to nextDoc().
     assert spare.scanIsEmpty();
-    upTo = Math.min(upTo, max);
     int offset = iterator.docID();
     iterator.intoBitSet(upTo, spare, offset);
     int count = spare.cardinality(0, upTo - offset);
