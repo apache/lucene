@@ -811,8 +811,10 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
      * method returns true if there are remaining docs (gte upTo) in the block, otherwise false.
      * When false return, fp of {@link IndexedDISI#slice} is at {@link IndexedDISI#blockEnd} and
      * {@link IndexedDISI#index} is correct but other status vars are undefined. Caller should
-     * decode the header of next block by {@link #readBlockHeader()} and make sure {@link
-     * IndexedDISI#doc} greater than or equals to {@link IndexedDISI#block}.
+     * decode the header of next block by {@link #readBlockHeader()}.
+     *
+     * <p>Caller need to make sure {@link IndexedDISI#doc} greater than or equals to {@link
+     * IndexedDISI#block} when calling this.
      */
     abstract boolean intoBitSetWithinBlock(
         IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) throws IOException;
