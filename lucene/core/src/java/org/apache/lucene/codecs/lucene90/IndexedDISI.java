@@ -733,10 +733,10 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
 
         int sourceFrom = disi.doc & 0xFFFF;
         int sourceTo = Math.min(upTo - disi.block, BLOCK_SIZE);
-        int destFrom = disi.block - offset + sourceFrom;
+        int destFrom = disi.doc - offset;
 
         long fp = disi.slice.getFilePointer();
-        disi.slice.seek(fp - Long.BYTES);
+        disi.slice.seek(fp - Long.BYTES); // seek back a long to include current word (disi.word).
         int numWords = FixedBitSet.bits2words(sourceTo) - disi.wordIndex;
         disi.slice.readLongs(disi.bitSet.getBits(), disi.wordIndex, numWords);
         FixedBitSet.orRange(disi.bitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
