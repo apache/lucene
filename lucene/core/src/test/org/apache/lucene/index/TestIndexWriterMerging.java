@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.document.Document;
@@ -303,6 +304,162 @@ public class TestIndexWriterMerging extends LuceneTestCase {
     assertEquals(49, ir.maxDoc());
     assertEquals(49, ir.numDocs());
     ir.close();
+    dir.close();
+  }
+
+  /** Test that forceMergeDeletes returns the MergeSpecification when called with doWait=true */
+  public void testForceMergeDeletesReturnsSpecWithBlocking() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMaxBufferedDocs(2)
+                .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                .setMergePolicy(newLogMergePolicy(50)));
+
+    Document document = new Document();
+    Field idField = newStringField("id", "", Field.Store.NO);
+    document.add(idField);
+
+    for (int i = 0; i < 20; i++) {
+      idField.setStringValue("" + i);
+      writer.addDocument(document);
+    }
+    writer.close();
+
+    // Delete even numbered documents
+    IndexWriterConfig dontMergeConfig =
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
+    writer = new IndexWriter(dir, dontMergeConfig);
+    for (int i = 0; i < 20; i += 2) {
+      writer.deleteDocuments(new Term("id", "" + i));
+    }
+    writer.close();
+
+    // Check metrics BEFORE forceMergeDeletes
+    DirectoryReader reader = DirectoryReader.open(dir);
+    int numDocsBeforeMerge = reader.numDocs();
+    int maxDocBeforeMerge = reader.maxDoc();
+    int numDeletedDocsBeforeMerge = reader.numDeletedDocs();
+    int numSegmentsBeforeMerge = reader.getContext().leaves().size();
+    reader.close();
+
+    // Should have deletions before merge
+    assertEquals(10, numDocsBeforeMerge); // 10 actual docs remain
+    assertEquals(20, maxDocBeforeMerge); // But space for 20 is allocated
+    assertEquals(10, numDeletedDocsBeforeMerge); // 10 docs are deleted but space not reclaimed
+
+    // Call forceMergeDeletes with doWait=true and verify return value
+    writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy(3)));
+
+    Optional<MergePolicy.MergeSpecification> specOptional = writer.forceMergeDeletes(true);
+
+    assertTrue("Expected non-empty Optional", specOptional.isPresent());
+    MergePolicy.MergeSpecification spec = specOptional.get();
+    // Check that spec contains at least one merge
+    assertTrue("Expected at least one merge in spec", spec.merges.size() > 0);
+
+    // Since doWait=true, all merges should be done and only odd documents should be present
+    assertEquals(10, writer.getDocStats().numDocs);
+
+    writer.close();
+
+    reader = DirectoryReader.open(dir);
+    int numDocsAfterMerge = reader.numDocs();
+    int maxDocAfterMerge = reader.maxDoc();
+    int numDeletedDocsAfterMerge = reader.numDeletedDocs();
+    int numSegmentsAfterMerge = reader.getContext().leaves().size();
+    reader.close();
+
+    // After forceMergeDeletes:
+    assertEquals(10, numDocsAfterMerge);
+    assertEquals(10, maxDocAfterMerge);
+    assertEquals(0, numDeletedDocsAfterMerge);
+    assertTrue(
+        "Expected fewer segments after merge", numSegmentsAfterMerge <= numSegmentsBeforeMerge);
+
+    dir.close();
+  }
+
+  /** Test that forceMergeDeletes returns the MergeSpecification when called with doWait=false */
+  public void testForceMergeDeletesReturnsSpecWithoutBlocking() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMaxBufferedDocs(2)
+                .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                .setMergePolicy(newLogMergePolicy(50)));
+
+    Document document = new Document();
+    Field idField = newStringField("id", "", Field.Store.NO);
+    document.add(idField);
+
+    for (int i = 0; i < 20; i++) {
+      idField.setStringValue("" + i);
+      writer.addDocument(document);
+    }
+    writer.close();
+
+    // Delete even numbered documents
+    IndexWriterConfig dontMergeConfig =
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(NoMergePolicy.INSTANCE);
+    writer = new IndexWriter(dir, dontMergeConfig);
+    for (int i = 0; i < 20; i += 2) {
+      writer.deleteDocuments(new Term("id", "" + i));
+    }
+    writer.close();
+
+    // Check metrics BEFORE forceMergeDeletes
+    DirectoryReader reader = DirectoryReader.open(dir);
+    int numDocsBeforeMerge = reader.numDocs();
+    int maxDocBeforeMerge = reader.maxDoc();
+    int numDeletedDocsBeforeMerge = reader.numDeletedDocs();
+    int numSegmentsBeforeMerge = reader.getContext().leaves().size();
+    reader.close();
+
+    // Should have deletions before merge
+    assertEquals(10, numDocsBeforeMerge);
+    assertEquals(20, maxDocBeforeMerge);
+    assertEquals(10, numDeletedDocsBeforeMerge);
+
+    // Call forceMergeDeletes with doWait=false and verify return value
+    writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy(3)));
+
+    Optional<MergePolicy.MergeSpecification> specOptional = writer.forceMergeDeletes(false);
+
+    assertTrue("Expected non-empty Optional", specOptional.isPresent());
+    MergePolicy.MergeSpecification spec = specOptional.get();
+    // Check that spec contains at least one merge
+    assertTrue("Expected at least one merge in spec", spec.merges.size() > 0);
+
+    // Since we called with doWait=false, merges are happening in background
+    // We close writer which will wait for merges to complete
+    writer.close();
+
+    // Verify final state
+    reader = DirectoryReader.open(dir);
+    int numDocsAfterMerge = reader.numDocs();
+    int maxDocAfterMerge = reader.maxDoc();
+    int numDeletedDocsAfterMerge = reader.numDeletedDocs();
+    int numSegmentsAfterMerge = reader.getContext().leaves().size();
+    reader.close();
+
+    // After forceMergeDeletes and writer close:
+    assertEquals(10, numDocsAfterMerge);
+    assertEquals(10, maxDocAfterMerge);
+    assertEquals(0, numDeletedDocsAfterMerge);
+    assertTrue(
+        "Expected fewer segments after merge", numSegmentsAfterMerge <= numSegmentsBeforeMerge);
+
     dir.close();
   }
 

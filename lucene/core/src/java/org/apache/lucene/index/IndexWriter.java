@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -2232,8 +2233,13 @@ public class IndexWriter
    * Just like {@link #forceMergeDeletes()}, except you can specify whether the call should block
    * until the operation completes. This is only meaningful with a {@link MergeScheduler} that is
    * able to run merges in background threads.
+   *
+   * @param doWait if true, the call will block until all merges complete
+   * @return an Optional containing the merge specification that was executed, or an empty Optional
+   *     if no merges were necessary
    */
-  public void forceMergeDeletes(boolean doWait) throws IOException {
+  public Optional<MergePolicy.MergeSpecification> forceMergeDeletes(boolean doWait)
+      throws IOException {
     ensureOpen();
 
     flush(true, true);
@@ -2293,6 +2299,7 @@ public class IndexWriter
     // NOTE: in the ConcurrentMergeScheduler case, when
     // doWait is false, we can return immediately while
     // background threads accomplish the merging
+    return Optional.ofNullable(spec);
   }
 
   /**
