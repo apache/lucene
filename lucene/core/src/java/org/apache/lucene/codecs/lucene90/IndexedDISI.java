@@ -804,37 +804,37 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
      */
     abstract boolean intoBitSetWithinBlock(
         IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) throws IOException;
+  }
 
-    /**
-     * If the distance between the current position and the target is > 8 words, the rank cache will
-     * be used to guarantee a worst-case of 1 rank-lookup and 7 word-read-and-count-bits operations.
-     * Note: This does not guarantee a skip up to target, only up to nearest rank boundary. It is
-     * the responsibility of the caller to iterate further to reach target.
-     *
-     * @param disi standard DISI.
-     * @param targetInBlock lower 16 bits of the target
-     * @throws IOException if a DISI seek failed.
-     */
-    private static void rankSkip(IndexedDISI disi, int targetInBlock) throws IOException {
-      assert disi.denseRankPower >= 0 : disi.denseRankPower;
-      // Resolve the rank as close to targetInBlock as possible (maximum distance is 8 longs)
-      // Note: rankOrigoOffset is tracked on block open, so it is absolute (e.g. don't add origo)
-      final int rankIndex =
-          targetInBlock >> disi.denseRankPower; // Default is 9 (8 longs: 2^3 * 2^6 = 512 docIDs)
+  /**
+   * If the distance between the current position and the target is > 8 words, the rank cache will
+   * be used to guarantee a worst-case of 1 rank-lookup and 7 word-read-and-count-bits operations.
+   * Note: This does not guarantee a skip up to target, only up to nearest rank boundary. It is the
+   * responsibility of the caller to iterate further to reach target.
+   *
+   * @param disi standard DISI.
+   * @param targetInBlock lower 16 bits of the target
+   * @throws IOException if a DISI seek failed.
+   */
+  private static void rankSkip(IndexedDISI disi, int targetInBlock) throws IOException {
+    assert disi.denseRankPower >= 0 : disi.denseRankPower;
+    // Resolve the rank as close to targetInBlock as possible (maximum distance is 8 longs)
+    // Note: rankOrigoOffset is tracked on block open, so it is absolute (e.g. don't add origo)
+    final int rankIndex =
+        targetInBlock >> disi.denseRankPower; // Default is 9 (8 longs: 2^3 * 2^6 = 512 docIDs)
 
-      final int rank =
-          (disi.denseRankTable[rankIndex << 1] & 0xFF) << 8
-              | (disi.denseRankTable[(rankIndex << 1) + 1] & 0xFF);
+    final int rank =
+        (disi.denseRankTable[rankIndex << 1] & 0xFF) << 8
+            | (disi.denseRankTable[(rankIndex << 1) + 1] & 0xFF);
 
-      // Position the counting logic just after the rank point
-      final int rankAlignedWordIndex = rankIndex << disi.denseRankPower >> 6;
-      disi.slice.seek(disi.denseBitmapOffset + rankAlignedWordIndex * (long) Long.BYTES);
-      long rankWord = disi.slice.readLong();
-      int denseNOO = rank + Long.bitCount(rankWord);
+    // Position the counting logic just after the rank point
+    final int rankAlignedWordIndex = rankIndex << disi.denseRankPower >> 6;
+    disi.slice.seek(disi.denseBitmapOffset + rankAlignedWordIndex * (long) Long.BYTES);
+    long rankWord = disi.slice.readLong();
+    int denseNOO = rank + Long.bitCount(rankWord);
 
-      disi.wordIndex = rankAlignedWordIndex;
-      disi.word = rankWord;
-      disi.numberOfOnes = disi.denseOrigoIndex + denseNOO;
-    }
+    disi.wordIndex = rankAlignedWordIndex;
+    disi.word = rankWord;
+    disi.numberOfOnes = disi.denseOrigoIndex + denseNOO;
   }
 }
