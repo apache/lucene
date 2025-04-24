@@ -78,7 +78,7 @@ abstract class DocValuesFieldUpdates implements Accountable {
     /** Returns true if this doc has a value */
     abstract boolean hasValue();
 
-    boolean allDocsHasValue() {
+    boolean allDocsHaveValue() {
       return false;
     }
 

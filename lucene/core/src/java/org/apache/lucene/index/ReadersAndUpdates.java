@@ -536,7 +536,7 @@ final class ReadersAndUpdates {
 
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-      if (updateIterator.allDocsHasValue()) {
+      if (updateIterator.allDocsHaveValue()) {
         if (onDiskDocValues == null) {
           docIDOnDisk = NO_MORE_DOCS;
         } else {

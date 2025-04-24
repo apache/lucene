@@ -234,7 +234,7 @@ final class NumericDocValuesFieldUpdates extends DocValuesFieldUpdates {
         }
 
         @Override
-        boolean allDocsHasValue() {
+        boolean allDocsHaveValue() {
           return hasNoValue == null;
         }
 
