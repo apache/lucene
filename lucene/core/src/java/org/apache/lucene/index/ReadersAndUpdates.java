@@ -39,6 +39,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOConsumer;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -403,7 +404,7 @@ final class ReadersAndUpdates {
                   final MergedDocValues<NumericDocValues> mergedDocValues =
                       new MergedDocValues<>(
                           reader.getNumericDocValues(field),
-                          DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
+                          iterator.asNumericDocValues(),
                           iterator);
                   // Merge sort of the original doc values with updated doc values:
                   return new NumericDocValues() {
@@ -430,6 +431,12 @@ final class ReadersAndUpdates {
                     @Override
                     public int advance(int target) {
                       return mergedDocValues.advance(target);
+                    }
+
+                    @Override
+                    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                        throws IOException {
+                      mergedDocValues.intoBitSet(upTo, bitSet, offset);
                     }
 
                     @Override
@@ -525,6 +532,30 @@ final class ReadersAndUpdates {
         }
       } while (hasValue == false);
       return docIDOut;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (updateIterator.allDocsHasValue()) {
+        if (onDiskDocValues == null) {
+          docIDOnDisk = NO_MORE_DOCS;
+        } else {
+          onDiskDocValues.intoBitSet(upTo, bitSet, offset);
+          docIDOnDisk = onDiskDocValues.docID();
+        }
+        updateIterator.intoBitSet(upTo, bitSet, offset);
+        updateDocID = updateIterator.docID();
+        if (docIDOnDisk < updateDocID) {
+          // no update to this doc - we use the on-disk values
+          docIDOut = docIDOnDisk;
+          currentValuesSupplier = onDiskDocValues;
+        } else {
+          docIDOut = updateDocID;
+          currentValuesSupplier = updateDocValues;
+        }
+      } else {
+        super.intoBitSet(upTo, bitSet, offset);
+      }
     }
   }
 

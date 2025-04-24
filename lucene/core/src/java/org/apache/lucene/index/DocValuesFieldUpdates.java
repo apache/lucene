@@ -78,6 +78,10 @@ abstract class DocValuesFieldUpdates implements Accountable {
     /** Returns true if this doc has a value */
     abstract boolean hasValue();
 
+    boolean allDocsHasValue() {
+      return false;
+    }
+
     /** Wraps the given iterator as a BinaryDocValues instance. */
     static BinaryDocValues asBinaryDocValues(Iterator iterator) {
       return new BinaryDocValues() {
@@ -114,38 +118,47 @@ abstract class DocValuesFieldUpdates implements Accountable {
     }
 
     /** Wraps the given iterator as a NumericDocValues instance. */
-    static NumericDocValues asNumericDocValues(Iterator iterator) {
-      return new NumericDocValues() {
-        @Override
-        public long longValue() {
-          return iterator.longValue();
-        }
+    NumericDocValues asNumericDocValues() {
+      return new WrapperNumericDocValues(this);
+    }
 
-        @Override
-        public boolean advanceExact(int target) {
-          throw new UnsupportedOperationException();
-        }
+    static class WrapperNumericDocValues extends NumericDocValues {
 
-        @Override
-        public int docID() {
-          return iterator.docID();
-        }
+      private final Iterator iterator;
 
-        @Override
-        public int nextDoc() {
-          return iterator.nextDoc();
-        }
+      public WrapperNumericDocValues(Iterator iterator) {
+        this.iterator = iterator;
+      }
 
-        @Override
-        public int advance(int target) {
-          return iterator.advance(target);
-        }
+      @Override
+      public long longValue() {
+        return iterator.longValue();
+      }
 
-        @Override
-        public long cost() {
-          return iterator.cost();
-        }
-      };
+      @Override
+      public boolean advanceExact(int target) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public int docID() {
+        return iterator.docID();
+      }
+
+      @Override
+      public int nextDoc() {
+        return iterator.nextDoc();
+      }
+
+      @Override
+      public int advance(int target) {
+        return iterator.advance(target);
+      }
+
+      @Override
+      public long cost() {
+        return iterator.cost();
+      }
     }
   }
 

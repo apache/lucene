@@ -204,49 +204,28 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
     int blockCardinality = 0;
     final FixedBitSet buffer = new FixedBitSet(1 << 16);
     int[] jumps = new int[ArrayUtil.oversize(1, Integer.BYTES * 2)];
-    int prevBlock = -1;
-    int jumpBlockIndex = 0;
+    int lastBlock = 0;
 
-    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.docID()) {
       final int block = doc >>> 16;
-      if (prevBlock != -1 && block != prevBlock) {
-        // Track offset+index from previous block up to current
-        jumps =
-            addJumps(
-                jumps,
-                out.getFilePointer() - origo,
-                totalCardinality,
-                jumpBlockIndex,
-                prevBlock + 1);
-        jumpBlockIndex = prevBlock + 1;
-        // Flush block
-        flush(prevBlock, buffer, blockCardinality, denseRankPower, out);
-        // Reset for next block
-        buffer.clear();
-        totalCardinality += blockCardinality;
-        blockCardinality = 0;
-      }
-      buffer.set(doc & 0xFFFF);
-      blockCardinality++;
-      prevBlock = block;
-    }
-    if (blockCardinality > 0) {
-      jumps =
-          addJumps(
-              jumps, out.getFilePointer() - origo, totalCardinality, jumpBlockIndex, prevBlock + 1);
-      totalCardinality += blockCardinality;
-      flush(prevBlock, buffer, blockCardinality, denseRankPower, out);
+      final int upTo = (int) Math.min(Integer.MAX_VALUE, (doc | 0xFFFF) + 1L);
+      it.intoBitSet(upTo, buffer, doc & 0xFFFF0000);
+      blockCardinality = buffer.cardinality();
+      jumps = addJumps(jumps, out.getFilePointer() - origo, totalCardinality, lastBlock, block + 1);
+      lastBlock = block + 1;
+      // Flush block
+      flush(block, buffer, blockCardinality, denseRankPower, out);
+      // Reset for next block
       buffer.clear();
-      prevBlock++;
+      totalCardinality += blockCardinality;
     }
-    final int lastBlock =
-        prevBlock == -1 ? 0 : prevBlock; // There will always be at least 1 block (NO_MORE_DOCS)
+
+    // There will always be at least 1 block (NO_MORE_DOCS)
     // Last entry is a SPARSE with blockIndex == 32767 and the single entry 65535, which becomes the
     // docID NO_MORE_DOCS
     // To avoid creating 65K jump-table entries, only a single entry is created pointing to the
-    // offset of the
-    // NO_MORE_DOCS block, with the jumpBlockIndex set to the logical EMPTY block after all real
-    // blocks.
+    // offset of the NO_MORE_DOCS block, with the jumpBlockIndex set to the logical EMPTY block
+    // after all real blocks.
     jumps =
         addJumps(jumps, out.getFilePointer() - origo, totalCardinality, lastBlock, lastBlock + 1);
     buffer.set(DocIdSetIterator.NO_MORE_DOCS & 0xFFFF);
