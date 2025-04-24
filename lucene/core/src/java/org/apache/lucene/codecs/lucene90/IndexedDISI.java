@@ -495,8 +495,10 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
   @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     assert doc >= offset;
-    while (method.intoBitsetWithinBlock(this, upTo, bitSet, offset) == false) {
+    while (method.intoBitSetWithinBlock(this, upTo, bitSet, offset) == false) {
       readBlockHeader();
+      boolean found = method.advanceWithinBlock(this, block);
+      assert found;
     }
   }
 
@@ -636,18 +638,18 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       }
 
       @Override
-      boolean intoBitsetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
+      boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
           throws IOException {
         if (disi.doc >= upTo) {
           return true;
         }
         bitSet.set(disi.doc - offset);
 
-        for (int i = disi.index + 1, to = disi.nextBlockIndex; i <= to; i++) {
+        for (; disi.index < disi.nextBlockIndex; ) {
           int docInBlock = disi.slice.readShort() & 0xFFFF;
           int doc = disi.block | docInBlock;
+          disi.index++;
           if (doc >= upTo) {
-            disi.index = i;
             disi.doc = doc;
             disi.exists = true;
             disi.nextExistDocInBlock = docInBlock;
@@ -727,15 +729,14 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       }
 
       @Override
-      boolean intoBitsetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
+      boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
           throws IOException {
-        int docBase = Math.max(disi.doc, disi.block);
-        if (docBase >= upTo) {
-          advanceWithinBlock(disi, docBase);
+        if (disi.doc >= upTo) {
+          advanceWithinBlock(disi, disi.doc);
           return true;
         }
 
-        int sourceFrom = docBase & 0xFFFF;
+        int sourceFrom = disi.doc & 0xFFFF;
         int sourceStartWord = sourceFrom >>> 6;
         int sourceTo = Math.min(upTo - disi.block, BLOCK_SIZE);
         int numWords = FixedBitSet.bits2words(sourceTo) - sourceStartWord;
@@ -780,15 +781,14 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       }
 
       @Override
-      boolean intoBitsetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) {
-        final int docBase = Math.max(disi.doc, disi.block);
+      boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) {
         final int blockEnd = disi.block | 0xFFFF;
         if (upTo <= blockEnd) {
-          bitSet.set(docBase - offset, upTo - offset);
+          bitSet.set(disi.doc - offset, upTo - offset);
           advanceWithinBlock(disi, upTo);
           return true;
         } else {
-          bitSet.set(docBase - offset, blockEnd - offset + 1);
+          bitSet.set(disi.doc - offset, blockEnd - offset + 1);
           return false;
         }
       }
@@ -808,11 +808,13 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
 
     /**
      * Similar to {@link DocIdSetIterator#intoBitSet}, load docs in this block into a bitset. This
-     * mehtod return true if there are remaining docs (gte upTo) in the block, otherwise false. When
-     * false return, fp of disi#slice is at blockEnd and disi#index is correct but other status vars
-     * are undefined. Caller should decode the header of next block by {@link #readBlockHeader()}.
+     * method returns true if there are remaining docs (gte upTo) in the block, otherwise false.
+     * When false return, fp of {@link IndexedDISI#slice} is at {@link IndexedDISI#blockEnd} and
+     * {@link IndexedDISI#index} is correct but other status vars are undefined. Caller should
+     * decode the header of next block by {@link #readBlockHeader()} and make sure {@link
+     * IndexedDISI#doc} greater than or equals to {@link IndexedDISI#block}.
      */
-    abstract boolean intoBitsetWithinBlock(
+    abstract boolean intoBitSetWithinBlock(
         IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) throws IOException;
   }
 
