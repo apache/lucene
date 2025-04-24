@@ -495,7 +495,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
   @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     assert doc >= offset;
-    while (method.intoBitSetWithinBlock(this, upTo, bitSet, offset) == false) {
+    while (doc < upTo && method.intoBitSetWithinBlock(this, upTo, bitSet, offset) == false) {
       readBlockHeader();
       boolean found = method.advanceWithinBlock(this, block);
       assert found;
@@ -640,11 +640,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       @Override
       boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
           throws IOException {
-        if (disi.doc >= upTo) {
-          return true;
-        }
         bitSet.set(disi.doc - offset);
-
         for (; disi.index < disi.nextBlockIndex; ) {
           int docInBlock = disi.slice.readShort() & 0xFFFF;
           int doc = disi.block | docInBlock;
@@ -731,34 +727,24 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       @Override
       boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
           throws IOException {
-        if (disi.doc >= upTo) {
-          advanceWithinBlock(disi, disi.doc);
-          return true;
+        if (disi.bitSet == null) {
+          disi.bitSet = new FixedBitSet(BLOCK_SIZE);
         }
 
         int sourceFrom = disi.doc & 0xFFFF;
-        int sourceStartWord = sourceFrom >>> 6;
         int sourceTo = Math.min(upTo - disi.block, BLOCK_SIZE);
-        int numWords = FixedBitSet.bits2words(sourceTo) - sourceStartWord;
-
-        if (disi.bitSet == null || disi.bitSet.getBits().length < numWords) {
-          int bits = Math.min(BLOCK_SIZE, ArrayUtil.oversize(numWords, Long.BYTES) << 6);
-          disi.bitSet = new FixedBitSet(bits);
-        }
+        int destFrom = disi.block - offset + sourceFrom;
 
         long fp = disi.slice.getFilePointer();
-        disi.slice.seek(disi.denseBitmapOffset + (sourceStartWord << 3));
-        disi.slice.readLongs(disi.bitSet.getBits(), 0, numWords);
-
-        int destFrom = disi.block - offset + sourceFrom;
-        int relativeFrom = sourceFrom & 0x3F;
-        int length = sourceTo - sourceFrom;
-        FixedBitSet.orRange(disi.bitSet, relativeFrom, bitSet, destFrom, length);
+        disi.slice.seek(fp - Long.BYTES);
+        int numWords = FixedBitSet.bits2words(sourceTo) - disi.wordIndex;
+        disi.slice.readLongs(disi.bitSet.getBits(), disi.wordIndex, numWords);
+        FixedBitSet.orRange(disi.bitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
 
         int blockEnd = disi.block | 0xFFFF;
         if (upTo > blockEnd) {
           disi.slice.seek(disi.blockEnd);
-          disi.index += disi.bitSet.cardinality(relativeFrom, relativeFrom + length);
+          disi.index += disi.bitSet.cardinality(sourceFrom, sourceTo);
           return false;
         } else {
           disi.slice.seek(fp);
@@ -814,41 +800,41 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
      * decode the header of next block by {@link #readBlockHeader()}.
      *
      * <p>Caller need to make sure {@link IndexedDISI#doc} greater than or equals to {@link
-     * IndexedDISI#block} when calling this.
+     * IndexedDISI#block} and less than {@code upTo} when calling this.
      */
     abstract boolean intoBitSetWithinBlock(
         IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) throws IOException;
-  }
 
-  /**
-   * If the distance between the current position and the target is > 8 words, the rank cache will
-   * be used to guarantee a worst-case of 1 rank-lookup and 7 word-read-and-count-bits operations.
-   * Note: This does not guarantee a skip up to target, only up to nearest rank boundary. It is the
-   * responsibility of the caller to iterate further to reach target.
-   *
-   * @param disi standard DISI.
-   * @param targetInBlock lower 16 bits of the target
-   * @throws IOException if a DISI seek failed.
-   */
-  private static void rankSkip(IndexedDISI disi, int targetInBlock) throws IOException {
-    assert disi.denseRankPower >= 0 : disi.denseRankPower;
-    // Resolve the rank as close to targetInBlock as possible (maximum distance is 8 longs)
-    // Note: rankOrigoOffset is tracked on block open, so it is absolute (e.g. don't add origo)
-    final int rankIndex =
-        targetInBlock >> disi.denseRankPower; // Default is 9 (8 longs: 2^3 * 2^6 = 512 docIDs)
+    /**
+     * If the distance between the current position and the target is > 8 words, the rank cache will
+     * be used to guarantee a worst-case of 1 rank-lookup and 7 word-read-and-count-bits operations.
+     * Note: This does not guarantee a skip up to target, only up to nearest rank boundary. It is
+     * the responsibility of the caller to iterate further to reach target.
+     *
+     * @param disi standard DISI.
+     * @param targetInBlock lower 16 bits of the target
+     * @throws IOException if a DISI seek failed.
+     */
+    private static void rankSkip(IndexedDISI disi, int targetInBlock) throws IOException {
+      assert disi.denseRankPower >= 0 : disi.denseRankPower;
+      // Resolve the rank as close to targetInBlock as possible (maximum distance is 8 longs)
+      // Note: rankOrigoOffset is tracked on block open, so it is absolute (e.g. don't add origo)
+      final int rankIndex =
+          targetInBlock >> disi.denseRankPower; // Default is 9 (8 longs: 2^3 * 2^6 = 512 docIDs)
 
-    final int rank =
-        (disi.denseRankTable[rankIndex << 1] & 0xFF) << 8
-            | (disi.denseRankTable[(rankIndex << 1) + 1] & 0xFF);
+      final int rank =
+          (disi.denseRankTable[rankIndex << 1] & 0xFF) << 8
+              | (disi.denseRankTable[(rankIndex << 1) + 1] & 0xFF);
 
-    // Position the counting logic just after the rank point
-    final int rankAlignedWordIndex = rankIndex << disi.denseRankPower >> 6;
-    disi.slice.seek(disi.denseBitmapOffset + rankAlignedWordIndex * (long) Long.BYTES);
-    long rankWord = disi.slice.readLong();
-    int denseNOO = rank + Long.bitCount(rankWord);
+      // Position the counting logic just after the rank point
+      final int rankAlignedWordIndex = rankIndex << disi.denseRankPower >> 6;
+      disi.slice.seek(disi.denseBitmapOffset + rankAlignedWordIndex * (long) Long.BYTES);
+      long rankWord = disi.slice.readLong();
+      int denseNOO = rank + Long.bitCount(rankWord);
 
-    disi.wordIndex = rankAlignedWordIndex;
-    disi.word = rankWord;
-    disi.numberOfOnes = disi.denseOrigoIndex + denseNOO;
+      disi.wordIndex = rankAlignedWordIndex;
+      disi.word = rankWord;
+      disi.numberOfOnes = disi.denseOrigoIndex + denseNOO;
+    }
   }
 }

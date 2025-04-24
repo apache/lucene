@@ -592,6 +592,8 @@ public class TestIndexedDISI extends LuceneTestCase {
 
       disi.intoBitSet(upTo, set1, offset);
       assertEquals(index, disi.index());
+      assertEquals(disi2.docID(), disi.docID());
+
       BitSetIterator expected = new BitSetIterator(set2, set2.cardinality());
       BitSetIterator actual = new BitSetIterator(set1, set1.cardinality());
       for (int expectedDoc = expected.nextDoc();
@@ -601,6 +603,12 @@ public class TestIndexedDISI extends LuceneTestCase {
         assertEquals(expectedDoc + offset, actualDoc + offset); // plus offset for better message.
       }
       assertEquals(DocIdSetIterator.NO_MORE_DOCS, actual.nextDoc());
+
+      if (disi2.docID() != DocIdSetIterator.NO_MORE_DOCS) {
+        assertEquals(disi2.nextDoc(), disi.nextDoc());
+        assertEquals(++index, disi.index());
+      }
+
       set1.clear();
       set2.clear();
     }
