@@ -577,11 +577,7 @@ public class TestIndexedDISI extends LuceneTestCase {
       int offset = TestUtil.nextInt(random(), lastUpTo, upTo);
 
       if (disi.docID() < offset) {
-        if (random().nextBoolean()) {
-          disi.advance(offset);
-        } else {
-          disi.advanceExact(offset);
-        }
+        disi.advance(offset);
       }
       int doc = disi2.docID();
       while (doc < offset) {

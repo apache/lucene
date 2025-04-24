@@ -544,7 +544,6 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       method = Method.SPARSE;
       blockEnd = slice.getFilePointer() + (numValues << 1);
       nextExistDocInBlock = -1;
-      exists = false;
     } else if (numValues == BLOCK_SIZE) {
       method = Method.ALL;
       blockEnd = slice.getFilePointer();
@@ -639,18 +638,16 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       @Override
       boolean intoBitsetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
           throws IOException {
-        if (disi.exists) {
-          if (disi.doc >= upTo) {
-            return true;
-          }
-          bitSet.set(disi.doc - offset);
+        if (disi.doc >= upTo) {
+          return true;
         }
+        bitSet.set(disi.doc - offset);
 
-        for (int i = disi.index, to = disi.nextBlockIndex; i < to; i++) {
+        for (int i = disi.index + 1, to = disi.nextBlockIndex; i <= to; i++) {
           int docInBlock = disi.slice.readShort() & 0xFFFF;
           int doc = disi.block | docInBlock;
           if (doc >= upTo) {
-            disi.index = i + 1;
+            disi.index = i;
             disi.doc = doc;
             disi.exists = true;
             disi.nextExistDocInBlock = docInBlock;
@@ -734,7 +731,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
       boolean intoBitsetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
           throws IOException {
         int docBase = Math.max(disi.doc, disi.block);
-        if (upTo <= docBase) {
+        if (docBase >= upTo) {
           advanceWithinBlock(disi, docBase);
           return true;
         }
@@ -785,8 +782,8 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
 
       @Override
       boolean intoBitsetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) {
-        final int blockEnd = disi.block | 0xFFFF;
         final int docBase = Math.max(disi.doc, disi.block);
+        final int blockEnd = disi.block | 0xFFFF;
         if (upTo <= blockEnd) {
           bitSet.set(docBase - offset, upTo - offset);
           advanceWithinBlock(disi, upTo);
@@ -813,8 +810,8 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
     /**
      * Similar to {@link DocIdSetIterator#intoBitSet}, load docs in this block into a bitset. This
      * mehtod return true if there are remaining docs (gte upTo) in the block, otherwise false. When
-     * false return, fp of disi#slice is at blockEnd and disi#index is correct but other status var
-     * is undefined. Caller should decode the header of next block by {@link #readBlockHeader()}.
+     * false return, fp of disi#slice is at blockEnd and disi#index is correct but other status vars
+     * are undefined. Caller should decode the header of next block by {@link #readBlockHeader()}.
      */
     abstract boolean intoBitsetWithinBlock(
         IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) throws IOException;
