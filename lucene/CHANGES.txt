@@ -63,6 +63,11 @@ Bug Fixes
 
 * GITHUB#14445: Provide better impacts for fields indexed with IndexOptions.DOCS GITHUB#14511 (Aniketh Jain)
 
+* GITHUB#14543: Fixed lead cost computations for bulk scorers of conjunctive
+  queries that mix MUST and FILTER clauses, and disjunctive queries that
+  configure a minimum number of matching SHOULD clauses.
+  (Peter Alfonsi, Adrien Grand)
+
 ======================= Lucene 10.2.0 =======================
 
 API Changes
