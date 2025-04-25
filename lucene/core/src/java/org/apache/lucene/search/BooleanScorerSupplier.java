@@ -85,7 +85,6 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     if (minRequiredCost.isPresent() && minShouldMatch == 0) {
       return minRequiredCost.getAsLong();
     } else {
-      final Collection<ScorerSupplier> optionalScorers = subs.get(Occur.SHOULD);
       final long shouldCost = computeShouldCost();
       return Math.min(minRequiredCost.orElse(Long.MAX_VALUE), shouldCost);
     }
