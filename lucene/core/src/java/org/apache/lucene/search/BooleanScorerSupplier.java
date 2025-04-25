@@ -69,6 +69,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     this.maxDoc = maxDoc;
   }
 
+  private long computeShouldCost() {
+    final Collection<ScorerSupplier> optionalScorers = subs.get(Occur.SHOULD);
+    return ScorerUtil.costWithMinShouldMatch(
+        optionalScorers.stream().mapToLong(ScorerSupplier::cost),
+        optionalScorers.size(),
+        minShouldMatch);
+  }
+
   private long computeCost() {
     OptionalLong minRequiredCost =
         Stream.concat(subs.get(Occur.MUST).stream(), subs.get(Occur.FILTER).stream())
@@ -78,11 +86,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return minRequiredCost.getAsLong();
     } else {
       final Collection<ScorerSupplier> optionalScorers = subs.get(Occur.SHOULD);
-      final long shouldCost =
-          ScorerUtil.costWithMinShouldMatch(
-              optionalScorers.stream().mapToLong(ScorerSupplier::cost),
-              optionalScorers.size(),
-              minShouldMatch);
+      final long shouldCost = computeShouldCost();
       return Math.min(minRequiredCost.orElse(Long.MAX_VALUE), shouldCost);
     }
   }
@@ -293,9 +297,10 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return new MaxScoreBulkScorer(maxDoc, optionalScorers, null);
     }
 
+    long shouldCost = computeShouldCost();
     List<Scorer> optional = new ArrayList<Scorer>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
-      optional.add(ss.get(Long.MAX_VALUE));
+      optional.add(ss.get(shouldCost));
     }
 
     return new BooleanScorer(optional, Math.max(1, minShouldMatch), scoreMode.needsScores());
