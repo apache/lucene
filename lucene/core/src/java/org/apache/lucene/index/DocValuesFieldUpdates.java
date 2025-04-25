@@ -20,6 +20,8 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+
+import org.apache.lucene.search.DisjunctionDISIApproximation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
@@ -266,13 +268,18 @@ abstract class DocValuesFieldUpdates implements Accountable {
         return new WrapperNumericDocValues(this) {
           @Override
           public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-            while (queue.top().docID() < upTo) {
+            while (queue.size() > 0 && queue.top().docID() < upTo) {
               queue.top().intoBitSet(upTo, bitSet, offset);
               if (queue.top().docID() == DocIdSetIterator.NO_MORE_DOCS) {
                 queue.pop();
               } else {
                 queue.updateTop();
               }
+            }
+            if (queue.size() == 0) {
+              doc = DocIdSetIterator.NO_MORE_DOCS;
+            } else {
+              doc = queue.top().docID();
             }
           }
         };
