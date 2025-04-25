@@ -304,7 +304,7 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
         .get(Long.MAX_VALUE); // triggers assertions as a side-effect
     new BooleanScorerSupplier(
             new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
-        .bulkScorer();
+        .bulkScorer(); // triggers assertions as a side-effect
 
     subs = new EnumMap<>(Occur.class);
     for (Occur occur : Occur.values()) {
