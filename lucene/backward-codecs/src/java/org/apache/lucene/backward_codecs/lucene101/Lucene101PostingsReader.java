@@ -1332,13 +1332,11 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
             if (indexHasFreq == false) {
               return DUMMY_IMPACTS_NO_FREQS;
             }
-            if (indexHasFreq) {
-              if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
-                return readImpacts(level0SerializedImpacts, level0Impacts);
-              }
-              if (level == 1) {
-                return readImpacts(level1SerializedImpacts, level1Impacts);
-              }
+            if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
+              return readImpacts(level0SerializedImpacts, level0Impacts);
+            }
+            if (level == 1) {
+              return readImpacts(level1SerializedImpacts, level1Impacts);
             }
             return DUMMY_IMPACTS;
           }
