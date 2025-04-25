@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.Future;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.logging.Logger;
@@ -129,6 +130,8 @@ public class MMapDirectory extends FSDirectory {
         return Optional.of(groupKey);
       };
 
+  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdvice =
+      (_, _) -> Optional.empty();
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
   /**
@@ -229,6 +232,21 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
+   * Configure {@link ReadAdvice} overrides for certain files. If the function returns {@code
+   * Optional.empty()}, a default {@link ReadAdvice} will be used
+   *
+   * @param toReadAdvice a {@link Function} whose first argument is the file name, and second
+   *     argument is the {@link IOContext} used to open the file. Returns {@code
+   *     Optional.of(ReadAdvice)} to use a specific read advice, or {@code Optional.empty()} if a
+   *     default should be used
+   * @see #toReadAdvice
+   */
+  public void setReadAdviceOverride(
+      BiFunction<String, IOContext, Optional<ReadAdvice>> toReadAdvice) {
+    this.readAdvice = toReadAdvice;
+  }
+
+  /**
    * Configures a grouping function for files that are part of the same logical group. The gathering
    * of files into a logical group is a hint that allows for better handling of resources.
    *
@@ -261,7 +279,7 @@ public class MMapDirectory extends FSDirectory {
     return PROVIDER.openInput(
         path,
         chunkSizePower,
-        toReadAdvice(context),
+        readAdvice.apply(name, context).orElseGet(() -> toReadAdvice(context)),
         context == IOContext.READONCE,
         preload.test(name, context),
         groupingFunction.apply(name),
