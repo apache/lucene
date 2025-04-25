@@ -30,6 +30,7 @@ public final class SlowImpactsEnum extends ImpactsEnum {
 
   private static final Impacts DUMMY_IMPACTS =
       new Impacts() {
+
         private final List<Impact> impacts =
             Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
 
