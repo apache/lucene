@@ -29,6 +29,8 @@ Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
 
+* GITHUB#14439: Efficient Histogram Collection using multi range traversal over PointTrees (Ankit Jain)
+
 * GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
 
 * GITHUB#14425: KeywordField.newSetQuery() reuses prefixed terms (Mikhail Khludnev)

@@ -19,7 +19,10 @@ package org.apache.lucene.sandbox.facet.plain.histograms;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.internal.hppc.LongIntHashMap.LongIntCursor;
 import org.apache.lucene.search.CollectorManager;
@@ -50,6 +53,7 @@ public final class HistogramCollectorManager
   private final String field;
   private final long bucketWidth;
   private final int maxBuckets;
+  private final ConcurrentMap<LeafReaderContext, Boolean> leafBulkCollected;
 
   /**
    * Compute a histogram of the distribution of the values of the given {@code field} according to
@@ -76,11 +80,12 @@ public final class HistogramCollectorManager
       throw new IllegalArgumentException("maxBuckets must be at least 1, got: " + maxBuckets);
     }
     this.maxBuckets = maxBuckets;
+    this.leafBulkCollected = new ConcurrentHashMap<>();
   }
 
   @Override
   public HistogramCollector newCollector() throws IOException {
-    return new HistogramCollector(field, bucketWidth, maxBuckets);
+    return new HistogramCollector(field, bucketWidth, maxBuckets, leafBulkCollected);
   }
 
   @Override
