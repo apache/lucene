@@ -90,7 +90,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#14445 : Fix Term Query Slowness for fields with IndexOptions.DOCS ( Aniketh Jain )
 
 Build
 ---------------------
