@@ -289,8 +289,6 @@ Bug Fixes
 
 * GITHUB#14436: Disable connectedComponents logic in HNSW graph building. Relates to GITHUB#14214, GITHUB#12627, GITHUB#13566. (Ben Trent)
 
-* GITHUB#14445 : Provide better impacts for fields indexed with IndexOptions.DOCS GITHUB#14511 ( Aniketh Jain )
-
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14189: Bump floor segment size to 16MB in TieredMergePolicy and
