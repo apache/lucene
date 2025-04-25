@@ -770,7 +770,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       assertThread("Numeric doc values", creationThread);
-      assert exists;
+      assert exists || docID() == NO_MORE_DOCS;
       assert docID() != -1;
       assert offset <= docID();
       in.intoBitSet(upTo, bitSet, offset);
@@ -871,7 +871,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       assertThread("Binary doc values", creationThread);
-      assert exists;
+      assert exists || docID() == NO_MORE_DOCS;
       assert docID() != -1;
       assert offset <= docID();
       in.intoBitSet(upTo, bitSet, offset);
@@ -973,7 +973,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       assertThread("Sorted doc values", creationThread);
-      assert exists;
+      assert exists || docID() == NO_MORE_DOCS;
       assert docID() != -1;
       assert offset <= docID();
       in.intoBitSet(upTo, bitSet, offset);
@@ -1111,7 +1111,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       assertThread("Sorted numeric doc values", creationThread);
-      assert exists;
+      assert exists || docID() == NO_MORE_DOCS;
       assert docID() != -1;
       assert offset <= docID();
       in.intoBitSet(upTo, bitSet, offset);
@@ -1235,7 +1235,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       assertThread("Sorted set doc values", creationThread);
-      assert exists;
+      assert exists || docID() == NO_MORE_DOCS;
       assert docID() != -1;
       assert offset <= docID();
       in.intoBitSet(upTo, bitSet, offset);
