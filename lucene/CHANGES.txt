@@ -61,6 +61,11 @@ Bug Fixes
 * GITHUB#14523, GITHUB#14530: Correct TermOrdValComparator competitive iterator so that it forces sparse
   field iteration to be at least scoring window baseline when doing intoBitSet. (Ben Trent, Adrien Grand)
 
+* GITHUB#14543: Fixed lead cost computations for bulk scorers of conjunctive
+  queries that mix MUST and FILTER clauses, and disjunctive queries that
+  configure a minimum number of matching SHOULD clauses.
+  (Peter Alfonsi, Adrien Grand)
+
 ======================= Lucene 10.2.0 =======================
 
 API Changes
