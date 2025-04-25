@@ -105,7 +105,19 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     @Override
     public Scorer get(long leadCost) throws IOException {
       if (this.leadCost != null) {
-        assertEquals(this.toString(), this.leadCost.longValue(), leadCost);
+        if (this.leadCost < this.cost) {
+          // If the expected lead cost is less than the cost, ie. another clause is leading
+          // iteration, then the exact lead cost must be provided.
+          assertEquals(
+              this.toString() + " actual leadCost=" + leadCost,
+              this.leadCost.longValue(),
+              leadCost);
+        } else {
+          // Otherwise the lead cost may be provided as the cost of this very clause or as
+          // Long.MAX_VALUE (typically for bulk scorers), both signaling that this clause is leading
+          // iteration.
+          assertTrue(this.toString() + " actual leadCost=" + leadCost, leadCost >= this.leadCost);
+        }
       }
       return new FakeScorer(cost);
     }
@@ -269,9 +281,10 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
 
   // test the tester...
   public void testFakeScorerSupplier() {
-    FakeScorerSupplier randomAccessSupplier = new FakeScorerSupplier(random().nextInt(100), 30);
+    FakeScorerSupplier randomAccessSupplier =
+        new FakeScorerSupplier(TestUtil.nextInt(random(), 31, 100), 30);
     expectThrows(AssertionError.class, () -> randomAccessSupplier.get(70));
-    FakeScorerSupplier sequentialSupplier = new FakeScorerSupplier(random().nextInt(100), 70);
+    FakeScorerSupplier sequentialSupplier = new FakeScorerSupplier(random().nextInt(70), 70);
     expectThrows(AssertionError.class, () -> sequentialSupplier.get(30));
   }
 
@@ -406,11 +419,6 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     new BooleanScorerSupplier(
             new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(100); // triggers assertions as a side-effect
-
-    subs.get(Occur.MUST).clear();
-    subs.get(Occur.MUST_NOT).clear();
-    subs.get(Occur.MUST).add(new FakeScorerSupplier(42, Long.MAX_VALUE));
-    subs.get(Occur.MUST_NOT).add(new FakeScorerSupplier(30, 42));
     new BooleanScorerSupplier(
             new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .bulkScorer(); // triggers assertions as a side-effect
@@ -422,11 +430,6 @@ public class TestBoolean2ScorerSupplier extends LuceneTestCase {
     new BooleanScorerSupplier(
             new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .get(100); // triggers assertions as a side-effect
-
-    subs.get(Occur.MUST).clear();
-    subs.get(Occur.MUST_NOT).clear();
-    subs.get(Occur.MUST).add(new FakeScorerSupplier(42, Long.MAX_VALUE));
-    subs.get(Occur.MUST_NOT).add(new FakeScorerSupplier(80, 42));
     new BooleanScorerSupplier(
             new FakeWeight(), subs, RandomPicks.randomFrom(random(), ScoreMode.values()), 0, 100)
         .bulkScorer(); // triggers assertions as a side-effect
