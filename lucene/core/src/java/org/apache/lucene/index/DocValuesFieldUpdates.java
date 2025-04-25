@@ -20,7 +20,6 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
