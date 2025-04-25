@@ -90,7 +90,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#14445 : Fix Term Query Slowness for fields with IndexOptions.DOCS ( Aniketh Jain )
+(No changes)
 
 Build
 ---------------------
@@ -286,6 +286,8 @@ Bug Fixes
 * GITHUB#14320: Fix DirectIOIndexInput seek to not read when position is within buffer (Chris Hegarty)
 
 * GITHUB#14436: Disable connectedComponents logic in HNSW graph building. Relates to GITHUB#14214, GITHUB#12627, GITHUB#13566. (Ben Trent)
+
+* GITHUB#14445 : Provide better impacts for fields indexed with IndexOptions.DOCS GITHUB#14511 ( Aniketh Jain )
 
 Changes in Runtime Behavior
 ---------------------
