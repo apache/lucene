@@ -24,6 +24,7 @@ description = 'Lucene JMH micro-benchmarking module'
 dependencies {
   moduleImplementation project(':lucene:core')
   moduleImplementation project(':lucene:expressions')
+  moduleImplementation project(':lucene:sandbox')
 
   moduleImplementation deps.jmh.core
   annotationProcessor deps.jmh.annprocess
