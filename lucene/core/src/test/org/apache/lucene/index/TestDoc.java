@@ -230,7 +230,6 @@ public class TestDoc extends LuceneTestCase {
             StringHelper.randomId(),
             new HashMap<>(),
             null);
-
     SegmentMerger merger =
         new SegmentMerger(
             Arrays.<CodecReader>asList(r1, r2),
@@ -239,8 +238,8 @@ public class TestDoc extends LuceneTestCase {
             trackingDir,
             new FieldInfos.FieldNumbers(null, null),
             context,
-            new SameThreadExecutorService());
-
+            new SameThreadExecutorService(),
+            new MergePolicy.OneMergeProgress());
     merger.merge();
     r1.close();
     r2.close();

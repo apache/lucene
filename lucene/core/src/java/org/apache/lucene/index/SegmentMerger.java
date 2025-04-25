@@ -59,13 +59,15 @@ final class SegmentMerger {
       Directory dir,
       FieldInfos.FieldNumbers fieldNumbers,
       IOContext context,
-      Executor intraMergeTaskExecutor)
+      Executor intraMergeTaskExecutor,
+      MergePolicy.OneMergeProgress mergeProgress)
       throws IOException {
     if (context.context() != IOContext.Context.MERGE) {
       throw new IllegalArgumentException(
           "IOContext.context should be MERGE; got: " + context.context());
     }
-    mergeState = new MergeState(readers, segmentInfo, infoStream, intraMergeTaskExecutor);
+    mergeState =
+        new MergeState(readers, segmentInfo, infoStream, intraMergeTaskExecutor, mergeProgress);
     mergeStateCreationThread = Thread.currentThread();
     directory = dir;
     this.codec = segmentInfo.getCodec();
