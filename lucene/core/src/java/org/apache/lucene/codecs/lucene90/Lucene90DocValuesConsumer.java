@@ -429,11 +429,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       long offset = data.getFilePointer();
       meta.writeLong(offset); // docsWithFieldOffset
       values = valuesProducer.getSortedNumeric(field);
-      long start = System.currentTimeMillis();
       final short jumpTableEntryCount =
           IndexedDISI.writeBitSet(values, data, IndexedDISI.DEFAULT_DENSE_RANK_POWER);
-      long end = System.currentTimeMillis();
-      Run.TIMER += end - start;
       meta.writeLong(data.getFilePointer() - offset); // docsWithFieldLength
       meta.writeShort(jumpTableEntryCount);
       meta.writeByte(IndexedDISI.DEFAULT_DENSE_RANK_POWER);
