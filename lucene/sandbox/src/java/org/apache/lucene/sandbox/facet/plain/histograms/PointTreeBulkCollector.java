@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.function.Function;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
+import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.util.NumericUtils;
@@ -144,6 +145,11 @@ class PointTreeBulkCollector {
       public void visit(int docID, byte[] packedValue) throws IOException {
         if (!collector.withinUpperBound(packedValue)) {
           collector.finalizePreviousBucket(packedValue);
+          // If the packedValue is not within upper bound even after updating upper bound,
+          // we have exhausted the max value and should throw early termination error
+          if (!collector.withinUpperBound(packedValue)) {
+            throw new CollectionTerminatedException();
+          }
         }
 
         if (collector.withinRange(packedValue)) {
@@ -155,6 +161,11 @@ class PointTreeBulkCollector {
       public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
         if (!collector.withinUpperBound(packedValue)) {
           collector.finalizePreviousBucket(packedValue);
+          // If the packedValue is not within upper bound even after updating upper bound,
+          // we have exhausted the max value and should throw early termination error
+          if (!collector.withinUpperBound(packedValue)) {
+            throw new CollectionTerminatedException();
+          }
         }
 
         if (collector.withinRange(packedValue)) {
@@ -166,13 +177,13 @@ class PointTreeBulkCollector {
 
       @Override
       public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-        // try to find the first range that may collect values from this cell
+        // Try to find the first range that may collect values from this cell
         if (!collector.withinUpperBound(minPackedValue)) {
           collector.finalizePreviousBucket(minPackedValue);
           // If the minPackedValue is not within upper bound even after updating upper bound,
           // we have exhausted the max value and should throw early termination error
           if (!collector.withinUpperBound(minPackedValue)) {
-            return PointValues.Relation.CELL_OUTSIDE_QUERY;
+            throw new CollectionTerminatedException();
           }
         }
 
@@ -223,16 +234,16 @@ class PointTreeBulkCollector {
     }
 
     private void finalizePreviousBucket(byte[] packedValue) {
-      // TODO: Can counter ever be 0?
       if (counter > 0) {
         collectorCounts.addTo(Math.floorDiv(startValue, bucketWidth), counter);
-        if (packedValue != null) {
-          startValue = byteToLong.apply(packedValue);
-          endValue = Math.min((Math.floorDiv(startValue, bucketWidth) + 1) * bucketWidth, maxValue);
-        }
         nonZeroBuckets++;
         counter = 0;
         HistogramCollector.checkMaxBuckets(nonZeroBuckets, maxBuckets);
+      }
+
+      if (packedValue != null) {
+        startValue = byteToLong.apply(packedValue);
+        endValue = Math.min((Math.floorDiv(startValue, bucketWidth) + 1) * bucketWidth, maxValue);
       }
     }
 
