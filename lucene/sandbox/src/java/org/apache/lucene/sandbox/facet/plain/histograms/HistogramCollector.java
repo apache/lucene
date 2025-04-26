@@ -31,6 +31,7 @@ import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.LeafCollector;
+import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Weight;
@@ -67,13 +68,15 @@ final class HistogramCollector implements Collector {
     // We can use multi range traversal logic to collect the histogram on numeric
     // field indexed as point for MATCH_ALL cases. In future, this can be extended
     // for Point Range Query cases as well
-    if (weight != null && weight.count(context) == context.reader().maxDoc()) {
+    final PointRangeQuery pointRangeQuery = getPointRangeQuery(field);
+    if (isMatchAll(context) || pointRangeQuery != null) {
       final PointValues pointValues = context.reader().getPointValues(field);
       if (PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
         // In case of intra segment concurrency, only one collector should collect
         // documents for all the partitions to avoid duplications across collectors
         if (leafBulkCollected.putIfAbsent(context, true) == null) {
-          PointTreeBulkCollector.collect(pointValues, bucketWidth, counts, maxBuckets);
+          PointTreeBulkCollector.collect(
+              pointValues, pointRangeQuery, bucketWidth, counts, maxBuckets);
         }
         // Either the collection is finished on this collector, or some other collector
         // already started that collection, so this collector can finish early!
@@ -329,5 +332,24 @@ final class HistogramCollector implements Collector {
   @Override
   public void setWeight(Weight weight) {
     this.weight = weight;
+  }
+
+  private boolean isMatchAll(LeafReaderContext context) throws IOException {
+    return weight != null && weight.count(context) == context.reader().maxDoc();
+  }
+
+  private PointRangeQuery getPointRangeQuery(final String field) {
+    if (weight == null || weight.getQuery() == null) {
+      return null;
+    }
+
+    if (weight.getQuery() instanceof PointRangeQuery) {
+      final PointRangeQuery prq = (PointRangeQuery) weight.getQuery();
+      if (prq.getField().equals(field)) {
+        return prq;
+      }
+    }
+
+    return null;
   }
 }

@@ -30,12 +30,14 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.NumericUtils;
 
 public class TestHistogramCollectorManager extends LuceneTestCase {
 
@@ -136,11 +138,38 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(w);
     w.close();
     IndexSearcher searcher = newSearcher(reader);
+
+    // Validate the MATCH_ALL case
     LongIntHashMap actualCounts =
         searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     for (long value : values) {
       expectedCounts.addTo(Math.floorDiv(value, 1000), 1);
+    }
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the Point Range Query case
+    int lowerBound = random().nextInt(0, 1500);
+    int upperBound = random().nextInt(3500, 5000);
+
+    byte[] lowerPoint = new byte[Long.BYTES];
+    byte[] upperPoint = new byte[Long.BYTES];
+    NumericUtils.longToSortableBytes(lowerBound, lowerPoint, 0);
+    NumericUtils.longToSortableBytes(upperBound, upperPoint, 0);
+    actualCounts =
+        searcher.search(
+            new PointRangeQuery("f", lowerPoint, upperPoint, 1) {
+              @Override
+              protected String toString(int dimension, byte[] value) {
+                return null;
+              }
+            },
+            new HistogramCollectorManager("f", 1000));
+    expectedCounts = new LongIntHashMap();
+    for (long value : values) {
+      if (value >= lowerBound && value <= upperBound) {
+        expectedCounts.addTo(Math.floorDiv(value, 1000), 1);
+      }
     }
     assertEquals(expectedCounts, actualCounts);
 
