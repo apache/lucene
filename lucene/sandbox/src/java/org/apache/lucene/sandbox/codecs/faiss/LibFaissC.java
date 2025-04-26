@@ -53,14 +53,15 @@ import org.apache.lucene.util.hnsw.IntToIntFunction;
  * href="https://github.com/facebookresearch/faiss/blob/main/c_api/INSTALL.md">this guide</a> and
  * add to runtime along with all dependencies).
  *
+ * <p>Important Note: When installing from Conda, ensure that the license of the distribution and
+ * channels being used is applicable to you!
+ *
  * @lucene.experimental
  */
 final class LibFaissC {
   // TODO: Use vectorized version where available
   public static final String LIBRARY_NAME = "faiss_c";
-
-  // TODO: Uses the nightly version (@main) until v1.11.0 is released
-  public static final String LIBRARY_VERSION = "1.10.0";
+  public static final String LIBRARY_VERSION = "1.11.0";
 
   static {
     System.loadLibrary(LIBRARY_NAME);

@@ -25,19 +25,13 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Setup Conda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-activate-base: false
-          auto-update-conda: true
-          activate-environment: faiss
-          channels: pytorch
-          conda-remove-defaults: true
-          miniforge-version: latest
-
       - name: Install Faiss
-        # TODO: Uses the nightly version (@main) until v1.11.0 is released
-        run: conda install pytorch/label/nightly::faiss-cpu
+        uses: mamba-org/setup-micromamba@v2
+        id: setup
+        with:
+          environment-name: faiss-env
+          condarc: 'channels: [pytorch, conda-forge]'
+          create-args: faiss-cpu=1.11.0
 
       - name: Checkout Lucene
         uses: actions/checkout@v4
@@ -46,12 +40,10 @@ jobs:
         uses: ./.github/actions/prepare-for-build
 
       - name: Run tests for Faiss codec
-        run: >
-          LD_LIBRARY_PATH=$CONDA_PREFIX/lib
-          ./gradlew -p lucene/sandbox
-          -Dtests.faiss.run=true
-          test --tests "org.apache.lucene.sandbox.codecs.faiss.*"
+        env:
+          LD_LIBRARY_PATH: ${{ steps.setup.outputs.environment-path }}/lib
+        run: ./gradlew -p lucene/sandbox -Dtests.faiss.run=true test --tests "org.apache.lucene.sandbox.codecs.faiss.*"
 
     defaults:
       run:
-        shell: bash -el {0}
+        shell: bash -leo pipefail {0}
