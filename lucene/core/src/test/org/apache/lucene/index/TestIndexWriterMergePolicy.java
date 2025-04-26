@@ -737,11 +737,15 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     }
   }
 
+  // TODO: tests using stressUpdateSameDocumentWithMergeOnX have resource issues
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/14483")
   public void testStressUpdateSameDocumentWithMergeOnGetReader()
       throws IOException, InterruptedException {
     stressUpdateSameDocumentWithMergeOnX(true);
   }
 
+  // TODO: tests using stressUpdateSameDocumentWithMergeOnX have resource issues
+  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/14483")
   public void testStressUpdateSameDocumentWithMergeOnCommit()
       throws IOException, InterruptedException {
     stressUpdateSameDocumentWithMergeOnX(false);
