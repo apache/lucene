@@ -234,6 +234,8 @@ class PointTreeBulkCollector {
     }
 
     private void finalizePreviousBucket(byte[] packedValue) {
+      // counter can be 0 for first bucket in case
+      // of Point Range Query
       if (counter > 0) {
         collectorCounts.addTo(Math.floorDiv(startValue, bucketWidth), counter);
         nonZeroBuckets++;
