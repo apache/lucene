@@ -45,21 +45,22 @@ class PointTreeBulkCollector {
     return null;
   }
 
-  static boolean canCollectEfficiently(final PointValues pointValues, final long bucketWidth)
-      throws IOException {
+  static boolean canCollect(final PointValues pointValues) throws IOException {
     // We need pointValues.getDocCount() == pointValues.size() to count each doc only
     // once, including docs that have two values that fall into the same bucket.
     if (pointValues == null
         || pointValues.getNumDimensions() != 1
-        || pointValues.getDocCount() != pointValues.size()) {
+        || pointValues.getDocCount() != pointValues.size()
+        || bytesToLong(pointValues.getBytesPerDimension()) == null) {
       return false;
     }
 
+    return true;
+  }
+
+  static boolean canCollectEfficiently(final PointValues pointValues, final long bucketWidth)
+      throws IOException {
     final Function<byte[], Long> byteToLong = bytesToLong(pointValues.getBytesPerDimension());
-    if (byteToLong == null) {
-      return false;
-    }
-
     long leafMinBucket =
         Math.floorDiv(byteToLong.apply(pointValues.getMinPackedValue()), bucketWidth);
     long leafMaxBucket =
