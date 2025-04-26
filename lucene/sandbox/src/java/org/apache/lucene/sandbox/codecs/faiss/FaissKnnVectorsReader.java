@@ -177,6 +177,12 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    // TODO: How to estimate Faiss usage?
+    return rawVectorsReader.getOffHeapByteSize(fieldInfo);
+  }
+
+  @Override
   public void close() throws IOException {
     if (closed == false) {
       IOUtils.close(rawVectorsReader, arena::close, meta, data);
