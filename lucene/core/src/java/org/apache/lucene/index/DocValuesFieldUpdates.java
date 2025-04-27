@@ -121,47 +121,38 @@ abstract class DocValuesFieldUpdates implements Accountable {
     }
 
     /** Wraps the given iterator as a NumericDocValues instance. */
-    NumericDocValues asNumericDocValues() {
-      return new WrapperNumericDocValues(this);
-    }
+    static NumericDocValues asNumericDocValues(Iterator iterator) {
+      return new NumericDocValues() {
+        @Override
+        public long longValue() {
+          return iterator.longValue();
+        }
 
-    static class WrapperNumericDocValues extends NumericDocValues {
+        @Override
+        public boolean advanceExact(int target) {
+          throw new UnsupportedOperationException();
+        }
 
-      private final Iterator iterator;
+        @Override
+        public int docID() {
+          return iterator.docID();
+        }
 
-      public WrapperNumericDocValues(Iterator iterator) {
-        this.iterator = iterator;
-      }
+        @Override
+        public int nextDoc() {
+          return iterator.nextDoc();
+        }
 
-      @Override
-      public long longValue() {
-        return iterator.longValue();
-      }
+        @Override
+        public int advance(int target) {
+          return iterator.advance(target);
+        }
 
-      @Override
-      public boolean advanceExact(int target) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public int docID() {
-        return iterator.docID();
-      }
-
-      @Override
-      public int nextDoc() {
-        return iterator.nextDoc();
-      }
-
-      @Override
-      public int advance(int target) {
-        return iterator.advance(target);
-      }
-
-      @Override
-      public long cost() {
-        return iterator.cost();
-      }
+        @Override
+        public long cost() {
+          return iterator.cost();
+        }
+      };
     }
   }
 
@@ -259,28 +250,6 @@ abstract class DocValuesFieldUpdates implements Accountable {
       @Override
       boolean allDocsHaveValue() {
         return allDocsHaveValue;
-      }
-
-      @Override
-      NumericDocValues asNumericDocValues() {
-        return new WrapperNumericDocValues(this) {
-          @Override
-          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-            while (queue.size() > 0 && queue.top().docID() < upTo) {
-              queue.top().intoBitSet(upTo, bitSet, offset);
-              if (queue.top().docID() == DocIdSetIterator.NO_MORE_DOCS) {
-                queue.pop();
-              } else {
-                queue.updateTop();
-              }
-            }
-            if (queue.size() == 0) {
-              doc = DocIdSetIterator.NO_MORE_DOCS;
-            } else {
-              doc = queue.top().docID();
-            }
-          }
-        };
       }
     };
   }

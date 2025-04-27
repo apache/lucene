@@ -404,7 +404,7 @@ final class ReadersAndUpdates {
                   final MergedDocValues<NumericDocValues> mergedDocValues =
                       new MergedDocValues<>(
                           reader.getNumericDocValues(field),
-                          iterator.asNumericDocValues(),
+                          DocValuesFieldUpdates.Iterator.asNumericDocValues(iterator),
                           iterator);
                   // Merge sort of the original doc values with updated doc values:
                   return new NumericDocValues() {
