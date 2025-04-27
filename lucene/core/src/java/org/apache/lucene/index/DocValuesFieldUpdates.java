@@ -251,6 +251,23 @@ abstract class DocValuesFieldUpdates implements Accountable {
       boolean allDocsHaveValue() {
         return allDocsHaveValue;
       }
+
+      @Override
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        while (queue.size() > 0 && queue.top().docID() < upTo) {
+          queue.top().intoBitSet(upTo, bitSet, offset);
+          if (queue.top().docID() == DocIdSetIterator.NO_MORE_DOCS) {
+            queue.pop();
+          } else {
+            queue.updateTop();
+          }
+        }
+        if (queue.size() == 0) {
+          doc = DocIdSetIterator.NO_MORE_DOCS;
+        } else {
+          doc = queue.top().docID();
+        }
+      }
     };
   }
 

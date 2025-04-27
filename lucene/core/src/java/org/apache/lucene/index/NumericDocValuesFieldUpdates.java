@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.index;
 
+import java.io.IOException;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.packed.AbstractPagedMutable;
@@ -234,6 +236,11 @@ final class NumericDocValuesFieldUpdates extends DocValuesFieldUpdates {
         @Override
         boolean allDocsHaveValue() {
           return hasNoValue == null;
+        }
+
+        @Override
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+          iterator.intoBitSet(upTo, bitSet, offset);
         }
       };
     }
