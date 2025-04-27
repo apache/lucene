@@ -387,6 +387,12 @@ final class ReadersAndUpdates {
                     }
 
                     @Override
+                    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                        throws IOException {
+                      mergedDocValues.intoBitSet(upTo, bitSet, offset);
+                    }
+
+                    @Override
                     public long cost() {
                       return mergedDocValues.cost();
                     }
@@ -542,7 +548,7 @@ final class ReadersAndUpdates {
         return;
       }
 
-      // we need a scratch instead of the param bitset because we can not clear bits in it.
+      // we need a scratch instead of the param bitset which we can not clear bits in it.
       if (scratch == null || scratch.length() < upTo - offset) {
         // intoBitSet is usually called with fixed window size so we do not do overSize here.
         scratch = new FixedBitSet(upTo - offset);
