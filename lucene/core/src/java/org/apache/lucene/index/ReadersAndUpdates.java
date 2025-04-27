@@ -468,6 +468,7 @@ final class ReadersAndUpdates {
     private int docIDOnDisk = -1;
     // docID from our updates
     private int updateDocID = -1;
+    private FixedBitSet scratch;
 
     private final DocValuesInstance onDiskDocValues;
     private final DocValuesInstance updateDocValues;
@@ -536,25 +537,55 @@ final class ReadersAndUpdates {
 
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-      if (updateIterator.allDocsHaveValue()) {
-        if (onDiskDocValues == null) {
-          docIDOnDisk = NO_MORE_DOCS;
-        } else {
-          onDiskDocValues.intoBitSet(upTo, bitSet, offset);
-          docIDOnDisk = onDiskDocValues.docID();
-        }
-        updateIterator.intoBitSet(upTo, bitSet, offset);
-        updateDocID = updateIterator.docID();
-        if (docIDOnDisk < updateDocID) {
-          // no update to this doc - we use the on-disk values
-          docIDOut = docIDOnDisk;
-          currentValuesSupplier = onDiskDocValues;
-        } else {
-          docIDOut = updateDocID;
-          currentValuesSupplier = updateDocValues;
-        }
-      } else {
+      if (onDiskDocValues == null) {
         super.intoBitSet(upTo, bitSet, offset);
+        return;
+      }
+
+      // we need a scratch instead of the param bitset because we can not clear bits in it.
+      if (scratch == null || scratch.length() < upTo - offset) {
+        // intoBitSet is usually called with fixed window size so we do not do overSize here.
+        scratch = new FixedBitSet(upTo - offset);
+      } else {
+        scratch.clear();
+      }
+
+      onDiskDocValues.intoBitSet(upTo, scratch, offset);
+      docIDOnDisk = onDiskDocValues.docID();
+
+      for (int doc = updateDocValues.docID(); doc < upTo; doc = updateDocValues.nextDoc()) {
+        if (updateIterator.hasValue()) {
+          scratch.set(doc - offset);
+        } else {
+          scratch.clear(doc - offset);
+        }
+      }
+
+      bitSet.or(scratch);
+
+      // Iterate to find out current doc.
+      while (true) {
+        while (updateDocValues.docID() < docIDOnDisk && updateIterator.hasValue() == false) {
+          updateDocValues.nextDoc();
+        }
+        if (docIDOnDisk != NO_MORE_DOCS
+            && updateDocValues.docID() == docIDOnDisk
+            && updateIterator.hasValue() == false) {
+          // value of docIDOnDisk removed
+          docIDOnDisk = onDiskDocValues.nextDoc();
+        } else {
+          break;
+        }
+      }
+
+      // update docIDOut and currentValuesSupplier
+      updateDocID = updateDocValues.docID();
+      if (docIDOnDisk < updateDocID) {
+        docIDOut = docIDOnDisk;
+        currentValuesSupplier = onDiskDocValues;
+      } else {
+        docIDOut = updateDocID;
+        currentValuesSupplier = updateDocValues;
       }
     }
   }

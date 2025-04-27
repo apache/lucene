@@ -18,12 +18,9 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -80,10 +77,6 @@ abstract class DocValuesFieldUpdates implements Accountable {
 
     /** Returns true if this doc has a value */
     abstract boolean hasValue();
-
-    boolean allDocsHaveValue() {
-      return false;
-    }
 
     /** Wraps the given iterator as a BinaryDocValues instance. */
     static BinaryDocValues asBinaryDocValues(Iterator iterator) {
@@ -194,8 +187,6 @@ abstract class DocValuesFieldUpdates implements Accountable {
       return null;
     }
 
-    final boolean allDocsHaveValue = Arrays.stream(subs).allMatch(Iterator::allDocsHaveValue);
-
     return new Iterator() {
       private int doc = -1;
 
@@ -245,28 +236,6 @@ abstract class DocValuesFieldUpdates implements Accountable {
       @Override
       boolean hasValue() {
         return queue.top().hasValue();
-      }
-
-      @Override
-      boolean allDocsHaveValue() {
-        return allDocsHaveValue;
-      }
-
-      @Override
-      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-        while (queue.size() > 0 && queue.top().docID() < upTo) {
-          queue.top().intoBitSet(upTo, bitSet, offset);
-          if (queue.top().docID() == DocIdSetIterator.NO_MORE_DOCS) {
-            queue.pop();
-          } else {
-            queue.updateTop();
-          }
-        }
-        if (queue.size() == 0) {
-          doc = DocIdSetIterator.NO_MORE_DOCS;
-        } else {
-          doc = queue.top().docID();
-        }
       }
     };
   }
