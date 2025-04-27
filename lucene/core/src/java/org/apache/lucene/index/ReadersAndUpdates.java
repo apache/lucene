@@ -548,7 +548,7 @@ final class ReadersAndUpdates {
         return;
       }
 
-      // we need a scratch instead of the param bitset which we can not clear bits in it.
+      // we need a scratch bitset because the param bitset doesn't allow bits to be cleared.
       if (scratch == null || scratch.length() < upTo - offset) {
         // intoBitSet is usually called with fixed window size so we do not do overSize here.
         scratch = new FixedBitSet(upTo - offset);
