@@ -819,10 +819,14 @@ public class FSTCompiler<T> {
       final UnCompiledNode<T> node = frontier[idx];
       final int prevIdx = idx - 1;
       final UnCompiledNode<T> parent = frontier[prevIdx];
+      // We need use this variable rather than node.output to call replaceLast later, because
+      // compileNode(node) will clear node's state.
       final T nextFinalOutput = node.output;
 
       // If this node has no outgoing arcs, it should be final.
       assert node.numArcs != 0 || node.isFinal;
+      // We need use this variable rather than node.isFinal to call replaceLast later, because
+      // compileNode(node) will clear node's state.
       final boolean isFinal = node.isFinal;
 
       // this node makes it and we now compile it.  first,
