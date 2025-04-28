@@ -2511,7 +2511,7 @@ public class TestPointQueries extends LuceneTestCase {
 
     Query query = IntPoint.newSetQuery("field", 1, 3, 5);
     Weight weight =
-        searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+            searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
     assertNull(weight.scorerSupplier(reader.leaves().get(0)));
 
     query = IntPoint.newSetQuery("field", 11, 13, 15);

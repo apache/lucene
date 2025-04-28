@@ -17,12 +17,14 @@
 package org.apache.lucene.sandbox.facet.plain.histograms;
 
 import java.io.IOException;
+import java.util.concurrent.ConcurrentMap;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.CollectionTerminatedException;
@@ -31,6 +33,7 @@ import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Weight;
 
 final class HistogramCollector implements Collector {
 
@@ -38,11 +41,18 @@ final class HistogramCollector implements Collector {
   private final long bucketWidth;
   private final int maxBuckets;
   private final LongIntHashMap counts;
+  private final ConcurrentMap<LeafReaderContext, Boolean> leafBulkCollected;
+  private Weight weight;
 
-  HistogramCollector(String field, long bucketWidth, int maxBuckets) {
+  HistogramCollector(
+      String field,
+      long bucketWidth,
+      int maxBuckets,
+      ConcurrentMap<LeafReaderContext, Boolean> leafBulkCollected) {
     this.field = field;
     this.bucketWidth = bucketWidth;
     this.maxBuckets = maxBuckets;
+    this.leafBulkCollected = leafBulkCollected;
     this.counts = new LongIntHashMap();
   }
 
@@ -53,11 +63,30 @@ final class HistogramCollector implements Collector {
       // The segment has no values, nothing to do.
       throw new CollectionTerminatedException();
     }
+
+    // We can use multi range traversal logic to collect the histogram on numeric
+    // field indexed as point for MATCH_ALL cases. In future, this can be extended
+    // for Point Range Query cases as well
+    if (weight != null && weight.count(context) == context.reader().maxDoc()) {
+      final PointValues pointValues = context.reader().getPointValues(field);
+      if (PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
+        // In case of intra segment concurrency, only one collector should collect
+        // documents for all the partitions to avoid duplications across collectors
+        if (leafBulkCollected.putIfAbsent(context, true) == null) {
+          PointTreeBulkCollector.collect(pointValues, bucketWidth, counts, maxBuckets);
+        }
+        // Either the collection is finished on this collector, or some other collector
+        // already started that collection, so this collector can finish early!
+        throw new CollectionTerminatedException();
+      }
+    }
+
     if (fi.getDocValuesType() != DocValuesType.NUMERIC
         && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
       throw new IllegalStateException(
           "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
     }
+
     SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues singleton = DocValues.unwrapSingleton(values);
     if (singleton == null) {
@@ -295,5 +324,10 @@ final class HistogramCollector implements Collector {
               + " buckets, which is more than the configured max number of buckets: "
               + maxBuckets);
     }
+  }
+
+  @Override
+  public void setWeight(Weight weight) {
+    this.weight = weight;
   }
 }

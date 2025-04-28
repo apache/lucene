@@ -307,7 +307,7 @@ public class TestVectorScorer extends LuceneTestCase {
   }
 
   // Tests with a large amount of data (> 2GB), which ensures that data offsets do not overflow
-  @Nightly
+  @Monster(value = "requires gigabytes of disk space")
   public void testLarge() throws IOException {
     try (Directory dir = new MMapDirectory(createTempDir("testLarge"))) {
       final int dims = 8192;

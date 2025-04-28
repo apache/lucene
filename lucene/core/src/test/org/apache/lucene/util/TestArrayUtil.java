@@ -20,6 +20,12 @@ import static org.apache.lucene.util.ArrayUtil.copyOfSubArray;
 import static org.apache.lucene.util.ArrayUtil.growExact;
 import static org.apache.lucene.util.ArrayUtil.growInRange;
 import static org.apache.lucene.util.ArrayUtil.oversize;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.sameInstance;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,11 +44,11 @@ public class TestArrayUtil extends LuceneTestCase {
     // Make sure ArrayUtil hits Integer.MAX_VALUE, if we insist:
     while (currentSize != ArrayUtil.MAX_ARRAY_LENGTH) {
       int nextSize = ArrayUtil.oversize(1 + currentSize, RamUsageEstimator.NUM_BYTES_OBJECT_REF);
-      assertTrue(nextSize > currentSize);
+      assertThat(nextSize, greaterThan(currentSize));
       if (currentSize > 0) {
         copyCost += currentSize;
         double copyCostPerElement = ((double) copyCost) / currentSize;
-        assertTrue("cost " + copyCostPerElement, copyCostPerElement < 10.0);
+        assertThat(copyCostPerElement, lessThan(10.0));
       }
       currentSize = nextSize;
     }
@@ -77,7 +83,7 @@ public class TestArrayUtil extends LuceneTestCase {
       final int minTargetSize = rnd.nextInt(ArrayUtil.MAX_ARRAY_LENGTH);
       final int elemSize = rnd.nextInt(11);
       final int v = ArrayUtil.oversize(minTargetSize, elemSize);
-      assertTrue(v >= minTargetSize);
+      assertThat(v, greaterThanOrEqualTo(minTargetSize));
     }
   }
 
@@ -113,16 +119,11 @@ public class TestArrayUtil extends LuceneTestCase {
           parseInt("0.34");
         });
 
-    int test = parseInt("1");
-    assertTrue(test + " does not equal: " + 1, test == 1);
-    test = parseInt("-10000");
-    assertTrue(test + " does not equal: " + -10000, test == -10000);
-    test = parseInt("1923");
-    assertTrue(test + " does not equal: " + 1923, test == 1923);
-    test = parseInt("-1");
-    assertTrue(test + " does not equal: " + -1, test == -1);
-    test = ArrayUtil.parseInt("foo 1923 bar".toCharArray(), 4, 4);
-    assertTrue(test + " does not equal: " + 1923, test == 1923);
+    assertThat(parseInt("1"), equalTo(1));
+    assertThat(parseInt("-10000"), equalTo(-10000));
+    assertThat(parseInt("1923"), equalTo(1923));
+    assertThat(parseInt("-1"), equalTo(-1));
+    assertThat(ArrayUtil.parseInt("foo 1923 bar".toCharArray(), 4, 4), equalTo(1923));
   }
 
   private Integer[] createRandomArray(int maxSize) {
@@ -232,9 +233,9 @@ public class TestArrayUtil extends LuceneTestCase {
       final Item act = items[i];
       if (act.order == 0) {
         // order of "equal" items should be not mixed up
-        assertTrue(act.val > last.val);
+        assertThat(act.val, greaterThan(last.val));
       }
-      assertTrue(act.order >= last.order);
+      assertThat(act.order, greaterThanOrEqualTo(last.order));
       last = act;
     }
   }
@@ -261,9 +262,9 @@ public class TestArrayUtil extends LuceneTestCase {
       final Item act = items[i];
       if (act.order == 0) {
         // order of "equal" items should be not mixed up
-        assertTrue(act.val > last.val);
+        assertThat(act.val, greaterThan(last.val));
       }
-      assertTrue(act.order >= last.order);
+      assertThat(act.order, greaterThanOrEqualTo(last.order));
       last = act;
     }
   }
@@ -302,11 +303,11 @@ public class TestArrayUtil extends LuceneTestCase {
     assertEquals(expected[k], actual[k]);
     for (int i = 0; i < actual.length; ++i) {
       if (i < from || i >= to) {
-        assertSame(arr[i], actual[i]);
+        assertThat(actual[i], sameInstance(arr[i]));
       } else if (i <= k) {
-        assertTrue(actual[i].intValue() <= actual[k].intValue());
+        assertThat(actual[i], lessThanOrEqualTo(actual[k]));
       } else {
-        assertTrue(actual[i].intValue() >= actual[k].intValue());
+        assertThat(actual[i], greaterThanOrEqualTo(actual[k]));
       }
     }
   }

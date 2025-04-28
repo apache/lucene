@@ -41,6 +41,7 @@ class Connection implements Closeable {
   public Connection(int tcpPort) throws IOException {
     this.destTCPPort = tcpPort;
     this.s = new Socket(InetAddress.getLoopbackAddress(), tcpPort);
+    this.s.setSoTimeout(30000);
     this.sockIn = s.getInputStream();
     this.in = new InputStreamDataInput(sockIn);
     this.bos = new BufferedOutputStream(s.getOutputStream());

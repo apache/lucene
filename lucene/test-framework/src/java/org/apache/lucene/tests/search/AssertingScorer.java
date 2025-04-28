@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
@@ -148,7 +149,7 @@ public class AssertingScorer extends Scorer {
   public DocIdSetIterator iterator() {
     final DocIdSetIterator in = this.in.iterator();
     assert in != null;
-    return new DocIdSetIterator() {
+    return new FilterDocIdSetIterator(in) {
 
       @Override
       public int docID() {
@@ -190,11 +191,6 @@ public class AssertingScorer extends Scorer {
       }
 
       @Override
-      public long cost() {
-        return in.cost();
-      }
-
-      @Override
       public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
         assert docID() != -1;
         assert offset <= docID();
@@ -221,12 +217,7 @@ public class AssertingScorer extends Scorer {
     final DocIdSetIterator inApproximation = in.approximation();
     assert inApproximation.docID() == doc;
     final DocIdSetIterator assertingApproximation =
-        new DocIdSetIterator() {
-
-          @Override
-          public int docID() {
-            return inApproximation.docID();
-          }
+        new FilterDocIdSetIterator(inApproximation) {
 
           @Override
           public int nextDoc() throws IOException {
@@ -257,11 +248,6 @@ public class AssertingScorer extends Scorer {
             }
             assert inApproximation.docID() == advanced;
             return doc = advanced;
-          }
-
-          @Override
-          public long cost() {
-            return inApproximation.cost();
           }
         };
     return new TwoPhaseIterator(assertingApproximation) {

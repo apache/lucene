@@ -112,6 +112,7 @@ ignore = [
   "PTH123",  # open should be replaced by Path.open
   "PTH202",  # os.path.getsize should be replaced by Path.stat.st_size
   "PTH207",  # glob should be replaced by Path.glob or Path.rglob
+  "PTH208",  # use pathlib.Path.iterdir() instead
   "PYI024",  # use typing.NamedTuple instead of collections.namedtuple
   "RET503",  # missing explicit return at end of function able to return non-None
   "RET504",  # unnecessary assignment before return

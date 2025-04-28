@@ -18,22 +18,16 @@
 package org.apache.lucene.search.comparators;
 
 import java.io.IOException;
-import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 
 /** Docs iterator that starts iterating from a configurable minimum document */
-public class MinDocIterator extends DocIdSetIterator {
+public class MinDocIterator extends AbstractDocIdSetIterator {
   final int segmentMinDoc;
   final int maxDoc;
-  int doc = -1;
 
   MinDocIterator(int segmentMinDoc, int maxDoc) {
     this.segmentMinDoc = segmentMinDoc;
     this.maxDoc = maxDoc;
-  }
-
-  @Override
-  public int docID() {
-    return doc;
   }
 
   @Override
