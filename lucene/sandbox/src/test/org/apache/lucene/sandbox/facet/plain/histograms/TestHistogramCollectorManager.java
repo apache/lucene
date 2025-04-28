@@ -26,8 +26,13 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
+import org.apache.lucene.queries.function.FunctionScoreQuery;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.DoubleValuesSource;
+import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PointRangeQuery;
@@ -156,21 +161,61 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     byte[] upperPoint = new byte[Long.BYTES];
     NumericUtils.longToSortableBytes(lowerBound, lowerPoint, 0);
     NumericUtils.longToSortableBytes(upperBound, upperPoint, 0);
-    actualCounts =
-        searcher.search(
-            new PointRangeQuery("f", lowerPoint, upperPoint, 1) {
-              @Override
-              protected String toString(int dimension, byte[] value) {
-                return null;
-              }
-            },
-            new HistogramCollectorManager("f", 1000));
+    final PointRangeQuery prq =
+        new PointRangeQuery("f", lowerPoint, upperPoint, 1) {
+          @Override
+          protected String toString(int dimension, byte[] value) {
+            return Long.toString(NumericUtils.sortableBytesToLong(value, 0));
+          }
+        };
+
+    actualCounts = searcher.search(prq, new HistogramCollectorManager("f", 1000));
     expectedCounts = new LongIntHashMap();
     for (long value : values) {
       if (value >= lowerBound && value <= upperBound) {
         expectedCounts.addTo(Math.floorDiv(value, 1000), 1);
       }
     }
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the BoostQuery case
+    actualCounts =
+        searcher.search(new BoostQuery(prq, 1.5f), new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range
+    // query is not changing
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the ConstantScoreQuery case
+    actualCounts =
+        searcher.search(new ConstantScoreQuery(prq), new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range query is not changing
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the FunctionScoreQuery case
+    actualCounts =
+        searcher.search(
+            new FunctionScoreQuery(prq, DoubleValuesSource.SCORES),
+            new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range query is not changing
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the IndexOrDocValuesQuery case
+    actualCounts =
+        searcher.search(
+            new IndexOrDocValuesQuery(prq, prq), new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range query is not changing
+    assertEquals(expectedCounts, actualCounts);
+
+    // Validate the recursive wrapping case
+    actualCounts =
+        searcher.search(
+            new ConstantScoreQuery(
+                new BoostQuery(
+                    new FunctionScoreQuery(
+                        new IndexOrDocValuesQuery(prq, prq), DoubleValuesSource.SCORES),
+                    1.5f)),
+            new HistogramCollectorManager("f", 1000));
+    // Don't need to compute expectedCounts again as underlying point range query is not changing
     assertEquals(expectedCounts, actualCounts);
 
     reader.close();

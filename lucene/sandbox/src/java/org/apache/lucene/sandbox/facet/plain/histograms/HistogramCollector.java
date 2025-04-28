@@ -17,7 +17,10 @@
 package org.apache.lucene.sandbox.facet.plain.histograms;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
@@ -27,11 +30,16 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
+import org.apache.lucene.queries.function.FunctionScoreQuery;
+import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdStream;
+import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.PointRangeQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Weight;
@@ -338,13 +346,35 @@ final class HistogramCollector implements Collector {
     return weight != null && weight.count(context) == context.reader().maxDoc();
   }
 
+  private static final Map<Class<?>, Function<Query, Query>> queryWrappers;
+
+  // Initialize the wrapper map for unwrapping the query
+  static {
+    queryWrappers = new HashMap<>();
+    queryWrappers.put(BoostQuery.class, q -> ((BoostQuery) q).getQuery());
+    queryWrappers.put(ConstantScoreQuery.class, q -> ((ConstantScoreQuery) q).getQuery());
+    queryWrappers.put(FunctionScoreQuery.class, q -> ((FunctionScoreQuery) q).getWrappedQuery());
+    queryWrappers.put(
+        IndexOrDocValuesQuery.class, q -> ((IndexOrDocValuesQuery) q).getIndexQuery());
+  }
+
+  /** Recursively unwraps query into the concrete form for applying the optimization */
+  private static Query unwrapIntoConcreteQuery(Query query) {
+    while (queryWrappers.containsKey(query.getClass())) {
+      query = queryWrappers.get(query.getClass()).apply(query);
+    }
+
+    return query;
+  }
+
   private PointRangeQuery getPointRangeQuery(final String field) {
     if (weight == null || weight.getQuery() == null) {
       return null;
     }
 
-    if (weight.getQuery() instanceof PointRangeQuery) {
-      final PointRangeQuery prq = (PointRangeQuery) weight.getQuery();
+    final Query concreteQuery = unwrapIntoConcreteQuery(weight.getQuery());
+
+    if (concreteQuery instanceof PointRangeQuery prq) {
       if (prq.getField().equals(field)) {
         return prq;
       }
