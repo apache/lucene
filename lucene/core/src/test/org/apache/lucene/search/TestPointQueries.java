@@ -2538,4 +2538,47 @@ public class TestPointQueries extends LuceneTestCase {
     w.close();
     dir.close();
   }
+
+  public void testPointRangeQueryWithEqualValues() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setCodec(getCodec());
+    IndexWriter w = new IndexWriter(dir, iwc);
+
+    int cardinality = TestUtil.nextInt(random(), 2, 20);
+
+    int zeroCount = 0;
+    int oneCount = 0;
+    for (int i = 0; i < 10000; i++) {
+      int x = random().nextInt(cardinality);
+      if (x == 0) {
+        zeroCount++;
+      } else if (x == 1) {
+        oneCount++;
+      }
+      Document doc = new Document();
+      doc.add(new IntPoint("int", x));
+      w.addDocument(doc);
+    }
+
+    IndexReader r = DirectoryReader.open(w);
+    IndexSearcher s = newSearcher(r, false);
+
+    PointRangeQuery query = (PointRangeQuery) IntPoint.newRangeQuery("int", 0, 1);
+    assertFalse(query.isEqualValues());
+    Weight weight = query.createWeight(s, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertTrue(weight instanceof PointRangeQuery.MultiPointRangeQueryWeight);
+
+    query = (PointRangeQuery) IntPoint.newRangeQuery("int", 0, 0);
+    assertTrue(query.isEqualValues());
+    weight = query.createWeight(s, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    assertTrue(weight instanceof PointRangeQuery.SinglePointRangeQueryWeight);
+
+    assertEquals(zeroCount, s.count(IntPoint.newRangeQuery("int", 0, 0)));
+    assertEquals(oneCount, s.count(IntPoint.newRangeQuery("int", 1, 1)));
+
+    w.close();
+    r.close();
+    dir.close();
+  }
 }
