@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static java.util.function.Predicate.not;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -127,7 +129,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
     // in Java 22 or later we can check the isAlive status of all segments
     // (see https://bugs.openjdk.org/browse/JDK-8310644):
-    if (Arrays.stream(segments).allMatch(s -> s.scope().isAlive()) == false) {
+    if (Arrays.stream(segments).anyMatch(not(s -> s.scope().isAlive()))) {
       return new AlreadyClosedException("Already closed: " + this);
     }
     // otherwise rethrow unmodified NPE/ISE (as it possibly a bug with passing a null parameter to
