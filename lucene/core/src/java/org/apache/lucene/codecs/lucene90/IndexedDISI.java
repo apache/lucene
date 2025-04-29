@@ -163,9 +163,9 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
    *
    * @param it the document IDs.
    * @param out destination for the blocks.
-   * @throws IOException if there was an error writing to out.
    * @return the number of jump-table entries following the blocks, -1 for no entries. This should
    *     be stored in meta and used when creating an instance of IndexedDISI.
+   * @throws IOException if there was an error writing to out.
    */
   static short writeBitSet(DocIdSetIterator it, IndexOutput out) throws IOException {
     return writeBitSet(it, out, DEFAULT_DENSE_RANK_POWER);
@@ -184,9 +184,9 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
    *     disables DENSE rank. Recommended values are 8-12: Every 256-4096 docIDs or 4-64 longs.
    *     {@link #DEFAULT_DENSE_RANK_POWER} is 9: Every 512 docIDs. This should be stored in meta and
    *     used when creating an instance of IndexedDISI.
-   * @throws IOException if there was an error writing to out.
    * @return the number of jump-table entries following the blocks, -1 for no entries. This should
    *     be stored in meta and used when creating an instance of IndexedDISI.
+   * @throws IOException if there was an error writing to out.
    */
   public static short writeBitSet(DocIdSetIterator it, IndexOutput out, byte denseRankPower)
       throws IOException {
@@ -436,6 +436,7 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
   int numberOfOnes;
   // Used with rank for jumps inside of DENSE as they are absolute instead of relative
   int denseOrigoIndex;
+  FixedBitSet bitSet;
 
   // ALL variables
   int gap;
@@ -489,6 +490,16 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
     boolean found = method.advanceWithinBlock(this, block);
     assert found;
     return doc;
+  }
+
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    assert doc >= offset;
+    while (doc < upTo && method.intoBitSetWithinBlock(this, upTo, bitSet, offset) == false) {
+      readBlockHeader();
+      boolean found = method.advanceWithinBlock(this, block);
+      assert found;
+    }
   }
 
   public boolean advanceExact(int target) throws IOException {
@@ -625,6 +636,25 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         disi.exists = false;
         return false;
       }
+
+      @Override
+      boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
+          throws IOException {
+        bitSet.set(disi.doc - offset);
+        for (; disi.index < disi.nextBlockIndex; ) {
+          int docInBlock = disi.slice.readShort() & 0xFFFF;
+          int doc = disi.block | docInBlock;
+          disi.index++;
+          if (doc >= upTo) {
+            disi.doc = doc;
+            disi.exists = true;
+            disi.nextExistDocInBlock = docInBlock;
+            return true;
+          }
+          bitSet.set(doc - offset);
+        }
+        return false;
+      }
     },
     DENSE {
       @Override
@@ -693,6 +723,34 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         disi.index = disi.numberOfOnes - Long.bitCount(leftBits);
         return (leftBits & 1L) != 0;
       }
+
+      @Override
+      boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
+          throws IOException {
+        if (disi.bitSet == null) {
+          disi.bitSet = new FixedBitSet(BLOCK_SIZE);
+        }
+
+        int sourceFrom = disi.doc & 0xFFFF;
+        int sourceTo = Math.min(upTo - disi.block, BLOCK_SIZE);
+        int destFrom = disi.doc - offset;
+
+        long fp = disi.slice.getFilePointer();
+        disi.slice.seek(fp - Long.BYTES); // seek back a long to include current word (disi.word).
+        int numWords = FixedBitSet.bits2words(sourceTo) - disi.wordIndex;
+        disi.slice.readLongs(disi.bitSet.getBits(), disi.wordIndex, numWords);
+        FixedBitSet.orRange(disi.bitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
+
+        int blockEnd = disi.block | 0xFFFF;
+        if (upTo > blockEnd) {
+          disi.slice.seek(disi.blockEnd);
+          disi.index += disi.bitSet.cardinality(sourceFrom, sourceTo);
+          return false;
+        } else {
+          disi.slice.seek(fp);
+          return advanceWithinBlock(disi, upTo);
+        }
+      }
     },
     ALL {
       @Override
@@ -707,6 +765,19 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
         disi.index = target - disi.gap;
         return true;
       }
+
+      @Override
+      boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) {
+        final int blockEnd = disi.block | 0xFFFF;
+        if (upTo <= blockEnd) {
+          bitSet.set(disi.doc - offset, upTo - offset);
+          advanceWithinBlock(disi, upTo);
+          return true;
+        } else {
+          bitSet.set(disi.doc - offset, blockEnd - offset + 1);
+          return false;
+        }
+      }
     };
 
     /**
@@ -720,6 +791,19 @@ public final class IndexedDISI extends AbstractDocIdSetIterator {
      * return whether this document exists.
      */
     abstract boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException;
+
+    /**
+     * Similar to {@link DocIdSetIterator#intoBitSet}, load docs in this block into a bitset. This
+     * method returns true if there are remaining docs (gte upTo) in the block, otherwise false.
+     * When false return, fp of {@link IndexedDISI#slice} is at {@link IndexedDISI#blockEnd} and
+     * {@link IndexedDISI#index} is correct but other status vars are undefined. Caller should
+     * decode the header of next block by {@link #readBlockHeader()}.
+     *
+     * <p>Caller need to make sure {@link IndexedDISI#doc} greater than or equals to {@link
+     * IndexedDISI#block} and less than {@code upTo} when calling this.
+     */
+    abstract boolean intoBitSetWithinBlock(
+        IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) throws IOException;
   }
 
   /**

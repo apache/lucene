@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -810,10 +810,7 @@ public class TestAddIndexes extends LuceneTestCase {
     }
     for (MergePolicy.OneMerge merge : merges) {
       if (merge.getMergeInfo() != null) {
-        assertFalse(
-            Arrays.stream(c.destDir.listAll())
-                .collect(Collectors.toSet())
-                .containsAll(merge.getMergeInfo().files()));
+        assertFalse(Set.of(c.destDir.listAll()).containsAll(merge.getMergeInfo().files()));
       }
     }
     c.closeAll();

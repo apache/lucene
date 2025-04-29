@@ -2,12 +2,12 @@
 [versions]
 antlr = "4.13.2"
 asm = "9.6"
-assertj = "3.21.0"
+assertj = "3.27.3"
 commons-codec = "1.17.2"
 commons-compress = "1.19"
 ecj = "3.41.0"
 errorprone = "2.36.0"
-flexmark = "0.61.24"
+flexmark = "0.64.8"
 # @keep This is GJF version for spotless/ tidy.
 googleJavaFormat = "1.23.0"
 groovy = "4.0.26"
@@ -33,7 +33,7 @@ rat = "0.14"
 s2-geometry = "1.0.0"
 spatial4j = "0.8"
 xerces = "2.12.2"
-zstd = "1.5.5-11"
+zstd = "1.5.7-2"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -82,5 +82,5 @@ jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
 owasp-dependencycheck = "org.owasp.dependencycheck:7.2.0"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
 spotless = "com.diffplug.spotless:6.9.1"
-undercouch-download = "de.undercouch.download:5.2.0"
+undercouch-download = "de.undercouch.download:5.6.0"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:0.8.4"
