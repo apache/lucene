@@ -22,6 +22,6 @@ public enum FileDataHint implements IOContext.FileOpenHint {
   POSTINGS,
   /** The file contains stored fields */
   STORED_FIELDS,
-  /** The file contains vector data */
-  VECTORS
+  /** The file contains vector data for kNN search */
+  KNN_VECTORS
 }
