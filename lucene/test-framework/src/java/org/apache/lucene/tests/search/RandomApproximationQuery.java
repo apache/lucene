@@ -20,6 +20,7 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.IndexSearcher;
@@ -193,21 +194,14 @@ public class RandomApproximationQuery extends Query {
     }
   }
 
-  private static class RandomApproximation extends DocIdSetIterator {
+  private static class RandomApproximation extends AbstractDocIdSetIterator {
 
     private final Random random;
     private final DocIdSetIterator disi;
 
-    int doc = -1;
-
     public RandomApproximation(Random random, DocIdSetIterator disi) {
       this.random = random;
       this.disi = disi;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
 
     @Override

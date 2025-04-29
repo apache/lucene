@@ -852,6 +852,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       return new MergedFloatVectorValues(dimension, size, subs);
     }
 
+    @Override
+    public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+      Map<String, Long> map = new HashMap<>();
+      for (var reader : readers) {
+        map = KnnVectorsReader.mergeOffHeapByteSizeMaps(map, reader.getOffHeapByteSize(fieldInfo));
+      }
+      return map;
+    }
+
     class MergedFloatVectorValues extends FloatVectorValues {
       final int dimension;
       final int size;
