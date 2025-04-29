@@ -37,7 +37,6 @@ import org.apache.lucene.util.IOConsumer;
  * <p>For efficiency, this class requires that the segment size are a power-of-two (<code>
  * chunkSizePower</code>).
  */
-@SuppressWarnings("preview")
 abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegmentAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
