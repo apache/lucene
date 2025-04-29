@@ -274,8 +274,6 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    final boolean doPreload = preload.test(name, context);
-    final Optional<String> group = groupingFunction.apply(name);
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
     // Work around for JDK-8259028: we need to unwrap our test-only file system layers
@@ -283,7 +281,7 @@ public class MMapDirectory extends FSDirectory {
 
     boolean success = false;
     final boolean confined = context == IOContext.READONCE;
-    final Arena arena = confined ? Arena.ofConfined() : getSharedArena(group, arenas);
+    final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       final IndexInput in =
@@ -296,7 +294,7 @@ public class MMapDirectory extends FSDirectory {
                   fc,
                   context.readAdvice(),
                   chunkSizePower,
-                  doPreload,
+                  preload.test(name, context),
                   fileSize),
               fileSize,
               chunkSizePower,
@@ -356,12 +354,14 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
-   * Gets an arena for the given group, potentially aggregating files from the same segment into a
-   * single ref counted shared arena. A ref counted shared arena, if created will be added to the
+   * Gets an arena for the given filename, potentially aggregating files from the same segment into
+   * a single ref counted shared arena. A ref counted shared arena, if created will be added to the
    * given arenas map.
    */
   private Arena getSharedArena(
-      Optional<String> group, ConcurrentHashMap<String, RefCountedSharedArena> arenas) {
+      String name, ConcurrentHashMap<String, RefCountedSharedArena> arenas) {
+    final var group = groupingFunction.apply(name);
+
     if (group.isEmpty()) {
       return Arena.ofShared();
     }
