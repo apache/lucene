@@ -616,8 +616,9 @@ abstract class MemorySegmentIndexInput extends IndexInput
 
   @Override
   public final MemorySegmentIndexInput slice(
-      String sliceDescription, long offset, long length, ReadAdvice advice) throws IOException {
+      String sliceDescription, long offset, long length, IOContext context) throws IOException {
     MemorySegmentIndexInput slice = slice(sliceDescription, offset, length);
+    ReadAdvice advice = context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
     if (NATIVE_ACCESS.isPresent() && advice != ReadAdvice.NORMAL) {
       // No need to madvise with a normal advice, since it's the OS' default.
       final NativeAccess nativeAccess = NATIVE_ACCESS.get();

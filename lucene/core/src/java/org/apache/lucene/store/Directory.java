@@ -23,7 +23,6 @@ import java.nio.file.NoSuchFileException;
 import java.util.Collection; // for javadocs
 import java.util.Set;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -79,14 +78,6 @@ public abstract class Directory implements Closeable {
    * @throws IOException in case of I/O error
    */
   public abstract long fileLength(String name) throws IOException;
-
-  /**
-   * Returns a {@link ReadAdvice} to use to read or write a file from information in the {@link
-   * IOContext}.
-   */
-  protected ReadAdvice toReadAdvice(IOContext context) {
-    return context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
-  }
 
   /**
    * Creates a new, empty file in the directory and returns an {@link IndexOutput} instance for

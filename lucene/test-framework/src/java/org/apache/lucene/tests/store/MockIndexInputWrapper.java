@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.FilterIndexInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 
@@ -43,7 +44,6 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   private final MockIndexInputWrapper parent;
   private final boolean confined;
   private final Thread thread;
-  private ReadAdvice readAdvice;
 
   /** Sole constructor */
   public MockIndexInputWrapper(
@@ -51,7 +51,6 @@ public class MockIndexInputWrapper extends FilterIndexInput {
       String name,
       IndexInput delegate,
       MockIndexInputWrapper parent,
-      ReadAdvice readAdvice,
       boolean confined) {
     super("MockIndexInputWrapper(name=" + name + " delegate=" + delegate + ")", delegate);
 
@@ -61,7 +60,6 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     this.parent = parent;
     this.name = name;
     this.dir = dir;
-    this.readAdvice = readAdvice;
     this.confined = confined;
     this.thread = Thread.currentThread();
   }
@@ -112,8 +110,7 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     dir.inputCloneCount.incrementAndGet();
     IndexInput iiclone = in.clone();
     MockIndexInputWrapper clone =
-        new MockIndexInputWrapper(
-            dir, name, iiclone, parent != null ? parent : this, readAdvice, confined);
+        new MockIndexInputWrapper(dir, name, iiclone, parent != null ? parent : this, confined);
     // Pending resolution on LUCENE-686 we may want to
     // uncomment this code so that we also track that all
     // clones get closed:
@@ -141,17 +138,13 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     IndexInput slice = in.slice(sliceDescription, offset, length);
     MockIndexInputWrapper clone =
         new MockIndexInputWrapper(
-            dir, sliceDescription, slice, parent != null ? parent : this, readAdvice, confined);
+            dir, sliceDescription, slice, parent != null ? parent : this, confined);
     return clone;
   }
 
   @Override
-  public IndexInput slice(String sliceDescription, long offset, long length, ReadAdvice readAdvice)
+  public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
       throws IOException {
-    if (this.readAdvice != ReadAdvice.NORMAL) {
-      throw new IllegalStateException(
-          "slice() may only be called with a custom read advice on inputs that have been open with ReadAdvice.NORMAL");
-    }
     ensureOpen();
     if (dir.verboseClone) {
       new Exception("slice: " + this).printStackTrace(System.out);
@@ -160,7 +153,7 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     IndexInput slice = in.slice(sliceDescription, offset, length);
     MockIndexInputWrapper clone =
         new MockIndexInputWrapper(
-            dir, sliceDescription, slice, parent != null ? parent : this, readAdvice, confined);
+            dir, sliceDescription, slice, parent != null ? parent : this, confined);
     return clone;
   }
 
@@ -196,7 +189,6 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
     ensureOpen();
     ensureAccessible();
-    this.readAdvice = readAdvice;
     in.updateReadAdvice(readAdvice);
   }
 

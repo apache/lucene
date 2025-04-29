@@ -239,7 +239,6 @@ public class MMapDirectory extends FSDirectory {
    *     argument is the {@link IOContext} used to open the file. Returns {@code
    *     Optional.of(ReadAdvice)} to use a specific read advice, or {@code Optional.empty()} if a
    *     default should be used
-   * @see #toReadAdvice
    */
   public void setReadAdviceOverride(
       BiFunction<String, IOContext, Optional<ReadAdvice>> toReadAdvice) {
@@ -279,7 +278,9 @@ public class MMapDirectory extends FSDirectory {
     return PROVIDER.openInput(
         path,
         chunkSizePower,
-        readAdvice.apply(name, context).orElseGet(() -> toReadAdvice(context)),
+        readAdvice
+            .apply(name, context)
+            .orElseGet(() -> context.readAdvice().orElse(Constants.DEFAULT_READADVICE)),
         context == IOContext.READONCE,
         preload.test(name, context),
         groupingFunction.apply(name),
