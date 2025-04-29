@@ -130,13 +130,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     if (Arrays.stream(segments).allMatch(s -> s.scope().isAlive()) == false) {
       return new AlreadyClosedException("Already closed: " + this);
     }
-    // fallback for Java 21: ISE can be thrown by MemorySegment and contains "closed" in message:
-    if (e instanceof IllegalStateException
-        && e.getMessage() != null
-        && e.getMessage().contains("closed")) {
-      // the check is on message only, so preserve original cause for debugging:
-      return new AlreadyClosedException("Already closed: " + this, e);
-    }
     // otherwise rethrow unmodified NPE/ISE (as it possibly a bug with passing a null parameter to
     // the IndexInput method):
     throw e;
