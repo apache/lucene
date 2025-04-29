@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-// Produce an MR-JAR with Java 19+ foreign and vector implementations
+// Produce an MR-JAR for panama vector implementations
 
 configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {

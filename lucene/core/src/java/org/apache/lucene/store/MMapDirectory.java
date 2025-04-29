@@ -19,18 +19,23 @@ package org.apache.lucene.store;
 import static org.apache.lucene.index.IndexFileNames.CODEC_FILE_PATTERN;
 
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.nio.channels.ClosedChannelException; // javadoc @link
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.logging.Logger;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.Unwrappable;
 
 /**
  * File-based {@link Directory} implementation that uses mmap for reading, and {@link
@@ -146,14 +151,18 @@ public class MMapDirectory extends FSDirectory {
    *   <li>256 MiBytes for 32 bit JVMs
    * </ul>
    */
-  public static final long DEFAULT_MAX_CHUNK_SIZE;
+  public static final long DEFAULT_MAX_CHUNK_SIZE =
+      Constants.JRE_IS_64BIT ? (1L << 34) : (1L << 28);
 
-  /** A provider specific context object or null, that will be passed to openInput. */
-  final Object attachment = PROVIDER.attachment();
+  private static final Optional<NativeAccess> NATIVE_ACCESS = NativeAccess.getImplementation();
+  private static final int SHARED_ARENA_PERMITS =
+      checkMaxPermits(getSharedArenaMaxPermitsSysprop());
 
   private Function<String, Optional<String>> groupingFunction = GROUP_BY_SEGMENT;
 
   final int chunkSizePower;
+
+  final ConcurrentHashMap<String, RefCountedSharedArena> arenas = new ConcurrentHashMap<>();
 
   /**
    * Create a new MMapDirectory for the named location. The directory is created at the named
@@ -265,78 +274,171 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    return PROVIDER.openInput(
-        path,
-        context,
-        chunkSizePower,
-        preload.test(name, context),
-        groupingFunction.apply(name),
-        attachment);
+    final boolean doPreload = preload.test(name, context);
+    final Optional<String> group = groupingFunction.apply(name);
+    final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
+
+    // Work around for JDK-8259028: we need to unwrap our test-only file system layers
+    path = Unwrappable.unwrapAll(path);
+
+    boolean success = false;
+    final boolean confined = context == IOContext.READONCE;
+    final Arena arena = confined ? Arena.ofConfined() : getSharedArena(group, arenas);
+    try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
+      final long fileSize = fc.size();
+      final IndexInput in =
+          MemorySegmentIndexInput.newInstance(
+              resourceDescription,
+              arena,
+              map(
+                  arena,
+                  resourceDescription,
+                  fc,
+                  context.readAdvice(),
+                  chunkSizePower,
+                  doPreload,
+                  fileSize),
+              fileSize,
+              chunkSizePower,
+              confined);
+      success = true;
+      return in;
+    } finally {
+      if (success == false) {
+        arena.close();
+      }
+    }
   }
 
-  // visible for tests:
-  static final MMapIndexInputProvider<Object> PROVIDER;
+  private final MemorySegment[] map(
+      Arena arena,
+      String resourceDescription,
+      FileChannel fc,
+      ReadAdvice readAdvice,
+      int chunkSizePower,
+      boolean preload,
+      long length)
+      throws IOException {
+    if ((length >>> chunkSizePower) >= Integer.MAX_VALUE)
+      throw new IllegalArgumentException("File too big for chunk size: " + resourceDescription);
 
-  interface MMapIndexInputProvider<A> {
-    IndexInput openInput(
-        Path path,
-        IOContext context,
-        int chunkSizePower,
-        boolean preload,
-        Optional<String> group,
-        A attachment)
-        throws IOException;
+    final long chunkSize = 1L << chunkSizePower;
 
-    long getDefaultMaxChunkSize();
+    // we always allocate one more segments, the last one may be a 0 byte one
+    final int nrSegments = (int) (length >>> chunkSizePower) + 1;
 
-    boolean supportsMadvise();
+    final MemorySegment[] segments = new MemorySegment[nrSegments];
 
-    /** An optional attachment of the provider, that will be passed to openInput. */
-    default A attachment() {
-      return null;
+    long startOffset = 0L;
+    for (int segNr = 0; segNr < nrSegments; segNr++) {
+      final long segSize =
+          (length > (startOffset + chunkSize)) ? chunkSize : (length - startOffset);
+      final MemorySegment segment;
+      try {
+        segment = fc.map(MapMode.READ_ONLY, startOffset, segSize, arena);
+      } catch (IOException ioe) {
+        throw convertMapFailedIOException(ioe, resourceDescription, segSize);
+      }
+      // if preload apply it without madvise.
+      // skip madvise if the address of our segment is not page-aligned (small segments due to
+      // internal FileChannel logic)
+      if (preload) {
+        segment.load();
+      } else if (readAdvice != ReadAdvice.NORMAL
+          && NATIVE_ACCESS.filter(na -> segment.address() % na.getPageSize() == 0).isPresent()) {
+        // No need to madvise with ReadAdvice.NORMAL since it is the OS' default read advice.
+        NATIVE_ACCESS.get().madvise(segment, readAdvice);
+      }
+      segments[segNr] = segment;
+      startOffset += segSize;
+    }
+    return segments;
+  }
+
+  /**
+   * Gets an arena for the given group, potentially aggregating files from the same segment into a
+   * single ref counted shared arena. A ref counted shared arena, if created will be added to the
+   * given arenas map.
+   */
+  private Arena getSharedArena(
+      Optional<String> group, ConcurrentHashMap<String, RefCountedSharedArena> arenas) {
+    if (group.isEmpty()) {
+      return Arena.ofShared();
     }
 
-    default IOException convertMapFailedIOException(
-        IOException ioe, String resourceDescription, long bufSize) {
-      final String originalMessage;
-      final Throwable originalCause;
-      if (ioe.getCause() instanceof OutOfMemoryError) {
-        // nested OOM confuses users, because it's "incorrect", just print a plain message:
-        originalMessage = "Map failed";
-        originalCause = null;
-      } else {
-        originalMessage = ioe.getMessage();
-        originalCause = ioe.getCause();
-      }
-      final String moreInfo;
-      if (!Constants.JRE_IS_64BIT) {
-        moreInfo =
-            "MMapDirectory should only be used on 64bit platforms, because the address space on 32bit operating systems is too small. ";
-      } else if (Constants.WINDOWS) {
-        moreInfo =
-            "Windows is unfortunately very limited on virtual address space. If your index size is several hundred Gigabytes, consider changing to Linux. ";
-      } else if (Constants.LINUX) {
-        moreInfo =
-            "Please review 'ulimit -v', 'ulimit -m' (both should return 'unlimited'), and 'sysctl vm.max_map_count'. ";
-      } else {
-        moreInfo = "Please review 'ulimit -v', 'ulimit -m' (both should return 'unlimited'). ";
-      }
-      final IOException newIoe =
-          new IOException(
-              String.format(
-                  Locale.ENGLISH,
-                  "%s: %s [this may be caused by lack of enough unfragmented virtual address space "
-                      + "or too restrictive virtual memory limits enforced by the operating system, "
-                      + "preventing us to map a chunk of %d bytes. %sMore information: "
-                      + "https://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html]",
-                  originalMessage,
-                  resourceDescription,
-                  bufSize,
-                  moreInfo),
-              originalCause);
-      newIoe.setStackTrace(ioe.getStackTrace());
-      return newIoe;
+    String key = group.get();
+    var refCountedArena =
+        arenas.computeIfAbsent(
+            key, s -> new RefCountedSharedArena(s, () -> arenas.remove(s), SHARED_ARENA_PERMITS));
+    if (refCountedArena.acquire()) {
+      return refCountedArena;
+    } else {
+      return arenas.compute(
+          key,
+          (s, v) -> {
+            if (v != null && v.acquire()) {
+              return v;
+            } else {
+              v = new RefCountedSharedArena(s, () -> arenas.remove(s), SHARED_ARENA_PERMITS);
+              v.acquire(); // guaranteed to succeed
+              return v;
+            }
+          });
     }
+  }
+
+  private static IOException convertMapFailedIOException(
+      IOException ioe, String resourceDescription, long bufSize) {
+    final String originalMessage;
+    final Throwable originalCause;
+    if (ioe.getCause() instanceof OutOfMemoryError) {
+      // nested OOM confuses users, because it's "incorrect", just print a plain message:
+      originalMessage = "Map failed";
+      originalCause = null;
+    } else {
+      originalMessage = ioe.getMessage();
+      originalCause = ioe.getCause();
+    }
+    final String moreInfo;
+    if (!Constants.JRE_IS_64BIT) {
+      moreInfo =
+          "MMapDirectory should only be used on 64bit platforms, because the address space on 32bit operating systems is too small. ";
+    } else if (Constants.WINDOWS) {
+      moreInfo =
+          "Windows is unfortunately very limited on virtual address space. If your index size is several hundred Gigabytes, consider changing to Linux. ";
+    } else if (Constants.LINUX) {
+      moreInfo =
+          "Please review 'ulimit -v', 'ulimit -m' (both should return 'unlimited'), and 'sysctl vm.max_map_count'. ";
+    } else {
+      moreInfo = "Please review 'ulimit -v', 'ulimit -m' (both should return 'unlimited'). ";
+    }
+    final IOException newIoe =
+        new IOException(
+            String.format(
+                Locale.ENGLISH,
+                "%s: %s [this may be caused by lack of enough unfragmented virtual address space "
+                    + "or too restrictive virtual memory limits enforced by the operating system, "
+                    + "preventing us to map a chunk of %d bytes. %sMore information: "
+                    + "https://blog.thetaphi.de/2012/07/use-lucenes-mmapdirectory-on-64bit.html]",
+                originalMessage,
+                resourceDescription,
+                bufSize,
+                moreInfo),
+            originalCause);
+    newIoe.setStackTrace(ioe.getStackTrace());
+    return newIoe;
+  }
+
+  private static int checkMaxPermits(int maxPermits) {
+    if (RefCountedSharedArena.validMaxPermits(maxPermits)) {
+      return maxPermits;
+    }
+    Logger.getLogger(MMapDirectory.class.getName())
+        .warning(
+            "Invalid value for sysprop "
+                + MMapDirectory.SHARED_ARENA_MAX_PERMITS_SYSPROP
+                + ", must be positive and <= 0x07FF. The default value will be used.");
+    return RefCountedSharedArena.DEFAULT_MAX_PERMITS;
   }
 
   private static int getSharedArenaMaxPermitsSysprop() {
@@ -356,39 +458,11 @@ public class MMapDirectory extends FSDirectory {
     return ret;
   }
 
-  private static <A> MMapIndexInputProvider<A> lookupProvider() {
-    final var maxPermits = getSharedArenaMaxPermitsSysprop();
-    final var lookup = MethodHandles.lookup();
-    try {
-      final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
-      // we use method handles, so we do not need to deal with setAccessible as we have private
-      // access through the lookup:
-      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class, int.class));
-      try {
-        return (MMapIndexInputProvider<A>) constr.invoke(maxPermits);
-      } catch (RuntimeException | Error e) {
-        throw e;
-      } catch (Throwable th) {
-        throw new AssertionError(th);
-      }
-    } catch (NoSuchMethodException | IllegalAccessException e) {
-      throw new LinkageError(
-          "MemorySegmentIndexInputProvider is missing correctly typed constructor", e);
-    } catch (ClassNotFoundException cnfe) {
-      throw new LinkageError("MemorySegmentIndexInputProvider is missing in Lucene JAR file", cnfe);
-    }
-  }
-
   /**
    * Returns true, if MMapDirectory uses the platform's {@code madvise()} syscall to advise how OS
    * kernel should handle paging after opening a file.
    */
   public static boolean supportsMadvise() {
-    return PROVIDER.supportsMadvise();
-  }
-
-  static {
-    PROVIDER = lookupProvider();
-    DEFAULT_MAX_CHUNK_SIZE = PROVIDER.getDefaultMaxChunkSize();
+    return NATIVE_ACCESS.isPresent();
   }
 }

@@ -47,14 +47,13 @@ import org.objectweb.asm.Type;
 
 public final class ExtractJdkApis {
   
-  private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2022-01-01T00:00:00Z"));
+  private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2025-04-29T00:00:00Z"));
   
-  private static final String PATTERN_PANAMA_FOREIGN      = "java.base/{java/lang/foreign/*,java/nio/channels/FileChannel}";
   private static final String PATTERN_VECTOR_INCUBATOR    = "jdk.incubator.vector/jdk/incubator/vector/*";
   private static final String PATTERN_VECTOR_VM_INTERNALS = "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
   
   static final Map<Integer,List<String>> CLASSFILE_PATTERNS = Map.of(
-      21, List.of(PATTERN_PANAMA_FOREIGN, PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR)
+      23, List.of(PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR)
   );
   
   public static void main(String... args) throws IOException {
