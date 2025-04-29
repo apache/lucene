@@ -12,7 +12,7 @@ flexmark = "0.64.8"
 # @keep This is GJF version for spotless/ tidy.
 googleJavaFormat = "1.23.0"
 groovy = "4.0.26"
-hamcrest = "2.2"
+hamcrest = "3.0"
 icu4j = "77.1"
 javacc = "7.0.12"
 jflex = "1.8.2"
