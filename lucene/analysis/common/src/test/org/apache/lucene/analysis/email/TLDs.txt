@@ -296,7 +296,6 @@ cy
 cymru
 cyou
 cz
-dabur
 dad
 dance
 data
@@ -627,7 +626,6 @@ kaufen
 kddi
 ke
 kerryhotels
-kerrylogistics
 kerryproperties
 kfh
 kg
@@ -691,7 +689,6 @@ limited
 limo
 lincoln
 link
-lipsy
 live
 living
 lk
@@ -801,7 +798,6 @@ na
 nab
 nagoya
 name
-natura
 navy
 nba
 nc
@@ -1038,7 +1034,6 @@ sg
 sh
 shangrila
 sharp
-shaw
 shell
 shia
 shiksha
