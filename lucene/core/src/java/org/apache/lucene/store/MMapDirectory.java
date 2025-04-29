@@ -60,11 +60,10 @@ import org.apache.lucene.util.Unwrappable;
  *
  * <p>This class will use the modern {@link java.lang.foreign.MemorySegment} API available since
  * Java 21 which allows to safely unmap previously mmapped files after closing the {@link
- * IndexInput}s. There is no need to enable the "preview feature" of your Java version; it works out
- * of box with some compilation tricks. For more information about the foreign memory API read
- * documentation of the {@link java.lang.foreign} package.
+ * IndexInput}s. For more information about the foreign memory API read documentation of the {@link
+ * java.lang.foreign} package.
  *
- * <p>On some platforms like Linux and MacOS X, this class will invoke the syscall {@code madvise()}
+ * <p>On some platforms like Linux and macOS, this class will invoke the syscall {@code madvise()}
  * to advise how OS kernel should handle paging after opening a file. For this to work, Java code
  * must be able to call native code. If this is not allowed, a warning is logged. To enable native
  * access for Lucene in a modularized application, pass {@code
@@ -208,9 +207,9 @@ public class MMapDirectory extends FSDirectory {
    * files cannot be mapped. Using a lower chunk size makes the directory implementation a little
    * bit slower (as the correct chunk may be resolved on lots of seeks) but the chance is higher
    * that mmap does not fail. On 64 bit Java platforms, this parameter should always be large (like
-   * 1 GiBytes, or even larger with recent Java versions), as the address space is big enough. If it
-   * is larger, fragmentation of address space increases, but number of file handles and mappings is
-   * lower for huge installations with many open indexes.
+   * 16 GiBytes), as the address space is big enough. If it is larger, fragmentation of address
+   * space increases, but number of file handles and mappings is lower for huge installations with
+   * many open indexes.
    *
    * <p><b>Please note:</b> The chunk size is always rounded down to a power of 2.
    *
