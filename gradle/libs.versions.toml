@@ -1,7 +1,7 @@
 # Run "gradlew writeLocks" and "gradlew updateLicenses" after modifying this file!
 [versions]
 antlr = "4.13.2"
-asm = "9.6"
+asm = "9.8"
 assertj = "3.27.3"
 commons-codec = "1.18.0"
 commons-compress = "1.19"
