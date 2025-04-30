@@ -134,7 +134,7 @@ public class MMapDirectory extends FSDirectory {
         return Optional.of(groupKey);
       };
 
-  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdvice =
+  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdviceOverride =
       (_, _) -> Optional.empty();
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
@@ -250,7 +250,7 @@ public class MMapDirectory extends FSDirectory {
    */
   public void setReadAdviceOverride(
       BiFunction<String, IOContext, Optional<ReadAdvice>> toReadAdvice) {
-    this.readAdvice = toReadAdvice;
+    this.readAdviceOverride = toReadAdvice;
   }
 
   /**
@@ -290,6 +290,10 @@ public class MMapDirectory extends FSDirectory {
 
     boolean success = false;
     final boolean confined = context == IOContext.READONCE;
+    final ReadAdvice readAdvice =
+        readAdviceOverride
+            .apply(name, context)
+            .orElseGet(() -> context.readAdvice().orElse(Constants.DEFAULT_READADVICE));
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
@@ -301,7 +305,7 @@ public class MMapDirectory extends FSDirectory {
                   arena,
                   resourceDescription,
                   fc,
-                  context.readAdvice(),
+                  readAdvice,
                   chunkSizePower,
                   preload.test(name, context),
                   fileSize),
