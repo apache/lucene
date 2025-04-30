@@ -9,7 +9,7 @@ assertj = "3.27.3"
 # analysis/phonetic/ algorithms, gradle build checksums
 commons-codec = "1.18.0"
 # benchmark/ bzip2 compression
-commons-compress = "1.19"
+commons-compress = "1.27.1"
 # @keep This version refers to ECJ batch compiler from p2 repositories ("drops").
 ecjP2Drop = "ecj-4.36M1"
 # java linting
