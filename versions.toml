@@ -10,7 +10,7 @@ errorprone = "2.36.0"
 flexmark = "0.64.8"
 # @keep This is GJF version for spotless/ tidy.
 googleJavaFormat = "1.23.0"
-groovy = "4.0.22"
+groovy = "4.0.26"
 hamcrest = "2.2"
 icu4j = "77.1"
 javacc = "7.0.12"
@@ -20,7 +20,7 @@ jmh = "1.37"
 jts = "1.17.0"
 junit = "4.13.1"
 # @keep Minimum gradle version to run the build
-minGradle = "8.10"
+minGradle = "8.14"
 # @keep This is the minimum required Java version.
 minJava = "21"
 morfologik = "2.1.9"
