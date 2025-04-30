@@ -40,8 +40,8 @@ public class NeighborArray {
 
   public NeighborArray(int maxSize, boolean descOrder) {
     this.maxSize = maxSize;
-    nodes = new IntArrayList();
-    scores = new FloatArrayList();
+    nodes = new IntArrayList(maxSize / 8);
+    scores = new FloatArrayList(maxSize / 8);
     this.scoresDescOrder = descOrder;
   }
 
