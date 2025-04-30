@@ -114,9 +114,9 @@ public final class JavascriptCompiler {
   private static final ClassDesc CD_CompiledExpression =
       ClassDesc.of(JavascriptCompiler.class.getName() + "$CompiledExpression");
 
-  private static final ClassDesc CD_Expression = generateClassDesc(Expression.class),
-      CD_DoubleValues = generateClassDesc(DoubleValues.class),
-      CD_JavascriptCompiler = generateClassDesc(JavascriptCompiler.class);
+  private static final ClassDesc CD_Expression = Expression.class.describeConstable().get(),
+      CD_DoubleValues = DoubleValues.class.describeConstable().get(),
+      CD_JavascriptCompiler = JavascriptCompiler.class.describeConstable().get();
   private static final MethodTypeDesc
       EXPRESSION_CTOR_DESC =
           MethodTypeDesc.of(
@@ -128,7 +128,7 @@ public final class JavascriptCompiler {
           MethodTypeDesc.of(ConstantDescs.CD_Throwable, ConstantDescs.CD_Throwable, CD_Expression);
 
   private static final ExceptionsAttribute THROWS_IOEXCEPTION_ATTRIBUTE =
-      ExceptionsAttribute.ofSymbols(generateClassDesc(IOException.class));
+      ExceptionsAttribute.ofSymbols(IOException.class.describeConstable().get());
 
   private static final DirectMethodHandleDesc DYNAMIC_CONSTANT_BOOTSTRAP =
       ConstantDescs.ofConstantBootstrap(
@@ -136,10 +136,6 @@ public final class JavascriptCompiler {
           "dynamicConstantBootstrap",
           ConstantDescs.CD_MethodHandle,
           ConstantDescs.CD_String);
-
-  private static ClassDesc generateClassDesc(Class<?> clazz) {
-    return ClassDesc.of(clazz.getName());
-  }
 
   final String sourceText;
   final Map<String, MethodHandle> functions;
