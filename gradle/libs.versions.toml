@@ -18,7 +18,7 @@ javacc = "7.0.12"
 jflex = "1.8.2"
 jgit = "6.10.0.202406032230-r"
 jmh = "1.37"
-jts = "1.17.0"
+jts = "1.20.0"
 junit = "4.13.2"
 # @keep Minimum gradle version to run the build
 minGradle = "8.14"
