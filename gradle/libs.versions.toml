@@ -3,7 +3,7 @@
 antlr = "4.13.2"
 asm = "9.6"
 assertj = "3.27.3"
-commons-codec = "1.17.2"
+commons-codec = "1.18.0"
 commons-compress = "1.19"
 # @keep This version refers to ECJ batch compiler from p2 repositories ("drops").
 ecjP2Drop = "ecj-4.36M1"
