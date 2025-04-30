@@ -123,6 +123,7 @@ allprojects { prj ->
 
             // On by Default : ERROR
 
+            // '-Xep:AddNullMarkedToPackageInfo:OFF', // we don't use jspecify
             // '-Xep:AlwaysThrows:OFF', // we don't use google collections
             // '-Xep:AndroidInjectionBeforeSuper:OFF', // we don't use android
             '-Xep:ArrayEquals:ERROR',
@@ -130,6 +131,7 @@ allprojects { prj ->
             '-Xep:ArrayHashCode:ERROR',
             '-Xep:ArrayToString:ERROR',
             // '-Xep:ArraysAsListPrimitiveArray:OFF', // we don't use guava
+            // '-Xep:AssignmentExpression:OFF', // TODO: there are problems
             // '-Xep:AsyncCallableReturnsNull:OFF', // we don't use guava
             // '-Xep:AsyncFunctionReturnsNull:OFF', // we don't use guava
             // '-Xep:AutoValueBuilderDefaultsInConstructor:OFF', // we don't use autovalue
@@ -138,7 +140,7 @@ allprojects { prj ->
             '-Xep:BadShiftAmount:ERROR',
             '-Xep:BanClassLoader:ERROR',
             // '-Xep:BanJNDI:OFF', // implemented with forbidden APIs instead
-            '-Xep:BoxedPrimitiveEquality:ERROR',
+            // '-Xep:BoxedPrimitiveEquality:OFF', // TODO: there are problems
             // '-Xep:BundleDeserializationCast:OFF', // we don't use android
             '-Xep:ChainingConstructorIgnoresParameter:ERROR',
             // '-Xep:CheckNotNullMultipleTimes:OFF', // we don't use guava
@@ -205,8 +207,11 @@ allprojects { prj ->
             // '-Xep:InjectOnMemberAndConstructor:OFF', // we don't use this annotation
             // '-Xep:InlineMeValidator:OFF', // we don't use this annotation
             // '-Xep:InstantTemporalUnit:OFF', // we don't use Instant apis with strange temporal units
+            '-Xep:IntFloatConversion:ERROR',
+            // '-Xep:IntLiteralCast:OFF', // TODO: there are problems
             // '-Xep:InvalidJavaTimeConstant:OFF', // we don't use impacted java.time classes (Month, etc)
             // '-Xep:InvalidPatternSyntax:OFF',
+            '-Xep:InvalidSnippet:ERROR',
             // '-Xep:InvalidTimeZoneID:OFF', // we don't use getTimeZone with constant IDs except UTC/GMT
             // '-Xep:InvalidZoneId:OFF', // we don't use ZoneId.of
             '-Xep:IsInstanceIncompatibleType:ERROR',
@@ -214,6 +219,7 @@ allprojects { prj ->
             // '-Xep:IsLoggableTagLength:OFF', // we don't use android
             // '-Xep:JUnit3TestNotRun:OFF', // we don't use junit3
             '-Xep:JUnit4ClassAnnotationNonStatic:ERROR',
+            '-Xep:JUnit4EmptyMethods:ERROR',
             // '-Xep:JUnit4SetUpNotRun:OFF', // LuceneTestCase takes care
             // '-Xep:JUnit4TearDownNotRun:OFF', // LuceneTestCase takes care
             // '-Xep:JUnit4TestNotRun:OFF', // noisy
@@ -230,6 +236,7 @@ allprojects { prj ->
             '-Xep:LossyPrimitiveCompare:ERROR',
             '-Xep:MathRoundIntLong:ERROR',
             // '-Xep:MislabeledAndroidString:OFF', // we don't use android
+            '-Xep:MisleadingEmptyVarargs:ERROR',
             '-Xep:MisleadingEscapedSpace:ERROR',
             // '-Xep:MissingRuntimeRetention:OFF', // we don't use this annotation
             // '-Xep:MisplacedScopeAnnotations:OFF', // we don't use this annotation
@@ -238,11 +245,13 @@ allprojects { prj ->
             // '-Xep:MisusedDayOfYear:OFF', // we don't use date patterns
             // '-Xep:MisusedWeekYear:OFF', // we don't use date patterns
             // '-Xep:MixedDescriptors:OFF', // we don't use protobuf
+            // '-Xep:MockIllegalThrows:OFF', // we don't use mockito
             // '-Xep:MockitoUsage:OFF', // we don't use mockito
             '-Xep:ModifyingCollectionWithItself:ERROR',
             // '-Xep:MoreThanOneInjectableConstructor:OFF', // we don't use this annotation
             // '-Xep:MustBeClosedChecker:OFF', // we don't use this annotation
             '-Xep:NCopiesOfChar:ERROR',
+            // '-Xep:NegativeBoolean:OFF', // TODO: there are problems
             // '-Xep:NoCanIgnoreReturnValueOnClasses:OFF', // we don't use this annotation
             '-Xep:NonCanonicalStaticImport:ERROR',
             // '-Xep:NonFinalCompileTimeConstant:OFF', // we don't use this annotation
@@ -262,6 +271,7 @@ allprojects { prj ->
             // '-Xep:PeriodGetTemporalUnit:OFF', // we don't use Period
             // '-Xep:PeriodTimeMath:OFF', // we don't use Period
             // '-Xep:PreconditionsInvalidPlaceholder:OFF', // we don't use guava
+            // '-Xep:PreconditionsExpensiveString:OFF', // we don't use guava
             // '-Xep:PrivateSecurityContractProtoAccess:OFF', // we don't use protobuf
             // '-Xep:ProtoBuilderReturnValueIgnored:OFF', // we don't use protobuf
             // '-Xep:ProtoFieldNullComparison:OFF', // we don't use protobuf
@@ -275,15 +285,18 @@ allprojects { prj ->
             // '-Xep:RequiredModifiers:OFF', // we don't use this annotation
             // '-Xep:RestrictedApiChecker:OFF', // we don't use this annotation
             // '-Xep:ReturnValueIgnored:OFF', // noisy
+            '-Xep:RuleNotRun:ERROR',
             '-Xep:SelfAssertion:ERROR',
             '-Xep:SelfAssignment:ERROR',
             '-Xep:SelfComparison:ERROR',
             '-Xep:SelfEquals:ERROR',
+            '-Xep:SelfSet:ERROR',
             // '-Xep:SetUnrecognized:OFF', // we don't use protobuf
             // '-Xep:ShouldHaveEvenArgs:OFF', // we don't use truth
             '-Xep:SizeGreaterThanOrEqualsZero:ERROR',
             '-Xep:StreamToString:ERROR',
             '-Xep:StringBuilderInitWithChar:ERROR',
+            // '-Xep:StringConcatToTextBlock:OFF', // TODO: there are problems
             '-Xep:SubstringOfZero:ERROR',
             '-Xep:SuppressWarningsDeprecated:ERROR',
             // '-Xep:TemporalAccessorGetChronoField:OFF', // we don't use TemporalAccessor.get
@@ -291,12 +304,14 @@ allprojects { prj ->
             // '-Xep:TheoryButNoTheories:OFF', // we don't use junit theory apis/runner
             // '-Xep:ThrowIfUncheckedKnownChecked:OFF', // we don't use this annotation
             // '-Xep:ThrowNull:OFF', // noisy (LuceneTestCase)
+            '-Xep:TimeInStaticInitializer:ERROR',
             // '-Xep:TreeToString:OFF', // we don't use javac API
             // '-Xep:TryFailThrowable:OFF',
             '-Xep:TypeParameterQualifier:ERROR',
             '-Xep:UnicodeDirectionalityCharacters:ERROR',
             '-Xep:UnicodeInCode:ERROR',
             '-Xep:UnnecessaryCheckNotNull:ERROR',
+            // '-Xep:UnnecessaryCopy:OFF', // we don't use google collections
             '-Xep:UnnecessaryTypeArgument:ERROR',
             '-Xep:UnsafeWildcard:ERROR',
             '-Xep:UnusedAnonymousClass:ERROR',
@@ -509,7 +524,7 @@ allprojects { prj ->
             '-Xep:Overrides:WARN',
             // '-Xep:OverridesGuiceInjectableMethod:OFF', // we don't use guice
             '-Xep:OverridingMethodInconsistentArgumentNamesChecker:WARN',
-            '-Xep:PatternMatchingInstanceof:WARN',
+            // '-Xep:PatternMatchingInstanceof:OFF', // there are problems and check seems not great
             // '-Xep:ParameterName:OFF', // we don't pass parameters with comments in this way
             // '-Xep:PreconditionsCheckNotNullRepeated:OFF', // we don't use guava
             '-Xep:PrimitiveAtomicReference:WARN',
@@ -530,7 +545,7 @@ allprojects { prj ->
             // '-Xep:SameNameButDifferent:OFF', // TODO: there are problems
             // '-Xep:SelfAlwaysReturnsThis:OFF', // we don't use self() methods, this isn't python.
             // '-Xep:ShortCircuitBoolean:OFF', // TODO: there are problems
-            '-Xep:StatementSwitchToExpressionSwitch:WARN',
+            // '-Xep:StatementSwitchToExpressionSwitch:OFF', // TODO: there are problems
             // '-Xep:StaticAssignmentInConstructor:OFF',
             // '-Xep:StaticAssignmentOfThrowable:OFF', // noisy
             // '-Xep:StaticGuardedByInstance:OFF',

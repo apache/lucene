@@ -13,7 +13,7 @@ commons-compress = "1.19"
 # @keep This version refers to ECJ batch compiler from p2 repositories ("drops").
 ecjP2Drop = "ecj-4.36M1"
 # java linting
-errorprone = "2.36.0"
+errorprone = "2.38.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for spotless/ tidy source code formatting
