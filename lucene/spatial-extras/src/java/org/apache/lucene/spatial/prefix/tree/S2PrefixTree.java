@@ -103,12 +103,17 @@ public class S2PrefixTree extends SpatialPrefixTree {
     return S2CellId.MAX_LEVEL / arity + 1;
   }
 
+  /**
+   * The default projection.
+   */
+  final static S2Projections PROJECTION = S2Projections.S2_QUADRATIC_PROJECTION;
+
   @Override
   public int getLevelForDistance(double dist) {
     if (dist == 0) {
       return maxLevels;
     }
-    int level = S2Projections.MAX_WIDTH.getMinLevel(dist * DistanceUtils.DEGREES_TO_RADIANS);
+    int level = PROJECTION.maxWidth.getMinLevel(dist * DistanceUtils.DEGREES_TO_RADIANS);
     int roundLevel = level % arity != 0 ? 1 : 0;
     level = level / arity + roundLevel;
     return Math.min(maxLevels, level + 1);
@@ -119,7 +124,7 @@ public class S2PrefixTree extends SpatialPrefixTree {
     if (level == 0) {
       return 180;
     }
-    return S2Projections.MAX_WIDTH.getValue(arity * (level - 1)) * DistanceUtils.RADIANS_TO_DEGREES;
+    return PROJECTION.maxWidth.getValue(arity * (level - 1)) * DistanceUtils.RADIANS_TO_DEGREES;
   }
 
   @Override

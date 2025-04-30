@@ -113,7 +113,7 @@ public class TestS2PrefixTree extends LuceneTestCase {
       cell = (S2PrefixTreeCell) iterator.next();
     }
     assertTrue(cell.getLevel() == level);
-    double precisionCell = S2Projections.MAX_WIDTH.getValue(cell.cellId.level());
+    double precisionCell = S2PrefixTree.PROJECTION.maxWidth.getValue(cell.cellId.level());
     assertTrue(precision > precisionCell);
   }
 }

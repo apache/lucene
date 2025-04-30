@@ -19,7 +19,7 @@
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.spatial_extras {
   requires spatial4j;
-  requires s2.geometry.library.java;
+  requires s2.geometry;
   requires org.apache.lucene.core;
   requires org.apache.lucene.spatial3d;
 
