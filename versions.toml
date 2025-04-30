@@ -20,7 +20,7 @@ jmh = "1.37"
 jts = "1.17.0"
 junit = "4.13.1"
 # @keep Minimum gradle version to run the build
-minGradle = "8.10"
+minGradle = "8.14"
 # @keep This is the minimum required Java version.
 minJava = "21"
 morfologik = "2.1.9"
