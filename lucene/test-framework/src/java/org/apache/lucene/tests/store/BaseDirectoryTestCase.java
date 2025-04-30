@@ -17,6 +17,10 @@
 package org.apache.lucene.tests.store;
 
 import static com.carrotsearch.randomizedtesting.generators.RandomPicks.randomFrom;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.hasItemInArray;
+import static org.hamcrest.Matchers.not;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomBytes;
@@ -67,7 +71,6 @@ import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.packed.PackedInts;
-import org.junit.Assert;
 
 /** Base class for {@link Directory} implementations. */
 public abstract class BaseDirectoryTestCase extends LuceneTestCase {
@@ -132,13 +135,13 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testDeleteFile() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testDeleteFile"))) {
       String file = "foo.txt";
-      Assert.assertFalse(Arrays.asList(dir.listAll()).contains(file));
+      assertThat(dir.listAll(), not(hasItemInArray(file)));
 
       dir.createOutput("foo.txt", IOContext.DEFAULT).close();
-      Assert.assertTrue(Arrays.asList(dir.listAll()).contains(file));
+      assertThat(dir.listAll(), hasItemInArray(file));
 
       dir.deleteFile("foo.txt");
-      Assert.assertFalse(Arrays.asList(dir.listAll()).contains(file));
+      assertThat(dir.listAll(), not(hasItemInArray(file)));
 
       expectThrowsAnyOf(
           Arrays.asList(NoSuchFileException.class, FileNotFoundException.class),
@@ -681,7 +684,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       String name = "file";
       dir.createOutput(name, newIOContext(random())).close();
       assertTrue(slowFileExists(dir, name));
-      assertTrue(Arrays.asList(dir.listAll()).contains(name));
+      assertThat(dir.listAll(), hasItemInArray(name));
     }
   }
 
@@ -1258,7 +1261,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testIndexOutputToString() throws Throwable {
     try (Directory dir = getDirectory(createTempDir())) {
       IndexOutput out = dir.createOutput("camelCase.txt", newIOContext(random()));
-      assertTrue(out.toString(), out.toString().contains("camelCase.txt"));
+      assertThat(out.toString(), containsString("camelCase.txt"));
       out.close();
     }
   }
@@ -1305,7 +1308,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
               .filter(file -> !ExtrasFS.isExtra(file)) // remove any ExtrasFS stuff.
               .collect(Collectors.toSet());
 
-      assertEquals(new HashSet<String>(names), files);
+      assertThat(files, containsInAnyOrder(names.toArray()));
     }
   }
 
@@ -1396,7 +1399,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
       }
 
       // Make sure listAll does NOT include the file:
-      assertFalse(Arrays.asList(fsDir.listAll()).contains(fileName));
+      assertThat(fsDir.listAll(), not(hasItemInArray(fileName)));
 
       // Make sure fileLength claims it's deleted:
       expectThrows(

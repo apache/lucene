@@ -207,10 +207,10 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
 
               ClassLoader loader = layer.findLoader(coreModuleId);
 
-              final Set<Integer> mrJarVersions = Set.of(21);
-              final Integer baseVersion = 21;
+              final Set<Integer> mrJarVersions = Set.of(23);
+              final Integer baseVersion = 23;
 
-              // the Java 21 PanamaVectorizationProvider must always be in main section of JAR file:
+              // the Java 23 PanamaVectorizationProvider must always be in main section of JAR file:
               final String panamaClassName =
                   "org/apache/lucene/internal/vectorization/PanamaVectorizationProvider.class";
               Assertions.assertThat(loader.getResource(panamaClassName)).isNotNull();
@@ -224,11 +224,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
                                 loader.getResource("META-INF/versions/" + v + panamaClassName))
                             .isNotNull();
                       });
-
-              // you must be always able to load MemorySegmentIndexInput:
-              Assertions.assertThat(
-                      loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
-                  .isNotNull();
             });
   }
 

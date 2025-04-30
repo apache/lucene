@@ -60,8 +60,8 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.version().feature();
-    if (major != 23) {
-      throw new IllegalStateException("java version must be 23, your version: " + major);
+    if (major != 24) {
+      throw new IllegalStateException("java version must be 24, your version: " + major);
     }
   }
 
