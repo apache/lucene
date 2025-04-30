@@ -30,6 +30,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.logging.Logger;
@@ -133,13 +134,8 @@ public class MMapDirectory extends FSDirectory {
         return Optional.of(groupKey);
       };
 
-  /**
-   * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
-   * opening them if they use the {@link ReadAdvice#RANDOM_PRELOAD} advice.
-   */
-  public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
-      (_, context) -> context.readAdvice() == ReadAdvice.RANDOM_PRELOAD;
-
+  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdvice =
+      (_, _) -> Optional.empty();
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
   /**
@@ -241,6 +237,20 @@ public class MMapDirectory extends FSDirectory {
    */
   public void setPreload(BiPredicate<String, IOContext> preload) {
     this.preload = preload;
+  }
+
+  /**
+   * Configure {@link ReadAdvice} overrides for certain files. If the function returns {@code
+   * Optional.empty()}, a default {@link ReadAdvice} will be used
+   *
+   * @param toReadAdvice a {@link Function} whose first argument is the file name, and second
+   *     argument is the {@link IOContext} used to open the file. Returns {@code
+   *     Optional.of(ReadAdvice)} to use a specific read advice, or {@code Optional.empty()} if a
+   *     default should be used
+   */
+  public void setReadAdviceOverride(
+      BiFunction<String, IOContext, Optional<ReadAdvice>> toReadAdvice) {
+    this.readAdvice = toReadAdvice;
   }
 
   /**

@@ -19,7 +19,6 @@ package org.apache.lucene.tests.store;
 import java.io.IOException;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
@@ -36,13 +35,9 @@ class SlowOpeningMockIndexInputWrapper extends MockIndexInputWrapper {
 
   @SuppressForbidden(reason = "Thread sleep")
   public SlowOpeningMockIndexInputWrapper(
-      MockDirectoryWrapper dir,
-      String name,
-      IndexInput delegate,
-      ReadAdvice readAdvice,
-      boolean confined)
+      MockDirectoryWrapper dir, String name, IndexInput delegate, boolean confined)
       throws IOException {
-    super(dir, name, delegate, null, readAdvice, confined);
+    super(dir, name, delegate, null, confined);
     try {
       Thread.sleep(50);
     } catch (InterruptedException ie) {

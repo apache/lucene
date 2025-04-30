@@ -5,5 +5,5 @@ ics==0.7.2
 console-menu==0.8.0
 PyGithub==2.6.1
 jira==3.8.0
-basedpyright==1.29.0
-ruff==0.11.6
+basedpyright==1.29.1
+ruff==0.11.7
