@@ -111,31 +111,30 @@ public final class JavascriptCompiler {
 
   // We use the same class name for all generated classes (they are hidden anyways).
   // The source code is displayed as "source file name" in stack trace.
-  private static final ClassDesc CD_CompiledExpression =
-      ClassDesc.of(JavascriptCompiler.class.getName() + "$CompiledExpression");
-
-  private static final ClassDesc CD_Expression = Expression.class.describeConstable().get(),
+  private static final ClassDesc
+      CD_CompiledExpression =
+          ClassDesc.of(JavascriptCompiler.class.getName() + "$CompiledExpression"),
+      CD_Expression = Expression.class.describeConstable().get(),
       CD_DoubleValues = DoubleValues.class.describeConstable().get(),
       CD_JavascriptCompiler = JavascriptCompiler.class.describeConstable().get();
   private static final MethodTypeDesc
-      EXPRESSION_CTOR_DESC =
+      MTD_EXPRESSION_CTOR =
           MethodTypeDesc.of(
               ConstantDescs.CD_void, ConstantDescs.CD_String, ConstantDescs.CD_String.arrayType()),
-      EVALUATE_METHOD_DESC =
-          MethodTypeDesc.of(ConstantDescs.CD_double, CD_DoubleValues.arrayType()),
-      DOUBLE_VAL_METHOD_DESC = MethodTypeDesc.of(ConstantDescs.CD_double),
-      PATCH_STACK_METHOD_DESC =
+      MTD_EVALUATE = MethodTypeDesc.of(ConstantDescs.CD_double, CD_DoubleValues.arrayType()),
+      MTD_DOUBLE_VAL = MethodTypeDesc.of(ConstantDescs.CD_double),
+      MTD_PATCH_STACK =
           MethodTypeDesc.of(ConstantDescs.CD_Throwable, ConstantDescs.CD_Throwable, CD_Expression);
 
-  private static final ExceptionsAttribute THROWS_IOEXCEPTION_ATTRIBUTE =
-      ExceptionsAttribute.ofSymbols(IOException.class.describeConstable().get());
-
-  private static final DirectMethodHandleDesc DYNAMIC_CONSTANT_BOOTSTRAP =
+  private static final DirectMethodHandleDesc BSM_COMPILER_DYNAMIC_CONSTANT =
       ConstantDescs.ofConstantBootstrap(
           CD_JavascriptCompiler,
           "dynamicConstantBootstrap",
           ConstantDescs.CD_MethodHandle,
           ConstantDescs.CD_String);
+
+  private static final ExceptionsAttribute ATTR_THROWS_IOEXCEPTION =
+      ExceptionsAttribute.ofSymbols(IOException.class.describeConstable().get());
 
   final String sourceText;
   final Map<String, MethodHandle> functions;
@@ -305,19 +304,16 @@ public final class JavascriptCompiler {
               final int charPositionInLine,
               final String msg,
               final RecognitionException e) {
-            // The API doesn't allow checked exceptions here, so propagate up the stack. This is
-            // unwrapped in compileExpression().
-            throw new RuntimeException(
-                new ParseException(
-                    "line ("
-                        + line
-                        + "), offset ("
-                        + charPositionInLine
-                        + "), symbol ("
-                        + offendingSymbol
-                        + ") "
-                        + msg,
-                    charPositionInLine));
+            throw newWrappedParseException(
+                "line ("
+                    + line
+                    + "), offset ("
+                    + charPositionInLine
+                    + "), symbol ("
+                    + offendingSymbol
+                    + ") "
+                    + msg,
+                charPositionInLine);
           }
         });
 
@@ -337,13 +333,13 @@ public final class JavascriptCompiler {
     // constructor:
     builder.withMethodBody(
         ConstantDescs.INIT_NAME,
-        EXPRESSION_CTOR_DESC,
+        MTD_EXPRESSION_CTOR,
         ClassFile.ACC_PUBLIC,
         gen -> {
           gen.aload(0); // this
           gen.aload(gen.parameterSlot(0));
           gen.aload(gen.parameterSlot(1));
-          gen.invokespecial(CD_Expression, ConstantDescs.INIT_NAME, EXPRESSION_CTOR_DESC);
+          gen.invokespecial(CD_Expression, ConstantDescs.INIT_NAME, MTD_EXPRESSION_CTOR);
           gen.return_();
         });
 
@@ -356,16 +352,16 @@ public final class JavascriptCompiler {
     final Consumer<BlockCodeBuilder> rethrowBlock =
         gen -> {
           gen.aload(0); // this
-          gen.invokestatic(CD_JavascriptCompiler, "patchStackTrace", PATCH_STACK_METHOD_DESC);
+          gen.invokestatic(CD_JavascriptCompiler, "patchStackTrace", MTD_PATCH_STACK);
           gen.athrow();
         };
     final Consumer<CodeBuilder> body =
         gen -> gen.trying(mainBlock, c -> c.catching(ConstantDescs.CD_Throwable, rethrowBlock));
     builder.withMethod(
         "evaluate",
-        EVALUATE_METHOD_DESC,
+        MTD_EVALUATE,
         ClassFile.ACC_PUBLIC,
-        mth -> mth.with(THROWS_IOEXCEPTION_ATTRIBUTE).withCode(body));
+        mth -> mth.with(ATTR_THROWS_IOEXCEPTION).withCode(body));
   }
 
   private JavascriptBaseVisitor<Void> newClassFileGeneratorVisitor(
@@ -418,26 +414,23 @@ public final class JavascriptCompiler {
           final int arity = mh.type().parameterCount();
 
           if (arguments != arity) {
-            // The API doesn't allow checked exceptions here, so propagate up the stack. This is
-            // unwrapped in compileExpression().
-            throw new RuntimeException(
-                new ParseException(
-                    "Invalid expression '"
-                        + sourceText
-                        + "': Expected ("
-                        + arity
-                        + ") arguments for function call ("
-                        + text
-                        + "), but found ("
-                        + arguments
-                        + ").",
-                    ctx.start.getStartIndex()));
+            throw newWrappedParseException(
+                "Invalid expression '"
+                    + sourceText
+                    + "': Expected ("
+                    + arity
+                    + ") arguments for function call ("
+                    + text
+                    + "), but found ("
+                    + arguments
+                    + ").",
+                ctx.start.getStartIndex());
           }
 
           // place dynamic constant with MethodHandle on top of stack
           final var constantDesc =
               DynamicConstantDesc.ofNamed(
-                  DYNAMIC_CONSTANT_BOOTSTRAP,
+                  BSM_COMPILER_DYNAMIC_CONSTANT,
                   "func" + constantsMap.computeIfAbsent(text, _ -> constantsMap.size()),
                   ConstantDescs.CD_MethodHandle,
                   text);
@@ -464,19 +457,12 @@ public final class JavascriptCompiler {
           gen.aload(gen.parameterSlot(0));
           gen.loadConstant(index);
           gen.arrayLoad(TypeKind.REFERENCE);
-          gen.invokevirtual(CD_DoubleValues, "doubleValue", DOUBLE_VAL_METHOD_DESC);
+          gen.invokevirtual(CD_DoubleValues, "doubleValue", MTD_DOUBLE_VAL);
           gen.conversion(TypeKind.DOUBLE, typeStack.peek());
         } else {
-          // The API doesn't allow checked exceptions here, so propagate up the stack. This is
-          // unwrapped in compileExpression().
-          throw new RuntimeException(
-              new ParseException(
-                  "Invalid expression '"
-                      + sourceText
-                      + "': Unrecognized function call ("
-                      + text
-                      + ").",
-                  ctx.start.getStartIndex()));
+          throw newWrappedParseException(
+              "Invalid expression '" + sourceText + "': Unrecognized function call (" + text + ").",
+              ctx.start.getStartIndex());
         }
         return null;
       }
@@ -819,6 +805,15 @@ public final class JavascriptCompiler {
       ++start;
     }
     return start;
+  }
+
+  /**
+   * Returns a new {@link ParseException} wrapped in a {@link RuntimeException} because the API
+   * doesn't allow checked exceptions, so propagate up the stack. This is unwrapped in {@link
+   * #compileExpression()}.
+   */
+  static RuntimeException newWrappedParseException(String text, int position) {
+    return new RuntimeException(new ParseException(text, position));
   }
 
   /**
