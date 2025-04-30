@@ -343,12 +343,12 @@ public final class JavascriptCompiler {
         ConstantDescs.INIT_NAME,
         EXPRESSION_CTOR_DESC,
         ClassFile.ACC_PUBLIC,
-        cob -> {
-          cob.aload(0); // this
-          cob.aload(cob.parameterSlot(0));
-          cob.aload(cob.parameterSlot(1));
-          cob.invokespecial(CD_Expression, ConstantDescs.INIT_NAME, EXPRESSION_CTOR_DESC);
-          cob.return_();
+        gen -> {
+          gen.aload(0); // this
+          gen.aload(gen.parameterSlot(0));
+          gen.aload(gen.parameterSlot(1));
+          gen.invokespecial(CD_Expression, ConstantDescs.INIT_NAME, EXPRESSION_CTOR_DESC);
+          gen.return_();
         });
 
     // evaluate method:
