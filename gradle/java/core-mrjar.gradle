@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-// Produce an MR-JAR with Java 19+ foreign and vector implementations
+// Produce an MR-JAR for panama vector implementations
 
 configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {
@@ -52,7 +52,7 @@ configure(project(":lucene:core")) {
       mrjarJavaVersions.each { jdkVersion ->
         // the sourceSet which corresponds to the minimum/base Java version
         // will copy its output to root of JAR, all other sourceSets will go into MR-JAR folders:
-        boolean isBaseVersion = (jdkVersion.toString() == rootProject.minJavaVersion.toString())
+        boolean isBaseVersion = (jdkVersion.toString() as int <= rootProject.minJavaVersion.toString() as int)
         into(isBaseVersion ? '' : "META-INF/versions/${jdkVersion}") {
           from sourceSets["main${jdkVersion}"].output
         }

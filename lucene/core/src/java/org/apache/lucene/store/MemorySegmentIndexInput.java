@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.store;
 
+import static java.util.function.Predicate.not;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -37,9 +39,7 @@ import org.apache.lucene.util.IOConsumer;
  * <p>For efficiency, this class requires that the segment size are a power-of-two (<code>
  * chunkSizePower</code>).
  */
-@SuppressWarnings("preview")
-abstract class MemorySegmentIndexInput extends IndexInput
-    implements RandomAccessInput, MemorySegmentAccessInput {
+abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegmentAccessInput {
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
       ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
@@ -129,15 +129,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
     }
     // in Java 22 or later we can check the isAlive status of all segments
     // (see https://bugs.openjdk.org/browse/JDK-8310644):
-    if (Arrays.stream(segments).allMatch(s -> s.scope().isAlive()) == false) {
+    if (Arrays.stream(segments).anyMatch(not(s -> s.scope().isAlive()))) {
       return new AlreadyClosedException("Already closed: " + this);
-    }
-    // fallback for Java 21: ISE can be thrown by MemorySegment and contains "closed" in message:
-    if (e instanceof IllegalStateException
-        && e.getMessage() != null
-        && e.getMessage().contains("closed")) {
-      // the check is on message only, so preserve original cause for debugging:
-      return new AlreadyClosedException("Already closed: " + this, e);
     }
     // otherwise rethrow unmodified NPE/ISE (as it possibly a bug with passing a null parameter to
     // the IndexInput method):
