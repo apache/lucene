@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -29,9 +32,6 @@ import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.lessThan;
 
 public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
 
