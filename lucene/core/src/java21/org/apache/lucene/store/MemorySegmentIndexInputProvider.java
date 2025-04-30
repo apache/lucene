@@ -45,8 +45,9 @@ final class MemorySegmentIndexInputProvider
   @Override
   public IndexInput openInput(
       Path path,
-      IOContext context,
       int chunkSizePower,
+      ReadAdvice readAdvice,
+      boolean confined,
       boolean preload,
       Optional<String> group,
       ConcurrentHashMap<String, RefCountedSharedArena> arenas)
@@ -57,7 +58,6 @@ final class MemorySegmentIndexInputProvider
     path = Unwrappable.unwrapAll(path);
 
     boolean success = false;
-    final boolean confined = context == IOContext.READONCE;
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(group, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
@@ -65,14 +65,7 @@ final class MemorySegmentIndexInputProvider
           MemorySegmentIndexInput.newInstance(
               resourceDescription,
               arena,
-              map(
-                  arena,
-                  resourceDescription,
-                  fc,
-                  context.readAdvice(),
-                  chunkSizePower,
-                  preload,
-                  fileSize),
+              map(arena, resourceDescription, fc, readAdvice, chunkSizePower, preload, fileSize),
               fileSize,
               chunkSizePower,
               confined);
