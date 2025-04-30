@@ -66,7 +66,7 @@
       "org.checkerframework:checker-qual:3.37.0" : "6897bc09,refs=38",
       "org.hamcrest:hamcrest:3.0" : "b35e5d7a,refs=74",
       "org.jspecify:jspecify:1.0.0" : "6897bc09,refs=38",
-      "org.locationtech.jts:jts-core:1.17.0" : "180518e6,refs=2",
+      "org.locationtech.jts:jts-core:1.20.0" : "180518e6,refs=2",
       "org.locationtech.spatial4j:spatial4j:0.8" : "1d5a4b2b,refs=4",
       "org.openjdk.jmh:jmh-core:1.37" : "152d9f78,refs=3",
       "org.openjdk.jmh:jmh-generator-annprocess:1.37" : "ecaf1d73,refs=1",
