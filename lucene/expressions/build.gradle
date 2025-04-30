@@ -23,11 +23,6 @@ dependencies {
   moduleApi project(':lucene:core')
 
   moduleImplementation project(':lucene:codecs')
-
   moduleImplementation deps.antlr.runtime
-
-  moduleImplementation deps.asm.core
-  moduleImplementation deps.asm.commons
-
   moduleTestImplementation project(':lucene:test-framework')
 }

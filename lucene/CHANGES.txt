@@ -29,7 +29,9 @@ New Features
 Improvements
 ---------------------
 
-(No changes)
+* GITHUB#14597: Rewrite expressions compiler to use Java 24+ Classfile library instead of ASM.
+  This avoids clashes with other ASM versions on classpath because it removes the dependency.
+  (Uwe Schindler)
 
 Optimizations
 ---------------------
