@@ -30,6 +30,9 @@ import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+
 public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
 
   private static SerialIOCountingDirectory dir;
@@ -81,10 +84,10 @@ public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
       }
     }
 
-    assertTrue(nonNullIOSuppliers > 0);
+    assertThat(nonNullIOSuppliers, greaterThan(0));
     long newCount = dir.count();
-    assertTrue(newCount - prevCount > 0);
-    assertTrue(newCount - prevCount < nonNullIOSuppliers);
+    assertThat(newCount, greaterThan(prevCount));
+    assertThat(newCount, lessThan(prevCount + nonNullIOSuppliers));
   }
 
   /** Simulate stored fields retrieval. */
@@ -103,7 +106,7 @@ public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
     }
 
     long newCount = dir.count();
-    assertTrue(newCount - prevCount > 0);
-    assertTrue(newCount - prevCount < docs.length);
+    assertThat(newCount, greaterThan(prevCount));
+    assertThat(newCount, lessThan(prevCount + docs.length));
   }
 }

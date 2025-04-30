@@ -73,6 +73,11 @@ public class SerialIOCountingDirectory extends FilterDirectory {
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
     ReadAdvice readAdvice = context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
+    if (readAdvice == ReadAdvice.NORMAL) {
+      // expected to be loaded in memory, only count 1 at open time
+      counter.increment();
+      return super.openInput(name, context);
+    }
     return new SerializedIOCountingIndexInput(super.openInput(name, context), readAdvice);
   }
 
