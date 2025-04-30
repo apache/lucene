@@ -27,7 +27,6 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-@SuppressWarnings("preview")
 final class PosixNativeAccess extends NativeAccess {
 
   private static final Logger LOG = Logger.getLogger(PosixNativeAccess.class.getName());

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.document.Document;
@@ -187,7 +190,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
     ScorerSupplier ss = weight.scorerSupplier(ctx);
     BulkScorer scorer = ((BooleanScorerSupplier) ss).booleanScorer();
-    assertTrue(scorer instanceof DefaultBulkScorer); // term scorer
+    assertThat(scorer, instanceOf(DefaultBulkScorer.class)); // term scorer
 
     // scores -> term scorer too
     query =
@@ -198,7 +201,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ss = weight.scorerSupplier(ctx);
     scorer = ((BooleanScorerSupplier) ss).booleanScorer();
-    assertTrue(scorer instanceof DefaultBulkScorer); // term scorer
+    assertThat(scorer, instanceOf(DefaultBulkScorer.class)); // term scorer
 
     w.close();
     reader.close();
@@ -229,7 +232,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ScorerSupplier ss = weight.scorerSupplier(ctx);
     BulkScorer scorer = ((BooleanScorerSupplier) ss).booleanScorer();
-    assertTrue(scorer instanceof ReqExclBulkScorer);
+    assertThat(scorer, instanceOf(ReqExclBulkScorer.class));
 
     query =
         new BooleanQuery.Builder()
@@ -240,7 +243,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ss = weight.scorerSupplier(ctx);
     scorer = ((BooleanScorerSupplier) ss).booleanScorer();
-    assertTrue(scorer instanceof ReqExclBulkScorer);
+    assertThat(scorer, instanceOf(ReqExclBulkScorer.class));
 
     query =
         new BooleanQuery.Builder()
@@ -250,7 +253,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ss = weight.scorerSupplier(ctx);
     scorer = ((BooleanScorerSupplier) ss).booleanScorer();
-    assertTrue(scorer instanceof ReqExclBulkScorer);
+    assertThat(scorer, instanceOf(ReqExclBulkScorer.class));
 
     query =
         new BooleanQuery.Builder()
@@ -260,7 +263,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ss = weight.scorerSupplier(ctx);
     scorer = ((BooleanScorerSupplier) ss).booleanScorer();
-    assertTrue(scorer instanceof ReqExclBulkScorer);
+    assertThat(scorer, instanceOf(ReqExclBulkScorer.class));
 
     w.close();
     reader.close();
@@ -330,8 +333,8 @@ public class TestBooleanScorer extends LuceneTestCase {
               .add(new TermQuery(new Term("foo", "bar")), Occur.FILTER)
               .build();
       Query rewrite = searcher.rewrite(query);
-      assertTrue(rewrite instanceof BoostQuery);
-      assertTrue(((BoostQuery) rewrite).getQuery() instanceof ConstantScoreQuery);
+      assertThat(rewrite, instanceOf(BoostQuery.class));
+      assertThat(((BoostQuery) rewrite).getQuery(), instanceOf(ConstantScoreQuery.class));
     }
 
     Query[] queries =
@@ -359,9 +362,9 @@ public class TestBooleanScorer extends LuceneTestCase {
         Weight weight = searcher.createWeight(rewrite, scoreMode, 1f);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
         if (scoreMode == ScoreMode.TOP_SCORES) {
-          assertTrue(scorer instanceof ConstantScoreScorer);
+          assertThat(scorer, instanceOf(ConstantScoreScorer.class));
         } else {
-          assertFalse(scorer instanceof ConstantScoreScorer);
+          assertThat(scorer, not(instanceOf(ConstantScoreScorer.class)));
         }
       }
     }
@@ -391,7 +394,7 @@ public class TestBooleanScorer extends LuceneTestCase {
       for (ScoreMode scoreMode : ScoreMode.values()) {
         Weight weight = searcher.createWeight(rewrite, scoreMode, 1f);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
-        assertFalse(scorer instanceof ConstantScoreScorer);
+        assertThat(scorer, not(instanceOf(ConstantScoreScorer.class)));
       }
     }
 
