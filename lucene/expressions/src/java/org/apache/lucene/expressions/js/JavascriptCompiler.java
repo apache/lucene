@@ -118,11 +118,14 @@ public final class JavascriptCompiler {
       CD_DoubleValues = generateClassDesc(DoubleValues.class),
       CD_JavascriptCompiler = generateClassDesc(JavascriptCompiler.class);
   private static final MethodTypeDesc
-      EXPRESSION_CTOR_DESC = generateMethodTypeDesc(void.class, String.class, String[].class),
-      EVALUATE_METHOD_DESC = generateMethodTypeDesc(double.class, DoubleValues[].class),
-      DOUBLE_VAL_METHOD_DESC = generateMethodTypeDesc(double.class),
+      EXPRESSION_CTOR_DESC =
+          MethodTypeDesc.of(
+              ConstantDescs.CD_void, ConstantDescs.CD_String, ConstantDescs.CD_String.arrayType()),
+      EVALUATE_METHOD_DESC =
+          MethodTypeDesc.of(ConstantDescs.CD_double, CD_DoubleValues.arrayType()),
+      DOUBLE_VAL_METHOD_DESC = MethodTypeDesc.of(ConstantDescs.CD_double),
       PATCH_STACK_METHOD_DESC =
-          generateMethodTypeDesc(Throwable.class, Throwable.class, Expression.class);
+          MethodTypeDesc.of(ConstantDescs.CD_Throwable, ConstantDescs.CD_Throwable, CD_Expression);
 
   private static final ExceptionsAttribute THROWS_IOEXCEPTION_ATTRIBUTE =
       ExceptionsAttribute.ofSymbols(generateClassDesc(IOException.class));
@@ -133,11 +136,6 @@ public final class JavascriptCompiler {
           "dynamicConstantBootstrap",
           ConstantDescs.CD_MethodHandle,
           ConstantDescs.CD_String);
-
-  private static MethodTypeDesc generateMethodTypeDesc(Class<?> rtype, Class<?>... ptypes) {
-    return MethodTypeDesc.ofDescriptor(
-        MethodType.methodType(rtype, ptypes).toMethodDescriptorString());
-  }
 
   private static ClassDesc generateClassDesc(Class<?> clazz) {
     return ClassDesc.of(clazz.getName());
