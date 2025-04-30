@@ -27,6 +27,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.CloseableThreadLocal;
+import org.apache.lucene.util.Constants;
 
 /**
  * A {@link Directory} wrapper that counts the number of times that Lucene may wait for I/O to
@@ -71,12 +72,13 @@ public class SerialIOCountingDirectory extends FilterDirectory {
 
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
-    if (context.readAdvice() == ReadAdvice.RANDOM_PRELOAD) {
+    ReadAdvice readAdvice = context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
+    if (readAdvice == ReadAdvice.RANDOM_PRELOAD) {
       // expected to be loaded in memory, only count 1 at open time
       counter.increment();
       return super.openInput(name, context);
     }
-    return new SerializedIOCountingIndexInput(super.openInput(name, context), context.readAdvice());
+    return new SerializedIOCountingIndexInput(super.openInput(name, context), readAdvice);
   }
 
   private class SerializedIOCountingIndexInput extends IndexInput {
@@ -187,13 +189,16 @@ public class SerialIOCountingDirectory extends FilterDirectory {
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      return slice(sliceDescription, offset, length, readAdvice);
+      return slice(offset, length, readAdvice);
     }
 
     @Override
-    public IndexInput slice(
-        String sliceDescription, long offset, long length, ReadAdvice readAdvice)
+    public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
         throws IOException {
+      return slice(offset, length, context.readAdvice().orElse(Constants.DEFAULT_READADVICE));
+    }
+
+    private IndexInput slice(long offset, long length, ReadAdvice readAdvice) throws IOException {
       if ((length | offset) < 0 || length > sliceLength - offset) {
         throw new IllegalArgumentException();
       }
