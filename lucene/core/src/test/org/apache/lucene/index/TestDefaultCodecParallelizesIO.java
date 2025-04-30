@@ -43,8 +43,6 @@ public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
             new IndexWriter(
                 bbDir,
                 new IndexWriterConfig()
-                    // Disable CFS, this test needs to know about files that are open with the
-                    // RANDOM_PRELOAD advice, which CFS doesn't allow us to detect.
                     .setUseCompoundFile(false)
                     .setMergePolicy(newLogMergePolicy(false))
                     .setCodec(TestUtil.getDefaultCodec()))) {

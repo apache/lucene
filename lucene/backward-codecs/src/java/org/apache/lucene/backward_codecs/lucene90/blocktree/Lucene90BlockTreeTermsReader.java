@@ -147,7 +147,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_INDEX_EXTENSION);
       indexIn =
           state.directory.openInput(
-              indexName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
+              indexName, state.context.withReadAdvice(ReadAdvice.NORMAL));
       CodecUtil.checkIndexHeader(
           indexIn,
           TERMS_INDEX_CODEC_NAME,
