@@ -338,9 +338,7 @@ public final class JavascriptCompiler {
       final ParseTree parseTree,
       final ClassBuilder builder,
       final Map<String, Integer> externalsMap) {
-    builder
-        .withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_SUPER | ClassFile.ACC_FINAL)
-        .withSuperclass(CD_Expression);
+    builder.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL).withSuperclass(CD_Expression);
 
     // constructor:
     builder.withMethodBody(
