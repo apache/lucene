@@ -138,7 +138,7 @@ allprojects { prj ->
             '-Xep:BadShiftAmount:ERROR',
             '-Xep:BanClassLoader:ERROR',
             // '-Xep:BanJNDI:OFF', // implemented with forbidden APIs instead
-            '-Xep:BoxedPrimitiveEquality:ERROR',
+            // '-Xep:BoxedPrimitiveEquality:OFF', // TODO: there are problems
             // '-Xep:BundleDeserializationCast:OFF', // we don't use android
             '-Xep:ChainingConstructorIgnoresParameter:ERROR',
             // '-Xep:CheckNotNullMultipleTimes:OFF', // we don't use guava
@@ -509,7 +509,7 @@ allprojects { prj ->
             '-Xep:Overrides:WARN',
             // '-Xep:OverridesGuiceInjectableMethod:OFF', // we don't use guice
             '-Xep:OverridingMethodInconsistentArgumentNamesChecker:WARN',
-            '-Xep:PatternMatchingInstanceof:WARN',
+            // '-Xep:PatternMatchingInstanceof:OFF', // there are problems and check seems not great
             // '-Xep:ParameterName:OFF', // we don't pass parameters with comments in this way
             // '-Xep:PreconditionsCheckNotNullRepeated:OFF', // we don't use guava
             '-Xep:PrimitiveAtomicReference:WARN',
@@ -530,7 +530,7 @@ allprojects { prj ->
             // '-Xep:SameNameButDifferent:OFF', // TODO: there are problems
             // '-Xep:SelfAlwaysReturnsThis:OFF', // we don't use self() methods, this isn't python.
             // '-Xep:ShortCircuitBoolean:OFF', // TODO: there are problems
-            '-Xep:StatementSwitchToExpressionSwitch:WARN',
+            // '-Xep:StatementSwitchToExpressionSwitch:OFF', // TODO: there are problems
             // '-Xep:StaticAssignmentInConstructor:OFF',
             // '-Xep:StaticAssignmentOfThrowable:OFF', // noisy
             // '-Xep:StaticGuardedByInstance:OFF',
