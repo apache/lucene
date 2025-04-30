@@ -106,7 +106,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
 
     // Special pushFrame since it's the first one:
     final IntersectTermsEnumFrame f = stack[0];
-    f.fp = f.fpOrig = fr.rootBlockFP;
+    f.fp = f.fpOrig = trieReader.root.outputFp;
     f.prefix = 0;
     f.setState(0);
     f.node = node;
