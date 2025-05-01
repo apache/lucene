@@ -3,6 +3,7 @@
   "configurationGroups" : {
     "main_dependencies" : {
       "com.carrotsearch.randomizedtesting:randomizedtesting-runner:2.8.3" : "fa9ef26b,refs=4",
+      "com.google.errorprone:error_prone_annotations:2.36.0" : "cbc357ab,refs=4",
       "com.google.geometry:s2-geometry:2.0.0" : "cbc357ab,refs=4",
       "com.google.guava:failureaccess:1.0.3" : "cbc357ab,refs=4",
       "com.google.guava:guava:33.4.8-jre" : "cbc357ab,refs=4",
@@ -30,6 +31,7 @@
     "test_dependencies" : {
       "com.carrotsearch.randomizedtesting:randomizedtesting-runner:2.8.3" : "b35e5d7a,refs=74",
       "com.carrotsearch:procfork:1.0.6" : "b7ba1646,refs=2",
+      "com.google.errorprone:error_prone_annotations:2.36.0" : "1d5a4b2b,refs=4",
       "com.google.geometry:s2-geometry:2.0.0" : "1d5a4b2b,refs=4",
       "com.google.guava:failureaccess:1.0.3" : "1d5a4b2b,refs=4",
       "com.google.guava:guava:33.4.8-jre" : "1d5a4b2b,refs=4",

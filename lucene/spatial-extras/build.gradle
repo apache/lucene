@@ -34,13 +34,11 @@ dependencies {
   })
   moduleApi(deps.guava, {
     exclude group: "com.google.code.findbugs", module: "jsr305"
-    exclude group: "com.google.errorprone", module: "error_prone_annotations"
     exclude group: "com.google.j2objc", module: "j2objc-annotations"
     exclude group: "org.checkerframework", module: "checker-qual"
     exclude group: "org.codehaus.mojo", module: "animal-sniffer-annotations"
     exclude group: "com.google.guava", module: "listenablefuture"
     exclude group: "org.jspecify", module: "jspecify"
-    
   })
 
   moduleTestImplementation project(':lucene:test-framework')

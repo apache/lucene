@@ -178,7 +178,7 @@ subprojects {
       }
 
       if (errors) {
-        def msg = "Dependency checksum validation failed:\n  - " + errors.join("\n  - ")
+        def msg = "Dependency checksum validation failed (run './gradlew updateLicenses' to update):\n  - " + errors.join("\n  - ")
         if (failOnError) {
           throw new GradleException(msg)
         } else {
