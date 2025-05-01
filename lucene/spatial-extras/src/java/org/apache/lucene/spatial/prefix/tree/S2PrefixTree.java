@@ -103,10 +103,8 @@ public class S2PrefixTree extends SpatialPrefixTree {
     return S2CellId.MAX_LEVEL / arity + 1;
   }
 
-  /**
-   * The default projection.
-   */
-  final static S2Projections PROJECTION = S2Projections.S2_QUADRATIC_PROJECTION;
+  /** The default projection. */
+  static final S2Projections PROJECTION = S2Projections.S2_QUADRATIC_PROJECTION;
 
   @Override
   public int getLevelForDistance(double dist) {

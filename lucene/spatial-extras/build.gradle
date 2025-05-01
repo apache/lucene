@@ -28,7 +28,20 @@ dependencies {
   moduleApi project(':lucene:spatial3d')
 
   moduleApi deps.spatial4j
-  moduleApi deps.s2.geometry
+
+  moduleApi(deps.s2.geometry, {
+    exclude group: "com.google.guava"
+  })
+  moduleApi("com.google.guava:guava:33.4.8-jre", {
+    exclude group: "com.google.code.findbugs", module: "jsr305"
+    exclude group: "com.google.errorprone", module: "error_prone_annotations"
+    exclude group: "com.google.j2objc", module: "j2objc-annotations"
+    exclude group: "org.checkerframework", module: "checker-qual"
+    exclude group: "org.codehaus.mojo", module: "animal-sniffer-annotations"
+    exclude group: "com.google.guava", module: "listenablefuture"
+    exclude group: "org.jspecify", module: "jspecify"
+    
+  })
 
   moduleTestImplementation project(':lucene:test-framework')
   moduleTestImplementation project(':lucene:spatial-test-fixtures')
@@ -44,3 +57,9 @@ dependencies {
 sourceSets.test.extensions.configure("modularPaths", {
   it.patchModule("spatial4j", project.providers.provider({ configurations.spatial4jTestPatch.singleFile }))
 })
+
+// disable ecj linting because of this bug:
+// eclipse-jdt/eclipse.jdt.core#2778 (guava's module info cannot be found).
+tasks.matching { it.name == "ecjLintMain" }.configureEach {
+  enabled = false
+}
