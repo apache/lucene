@@ -159,7 +159,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   private Version minSegmentLuceneVersion;
 
   /** The Lucene version major that was used to create the index. */
-  private final int indexCreatedVersionMajor;
+  private int indexCreatedVersionMajor;
 
   /**
    * Sole constructor.
@@ -1200,5 +1200,39 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    */
   public int getIndexCreatedVersionMajor() {
     return indexCreatedVersionMajor;
+  }
+
+  // Intended to be only called by IndexWriter to enable strict checks
+  void setIndexCreatedVersionMajorToLatest() {
+    if (!allSegmentsAreLatestVersion()) {
+      throw new IllegalStateException(
+          String.format(
+              "Cannot explicitly set the index created major version to %d since some of the segments were written in an older Lucene version.",
+              Version.LATEST.major));
+    }
+    this.indexCreatedVersionMajor = Version.LATEST.major;
+  }
+
+  private boolean allSegmentsAreLatestVersion() {
+    for (SegmentCommitInfo info : this) {
+      if (info.info.minVersion == null
+          || info.info.minVersion.major != Version.LATEST.major
+          || info.info.getVersion().major != Version.LATEST.major) {
+        if (infoStream != null) {
+          message(
+              "At least one segment was not written by the current Lucene version ("
+                  + Version.LATEST.major
+                  + ".x). Offending segment: [name:"
+                  + info.info.name
+                  + ", version:"
+                  + info.info.getVersion()
+                  + ", minVersion:"
+                  + info.info.minVersion
+                  + "]");
+        }
+        return false;
+      }
+    }
+    return true;
   }
 }
