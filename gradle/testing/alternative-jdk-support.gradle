@@ -88,6 +88,7 @@ if (jvmGradle != jvmCurrent) {
 // Set up root project's properties.
 rootProject.ext.runtimeJavaExecutable = jvmCurrent.javaExecutable
 rootProject.ext.runtimeJavaHome = jvmCurrent.javaHome
-rootProject.ext.runtimeJavaVersion = jvmDetector.getMetadata(InstallationLocation.userDefined(jvmCurrent.javaHome, "specific path")).getLanguageVersion()
+rootProject.ext.runtimeJavaMetadata = jvmDetector.getMetadata(InstallationLocation.userDefined(jvmCurrent.javaHome, "specific path"))
+rootProject.ext.runtimeJavaVersion = runtimeJavaMetadata.getLanguageVersion()
 rootProject.ext.usesAltJvm = (jvmGradle != jvmCurrent);
 

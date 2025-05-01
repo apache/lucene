@@ -1,3 +1,5 @@
+import org.gradle.internal.jvm.inspection.JvmInstallationMetadata
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -25,6 +27,14 @@ allprojects { project ->
     // Use 'release' flag instead of 'source' and 'target'
     tasks.withType(JavaCompile) {
       options.compilerArgs += ["--release", rootProject.minJavaVersion.toString()]
+    }
+
+    // TODO: temporary hack to enable builds to pass. https://github.com/apache/lucene/issues/14600
+    JvmInstallationMetadata ver = rootProject.ext.runtimeJavaMetadata
+    if (project.path == ":lucene:expressions" && ver.runtimeVersion.matches("24(.+)-ea")) {
+      tasks.withType(JavaCompile) {
+        options.compilerArgs += ["--enable-preview"]
+      }
     }
 
     // Configure warnings.
