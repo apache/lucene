@@ -32,7 +32,6 @@ import java.lang.classfile.instruction.BranchInstruction;
 import java.lang.classfile.instruction.OperatorInstruction;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
-import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.constant.DynamicConstantDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.MethodHandle;
@@ -125,13 +124,6 @@ public final class JavascriptCompiler {
       MTD_DOUBLE_VAL = MethodTypeDesc.of(ConstantDescs.CD_double),
       MTD_PATCH_STACK =
           MethodTypeDesc.of(ConstantDescs.CD_Throwable, ConstantDescs.CD_Throwable, CD_Expression);
-
-  private static final DirectMethodHandleDesc BSM_COMPILER_DYNAMIC_CONSTANT =
-      ConstantDescs.ofConstantBootstrap(
-          CD_JavascriptCompiler,
-          "dynamicConstantBootstrap",
-          ConstantDescs.CD_MethodHandle,
-          ConstantDescs.CD_String);
 
   private static final ExceptionsAttribute ATTR_THROWS_IOEXCEPTION =
       ExceptionsAttribute.ofSymbols(IOException.class.describeConstable().orElseThrow());
@@ -231,7 +223,8 @@ public final class JavascriptCompiler {
    * @throws ParseException on failure to compile
    */
   private Expression compileExpression() throws ParseException {
-    final Map<String, Integer> externalsMap = new LinkedHashMap<>();
+    final Map<String, Integer> externalsMap = new LinkedHashMap<>(),
+        constantsMap = new LinkedHashMap<>();
     final byte[] classFile;
     try {
       classFile =
@@ -239,7 +232,7 @@ public final class JavascriptCompiler {
                   ClassHierarchyResolverOption.of(ClassHierarchyResolver.ofClassLoading(LOOKUP)))
               .build(
                   CD_CompiledExpression,
-                  writer -> generateClass(getAntlrParseTree(), writer, externalsMap));
+                  writer -> generateClass(getAntlrParseTree(), writer, externalsMap, constantsMap));
     } catch (RuntimeException re) {
       // Unwrap the ParseException from RuntimeException
       if (re.getCause() instanceof ParseException cause) {
@@ -249,7 +242,9 @@ public final class JavascriptCompiler {
     }
 
     try {
-      final Lookup lookup = LOOKUP.defineHiddenClassWithClassData(classFile, functions, true);
+      final Lookup lookup =
+          LOOKUP.defineHiddenClassWithClassData(
+              classFile, constantsMap.keySet().stream().map(functions::get).toList(), true);
       return invokeConstructor(lookup, lookup.lookupClass(), externalsMap);
     } catch (ReflectiveOperationException exception) {
       throw new IllegalStateException(
@@ -327,7 +322,8 @@ public final class JavascriptCompiler {
   private void generateClass(
       final ParseTree parseTree,
       final ClassBuilder builder,
-      final Map<String, Integer> externalsMap) {
+      final Map<String, Integer> externalsMap,
+      final Map<String, Integer> constantsMap) {
     builder.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL).withSuperclass(CD_Expression);
 
     // constructor:
@@ -346,7 +342,7 @@ public final class JavascriptCompiler {
     // evaluate method:
     final Consumer<BlockCodeBuilder> mainBlock =
         gen -> {
-          newClassFileGeneratorVisitor(gen, externalsMap).visit(parseTree);
+          newClassFileGeneratorVisitor(gen, externalsMap, constantsMap).visit(parseTree);
           gen.dreturn();
         };
     final Consumer<BlockCodeBuilder> rethrowBlock =
@@ -365,11 +361,12 @@ public final class JavascriptCompiler {
   }
 
   private JavascriptBaseVisitor<Void> newClassFileGeneratorVisitor(
-      CodeBuilder gen, final Map<String, Integer> externalsMap) {
+      CodeBuilder gen,
+      final Map<String, Integer> externalsMap,
+      final Map<String, Integer> constantsMap) {
     // to completely hide the ANTLR visitor we use an anonymous impl:
     return new JavascriptBaseVisitor<Void>() {
       private final Deque<TypeKind> typeStack = new ArrayDeque<>();
-      private final Map<String, Integer> constantsMap = new HashMap<>();
 
       @Override
       public Void visitCompile(JavascriptParser.CompileContext ctx) {
@@ -428,12 +425,13 @@ public final class JavascriptCompiler {
           }
 
           // place dynamic constant with MethodHandle on top of stack
+          final int index = constantsMap.computeIfAbsent(text, _ -> constantsMap.size());
           final var constantDesc =
               DynamicConstantDesc.ofNamed(
-                  BSM_COMPILER_DYNAMIC_CONSTANT,
-                  "func" + constantsMap.computeIfAbsent(text, _ -> constantsMap.size()),
+                  ConstantDescs.BSM_CLASS_DATA_AT,
+                  ConstantDescs.DEFAULT_NAME,
                   ConstantDescs.CD_MethodHandle,
-                  text);
+                  index);
           gen.loadConstant(constantDesc);
 
           // add arguments:
@@ -894,26 +892,6 @@ public final class JavascriptCompiler {
     if (type.returnType() != double.class) {
       throw new IllegalArgumentException(methodNameSupplier.get() + " does not return a double.");
     }
-  }
-
-  /**
-   * Bootstrap method for dynamic constants. This returns a {@link MethodHandle} for the {@code
-   * functionName} from the class data passed via {@link Lookup#defineHiddenClassWithClassData}. The
-   * {@code constantName} is ignored.
-   */
-  static MethodHandle dynamicConstantBootstrap(
-      Lookup lookup, String constantName, Class<?> type, String functionName)
-      throws IllegalAccessException {
-    if (type != MethodHandle.class) {
-      throw new IllegalArgumentException("Invalid type of constant: " + type.getName());
-    }
-    final var classData =
-        Objects.requireNonNull(
-            MethodHandles.classData(lookup, ConstantDescs.DEFAULT_NAME, Map.class),
-            "Missing class data for " + lookup);
-    return (MethodHandle)
-        Objects.requireNonNull(
-            classData.get(functionName), "Function does not exist: " + functionName);
   }
 
   /**
