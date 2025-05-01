@@ -292,7 +292,7 @@ public class TestCustomFunctions extends CompilerTestCase {
     Expression expr = compile("foo.bar() + bar.foo(7)", functions);
     assertEquals(16, expr.evaluate(null), DELTA);
   }
-  
+
   public void testSameFunctionTwoTimes() throws Exception {
     Expression expr = compile("sqrt(20)+abs(-7)+sqrt(30)");
     assertEquals(Math.sqrt(20) + 7 + Math.sqrt(30), expr.evaluate(null), DELTA);
