@@ -114,9 +114,9 @@ public final class JavascriptCompiler {
   private static final ClassDesc
       CD_CompiledExpression =
           ClassDesc.of(JavascriptCompiler.class.getName() + "$CompiledExpression"),
-      CD_Expression = Expression.class.describeConstable().get(),
-      CD_DoubleValues = DoubleValues.class.describeConstable().get(),
-      CD_JavascriptCompiler = JavascriptCompiler.class.describeConstable().get();
+      CD_Expression = Expression.class.describeConstable().orElseThrow(),
+      CD_DoubleValues = DoubleValues.class.describeConstable().orElseThrow(),
+      CD_JavascriptCompiler = JavascriptCompiler.class.describeConstable().orElseThrow();
   private static final MethodTypeDesc
       MTD_EXPRESSION_CTOR =
           MethodTypeDesc.of(
@@ -134,7 +134,7 @@ public final class JavascriptCompiler {
           ConstantDescs.CD_String);
 
   private static final ExceptionsAttribute ATTR_THROWS_IOEXCEPTION =
-      ExceptionsAttribute.ofSymbols(IOException.class.describeConstable().get());
+      ExceptionsAttribute.ofSymbols(IOException.class.describeConstable().orElseThrow());
 
   final String sourceText;
   final Map<String, MethodHandle> functions;
@@ -447,7 +447,7 @@ public final class JavascriptCompiler {
           gen.invokevirtual(
               ConstantDescs.CD_MethodHandle,
               "invokeExact",
-              MethodTypeDesc.ofDescriptor(mh.type().descriptorString()));
+              mh.type().describeConstable().orElseThrow());
 
           gen.conversion(TypeKind.DOUBLE, typeStack.peek());
         } else if (!parens || arguments == 0 && text.contains(".")) {
