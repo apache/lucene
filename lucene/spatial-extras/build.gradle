@@ -32,7 +32,7 @@ dependencies {
   moduleApi(deps.s2.geometry, {
     exclude group: "com.google.guava"
   })
-  moduleApi("com.google.guava:guava:33.4.8-jre", {
+  moduleApi(deps.guava, {
     exclude group: "com.google.code.findbugs", module: "jsr305"
     exclude group: "com.google.errorprone", module: "error_prone_annotations"
     exclude group: "com.google.j2objc", module: "j2objc-annotations"

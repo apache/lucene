@@ -20,6 +20,8 @@ flexmark = "0.64.8"
 googleJavaFormat = "1.23.0"
 # gradle build support
 groovy = "4.0.26"
+# up-to-date version for a transitive dependency in spatial-extras (s2-geometry)
+guava = "33.4.8-jre"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -77,6 +79,7 @@ flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attribut
 flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
 groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
