@@ -124,10 +124,9 @@ public final class JavascriptCompiler {
   private static final Handle DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE =
       new Handle(
           Opcodes.H_INVOKESTATIC,
-          JAVASCRIPT_COMPILER_TYPE.getInternalName(),
-          "dynamicConstantBootstrap",
-          MethodType.methodType(
-                  MethodHandle.class, Lookup.class, String.class, Class.class, String.class)
+          Type.getType(MethodHandles.class).getInternalName(),
+          "classDataAt",
+          MethodType.methodType(Object.class, Lookup.class, String.class, Class.class, int.class)
               .toMethodDescriptorString(),
           false);
 
@@ -231,12 +230,13 @@ public final class JavascriptCompiler {
    * @throws ParseException on failure to compile
    */
   private Expression compileExpression() throws ParseException {
-    final Map<String, Integer> externalsMap = new LinkedHashMap<>();
+    final Map<String, Integer> externalsMap = new LinkedHashMap<>(),
+        constantsMap = new LinkedHashMap<>();
     final ClassWriter classWriter =
         new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
 
     try {
-      generateClass(getAntlrParseTree(), classWriter, externalsMap);
+      generateClass(getAntlrParseTree(), classWriter, externalsMap, constantsMap);
     } catch (RuntimeException re) {
       if (re.getCause() instanceof ParseException) {
         throw (ParseException) re.getCause();
@@ -246,7 +246,10 @@ public final class JavascriptCompiler {
 
     try {
       final Lookup lookup =
-          LOOKUP.defineHiddenClassWithClassData(classWriter.toByteArray(), functions, true);
+          LOOKUP.defineHiddenClassWithClassData(
+              classWriter.toByteArray(),
+              constantsMap.keySet().stream().map(functions::get).toList(),
+              true);
       return invokeConstructor(lookup, lookup.lookupClass(), externalsMap);
     } catch (ReflectiveOperationException exception) {
       throw new IllegalStateException(
@@ -327,7 +330,8 @@ public final class JavascriptCompiler {
   private void generateClass(
       final ParseTree parseTree,
       final ClassWriter classWriter,
-      final Map<String, Integer> externalsMap)
+      final Map<String, Integer> externalsMap,
+      final Map<String, Integer> constantsMap)
       throws ParseException {
     classWriter.visit(
         CLASSFILE_VERSION,
@@ -357,7 +361,6 @@ public final class JavascriptCompiler {
     // to completely hide the ANTLR visitor we use an anonymous impl:
     new JavascriptBaseVisitor<Void>() {
       private final Deque<Type> typeStack = new ArrayDeque<>();
-      private final Map<String, Integer> constantsMap = new HashMap<>();
 
       @Override
       public Void visitCompile(JavascriptParser.CompileContext ctx) {
@@ -417,12 +420,13 @@ public final class JavascriptCompiler {
             }
 
             // place dynamic constant with MethodHandle on top of stack
+            final int index = constantsMap.computeIfAbsent(text, k -> constantsMap.size());
             gen.visitLdcInsn(
                 new ConstantDynamic(
-                    "func" + constantsMap.computeIfAbsent(text, k -> constantsMap.size()),
+                    ConstantDescs.DEFAULT_NAME,
                     METHOD_HANDLE_TYPE.getDescriptor(),
                     DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE,
-                    text));
+                    index));
 
             // add arguments:
             typeStack.push(Type.DOUBLE_TYPE);
@@ -891,26 +895,6 @@ public final class JavascriptCompiler {
     if (type.returnType() != double.class) {
       throw new IllegalArgumentException(methodNameSupplier.get() + " does not return a double.");
     }
-  }
-
-  /**
-   * Bootstrap method for dynamic constants. This returns a {@link MethodHandle} for the {@code
-   * functionName} from the class data passed via {@link Lookup#defineHiddenClassWithClassData}. The
-   * {@code constantName} is ignored.
-   */
-  static MethodHandle dynamicConstantBootstrap(
-      Lookup lookup, String constantName, Class<?> type, String functionName)
-      throws IllegalAccessException {
-    if (type != MethodHandle.class) {
-      throw new IllegalArgumentException("Invalid type of constant: " + type.getName());
-    }
-    final var classData =
-        Objects.requireNonNull(
-            MethodHandles.classData(lookup, ConstantDescs.DEFAULT_NAME, Map.class),
-            "Missing class data for " + lookup);
-    return (MethodHandle)
-        Objects.requireNonNull(
-            classData.get(functionName), "Function does not exist: " + functionName);
   }
 
   /**
