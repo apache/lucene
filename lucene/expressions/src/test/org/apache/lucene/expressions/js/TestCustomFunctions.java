@@ -293,6 +293,11 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertEquals(16, expr.evaluate(null), DELTA);
   }
 
+  public void testSameFunctionTwoTimes() throws Exception {
+    Expression expr = compile("sqrt(20)+abs(-7)+sqrt(30)");
+    assertEquals(Math.sqrt(20) + 7 + Math.sqrt(30), expr.evaluate(null), DELTA);
+  }
+
   public void testLegacyFunctions() throws Exception {
     var functions =
         Map.of("foo", TestCustomFunctions.class.getMethod("oneArgMethod", double.class));
