@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -28,7 +29,6 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Counter;
 
 public class TestForTooMuchCloning extends LuceneTestCase {
 
@@ -39,7 +39,7 @@ public class TestForTooMuchCloning extends LuceneTestCase {
     dir.setVerboseClone(false); // set true to view clone stacks.
     final TieredMergePolicy tmp = new TieredMergePolicy();
     tmp.setSegmentsPerTier(2);
-    Counter segmentsMerged = Counter.newCounter();
+    AtomicInteger segmentsMerged = new AtomicInteger();
     final RandomIndexWriter w =
         new RandomIndexWriter(
             random(),
@@ -48,8 +48,6 @@ public class TestForTooMuchCloning extends LuceneTestCase {
                 // to reduce flakiness on merge clone count
                 .setMergeScheduler(new SerialMergeScheduler())
                 .setMaxBufferedDocs(2)
-                // use a FilterMP otherwise RIW will randomly reconfigure
-                // the MP while the test runs
                 .setMergePolicy(
                     new OneMergeWrappingMergePolicy(
                         tmp,
