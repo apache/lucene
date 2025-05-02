@@ -19,6 +19,7 @@ package org.apache.lucene.expressions.js;
 import java.io.IOException;
 import java.io.Reader;
 import java.lang.constant.ConstantDescs;
+import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.MethodHandles;
@@ -38,8 +39,8 @@ import java.util.Properties;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.DiagnosticErrorListener;
 import org.antlr.v4.runtime.RecognitionException;
@@ -115,24 +116,29 @@ public final class JavascriptCompiler {
       JAVASCRIPT_COMPILER_TYPE = Type.getType(JavascriptCompiler.class),
       THROWABLE_TYPE = Type.getType(Throwable.class);
   private static final Method
-      EXPRESSION_CTOR = getAsmMethod(void.class, "<init>", String.class, String[].class),
+      EXPRESSION_CTOR =
+          getAsmMethod(void.class, ConstantDescs.INIT_NAME, String.class, String[].class),
       EVALUATE_METHOD = getAsmMethod(double.class, "evaluate", DoubleValues[].class),
       DOUBLE_VAL_METHOD = getAsmMethod(double.class, "doubleValue"),
       PATCH_STACK_METHOD =
           getAsmMethod(Throwable.class, "patchStackTrace", Throwable.class, Expression.class);
   private static final Type[] EVALUATE_EXCEPTIONS = new Type[] {Type.getType(IOException.class)};
   private static final Handle DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE =
-      new Handle(
-          Opcodes.H_INVOKESTATIC,
-          Type.getType(MethodHandles.class).getInternalName(),
-          "classDataAt",
-          MethodType.methodType(Object.class, Lookup.class, String.class, Class.class, int.class)
-              .toMethodDescriptorString(),
-          false);
+      getAsmHandle(ConstantDescs.BSM_CLASS_DATA_AT);
 
   /** create an ASM Method object from return type, method name, and parameters. */
   private static Method getAsmMethod(Class<?> rtype, String name, Class<?>... ptypes) {
     return new Method(name, MethodType.methodType(rtype, ptypes).toMethodDescriptorString());
+  }
+
+  /** convert a Java direct method handle descriptor to an ASM {@link Handle}. */
+  private static Handle getAsmHandle(DirectMethodHandleDesc dm) {
+    return new Handle(
+        dm.refKind(),
+        Type.getType(dm.owner().descriptorString()).getInternalName(),
+        dm.methodName(),
+        dm.invocationType().descriptorString(),
+        dm.isOwnerInterface());
   }
 
   final String sourceText;
@@ -278,9 +284,8 @@ public final class JavascriptCompiler {
    * @throws ParseException on failure to parse
    */
   private ParseTree getAntlrParseTree() throws ParseException {
-    final ANTLRInputStream antlrInputStream = new ANTLRInputStream(sourceText);
     final JavascriptErrorHandlingLexer javascriptLexer =
-        new JavascriptErrorHandlingLexer(antlrInputStream);
+        new JavascriptErrorHandlingLexer(CharStreams.fromString(sourceText));
     javascriptLexer.removeErrorListeners();
     final JavascriptParser javascriptParser =
         new JavascriptParser(new CommonTokenStream(javascriptLexer));
