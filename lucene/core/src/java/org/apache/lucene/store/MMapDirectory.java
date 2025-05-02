@@ -100,6 +100,13 @@ public class MMapDirectory extends FSDirectory {
   public static final BiPredicate<String, IOContext> NO_FILES = (_, _) -> false;
 
   /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded when they
+   * are hinted to do so.
+   */
+  public static final BiPredicate<String, IOContext> PRELOAD_HINT =
+      (_, c) -> c.hints().contains(PreloadHint.INSTANCE);
+
+  /**
    * This sysprop allows to control the total maximum number of mmapped files that can be associated
    * with a single shared {@link java.lang.foreign.Arena foreign Arena}. For example, to set the max
    * number of permits to 256, pass the following on the command line pass {@code
@@ -233,6 +240,7 @@ public class MMapDirectory extends FSDirectory {
    * @param preload a {@link BiPredicate} whose first argument is the file name, and second argument
    *     is the {@link IOContext} used to open the file
    * @see #ALL_FILES
+   * @see #PRELOAD_HINT
    * @see #NO_FILES
    */
   public void setPreload(BiPredicate<String, IOContext> preload) {
