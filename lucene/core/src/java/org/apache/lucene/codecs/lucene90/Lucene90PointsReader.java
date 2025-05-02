@@ -26,7 +26,6 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
@@ -62,8 +61,7 @@ public class Lucene90PointsReader extends PointsReader {
     try {
       indexIn =
           readState.directory.openInput(
-              indexFileName,
-              readState.context.withHints(FileTypeHint.INDEX, DataAccessHint.RANDOM));
+              indexFileName, readState.context.withHints(FileTypeHint.INDEX));
       CodecUtil.checkIndexHeader(
           indexIn,
           Lucene90PointsFormat.INDEX_CODEC_NAME,

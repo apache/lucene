@@ -24,7 +24,6 @@ import java.io.UncheckedIOException;
 import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -70,7 +69,7 @@ final class FieldsIndexReader extends FieldsIndex {
     indexInput =
         dir.openInput(
             IndexFileNames.segmentFileName(name, suffix, extension),
-            context.withHints(FileTypeHint.INDEX, DataAccessHint.RANDOM));
+            context.withHints(FileTypeHint.INDEX));
     boolean success = false;
     try {
       CodecUtil.checkIndexHeader(

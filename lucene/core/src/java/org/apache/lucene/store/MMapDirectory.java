@@ -21,7 +21,7 @@ import static org.apache.lucene.index.IndexFileNames.CODEC_FILE_PATTERN;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.nio.channels.ClosedChannelException; // javadoc @link
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
@@ -284,16 +284,14 @@ public class MMapDirectory extends FSDirectory {
     }
 
     if (context.hints().contains(DataAccessHint.RANDOM)) {
-      if (context.hints().contains(FileTypeHint.INDEX)) {
-        return ReadAdvice.RANDOM_PRELOAD;
-      }
       return ReadAdvice.RANDOM;
     }
     if (context.hints().contains(DataAccessHint.SEQUENTIAL)) {
       return ReadAdvice.SEQUENTIAL;
     }
 
-    if (context.hints().contains(FileTypeHint.DATA)) {
+    if (context.hints().contains(FileTypeHint.DATA)
+        || context.hints().contains(FileTypeHint.INDEX)) {
       return ReadAdvice.NORMAL;
     }
     // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform

@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -43,8 +46,6 @@ public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
             new IndexWriter(
                 bbDir,
                 new IndexWriterConfig()
-                    // Disable CFS, this test needs to know about files that are open with the
-                    // RANDOM_PRELOAD advice, which CFS doesn't allow us to detect.
                     .setUseCompoundFile(false)
                     .setMergePolicy(newLogMergePolicy(false))
                     .setCodec(TestUtil.getDefaultCodec()))) {
@@ -83,10 +84,10 @@ public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
       }
     }
 
-    assertTrue(nonNullIOSuppliers > 0);
+    assertThat(nonNullIOSuppliers, greaterThan(0));
     long newCount = dir.count();
-    assertTrue(newCount - prevCount > 0);
-    assertTrue(newCount - prevCount < nonNullIOSuppliers);
+    assertThat(newCount, greaterThan(prevCount));
+    assertThat(newCount, lessThan(prevCount + nonNullIOSuppliers));
   }
 
   /** Simulate stored fields retrieval. */
@@ -105,7 +106,7 @@ public class TestDefaultCodecParallelizesIO extends LuceneTestCase {
     }
 
     long newCount = dir.count();
-    assertTrue(newCount - prevCount > 0);
-    assertTrue(newCount - prevCount < docs.length);
+    assertThat(newCount, greaterThan(prevCount));
+    assertThat(newCount, lessThan(prevCount + docs.length));
   }
 }
