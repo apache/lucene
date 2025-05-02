@@ -70,7 +70,8 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB#14404: Introducing DocValuesMultiRangeQuery.SortedNumericStabbingBuilder into sandbox.
+  (Mikhail Khludnev)
 
 Improvements
 ---------------------
