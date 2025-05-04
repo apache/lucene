@@ -75,8 +75,7 @@ public class FSTTermsReader extends FieldsProducer {
 
     this.postingsReader = postingsReader;
     this.fstTermsInput =
-        state.directory.openInput(
-            termsFileName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
+        state.directory.openInput(termsFileName, state.context.withReadAdvice(ReadAdvice.NORMAL));
 
     IndexInput in = this.fstTermsInput;
 

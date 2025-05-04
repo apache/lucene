@@ -267,6 +267,6 @@ public class TestJavascriptFunction extends CompilerTestCase {
 
   /** checks that dynamic constants work and only produce one entry in constant pool */
   public void testSameFunction() throws Exception {
-    assertEvaluatesTo("sqrt(49) * sqrt(25)", 7 * 5);
+    assertEvaluatesTo("sqrt(49) * abs(-2) * sqrt(25)", 7 * 2 * 5);
   }
 }
