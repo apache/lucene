@@ -57,7 +57,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testChar() {
     RegExp re = new RegExp("c");
-    assertEquals("\\c", re.toString());
+    assertEquals("c", re.toString());
     assertEquals("REGEXP_CHAR char=c\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
@@ -69,7 +69,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCaseInsensitiveChar() {
     RegExp re = new RegExp("c", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
-    assertEquals("\\c", re.toString());
+    assertEquals("c", re.toString());
     assertEquals("REGEXP_CHAR char=c\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
@@ -113,7 +113,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCaseInsensitiveCharUpper() {
     RegExp re = new RegExp("C", RegExp.NONE, RegExp.ASCII_CASE_INSENSITIVE);
-    assertEquals("\\C", re.toString());
+    assertEquals("C", re.toString());
     assertEquals("REGEXP_CHAR char=C\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
@@ -174,7 +174,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   public void testNegatedChar() {
     RegExp re = new RegExp("[^c]");
     // TODO: would be nice to emit negated class rather than this
-    assertEquals("(.&~(\\c))", re.toString());
+    assertEquals("(.&~(c))", re.toString());
     assertEquals(
         String.join(
             "\n",
@@ -211,7 +211,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testCharRange() {
     RegExp re = new RegExp("[b-d]");
-    assertEquals("[\\b-\\d]", re.toString());
+    assertEquals("[b-d]", re.toString());
     assertEquals("REGEXP_CHAR_RANGE from=b to=d\n", re.toStringTree());
 
     Automaton actual = re.toAutomaton();
@@ -224,7 +224,7 @@ public class TestRegExpParsing extends LuceneTestCase {
   public void testNegatedCharRange() {
     RegExp re = new RegExp("[^b-d]");
     // TODO: would be nice to emit negated class rather than this
-    assertEquals("(.&~([\\b-\\d]))", re.toString());
+    assertEquals("(.&~([b-d]))", re.toString());
     assertEquals(
         String.join(
             "\n",
@@ -514,7 +514,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testOptional() {
     RegExp re = new RegExp("a?");
-    assertEquals("(\\a)?", re.toString());
+    assertEquals("(a)?", re.toString());
     assertEquals(String.join("\n", "REGEXP_OPTIONAL", "  REGEXP_CHAR char=a\n"), re.toStringTree());
 
     Automaton actual = re.toAutomaton();
@@ -526,7 +526,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testRepeat0() {
     RegExp re = new RegExp("a*");
-    assertEquals("(\\a)*", re.toString());
+    assertEquals("(a)*", re.toString());
     assertEquals(String.join("\n", "REGEXP_REPEAT", "  REGEXP_CHAR char=a\n"), re.toStringTree());
 
     Automaton actual = re.toAutomaton();
@@ -538,7 +538,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testRepeat1() {
     RegExp re = new RegExp("a+");
-    assertEquals("(\\a){1,}", re.toString());
+    assertEquals("(a){1,}", re.toString());
     assertEquals(
         String.join("\n", "REGEXP_REPEAT_MIN min=1", "  REGEXP_CHAR char=a\n"), re.toStringTree());
 
@@ -553,7 +553,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testRepeatN() {
     RegExp re = new RegExp("a{5}");
-    assertEquals("(\\a){5,5}", re.toString());
+    assertEquals("(a){5,5}", re.toString());
     assertEquals(
         String.join("\n", "REGEXP_REPEAT_MINMAX min=5 max=5", "  REGEXP_CHAR char=a\n"),
         re.toStringTree());
@@ -567,7 +567,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testRepeatNPlus() {
     RegExp re = new RegExp("a{5,}");
-    assertEquals("(\\a){5,}", re.toString());
+    assertEquals("(a){5,}", re.toString());
     assertEquals(
         String.join("\n", "REGEXP_REPEAT_MIN min=5", "  REGEXP_CHAR char=a\n"), re.toStringTree());
 
@@ -582,7 +582,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testRepeatMN() {
     RegExp re = new RegExp("a{5,8}");
-    assertEquals("(\\a){5,8}", re.toString());
+    assertEquals("(a){5,8}", re.toString());
     assertEquals(
         String.join("\n", "REGEXP_REPEAT_MINMAX min=5 max=8", "  REGEXP_CHAR char=a\n"),
         re.toStringTree());
@@ -659,7 +659,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testConcatenation() {
     RegExp re = new RegExp("[b-c][e-f]");
-    assertEquals("[\\b-\\c][\\e-\\f]", re.toString());
+    assertEquals("[b-c][e-f]", re.toString());
     assertEquals(
         String.join(
             "\n",
@@ -679,7 +679,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testIntersection() {
     RegExp re = new RegExp("[b-f]&[e-f]");
-    assertEquals("([\\b-\\f]&[\\e-\\f])", re.toString());
+    assertEquals("([b-f]&[e-f])", re.toString());
     assertEquals(
         String.join(
             "\n",
@@ -714,7 +714,7 @@ public class TestRegExpParsing extends LuceneTestCase {
 
   public void testUnion() {
     RegExp re = new RegExp("[b-c]|[e-f]");
-    assertEquals("([\\b-\\c]|[\\e-\\f])", re.toString());
+    assertEquals("([b-c]|[e-f])", re.toString());
     assertEquals(
         String.join(
             "\n",
