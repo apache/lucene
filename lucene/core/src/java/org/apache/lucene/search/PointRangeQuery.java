@@ -22,17 +22,11 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.*;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.*;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
-import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.DocIdSetBuilder;
-import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IntsRef;
 
 /**
  * Abstract class for range queries against single or multidimensional points such as {@link
@@ -45,8 +39,8 @@ import org.apache.lucene.util.IntsRef;
  * <p>For a single-dimensional field this query is a simple range query; in a multi-dimensional
  * field it's a box shape.
  *
- * @see PointValues
  * @lucene.experimental
+ * @see PointValues
  */
 public abstract class PointRangeQuery extends Query {
   final String field;
@@ -266,33 +260,6 @@ public abstract class PointRangeQuery extends Query {
             }
           }
         };
-      }
-
-      private boolean checkValidPointValues(PointValues values) throws IOException {
-        if (values == null) {
-          // No docs in this segment/field indexed any points
-          return false;
-        }
-
-        if (values.getNumIndexDimensions() != numDims) {
-          throw new IllegalArgumentException(
-              "field=\""
-                  + field
-                  + "\" was indexed with numIndexDimensions="
-                  + values.getNumIndexDimensions()
-                  + " but this query has numDims="
-                  + numDims);
-        }
-        if (bytesPerDim != values.getBytesPerDimension()) {
-          throw new IllegalArgumentException(
-              "field=\""
-                  + field
-                  + "\" was indexed with bytesPerDim="
-                  + values.getBytesPerDimension()
-                  + " but this query has bytesPerDim="
-                  + bytesPerDim);
-        }
-        return true;
       }
 
       @Override
@@ -580,4 +547,111 @@ public abstract class PointRangeQuery extends Query {
    * @return human readable value for debugging
    */
   protected abstract String toString(int dimension, byte[] value);
+
+  @Override
+  public Query rewrite(IndexSearcher searcher) throws IOException {
+    IndexReader reader = searcher.getIndexReader();
+
+    for (LeafReaderContext leaf : reader.leaves()) {
+      checkValidPointValues(leaf.reader().getPointValues(field));
+    }
+
+    // fetch the global min/max packed values across all segments
+    byte[] globalMinPacked = PointValues.getMinPackedValue(reader, getField());
+    byte[] globalMaxPacked = PointValues.getMaxPackedValue(reader, getField());
+    if (globalMinPacked == null || globalMaxPacked == null) {
+      return super.rewrite(searcher);
+    }
+
+    int dims = getNumDims();
+    int bytesPerDim = getBytesPerDim();
+    byte[] queryLow = getLowerPoint();
+    byte[] queryHigh = getUpperPoint();
+
+    int fullyContainedCount = 0;
+    int fullyExcludedCount = 0;
+
+    // Check each dimension individually
+    for (int dim = 0; dim < dims; dim++) {
+      int offset = dim * bytesPerDim;
+      BytesRef qLow = new BytesRef(queryLow, offset, bytesPerDim);
+      BytesRef qHigh = new BytesRef(queryHigh, offset, bytesPerDim);
+      BytesRef gMin = new BytesRef(globalMinPacked, offset, bytesPerDim);
+      BytesRef gMax = new BytesRef(globalMaxPacked, offset, bytesPerDim);
+
+      if (qLow.compareTo(gMin) <= 0 && qHigh.compareTo(gMax) >= 0) {
+        fullyContainedCount++;
+      } else if (qLow.compareTo(gMax) > 0 || qHigh.compareTo(gMin) < 0) {
+        fullyExcludedCount++;
+      }
+    }
+
+    if (fullyContainedCount == dims) {
+      if (canRewriteToMatchAllQuery(reader)) {
+        return new MatchAllDocsQuery();
+      } else if (canRewriteToFieldExistsQuery(reader)) {
+        return new FieldExistsQuery(field);
+      }
+    } else if (fullyExcludedCount == dims) {
+      return new MatchNoDocsQuery();
+    }
+
+    return super.rewrite(searcher);
+  }
+
+  private boolean canRewriteToMatchAllQuery(IndexReader reader) throws IOException {
+    for (LeafReaderContext context : reader.leaves()) {
+      LeafReader leaf = context.reader();
+      PointValues values = leaf.getPointValues(field);
+
+      if (values.getDocCount() != leaf.maxDoc()) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private boolean canRewriteToFieldExistsQuery(IndexReader reader) {
+    for (LeafReaderContext leaf : reader.leaves()) {
+      FieldInfo info = leaf.reader().getFieldInfos().fieldInfo(field);
+
+      if (info != null
+          && info.getDocValuesType() == DocValuesType.NONE
+          && !info.hasNorms()
+          && info.getVectorDimension() == 0) {
+        // Can't use a FieldExistsQuery on this segment, so return false
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private boolean checkValidPointValues(PointValues values) throws IOException {
+    if (values == null) {
+      // No docs in this segment/field indexed any points
+      return false;
+    }
+
+    if (values.getNumIndexDimensions() != numDims) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" was indexed with numIndexDimensions="
+              + values.getNumIndexDimensions()
+              + " but this query has numDims="
+              + numDims);
+    }
+    if (bytesPerDim != values.getBytesPerDimension()) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" was indexed with bytesPerDim="
+              + values.getBytesPerDimension()
+              + " but this query has bytesPerDim="
+              + bytesPerDim);
+    }
+    return true;
+  }
 }
