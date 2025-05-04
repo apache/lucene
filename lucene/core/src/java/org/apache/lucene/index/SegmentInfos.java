@@ -1202,7 +1202,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     return indexCreatedVersionMajor;
   }
 
-  // Intended to be only called by IndexWriter to enable strict checks
+  // Package private access to allow being called only by IndexWriter for greater control
   void setIndexCreatedVersionMajorToLatest() {
     if (!allSegmentsAreLatestVersion()) {
       throw new IllegalStateException(

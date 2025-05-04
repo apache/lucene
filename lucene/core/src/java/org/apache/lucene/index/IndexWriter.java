@@ -4140,7 +4140,7 @@ public class IndexWriter
    *     not.
    * @throws IOException
    */
-  public final long commitAndResetVersionCreatedMajor() throws IOException {
+  public final long commitAndUpdateVersionCreatedMajor() throws IOException {
     ensureOpen();
     synchronized (commitLock) {
       updateIndexCreationVersion = true;
