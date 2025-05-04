@@ -53,6 +53,7 @@ final class FrozenBufferedUpdates {
 
   // Terms, in sorted order:
   final PrefixCodedTerms deleteTerms;
+  final PrefixCodedTerms deleteUniqueTerms;
 
   // Parallel array of deleted query, and the docIDUpto for each
   final Query[] deleteQueries;
@@ -82,12 +83,19 @@ final class FrozenBufferedUpdates {
       InfoStream infoStream, BufferedUpdates updates, SegmentCommitInfo privateSegment) {
     this.infoStream = infoStream;
     this.privateSegment = privateSegment;
-    assert privateSegment == null || updates.deleteTerms.isEmpty()
+    assert privateSegment == null
+            || updates.deleteTerms.isEmpty()
+            || updates.deleteUniqueTerms.isEmpty()
         : "segment private packet should only have del queries";
 
     PrefixCodedTerms.Builder builder = new PrefixCodedTerms.Builder();
     updates.deleteTerms.forEachOrdered((term, _) -> builder.add(term));
     deleteTerms = builder.finish();
+
+    // TODO: Should we clear last builder and reuse it.
+    PrefixCodedTerms.Builder utBuilder = new PrefixCodedTerms.Builder();
+    updates.deleteUniqueTerms.forEachOrdered((term, doc) -> utBuilder.add(term));
+    deleteUniqueTerms = utBuilder.finish();
 
     deleteQueries = new Query[updates.deleteQueries.size()];
     deleteQueryLimits = new int[updates.deleteQueries.size()];
@@ -107,7 +115,9 @@ final class FrozenBufferedUpdates {
 
     bytesUsed =
         (int)
-            ((deleteTerms.ramBytesUsed() + deleteQueries.length * (long) BYTES_PER_DEL_QUERY)
+            ((deleteTerms.ramBytesUsed()
+                    + deleteUniqueTerms.ramBytesUsed()
+                    + deleteQueries.length * (long) BYTES_PER_DEL_QUERY)
                 + updates.fieldUpdatesBytesUsed.get());
 
     if (infoStream != null && infoStream.isEnabled("BD")) {
@@ -168,6 +178,7 @@ final class FrozenBufferedUpdates {
     }
 
     totalDelCount += applyTermDeletes(segStates);
+    totalDelCount += applyUniqueTermDeletes(segStates);
     totalDelCount += applyQueryDeletes(segStates);
     totalDelCount += applyDocValuesUpdates(segStates);
 
@@ -497,10 +508,80 @@ final class FrozenBufferedUpdates {
     return delCount;
   }
 
+  private long applyUniqueTermDeletes(BufferedUpdatesStream.SegmentState[] segStates)
+      throws IOException {
+
+    if (deleteUniqueTerms.size() == 0) {
+      return 0;
+    }
+
+    // We apply segment-private deletes on flush:
+    assert privateSegment == null;
+
+    long startNS = System.nanoTime();
+
+    long delCount = 0;
+
+    FieldTermIterator iter = deleteUniqueTerms.iterator();
+    BytesRef delTerm;
+    nextDelTerm:
+    while ((delTerm = iter.next()) != null) {
+      // Delete from tail, since live doc stays in newly flushed segment.
+      for (int i = segStates.length - 1; i >= 0; i--) {
+        BufferedUpdatesStream.SegmentState segState = segStates[i];
+        assert segState.delGen != delGen
+            : "segState.delGen=" + segState.delGen + " vs this.gen=" + delGen;
+        if (segState.delGen > delGen) {
+          // our deletes don't apply to this segment
+          continue;
+        }
+        if (segState.rld.refCount() == 1) {
+          // This means we are the only remaining reference to this segment, meaning
+          // it was merged away while we were running, so we can safely skip running
+          // because we will run on the newly merged segment next:
+          continue;
+        }
+        TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader, true);
+
+        final DocIdSetIterator iterator = termDocsIterator.nextTerm(iter.field(), delTerm);
+        if (iterator != null) {
+          int docID;
+          while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            // NOTE: there is no limit check on the docID
+            // when deleting by Term (unlike by Query)
+            // because on flush we apply all Term deletes to
+            // each segment.  So all Term deleting here is
+            // against prior segments:
+            // TODO: we should not skip soft deleted docs when apply hard delete.
+            if (segState.rld.delete(docID)) {
+              delCount++;
+              continue nextDelTerm;
+            }
+          }
+        }
+      }
+    }
+
+    if (infoStream.isEnabled("BD")) {
+      infoStream.message(
+          "BD",
+          String.format(
+              Locale.ROOT,
+              "applyUniqueTermDeletes took %.2f msec for %d segments and %d del terms; %d new deletions",
+              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
+              segStates.length,
+              deleteTerms.size(),
+              delCount));
+    }
+
+    return delCount;
+  }
+
   public void setDelGen(long delGen) {
     assert this.delGen == -1 : "delGen was already previously set to " + this.delGen;
     this.delGen = delGen;
     deleteTerms.setDelGen(delGen);
+    deleteUniqueTerms.setDelGen(delGen);
   }
 
   public long delGen() {
@@ -513,6 +594,9 @@ final class FrozenBufferedUpdates {
     String s = "delGen=" + delGen;
     if (deleteTerms.size() != 0) {
       s += " unique deleteTerms=" + deleteTerms.size();
+    }
+    if (deleteUniqueTerms.size() != 0) {
+      s += " unique deleteUniqueTerms=" + deleteUniqueTerms.size();
     }
     if (deleteQueries.length != 0) {
       s += " numDeleteQueries=" + deleteQueries.length;
@@ -531,7 +615,10 @@ final class FrozenBufferedUpdates {
   }
 
   boolean any() {
-    return deleteTerms.size() > 0 || deleteQueries.length > 0 || fieldUpdatesCount > 0;
+    return deleteTerms.size() > 0
+        || deleteUniqueTerms.size() > 0
+        || deleteQueries.length > 0
+        || fieldUpdatesCount > 0;
   }
 
   /**
