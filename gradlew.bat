@@ -81,10 +81,22 @@ SET DEFAULT_JVM_OPTS=%DEFAULT_JVM_OPTS% "-Djava.io.tmpdir=%GRADLE_TEMPDIR%"
 
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
-IF NOT EXIST "%GRADLE_WRAPPER_JAR%" (
-    "%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
-    IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
-    IF %ERRORLEVEL% NEQ 0 goto fail
+set GRADLE_WRAPPER_CHECKSUM=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar.sha256
+
+@rem Read the expected hash from .sha256 file
+for /f "tokens=1" %%A in (%GRADLE_WRAPPER_CHECKSUM%) do (
+    set "EXPECTED=%%A"
+)
+@rem Get actual SHA-256 hash using certutil
+for /f "tokens=* delims=" %%H in ('certutil -hashfile "%GRADLE_WRAPPER_JAR%" SHA256 ^| findstr /R /B /I /X "[0-9a-f]*"') do (
+    set "ACTUAL=%%H"
+)
+
+if /i "%ACTUAL%" NEQ "%EXPECTED%" (
+  echo "Checking gradle shas."
+  "%JAVA_EXE%" -XX:TieredStopAtLevel=1 %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
+  IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
+  IF %ERRORLEVEL% NEQ 0 goto fail
 )
 
 @rem Generate gradle.properties if they don't exist
