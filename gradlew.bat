@@ -81,11 +81,9 @@ SET DEFAULT_JVM_OPTS=%DEFAULT_JVM_OPTS% "-Djava.io.tmpdir=%GRADLE_TEMPDIR%"
 
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
-IF NOT EXIST "%GRADLE_WRAPPER_JAR%" (
-    "%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
-    IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
-    IF %ERRORLEVEL% NEQ 0 goto fail
-)
+"%JAVA_EXE%" -verbose -XX:TieredStopAtLevel=1 %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
+IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
+IF %ERRORLEVEL% NEQ 0 goto fail
 
 @rem Generate gradle.properties if they don't exist
 IF NOT EXIST "%APP_HOME%\gradle.properties" (
