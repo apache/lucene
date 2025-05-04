@@ -104,7 +104,7 @@ public final class CompositeReaderContext extends IndexReaderContext {
         leaves.add(atomic);
         leafDocBase += reader.maxDoc();
         return atomic;
-      } else {
+      } else if (reader instanceof CompositeReader) {
         final CompositeReader cr = (CompositeReader) reader;
         final List<? extends IndexReader> sequentialSubReaders = cr.getSequentialSubReaders();
         final List<IndexReaderContext> children =
@@ -122,6 +122,9 @@ public final class CompositeReaderContext extends IndexReaderContext {
           newDocBase += r.maxDoc();
         }
         assert newDocBase == cr.maxDoc();
+        return newParent;
+      } else {
+        final IndexReaderContext newParent = reader.getContext();
         return newParent;
       }
     }
