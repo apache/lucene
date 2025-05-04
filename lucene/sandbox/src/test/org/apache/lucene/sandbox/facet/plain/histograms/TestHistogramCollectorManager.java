@@ -136,11 +136,22 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(w);
     w.close();
     IndexSearcher searcher = newSearcher(reader);
+
+    // MATCH_ALL case for efficiently collecting
     LongIntHashMap actualCounts =
         searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     for (long value : values) {
       expectedCounts.addTo(Math.floorDiv(value, 1000), 1);
+    }
+    assertEquals(expectedCounts, actualCounts);
+
+    // MATCH_ALL case for collecting despite inefficiency since DocValues is not indexed
+    actualCounts =
+        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 100));
+    expectedCounts = new LongIntHashMap();
+    for (long value : values) {
+      expectedCounts.addTo(Math.floorDiv(value, 100), 1);
     }
     assertEquals(expectedCounts, actualCounts);
 

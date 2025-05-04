@@ -64,12 +64,19 @@ final class HistogramCollector implements Collector {
       throw new CollectionTerminatedException();
     }
 
+    boolean docValuesIndexed =
+        fi.getDocValuesType() == DocValuesType.NUMERIC
+            || fi.getDocValuesType() == DocValuesType.SORTED_NUMERIC;
+
     // We can use multi range traversal logic to collect the histogram on numeric
     // field indexed as point for MATCH_ALL cases. In future, this can be extended
     // for Point Range Query cases as well
     if (weight != null && weight.count(context) == context.reader().maxDoc()) {
       final PointValues pointValues = context.reader().getPointValues(field);
-      if (PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
+      // Collect if docValues is not indexed, even if we cannot collect efficiently
+      if (PointTreeBulkCollector.canCollect(pointValues)
+          && (docValuesIndexed == false
+              || PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth))) {
         // In case of intra segment concurrency, only one collector should collect
         // documents for all the partitions to avoid duplications across collectors
         if (leafBulkCollected.putIfAbsent(context, true) == null) {
@@ -81,8 +88,7 @@ final class HistogramCollector implements Collector {
       }
     }
 
-    if (fi.getDocValuesType() != DocValuesType.NUMERIC
-        && fi.getDocValuesType() != DocValuesType.SORTED_NUMERIC) {
+    if (docValuesIndexed == false) {
       throw new IllegalStateException(
           "Expected numeric field, but got doc-value type: " + fi.getDocValuesType());
     }
