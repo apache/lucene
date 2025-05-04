@@ -614,7 +614,7 @@ public abstract class PointRangeQuery extends Query {
       LeafReader leaf = context.reader();
       PointValues values = leaf.getPointValues(field);
 
-      if (values.getDocCount() != leaf.maxDoc()) {
+      if (values == null || values.getDocCount() != leaf.maxDoc()) {
         return false;
       }
     }
