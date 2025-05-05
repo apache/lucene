@@ -72,18 +72,22 @@ public final class ExtractJdkApis {
     if (args.length != 3) {
       throw new IllegalArgumentException("Need two parameters: target java version, extract java version, output file");
     }
-    Runtime.Version targetJdk = Runtime.Version.parse(args[0]), runtimeJdk = Runtime.version();
+    int targetJdk = Integer.parseInt(args[0]);
     Integer extractJdk = Integer.valueOf(args[1]);
-    if (extractJdk.intValue() != runtimeJdk.feature()) {
-      throw new IllegalStateException("Incorrect java version: " + runtimeJdk.feature());
+    int runtimeJdk = Runtime.version().feature();
+    if (extractJdk.intValue() != runtimeJdk) {
+      throw new IllegalStateException("Incorrect runtime java version: " + runtimeJdk);
     }
-    if (extractJdk.intValue() < targetJdk.feature()) {
-      throw new IllegalStateException("extract java version " + runtimeJdk.feature() + " < target java version " + targetJdk.feature());
+    if (extractJdk.intValue() < targetJdk) {
+      throw new IllegalStateException("extract java version " + extractJdk + " < target java version " + targetJdk);
     }
     if (!CLASSFILE_PATTERNS.containsKey(extractJdk)) {
       throw new IllegalArgumentException("No support to extract stubs from java version: " + extractJdk);
     }
     var outputPath = Paths.get(args[2]);
+    
+    // the output class files need to be compatible with the targetJdk of our compilation, so we need to adapt them:
+    var classFileVersion = ClassFileVersion.of(ClassFileFormatVersion.valueOf("RELEASE_" + targetJdk).major(), 0);
 
     // create JRT filesystem and build a combined FileMatcher:
     var jrtPath = Paths.get(URI.create("jrt:/")).toRealPath();
@@ -100,17 +104,17 @@ public final class ExtractJdkApis {
     
     // Process all class files:
     try (var out = new ZipOutputStream(Files.newOutputStream(outputPath))) {
-      process(targetJdk, filesToExtract, out);
+      process(filesToExtract, out, classFileVersion);
     }
   }
 
-  private static void process(Runtime.Version targetJdk, List<Path> filesToExtract, ZipOutputStream out) throws IOException {
+  private static void process(List<Path> filesToExtract, ZipOutputStream out, ClassFileVersion classFileVersion) throws IOException {
     System.out.println("Loading and analyzing " + filesToExtract.size() + " class files...");
     var classesToInclude = new HashSet<String>();
     var references = new HashMap<String, String[]>();
     var toProcess = new TreeMap<String, ClassModel>();
     var cc = ClassFile.of(ClassFile.ConstantPoolSharingOption.NEW_POOL, ClassFile.DebugElementsOption.DROP_DEBUG,
-        ClassFile.LineNumbersOption.DROP_LINE_NUMBERS, ClassFile.StackMapsOption.GENERATE_STACK_MAPS);
+        ClassFile.LineNumbersOption.DROP_LINE_NUMBERS, ClassFile.StackMapsOption.DROP_STACK_MAPS);
     for (Path p : filesToExtract) {
       ClassModel parsed = cc.parse(p);
       String internalName = parsed.thisClass().asInternalName();
@@ -130,8 +134,6 @@ public final class ExtractJdkApis {
     toProcess.keySet().removeIf(Predicate.not(classesToInclude::contains));
     // transformation of class files:
     System.out.println("Writing " + toProcess.size() + " visible classes...");
-    var targetVersion = ClassFileVersion.of(ClassFileFormatVersion.valueOf(targetJdk).major(), 0);
-    
     for (var parsed : toProcess.values()) {
       String internalName = parsed.thisClass().asInternalName();
       System.out.println("Writing stub for class: " + internalName);
@@ -142,7 +144,7 @@ public final class ExtractJdkApis {
         default -> false;
       }).andThen((builder, ce) -> {
         switch (ce) {
-          case ClassFileVersion _ -> builder.with(targetVersion);
+          case ClassFileVersion _ -> builder.with(classFileVersion);
           // the PreviewFeature annotation may refer to its own inner classes and therefore we must get rid of the inner class entry:
           case InnerClassesAttribute a -> builder.with(InnerClassesAttribute.of(a.classes().stream()
               .filter(c -> !CD_PreviewFeature.equals(c.outerClass().map(ClassEntry::asSymbol).orElse(null)))
@@ -166,7 +168,7 @@ public final class ExtractJdkApis {
       }
     }).toList();
     if (!missingClasses.isEmpty()) {
-      throw new IllegalStateException("Some referenced classes not publicly available in java.base module: " + missingClasses);
+      throw new IllegalStateException("Some referenced classes are not publicly available in java.base module: " + missingClasses);
     }
   }
   
