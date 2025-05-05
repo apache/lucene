@@ -15,6 +15,24 @@
  * limitations under the License.
  */
 import java.io.IOException;
+import java.lang.classfile.AccessFlags;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassFileBuilder;
+import java.lang.classfile.ClassFileElement;
+import java.lang.classfile.ClassFileVersion;
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.ClassTransform;
+import java.lang.classfile.CodeModel;
+import java.lang.classfile.FieldModel;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.MethodTransform;
+import java.lang.classfile.attribute.InnerClassesAttribute;
+import java.lang.classfile.attribute.RuntimeInvisibleAnnotationsAttribute;
+import java.lang.classfile.attribute.SourceFileAttribute;
+import java.lang.classfile.constantpool.ClassEntry;
+import java.lang.constant.ClassDesc;
+import java.lang.reflect.AccessFlag;
+import java.lang.reflect.ClassFileFormatVersion;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,15 +54,6 @@ import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.objectweb.asm.AnnotationVisitor;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.FieldVisitor;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-
 public final class ExtractJdkApis {
   
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2025-04-29T00:00:00Z"));
@@ -55,23 +64,29 @@ public final class ExtractJdkApis {
   static final Map<Integer,List<String>> CLASSFILE_PATTERNS = Map.of(
       24, List.of(PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR)
   );
-  
+
+  private static final ClassDesc CD_PreviewFeature = ClassDesc.ofInternalName("jdk/internal/javac/PreviewFeature");
+
   public static void main(String... args) throws IOException {
-    if (args.length != 2) {
-      throw new IllegalArgumentException("Need two parameters: java version, output file");
+    if (args.length != 3) {
+      throw new IllegalArgumentException("Need two parameters: target java version, extract java version, output file");
     }
-    Integer jdk = Integer.valueOf(args[0]);
-    if (jdk.intValue() != Runtime.version().feature()) {
-      throw new IllegalStateException("Incorrect java version: " + Runtime.version().feature());
+    Runtime.Version targetJdk = Runtime.Version.parse(args[0]), runtimeJdk = Runtime.version();
+    Integer extractJdk = Integer.valueOf(args[1]);
+    if (extractJdk.intValue() != runtimeJdk.feature()) {
+      throw new IllegalStateException("Incorrect java version: " + runtimeJdk.feature());
     }
-    if (!CLASSFILE_PATTERNS.containsKey(jdk)) {
-      throw new IllegalArgumentException("No support to extract stubs from java version: " + jdk);
+    if (extractJdk.intValue() < targetJdk.feature()) {
+      throw new IllegalStateException("extract java version " + runtimeJdk.feature() + " < target java version " + targetJdk.feature());
     }
-    var outputPath = Paths.get(args[1]);
+    if (!CLASSFILE_PATTERNS.containsKey(extractJdk)) {
+      throw new IllegalArgumentException("No support to extract stubs from java version: " + extractJdk);
+    }
+    var outputPath = Paths.get(args[2]);
 
     // create JRT filesystem and build a combined FileMatcher:
     var jrtPath = Paths.get(URI.create("jrt:/")).toRealPath();
-    var patterns = CLASSFILE_PATTERNS.get(jdk).stream()
+    var patterns = CLASSFILE_PATTERNS.get(extractJdk).stream()
         .map(pattern -> jrtPath.getFileSystem().getPathMatcher("glob:" + pattern + ".class"))
         .toArray(PathMatcher[]::new);
     PathMatcher pattern = p -> Arrays.stream(patterns).anyMatch(matcher -> matcher.matches(p));
@@ -84,23 +99,26 @@ public final class ExtractJdkApis {
     
     // Process all class files:
     try (var out = new ZipOutputStream(Files.newOutputStream(outputPath))) {
-      process(filesToExtract, out);
+      process(targetJdk, filesToExtract, out);
     }
   }
 
-  private static void process(List<Path> filesToExtract, ZipOutputStream out) throws IOException {
+  private static void process(Runtime.Version targetJdk, List<Path> filesToExtract, ZipOutputStream out) throws IOException {
+    System.out.println("Loading and analyzing " + filesToExtract.size() + " class files...");
     var classesToInclude = new HashSet<String>();
     var references = new HashMap<String, String[]>();
-    var processed = new TreeMap<String, byte[]>();
-    System.out.println("Transforming " + filesToExtract.size() + " class files...");
+    var toProcess = new TreeMap<String, ClassModel>();
+    var cc = ClassFile.of(ClassFile.ConstantPoolSharingOption.NEW_POOL, ClassFile.DebugElementsOption.DROP_DEBUG,
+        ClassFile.LineNumbersOption.DROP_LINE_NUMBERS, ClassFile.StackMapsOption.GENERATE_STACK_MAPS);
     for (Path p : filesToExtract) {
-      try (var in = Files.newInputStream(p)) {
-        var reader = new ClassReader(in);
-        var cw = new ClassWriter(0);
-        var cleaner = new Cleaner(cw, classesToInclude, references);
-        reader.accept(cleaner, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-        processed.put(reader.getClassName(), cw.toByteArray());
+      ClassModel parsed = cc.parse(p);
+      String internalName = parsed.thisClass().asInternalName();
+      if (isVisible(parsed.flags())) {
+        classesToInclude.add(internalName);
       }
+      references.put(internalName, Stream.concat(parsed.superclass().stream(), parsed.interfaces().stream())
+          .map(ClassEntry::asInternalName).toArray(String[]::new));
+      toProcess.put(internalName, parsed);
     }
     // recursively add all superclasses / interfaces of visible classes to classesToInclude:
     for (Set<String> a = classesToInclude; !a.isEmpty();) {
@@ -108,83 +126,51 @@ public final class ExtractJdkApis {
       classesToInclude.addAll(a);
     }
     // remove all non-visible or not referenced classes:
-    processed.keySet().removeIf(Predicate.not(classesToInclude::contains));
-    System.out.println("Writing " + processed.size() + " visible classes...");
-    for (var cls : processed.entrySet()) {
-      String cn = cls.getKey();
-      System.out.println("Writing stub for class: " + cn);
-      out.putNextEntry(new ZipEntry(cn.concat(".class")).setLastModifiedTime(FIXED_FILEDATE));
-      out.write(cls.getValue());
+    toProcess.keySet().removeIf(Predicate.not(classesToInclude::contains));
+    // transformation of class files:
+    System.out.println("Writing " + toProcess.size() + " visible classes...");
+    var targetVersion = ClassFileVersion.of(ClassFileFormatVersion.valueOf(targetJdk).major(), 0);
+    
+    for (var parsed : toProcess.values()) {
+      String internalName = parsed.thisClass().asInternalName();
+      System.out.println("Writing stub for class: " + internalName);
+      ClassTransform ct = ClassTransform.dropping(ce -> switch (ce) {
+        case MethodModel e -> !isVisible(e.flags());
+        case FieldModel e -> !isVisible(e.flags());
+        case SourceFileAttribute _ -> true;
+        default -> false;
+      }).andThen((builder, ce) -> {
+        switch (ce) {
+          case ClassFileVersion _ -> builder.with(targetVersion);
+          // the PreviewFeature attribute may refer to its own inner classes and therefore we must get rid of the inner class entry:
+          case InnerClassesAttribute a -> builder.with(InnerClassesAttribute.of(a.classes().stream()
+              .filter(c -> !Objects.equals(CD_PreviewFeature, c.outerClass().map(ClassEntry::asSymbol).orElse(null)))
+              .toList()));
+          default -> builder.with(ce);
+        }
+      }).andThen(ExtractJdkApis::dropPreview)
+          .andThen(ClassTransform.transformingMethods(MethodTransform.dropping(CodeModel.class::isInstance).andThen(ExtractJdkApis::dropPreview))
+          .andThen(ClassTransform.transformingFields(ExtractJdkApis::dropPreview)));
+      out.putNextEntry(new ZipEntry(internalName.concat(".class")).setLastModifiedTime(FIXED_FILEDATE));
+      out.write(cc.transformClass(parsed, ct));
       out.closeEntry();
     }
-    classesToInclude.removeIf(processed.keySet()::contains);
+    classesToInclude.removeIf(toProcess.keySet()::contains);
     System.out.println("Referenced classes not included: " + classesToInclude);
   }
   
-  static boolean isVisible(int access) {
-    return (access & (Opcodes.ACC_PROTECTED | Opcodes.ACC_PUBLIC)) != 0;
+  @SuppressWarnings("unchecked") // no idea how to get generics correct!?!
+  private static <E extends ClassFileElement, B extends ClassFileBuilder<E, B>> void dropPreview(ClassFileBuilder<E, B> builder, E ele) {
+    switch (ele) {
+      case RuntimeInvisibleAnnotationsAttribute att -> builder.with((E) RuntimeInvisibleAnnotationsAttribute.of(att.annotations().stream()
+          .filter(ann -> !Objects.equals(CD_PreviewFeature, ann.classSymbol()))
+          .toList()));
+      default -> builder.with(ele);
+    }
   }
   
-  static class Cleaner extends ClassVisitor {
-    private static final String PREVIEW_ANN = "jdk/internal/javac/PreviewFeature";
-    private static final String PREVIEW_ANN_DESCR = Type.getObjectType(PREVIEW_ANN).getDescriptor();
-    
-    private final Set<String> classesToInclude;
-    private final Map<String, String[]> references;
-    
-    Cleaner(ClassWriter out, Set<String> classesToInclude, Map<String, String[]> references) {
-      super(Opcodes.ASM9, out);
-      this.classesToInclude = classesToInclude;
-      this.references = references;
-    }
-
-    @Override
-    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-      super.visit(Opcodes.V21, access, name, signature, superName, interfaces);
-      if (isVisible(access)) {
-        classesToInclude.add(name);
-      }
-      references.put(name, Stream.concat(Stream.of(superName), Arrays.stream(interfaces)).toArray(String[]::new));
-    }
-
-    @Override
-    public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
-      return Objects.equals(descriptor, PREVIEW_ANN_DESCR) ? null : super.visitAnnotation(descriptor, visible);
-    }
-
-    @Override
-    public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
-      if (!isVisible(access)) {
-        return null;
-      }
-      return new FieldVisitor(Opcodes.ASM9, super.visitField(access, name, descriptor, signature, value)) {
-        @Override
-        public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
-          return Objects.equals(descriptor, PREVIEW_ANN_DESCR) ? null : super.visitAnnotation(descriptor, visible);
-        }
-      };
-    }
-
-    @Override
-    public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-      if (!isVisible(access)) {
-        return null;
-      }
-      return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
-        @Override
-        public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
-          return Objects.equals(descriptor, PREVIEW_ANN_DESCR) ? null : super.visitAnnotation(descriptor, visible);
-        }
-      };
-    }
-
-    @Override
-    public void visitInnerClass(String name, String outerName, String innerName, int access) {
-      if (!Objects.equals(outerName, PREVIEW_ANN)) {
-        super.visitInnerClass(name, outerName, innerName, access);
-      }
-    }
-    
+  private static boolean isVisible(AccessFlags access) {
+    return access.has(AccessFlag.PUBLIC) || access.has(AccessFlag.PROTECTED);
   }
   
 }

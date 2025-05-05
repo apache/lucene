@@ -23,18 +23,10 @@ configure(project(":lucene:core")) {
     mrjarJavaVersions = [ 24 ]
   }
   
-  configurations {
-    apiextractor
-  }
-
-  dependencies {
-    apiextractor deps.asm.core
-  }
-
   plugins.withType(JavaPlugin) {
     mrjarJavaVersions.each { jdkVersion ->
       def task = tasks.create(name: "generateJdkApiJar${jdkVersion}", type: JavaExec) {
-        description "Regenerate the API-only JAR file with public Panama Foreign & Vector API from JDK ${jdkVersion}"
+        description "Regenerate the API-only JAR file with public Vector API from JDK ${jdkVersion}"
         group "generation"
 
         javaLauncher = javaToolchains.launcherFor {
@@ -53,13 +45,13 @@ configure(project(":lucene:core")) {
           }
         }
 
-        classpath = configurations.apiextractor
         mainClass = file("${resources}/ExtractJdkApis.java") as String
         systemProperties = [
                 'user.timezone': 'UTC',
                 'file.encoding': 'UTF-8',
         ]
         args = [
+                rootProject.minJavaVersion.toString(),
                 jdkVersion,
                 apijars.file("jdk${jdkVersion}.apijar"),
         ]
