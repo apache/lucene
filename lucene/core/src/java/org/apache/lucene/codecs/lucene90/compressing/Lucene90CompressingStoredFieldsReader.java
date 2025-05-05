@@ -512,6 +512,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           bytes.offset = bytes.length = 0;
           for (int decompressed = 0; decompressed < totalLength; ) {
             final int toDecompress = Math.min(totalLength - decompressed, chunkSize);
+            decompressor.reset();
             decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, spare);
             bytes.bytes = ArrayUtil.grow(bytes.bytes, bytes.length + spare.length);
             System.arraycopy(spare.bytes, spare.offset, bytes.bytes, bytes.length, spare.length);
@@ -560,6 +561,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
         documentInput = new ByteArrayDataInput(bytes.bytes, bytes.offset + offset, length);
       } else if (sliced) {
         fieldsStream.seek(startPointer);
+        decompressor.reset();
         decompressor.decompress(
             fieldsStream, chunkSize, offset, Math.min(length, chunkSize - offset), bytes);
         documentInput =
@@ -573,6 +575,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
                   throw new EOFException();
                 }
                 final int toDecompress = Math.min(length - decompressed, chunkSize);
+                decompressor.reset();
                 decompressor.decompress(fieldsStream, toDecompress, 0, toDecompress, bytes);
                 decompressed += toDecompress;
               }
@@ -644,6 +647,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     if (state.contains(docID) == false) {
       fieldsStream.seek(indexReader.getStartPointer(docID));
       state.reset(docID);
+      decompressor.reset();
     }
     assert state.contains(docID);
     return state.document(docID);
