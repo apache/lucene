@@ -142,7 +142,7 @@ public final class ExtractJdkApis {
       }).andThen((builder, ce) -> {
         switch (ce) {
           case ClassFileVersion _ -> builder.with(targetVersion);
-          // the PreviewFeature attribute may refer to its own inner classes and therefore we must get rid of the inner class entry:
+          // the PreviewFeature annotation may refer to its own inner classes and therefore we must get rid of the inner class entry:
           case InnerClassesAttribute a -> builder.with(InnerClassesAttribute.of(a.classes().stream()
               .filter(c -> !Objects.equals(CD_PreviewFeature, c.outerClass().map(ClassEntry::asSymbol).orElse(null)))
               .toList()));
