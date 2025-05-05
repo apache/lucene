@@ -26,7 +26,7 @@ configure(project(":lucene:core")) {
   plugins.withType(JavaPlugin) {
     mrjarJavaVersions.each { jdkVersion ->
       def task = tasks.create(name: "generateJdkApiJar${jdkVersion}", type: JavaExec) {
-        description "Regenerate the API-only JAR file with public Vector API from JDK ${jdkVersion}"
+        description "Regenerate the API-only JAR file with public Panama Vector API from JDK ${jdkVersion}"
         group "generation"
 
         javaLauncher = javaToolchains.launcherFor {
@@ -38,7 +38,7 @@ configure(project(":lucene:core")) {
             javaLauncher.get()
             return true
           } catch (Exception e) {
-            logger.warn('Launcher for Java {} is not available; skipping regeneration of Panama Foreign & Vector API JAR.', jdkVersion)
+            logger.warn('Launcher for Java {} is not available; skipping regeneration of Panama Vector API JAR.', jdkVersion)
             logger.warn('Error: {}', e.cause?.message)
             logger.warn("Please make sure to point env 'JAVA{}_HOME' to exactly JDK version {} or enable Gradle toolchain auto-download.", jdkVersion, jdkVersion)
             return false
