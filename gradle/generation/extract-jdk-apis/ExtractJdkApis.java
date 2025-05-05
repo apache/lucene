@@ -144,7 +144,7 @@ public final class ExtractJdkApis {
           case ClassFileVersion _ -> builder.with(targetVersion);
           // the PreviewFeature annotation may refer to its own inner classes and therefore we must get rid of the inner class entry:
           case InnerClassesAttribute a -> builder.with(InnerClassesAttribute.of(a.classes().stream()
-              .filter(c -> !Objects.equals(CD_PreviewFeature, c.outerClass().map(ClassEntry::asSymbol).orElse(null)))
+              .filter(c -> !CD_PreviewFeature.equals(c.outerClass().map(ClassEntry::asSymbol).orElse(null)))
               .toList()));
           default -> builder.with(ce);
         }
@@ -163,7 +163,7 @@ public final class ExtractJdkApis {
   private static <E extends ClassFileElement, B extends ClassFileBuilder<E, B>> void dropPreview(ClassFileBuilder<E, B> builder, E ele) {
     switch (ele) {
       case RuntimeInvisibleAnnotationsAttribute att -> builder.with((E) RuntimeInvisibleAnnotationsAttribute.of(att.annotations().stream()
-          .filter(ann -> !Objects.equals(CD_PreviewFeature, ann.classSymbol()))
+          .filter(ann -> !CD_PreviewFeature.equals(ann.classSymbol()))
           .toList()));
       default -> builder.with(ele);
     }
