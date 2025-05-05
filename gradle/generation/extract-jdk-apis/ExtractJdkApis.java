@@ -31,6 +31,7 @@ import java.lang.classfile.attribute.RuntimeInvisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.SourceFileAttribute;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.constant.ClassDesc;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.AccessFlag;
 import java.lang.reflect.ClassFileFormatVersion;
 import java.net.URI;
@@ -56,7 +57,7 @@ import java.util.zip.ZipOutputStream;
 
 public final class ExtractJdkApis {
   
-  private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2025-04-29T00:00:00Z"));
+  private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2025-05-05T00:00:00Z"));
   
   private static final String PATTERN_VECTOR_INCUBATOR    = "jdk.incubator.vector/jdk/incubator/vector/*";
   private static final String PATTERN_VECTOR_VM_INTERNALS = "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
@@ -155,8 +156,18 @@ public final class ExtractJdkApis {
       out.write(cc.transformClass(parsed, ct));
       out.closeEntry();
     }
+    // make sure that no classes are left over except those which are in java.base module
     classesToInclude.removeIf(toProcess.keySet()::contains);
-    System.out.println("Referenced classes not included: " + classesToInclude);
+    var missingClasses = classesToInclude.stream().filter(internalName -> {
+      try {
+        return ClassDesc.ofInternalName(internalName).resolveConstantDesc(MethodHandles.publicLookup()).getModule() != Object.class.getModule();
+      } catch (ReflectiveOperationException _) {
+        return true;
+      }
+    }).toList();
+    if (!missingClasses.isEmpty()) {
+      throw new IllegalStateException("Some referenced classes not publicly available in java.base module: " + missingClasses);
+    }
   }
   
   @SuppressWarnings("unchecked") // no idea how to get generics correct!?!
