@@ -17,6 +17,7 @@
 package org.apache.lucene.queries.function;
 
 import java.io.IOException;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -100,7 +101,7 @@ public class TestFunctionRangeQuery extends FunctionTestSetup {
   private void doTestDeleted(ValueSource valueSource) throws IOException {
     // We delete doc with #3. Note we don't commit it to disk; we search using a near real-time
     // reader.
-    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(null));
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
     try {
       writer.deleteDocuments(
           new FunctionRangeQuery(valueSource, 3, 3, true, true)); // delete the one with #3
