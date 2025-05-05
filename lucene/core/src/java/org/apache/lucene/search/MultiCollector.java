@@ -101,8 +101,7 @@ public class MultiCollector implements Collector {
     this.cacheScores = numNeedsScores >= 2;
   }
 
-  @Override
-  public ScoreMode scoreMode() {
+  public static ScoreMode scoreMode(Collector[] collectors) {
     ScoreMode scoreMode = null;
     for (Collector collector : collectors) {
       if (scoreMode == null) {
@@ -118,6 +117,11 @@ public class MultiCollector implements Collector {
       }
     }
     return scoreMode;
+  }
+
+  @Override
+  public ScoreMode scoreMode() {
+    return scoreMode(collectors);
   }
 
   @Override
