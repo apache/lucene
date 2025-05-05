@@ -33,6 +33,10 @@ Improvements
   This avoids clashes with other ASM versions on classpath because it removes the dependency.
   (Uwe Schindler)
 
+* GITHUB#14226: Use optimistic-with-checking KNN Query execution strategy in place of cross-thread
+  global queue min-score checking. Improves performance and consistency. (Mike Sokolov, Dzung Bui,
+  Ben Trent)
+
 Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
