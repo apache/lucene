@@ -16,6 +16,7 @@
  */
 import java.io.IOException;
 import java.lang.classfile.AccessFlags;
+import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassFileBuilder;
 import java.lang.classfile.ClassFileElement;
@@ -42,7 +43,6 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -111,24 +111,20 @@ public final class ExtractJdkApis {
   private static void process(List<Path> filesToExtract, ZipOutputStream out, ClassFileVersion classFileVersion) throws IOException {
     System.out.println("Loading and analyzing " + filesToExtract.size() + " class files...");
     var classesToInclude = new HashSet<String>();
-    var references = new HashMap<String, String[]>();
     var toProcess = new TreeMap<String, ClassModel>();
     var cc = ClassFile.of(ClassFile.ConstantPoolSharingOption.NEW_POOL, ClassFile.DebugElementsOption.DROP_DEBUG,
         ClassFile.LineNumbersOption.DROP_LINE_NUMBERS, ClassFile.StackMapsOption.DROP_STACK_MAPS);
     for (Path p : filesToExtract) {
       ClassModel parsed = cc.parse(p);
       String internalName = parsed.thisClass().asInternalName();
+      toProcess.put(internalName, parsed);
       if (isVisible(parsed.flags())) {
         classesToInclude.add(internalName);
       }
-      references.put(internalName, Stream.concat(parsed.superclass().stream(), parsed.interfaces().stream())
-          .map(ClassEntry::asInternalName).toArray(String[]::new));
-      toProcess.put(internalName, parsed);
     }
-    // recursively add all superclasses / interfaces of visible classes to classesToInclude:
+    // recursively add all superclasses / interfaces / outer classes of visible classes to classesToInclude:
     for (Set<String> a = classesToInclude; !a.isEmpty();) {
-      a = a.stream().map(references::get).filter(Objects::nonNull).flatMap(Arrays::stream).collect(Collectors.toSet());
-      classesToInclude.addAll(a);
+      classesToInclude.addAll(a = a.stream().map(toProcess::get).filter(Objects::nonNull).flatMap(ExtractJdkApis::getReferences).collect(Collectors.toSet()));
     }
     // remove all non-visible or not referenced classes:
     toProcess.keySet().removeIf(Predicate.not(classesToInclude::contains));
@@ -166,10 +162,22 @@ public final class ExtractJdkApis {
       } catch (ReflectiveOperationException _) {
         return true;
       }
-    }).toList();
+    }).sorted().toList();
     if (!missingClasses.isEmpty()) {
       throw new IllegalStateException("Some referenced classes are not publicly available in java.base module: " + missingClasses);
     }
+  }
+  
+  /** returns all superclasses, interfaces, and outer classes of the parsed class as stream of internal names */
+  private static Stream<String> getReferences(ClassModel parsed) {
+    var parents = Stream.concat(parsed.superclass().stream(), parsed.interfaces().stream())
+        .map(ClassEntry::asInternalName).collect(Collectors.toSet());
+    var outerClasses = parsed.findAttributes(Attributes.innerClasses()).stream()
+        .flatMap(a -> a.classes().stream())
+        .filter(i -> parents.contains(i.innerClass().asInternalName()))
+        .flatMap(i -> i.outerClass().stream())
+        .map(ClassEntry::asInternalName);
+    return Stream.concat(parents.stream(), outerClasses);
   }
   
   @SuppressWarnings("unchecked") // no idea how to get generics correct!?!
