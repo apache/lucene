@@ -53,6 +53,10 @@ Improvements
 
 * GITHUB#14816: Expose search strategy in KNN query
 
+* GITHUB#14226: Use optimistic-with-checking KNN Query execution strategy in place of cross-thread
+  global queue min-score checking. Improves performance and consistency. (Mike Sokolov, Dzung Bui,
+  Ben Trent)
+
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
