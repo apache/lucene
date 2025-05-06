@@ -474,7 +474,7 @@ final class ReadersAndUpdates {
     private int docIDOnDisk = -1;
     // docID from our updates
     private int updateDocID = -1;
-    private FixedBitSet scratch = new FixedBitSet(0);
+    private FixedBitSet scratch;
 
     private final DocValuesInstance onDiskDocValues;
     private final DocValuesInstance updateDocValues;
@@ -549,8 +549,13 @@ final class ReadersAndUpdates {
       }
 
       // we need a scratch bitset because the param bitset doesn't allow bits to be cleared.
-      scratch = FixedBitSet.ensureCapacity(scratch, bitSet.length() - 1);
-      scratch.clear();
+      if (scratch == null) {
+        scratch = new FixedBitSet(bitSet.length());
+      } else {
+        // It's OK even if bitset.length() == 0 according the contract.
+        scratch = FixedBitSet.ensureCapacity(scratch, bitSet.length() - 1);
+        scratch.clear();
+      }
 
       onDiskDocValues.intoBitSet(upTo, scratch, offset);
       docIDOnDisk = onDiskDocValues.docID();
@@ -563,7 +568,7 @@ final class ReadersAndUpdates {
         }
       }
 
-      bitSet.or(scratch);
+      FixedBitSet.orRange(scratch, offset, bitSet, offset, bitSet.length());
 
       // Iterate to find out current doc.
       while (true) {
