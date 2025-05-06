@@ -218,8 +218,8 @@ class TrieBuilder {
   }
 
   /**
-   * Save label dictionary and return a label map that narrow labels' value to a constant value
-   * range starts from 0.
+   * Save label dictionary and return a label map that narrow labels' value to a compact value range
+   * starts from 0.
    */
   private int[] saveLabelDictionary(DataOutput out) throws IOException {
     int[] labels = new int[labelsSeen.cardinality()];
@@ -229,10 +229,13 @@ class TrieBuilder {
     }
     assert label == labelsSeen.length() - 1
         || labelsSeen.nextSetBit(label + 1) == DocIdSetIterator.NO_MORE_DOCS;
+
     if (labels.length == 0 || labels[labels.length - 1] - labels[0] + 1 == labels.length) {
+      // We do not remap if there is no label or labels are already compact.
       out.writeVInt(0);
       return null;
     }
+
     int[] map = new int[BYTE_RANGE];
     out.writeVInt(labels.length);
     for (int i = 0; i < labels.length; i++) {
@@ -251,6 +254,7 @@ class TrieBuilder {
           public void push(Node node) {
             if (labelMap != null) {
               node.label = labelMap[node.label];
+              assert node.label != -1;
             }
             super.push(node);
           }

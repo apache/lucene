@@ -77,6 +77,9 @@ class TrieReader {
   final RandomAccessInput access;
   final IndexInput input;
   final Node root;
+
+  // A global mapping across the entire trie that maps the written labels to compact ordinals for
+  // more efficient storage and negligible impact on terms lookup performance.
   final int[] labelMap;
 
   static IOSupplier<TrieReader> readerSupplier(DataInput metaIn, IndexInput indexIn)
