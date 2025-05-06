@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.tests.store;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.lucene.store.Directory;
@@ -47,7 +50,7 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
           in.readByte();
         }
         // Sequential reads are free with the normal advice
-        assertEquals(count, dir.count());
+        assertThat(dir.count(), equalTo(count));
       }
       try (IndexInput in =
           dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.RANDOM))) {
@@ -57,7 +60,7 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
           in.readByte();
         }
         // But not with the random advice
-        assertFalse(count == dir.count());
+        assertThat(dir.count(), not(equalTo(count)));
       }
     }
   }

@@ -376,7 +376,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
     SegmentWriteState writeState =
         new SegmentWriteState(
-            null, dir, segmentInfo, fieldInfos, null, new IOContext(new FlushInfo(1, 20)));
+            null, dir, segmentInfo, fieldInfos, null, IOContext.flush(new FlushInfo(1, 20)));
 
     SegmentReadState readState =
         new SegmentReadState(dir, segmentInfo, fieldInfos, IOContext.DEFAULT);

@@ -50,6 +50,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.compress.LZ4;
@@ -501,6 +502,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
 
     @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      disi.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
     public long cost() {
       return disi.cost();
     }
@@ -781,6 +787,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public boolean advanceExact(int target) throws IOException {
       return disi.advanceExact(target);
     }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      disi.intoBitSet(upTo, bitSet, offset);
+    }
   }
 
   @Override
@@ -985,6 +996,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           @Override
           public int advance(int target) throws IOException {
             return disi.advance(target);
+          }
+
+          @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            disi.intoBitSet(upTo, bitSet, offset);
           }
 
           @Override
@@ -1491,6 +1507,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           return count;
         }
 
+        @Override
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+          set = false;
+          disi.intoBitSet(upTo, bitSet, offset);
+        }
+
         private void set() {
           if (set == false) {
             final int index = disi.index();
@@ -1639,6 +1661,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public int advance(int target) throws IOException {
             set = false;
             return disi.advance(target);
+          }
+
+          @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            set = false;
+            disi.intoBitSet(upTo, bitSet, offset);
           }
 
           @Override

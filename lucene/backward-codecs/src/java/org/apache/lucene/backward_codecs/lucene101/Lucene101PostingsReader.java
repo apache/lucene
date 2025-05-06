@@ -70,6 +70,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
   private static final List<Impact> DUMMY_IMPACTS =
       Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
 
+  // We stopped storing a placeholder impact with freq=1 for fields with DOCS after 9.12.0
+  private static final List<Impact> DUMMY_IMPACTS_NO_FREQS =
+      Collections.singletonList(new Impact(1, 1L));
+
   private final IndexInput docIn;
   private final IndexInput posIn;
   private final IndexInput payIn;
@@ -1325,13 +1329,14 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
           @Override
           public List<Impact> getImpacts(int level) {
-            if (indexHasFreq) {
-              if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
-                return readImpacts(level0SerializedImpacts, level0Impacts);
-              }
-              if (level == 1) {
-                return readImpacts(level1SerializedImpacts, level1Impacts);
-              }
+            if (indexHasFreq == false) {
+              return DUMMY_IMPACTS_NO_FREQS;
+            }
+            if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
+              return readImpacts(level0SerializedImpacts, level0Impacts);
+            }
+            if (level == 1) {
+              return readImpacts(level1SerializedImpacts, level1Impacts);
             }
             return DUMMY_IMPACTS;
           }

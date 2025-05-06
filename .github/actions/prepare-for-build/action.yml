@@ -7,7 +7,7 @@ description: Creates a shared setup for other workflows
 inputs:
    java-version:
      required: false
-     default: "23"
+     default: "24"
      description: "The default JDK version to set up."
 
    java-distribution:

@@ -205,6 +205,8 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
+import org.hamcrest.Matcher;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -1814,13 +1816,13 @@ public abstract class LuceneTestCase extends Assert {
     if (oldContext.flushInfo() != null) {
       // Always return at least the estimatedSegmentSize of
       // the incoming IOContext:
-      return new IOContext(
+      return IOContext.flush(
           new FlushInfo(
               randomNumDocs, Math.max(oldContext.flushInfo().estimatedSegmentSize(), size)));
     } else if (oldContext.mergeInfo() != null) {
       // Always return at least the estimatedMergeBytes of
       // the incoming IOContext:
-      return new IOContext(
+      return IOContext.merge(
           new MergeInfo(
               randomNumDocs,
               Math.max(oldContext.mergeInfo().estimatedMergeBytes(), size),
@@ -1834,10 +1836,10 @@ public abstract class LuceneTestCase extends Assert {
           context = IOContext.DEFAULT;
           break;
         case 1:
-          context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
+          context = IOContext.merge(new MergeInfo(randomNumDocs, size, true, -1));
           break;
         case 2:
-          context = new IOContext(new FlushInfo(randomNumDocs, size));
+          context = IOContext.flush(new FlushInfo(randomNumDocs, size));
           break;
         default:
           context = IOContext.DEFAULT;
@@ -2084,6 +2086,15 @@ public abstract class LuceneTestCase extends Assert {
   /** Gets a resource from the test's classpath as {@link InputStream}. */
   protected InputStream getDataInputStream(String name) throws IOException {
     return IOUtils.requireResourceNonNull(this.getClass().getResourceAsStream(name), name);
+  }
+
+  // these hide the deprecated Assert.assertThat method
+  public static <T> void assertThat(T actual, Matcher<? super T> matcher) {
+    MatcherAssert.assertThat(actual, matcher);
+  }
+
+  public static <T> void assertThat(String reason, T actual, Matcher<? super T> matcher) {
+    MatcherAssert.assertThat(reason, actual, matcher);
   }
 
   public void assertReaderEquals(String info, IndexReader leftReader, IndexReader rightReader)

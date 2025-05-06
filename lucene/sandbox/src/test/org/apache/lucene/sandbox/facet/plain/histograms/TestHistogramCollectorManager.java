@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.facet.plain.histograms;
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
@@ -113,6 +114,38 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
         newIndexWriterConfig()
             .setIndexSort(new Sort(new SortField("f", SortField.Type.LONG)))
             .setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(3))));
+  }
+
+  public void testMultiRangePointTreeCollector() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+
+    long[] values = new long[5000];
+
+    for (int i = 0; i < values.length; i++) {
+      values[i] = random().nextInt(0, 5000); // Generates a random integer
+    }
+
+    for (long value : values) {
+      Document doc = new Document();
+      // Adding indexed point field to verify multi range collector
+      doc.add(new LongPoint("f", value));
+      w.addDocument(doc);
+    }
+
+    DirectoryReader reader = DirectoryReader.open(w);
+    w.close();
+    IndexSearcher searcher = newSearcher(reader);
+    LongIntHashMap actualCounts =
+        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000));
+    LongIntHashMap expectedCounts = new LongIntHashMap();
+    for (long value : values) {
+      expectedCounts.addTo(Math.floorDiv(value, 1000), 1);
+    }
+    assertEquals(expectedCounts, actualCounts);
+
+    reader.close();
+    dir.close();
   }
 
   private void doTestSkipIndex(IndexWriterConfig cfg) throws IOException {

@@ -321,7 +321,7 @@ final class ReadersAndUpdates {
       }
       final long nextDocValuesGen = info.getNextDocValuesGen();
       final String segmentSuffix = Long.toString(nextDocValuesGen, Character.MAX_RADIX);
-      final IOContext updatesContext = new IOContext(new FlushInfo(info.info.maxDoc(), bytes));
+      final IOContext updatesContext = IOContext.flush(new FlushInfo(info.info.maxDoc(), bytes));
       final FieldInfo fieldInfo = infos.fieldInfo(field);
       assert fieldInfo != null;
       fieldInfo.setDocValuesGen(nextDocValuesGen);
@@ -536,7 +536,7 @@ final class ReadersAndUpdates {
     // HEADER + FOOTER: 40
     // 90 bytes per-field (over estimating long name and attributes map)
     final long estInfosSize = 40 + 90L * fieldInfos.size();
-    final IOContext infosContext = new IOContext(new FlushInfo(info.info.maxDoc(), estInfosSize));
+    final IOContext infosContext = IOContext.flush(new FlushInfo(info.info.maxDoc(), estInfosSize));
     // separately also track which files were created for this gen
     final TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
     infosFormat.write(trackingDir, info.info, segmentSuffix, fieldInfos, infosContext);

@@ -137,10 +137,7 @@ public class SimpleTextCompoundFormat extends CompoundFormat {
         ensureOpen();
         int index = getIndex(name);
         return in.slice(
-            name,
-            startOffsets[index],
-            endOffsets[index] - startOffsets[index],
-            context.readAdvice());
+            name, startOffsets[index], endOffsets[index] - startOffsets[index], context);
       }
 
       @Override
