@@ -568,7 +568,7 @@ final class ReadersAndUpdates {
         }
       }
 
-      FixedBitSet.orRange(scratch, offset, bitSet, offset, bitSet.length());
+      FixedBitSet.orRange(scratch, 0, bitSet, 0, bitSet.length());
 
       // Iterate to find out current doc.
       while (true) {
