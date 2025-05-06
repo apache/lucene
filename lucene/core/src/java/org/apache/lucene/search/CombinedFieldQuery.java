@@ -19,10 +19,13 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -36,6 +39,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.DFRSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.SimilarityBase;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
@@ -59,8 +63,8 @@ import org.apache.lucene.util.SmallFloat;
  * <p>In order for a similarity to be compatible, {@link Similarity#computeNorm} must be additive:
  * the norm of the combined field is the sum of norms for each individual field. The norms must also
  * be encoded using {@link SmallFloat#intToByte4}. These requirements hold for all similarities that
- * don't customize {@link Similarity#computeNorm}, which includes {@link BM25Similarity} and {@link
- * DFRSimilarity}. Per-field similarities are not supported.
+ * compute norms the same way as {@link SimilarityBase#computeNorm}, which includes {@link
+ * BM25Similarity} and {@link DFRSimilarity}. Per-field similarities are not supported.
  *
  * <p>The query also requires that either all fields or no fields have norms enabled. Having only
  * some fields with norms enabled can result in errors.
@@ -82,17 +86,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
   /** A builder for {@link CombinedFieldQuery}. */
   public static class Builder {
     private final Map<String, FieldAndWeight> fieldAndWeights = new HashMap<>();
-    private final BytesRef term;
-
-    /** Create a builder for the given term {@link String}. */
-    public Builder(String term) {
-      this.term = new BytesRef(term);
-    }
-
-    /** Create a builder for the given term bytes. */
-    public Builder(BytesRef term) {
-      this.term = BytesRef.deepCopyOf(term);
-    }
+    private final Set<BytesRef> termsSet = new HashSet<>();
 
     /**
      * Adds a field to this builder.
@@ -117,12 +111,26 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       return this;
     }
 
-    /** Builds the {@link CombinedFieldQuery}. */
-    public CombinedFieldQuery build() {
-      if (fieldAndWeights.size() > IndexSearcher.getMaxClauseCount()) {
+    /**
+     * Adds a term to this builder. If multiple terms are added, they will be treated as synonyms,
+     * ie. their term frequencies will be summed up.
+     */
+    public Builder addTerm(BytesRef term) {
+      if (termsSet.size() >= IndexSearcher.getMaxClauseCount()) {
         throw new IndexSearcher.TooManyClauses();
       }
-      return new CombinedFieldQuery(new TreeMap<>(fieldAndWeights), term);
+      termsSet.add(term);
+      return this;
+    }
+
+    /** Builds the {@link CombinedFieldQuery}. */
+    public CombinedFieldQuery build() {
+      int size = fieldAndWeights.size() * termsSet.size();
+      if (size > IndexSearcher.getMaxClauseCount()) {
+        throw new IndexSearcher.TooManyClauses();
+      }
+      BytesRef[] terms = termsSet.toArray(BytesRef[]::new);
+      return new CombinedFieldQuery(new TreeMap<>(fieldAndWeights), terms);
     }
   }
 
@@ -130,30 +138,39 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
   // sorted map for fields.
   private final TreeMap<String, FieldAndWeight> fieldAndWeights;
-  // term bytes
-  private final BytesRef term;
-  // array of terms per field, sorted by field
+  // array of terms, sorted.
+  private final BytesRef[] terms;
+  // array of terms per field, sorted
   private final Term[] fieldTerms;
 
   private final long ramBytesUsed;
 
-  private CombinedFieldQuery(TreeMap<String, FieldAndWeight> fieldAndWeights, BytesRef term) {
+  private CombinedFieldQuery(TreeMap<String, FieldAndWeight> fieldAndWeights, BytesRef[] terms) {
     this.fieldAndWeights = fieldAndWeights;
-    this.term = Objects.requireNonNull(term);
-    if (fieldAndWeights.size() > IndexSearcher.getMaxClauseCount()) {
+    this.terms = terms;
+    int numFieldTerms = fieldAndWeights.size() * terms.length;
+    if (numFieldTerms > IndexSearcher.getMaxClauseCount()) {
       throw new IndexSearcher.TooManyClauses();
     }
-    this.fieldTerms = new Term[fieldAndWeights.size()];
+    this.fieldTerms = new Term[numFieldTerms];
+    Arrays.sort(terms);
     int pos = 0;
     for (String field : fieldAndWeights.keySet()) {
-      fieldTerms[pos++] = new Term(field, term);
+      for (BytesRef term : terms) {
+        fieldTerms[pos++] = new Term(field, term);
+      }
     }
 
     this.ramBytesUsed =
         BASE_RAM_BYTES
             + RamUsageEstimator.sizeOfObject(fieldAndWeights)
             + RamUsageEstimator.sizeOfObject(fieldTerms)
-            + RamUsageEstimator.sizeOfObject(term);
+            + RamUsageEstimator.sizeOfObject(terms);
+  }
+
+  /** Exposes the terms that are searched by this query. */
+  public List<Term> getTerms() {
+    return Collections.unmodifiableList(Arrays.asList(fieldTerms));
   }
 
   @Override
@@ -171,7 +188,13 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       }
     }
     builder.append(")(");
-    builder.append(Term.toString(term));
+    pos = 0;
+    for (BytesRef term : terms) {
+      if (pos++ != 0) {
+        builder.append(" ");
+      }
+      builder.append(Term.toString(term));
+    }
     builder.append("))");
     return builder.toString();
   }
@@ -181,14 +204,15 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     if (this == o) return true;
     if (sameClassAs(o) == false) return false;
     CombinedFieldQuery that = (CombinedFieldQuery) o;
-    return Objects.equals(fieldAndWeights, that.fieldAndWeights) && term.equals(that.term);
+    return Objects.equals(fieldAndWeights, that.fieldAndWeights)
+        && Arrays.equals(terms, that.terms);
   }
 
   @Override
   public int hashCode() {
     int result = classHash();
     result = 31 * result + Objects.hash(fieldAndWeights);
-    result = 31 * result + term.hashCode();
+    result = 31 * result + Arrays.hashCode(terms);
     return result;
   }
 
@@ -199,7 +223,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    if (fieldAndWeights.isEmpty()) {
+    if (terms.length == 0 || fieldAndWeights.isEmpty()) {
       return new BooleanQuery.Builder().build();
     }
     return this;
