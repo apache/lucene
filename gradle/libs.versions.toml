@@ -2,8 +2,6 @@
 [versions]
 # expressions/ grammars
 antlr = "4.13.2"
-# expressions/ bytecode, gradle extract-jdk-apis
-asm = "9.8"
 # test assertions
 assertj = "3.27.3"
 # analysis/phonetic/ algorithms, gradle build checksums
@@ -66,7 +64,6 @@ zstd = "1.5.7-2"
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
-asm-core = { module = "org.ow2.asm:asm", version.ref = "asm" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
