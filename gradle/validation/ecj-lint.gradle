@@ -18,32 +18,58 @@
 // This adds 'ecjLint' task.
 
 configure(rootProject) {
+  apply plugin: deps.plugins.undercouch.download.get().pluginId
+
+  def ecjVersion = deps.versions.ecjP2Drop.get()
+  def ecjDropJar = project.layout.buildDirectory.file("ecj-drop/${ecjVersion}.jar")
+  def downloadEcjDrop = tasks.register("downloadEcjDrop", Download, {
+    src "https://www.eclipse.org/downloads/download.php?r=1&file=/eclipse/downloads/drops4/S-4.36M1-202504031800/${ecjVersion}.jar"
+    dest project.layout.buildDirectory.dir("ecj-drop")
+    overwrite false
+    onlyIf {
+      !ecjDropJar.get().asFile.exists()
+    }
+  })
+
   configurations {
-    ecjDeps
+    ecjDropDeps
   }
 
-  dependencies {
-    ecjDeps deps.ecj
+  artifacts {
+    add("ecjDropDeps", ecjDropJar, {
+      builtBy downloadEcjDrop
+    })
   }
 }
 
 def resources = scriptResources(buildscript)
 
 allprojects {
-  plugins.withType(JavaPlugin) {
+  plugins.withType(JavaPlugin).configureEach {
+    configurations {
+      ecjDeps
+    }
+
+    dependencies {
+      ecjDeps project(path: ":", configuration: "ecjDropDeps")
+    }
+
+    def ecjConfiguration = configurations.ecjDeps
+
     // Create a [sourceSetName]EcjLint task for each source set
     // with a non-empty java.srcDirs. These tasks are then
     // attached to project's "ecjLint" task.
-    def lintTasks = sourceSets.collect { sourceSet ->
+    def lintTasks = sourceSets.collect { SourceSet sourceSet ->
       def srcDirs = sourceSet.java.sourceDirectories
           .filter { dir -> dir.exists() }
 
-      tasks.create(sourceSet.getTaskName("ecjLint", null), JavaExec, { JavaExec task ->
+      tasks.register(sourceSet.getTaskName("ecjLint", null), JavaExec, { JavaExec task ->
         // This dependency is on a configuration; technically it causes
         // all dependencies to be resolved before this task executes
         // (this includes scheduling tasks that compile the
         // sources from other projects for example).
         dependsOn sourceSet.compileClasspath
+        dependsOn ecjConfiguration
 
         // The inputs are all source files from the sourceSet.
         inputs.files sourceSet.allSource.asFileTree
@@ -56,8 +82,8 @@ allprojects {
         if (sourceSet.name ==~ /main\d+/) {
           enabled = false
         }
-        
-        classpath = rootProject.configurations.ecjDeps
+
+        classpath = ecjConfiguration
         mainClass = "org.eclipse.jdt.internal.compiler.batch.Main"
 
         // Don't emit any .class files.
@@ -133,12 +159,12 @@ allprojects {
       })
     }
 
-    task ecjLint() {
+    def ecjLint = tasks.register("ecjLint", {
       description "Lint Java sources using ECJ."
       group "Verification"
 
       dependsOn lintTasks
-    }
+    })
 
     // Attach ecjLint to check.
     check.dependsOn ecjLint

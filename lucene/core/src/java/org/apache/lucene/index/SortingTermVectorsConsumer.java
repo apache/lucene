@@ -86,7 +86,7 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
   @Override
   void initTermVectorsWriter() throws IOException {
     if (writer == null) {
-      IOContext context = new IOContext(new FlushInfo(lastDocID, bytesUsed.get()));
+      IOContext context = IOContext.flush(new FlushInfo(lastDocID, bytesUsed.get()));
       tmpDirectory = new TrackingTmpOutputDirectoryWrapper(directory);
       writer = TEMP_TERM_VECTORS_FORMAT.vectorsWriter(tmpDirectory, info, context);
       lastDocID = 0;

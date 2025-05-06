@@ -3077,7 +3077,7 @@ public class IndexWriter
             }
 
             IOContext context =
-                new IOContext(new FlushInfo(info.info.maxDoc(), info.sizeInBytes()));
+                IOContext.flush(new FlushInfo(info.info.maxDoc(), info.sizeInBytes()));
 
             FieldInfos fis = readFieldInfos(info);
             for (FieldInfo fi : fis) {
@@ -3419,7 +3419,7 @@ public class IndexWriter
     testReserveDocs(numDocs);
 
     final IOContext context =
-        new IOContext(
+        IOContext.merge(
             new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
 
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(mergeDirectory);
@@ -3969,7 +3969,7 @@ public class IndexWriter
       boolean closeReaders = true;
       try {
         for (MergePolicy.OneMerge merge : pointInTimeMerges.merges) {
-          IOContext context = new IOContext(merge.getStoreMergeInfo());
+          IOContext context = IOContext.merge(merge.getStoreMergeInfo());
           merge.initMergeReaders(
               sci -> {
                 final ReadersAndUpdates rld = getPooledInstance(sci, true);
@@ -5158,7 +5158,7 @@ public class IndexWriter
     merge.checkAborted();
 
     Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
-    IOContext context = new IOContext(merge.getStoreMergeInfo());
+    IOContext context = IOContext.merge(merge.getStoreMergeInfo());
 
     final TrackingDirectoryWrapper dirWrapper = new TrackingDirectoryWrapper(mergeDirectory);
 
