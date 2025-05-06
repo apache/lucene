@@ -46,7 +46,7 @@ public final class FixedBitSet extends BitSet {
   /**
    * If the given {@link FixedBitSet} is large enough to hold {@code numBits+1}, returns the given
    * bits, otherwise returns a new {@link FixedBitSet} which can hold {@code numBits+1} bits. That
-   * means the bitset returned by this method can be safely called with {@code bitset.set(numBits)}
+   * means the bitset returned by this method can be safely called with {@code bits.set(numBits)}
    *
    * <p><b>NOTE:</b> the returned bitset reuses the underlying {@code long[]} of the given {@code
    * bits} if possible. Also, calling {@link #length()} on the returned bits may return a value
