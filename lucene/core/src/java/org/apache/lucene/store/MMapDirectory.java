@@ -277,7 +277,7 @@ public class MMapDirectory extends FSDirectory {
     return 1L << chunkSizePower;
   }
 
-  public static ReadAdvice toReadAdvice(IOContext context) {
+  private static ReadAdvice toReadAdvice(IOContext context) {
     if (context.context() == IOContext.Context.MERGE
         || context.context() == IOContext.Context.FLUSH) {
       return ReadAdvice.SEQUENTIAL;
@@ -292,11 +292,6 @@ public class MMapDirectory extends FSDirectory {
 
     if (context.hints().contains(FileTypeHint.DATA)
         || context.hints().contains(FileTypeHint.INDEX)) {
-      return ReadAdvice.NORMAL;
-    }
-    // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-    // readahead.
-    if (context.hints().contains(FileDataHint.POSTINGS)) {
       return ReadAdvice.NORMAL;
     }
 

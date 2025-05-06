@@ -28,7 +28,6 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.CollectionUtil;
@@ -75,7 +74,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
                 .orElseGet(() -> CodecUtil.indexHeaderLength(Lucene90CompoundFormat.DATA_CODEC, ""))
             + CodecUtil.footerLength();
 
-    handle = directory.openInput(dataFileName, IOContext.DEFAULT.withHints(FileTypeHint.DATA));
+    handle = directory.openInput(dataFileName, IOContext.DEFAULT);
     try {
       CodecUtil.checkIndexHeader(
           handle, Lucene90CompoundFormat.DATA_CODEC, version, version, si.getId(), "");
