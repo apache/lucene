@@ -14,13 +14,14 @@ on:
 
 jobs:
   faiss-tests:
-    name: tests for the Faiss codec (JDK ${{ matrix.java }} on ${{ matrix.os }})
+    name: tests for the Faiss codec (v${{ matrix.faiss-version }} with JDK ${{ matrix.java }} on ${{ matrix.os }})
     timeout-minutes: 15
 
     strategy:
       matrix:
         os: [ ubuntu-latest ]
-        java: [ '23' ]
+        java: [ '24' ]
+        faiss-version: [ '1.11.0' ]
 
     runs-on: ${{ matrix.os }}
 
@@ -30,8 +31,9 @@ jobs:
         id: setup
         with:
           environment-name: faiss-env
+          # TODO: Use only conda-forge if possible, see https://github.com/conda-forge/faiss-split-feedstock/pull/88
           condarc: 'channels: [pytorch, conda-forge]'
-          create-args: faiss-cpu=1.11.0
+          create-args: faiss-cpu=${{ matrix.faiss-version }}
 
       - name: Checkout Lucene
         uses: actions/checkout@v4
