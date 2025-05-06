@@ -474,7 +474,7 @@ final class ReadersAndUpdates {
     private int docIDOnDisk = -1;
     // docID from our updates
     private int updateDocID = -1;
-    private FixedBitSet scratch;
+    private FixedBitSet scratch = new FixedBitSet(0);
 
     private final DocValuesInstance onDiskDocValues;
     private final DocValuesInstance updateDocValues;
@@ -549,12 +549,8 @@ final class ReadersAndUpdates {
       }
 
       // we need a scratch bitset because the param bitset doesn't allow bits to be cleared.
-      if (scratch == null || scratch.length() < upTo - offset) {
-        // intoBitSet is usually called with fixed window size so we do not do overSize here.
-        scratch = new FixedBitSet(upTo - offset);
-      } else {
-        scratch.clear();
-      }
+      scratch = FixedBitSet.ensureCapacity(scratch, bitSet.length() - 1);
+      scratch.clear();
 
       onDiskDocValues.intoBitSet(upTo, scratch, offset);
       docIDOnDisk = onDiskDocValues.docID();
