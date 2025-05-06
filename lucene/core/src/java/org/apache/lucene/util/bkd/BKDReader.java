@@ -986,7 +986,7 @@ public class BKDReader extends PointValues {
       // the byte at `compressedByteOffset` is compressed using run-length compression,
       // other suffix bytes are stored verbatim
       final int compressedByteOffset =
-          compressedDim * config.bytesPerDim + commonPrefixLengths[compressedDim];
+          compressedDim * config.bytesPerDim() + commonPrefixLengths[compressedDim];
       commonPrefixLengths[compressedDim]++;
       int i;
       boolean continueVisit = true;
@@ -994,10 +994,12 @@ public class BKDReader extends PointValues {
         scratchPackedValue[compressedByteOffset] = in.readByte();
         final int runLen = Byte.toUnsignedInt(in.readByte());
         for (int j = 0; j < runLen; ++j) {
-          for (int dim = 0; dim < config.numDims; dim++) {
+          for (int dim = 0; dim < config.numDims(); dim++) {
             int prefix = commonPrefixLengths[dim];
             in.readBytes(
-                scratchPackedValue, dim * config.bytesPerDim + prefix, config.bytesPerDim - prefix);
+                scratchPackedValue,
+                dim * config.bytesPerDim() + prefix,
+                config.bytesPerDim() - prefix);
           }
           int offset = i + j;
           continueVisit =
