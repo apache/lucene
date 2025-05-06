@@ -45,7 +45,6 @@ import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
@@ -116,9 +115,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     String dataName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
     // Doc-values have a forward-only access pattern
-    this.data =
-        state.directory.openInput(
-            dataName, state.context.withHints(FileTypeHint.DATA, DataAccessHint.SEQUENTIAL));
+    this.data = state.directory.openInput(dataName, state.context.withHints(FileTypeHint.DATA));
     boolean success = false;
     try {
       final int version2 =
