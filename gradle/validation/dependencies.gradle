@@ -28,7 +28,6 @@ allprojects {
 
   def testConfigurations = project.configurations.matching {
     it.name in [
-      "annotationProcessor",
       "testCompileClasspath",
       "testRuntimeClasspath"
     ]
