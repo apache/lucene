@@ -28,15 +28,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMultiPhraseQueryParsing extends LuceneTestCase {
 
-  private static class TokenAndPos {
-    public final String token;
-    public final int pos;
-
-    public TokenAndPos(String token, int pos) {
-      this.token = token;
-      this.pos = pos;
-    }
-  }
+  private record TokenAndPos(String token, int pos) {}
 
   private static class CannedAnalyzer extends Analyzer {
     private final TokenAndPos[] tokens;

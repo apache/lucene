@@ -25,7 +25,7 @@ import org.apache.lucene.index.LeafReaderContext;
 /**
  * A {@link Collector} which allows running a search with several {@link Collector}s. It offers a
  * static {@link #wrap} method which accepts a list of collectors and wraps them with {@link
- * MultiCollector}, while filtering out the <code>null</code> null ones.
+ * MultiCollector}, while filtering out the <code>null</code> ones.
  *
  * <p><b>NOTE:</b>When mixing collectors that want to skip low-scoring hits ({@link
  * ScoreMode#TOP_SCORES}) with ones that require to see all hits, such as mixing {@link

@@ -20,9 +20,9 @@ package org.apache.lucene.sandbox.search;
 import java.io.IOException;
 import java.util.Collection;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.Weight;
 
 /**
  * {@link Scorer} wrapper that will compute how much time is spent on moving the iterator,
@@ -31,8 +31,6 @@ import org.apache.lucene.search.Weight;
 class QueryProfilerScorer extends Scorer {
 
   private final Scorer scorer;
-  private final QueryProfilerWeight profileWeight;
-
   private final QueryProfilerTimer scoreTimer,
       nextDocTimer,
       advanceTimer,
@@ -41,10 +39,8 @@ class QueryProfilerScorer extends Scorer {
       computeMaxScoreTimer,
       setMinCompetitiveScoreTimer;
 
-  QueryProfilerScorer(QueryProfilerWeight w, Scorer scorer, QueryProfilerBreakdown profile) {
-    super(w);
+  QueryProfilerScorer(Scorer scorer, QueryProfilerBreakdown profile) {
     this.scorer = scorer;
-    this.profileWeight = w;
     scoreTimer = profile.getTimer(QueryProfilerTimingType.SCORE);
     nextDocTimer = profile.getTimer(QueryProfilerTimingType.NEXT_DOC);
     advanceTimer = profile.getTimer(QueryProfilerTimingType.ADVANCE);
@@ -71,11 +67,6 @@ class QueryProfilerScorer extends Scorer {
   }
 
   @Override
-  public Weight getWeight() {
-    return profileWeight;
-  }
-
-  @Override
   public Collection<ChildScorable> getChildren() throws IOException {
     return scorer.getChildren();
   }
@@ -83,7 +74,7 @@ class QueryProfilerScorer extends Scorer {
   @Override
   public DocIdSetIterator iterator() {
     final DocIdSetIterator in = scorer.iterator();
-    return new DocIdSetIterator() {
+    return new FilterDocIdSetIterator(in) {
 
       @Override
       public int advance(int target) throws IOException {
@@ -103,16 +94,6 @@ class QueryProfilerScorer extends Scorer {
         } finally {
           nextDocTimer.stop();
         }
-      }
-
-      @Override
-      public int docID() {
-        return in.docID();
-      }
-
-      @Override
-      public long cost() {
-        return in.cost();
       }
     };
   }

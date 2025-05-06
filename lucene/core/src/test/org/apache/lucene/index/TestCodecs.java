@@ -61,7 +61,7 @@ import org.junit.BeforeClass;
 //   - skipTo(doc)
 
 public class TestCodecs extends LuceneTestCase {
-  private static String[] fieldNames = new String[] {"one", "two", "three", "four"};
+  private static final String[] fieldNames = new String[] {"one", "two", "three", "four"};
 
   private static int NUM_TEST_ITER;
   private static final int NUM_TEST_THREADS = 3;
@@ -106,6 +106,7 @@ public class TestCodecs extends LuceneTestCase {
                     storePayloads,
                     indexOptions,
                     DocValuesType.NONE,
+                    DocValuesSkipIndexType.NONE,
                     -1,
                     new HashMap<>(),
                     0,

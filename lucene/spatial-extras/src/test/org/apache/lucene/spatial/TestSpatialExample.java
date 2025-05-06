@@ -197,8 +197,8 @@ public class TestSpatialExample extends LuceneTestCase {
 
   private void assertDocMatchedIds(IndexSearcher indexSearcher, TopDocs docs, int... ids)
       throws IOException {
-    assert docs.totalHits.relation == Relation.EQUAL_TO;
-    int[] gotIds = new int[Math.toIntExact(docs.totalHits.value)];
+    assert docs.totalHits.relation() == Relation.EQUAL_TO;
+    int[] gotIds = new int[Math.toIntExact(docs.totalHits.value())];
     for (int i = 0; i < gotIds.length; i++) {
       gotIds[i] =
           indexSearcher

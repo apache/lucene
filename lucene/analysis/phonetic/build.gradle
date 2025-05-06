@@ -23,7 +23,7 @@ dependencies {
   moduleApi project(':lucene:core')
   moduleApi project(':lucene:analysis:common')
 
-  moduleApi 'commons-codec:commons-codec'
+  moduleApi deps.commons.codec
 
   moduleTestImplementation project(':lucene:test-framework')
 } 

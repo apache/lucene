@@ -23,6 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.FutureTask;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FilterLeafReader;
@@ -36,6 +39,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.ThreadInterruptedException;
 
 /** MergePolicy that makes random decisions for testing. */
 public class MockRandomMergePolicy extends MergePolicy {
@@ -232,8 +237,7 @@ public class MockRandomMergePolicy extends MergePolicy {
               "NOTE: MockRandomMergePolicy now swaps in a MismatchedLeafReader for merging reader="
                   + reader);
         }
-        return SlowCodecReaderWrapper.wrap(
-            new MismatchedLeafReader(new MergeReaderWrapper(reader), r));
+        return new MismatchedCodecReader(reader, r);
       } else {
         // otherwise, reader is unchanged
         return reader;
@@ -241,13 +245,27 @@ public class MockRandomMergePolicy extends MergePolicy {
     }
 
     @Override
-    public Sorter.DocMap reorder(CodecReader reader, Directory dir) throws IOException {
+    public Sorter.DocMap reorder(CodecReader reader, Directory dir, Executor executor)
+        throws IOException {
       if (r.nextBoolean()) {
         if (LuceneTestCase.VERBOSE) {
           System.out.println("NOTE: MockRandomMergePolicy now reverses reader=" + reader);
         }
         // Reverse the doc ID order
         return reverse(reader);
+      }
+      if (executor != null && r.nextBoolean()) {
+        // submit random work to the executor
+        Runnable dummyRunnable = () -> {};
+        FutureTask<Void> task = new FutureTask<>(dummyRunnable, null);
+        executor.execute(task);
+        try {
+          task.get();
+        } catch (InterruptedException e) {
+          throw new ThreadInterruptedException(e);
+        } catch (ExecutionException e) {
+          throw IOUtils.rethrowAlways(e.getCause());
+        }
       }
       return null;
     }

@@ -17,12 +17,11 @@
 package org.apache.lucene.analysis.path;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.IgnoreRandomChains;
 
@@ -99,7 +98,7 @@ public class ReversePathHierarchyTokenizer extends Tokenizer {
     this.skip = skip;
     resultToken = new StringBuilder(bufferSize);
     resultTokenBuffer = new char[bufferSize];
-    delimiterPositions = new ArrayList<>(bufferSize / 10);
+    delimiterPositions = new IntArrayList(bufferSize / 10);
   }
 
   private static final int DEFAULT_BUFFER_SIZE = 1024;
@@ -120,7 +119,7 @@ public class ReversePathHierarchyTokenizer extends Tokenizer {
   private int skipped = 0;
   private StringBuilder resultToken;
 
-  private List<Integer> delimiterPositions;
+  private IntArrayList delimiterPositions;
   private int delimitersCount = -1;
   private char[] resultTokenBuffer;
 

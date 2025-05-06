@@ -16,7 +16,11 @@
  */
 package org.apache.lucene.document;
 
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
+import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -36,6 +40,24 @@ import org.apache.lucene.tests.util.LuceneTestCase.Monster;
 public class TestManyKnnDocs extends LuceneTestCase {
   // gradlew -p lucene/core test --tests TestManyKnnDocs -Ptests.heapsize=16g -Dtests.monster=true
 
+  public void testSameVectorIndexedMultipleTimes() throws IOException {
+    try (Directory d = newDirectory()) {
+      float[] vector = new float[16];
+      Arrays.fill(vector, 0.5f);
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 1; j <= 100_000; j++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("field", vector, DOT_PRODUCT));
+          w.addDocument(doc);
+          if (j % 1000 == 0) {
+            w.flush();
+          }
+        }
+        w.commit();
+      }
+    }
+  }
+
   public void testLargeSegment() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig();
     iwc.setCodec(
@@ -43,11 +65,10 @@ public class TestManyKnnDocs extends LuceneTestCase {
             128)); // Make sure to use the ConfigurableMCodec instead of a random one
     iwc.setRAMBufferSizeMB(64); // Use a 64MB buffer to create larger initial segments
     TieredMergePolicy mp = new TieredMergePolicy();
-    mp.setMaxMergeAtOnce(256); // avoid intermediate merges (waste of time with HNSW?)
     mp.setSegmentsPerTier(256); // only merge once at the end when we ask
     iwc.setMergePolicy(mp);
     String fieldName = "field";
-    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
+    VectorSimilarityFunction similarityFunction = DOT_PRODUCT;
 
     try (Directory dir = FSDirectory.open(createTempDir("ManyKnnVectorDocs"));
         IndexWriter iw = new IndexWriter(dir, iwc)) {

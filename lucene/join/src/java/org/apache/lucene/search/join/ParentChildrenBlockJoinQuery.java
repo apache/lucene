@@ -26,6 +26,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSet;
 
@@ -111,7 +112,7 @@ public class ParentChildrenBlockJoinQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         // Childs docs only reside in a single segment, so no need to evaluate all segments
         if (context.ord != readerIndex) {
           return null;
@@ -175,27 +176,29 @@ public class ParentChildrenBlockJoinQuery extends Query {
                 return Math.min(childrenIterator.cost(), localParentDocId - firstChildDocId);
               }
             };
-        return new Scorer(this) {
-          @Override
-          public int docID() {
-            return it.docID();
-          }
+        final var scorer =
+            new Scorer() {
+              @Override
+              public int docID() {
+                return it.docID();
+              }
 
-          @Override
-          public float score() throws IOException {
-            return childrenScorer.score();
-          }
+              @Override
+              public float score() throws IOException {
+                return childrenScorer.score();
+              }
 
-          @Override
-          public float getMaxScore(int upTo) throws IOException {
-            return Float.POSITIVE_INFINITY;
-          }
+              @Override
+              public float getMaxScore(int upTo) throws IOException {
+                return Float.POSITIVE_INFINITY;
+              }
 
-          @Override
-          public DocIdSetIterator iterator() {
-            return it;
-          }
-        };
+              @Override
+              public DocIdSetIterator iterator() {
+                return it;
+              }
+            };
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override

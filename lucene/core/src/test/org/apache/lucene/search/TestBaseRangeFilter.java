@@ -69,7 +69,7 @@ public class TestBaseRangeFilter extends LuceneTestCase {
   static TestIndex signedIndexDir;
   static TestIndex unsignedIndexDir;
 
-  static int minId = 0;
+  static final int minId = 0;
   static int maxId;
 
   static final int intLength = Integer.toString(Integer.MAX_VALUE).length();

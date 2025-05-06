@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.tests.util.automaton;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -33,8 +34,10 @@ import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
+import org.apache.lucene.util.automaton.StatePair;
 import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 import org.apache.lucene.util.automaton.Transition;
+import org.junit.Assert;
 
 /**
  * Utilities for testing automata.
@@ -42,7 +45,7 @@ import org.apache.lucene.util.automaton.Transition;
  * <p>Capable of generating random regular expressions, and automata, and also provides a number of
  * very basic unoptimized implementations (*slow) for testing.
  */
-public class AutomatonTestUtil {
+public class AutomatonTestUtil extends Assert {
   /** Default maximum number of states that {@link Operations#determinize} should create. */
   public static final int DEFAULT_MAX_DETERMINIZED_STATES = 1000000;
 
@@ -154,15 +157,7 @@ public class AutomatonTestUtil {
     private final Automaton a;
     private final Transition[][] transitions;
 
-    private static class ArrivingTransition {
-      final int from;
-      final Transition t;
-
-      public ArrivingTransition(int from, Transition t) {
-        this.from = from;
-        this.t = t;
-      }
-    }
+    private record ArrivingTransition(int from, Transition t) {}
 
     public RandomAcceptedStrings(Automaton a) {
       this.a = a;
@@ -291,9 +286,9 @@ public class AutomatonTestUtil {
     // combine them in random ways
     switch (random.nextInt(4)) {
       case 0:
-        return Operations.concatenate(a1, a2);
+        return Operations.concatenate(List.of(a1, a2));
       case 1:
-        return Operations.union(a1, a2);
+        return Operations.union(List.of(a1, a2));
       case 2:
         return Operations.intersection(a1, a2);
       default:
@@ -335,13 +330,86 @@ public class AutomatonTestUtil {
    * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    */
 
+  /**
+   * Original brics implementation of reverse(). It tries to satisfy multiple use-cases by
+   * populating a set of initial states too.
+   */
+  public static Automaton reverseOriginal(Automaton a, Set<Integer> initialStates) {
+
+    if (Operations.isEmpty(a)) {
+      return new Automaton();
+    }
+
+    int numStates = a.getNumStates();
+
+    // Build a new automaton with all edges reversed
+    Automaton.Builder builder = new Automaton.Builder();
+
+    // Initial node; we'll add epsilon transitions in the end:
+    builder.createState();
+
+    for (int s = 0; s < numStates; s++) {
+      builder.createState();
+    }
+
+    // Old initial state becomes new accept state:
+    builder.setAccept(1, true);
+
+    Transition t = new Transition();
+    for (int s = 0; s < numStates; s++) {
+      int numTransitions = a.getNumTransitions(s);
+      a.initTransition(s, t);
+      for (int i = 0; i < numTransitions; i++) {
+        a.getNextTransition(t);
+        builder.addTransition(t.dest + 1, s + 1, t.min, t.max);
+      }
+    }
+
+    Automaton result = builder.finish();
+
+    int s = 0;
+    BitSet acceptStates = a.getAcceptStates();
+    while (s < numStates && (s = acceptStates.nextSetBit(s)) != -1) {
+      result.addEpsilon(0, s + 1);
+      if (initialStates != null) {
+        initialStates.add(s + 1);
+      }
+      s++;
+    }
+
+    result.finishState();
+
+    return result;
+  }
+
   /** Simple, original brics implementation of Brzozowski minimize() */
   public static Automaton minimizeSimple(Automaton a) {
     Set<Integer> initialSet = new HashSet<Integer>();
-    a = determinizeSimple(Operations.reverse(a, initialSet), initialSet);
+    a = determinizeSimple(reverseOriginal(a, initialSet), initialSet);
     initialSet.clear();
-    a = determinizeSimple(Operations.reverse(a, initialSet), initialSet);
+    a = determinizeSimple(reverseOriginal(a, initialSet), initialSet);
     return a;
+  }
+
+  /** Asserts that an automaton is a minimal DFA. */
+  public static void assertMinimalDFA(Automaton automaton) {
+    assertCleanDFA(automaton);
+    Automaton minimized = minimizeSimple(automaton);
+    assertEquals(minimized.getNumStates(), automaton.getNumStates());
+  }
+
+  /** Asserts that an automaton is a DFA with no dead states */
+  public static void assertCleanDFA(Automaton automaton) {
+    assertCleanNFA(automaton);
+    assertTrue("must be deterministic", automaton.isDeterministic());
+  }
+
+  /** Asserts that an automaton has no dead states */
+  public static void assertCleanNFA(Automaton automaton) {
+    assertFalse(
+        "has dead states reachable from initial", Operations.hasDeadStatesFromInitial(automaton));
+    assertFalse("has dead states leading to accept", Operations.hasDeadStatesToAccept(automaton));
+    assertFalse("has unreachable dead states (ghost states)", Operations.hasDeadStates(automaton));
   }
 
   /** Simple, original brics implementation of determinize() */
@@ -531,6 +599,84 @@ public class AutomatonTestUtil {
     }
 
     assert a.isDeterministic() == true;
+    return true;
+  }
+
+  /**
+   * Returns true if these two automata accept exactly the same language. This is a costly
+   * computation! Both automata must be determinized and have no dead states!
+   */
+  public static boolean sameLanguage(Automaton a1, Automaton a2) {
+    if (a1 == a2) {
+      return true;
+    }
+    return subsetOf(a2, a1) && subsetOf(a1, a2);
+  }
+
+  /**
+   * Returns true if the language of <code>a1</code> is a subset of the language of <code>a2</code>.
+   * Both automata must be determinized and must have no dead states.
+   *
+   * <p>Complexity: quadratic in number of states.
+   */
+  public static boolean subsetOf(Automaton a1, Automaton a2) {
+    if (a1.isDeterministic() == false) {
+      throw new IllegalArgumentException("a1 must be deterministic");
+    }
+    if (a2.isDeterministic() == false) {
+      throw new IllegalArgumentException("a2 must be deterministic");
+    }
+    assert Operations.hasDeadStatesFromInitial(a1) == false;
+    assert Operations.hasDeadStatesFromInitial(a2) == false;
+    if (a1.getNumStates() == 0) {
+      // Empty language is always a subset of any other language
+      return true;
+    } else if (a2.getNumStates() == 0) {
+      return Operations.isEmpty(a1);
+    }
+
+    // TODO: cutover to iterators instead
+    Transition[][] transitions1 = a1.getSortedTransitions();
+    Transition[][] transitions2 = a2.getSortedTransitions();
+    ArrayDeque<StatePair> worklist = new ArrayDeque<>();
+    HashSet<StatePair> visited = new HashSet<>();
+    StatePair p = new StatePair(0, 0);
+    worklist.add(p);
+    visited.add(p);
+    while (worklist.size() > 0) {
+      p = worklist.removeFirst();
+      if (a1.isAccept(p.s1) && a2.isAccept(p.s2) == false) {
+        return false;
+      }
+      Transition[] t1 = transitions1[p.s1];
+      Transition[] t2 = transitions2[p.s2];
+      for (int n1 = 0, b2 = 0; n1 < t1.length; n1++) {
+        while (b2 < t2.length && t2[b2].max < t1[n1].min) {
+          b2++;
+        }
+        int min1 = t1[n1].min, max1 = t1[n1].max;
+
+        for (int n2 = b2; n2 < t2.length && t1[n1].max >= t2[n2].min; n2++) {
+          if (t2[n2].min > min1) {
+            return false;
+          }
+          if (t2[n2].max < Character.MAX_CODE_POINT) {
+            min1 = t2[n2].max + 1;
+          } else {
+            min1 = Character.MAX_CODE_POINT;
+            max1 = Character.MIN_CODE_POINT;
+          }
+          StatePair q = new StatePair(t1[n1].dest, t2[n2].dest);
+          if (!visited.contains(q)) {
+            worklist.add(q);
+            visited.add(q);
+          }
+        }
+        if (min1 <= max1) {
+          return false;
+        }
+      }
+    }
     return true;
   }
 }

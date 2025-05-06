@@ -194,7 +194,8 @@ public class WFSTCompletionLookup extends Lookup {
     // complete top-N
     TopResults<Long> completions = null;
     try {
-      completions = Util.shortestPaths(fst, arc, prefixOutput, weightComparator, num, !exactFirst);
+      completions =
+          Util.shortestPaths(fst, arc, prefixOutput, Comparator.naturalOrder(), num, !exactFirst);
       assert completions.isComplete;
     } catch (IOException bogus) {
       throw new RuntimeException(bogus);
@@ -204,10 +205,10 @@ public class WFSTCompletionLookup extends Lookup {
     for (Result<Long> completion : completions) {
       scratch.setLength(prefixLength);
       // append suffix
-      Util.toBytesRef(completion.input, suffix);
+      Util.toBytesRef(completion.input(), suffix);
       scratch.append(suffix);
       spare.copyUTF8Bytes(scratch.get());
-      results.add(new LookupResult(spare.toString(), decodeWeight(completion.output)));
+      results.add(new LookupResult(spare.toString(), decodeWeight(completion.output())));
     }
     return results;
   }
@@ -300,14 +301,6 @@ public class WFSTCompletionLookup extends Lookup {
       return tmpInput.readInt();
     }
   }
-
-  static final Comparator<Long> weightComparator =
-      new Comparator<Long>() {
-        @Override
-        public int compare(Long left, Long right) {
-          return left.compareTo(right);
-        }
-      };
 
   /** Returns byte size of the underlying FST. */
   @Override

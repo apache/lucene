@@ -616,18 +616,8 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
   }
 
   // Holds surface form separately:
-  private static class TermFreq2 implements Comparable<TermFreq2> {
-    public final String surfaceForm;
-    public final String analyzedForm;
-    public final long weight;
-    public final BytesRef payload;
-
-    public TermFreq2(String surfaceForm, String analyzedForm, long weight, BytesRef payload) {
-      this.surfaceForm = surfaceForm;
-      this.analyzedForm = analyzedForm;
-      this.weight = weight;
-      this.payload = payload;
-    }
+  private record TermFreq2(String surfaceForm, String analyzedForm, long weight, BytesRef payload)
+      implements Comparable<TermFreq2> {
 
     @Override
     public int compareTo(TermFreq2 other) {
@@ -1076,7 +1066,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             return new TokenStreamComponents(
-                r -> {},
+                _ -> {},
                 new CannedTokenStream(
                     token("hairy", 1, 1), token("smelly", 0, 1), token("dog", 1, 1)));
           }
@@ -1275,7 +1265,7 @@ public class TestAnalyzingSuggester extends LuceneTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             return new TokenStreamComponents(
-                r -> {}, new CannedTokenStream(new Token("a", 0, 1), new Token("b", 0, 0, 1)));
+                _ -> {}, new CannedTokenStream(new Token("a", 0, 1), new Token("b", 0, 0, 1)));
           }
         };
 

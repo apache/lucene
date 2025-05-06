@@ -58,6 +58,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 
 /**
  * The Lift class is a data structure that is a variation of a Patricia trie.
@@ -111,9 +112,9 @@ public class Lift extends Reduce {
    * @param nodes contains the patch commands
    */
   public void liftUp(Row in, List<Row> nodes) {
-    Iterator<Cell> i = in.cells.values().iterator();
+    Iterator<ObjectCursor<Cell>> i = in.cells.values().iterator();
     for (; i.hasNext(); ) {
-      Cell c = i.next();
+      Cell c = i.next().value;
       if (c.ref >= 0) {
         Row to = nodes.get(c.ref);
         int sum = to.uniformCmd(changeSkip);

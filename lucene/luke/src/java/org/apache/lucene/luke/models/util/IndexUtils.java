@@ -341,7 +341,7 @@ public final class IndexUtils {
       @Override
       protected String doBody(String segmentFileName) throws IOException {
         String format = "unknown";
-        try (IndexInput in = dir.openInput(segmentFileName, IOContext.DEFAULT)) {
+        try (IndexInput in = dir.openInput(segmentFileName, IOContext.READONCE)) {
           if (CodecUtil.CODEC_MAGIC == CodecUtil.readBEInt(in)) {
             int actualVersion =
                 CodecUtil.checkHeaderNoMagic(

@@ -43,6 +43,9 @@ instances:
   - name: graviton3
     type: c7g.large
     ami: "{{ arm_ami }}"
+  - name: graviton4
+    type: c8g.large
+    ami: "{{ arm_ami }}"
 
 jdk_version: 21.0.1
 x86_jdk_url: "https://download.java.net/java/GA/jdk{{ jdk_version }}/415e3f918a1f4062a0074a2794853d0d/12/GPL/openjdk-{{ jdk_version }}_linux-x64_bin.tar.gz"
@@ -53,7 +56,9 @@ main_branch: "apache:main"
 patch_branch: "{{ lookup('env', 'PATCH_BRANCH') }}"
 
 assemble_command: ./gradlew -p lucene/benchmark-jmh assemble
-jmh_command: java -jar lucene/benchmark-jmh/build/benchmarks/lucene-benchmark-jmh-10.0.0-SNAPSHOT.jar -rf text
+# must match benchmark jar to run
+jmh_jar_path: "lucene/benchmark-jmh/build/benchmarks/"
+jmh_jar_glob: "lucene-benchmark-jmh-*.jar"
 jmh_args: "{{ lookup('env', 'JMH_ARGS', default='-p size=1024') }}"
 
 # services that cause noise and don't help us

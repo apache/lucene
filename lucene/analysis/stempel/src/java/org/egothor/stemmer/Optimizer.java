@@ -58,6 +58,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.lucene.internal.hppc.CharCursor;
 
 /**
  * The Optimizer class is a Trie that will be reduced (have empty rows removed).
@@ -116,10 +117,10 @@ public class Optimizer extends Reduce {
    * @return the resulting Row, or <code>null</code> if the operation cannot be realized
    */
   public Row merge(Row master, Row existing) {
-    Iterator<Character> i = master.cells.keySet().iterator();
+    Iterator<CharCursor> i = master.cells.keys().iterator();
     Row n = new Row();
     for (; i.hasNext(); ) {
-      Character ch = i.next();
+      char ch = i.next().value;
       // XXX also must handle Cnt and Skip !!
       Cell a = master.cells.get(ch);
       Cell b = existing.cells.get(ch);
@@ -130,9 +131,9 @@ public class Optimizer extends Reduce {
       }
       n.cells.put(ch, s);
     }
-    i = existing.cells.keySet().iterator();
+    i = existing.cells.keys().iterator();
     for (; i.hasNext(); ) {
-      Character ch = i.next();
+      char ch = i.next().value;
       if (master.at(ch) != null) {
         continue;
       }

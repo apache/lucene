@@ -485,24 +485,11 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
         contentStrings.toArray(new String[contentStrings.size()]));
   }
 
-  private static class IndexContext {
-
-    final Directory directory;
-    final DirectoryReader indexReader;
-    final Map<String, Map<String, Set<String>>> searchTermToGroupCounts;
-    final String[] contentStrings;
-
-    IndexContext(
-        Directory directory,
-        DirectoryReader indexReader,
-        Map<String, Map<String, Set<String>>> searchTermToGroupCounts,
-        String[] contentStrings) {
-      this.directory = directory;
-      this.indexReader = indexReader;
-      this.searchTermToGroupCounts = searchTermToGroupCounts;
-      this.contentStrings = contentStrings;
-    }
-  }
+  private record IndexContext(
+      Directory directory,
+      DirectoryReader indexReader,
+      Map<String, Map<String, Set<String>>> searchTermToGroupCounts,
+      String[] contentStrings) {}
 
   private static class NullComparator implements Comparator<Comparable<?>> {
 

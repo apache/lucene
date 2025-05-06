@@ -148,7 +148,7 @@ public class DateTools {
     calInstance.setTimeInMillis(time);
 
     switch (resolution) {
-        // NOTE: switch statement fall-through is deliberate
+      // NOTE: switch statement fall-through is deliberate
       case YEAR:
         calInstance.set(Calendar.MONTH, 0);
       case MONTH:

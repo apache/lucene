@@ -107,7 +107,7 @@ final class PerFieldMergeState {
       for (FieldInfo fi : src) {
         if (this.filteredNames.contains(fi.name)) {
           this.filtered.add(fi);
-          hasVectors |= fi.hasVectors();
+          hasVectors |= fi.hasTermVectors();
           hasPostings |= fi.getIndexOptions() != IndexOptions.NONE;
           hasProx |= fi.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
           hasFreq |= fi.getIndexOptions() != IndexOptions.DOCS;
@@ -172,7 +172,7 @@ final class PerFieldMergeState {
     }
 
     @Override
-    public boolean hasVectors() {
+    public boolean hasTermVectors() {
       return filteredHasVectors;
     }
 

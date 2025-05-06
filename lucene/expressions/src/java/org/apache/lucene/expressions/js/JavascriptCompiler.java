@@ -419,7 +419,7 @@ public final class JavascriptCompiler {
             // place dynamic constant with MethodHandle on top of stack
             gen.visitLdcInsn(
                 new ConstantDynamic(
-                    "func" + constantsMap.computeIfAbsent(text, k -> constantsMap.size()),
+                    "func" + constantsMap.computeIfAbsent(text, _ -> constantsMap.size()),
                     METHOD_HANDLE_TYPE.getDescriptor(),
                     DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE,
                     text));
@@ -444,7 +444,7 @@ public final class JavascriptCompiler {
             int index;
 
             text = normalizeQuotes(ctx.getText());
-            index = externalsMap.computeIfAbsent(text, k -> externalsMap.size());
+            index = externalsMap.computeIfAbsent(text, _ -> externalsMap.size());
 
             gen.loadArg(0);
             gen.push(index);

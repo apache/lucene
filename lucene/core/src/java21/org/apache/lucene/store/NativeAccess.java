@@ -28,6 +28,14 @@ abstract class NativeAccess {
   public abstract void madvise(MemorySegment segment, ReadAdvice readAdvice) throws IOException;
 
   /**
+   * Invoke the {@code madvise} call for the given {@link MemorySegment} with {@code MADV_WILLNEED}.
+   */
+  public abstract void madviseWillNeed(MemorySegment segment) throws IOException;
+
+  /** Returns native page size. */
+  public abstract int getPageSize();
+
+  /**
    * Return the NativeAccess instance for this platform. At moment we only support Linux and MacOS
    */
   public static Optional<NativeAccess> getImplementation() {

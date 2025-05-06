@@ -31,7 +31,7 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 
 /** Testcase for the class {@link ExtendableQueryParser} */
 public class TestExtendableQueryParser extends TestQueryParser {
-  private static char[] DELIMITERS =
+  private static final char[] DELIMITERS =
       new char[] {Extensions.DEFAULT_EXTENSION_FIELD_DELIMITER, '-', '|'};
 
   @Override

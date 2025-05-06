@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_index;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -55,7 +56,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
 
   static final String INDEX_NAME = "sorted";
   static final String SUFFIX = "";
-  private static final Version FIRST_PARENT_DOC_VERSION = Version.LUCENE_9_11_0;
+  private static final Version FIRST_PARENT_DOC_VERSION = Version.fromBits(9, 11, 0);
   private static final String PARENT_FIELD_NAME = "___parent";
 
   public TestIndexSortBackwardsCompatibility(Version version, String pattern) {
@@ -63,7 +64,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
   }
 
   /** Provides all sorted versions to the test-framework */
-  @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
+  @ParametersFactory(argumentFormatting = "Lucene-Version: '%1$s'; Pattern: '%2$s'")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
     return allVersion(INDEX_NAME, SUFFIX);
   }
@@ -72,7 +73,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     final Sort sort;
     try (DirectoryReader reader = DirectoryReader.open(directory)) {
       assertEquals(1, reader.leaves().size());
-      sort = reader.leaves().get(0).reader().getMetaData().getSort();
+      sort = reader.leaves().get(0).reader().getMetaData().sort();
       assertNotNull(sort);
       searchExampleIndex(reader);
     }
@@ -125,8 +126,8 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
                       .add(new TermQuery(new Term("bid", "" + i)), BooleanClause.Occur.MUST)
                       .build(),
                   2);
-          assertEquals(2, children.totalHits.value);
-          assertEquals(1, parents.totalHits.value);
+          assertEquals(2, children.totalHits.value());
+          assertEquals(1, parents.totalHits.value());
           // make sure it's sorted
           assertEquals(children.scoreDocs[0].doc + 1, children.scoreDocs[1].doc);
           assertEquals(children.scoreDocs[1].doc + 1, parents.scoreDocs[0].doc);
@@ -140,7 +141,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
   public void testSortedIndex() throws Exception {
     try (DirectoryReader reader = DirectoryReader.open(directory)) {
       assertEquals(1, reader.leaves().size());
-      Sort sort = reader.leaves().get(0).reader().getMetaData().getSort();
+      Sort sort = reader.leaves().get(0).reader().getMetaData().sort();
       assertNotNull(sort);
       assertEquals("<long: \"dateDV\">!", sort.toString());
       // This will confirm the docs are really sorted
@@ -155,7 +156,9 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     MockAnalyzer analyzer = new MockAnalyzer(random());
-    analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
+
+    // Don't filter out tokens that are too short because we use those tokens in assertions (#14344)
+    analyzer.setMaxTokenLength(RandomizedTest.randomIntBetween(5, IndexWriter.MAX_TERM_LENGTH));
 
     // TODO: remove randomness
     IndexWriterConfig conf = new IndexWriterConfig(analyzer);
@@ -195,28 +198,28 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     IndexSearcher searcher = newSearcher(reader);
 
     TopDocs topDocs = searcher.search(new FieldExistsQuery("titleTokenized"), 10);
-    assertEquals(50, topDocs.totalHits.value);
+    assertEquals(50, topDocs.totalHits.value());
 
     topDocs = searcher.search(new FieldExistsQuery("titleDV"), 10);
-    assertEquals(50, topDocs.totalHits.value);
+    assertEquals(50, topDocs.totalHits.value());
 
     topDocs =
         searcher.search(
             IntPoint.newRangeQuery("docid_int", 42, 44),
             10,
             new Sort(new SortField("docid_intDV", SortField.Type.INT)));
-    assertEquals(3, topDocs.totalHits.value);
+    assertEquals(3, topDocs.totalHits.value());
     assertEquals(3, topDocs.scoreDocs.length);
     assertEquals(42, ((FieldDoc) topDocs.scoreDocs[0]).fields[0]);
     assertEquals(43, ((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
     assertEquals(44, ((FieldDoc) topDocs.scoreDocs[2]).fields[0]);
 
     topDocs = searcher.search(new TermQuery(new Term("body", "the")), 5);
-    assertTrue(topDocs.totalHits.value > 0);
+    assertTrue(topDocs.totalHits.value() > 0);
     topDocs =
         searcher.search(
             new MatchAllDocsQuery(), 5, new Sort(new SortField("dateDV", SortField.Type.LONG)));
-    assertEquals(50, topDocs.totalHits.value);
+    assertEquals(50, topDocs.totalHits.value());
     assertEquals(5, topDocs.scoreDocs.length);
     long firstDate = (Long) ((FieldDoc) topDocs.scoreDocs[0]).fields[0];
     long lastDate = (Long) ((FieldDoc) topDocs.scoreDocs[4]).fields[0];

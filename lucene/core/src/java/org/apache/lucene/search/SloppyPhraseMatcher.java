@@ -29,6 +29,7 @@ import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -556,8 +557,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
       ArrayList<FixedBitSet> bb = ppTermsBitSets(rpp, rptTerms);
       unionTermGroups(bb);
       HashMap<Term, Integer> tg = termGroups(rptTerms, bb);
-      HashSet<Integer> distinctGroupIDs = new HashSet<>(tg.values());
-      for (int i = 0; i < distinctGroupIDs.size(); i++) {
+      int numDistinctGroupIds = new IntHashSet(tg.values()).size();
+      for (int i = 0; i < numDistinctGroupIds; i++) {
         tmp.add(new HashSet<>());
       }
       for (PhrasePositions pp : rpp) {
@@ -588,7 +589,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     HashMap<Term, Integer> tcnt = new HashMap<>();
     for (PhrasePositions pp : phrasePositions) {
       for (Term t : pp.terms) {
-        Integer cnt = tcnt.compute(t, (key, old) -> old == null ? 1 : 1 + old);
+        Integer cnt = tcnt.compute(t, (_, old) -> old == null ? 1 : 1 + old);
         if (cnt == 2) {
           tord.put(t, tord.size());
         }

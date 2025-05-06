@@ -389,7 +389,7 @@ public class TestFastVectorHighlighter extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(writer);
     IndexSearcher searcher = newSearcher(reader);
     TopDocs hits = searcher.search(query, 10);
-    assertEquals(2, hits.totalHits.value);
+    assertEquals(2, hits.totalHits.value());
     FieldQuery fieldQuery = highlighter.getFieldQuery(query, reader);
     String[] bestFragments = highlighter.getBestFragments(fieldQuery, reader, 1, "field", 1000, 1);
     assertEquals(

@@ -27,6 +27,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -619,6 +620,8 @@ public class Field implements IndexableField {
       return new StoredValue((double) fieldsData);
     } else if (fieldsData instanceof BytesRef) {
       return new StoredValue((BytesRef) fieldsData);
+    } else if (fieldsData instanceof StoredFieldDataInput) {
+      return new StoredValue((StoredFieldDataInput) fieldsData);
     } else if (fieldsData instanceof String) {
       return new StoredValue((String) fieldsData);
     } else {

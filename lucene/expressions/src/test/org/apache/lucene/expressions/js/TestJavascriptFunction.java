@@ -19,7 +19,7 @@ package org.apache.lucene.expressions.js;
 import org.apache.lucene.expressions.Expression;
 
 public class TestJavascriptFunction extends CompilerTestCase {
-  private static double DELTA = 0.0000001;
+  private static final double DELTA = 0.0000001;
 
   private void assertEvaluatesTo(String expression, double expected) throws Exception {
     Expression evaluator = compile(expression);

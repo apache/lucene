@@ -1503,7 +1503,7 @@ public class TestIndexWriter extends LuceneTestCase {
     DirectoryReader r0 = DirectoryReader.open(dir);
     for (LeafReaderContext ctx : r0.leaves()) {
       SegmentReader sr = (SegmentReader) ctx.reader();
-      assertFalse(sr.getFieldInfos().hasVectors());
+      assertFalse(sr.getFieldInfos().hasTermVectors());
     }
 
     r0.close();
@@ -1930,7 +1930,7 @@ public class TestIndexWriter extends LuceneTestCase {
     builder.add(new Term("body", "test"), 2);
     PhraseQuery pq = builder.build();
     // body:"just ? test"
-    assertEquals(1, is.search(pq, 5).totalHits.value);
+    assertEquals(1, is.search(pq, 5).totalHits.value());
     ir.close();
     dir.close();
   }
@@ -1963,7 +1963,7 @@ public class TestIndexWriter extends LuceneTestCase {
     builder.add(new Term("body", "test"), 3);
     PhraseQuery pq = builder.build();
     // body:"just ? ? test"
-    assertEquals(1, is.search(pq, 5).totalHits.value);
+    assertEquals(1, is.search(pq, 5).totalHits.value());
     ir.close();
     dir.close();
   }
@@ -3484,7 +3484,7 @@ public class TestIndexWriter extends LuceneTestCase {
     assertEquals(2, reader.docFreq(new Term("id", "1")));
     IndexSearcher searcher = new IndexSearcher(reader);
     TopDocs topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     Document document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("2", document.get("version"));
 
@@ -3500,7 +3500,7 @@ public class TestIndexWriter extends LuceneTestCase {
     oldReader.close();
     searcher = new IndexSearcher(reader);
     topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     document = reader.storedFields().document(topDocs.scoreDocs[0].doc);
     assertEquals("3", document.get("version"));
 
@@ -3513,7 +3513,7 @@ public class TestIndexWriter extends LuceneTestCase {
     oldReader.close();
     searcher = new IndexSearcher(reader);
     topDocs = searcher.search(new TermQuery(new Term("id", "1")), 10);
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
     int numSoftDeleted = 0;
     for (SegmentCommitInfo info : writer.cloneSegmentInfos()) {
       numSoftDeleted += info.getSoftDelCount();
@@ -3650,10 +3650,10 @@ public class TestIndexWriter extends LuceneTestCase {
     for (String id : ids) {
       TopDocs topDocs = searcher.search(new TermQuery(new Term("id", id)), 10);
       if (updateSeveralDocs) {
-        assertEquals(2, topDocs.totalHits.value);
+        assertEquals(2, topDocs.totalHits.value());
         assertEquals(Math.abs(topDocs.scoreDocs[0].doc - topDocs.scoreDocs[1].doc), 1);
       } else {
-        assertEquals(1, topDocs.totalHits.value);
+        assertEquals(1, topDocs.totalHits.value());
       }
     }
     if (mixDeletes == false) {
@@ -4264,7 +4264,7 @@ public class TestIndexWriter extends LuceneTestCase {
       t.join();
       assertEquals(4, executed.get());
       expectThrows(AlreadyClosedException.class, () -> queue.processEvents());
-      expectThrows(AlreadyClosedException.class, () -> queue.add(w -> {}));
+      expectThrows(AlreadyClosedException.class, () -> queue.add(_ -> {}));
     }
   }
 
@@ -4442,7 +4442,10 @@ public class TestIndexWriter extends LuceneTestCase {
                       try {
                         assertEquals(
                             1,
-                            acquire.search(new TermQuery(new Term("id", id)), 10).totalHits.value);
+                            acquire
+                                .search(new TermQuery(new Term("id", id)), 10)
+                                .totalHits
+                                .value());
                       } finally {
                         manager.release(acquire);
                       }
@@ -4975,5 +4978,147 @@ public class TestIndexWriter extends LuceneTestCase {
         writer.commit();
       }
     }
+  }
+
+  public void testDocValuesMixedSkippingIndex() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+        Document doc1 = new Document();
+        doc1.add(SortedNumericDocValuesField.indexedField("test", random().nextLong()));
+        writer.addDocument(doc1);
+
+        Document doc2 = new Document();
+        doc2.add(new SortedNumericDocValuesField("test", random().nextLong()));
+        IllegalArgumentException ex =
+            expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
+        ex.printStackTrace();
+        assertEquals(
+            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index type: expected 'RANGE', but it has 'NONE'.",
+            ex.getMessage());
+      }
+    }
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter writer =
+          new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+        Document doc1 = new Document();
+        doc1.add(new SortedSetDocValuesField("test", TestUtil.randomBinaryTerm(random())));
+        writer.addDocument(doc1);
+
+        Document doc2 = new Document();
+        doc2.add(SortedSetDocValuesField.indexedField("test", TestUtil.randomBinaryTerm(random())));
+        IllegalArgumentException ex =
+            expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
+        assertEquals(
+            "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index type: expected 'NONE', but it has 'RANGE'.",
+            ex.getMessage());
+      }
+    }
+  }
+
+  public void testDocValuesSkippingIndexWithoutDocValues() throws Exception {
+    for (DocValuesType docValuesType :
+        new DocValuesType[] {DocValuesType.NONE, DocValuesType.BINARY}) {
+      FieldType fieldType = new FieldType();
+      fieldType.setStored(true);
+      fieldType.setDocValuesType(docValuesType);
+      fieldType.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
+      fieldType.freeze();
+      try (Directory dir = newMockDirectory()) {
+        try (IndexWriter writer =
+            new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+          Document doc1 = new Document();
+          doc1.add(new Field("test", new byte[10], fieldType));
+          IllegalArgumentException ex =
+              expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
+          assertTrue(
+              ex.getMessage().startsWith("field 'test' cannot have docValuesSkipIndexType=RANGE"));
+        }
+      }
+    }
+  }
+
+  public void testAdvanceSegmentInfosCounter() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer;
+    IndexReader reader;
+    writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    // add 10 documents
+    for (int i = 0; i < 10; i++) {
+      addDocWithIndex(writer, i);
+      writer.commit();
+    }
+    writer.advanceSegmentInfosCounter(1);
+    assertTrue(writer.getSegmentInfosCounter() >= 1);
+
+    writer.advanceSegmentInfosCounter(1000);
+    // add 40 documents
+    for (int i = 10; i < 50; i++) {
+      addDocWithIndex(writer, i);
+      writer.commit();
+    }
+
+    // There may be merge operations in the background, here only verifies that the current segment
+    // counter is greater than 1000.
+    assertTrue(writer.getSegmentInfosCounter() >= 1000);
+
+    IndexWriter.DocStats docStats = writer.getDocStats();
+    assertEquals(50, docStats.maxDoc);
+    assertEquals(50, docStats.numDocs);
+    writer.close();
+
+    // check that the index reader gives the same numbers.
+    reader = DirectoryReader.open(dir);
+    assertEquals(50, reader.maxDoc());
+    assertEquals(50, reader.numDocs());
+    reader.close();
+    dir.close();
+  }
+
+  public void testAdvanceSegmentCounterInCrashAndRecoveryScenario() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer;
+    IndexReader reader;
+    writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    // add 100 documents
+    for (int i = 0; i < 100; i++) {
+      addDocWithIndex(writer, i);
+      if (random().nextBoolean()) {
+        writer.commit();
+      }
+    }
+    IndexWriter.DocStats docStats = writer.getDocStats();
+    assertEquals(100, docStats.maxDoc);
+    assertEquals(100, docStats.numDocs);
+    writer.commit();
+    writer.close();
+
+    // recovery and advance segment counter
+    writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    assertEquals(100, writer.getDocStats().numDocs);
+    long newSegmentCounter = writer.getSegmentInfosCounter() + 1000;
+    writer.advanceSegmentInfosCounter(newSegmentCounter);
+
+    // add 10 documents
+    for (int i = 0; i < 10; i++) {
+      addDocWithIndex(writer, i);
+      if (random().nextBoolean()) {
+        writer.commit();
+      }
+    }
+
+    assertTrue(writer.getSegmentInfosCounter() >= newSegmentCounter);
+
+    assertEquals(110, writer.getDocStats().numDocs);
+    // check that the index reader gives the same numbers.
+    writer.commit();
+    reader = DirectoryReader.open(dir);
+    assertEquals(110, reader.maxDoc());
+    assertEquals(110, reader.numDocs());
+    reader.close();
+    writer.close();
+    dir.close();
   }
 }

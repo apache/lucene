@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.gradle.Checksum
-
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
@@ -60,9 +58,7 @@ dependencies {
 
 
 // Compute checksums for release archives.
-task computeChecksums(type: Checksum) {
-  algorithm = Checksum.Algorithm.SHA512
-
+task computeChecksums(type: buildinfra.checksumClass()) {
   files = objects.fileCollection()
   [
       tasks.assembleSourceTgz,

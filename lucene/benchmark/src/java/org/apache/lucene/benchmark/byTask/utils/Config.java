@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.StringTokenizer;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * Perf run configuration properties.
@@ -287,18 +288,15 @@ public class Config {
       for (final Map.Entry<String, Object> entry : valByRound.entrySet()) {
         final String name = entry.getKey();
         Object a = entry.getValue();
-        if (a instanceof int[]) {
-          int[] ai = (int[]) a;
+        if (a instanceof int[] ai) {
           int n1 = (roundNumber - 1) % ai.length;
           int n2 = roundNumber % ai.length;
           sb.append("  ").append(name).append(":").append(ai[n1]).append("-->").append(ai[n2]);
-        } else if (a instanceof double[]) {
-          double[] ad = (double[]) a;
+        } else if (a instanceof double[] ad) {
           int n1 = (roundNumber - 1) % ad.length;
           int n2 = roundNumber % ad.length;
           sb.append("  ").append(name).append(":").append(ad[n1]).append("-->").append(ad[n2]);
-        } else if (a instanceof String[]) {
-          String[] ad = (String[]) a;
+        } else if (a instanceof String[] ad) {
           int n1 = (roundNumber - 1) % ad.length;
           int n2 = roundNumber % ad.length;
           sb.append("  ").append(name).append(":").append(ad[n1]).append("-->").append(ad[n2]);
@@ -338,15 +336,15 @@ public class Config {
       return new int[] {Integer.parseInt(s)};
     }
 
-    ArrayList<Integer> a = new ArrayList<>();
+    IntArrayList a = new IntArrayList();
     StringTokenizer st = new StringTokenizer(s, ":");
     while (st.hasMoreTokens()) {
       String t = st.nextToken();
-      a.add(Integer.valueOf(t));
+      a.add(Integer.parseInt(t));
     }
     int[] res = new int[a.size()];
     for (int i = 0; i < a.size(); i++) {
-      res[i] = a.get(i).intValue();
+      res[i] = a.get(i);
     }
     return res;
   }
@@ -422,16 +420,13 @@ public class Config {
 
         // append actual values, for that round
         Object a = valByRound.get(valByRoundName);
-        if (a instanceof int[]) {
-          int[] ai = (int[]) a;
+        if (a instanceof int[] ai) {
           int n = roundNum % ai.length;
           sb.append(Format.format(ai[n], template));
-        } else if (a instanceof double[]) {
-          double[] ad = (double[]) a;
+        } else if (a instanceof double[] ad) {
           int n = roundNum % ad.length;
           sb.append(Format.format(2, ad[n], template));
-        } else if (a instanceof String[]) {
-          String[] ad = (String[]) a;
+        } else if (a instanceof String[] ad) {
           int n = roundNum % ad.length;
           sb.append(ad[n]);
         } else {

@@ -76,10 +76,14 @@
  * org.apache.lucene.search.similarities.BM25Similarity#BM25Similarity(float,float) b} parameter to
  * {@code 0}.
  *
- * <p>To change {@link org.apache.lucene.search.similarities.Similarity}, one must do so for both
- * indexing and searching, and the changes must happen before either of these actions take place.
- * Although in theory there is nothing stopping you from changing mid-stream, it just isn't
- * well-defined what is going to happen.
+ * <p>To switch to a {@link org.apache.lucene.search.similarities.Similarity} that encodes the
+ * length normalization differently, one must do so for both indexing and searching, and the changes
+ * must happen before either of these actions take place. Note that all of Lucene's built-in
+ * similarities - and more generally all {@link org.apache.lucene.search.similarities.Similarity}
+ * sub-classes that don't override {@link
+ * org.apache.lucene.search.similarities.Similarity#computeNorm(org.apache.lucene.index.FieldInvertState)}
+ * - encode the length normalization factor the same way, so it is fine to change the similarity at
+ * search-time without recreating the index.
  *
  * <p>To make this change, implement your own {@link
  * org.apache.lucene.search.similarities.Similarity} (likely you'll want to simply subclass {@link

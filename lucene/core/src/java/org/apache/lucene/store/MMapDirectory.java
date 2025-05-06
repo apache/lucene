@@ -16,14 +16,21 @@
  */
 package org.apache.lucene.store;
 
+import static org.apache.lucene.index.IndexFileNames.CODEC_FILE_PATTERN;
+
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.channels.ClosedChannelException; // javadoc @link
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.Future;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
+import java.util.logging.Logger;
+import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
 
 /**
@@ -41,6 +48,11 @@ import org.apache.lucene.util.Constants;
  * <p>This class supports preloading files into physical memory upon opening. This can help improve
  * performance of searches on a cold page cache at the expense of slowing down opening an index. See
  * {@link #setPreload(BiPredicate)} for more details.
+ *
+ * <p>This class supports grouping of files that are part of the same logical group. This is a hint
+ * that allows for better handling of resources. For example, individual files that are part of the
+ * same segment can be considered part of the same logical group. See {@link
+ * #setGroupingFunction(Function)} for more details.
  *
  * <p>This class will use the modern {@link java.lang.foreign.MemorySegment} API available since
  * Java 21 which allows to safely unmap previously mmapped files after closing the {@link
@@ -75,21 +87,51 @@ public class MMapDirectory extends FSDirectory {
    * Argument for {@link #setPreload(BiPredicate)} that configures all files to be preloaded upon
    * opening them.
    */
-  public static final BiPredicate<String, IOContext> ALL_FILES = (filename, context) -> true;
+  public static final BiPredicate<String, IOContext> ALL_FILES = (_, _) -> true;
 
   /**
    * Argument for {@link #setPreload(BiPredicate)} that configures no files to be preloaded upon
    * opening them.
    */
-  public static final BiPredicate<String, IOContext> NO_FILES = (filename, context) -> false;
+  public static final BiPredicate<String, IOContext> NO_FILES = (_, _) -> false;
 
   /**
-   * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded upon
-   * opening them if they use the {@link ReadAdvice#RANDOM_PRELOAD} advice.
+   * This sysprop allows to control the total maximum number of mmapped files that can be associated
+   * with a single shared {@link java.lang.foreign.Arena foreign Arena}. For example, to set the max
+   * number of permits to 256, pass the following on the command line pass {@code
+   * -Dorg.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits=256}. Setting a value of 1
+   * associates one file to one shared arena.
+   *
+   * @lucene.internal
    */
-  public static final BiPredicate<String, IOContext> BASED_ON_LOAD_IO_CONTEXT =
-      (filename, context) -> context.readAdvice() == ReadAdvice.RANDOM_PRELOAD;
+  public static final String SHARED_ARENA_MAX_PERMITS_SYSPROP =
+      "org.apache.lucene.store.MMapDirectory.sharedArenaMaxPermits";
 
+  /** Argument for {@link #setGroupingFunction(Function)} that configures no grouping. */
+  public static final Function<String, Optional<String>> NO_GROUPING = _ -> Optional.empty();
+
+  /** Argument for {@link #setGroupingFunction(Function)} that configures grouping by segment. */
+  public static final Function<String, Optional<String>> GROUP_BY_SEGMENT =
+      filename -> {
+        if (!CODEC_FILE_PATTERN.matcher(filename).matches()) {
+          return Optional.empty();
+        }
+        String groupKey = IndexFileNames.parseSegmentName(filename).substring(1);
+        try {
+          // keep the original generation (=0) in base group, later generations in extra group
+          if (IndexFileNames.parseGeneration(filename) > 0) {
+            groupKey += "-g";
+          }
+        } catch (
+            @SuppressWarnings("unused")
+            NumberFormatException unused) {
+          // does not confirm to the generation syntax, or trash
+        }
+        return Optional.of(groupKey);
+      };
+
+  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdvice =
+      (_, _) -> Optional.empty();
   private BiPredicate<String, IOContext> preload = NO_FILES;
 
   /**
@@ -101,6 +143,11 @@ public class MMapDirectory extends FSDirectory {
    * </ul>
    */
   public static final long DEFAULT_MAX_CHUNK_SIZE;
+
+  /** A provider specific context object or null, that will be passed to openInput. */
+  final Object attachment = PROVIDER.attachment();
+
+  private Function<String, Optional<String>> groupingFunction = GROUP_BY_SEGMENT;
 
   final int chunkSizePower;
 
@@ -185,6 +232,35 @@ public class MMapDirectory extends FSDirectory {
   }
 
   /**
+   * Configure {@link ReadAdvice} overrides for certain files. If the function returns {@code
+   * Optional.empty()}, a default {@link ReadAdvice} will be used
+   *
+   * @param toReadAdvice a {@link Function} whose first argument is the file name, and second
+   *     argument is the {@link IOContext} used to open the file. Returns {@code
+   *     Optional.of(ReadAdvice)} to use a specific read advice, or {@code Optional.empty()} if a
+   *     default should be used
+   */
+  public void setReadAdviceOverride(
+      BiFunction<String, IOContext, Optional<ReadAdvice>> toReadAdvice) {
+    this.readAdvice = toReadAdvice;
+  }
+
+  /**
+   * Configures a grouping function for files that are part of the same logical group. The gathering
+   * of files into a logical group is a hint that allows for better handling of resources.
+   *
+   * <p>By default, grouping is {@link #GROUP_BY_SEGMENT}. To disable, invoke this method with
+   * {@link #NO_GROUPING}.
+   *
+   * @param groupingFunction a function that accepts a file name and returns an optional group key.
+   *     If the optional is present, then its value is the logical group to which the file belongs.
+   *     Otherwise, the file name if not associated with any logical group.
+   */
+  public void setGroupingFunction(Function<String, Optional<String>> groupingFunction) {
+    this.groupingFunction = groupingFunction;
+  }
+
+  /**
    * Returns the current mmap chunk size.
    *
    * @see #MMapDirectory(Path, LockFactory, long)
@@ -199,19 +275,40 @@ public class MMapDirectory extends FSDirectory {
     ensureOpen();
     ensureCanRead(name);
     Path path = directory.resolve(name);
-    return PROVIDER.openInput(path, context, chunkSizePower, preload.test(name, context));
+    return PROVIDER.openInput(
+        path,
+        chunkSizePower,
+        readAdvice
+            .apply(name, context)
+            .orElseGet(() -> context.readAdvice().orElse(Constants.DEFAULT_READADVICE)),
+        context == IOContext.READONCE,
+        preload.test(name, context),
+        groupingFunction.apply(name),
+        attachment);
   }
 
   // visible for tests:
-  static final MMapIndexInputProvider PROVIDER;
+  static final MMapIndexInputProvider<Object> PROVIDER;
 
-  interface MMapIndexInputProvider {
-    IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+  interface MMapIndexInputProvider<A> {
+    IndexInput openInput(
+        Path path,
+        int chunkSizePower,
+        ReadAdvice readAdvice,
+        boolean readOnce,
+        boolean preload,
+        Optional<String> group,
+        A attachment)
         throws IOException;
 
     long getDefaultMaxChunkSize();
 
     boolean supportsMadvise();
+
+    /** An optional attachment of the provider, that will be passed to openInput. */
+    default A attachment() {
+      return null;
+    }
 
     default IOException convertMapFailedIOException(
         IOException ioe, String resourceDescription, long bufSize) {
@@ -256,15 +353,35 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
-  private static MMapIndexInputProvider lookupProvider() {
+  private static int getSharedArenaMaxPermitsSysprop() {
+    int ret = 1024; // default value
+    try {
+      String str = System.getProperty(SHARED_ARENA_MAX_PERMITS_SYSPROP);
+      if (str != null) {
+        ret = Integer.parseInt(str);
+      }
+    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+      Logger.getLogger(MMapDirectory.class.getName())
+          .warning(
+              "Cannot read sysprop "
+                  + SHARED_ARENA_MAX_PERMITS_SYSPROP
+                  + ", so the default value will be used.");
+    }
+    return ret;
+  }
+
+  private static <A> MMapIndexInputProvider<A> lookupProvider() {
+    final var maxPermits = getSharedArenaMaxPermitsSysprop();
     final var lookup = MethodHandles.lookup();
     try {
       final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
       // we use method handles, so we do not need to deal with setAccessible as we have private
       // access through the lookup:
-      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class, int.class));
       try {
-        return (MMapIndexInputProvider) constr.invoke();
+        @SuppressWarnings("unchecked")
+        var res = (MMapIndexInputProvider<A>) constr.invoke(maxPermits);
+        return res;
       } catch (RuntimeException | Error e) {
         throw e;
       } catch (Throwable th) {

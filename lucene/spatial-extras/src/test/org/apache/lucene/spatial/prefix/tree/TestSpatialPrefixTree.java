@@ -110,6 +110,6 @@ public class TestSpatialPrefixTree extends SpatialTestCase {
       System.out.println(indexSearcher.storedFields().document(scoreDoc.doc));
     }
 
-    assertEquals(1, search.totalHits.value);
+    assertEquals(1, search.totalHits.value());
   }
 }

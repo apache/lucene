@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.document.Document;
@@ -83,32 +86,42 @@ public class TestBooleanScorer extends LuceneTestCase {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) {
-          throw new UnsupportedOperationException();
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public long cost() {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public BulkScorer bulkScorer() throws IOException {
+              return new BulkScorer() {
+                @Override
+                public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+                    throws IOException {
+                  assert min == 0;
+                  collector.setScorer(new Score());
+                  collector.collect(0);
+                  return DocIdSetIterator.NO_MORE_DOCS;
+                }
+
+                @Override
+                public long cost() {
+                  return 1;
+                }
+              };
+            }
+          };
         }
 
         @Override
         public boolean isCacheable(LeafReaderContext ctx) {
           return false;
-        }
-
-        @Override
-        public BulkScorer bulkScorer(LeafReaderContext context) {
-          return new BulkScorer() {
-            @Override
-            public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
-                throws IOException {
-              assert min == 0;
-              collector.setScorer(new Score());
-              collector.collect(0);
-              return DocIdSetIterator.NO_MORE_DOCS;
-            }
-
-            @Override
-            public long cost() {
-              return 1;
-            }
-          };
         }
       };
     }
@@ -170,13 +183,14 @@ public class TestBooleanScorer extends LuceneTestCase {
     Query query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD) // existing term
-            .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD) // missing term
+            .add(new TermQuery(new Term("missing_field", "baz")), Occur.SHOULD) // missing term
             .build();
 
     // no scores -> term scorer
     Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
-    BulkScorer scorer = ((BooleanWeight) weight).booleanScorer(ctx);
-    assertTrue(scorer instanceof DefaultBulkScorer); // term scorer
+    ScorerSupplier ss = weight.scorerSupplier(ctx);
+    BulkScorer scorer = ((BooleanScorerSupplier) ss).booleanScorer();
+    assertThat(scorer, instanceOf(DefaultBulkScorer.class)); // term scorer
 
     // scores -> term scorer too
     query =
@@ -185,8 +199,9 @@ public class TestBooleanScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD) // missing term
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
-    scorer = ((BooleanWeight) weight).booleanScorer(ctx);
-    assertTrue(scorer instanceof DefaultBulkScorer); // term scorer
+    ss = weight.scorerSupplier(ctx);
+    scorer = ((BooleanScorerSupplier) ss).booleanScorer();
+    assertThat(scorer, instanceOf(DefaultBulkScorer.class)); // term scorer
 
     w.close();
     reader.close();
@@ -215,8 +230,9 @@ public class TestBooleanScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
             .build();
     Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
-    BulkScorer scorer = ((BooleanWeight) weight).booleanScorer(ctx);
-    assertTrue(scorer instanceof ReqExclBulkScorer);
+    ScorerSupplier ss = weight.scorerSupplier(ctx);
+    BulkScorer scorer = ((BooleanScorerSupplier) ss).booleanScorer();
+    assertThat(scorer, instanceOf(ReqExclBulkScorer.class));
 
     query =
         new BooleanQuery.Builder()
@@ -225,8 +241,9 @@ public class TestBooleanScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
-    scorer = ((BooleanWeight) weight).booleanScorer(ctx);
-    assertTrue(scorer instanceof ReqExclBulkScorer);
+    ss = weight.scorerSupplier(ctx);
+    scorer = ((BooleanScorerSupplier) ss).booleanScorer();
+    assertThat(scorer, instanceOf(ReqExclBulkScorer.class));
 
     query =
         new BooleanQuery.Builder()
@@ -234,8 +251,9 @@ public class TestBooleanScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
-    scorer = ((BooleanWeight) weight).booleanScorer(ctx);
-    assertTrue(scorer instanceof ReqExclBulkScorer);
+    ss = weight.scorerSupplier(ctx);
+    scorer = ((BooleanScorerSupplier) ss).booleanScorer();
+    assertThat(scorer, instanceOf(ReqExclBulkScorer.class));
 
     query =
         new BooleanQuery.Builder()
@@ -243,8 +261,9 @@ public class TestBooleanScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
-    scorer = ((BooleanWeight) weight).booleanScorer(ctx);
-    assertTrue(scorer instanceof ReqExclBulkScorer);
+    ss = weight.scorerSupplier(ctx);
+    scorer = ((BooleanScorerSupplier) ss).booleanScorer();
+    assertThat(scorer, instanceOf(ReqExclBulkScorer.class));
 
     w.close();
     reader.close();
@@ -314,8 +333,8 @@ public class TestBooleanScorer extends LuceneTestCase {
               .add(new TermQuery(new Term("foo", "bar")), Occur.FILTER)
               .build();
       Query rewrite = searcher.rewrite(query);
-      assertTrue(rewrite instanceof BoostQuery);
-      assertTrue(((BoostQuery) rewrite).getQuery() instanceof ConstantScoreQuery);
+      assertThat(rewrite, instanceOf(BoostQuery.class));
+      assertThat(((BoostQuery) rewrite).getQuery(), instanceOf(ConstantScoreQuery.class));
     }
 
     Query[] queries =
@@ -343,9 +362,9 @@ public class TestBooleanScorer extends LuceneTestCase {
         Weight weight = searcher.createWeight(rewrite, scoreMode, 1f);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
         if (scoreMode == ScoreMode.TOP_SCORES) {
-          assertTrue(scorer instanceof ConstantScoreScorer);
+          assertThat(scorer, instanceOf(ConstantScoreScorer.class));
         } else {
-          assertFalse(scorer instanceof ConstantScoreScorer);
+          assertThat(scorer, not(instanceOf(ConstantScoreScorer.class)));
         }
       }
     }
@@ -375,7 +394,7 @@ public class TestBooleanScorer extends LuceneTestCase {
       for (ScoreMode scoreMode : ScoreMode.values()) {
         Weight weight = searcher.createWeight(rewrite, scoreMode, 1f);
         Scorer scorer = weight.scorer(reader.leaves().get(0));
-        assertFalse(scorer instanceof ConstantScoreScorer);
+        assertThat(scorer, not(instanceOf(ConstantScoreScorer.class)));
       }
     }
 

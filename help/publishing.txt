@@ -54,7 +54,7 @@ Signing can be enabled by adding the "-Psign" option, for example:
 
 gradlew assembleRelease mavenToApacheReleases -Psign
 
-By default gradle uses a Java-based implementation of PGP for signing, which requieres
+By default, gradle uses a Java-based implementation of PGP for signing, which requires
 several "signing.*" properties via either ~/.gradle/gradle.properties or command-line options:
 
 https://docs.gradle.org/current/userguide/signing_plugin.html#sec:signatory_credentials
@@ -92,9 +92,9 @@ signing.gnupg.passphrase=...                       # Provide your passphrase to 
 If in doubt, consult gradle's signing plugin documentation:
 https://docs.gradle.org/current/userguide/signing_plugin.html#sec:using_gpg_agent
 
-"signing.gnupg.passphrase" is not recomended because there is no advantage to using an external GPG process if you use it.  If you
-are comfortable giving gradle your passphrase, then there is no reason to use an external GPG process via '-PuseGpg'.   Just use the
-"signing.*" options described previuosly to let gradle deal with your key directly.
+"signing.gnupg.passphrase" is not recommended because there is no advantage to using an external GPG process if you use it.
+If you are comfortable giving gradle your passphrase, then there is no reason to use an external GPG process via '-PuseGpg'.
+Just use the "signing.*" options described previuosly to let gradle deal with your key directly.
 
 Because of how Gradle's signing plugin invokes GPG, using an external GPG process *only* works if your GPG configuration uses a 
 GPG agent (required by gpg2) and if the "pinentry" for your GPG agent does not require access to the tty to prompt you for a password.

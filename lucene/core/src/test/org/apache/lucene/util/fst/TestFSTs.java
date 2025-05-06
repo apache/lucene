@@ -1350,14 +1350,14 @@ public class TestFSTs extends LuceneTestCase {
             true);
     assertTrue(res.isComplete);
     assertEquals(3, res.topN.size());
-    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input);
-    assertEquals(7L, res.topN.get(0).output.longValue());
+    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input());
+    assertEquals(7L, res.topN.get(0).output().longValue());
 
-    assertEquals(Util.toIntsRef(newBytesRef("ax"), scratch), res.topN.get(1).input);
-    assertEquals(17L, res.topN.get(1).output.longValue());
+    assertEquals(Util.toIntsRef(newBytesRef("ax"), scratch), res.topN.get(1).input());
+    assertEquals(17L, res.topN.get(1).output().longValue());
 
-    assertEquals(Util.toIntsRef(newBytesRef("aab"), scratch), res.topN.get(2).input);
-    assertEquals(22L, res.topN.get(2).output.longValue());
+    assertEquals(Util.toIntsRef(newBytesRef("aab"), scratch), res.topN.get(2).input());
+    assertEquals(22L, res.topN.get(2).output().longValue());
   }
 
   public void testRejectNoLimits() throws IOException {
@@ -1393,8 +1393,8 @@ public class TestFSTs extends LuceneTestCase {
     assertTrue(res.isComplete); // rejected(4) + topN(2) <= maxQueueSize(6)
 
     assertEquals(1, res.topN.size());
-    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input);
-    assertEquals(7L, res.topN.get(0).output.longValue());
+    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input());
+    assertEquals(7L, res.topN.get(0).output().longValue());
     rejectCount.set(0);
     searcher =
         new Util.TopNSearcher<>(fst, 2, 5, minLongComparator) {
@@ -1452,17 +1452,17 @@ public class TestFSTs extends LuceneTestCase {
     assertTrue(res.isComplete);
     assertEquals(3, res.topN.size());
 
-    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input);
-    assertEquals(7L, res.topN.get(0).output.output1.longValue()); // weight
-    assertEquals(36L, res.topN.get(0).output.output2.longValue()); // output
+    assertEquals(Util.toIntsRef(newBytesRef("aac"), scratch), res.topN.get(0).input());
+    assertEquals(7L, res.topN.get(0).output().output1.longValue()); // weight
+    assertEquals(36L, res.topN.get(0).output().output2.longValue()); // output
 
-    assertEquals(Util.toIntsRef(newBytesRef("ax"), scratch), res.topN.get(1).input);
-    assertEquals(17L, res.topN.get(1).output.output1.longValue()); // weight
-    assertEquals(85L, res.topN.get(1).output.output2.longValue()); // output
+    assertEquals(Util.toIntsRef(newBytesRef("ax"), scratch), res.topN.get(1).input());
+    assertEquals(17L, res.topN.get(1).output().output1.longValue()); // weight
+    assertEquals(85L, res.topN.get(1).output().output2.longValue()); // output
 
-    assertEquals(Util.toIntsRef(newBytesRef("aab"), scratch), res.topN.get(2).input);
-    assertEquals(22L, res.topN.get(2).output.output1.longValue()); // weight
-    assertEquals(57L, res.topN.get(2).output.output2.longValue()); // output
+    assertEquals(Util.toIntsRef(newBytesRef("aab"), scratch), res.topN.get(2).input());
+    assertEquals(22L, res.topN.get(2).output().output1.longValue()); // weight
+    assertEquals(57L, res.topN.get(2).output().output2.longValue()); // output
   }
 
   public void testShortestPathsRandom() throws Exception {
@@ -1548,24 +1548,20 @@ public class TestFSTs extends LuceneTestCase {
 
       for (int hit = 0; hit < r.topN.size(); hit++) {
         // System.out.println("  check hit " + hit);
-        assertEquals(matches.get(hit).input, r.topN.get(hit).input);
-        assertEquals(matches.get(hit).output, r.topN.get(hit).output);
+        assertEquals(matches.get(hit).input(), r.topN.get(hit).input());
+        assertEquals(matches.get(hit).output(), r.topN.get(hit).output());
       }
     }
   }
 
-  private static class TieBreakByInputComparator<T> implements Comparator<Result<T>> {
-    private final Comparator<T> comparator;
-
-    public TieBreakByInputComparator(Comparator<T> comparator) {
-      this.comparator = comparator;
-    }
+  private record TieBreakByInputComparator<T>(Comparator<T> comparator)
+      implements Comparator<Result<T>> {
 
     @Override
     public int compare(Result<T> a, Result<T> b) {
-      int cmp = comparator.compare(a.output, b.output);
+      int cmp = comparator.compare(a.output(), b.output());
       if (cmp == 0) {
-        return a.input.compareTo(b.input);
+        return a.input().compareTo(b.input());
       } else {
         return cmp;
       }
@@ -1678,8 +1674,8 @@ public class TestFSTs extends LuceneTestCase {
 
       for (int hit = 0; hit < r.topN.size(); hit++) {
         // System.out.println("  check hit " + hit);
-        assertEquals(matches.get(hit).input, r.topN.get(hit).input);
-        assertEquals(matches.get(hit).output, r.topN.get(hit).output);
+        assertEquals(matches.get(hit).input(), r.topN.get(hit).input());
+        assertEquals(matches.get(hit).output(), r.topN.get(hit).output());
       }
     }
   }

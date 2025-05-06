@@ -41,8 +41,6 @@ package org.apache.lucene.queries.intervals;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.analysis.CachingTokenFilter;
@@ -50,9 +48,7 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
 
@@ -66,6 +62,10 @@ import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
  *     "https://github.com/elastic/elasticsearch/blob/7.10/server/src/main/java/org/elasticsearch/index/query/IntervalBuilder.java"
  */
 final class IntervalBuilder {
+
+  private static final IntervalsSource NO_INTERVALS =
+      Intervals.noIntervals("No terms in analyzed text");
+
   static IntervalsSource analyzeText(CachingTokenFilter stream, int maxGaps, boolean ordered)
       throws IOException {
     assert stream != null;
@@ -235,94 +235,4 @@ final class IntervalBuilder {
     }
     return clauses;
   }
-
-  static final IntervalsSource NO_INTERVALS =
-      new IntervalsSource() {
-        @Override
-        public IntervalIterator intervals(String field, LeafReaderContext ctx) {
-          return new IntervalIterator() {
-            boolean exhausted = false;
-
-            @Override
-            public int start() {
-              return NO_MORE_INTERVALS;
-            }
-
-            @Override
-            public int end() {
-              return NO_MORE_INTERVALS;
-            }
-
-            @Override
-            public int gaps() {
-              throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int nextInterval() {
-              return NO_MORE_INTERVALS;
-            }
-
-            @Override
-            public float matchCost() {
-              return 0;
-            }
-
-            @Override
-            public int docID() {
-              return exhausted ? NO_MORE_DOCS : -1;
-            }
-
-            @Override
-            public int nextDoc() {
-              exhausted = true;
-              return NO_MORE_DOCS;
-            }
-
-            @Override
-            public int advance(int target) {
-              exhausted = true;
-              return NO_MORE_DOCS;
-            }
-
-            @Override
-            public long cost() {
-              return 0;
-            }
-          };
-        }
-
-        @Override
-        public IntervalMatchesIterator matches(String field, LeafReaderContext ctx, int doc) {
-          return null;
-        }
-
-        @Override
-        public void visit(String field, QueryVisitor visitor) {}
-
-        @Override
-        public int minExtent() {
-          return 0;
-        }
-
-        @Override
-        public Collection<IntervalsSource> pullUpDisjunctions() {
-          return Collections.emptyList();
-        }
-
-        @Override
-        public int hashCode() {
-          return 0;
-        }
-
-        @Override
-        public boolean equals(Object other) {
-          return other == this;
-        }
-
-        @Override
-        public String toString() {
-          return "no_match";
-        }
-      };
 }

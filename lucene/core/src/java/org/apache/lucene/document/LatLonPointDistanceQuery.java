@@ -44,6 +44,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.NumericUtils;
 
 /** Distance query for {@link LatLonPoint}. */
@@ -114,15 +115,6 @@ final class LatLonPointDistanceQuery extends Query {
           GeoEncodingUtils.createDistancePredicate(latitude, longitude, radiusMeters);
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
-
-      @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return true;
       }
@@ -143,10 +135,9 @@ final class LatLonPointDistanceQuery extends Query {
         LatLonPoint.checkCompatible(fieldInfo);
 
         // matching docids
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
         final IntersectVisitor visitor = getIntersectVisitor(result);
 
-        final Weight weight = this;
         return new ScorerSupplier() {
 
           long cost = -1;
@@ -164,10 +155,10 @@ final class LatLonPointDistanceQuery extends Query {
               long[] cost = new long[] {reader.maxDoc()};
               values.intersect(getInverseIntersectVisitor(result, cost));
               final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
             values.intersect(visitor);
-            return new ConstantScoreScorer(weight, score(), scoreMode, result.build().iterator());
+            return new ConstantScoreScorer(score(), scoreMode, result.build().iterator());
           }
 
           @Override
@@ -292,6 +283,11 @@ final class LatLonPointDistanceQuery extends Query {
           }
 
           @Override
+          public void visit(IntsRef ref) {
+            adder.add(ref);
+          }
+
+          @Override
           public void visit(DocIdSetIterator iterator) throws IOException {
             adder.add(iterator);
           }
@@ -348,6 +344,14 @@ final class LatLonPointDistanceQuery extends Query {
           public void visit(int docID) {
             result.clear(docID);
             cost[0]--;
+          }
+
+          @Override
+          public void visit(IntsRef ref) {
+            for (int i = 0; i < ref.length; i++) {
+              result.clear(ref.ints[ref.offset + i]);
+            }
+            cost[0] = Math.max(0, cost[0] - ref.length);
           }
 
           @Override

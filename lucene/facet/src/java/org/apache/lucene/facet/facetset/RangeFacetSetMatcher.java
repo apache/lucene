@@ -34,8 +34,8 @@ public class RangeFacetSetMatcher extends FacetSetMatcher {
    */
   public RangeFacetSetMatcher(String label, DimRange... dimRanges) {
     super(label, getDims(dimRanges));
-    this.lowerRanges = Arrays.stream(dimRanges).mapToLong(range -> range.min).toArray();
-    this.upperRanges = Arrays.stream(dimRanges).mapToLong(range -> range.max).toArray();
+    this.lowerRanges = Arrays.stream(dimRanges).mapToLong(DimRange::min).toArray();
+    this.upperRanges = Arrays.stream(dimRanges).mapToLong(DimRange::max).toArray();
   }
 
   @Override

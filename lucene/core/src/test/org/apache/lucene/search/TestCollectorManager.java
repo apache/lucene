@@ -122,13 +122,8 @@ public class TestCollectorManager extends LuceneTestCase {
     return generated;
   }
 
-  private static final class CompositeCollectorManager
+  private record CompositeCollectorManager(List<Predicate<Integer>> predicates)
       implements CollectorManager<Collector, List<Integer>> {
-    private final List<Predicate<Integer>> predicates;
-
-    CompositeCollectorManager(List<Predicate<Integer>> predicates) {
-      this.predicates = predicates;
-    }
 
     @Override
     public Collector newCollector() throws IOException {

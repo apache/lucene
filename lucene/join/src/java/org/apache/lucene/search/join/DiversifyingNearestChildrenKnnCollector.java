@@ -17,12 +17,12 @@
 
 package org.apache.lucene.search.join;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 
@@ -43,7 +43,20 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
    * @param parentBitSet The leaf parent bitset
    */
   public DiversifyingNearestChildrenKnnCollector(int k, int visitLimit, BitSet parentBitSet) {
-    super(k, visitLimit);
+    this(k, visitLimit, null, parentBitSet);
+  }
+
+  /**
+   * Create a new object for joining nearest child kNN documents with a parent bitset
+   *
+   * @param k The number of joined parent documents to collect
+   * @param visitLimit how many child vectors can be visited
+   * @param searchStrategy The search strategy to use
+   * @param parentBitSet The leaf parent bitset
+   */
+  public DiversifyingNearestChildrenKnnCollector(
+      int k, int visitLimit, KnnSearchStrategy searchStrategy, BitSet parentBitSet) {
+    super(k, visitLimit, searchStrategy);
     this.parentBitSet = parentBitSet;
     this.heap = new NodeIdCachingHeap(k);
   }
@@ -117,7 +130,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     // Used to keep track of nodeId -> positionInHeap. This way when new scores are added for a
     // node, the heap can be
     // updated efficiently.
-    private final Map<Integer, Integer> nodeIdHeapIndex;
+    private final IntIntHashMap nodeIdHeapIndex;
     private boolean closed = false;
 
     public NodeIdCachingHeap(int maxSize) {
@@ -130,8 +143,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       // NOTE: we add +1 because all access to heap is 1-based not 0-based.  heap[0] is unused.
       heapSize = maxSize + 1;
       this.maxSize = maxSize;
-      this.nodeIdHeapIndex =
-          new HashMap<>(maxSize < 2 ? maxSize + 1 : (int) (maxSize / 0.75 + 1.0));
+      this.nodeIdHeapIndex = new IntIntHashMap(maxSize);
       this.heapNodes = new ParentChildScore[heapSize];
     }
 
@@ -179,8 +191,9 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       if (closed) {
         throw new IllegalStateException();
       }
-      Integer previousNodeIndex = nodeIdHeapIndex.get(parentNode);
-      if (previousNodeIndex != null) {
+      int index = nodeIdHeapIndex.indexOf(parentNode);
+      if (index >= 0) {
+        int previousNodeIndex = nodeIdHeapIndex.indexGet(index);
         if (heapNodes[previousNodeIndex].score < score) {
           updateElement(previousNodeIndex, node, parentNode, score);
           return true;
@@ -279,15 +292,8 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
   }
 
   /** Keeps track of child node, parent node, and the stored score. */
-  private static class ParentChildScore implements Comparable<ParentChildScore> {
-    private final int parent, child;
-    private final float score;
-
-    ParentChildScore(int child, int parent, float score) {
-      this.child = child;
-      this.parent = parent;
-      this.score = score;
-    }
+  private record ParentChildScore(int child, int parent, float score)
+      implements Comparable<ParentChildScore> {
 
     @Override
     public int compareTo(ParentChildScore o) {

@@ -415,7 +415,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
             segmentInfo,
             fieldInfos.finish(),
             pendingUpdates,
-            new IOContext(new FlushInfo(numDocsInRAM, lastCommittedBytesUsed)));
+            IOContext.flush(new FlushInfo(numDocsInRAM, lastCommittedBytesUsed)));
     final double startMBUsed = lastCommittedBytesUsed / 1024. / 1024.;
 
     // Apply delete-by-docID now (delete-byDocID only
@@ -487,7 +487,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         infoStream.message(
             "DWPT",
             "new segment has "
-                + (flushState.fieldInfos.hasVectors() ? "vectors" : "no vectors")
+                + (flushState.fieldInfos.hasTermVectors() ? "vectors" : "no vectors")
                 + "; "
                 + (flushState.fieldInfos.hasNorms() ? "norms" : "no norms")
                 + "; "
@@ -599,7 +599,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     IndexWriter.setDiagnostics(newSegment.info, IndexWriter.SOURCE_FLUSH);
 
     IOContext context =
-        new IOContext(new FlushInfo(newSegment.info.maxDoc(), newSegment.sizeInBytes()));
+        IOContext.flush(new FlushInfo(newSegment.info.maxDoc(), newSegment.sizeInBytes()));
 
     boolean success = false;
     try {
@@ -718,6 +718,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     return flushPending.get() == Boolean.TRUE;
   }
 
+  boolean isQueueAdvanced() {
+    return deleteQueue.isAdvanced();
+  }
+
   /** Sets this DWPT as flush pending. This can only be set once. */
   void setFlushPending() {
     flushPending.set(Boolean.TRUE);
@@ -732,7 +736,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
   }
 
   /**
-   * Commits the current {@link #ramBytesUsed()} and stores it's value for later reuse. The last
+   * Commits the current {@link #ramBytesUsed()} and stores its value for later reuse. The last
    * committed bytes used can be retrieved via {@link #getLastCommittedBytesUsed()}
    */
   void commitLastBytesUsed(long delta) {

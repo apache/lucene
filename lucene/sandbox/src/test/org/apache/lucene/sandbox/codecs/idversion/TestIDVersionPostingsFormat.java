@@ -343,7 +343,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
 
     /** Returns docID if found, else -1. */
     public int lookup(BytesRef id, long version) throws IOException {
-      for (int seg = 0; seg < numSegs; seg++) {
+      for (int seg = 0; seg < numEnums; seg++) {
         if (((IDVersionSegmentTermsEnum) termsEnums[seg]).seekExact(id, version)) {
           if (VERBOSE) {
             System.out.println("  found in seg=" + termsEnums[seg]);

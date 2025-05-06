@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.util.Collection;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.MultiTermQuery;
@@ -41,9 +42,27 @@ public class SortedDocValuesField extends Field {
   /** Type for sorted bytes DocValues */
   public static final FieldType TYPE = new FieldType();
 
+  private static final FieldType INDEXED_TYPE;
+
   static {
     TYPE.setDocValuesType(DocValuesType.SORTED);
     TYPE.freeze();
+
+    INDEXED_TYPE = new FieldType(TYPE);
+    INDEXED_TYPE.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
+    INDEXED_TYPE.freeze();
+  }
+
+  /**
+   * Creates a new {@link SortedDocValuesField} with the specified 64-bit long value that also
+   * creates a {@link FieldType#docValuesSkipIndexType() skip index}.
+   *
+   * @param name field name
+   * @param bytes binary content
+   * @throws IllegalArgumentException if the field name is null
+   */
+  public static SortedDocValuesField indexedField(String name, BytesRef bytes) {
+    return new SortedDocValuesField(name, bytes, INDEXED_TYPE);
   }
 
   /**
@@ -54,7 +73,11 @@ public class SortedDocValuesField extends Field {
    * @throws IllegalArgumentException if the field name is null
    */
   public SortedDocValuesField(String name, BytesRef bytes) {
-    super(name, TYPE);
+    this(name, bytes, TYPE);
+  }
+
+  private SortedDocValuesField(String name, BytesRef bytes, FieldType fieldType) {
+    super(name, fieldType);
     fieldsData = bytes;
   }
 

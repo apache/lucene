@@ -59,8 +59,7 @@ public class TermRangeQueryNodeProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof TermRangeQueryNode) {
-      TermRangeQueryNode termRangeNode = (TermRangeQueryNode) node;
+    if (node instanceof TermRangeQueryNode termRangeNode) {
       FieldQueryNode upper = termRangeNode.getUpperBound();
       FieldQueryNode lower = termRangeNode.getLowerBound();
 

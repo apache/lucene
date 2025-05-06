@@ -18,8 +18,6 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -326,33 +324,14 @@ import org.apache.lucene.util.SmallFloat;
  */
 public abstract class TFIDFSimilarity extends Similarity {
 
-  /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  public TFIDFSimilarity() {}
-
-  /**
-   * True if overlap tokens (tokens with a position of increment of zero) are discounted from the
-   * document's length.
-   */
-  protected boolean discountOverlaps = true;
-
-  /**
-   * Determines whether overlap tokens (Tokens with 0 position increment) are ignored when computing
-   * norm. By default this is true, meaning overlap tokens do not count when computing norms.
-   *
-   * @lucene.experimental
-   * @see #computeNorm
-   */
-  public void setDiscountOverlaps(boolean v) {
-    discountOverlaps = v;
+  /** Default constructor: parameter-free */
+  public TFIDFSimilarity() {
+    super();
   }
 
-  /**
-   * Returns true if overlap tokens are discounted from the document's length.
-   *
-   * @see #setDiscountOverlaps
-   */
-  public boolean getDiscountOverlaps() {
-    return discountOverlaps;
+  /** Primary constructor. */
+  public TFIDFSimilarity(boolean discountOverlaps) {
+    super(discountOverlaps);
   }
 
   /**
@@ -438,7 +417,7 @@ public abstract class TFIDFSimilarity extends Similarity {
   /**
    * Compute an index-time normalization value for this field instance.
    *
-   * @param length the number of terms in the field, optionally {@link #setDiscountOverlaps(boolean)
+   * @param length the number of terms in the field, optionally {@link #getDiscountOverlaps()
    *     discounting overlaps}
    * @return a length normalization value
    */
@@ -451,19 +430,6 @@ public abstract class TFIDFSimilarity extends Similarity {
     for (int i = 0; i < 256; i++) {
       LENGTH_TABLE[i] = SmallFloat.byte4ToInt((byte) i);
     }
-  }
-
-  @Override
-  public final long computeNorm(FieldInvertState state) {
-    final int numTerms;
-    if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
-      numTerms = state.getUniqueTermCount();
-    } else if (discountOverlaps) {
-      numTerms = state.getLength() - state.getNumOverlap();
-    } else {
-      numTerms = state.getLength();
-    }
-    return SmallFloat.intToByte4(numTerms);
   }
 
   @Override

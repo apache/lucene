@@ -18,13 +18,13 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
@@ -56,7 +56,7 @@ public final class DrillDownQuery extends Query {
   private final List<BooleanQuery.Builder> dimQueries = new ArrayList<>();
   private final Map<String, Integer> drillDownDims = new LinkedHashMap<>();
   private final List<Query> builtDimQueries = new ArrayList<>();
-  private final Set<Integer> dirtyDimQueryIndex = new HashSet<>();
+  private final IntHashSet dirtyDimQueryIndex = new IntHashSet();
 
   /** Used by clone() and DrillSideways */
   DrillDownQuery(
@@ -202,8 +202,8 @@ public final class DrillDownQuery extends Query {
    * @return The array of dimQueries
    */
   public Query[] getDrillDownQueries() {
-    for (Integer dirtyDimIndex : dirtyDimQueryIndex) {
-      builtDimQueries.set(dirtyDimIndex, this.dimQueries.get(dirtyDimIndex).build());
+    for (IntCursor dirtyDimIndex : dirtyDimQueryIndex) {
+      builtDimQueries.set(dirtyDimIndex.value, this.dimQueries.get(dirtyDimIndex.value).build());
     }
     dirtyDimQueryIndex.clear();
 

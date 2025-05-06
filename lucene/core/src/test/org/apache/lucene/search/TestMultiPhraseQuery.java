@@ -367,10 +367,10 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
       mpqb.add(new Term[] {new Term("field", "b"), new Term("field", "c")}, 0);
     }
     TopDocs hits = s.search(mpqb.build(), 2);
-    assertEquals(2, hits.totalHits.value);
+    assertEquals(2, hits.totalHits.value());
     assertEquals(hits.scoreDocs[0].score, hits.scoreDocs[1].score, 1e-5);
     /*
-    for(int hit=0;hit<hits.totalHits.value;hit++) {
+    for(int hit=0;hit<hits.totalHits.value();hit++) {
       ScoreDoc sd = hits.scoreDocs[hit];
       System.out.println("  hit doc=" + sd.doc + " score=" + sd.score);
     }
@@ -458,10 +458,10 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
     }
 
     TopDocs hits = s.search(q, 1);
-    assertEquals("wrong number of results", nExpected, hits.totalHits.value);
+    assertEquals("wrong number of results", nExpected, hits.totalHits.value());
 
     if (VERBOSE) {
-      for (int hit = 0; hit < hits.totalHits.value; hit++) {
+      for (int hit = 0; hit < hits.totalHits.value(); hit++) {
         ScoreDoc sd = hits.scoreDocs[hit];
         System.out.println("  hit doc=" + sd.doc + " score=" + sd.score);
       }

@@ -16,8 +16,13 @@
  */
 package org.apache.lucene.util;
 
+import static com.carrotsearch.randomizedtesting.generators.RandomNumbers.randomIntBetween;
+
+import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.vectorization.BaseVectorizationTestCase;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -275,5 +280,237 @@ public class TestVectorUtil extends LuceneTestCase {
     u[0] = v[1];
     u[1] = -v[0];
     assertEquals(0, VectorUtil.cosine(u, v), DELTA);
+  }
+
+  interface ToIntBiFunction {
+    int apply(byte[] a, byte[] b);
+  }
+
+  public void testBasicXorBitCount() {
+    testBasicXorBitCountImpl(VectorUtil::xorBitCount);
+    testBasicXorBitCountImpl(VectorUtil::xorBitCountInt);
+    testBasicXorBitCountImpl(VectorUtil::xorBitCountLong);
+    // test sanity
+    testBasicXorBitCountImpl(TestVectorUtil::xorBitCount);
+  }
+
+  void testBasicXorBitCountImpl(ToIntBiFunction xorBitCount) {
+    assertEquals(0, xorBitCount.apply(new byte[] {1}, new byte[] {1}));
+    assertEquals(0, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {1, 2, 3}));
+    assertEquals(1, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {0, 2, 3}));
+    assertEquals(2, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {0, 6, 3}));
+    assertEquals(3, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {0, 6, 7}));
+    assertEquals(4, xorBitCount.apply(new byte[] {1, 2, 3}, new byte[] {2, 6, 7}));
+
+    // 32-bit / int boundary
+    assertEquals(0, xorBitCount.apply(new byte[] {1, 2, 3, 4}, new byte[] {1, 2, 3, 4}));
+    assertEquals(1, xorBitCount.apply(new byte[] {1, 2, 3, 4}, new byte[] {0, 2, 3, 4}));
+    assertEquals(0, xorBitCount.apply(new byte[] {1, 2, 3, 4, 5}, new byte[] {1, 2, 3, 4, 5}));
+    assertEquals(1, xorBitCount.apply(new byte[] {1, 2, 3, 4, 5}, new byte[] {0, 2, 3, 4, 5}));
+
+    // 64-bit / long boundary
+    assertEquals(
+        0,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8}, new byte[] {1, 2, 3, 4, 5, 6, 7, 8}));
+    assertEquals(
+        1,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8}, new byte[] {0, 2, 3, 4, 5, 6, 7, 8}));
+
+    assertEquals(
+        0,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9}, new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9}));
+    assertEquals(
+        1,
+        xorBitCount.apply(
+            new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9}, new byte[] {0, 2, 3, 4, 5, 6, 7, 8, 9}));
+  }
+
+  public void testXorBitCount() {
+    int iterations = atLeast(100);
+    for (int i = 0; i < iterations; i++) {
+      int size = random().nextInt(1024);
+      byte[] a = new byte[size];
+      byte[] b = new byte[size];
+      random().nextBytes(a);
+      random().nextBytes(b);
+
+      int expected = xorBitCount(a, b);
+      assertEquals(expected, VectorUtil.xorBitCount(a, b));
+      assertEquals(expected, VectorUtil.xorBitCountInt(a, b));
+      assertEquals(expected, VectorUtil.xorBitCountLong(a, b));
+    }
+  }
+
+  private static int xorBitCount(byte[] a, byte[] b) {
+    int res = 0;
+    for (int i = 0; i < a.length; i++) {
+      byte x = a[i];
+      byte y = b[i];
+      for (int j = 0; j < Byte.SIZE; j++) {
+        if (x == y) break;
+        if ((x & 0x01) != (y & 0x01)) res++;
+        x = (byte) ((x & 0xFF) >> 1);
+        y = (byte) ((y & 0xFF) >> 1);
+      }
+    }
+    return res;
+  }
+
+  public void testFindNextGEQ() {
+    int padding = TestUtil.nextInt(random(), 0, 5);
+    int[] values = new int[128 + padding];
+    int v = 0;
+    for (int i = 0; i < 128; ++i) {
+      v += TestUtil.nextInt(random(), 1, 1000);
+      values[i] = v;
+    }
+
+    // Now duel with slowFindFirstGreater
+    for (int iter = 0; iter < 1_000; ++iter) {
+      int from = TestUtil.nextInt(random(), 0, 127);
+      int target =
+          TestUtil.nextInt(random(), values[from], Math.max(values[from], values[127]))
+              + random().nextInt(10)
+              - 5;
+      assertEquals(
+          slowFindNextGEQ(values, 128, target, from),
+          VectorUtil.findNextGEQ(values, target, from, 128));
+    }
+  }
+
+  private static int slowFindNextGEQ(int[] buffer, int length, int target, int from) {
+    for (int i = from; i < length; ++i) {
+      if (buffer[i] >= target) {
+        return i;
+      }
+    }
+    return length;
+  }
+
+  public void testInt4BitDotProductInvariants() {
+    int iterations = atLeast(10);
+    for (int i = 0; i < iterations; i++) {
+      int size = randomIntBetween(random(), 1, 10);
+      var d = new byte[size];
+      var q = new byte[size * 4 - 1];
+      expectThrows(IllegalArgumentException.class, () -> VectorUtil.int4BitDotProduct(q, d));
+    }
+  }
+
+  static final VectorizationProvider defaultedProvider =
+      BaseVectorizationTestCase.defaultProvider();
+  static final VectorizationProvider defOrPanamaProvider =
+      BaseVectorizationTestCase.maybePanamaProvider();
+
+  public void testBasicInt4BitDotProduct() {
+    testBasicInt4BitDotProductImpl(VectorUtil::int4BitDotProduct);
+    testBasicInt4BitDotProductImpl(defaultedProvider.getVectorUtilSupport()::int4BitDotProduct);
+    testBasicInt4BitDotProductImpl(defOrPanamaProvider.getVectorUtilSupport()::int4BitDotProduct);
+  }
+
+  interface Int4BitDotProduct {
+    long apply(byte[] q, byte[] d);
+  }
+
+  void testBasicInt4BitDotProductImpl(Int4BitDotProduct Int4BitDotProductFunc) {
+    assertEquals(15L, Int4BitDotProductFunc.apply(new byte[] {1, 1, 1, 1}, new byte[] {1}));
+    assertEquals(
+        30L, Int4BitDotProductFunc.apply(new byte[] {1, 2, 1, 2, 1, 2, 1, 2}, new byte[] {1, 2}));
+
+    var d = new byte[] {1, 2, 3};
+    var q = new byte[] {1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3};
+    assert scalarInt4BitDotProduct(q, d) == 60L; // 4 + 8 + 16 + 32
+    assertEquals(60L, Int4BitDotProductFunc.apply(q, d));
+
+    d = new byte[] {1, 2, 3, 4};
+    q = new byte[] {1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4};
+    assert scalarInt4BitDotProduct(q, d) == 75L; // 5 + 10 + 20 + 40
+    assertEquals(75L, Int4BitDotProductFunc.apply(q, d));
+
+    d = new byte[] {1, 2, 3, 4, 5};
+    q = new byte[] {1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5};
+    assert scalarInt4BitDotProduct(q, d) == 105L; // 7 + 14 + 28 + 56
+    assertEquals(105L, Int4BitDotProductFunc.apply(q, d));
+
+    d = new byte[] {1, 2, 3, 4, 5, 6};
+    q = new byte[] {1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
+    assert scalarInt4BitDotProduct(q, d) == 135L; // 9 + 18 + 36 + 72
+    assertEquals(135L, Int4BitDotProductFunc.apply(q, d));
+
+    d = new byte[] {1, 2, 3, 4, 5, 6, 7};
+    q =
+        new byte[] {
+          1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7
+        };
+    assert scalarInt4BitDotProduct(q, d) == 180L; // 12 + 24 + 48 + 96
+    assertEquals(180L, Int4BitDotProductFunc.apply(q, d));
+
+    d = new byte[] {1, 2, 3, 4, 5, 6, 7, 8};
+    q =
+        new byte[] {
+          1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6,
+          7, 8
+        };
+    assert scalarInt4BitDotProduct(q, d) == 195L; // 13 + 26 + 52 + 104
+    assertEquals(195L, Int4BitDotProductFunc.apply(q, d));
+
+    d = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9};
+    q =
+        new byte[] {
+          1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3,
+          4, 5, 6, 7, 8, 9
+        };
+    assert scalarInt4BitDotProduct(q, d) == 225L; // 15 + 30 + 60 + 120
+    assertEquals(225L, Int4BitDotProductFunc.apply(q, d));
+  }
+
+  public void testInt4BitDotProduct() {
+    testInt4BitDotProductImpl(VectorUtil::int4BitDotProduct);
+    testInt4BitDotProductImpl(defaultedProvider.getVectorUtilSupport()::int4BitDotProduct);
+    testInt4BitDotProductImpl(defOrPanamaProvider.getVectorUtilSupport()::int4BitDotProduct);
+  }
+
+  void testInt4BitDotProductImpl(Int4BitDotProduct Int4BitDotProductFunc) {
+    int iterations = atLeast(50);
+    for (int i = 0; i < iterations; i++) {
+      int size = random().nextInt(5000);
+      var d = new byte[size];
+      var q = new byte[size * 4];
+      random().nextBytes(d);
+      random().nextBytes(q);
+      assertEquals(scalarInt4BitDotProduct(q, d), Int4BitDotProductFunc.apply(q, d));
+
+      Arrays.fill(d, Byte.MAX_VALUE);
+      Arrays.fill(q, Byte.MAX_VALUE);
+      assertEquals(scalarInt4BitDotProduct(q, d), Int4BitDotProductFunc.apply(q, d));
+
+      Arrays.fill(d, Byte.MIN_VALUE);
+      Arrays.fill(q, Byte.MIN_VALUE);
+      assertEquals(scalarInt4BitDotProduct(q, d), Int4BitDotProductFunc.apply(q, d));
+    }
+  }
+
+  static int scalarInt4BitDotProduct(byte[] q, byte[] d) {
+    int res = 0;
+    for (int i = 0; i < 4; i++) {
+      res += (popcount(q, i * d.length, d, d.length) << i);
+    }
+    return res;
+  }
+
+  public static int popcount(byte[] a, int aOffset, byte[] b, int length) {
+    int res = 0;
+    for (int j = 0; j < length; j++) {
+      int value = (a[aOffset + j] & b[j]) & 0xFF;
+      for (int k = 0; k < Byte.SIZE; k++) {
+        if ((value & (1 << k)) != 0) {
+          ++res;
+        }
+      }
+    }
+    return res;
   }
 }

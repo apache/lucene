@@ -742,7 +742,7 @@ public class TestPhraseQuery extends LuceneTestCase {
         });
   }
 
-  static String[] DOCS =
+  private static final String[] DOCS =
       new String[] {
         "a b c d e f g h",
         "b c b",
@@ -755,7 +755,7 @@ public class TestPhraseQuery extends LuceneTestCase {
   public void testTopPhrases() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-    String[] docs = ArrayUtil.copyOfSubArray(DOCS, 0, DOCS.length);
+    String[] docs = ArrayUtil.copyArray(DOCS);
     Collections.shuffle(Arrays.asList(docs), random());
     for (String value : DOCS) {
       Document doc = new Document();
@@ -1017,7 +1017,7 @@ public class TestPhraseQuery extends LuceneTestCase {
       int numTerms = random().nextInt(1 << random().nextInt(5));
       String text =
           IntStream.range(0, numTerms)
-              .mapToObj(index -> random().nextBoolean() ? "a" : random().nextBoolean() ? "b" : "c")
+              .mapToObj(_ -> random().nextBoolean() ? "a" : random().nextBoolean() ? "b" : "c")
               .collect(Collectors.joining(" "));
       doc.add(new TextField("foo", text, Store.NO));
       w.addDocument(doc);

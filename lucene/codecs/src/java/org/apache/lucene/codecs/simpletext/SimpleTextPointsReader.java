@@ -227,7 +227,7 @@ class SimpleTextPointsReader extends PointsReader {
 
     // checksum is fixed-width encoded with 20 bytes, plus 1 byte for newline (the space is included
     // in SimpleTextUtil.CHECKSUM):
-    long footerStartPos = dataIn.length() - (SimpleTextUtil.CHECKSUM.length + 21);
+    long footerStartPos = clone.length() - (SimpleTextUtil.CHECKSUM.length + 21);
     ChecksumIndexInput input = new BufferedChecksumIndexInput(clone);
     while (true) {
       SimpleTextUtil.readLine(input, scratch);

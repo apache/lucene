@@ -24,7 +24,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
+import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -83,9 +83,9 @@ import org.apache.lucene.util.fst.Util;
 */
 
 /**
- * This is just like {@link Lucene90BlockTreeTermsWriter}, except it also stores a version per term,
- * and adds a method to its TermsEnum implementation to seekExact only if the version is &gt;= the
- * specified version. The version is added to the terms index to avoid seeking if no term in the
+ * This is just like {@link Lucene103BlockTreeTermsWriter}, except it also stores a version per
+ * term, and adds a method to its TermsEnum implementation to seekExact only if the version is &gt;=
+ * the specified version. The version is added to the terms index to avoid seeking if no term in the
  * block has a high enough version. The term blocks file is .tiv and the terms index extension is
  * .tipv.
  *
@@ -143,15 +143,14 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
   final PostingsWriterBase postingsWriter;
   final FieldInfos fieldInfos;
 
-  private static class FieldMetaData {
-    public final FieldInfo fieldInfo;
-    public final Pair<BytesRef, Long> rootCode;
-    public final long numTerms;
-    public final long indexStartFP;
-    public final BytesRef minTerm;
-    public final BytesRef maxTerm;
-
-    public FieldMetaData(
+  private record FieldMetaData(
+      FieldInfo fieldInfo,
+      Pair<BytesRef, Long> rootCode,
+      long numTerms,
+      long indexStartFP,
+      BytesRef minTerm,
+      BytesRef maxTerm) {
+    private FieldMetaData(
         FieldInfo fieldInfo,
         Pair<BytesRef, Long> rootCode,
         long numTerms,
@@ -182,7 +181,7 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
       int minItemsInBlock,
       int maxItemsInBlock)
       throws IOException {
-    Lucene90BlockTreeTermsWriter.validateSettings(minItemsInBlock, maxItemsInBlock);
+    Lucene103BlockTreeTermsWriter.validateSettings(minItemsInBlock, maxItemsInBlock);
     maxDoc = state.segmentInfo.maxDoc();
 
     final String termsFileName =

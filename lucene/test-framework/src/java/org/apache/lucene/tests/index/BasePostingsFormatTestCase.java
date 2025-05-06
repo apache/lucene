@@ -42,18 +42,21 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
@@ -71,6 +74,7 @@ import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -1727,5 +1731,73 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
       }
       TestUtil.checkIndex(dir);
     }
+  }
+
+  public void testMismatchedFields() throws Exception {
+    Directory dir1 = newDirectory();
+    IndexWriter w1 = new IndexWriter(dir1, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(new StringField("f", "a", Store.NO));
+    doc.add(new StringField("g", "b", Store.NO));
+    w1.addDocument(doc);
+
+    Directory dir2 = newDirectory();
+    IndexWriter w2 =
+        new IndexWriter(dir2, newIndexWriterConfig().setMergeScheduler(new SerialMergeScheduler()));
+    w2.addDocument(doc);
+    w2.commit();
+
+    DirectoryReader reader = DirectoryReader.open(w1);
+    w1.close();
+    w2.addIndexes(new MismatchedCodecReader((CodecReader) getOnlyLeafReader(reader), random()));
+    reader.close();
+    w2.forceMerge(1);
+    reader = DirectoryReader.open(w2);
+    w2.close();
+
+    LeafReader leafReader = getOnlyLeafReader(reader);
+
+    TermsEnum te = leafReader.terms("f").iterator();
+    assertEquals("a", te.next().utf8ToString());
+    assertEquals(2, te.docFreq());
+    assertNull(te.next());
+
+    te = leafReader.terms("g").iterator();
+    assertEquals("b", te.next().utf8ToString());
+    assertEquals(2, te.docFreq());
+    assertNull(te.next());
+
+    IOUtils.close(reader, w2, dir1, dir2);
+  }
+
+  public void testDocIDRunEnd() throws Exception {
+    Directory dir = newDirectory();
+    for (int iter = 0; iter < 100; ++iter) {
+      IndexWriterConfig iwc = newIndexWriterConfig(null).setOpenMode(OpenMode.CREATE);
+      iwc.setCodec(getCodec());
+      // Prevent randomization from slowing down indexing too much
+      if (iwc.getMaxBufferedDocs() < 1_000) {
+        iwc.setMaxBufferedDocs(1_000);
+      }
+      IndexWriter iw = new IndexWriter(dir, iwc);
+      Document emptyDoc = new Document();
+      Document doc = new Document();
+      doc.add(new StringField("", "something", Field.Store.NO));
+      int numEmptyDocs = TestUtil.nextInt(random(), 0, 5_000);
+      int numDocs = TestUtil.nextInt(random(), 4096, 20_000);
+      for (int i = 0; i < numEmptyDocs; ++i) {
+        iw.addDocument(emptyDoc);
+      }
+      for (int i = 0; i < numDocs; ++i) {
+        iw.addDocument(doc);
+      }
+      iw.forceMerge(1);
+      DirectoryReader ir = DirectoryReader.open(iw);
+      LeafReader ar = getOnlyLeafReader(ir);
+      TestUtil.checkReader(ar);
+      ir.close();
+      iw.close();
+    }
+    dir.close();
   }
 }

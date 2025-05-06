@@ -66,6 +66,7 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static ExportTermsDialogFactory instance;
 
   private final IndexToolsFactory indexToolsFactory = new IndexToolsFactory();
@@ -199,7 +200,7 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
     execButtons.add(exportBtn);
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setMargin(new Insets(3, 0, 3, 0));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     execButtons.add(closeBtn);
     return execButtons;
   }

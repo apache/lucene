@@ -17,9 +17,6 @@
 
 package org.apache.lucene.facet.taxonomy;
 
-import com.carrotsearch.hppc.IntArrayList;
-import com.carrotsearch.hppc.IntIntHashMap;
-import com.carrotsearch.hppc.cursors.IntIntCursor;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,6 +34,8 @@ import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
+import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Base class for all taxonomy-based facets impls. */
@@ -55,20 +54,6 @@ abstract class TaxonomyFacets extends Facets {
       this.value = value;
     }
   }
-
-  private static final Comparator<FacetResult> BY_VALUE_THEN_DIM =
-      new Comparator<FacetResult>() {
-        @Override
-        public int compare(FacetResult a, FacetResult b) {
-          if (a.value.doubleValue() > b.value.doubleValue()) {
-            return -1;
-          } else if (b.value.doubleValue() > a.value.doubleValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        }
-      };
 
   /** Index field name provided to the constructor. */
   final String indexFieldName;
@@ -129,8 +114,8 @@ abstract class TaxonomyFacets extends Facets {
     int maxDoc = 0;
     int sumTotalHits = 0;
     for (FacetsCollector.MatchingDocs docs : fc.getMatchingDocs()) {
-      sumTotalHits += docs.totalHits;
-      maxDoc += docs.context.reader().maxDoc();
+      sumTotalHits += docs.totalHits();
+      maxDoc += docs.context().reader().maxDoc();
     }
 
     // if our result set is < 10% of the index, we collect sparsely (use hash map):
@@ -329,6 +314,7 @@ abstract class TaxonomyFacets extends Facets {
 
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     int[] ordinals = new int[labelValues.length];
+    int[] counts = new int[labelValues.length];
     Number[] values = new Number[labelValues.length];
 
     for (int i = labelValues.length - 1; i >= 0; i--) {
@@ -336,6 +322,7 @@ abstract class TaxonomyFacets extends Facets {
       assert ordAndValue != null;
       ordinals[i] = ordAndValue.ord;
       values[i] = ordAndValue.getValue();
+      counts[i] = getCount(ordinals[i]);
     }
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
@@ -343,7 +330,8 @@ abstract class TaxonomyFacets extends Facets {
     // add 1 here to also account for the dim:
     int childComponentIdx = path.length + 1;
     for (int i = 0; i < labelValues.length; i++) {
-      labelValues[i] = new LabelAndValue(bulkPath[i].components[childComponentIdx], values[i]);
+      labelValues[i] =
+          new LabelAndValue(bulkPath[i].components[childComponentIdx], values[i], counts[i]);
     }
 
     return new FacetResult(
@@ -370,7 +358,7 @@ abstract class TaxonomyFacets extends Facets {
     List<Number> ordValues = new ArrayList<>();
 
     if (sparseCounts != null) {
-      for (IntIntCursor ordAndCount : sparseCounts) {
+      for (IntIntHashMap.IntIntCursor ordAndCount : sparseCounts) {
         int ord = ordAndCount.key;
         int count = ordAndCount.value;
         Number value = getAggregationValue(ord);
@@ -419,7 +407,9 @@ abstract class TaxonomyFacets extends Facets {
 
     LabelAndValue[] labelValues = new LabelAndValue[ordValues.size()];
     for (int i = 0; i < ordValues.size(); i++) {
-      labelValues[i] = new LabelAndValue(bulkPath[i].components[cp.length], ordValues.get(i));
+      labelValues[i] =
+          new LabelAndValue(
+              bulkPath[i].components[cp.length], ordValues.get(i), getCount(ordinals.get(i)));
     }
     return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
@@ -486,7 +476,7 @@ abstract class TaxonomyFacets extends Facets {
     // TODO: would be faster if we had a "get the following children" API?  then we
     // can make a single pass over the hashmap
     if (sparseCounts != null) {
-      for (IntIntCursor c : sparseCounts) {
+      for (IntIntHashMap.IntIntCursor c : sparseCounts) {
         int ord = c.key;
         int count = c.value;
         if (parents.get(ord) == pathOrd && count > 0) {
@@ -588,7 +578,16 @@ abstract class TaxonomyFacets extends Facets {
     }
 
     // Sort by highest value, tie break by dim:
-    results.sort(BY_VALUE_THEN_DIM);
+    results.sort(
+        (a, b) -> {
+          if (a.value.doubleValue() > b.value.doubleValue()) {
+            return -1;
+          } else if (b.value.doubleValue() > a.value.doubleValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
+          }
+        });
     return results;
   }
 

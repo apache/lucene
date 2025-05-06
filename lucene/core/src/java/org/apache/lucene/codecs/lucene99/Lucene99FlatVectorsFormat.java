@@ -56,8 +56,8 @@ import org.apache.lucene.store.IndexOutput;
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
  *   <li><b>[vint]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
- *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
- *       0, sparse – some documents missing values.
+ *   <li><b>[int8]</b> if equals to -2, empty - no vector values. If equals to -1, dense – all
+ *       documents have values for a field. If equals to 0, sparse – some documents missing values.
  *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
@@ -67,6 +67,7 @@ import org.apache.lucene.store.IndexOutput;
  */
 public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
 
+  static final String NAME = "Lucene99FlatVectorsFormat";
   static final String META_CODEC_NAME = "Lucene99FlatVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene99FlatVectorsFormatData";
   static final String META_EXTENSION = "vemf";
@@ -80,6 +81,7 @@ public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {
 
   /** Constructs a format */
   public Lucene99FlatVectorsFormat(FlatVectorsScorer vectorsScorer) {
+    super(NAME);
     this.vectorsScorer = vectorsScorer;
   }
 

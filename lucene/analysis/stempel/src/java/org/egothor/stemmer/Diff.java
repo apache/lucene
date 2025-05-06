@@ -245,7 +245,7 @@ public class Diff {
           deletes++;
           x--;
           break;
-          // delete
+        // delete
         case Y:
           if (deletes != base) {
             result.append('D').append(deletes);
@@ -258,7 +258,7 @@ public class Diff {
           result.append('I');
           result.append(b.charAt(--y));
           break;
-          // insert
+        // insert
         case R:
           if (deletes != base) {
             result.append('D').append(deletes);
@@ -272,7 +272,7 @@ public class Diff {
           result.append(b.charAt(--y));
           x--;
           break;
-          // replace
+        // replace
         case D:
           if (deletes != base) {
             result.append('D').append(deletes);

@@ -18,6 +18,7 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -27,14 +28,23 @@ import org.apache.lucene.index.SegmentWriteState;
  *
  * @lucene.experimental
  */
-public abstract class FlatVectorsFormat {
+public abstract class FlatVectorsFormat extends KnnVectorsFormat {
 
   /** Sole constructor */
-  protected FlatVectorsFormat() {}
+  protected FlatVectorsFormat(String name) {
+    super(name);
+  }
 
   /** Returns a {@link FlatVectorsWriter} to write the vectors to the index. */
+  @Override
   public abstract FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException;
 
   /** Returns a {@link KnnVectorsReader} to read the vectors from the index. */
+  @Override
   public abstract FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException;
+
+  @Override
+  public int getMaxDimensions(String fieldName) {
+    return 1024;
+  }
 }

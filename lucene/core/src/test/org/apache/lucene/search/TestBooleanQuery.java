@@ -226,7 +226,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     // PhraseQuery w/ no terms added returns a null scorer
     PhraseQuery pq = new PhraseQuery("field", new String[0]);
     q.add(pq, BooleanClause.Occur.SHOULD);
-    assertEquals(1, s.search(q.build(), 10).totalHits.value);
+    assertEquals(1, s.search(q.build(), 10).totalHits.value());
 
     // A required clause which returns null scorer should return null scorer to
     // IndexSearcher.
@@ -234,11 +234,11 @@ public class TestBooleanQuery extends LuceneTestCase {
     pq = new PhraseQuery("field", new String[0]);
     q.add(new TermQuery(new Term("field", "a")), BooleanClause.Occur.SHOULD);
     q.add(pq, BooleanClause.Occur.MUST);
-    assertEquals(0, s.search(q.build(), 10).totalHits.value);
+    assertEquals(0, s.search(q.build(), 10).totalHits.value());
 
     DisjunctionMaxQuery dmq =
         new DisjunctionMaxQuery(Arrays.asList(new TermQuery(new Term("field", "a")), pq), 1.0f);
-    assertEquals(1, s.search(dmq, 10).totalHits.value);
+    assertEquals(1, s.search(dmq, 10).totalHits.value());
 
     r.close();
     w.close();
@@ -273,13 +273,13 @@ public class TestBooleanQuery extends LuceneTestCase {
 
     MultiReader multireader = new MultiReader(reader1, reader2);
     IndexSearcher searcher = newSearcher(multireader);
-    assertEquals(0, searcher.search(query.build(), 10).totalHits.value);
+    assertEquals(0, searcher.search(query.build(), 10).totalHits.value());
 
     final ExecutorService es =
         Executors.newCachedThreadPool(new NamedThreadFactory("NRT search threads"));
     searcher = new IndexSearcher(multireader, es);
     if (VERBOSE) System.out.println("rewritten form: " + searcher.rewrite(query.build()));
-    assertEquals(0, searcher.search(query.build(), 10).totalHits.value);
+    assertEquals(0, searcher.search(query.build(), 10).totalHits.value());
     es.shutdown();
     es.awaitTermination(1, TimeUnit.SECONDS);
 
@@ -419,7 +419,7 @@ public class TestBooleanQuery extends LuceneTestCase {
 
     // No doc can match: BQ has only 2 clauses and we are asking for minShouldMatch=4
     bq.setMinimumNumberShouldMatch(4);
-    assertEquals(0, s.search(bq.build(), 1).totalHits.value);
+    assertEquals(0, s.search(bq.build(), 1).totalHits.value());
     r.close();
     w.close();
     dir.close();
@@ -1382,5 +1382,37 @@ public class TestBooleanQuery extends LuceneTestCase {
             assertEquals(expected, terms[0]);
           }
         });
+  }
+
+  public void testClauseSetsImmutability() throws Exception {
+    Term a = new Term("f", "a");
+    Term b = new Term("f", "b");
+    Term c = new Term("f", "c");
+    Term d = new Term("f", "d");
+    BooleanQuery.Builder bqBuilder = new BooleanQuery.Builder();
+    bqBuilder.add(new TermQuery(a), Occur.SHOULD);
+    bqBuilder.add(new TermQuery(a), Occur.SHOULD);
+    bqBuilder.add(new TermQuery(b), Occur.MUST);
+    bqBuilder.add(new TermQuery(b), Occur.MUST);
+    bqBuilder.add(new TermQuery(c), Occur.FILTER);
+    bqBuilder.add(new TermQuery(c), Occur.FILTER);
+    bqBuilder.add(new TermQuery(d), Occur.MUST_NOT);
+    bqBuilder.add(new TermQuery(d), Occur.MUST_NOT);
+    BooleanQuery bq = bqBuilder.build();
+    // should and must are not dedupliacated
+    assertEquals(2, bq.getClauses(Occur.SHOULD).size());
+    assertEquals(2, bq.getClauses(Occur.MUST).size());
+    // filter and must not are deduplicated
+    assertEquals(1, bq.getClauses(Occur.FILTER).size());
+    assertEquals(1, bq.getClauses(Occur.MUST_NOT).size());
+    // check immutability
+    for (var occur : Occur.values()) {
+      assertThrows(
+          UnsupportedOperationException.class,
+          () -> bq.getClauses(occur).add(new MatchNoDocsQuery()));
+    }
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> bq.clauses().add(new BooleanClause(new MatchNoDocsQuery(), Occur.SHOULD)));
   }
 }

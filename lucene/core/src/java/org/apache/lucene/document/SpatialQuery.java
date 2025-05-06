@@ -49,6 +49,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Base query class for all spatial geometries: {@link LatLonShape}, {@link LatLonPoint} and {@link
@@ -150,7 +151,6 @@ abstract class SpatialQuery extends Query {
       LeafReader reader,
       SpatialVisitor spatialVisitor,
       ScoreMode scoreMode,
-      ConstantScoreWeight weight,
       float boost,
       float score)
       throws IOException {
@@ -178,8 +178,7 @@ abstract class SpatialQuery extends Query {
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) {
-          return new ConstantScoreScorer(
-              weight, score, scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+          return new ConstantScoreScorer(score, scoreMode, DocIdSetIterator.all(reader.maxDoc()));
         }
 
         @Override
@@ -197,10 +196,10 @@ abstract class SpatialQuery extends Query {
         return null;
       }
       // walk the tree to get matching documents
-      return new RelationScorerSupplier(values, spatialVisitor, queryRelation, field) {
+      return new RelationScorerSupplier(values, spatialVisitor, queryRelation) {
         @Override
         public Scorer get(long leadCost) throws IOException {
-          return getScorer(reader, weight, score, scoreMode);
+          return getScorer(reader, score, scoreMode);
         }
       };
     }
@@ -211,19 +210,11 @@ abstract class SpatialQuery extends Query {
     final SpatialQuery query = this;
     final SpatialVisitor spatialVisitor = getSpatialVisitor();
     return new ConstantScoreWeight(query, boost) {
-      @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        final ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         final LeafReader reader = context.reader();
-        return getScorerSupplier(reader, spatialVisitor, scoreMode, this, boost, score());
+        return getScorerSupplier(reader, spatialVisitor, scoreMode, boost, score());
       }
 
       @Override
@@ -284,33 +275,29 @@ abstract class SpatialQuery extends Query {
     private final PointValues values;
     private final SpatialVisitor spatialVisitor;
     private final QueryRelation queryRelation;
-    private final String field;
     private long cost = -1;
 
     RelationScorerSupplier(
         final PointValues values,
         SpatialVisitor spatialVisitor,
-        final QueryRelation queryRelation,
-        final String field) {
+        final QueryRelation queryRelation) {
       this.values = values;
       this.spatialVisitor = spatialVisitor;
       this.queryRelation = queryRelation;
-      this.field = field;
     }
 
     protected Scorer getScorer(
-        final LeafReader reader, final Weight weight, final float boost, final ScoreMode scoreMode)
-        throws IOException {
+        final LeafReader reader, final float boost, final ScoreMode scoreMode) throws IOException {
       switch (queryRelation) {
         case INTERSECTS:
-          return getSparseScorer(reader, weight, boost, scoreMode);
+          return getSparseScorer(reader, boost, scoreMode);
         case CONTAINS:
-          return getContainsDenseScorer(reader, weight, boost, scoreMode);
+          return getContainsDenseScorer(reader, boost, scoreMode);
         case WITHIN:
         case DISJOINT:
           return values.getDocCount() == values.size()
-              ? getSparseScorer(reader, weight, boost, scoreMode)
-              : getDenseScorer(reader, weight, boost, scoreMode);
+              ? getSparseScorer(reader, boost, scoreMode)
+              : getDenseScorer(reader, boost, scoreMode);
         default:
           throw new IllegalArgumentException("Unsupported query type :[" + queryRelation + "]");
       }
@@ -318,8 +305,7 @@ abstract class SpatialQuery extends Query {
 
     /** Scorer used for INTERSECTS and single value points */
     private Scorer getSparseScorer(
-        final LeafReader reader, final Weight weight, final float boost, final ScoreMode scoreMode)
-        throws IOException {
+        final LeafReader reader, final float boost, final ScoreMode scoreMode) throws IOException {
       if (queryRelation == QueryRelation.DISJOINT
           && values.getDocCount() == reader.maxDoc()
           && values.getDocCount() == values.size()
@@ -332,7 +318,7 @@ abstract class SpatialQuery extends Query {
         final long[] cost = new long[] {reader.maxDoc()};
         values.intersect(getInverseDenseVisitor(spatialVisitor, queryRelation, result, cost));
         final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       } else if (values.getDocCount() < (values.size() >>> 2)) {
         // we use a dense structure so we can skip already visited documents
         final FixedBitSet result = new FixedBitSet(reader.maxDoc());
@@ -341,18 +327,17 @@ abstract class SpatialQuery extends Query {
         assert cost[0] > 0 || result.cardinality() == 0;
         final DocIdSetIterator iterator =
             cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       } else {
-        final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxDoc(), values);
         values.intersect(getSparseVisitor(spatialVisitor, queryRelation, docIdSetBuilder));
         final DocIdSetIterator iterator = docIdSetBuilder.build().iterator();
-        return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+        return new ConstantScoreScorer(boost, scoreMode, iterator);
       }
     }
 
     /** Scorer used for WITHIN and DISJOINT */
-    private Scorer getDenseScorer(
-        LeafReader reader, Weight weight, final float boost, ScoreMode scoreMode)
+    private Scorer getDenseScorer(LeafReader reader, final float boost, ScoreMode scoreMode)
         throws IOException {
       final FixedBitSet result = new FixedBitSet(reader.maxDoc());
       final long[] cost;
@@ -377,11 +362,10 @@ abstract class SpatialQuery extends Query {
       assert cost[0] > 0 || result.cardinality() == 0;
       final DocIdSetIterator iterator =
           cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
-      return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+      return new ConstantScoreScorer(boost, scoreMode, iterator);
     }
 
-    private Scorer getContainsDenseScorer(
-        LeafReader reader, Weight weight, final float boost, ScoreMode scoreMode)
+    private Scorer getContainsDenseScorer(LeafReader reader, final float boost, ScoreMode scoreMode)
         throws IOException {
       final FixedBitSet result = new FixedBitSet(reader.maxDoc());
       final long[] cost = new long[] {0};
@@ -393,7 +377,7 @@ abstract class SpatialQuery extends Query {
       assert cost[0] > 0 || result.cardinality() == 0;
       final DocIdSetIterator iterator =
           cost[0] == 0 ? DocIdSetIterator.empty() : new BitSetIterator(result, cost[0]);
-      return new ConstantScoreScorer(weight, boost, scoreMode, iterator);
+      return new ConstantScoreScorer(boost, scoreMode, iterator);
     }
 
     @Override
@@ -460,6 +444,11 @@ abstract class SpatialQuery extends Query {
       }
 
       @Override
+      public void visit(IntsRef ref) {
+        adder.add(ref);
+      }
+
+      @Override
       public void visit(int docID, byte[] t) {
         if (leafPredicate.test(t)) {
           visit(docID);
@@ -504,6 +493,14 @@ abstract class SpatialQuery extends Query {
       }
 
       @Override
+      public void visit(IntsRef ref) {
+        for (int i = 0; i < ref.length; i++) {
+          result.set(ref.ints[ref.offset + i]);
+        }
+        cost[0] += ref.length;
+      }
+
+      @Override
       public void visit(int docID, byte[] t) {
         if (result.get(docID) == false) {
           if (leafPredicate.test(t)) {
@@ -544,6 +541,14 @@ abstract class SpatialQuery extends Query {
       public void visit(int docID) {
         result.set(docID);
         cost[0]++;
+      }
+
+      @Override
+      public void visit(IntsRef ref) {
+        for (int i = 0; i < ref.length; i++) {
+          result.set(ref.ints[ref.offset + i]);
+        }
+        cost[0] += ref.length;
       }
 
       @Override
@@ -604,6 +609,13 @@ abstract class SpatialQuery extends Query {
       }
 
       @Override
+      public void visit(IntsRef ref) {
+        for (int i = 0; i < ref.length; i++) {
+          visit(ref.ints[ref.offset + i]);
+        }
+      }
+
+      @Override
       public void visit(int docID, byte[] t) {
         if (excluded.get(docID) == false) {
           Component2D.WithinRelation within = leafFunction.apply(t);
@@ -658,6 +670,14 @@ abstract class SpatialQuery extends Query {
       }
 
       @Override
+      public void visit(IntsRef ref) {
+        for (int i = 0; i < ref.length; i++) {
+          result.clear(ref.ints[ref.offset + i]);
+        }
+        cost[0] = Math.max(0, cost[0] - ref.length);
+      }
+
+      @Override
       public void visit(DocIdSetIterator iterator) throws IOException {
         result.andNot(iterator);
         cost[0] = Math.max(0, cost[0] - iterator.cost());
@@ -705,6 +725,13 @@ abstract class SpatialQuery extends Query {
       @Override
       public void visit(DocIdSetIterator iterator) throws IOException {
         result.andNot(iterator);
+      }
+
+      @Override
+      public void visit(IntsRef ref) {
+        for (int i = 0; i < ref.length; i++) {
+          visit(ref.ints[ref.offset + i]);
+        }
       }
 
       @Override

@@ -80,11 +80,12 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
 
     for (int i = 0; i < matchingDocs.size(); i++) {
       FacetsCollector.MatchingDocs hits = matchingDocs.get(i);
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
 
-      SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
+      SortedNumericDocValues multiValues =
+          DocValues.getSortedNumeric(hits.context().reader(), field);
       if (multiValuedDocVals == null) {
         multiValuedDocVals = new SortedNumericDocValues[matchingDocs.size()];
       }
@@ -135,7 +136,7 @@ abstract class RangeFacetCounts extends FacetCountsWithFilterQuery {
         assert singleValuedDocVals != null;
         NumericDocValues singleValues = singleValuedDocVals[i];
 
-        totCount += hits.totalHits;
+        totCount += hits.totalHits();
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
           if (singleValues.advanceExact(doc)) {
             counter.addSingleValued(mapDocValue(singleValues.longValue()));

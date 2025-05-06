@@ -40,9 +40,7 @@ public class PhraseSlopQueryNodeProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof SlopQueryNode) {
-      SlopQueryNode phraseSlopNode = (SlopQueryNode) node;
-
+    if (node instanceof SlopQueryNode phraseSlopNode) {
       if (!(phraseSlopNode.getChild() instanceof TokenizedPhraseQueryNode)
           && !(phraseSlopNode.getChild() instanceof MultiPhraseQueryNode)) {
         return phraseSlopNode.getChild();

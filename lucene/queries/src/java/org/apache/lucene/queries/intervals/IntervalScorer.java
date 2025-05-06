@@ -21,7 +21,6 @@ import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 
 class IntervalScorer extends Scorer {
@@ -35,12 +34,7 @@ class IntervalScorer extends Scorer {
   private int lastScoredDoc = -1;
 
   IntervalScorer(
-      Weight weight,
-      IntervalIterator intervals,
-      int minExtent,
-      float boost,
-      IntervalScoreFunction scoreFunction) {
-    super(weight);
+      IntervalIterator intervals, int minExtent, float boost, IntervalScoreFunction scoreFunction) {
     this.intervals = intervals;
     this.minExtent = minExtent;
     this.boost = boost;

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
@@ -62,11 +63,12 @@ public class FloatKnnVectorFieldSource extends ValueSource {
     }
 
     return new VectorFieldFunction(this) {
+      KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
 
       @Override
       public float[] floatVectorVal(int doc) throws IOException {
         if (exists(doc)) {
-          return vectorValues.vectorValue();
+          return vectorValues.vectorValue(iterator.index());
         } else {
           return null;
         }
@@ -74,7 +76,7 @@ public class FloatKnnVectorFieldSource extends ValueSource {
 
       @Override
       protected DocIdSetIterator getVectorIterator() {
-        return vectorValues;
+        return iterator;
       }
     };
   }

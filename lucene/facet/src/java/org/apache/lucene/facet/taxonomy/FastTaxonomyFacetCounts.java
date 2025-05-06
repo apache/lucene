@@ -71,11 +71,11 @@ public class FastTaxonomyFacetCounts extends TaxonomyFacets {
 
   private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       SortedNumericDocValues multiValued =
-          hits.context.reader().getSortedNumericDocValues(indexFieldName);
+          hits.context().reader().getSortedNumericDocValues(indexFieldName);
       if (multiValued == null) {
         continue;
       }
@@ -85,7 +85,7 @@ public class FastTaxonomyFacetCounts extends TaxonomyFacets {
 
       DocIdSetIterator valuesIt = singleValued != null ? singleValued : multiValued;
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), valuesIt));
 
       if (singleValued != null) {
         if (counts != null) {

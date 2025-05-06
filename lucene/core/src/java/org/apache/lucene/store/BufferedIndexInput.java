@@ -151,7 +151,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+  public void readGroupVInt(int[] dst, int offset) throws IOException {
     final int len =
         GroupVIntUtil.readGroupVInt(
             this, buffer.remaining(), p -> buffer.getInt((int) p), buffer.position(), dst, offset);
@@ -401,7 +401,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
               ? base.toString()
               : (base.toString() + " [slice=" + sliceDescription + "]"),
           BufferedIndexInput.BUFFER_SIZE);
-      if (offset < 0 || length < 0 || offset + length > base.length()) {
+      if ((length | offset) < 0 || length > base.length() - offset) {
         throw new IllegalArgumentException(
             "slice() " + sliceDescription + " out of bounds: " + base);
       }

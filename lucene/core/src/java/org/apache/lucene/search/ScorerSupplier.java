@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.search.Weight.DefaultBulkScorer;
 
 /**
  * A supplier of {@link Scorer}. This allows to get an estimate of the cost before building the
@@ -36,6 +37,15 @@ public abstract class ScorerSupplier {
   public abstract Scorer get(long leadCost) throws IOException;
 
   /**
+   * Optional method: Get a scorer that is optimized for bulk-scoring. The default implementation
+   * iterates matches from the {@link Scorer} but some queries can have more efficient approaches
+   * for matching all hits.
+   */
+  public BulkScorer bulkScorer() throws IOException {
+    return new DefaultBulkScorer(get(Long.MAX_VALUE));
+  }
+
+  /**
    * Get an estimate of the {@link Scorer} that would be returned by {@link #get}. This may be a
    * costly operation, so it should only be called if necessary.
    *
@@ -51,5 +61,5 @@ public abstract class ScorerSupplier {
    * and this boolean to know whether to prepare for reacting to {@link
    * Scorer#setMinCompetitiveScore(float)} calls.
    */
-  public void setTopLevelScoringClause() throws IOException {}
+  public void setTopLevelScoringClause() {}
 }

@@ -309,7 +309,7 @@ public class TestSearchImpl extends LuceneTestCase {
     SearchResults res =
         search.search(query, new SimilarityConfig.Builder().build(), null, 10, true);
 
-    assertEquals(10, res.getTotalHits().value);
+    assertEquals(10, res.getTotalHits().value());
     assertEquals(10, res.size());
     assertEquals(0, res.getOffset());
   }
@@ -322,7 +322,7 @@ public class TestSearchImpl extends LuceneTestCase {
     SearchResults res =
         search.search(query, new SimilarityConfig.Builder().build(), sort, null, 10, true);
 
-    assertEquals(10, res.getTotalHits().value);
+    assertEquals(10, res.getTotalHits().value());
     assertEquals(10, res.size());
     assertEquals(0, res.getOffset());
   }
@@ -336,7 +336,7 @@ public class TestSearchImpl extends LuceneTestCase {
     assertTrue(opt.isPresent());
 
     SearchResults res = opt.get();
-    assertEquals(20, res.getTotalHits().value);
+    assertEquals(20, res.getTotalHits().value());
     assertEquals(10, res.size());
     assertEquals(10, res.getOffset());
   }
@@ -366,7 +366,7 @@ public class TestSearchImpl extends LuceneTestCase {
     assertTrue(opt.isPresent());
 
     SearchResults res = opt.get();
-    assertEquals(20, res.getTotalHits().value);
+    assertEquals(20, res.getTotalHits().value());
     assertEquals(10, res.size());
     assertEquals(0, res.getOffset());
   }

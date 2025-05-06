@@ -177,7 +177,7 @@ public abstract class FilterDirectoryReader extends DirectoryReader {
       // here we wrap the listener and call it with our cache key
       // this is important since this key will be used to cache the reader and otherwise we won't
       // free caches etc.
-      delegate.addClosedListener(unused -> listener.onClose(cacheKey));
+      delegate.addClosedListener(_ -> listener.onClose(cacheKey));
     }
   }
 }

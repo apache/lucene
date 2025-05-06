@@ -651,8 +651,7 @@ public class GeoTestUtil {
     // encode each object
     for (Object o : flattened) {
       // tostring
-      if (o instanceof double[]) {
-        double[] point = (double[]) o;
+      if (o instanceof double[] point) {
         sb.append("<!-- point: ");
         sb.append(point[0]).append(',').append(point[1]);
         sb.append(" -->\n");
@@ -668,8 +667,7 @@ public class GeoTestUtil {
         gon = boxPolygon((Rectangle) o);
         style = "fill:lightskyblue;stroke:black;stroke-width:0.2%;stroke-dasharray:0.5%,1%;";
         opacity = "0.3";
-      } else if (o instanceof double[]) {
-        double[] point = (double[]) o;
+      } else if (o instanceof double[] point) {
         gon =
             boxPolygon(
                 new Rectangle(
@@ -794,7 +792,7 @@ public class GeoTestUtil {
 
   private static class Loader {
 
-    static Loader LOADER = new Loader();
+    static final Loader LOADER = new Loader();
 
     String readShape(String name) throws IOException {
       InputStream is = getClass().getResourceAsStream(name);

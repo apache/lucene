@@ -43,6 +43,7 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
@@ -527,34 +528,38 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          Scorer innerScorer = inner.scorer(context);
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorerSupplier = inner.scorerSupplier(context);
+          if (scorerSupplier == null) return null;
+          final var innerScorer = scorerSupplier.get(Long.MAX_VALUE);
           NumericDocValues scoreFactors = DocValues.getNumeric(context.reader(), scoreField);
-          return new Scorer(this) {
+          final var scorer =
+              new Scorer() {
 
-            @Override
-            public float score() throws IOException {
-              if (scoreFactors.advanceExact(docID())) {
-                return Float.intBitsToFloat((int) scoreFactors.longValue());
-              }
-              return 0;
-            }
+                @Override
+                public float score() throws IOException {
+                  if (scoreFactors.advanceExact(docID())) {
+                    return Float.intBitsToFloat((int) scoreFactors.longValue());
+                  }
+                  return 0;
+                }
 
-            @Override
-            public float getMaxScore(int upTo) throws IOException {
-              return Float.POSITIVE_INFINITY;
-            }
+                @Override
+                public float getMaxScore(int upTo) throws IOException {
+                  return Float.POSITIVE_INFINITY;
+                }
 
-            @Override
-            public DocIdSetIterator iterator() {
-              return innerScorer.iterator();
-            }
+                @Override
+                public DocIdSetIterator iterator() {
+                  return innerScorer.iterator();
+                }
 
-            @Override
-            public int docID() {
-              return innerScorer.docID();
-            }
-          };
+                @Override
+                public int docID() {
+                  return innerScorer.docID();
+                }
+              };
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

@@ -1490,7 +1490,7 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
       }
 
       assertTrue(approxEquals(actual, expected));
-      assertTrue(Operations.sameLanguage(actual, expected));
+      assertTrue(AutomatonTestUtil.sameLanguage(actual, expected));
     }
 
     a.close();

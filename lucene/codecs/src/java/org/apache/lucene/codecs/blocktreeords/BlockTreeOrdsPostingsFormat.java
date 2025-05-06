@@ -22,14 +22,14 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsWriter;
+import org.apache.lucene.codecs.lucene103.Lucene103PostingsReader;
+import org.apache.lucene.codecs.lucene103.Lucene103PostingsWriter;
+import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.IOUtils;
 
-/** Uses {@link OrdsBlockTreeTermsWriter} with {@link Lucene99PostingsWriter}. */
+/** Uses {@link OrdsBlockTreeTermsWriter} with {@link Lucene103PostingsWriter}. */
 public class BlockTreeOrdsPostingsFormat extends PostingsFormat {
 
   private final int minTermBlockSize;
@@ -57,7 +57,7 @@ public class BlockTreeOrdsPostingsFormat extends PostingsFormat {
     super("BlockTreeOrds");
     this.minTermBlockSize = minTermBlockSize;
     this.maxTermBlockSize = maxTermBlockSize;
-    Lucene90BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
+    Lucene103BlockTreeTermsWriter.validateSettings(minTermBlockSize, maxTermBlockSize);
   }
 
   @Override
@@ -67,7 +67,7 @@ public class BlockTreeOrdsPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene99PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state);
 
     boolean success = false;
     try {
@@ -84,7 +84,7 @@ public class BlockTreeOrdsPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene99PostingsReader(state);
+    PostingsReaderBase postingsReader = new Lucene103PostingsReader(state);
     boolean success = false;
     try {
       FieldsProducer ret = new OrdsBlockTreeTermsReader(postingsReader, state);

@@ -40,10 +40,12 @@ public interface ScalarQuantizedVectorSimilarity {
       VectorSimilarityFunction sim, float constMultiplier, byte bits) {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(constMultiplier);
-      case COSINE, DOT_PRODUCT -> new DotProduct(
-          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
-      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(
-          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+      case COSINE, DOT_PRODUCT ->
+          new DotProduct(
+              constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+      case MAXIMUM_INNER_PRODUCT ->
+          new MaximumInnerProduct(
+              constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
     };
   }
 
@@ -80,8 +82,10 @@ public interface ScalarQuantizedVectorSimilarity {
     public float score(
         byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
       int dotProduct = comparator.compare(storedVector, queryVector);
+      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      assert dotProduct >= 0;
       float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
-      return (1 + adjustedDistance) / 2;
+      return Math.max((1 + adjustedDistance) / 2, 0);
     }
   }
 
@@ -99,6 +103,8 @@ public interface ScalarQuantizedVectorSimilarity {
     public float score(
         byte[] queryVector, float queryOffset, byte[] storedVector, float vectorOffset) {
       int dotProduct = comparator.compare(storedVector, queryVector);
+      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      assert dotProduct >= 0;
       float adjustedDistance = dotProduct * constMultiplier + queryOffset + vectorOffset;
       return scaleMaxInnerProductScore(adjustedDistance);
     }

@@ -17,13 +17,13 @@
 
 def isCIBuild = System.getenv().keySet().find { it ==~ /(?i)((JENKINS|HUDSON)(_\w+)?|CI)/ } != null
 
-gradleEnterprise {
-    server = "https://ge.apache.org"
+develocity {
+    server = "https://develocity.apache.org"
+    projectId = "lucene"
+
     buildScan {
-        capture { taskInputFiles = true }
         uploadInBackground = !isCIBuild
-        publishAlways()
-        publishIfAuthenticated()
+        publishing.onlyIf { it.isAuthenticated() }
         obfuscation {
             ipAddresses { addresses -> addresses.collect { address -> "0.0.0.0"} }
         }
@@ -35,7 +35,7 @@ buildCache {
         enabled = !isCIBuild
     }
 
-    remote(gradleEnterprise.buildCache) {
+    remote(develocity.buildCache) {
         enabled = false
     }
 }

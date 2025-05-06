@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.queryparser.flexible.messages;
 
+@SuppressWarnings("NonFinalStaticField")
 public class MessagesTestBundle extends NLS {
 
   private static final String BUNDLE_NAME = MessagesTestBundle.class.getName();

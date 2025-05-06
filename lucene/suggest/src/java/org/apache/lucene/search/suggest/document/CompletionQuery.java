@@ -98,8 +98,7 @@ public abstract class CompletionQuery extends Query {
           IOException e) {
         continue;
       }
-      if (terms instanceof CompletionTerms) {
-        CompletionTerms completionTerms = (CompletionTerms) terms;
+      if (terms instanceof CompletionTerms completionTerms) {
         byte t = completionTerms.getType();
         if (first) {
           type = t;

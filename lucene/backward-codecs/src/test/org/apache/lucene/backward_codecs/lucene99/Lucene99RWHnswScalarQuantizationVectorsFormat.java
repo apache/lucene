@@ -52,11 +52,6 @@ class Lucene99RWHnswScalarQuantizationVectorsFormat
         null);
   }
 
-  @Override
-  public int getMaxDimensions(String fieldName) {
-    return 1024;
-  }
-
   static class Lucene99RWScalarQuantizedFormat extends Lucene99ScalarQuantizedVectorsFormat {
     private static final FlatVectorsFormat rawVectorFormat =
         new Lucene99FlatVectorsFormat(new DefaultFlatVectorScorer());

@@ -25,13 +25,4 @@ import org.apache.lucene.codecs.uniformsplit.FieldMetadata;
  *
  * @lucene.experimental
  */
-public class FieldMetadataTermState {
-
-  public final FieldMetadata fieldMetadata;
-  public final BlockTermState state;
-
-  public FieldMetadataTermState(FieldMetadata fieldMetadata, BlockTermState state) {
-    this.fieldMetadata = fieldMetadata;
-    this.state = state;
-  }
-}
+public record FieldMetadataTermState(FieldMetadata fieldMetadata, BlockTermState state) {}

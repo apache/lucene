@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
@@ -224,6 +225,11 @@ public class QueryUtils {
 
       @Override
       public NumericDocValues getNormValues(String field) throws IOException {
+        return null;
+      }
+
+      @Override
+      public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
         return null;
       }
 

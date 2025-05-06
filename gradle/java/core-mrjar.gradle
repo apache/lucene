@@ -41,7 +41,9 @@ configure(project(":lucene:core")) {
           "--add-exports", "java.base/jdk.incubator.vector=ALL-UNNAMED",
         ]
 
-        options.compilerArgumentProviders.add(new CompilerArgsProvider(apiJarFile: apijar))
+        def argsProvider = objects.newInstance(CompilerArgsProvider)
+        argsProvider.apiJarFile.set(apijar)
+        options.compilerArgumentProviders.add(argsProvider)
       }
     }
     
@@ -66,14 +68,13 @@ configure(project(":lucene:core")) {
   }
 }
 
-class CompilerArgsProvider implements CommandLineArgumentProvider {
-
+abstract class CompilerArgsProvider implements CommandLineArgumentProvider {
   @InputFile
   @PathSensitive(PathSensitivity.RELATIVE)
-  RegularFile apiJarFile
+  abstract RegularFileProperty getApiJarFile()
 
   @Override
   Iterable<String> asArguments() {
-    return ["--patch-module", "java.base=${apiJarFile}"]
+    return ["--patch-module", "java.base=${apiJarFile.get().asFile.absolutePath}".toString()]
   }
 }

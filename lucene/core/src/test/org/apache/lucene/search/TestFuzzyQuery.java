@@ -422,7 +422,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(mr);
     FuzzyQuery fq = new FuzzyQuery(new Term("field", "z123456"), 1, 0, 2, false);
     TopDocs docs = searcher.search(fq, 2);
-    assertEquals(5, docs.totalHits.value); // 5 docs, from the a and b's
+    assertEquals(5, docs.totalHits.value()); // 5 docs, from the a and b's
     mr.close();
     ir1.close();
     ir2.close();
@@ -705,14 +705,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
     IOUtils.close(r, dir);
   }
 
-  private static class TermAndScore implements Comparable<TermAndScore> {
-    final String term;
-    final float score;
-
-    public TermAndScore(String term, float score) {
-      this.term = term;
-      this.score = score;
-    }
+  private record TermAndScore(String term, float score) implements Comparable<TermAndScore> {
 
     @Override
     public int compareTo(TermAndScore other) {
@@ -724,11 +717,6 @@ public class TestFuzzyQuery extends LuceneTestCase {
       } else {
         return term.compareTo(other.term);
       }
-    }
-
-    @Override
-    public String toString() {
-      return term + " score=" + score;
     }
   }
 

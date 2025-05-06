@@ -24,6 +24,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -164,7 +165,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           boolean isParentField =
               format >= FORMAT_PARENT_FIELD ? (bits & PARENT_FIELD_FIELD) != 0 : false;
 
-          if ((bits & 0xE0) != 0) {
+          if ((bits & 0xC0) != 0) {
             throw new CorruptIndexException(
                 "unused bits are set \"" + Integer.toBinaryString(bits) + "\"", input);
           }
@@ -173,11 +174,24 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                 "parent field bit is set but shouldn't \"" + Integer.toBinaryString(bits) + "\"",
                 input);
           }
+          if (format < FORMAT_DOCVALUE_SKIPPER && (bits & DOCVALUES_SKIPPER) != 0) {
+            throw new CorruptIndexException(
+                "doc values skipper bit is set but shouldn't \""
+                    + Integer.toBinaryString(bits)
+                    + "\"",
+                input);
+          }
 
           final IndexOptions indexOptions = getIndexOptions(input, input.readByte());
 
           // DV Types are packed in one byte
           final DocValuesType docValuesType = getDocValuesType(input, input.readByte());
+          final DocValuesSkipIndexType docValuesSkipIndex;
+          if (format >= FORMAT_DOCVALUE_SKIPPER) {
+            docValuesSkipIndex = getDocValuesSkipIndexType(input, input.readByte());
+          } else {
+            docValuesSkipIndex = DocValuesSkipIndexType.NONE;
+          }
           final long dvGen = input.readLong();
           Map<String, String> attributes = input.readMapOfStrings();
           // just use the last field's map if its the same
@@ -208,6 +222,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     storePayloads,
                     indexOptions,
                     docValuesType,
+                    docValuesSkipIndex,
                     dvGen,
                     attributes,
                     pointDataDimensionCount,
@@ -260,6 +275,18 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
     }
   }
 
+  private static byte docValuesSkipIndexByte(DocValuesSkipIndexType type) {
+    switch (type) {
+      case NONE:
+        return 0;
+      case RANGE:
+        return 1;
+      default:
+        // BUG
+        throw new AssertionError("unhandled DocValuesSkipIndexType: " + type);
+    }
+  }
+
   private static DocValuesType getDocValuesType(IndexInput input, byte b) throws IOException {
     switch (b) {
       case 0:
@@ -276,6 +303,18 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         return DocValuesType.SORTED_NUMERIC;
       default:
         throw new CorruptIndexException("invalid docvalues byte: " + b, input);
+    }
+  }
+
+  private static DocValuesSkipIndexType getDocValuesSkipIndexType(IndexInput input, byte b)
+      throws IOException {
+    switch (b) {
+      case 0:
+        return DocValuesSkipIndexType.NONE;
+      case 1:
+        return DocValuesSkipIndexType.RANGE;
+      default:
+        throw new CorruptIndexException("invalid docvaluesskipindex byte: " + b, input);
     }
   }
 
@@ -389,7 +428,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         output.writeVInt(fi.number);
 
         byte bits = 0x0;
-        if (fi.hasVectors()) bits |= STORE_TERMVECTOR;
+        if (fi.hasTermVectors()) bits |= STORE_TERMVECTOR;
         if (fi.omitsNorms()) bits |= OMIT_NORMS;
         if (fi.hasPayloads()) bits |= STORE_PAYLOADS;
         if (fi.isSoftDeletesField()) bits |= SOFT_DELETES_FIELD;
@@ -400,6 +439,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
 
         // pack the DV type and hasNorms in one byte
         output.writeByte(docValuesByte(fi.getDocValuesType()));
+        output.writeByte(docValuesSkipIndexByte(fi.docValuesSkipIndexType()));
         output.writeLong(fi.getDocValuesGen());
         output.writeMapOfStrings(fi.attributes());
         output.writeVInt(fi.getPointDimensionCount());
@@ -423,7 +463,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   static final int FORMAT_START = 0;
   // this doesn't actually change the file format but uses up one more bit an existing bit pattern
   static final int FORMAT_PARENT_FIELD = 1;
-  static final int FORMAT_CURRENT = FORMAT_PARENT_FIELD;
+  static final int FORMAT_DOCVALUE_SKIPPER = 2;
+  static final int FORMAT_CURRENT = FORMAT_DOCVALUE_SKIPPER;
 
   // Field flags
   static final byte STORE_TERMVECTOR = 0x1;
@@ -431,4 +472,5 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   static final byte STORE_PAYLOADS = 0x4;
   static final byte SOFT_DELETES_FIELD = 0x8;
   static final byte PARENT_FIELD_FIELD = 0x10;
+  static final byte DOCVALUES_SKIPPER = 0x20;
 }

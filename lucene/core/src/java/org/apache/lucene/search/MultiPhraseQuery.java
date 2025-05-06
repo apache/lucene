@@ -33,10 +33,12 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -53,14 +55,14 @@ public class MultiPhraseQuery extends Query {
   public static class Builder {
     private String field; // becomes non-null on first add() then is unmodified
     private final ArrayList<Term[]> termArrays;
-    private final ArrayList<Integer> positions;
+    private final IntArrayList positions;
     private int slop;
 
     /** Default constructor. */
     public Builder() {
       this.field = null;
       this.termArrays = new ArrayList<>();
-      this.positions = new ArrayList<>();
+      this.positions = new IntArrayList();
       this.slop = 0;
     }
 
@@ -74,7 +76,7 @@ public class MultiPhraseQuery extends Query {
       int length = multiPhraseQuery.termArrays.length;
 
       this.termArrays = new ArrayList<>(length);
-      this.positions = new ArrayList<>(length);
+      this.positions = new IntArrayList(length);
 
       for (int i = 0; i < length; ++i) {
         this.termArrays.add(multiPhraseQuery.termArrays[i]);
@@ -138,15 +140,8 @@ public class MultiPhraseQuery extends Query {
 
     /** Builds a {@link MultiPhraseQuery}. */
     public MultiPhraseQuery build() {
-      int[] positionsArray = new int[this.positions.size()];
-
-      for (int i = 0; i < this.positions.size(); ++i) {
-        positionsArray[i] = this.positions.get(i);
-      }
-
       Term[][] termArraysArray = termArrays.toArray(new Term[termArrays.size()][]);
-
-      return new MultiPhraseQuery(field, termArraysArray, positionsArray, slop);
+      return new MultiPhraseQuery(field, termArraysArray, positions.toArray(), slop);
     }
   }
 
@@ -277,7 +272,8 @@ public class MultiPhraseQuery extends Query {
           List<PostingsEnum> postings = new ArrayList<>();
 
           for (Term term : terms) {
-            TermState termState = termStates.get(term).get(context);
+            IOSupplier<TermState> supplier = termStates.get(term).get(context);
+            TermState termState = supplier == null ? null : supplier.get();
             if (termState != null) {
               termsEnum.seekExact(term.bytes(), termState);
               postings.add(

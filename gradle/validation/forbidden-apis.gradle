@@ -1,4 +1,4 @@
-  /*
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -57,7 +57,7 @@ allprojects { prj ->
     }
 
     // Configure defaults for sourceSets.main
-    tasks.matching { it.name ==~ /forbiddenApisMain\d*/ }.all {
+    tasks.matching { it.name ==~ /forbiddenApisMain\d*/ }.configureEach {
       bundledSignatures += [
           'jdk-unsafe',
           'jdk-deprecated',
@@ -76,12 +76,12 @@ allprojects { prj ->
     // Configure defaults for the MR-JAR feature sourceSets by setting java version and ignore missing classes
     // TODO:
     // - Get hold of warning messages, see https://github.com/policeman-tools/forbidden-apis/issues/207
-    tasks.matching { it.name ==~ /forbiddenApisMain\d+/ }.all {
+    tasks.matching { it.name ==~ /forbiddenApisMain\d+/ }.configureEach {
       failOnMissingClasses = false
     }
 
     // Configure defaults for sourceSets.test
-    tasks.matching { it.name in ["forbiddenApisTest", "forbiddenApisTestFixtures"] }.all {
+    tasks.matching { it.name in ["forbiddenApisTest", "forbiddenApisTestFixtures"] }.configureEach {
       bundledSignatures += [
           'jdk-unsafe',
           'jdk-deprecated',
@@ -105,7 +105,7 @@ allprojects { prj ->
     }
 
     // Configure defaults for sourceSets.tools (if present).
-    tasks.matching { it.name == "forbiddenApisTools" }.all {
+    tasks.matching { it.name == "forbiddenApisTools" }.configureEach {
       bundledSignatures += [
           'jdk-unsafe',
           'jdk-deprecated',
@@ -129,12 +129,24 @@ allprojects { prj ->
     //
     // This is the simplest workaround possible: just point at all the rule files and indicate
     // them as inputs. This way if a rule is modified, checks will be reapplied.
-    configure(tasks.matching { it.name.startsWith("forbiddenApis") }) { task ->
+    tasks.matching { it.name.startsWith("forbiddenApis") }.configureEach { task ->
       task.inputs.dir(file(resources))
     }
 
     // Disable sysout signatures for these projects.
-    if (prj.path in [
+    if (prj.name in ["missing-doclet", "build-infra"]) {
+      forbiddenApisMain.bundledSignatures -= [
+        'jdk-non-portable',
+        'jdk-system-out'
+      ]
+
+      forbiddenApisMain.exclude("**/Checksum*")
+      forbiddenApisMain.suppressAnnotations += [
+        "**.*SuppressForbidden"
+      ]
+    }
+
+    if (prj.name in ["missing-doclet"] || prj.path in [
         ":lucene:demo",
         ":lucene:benchmark",
         ":lucene:test-framework"

@@ -79,7 +79,8 @@ final class OrdsFieldReader extends Terms {
     // }
 
     rootBlockFP =
-        (new ByteArrayDataInput(rootCode.bytes.bytes, rootCode.bytes.offset, rootCode.bytes.length))
+        (new ByteArrayDataInput(
+                    rootCode.bytes().bytes, rootCode.bytes().offset, rootCode.bytes().length))
                 .readVLong()
             >>> OrdsBlockTreeTermsWriter.OUTPUT_FLAGS_NUM_BITS;
 

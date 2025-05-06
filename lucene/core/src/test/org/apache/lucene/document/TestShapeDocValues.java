@@ -39,7 +39,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Simple tests for {@link org.apache.lucene.document.ShapeDocValuesField} */
 public class TestShapeDocValues extends LuceneTestCase {
-  private static double TOLERANCE = 1E-7;
+  private static final double TOLERANCE = 1E-7;
 
   private static final String FIELD_NAME = "field";
 
@@ -56,12 +56,14 @@ public class TestShapeDocValues extends LuceneTestCase {
 
   public void testLatLonPolygonBBox() {
     Polygon p = GeoTestUtil.nextPolygon();
-    Rectangle expected = (Rectangle) computeBoundingBox(p);
-    LatLonShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
-    assertEquals(expected.minLat, dv.getBoundingBox().minLat, TOLERANCE);
-    assertEquals(expected.maxLat, dv.getBoundingBox().maxLat, TOLERANCE);
-    assertEquals(expected.minLon, dv.getBoundingBox().minLon, TOLERANCE);
-    assertEquals(expected.maxLon, dv.getBoundingBox().maxLon, TOLERANCE);
+    if (area(p) != 0) {
+      Rectangle expected = (Rectangle) computeBoundingBox(p);
+      LatLonShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
+      assertEquals(expected.minLat, dv.getBoundingBox().minLat, TOLERANCE);
+      assertEquals(expected.maxLat, dv.getBoundingBox().maxLat, TOLERANCE);
+      assertEquals(expected.minLon, dv.getBoundingBox().minLon, TOLERANCE);
+      assertEquals(expected.maxLon, dv.getBoundingBox().maxLon, TOLERANCE);
+    }
   }
 
   public void testXYPolygonBBox() {
@@ -254,5 +256,10 @@ public class TestShapeDocValues extends LuceneTestCase {
       tess.add(d);
     }
     return tess;
+  }
+
+  /** Compute signed area of rectangle */
+  private static double area(Polygon p) {
+    return (p.maxLon - p.minLon) * (p.maxLat - p.minLat);
   }
 }

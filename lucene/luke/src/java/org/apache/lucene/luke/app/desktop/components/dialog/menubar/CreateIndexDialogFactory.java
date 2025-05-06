@@ -71,6 +71,7 @@ public class CreateIndexDialogFactory implements DialogOpener.DialogFactory {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static CreateIndexDialogFactory instance;
 
   private final Preferences prefs;
@@ -145,7 +146,7 @@ public class CreateIndexDialogFactory implements DialogOpener.DialogFactory {
     createBtn.addActionListener(listeners::createIndex);
 
     cancelBtn.setText(MessageUtils.getLocalizedMessage("button.cancel"));
-    cancelBtn.addActionListener(e -> dialog.dispose());
+    cancelBtn.addActionListener(_ -> dialog.dispose());
   }
 
   @Override

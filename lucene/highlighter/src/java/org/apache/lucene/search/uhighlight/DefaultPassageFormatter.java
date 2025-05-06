@@ -64,7 +64,7 @@ public class DefaultPassageFormatter extends PassageFormatter {
     int pos = 0;
     for (Passage passage : passages) {
       // don't add ellipsis if its the first one, or if its connected.
-      if (passage.getStartOffset() > pos && pos > 0) {
+      if (!sb.isEmpty() && passage.getStartOffset() != pos) {
         sb.append(ellipsis);
       }
       pos = passage.getStartOffset();
@@ -76,10 +76,11 @@ public class DefaultPassageFormatter extends PassageFormatter {
 
         int end = passage.getMatchEnds()[i];
         assert end > start;
-        // its possible to have overlapping terms.
-        //   Look ahead to expand 'end' past all overlapping:
+        // It's possible to have overlapping terms.
+        //   Look ahead to expand 'end' past all overlapping.
+        //   Only take new end if it is larger than current end.
         while (i + 1 < passage.getNumMatches() && passage.getMatchStarts()[i + 1] < end) {
-          end = passage.getMatchEnds()[++i];
+          end = Math.max(end, passage.getMatchEnds()[++i]);
         }
         end = Math.min(end, passage.getEndOffset()); // in case match straddles past passage
 

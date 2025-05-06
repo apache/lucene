@@ -33,7 +33,7 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
     if (sources.size() == 1) {
       return sources.get(0);
     }
-    List<IntervalsSource> rewritten = deduplicate(flatten(sources));
+    List<IntervalsSource> rewritten = deduplicate(sources);
     if (rewritten.size() == 1) {
       return rewritten.get(0);
     }
@@ -43,7 +43,7 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
   private static List<IntervalsSource> deduplicate(List<IntervalsSource> sources) {
     Map<IntervalsSource, Integer> counts = new LinkedHashMap<>(); // preserve order for testing
     for (IntervalsSource source : sources) {
-      counts.compute(source, (k, v) -> v == null ? 1 : v + 1);
+      counts.compute(source, (_, v) -> v == null ? 1 : v + 1);
     }
     List<IntervalsSource> deduplicated = new ArrayList<>();
     for (IntervalsSource source : counts.keySet()) {
@@ -53,18 +53,6 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
       ((RepeatingIntervalsSource) deduplicated.get(0)).setName("UNORDERED");
     }
     return deduplicated;
-  }
-
-  private static List<IntervalsSource> flatten(List<IntervalsSource> sources) {
-    List<IntervalsSource> flattened = new ArrayList<>();
-    for (IntervalsSource s : sources) {
-      if (s instanceof UnorderedIntervalsSource) {
-        flattened.addAll(((UnorderedIntervalsSource) s).subSources);
-      } else {
-        flattened.add(s);
-      }
-    }
-    return flattened;
   }
 
   private UnorderedIntervalsSource(List<IntervalsSource> sources) {

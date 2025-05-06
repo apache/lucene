@@ -33,8 +33,9 @@ import org.junit.Test;
  */
 public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
 
-  private static String SENTENCES = "Sentence number 1 has 6 words. Sentence number 2, 5 words.";
-  private static String[] SENTENCES_punc = {
+  private static final String SENTENCES =
+      "Sentence number 1 has 6 words. Sentence number 2, 5 words.";
+  private static final String[] SENTENCES_punc = {
     "Sentence",
     "number",
     "1",
@@ -50,15 +51,17 @@ public class TestOpenNLPTokenizerFactory extends BaseTokenStreamTestCase {
     "words",
     "."
   };
-  private static int[] SENTENCES_startOffsets = {
+  private static final int[] SENTENCES_startOffsets = {
     0, 9, 16, 18, 22, 24, 29, 31, 40, 47, 48, 50, 52, 57
   };
-  private static int[] SENTENCES_endOffsets = {
+  private static final int[] SENTENCES_endOffsets = {
     8, 15, 17, 21, 23, 29, 30, 39, 46, 48, 49, 51, 57, 58
   };
 
-  private static String SENTENCE1 = "Sentence number 1 has 6 words.";
-  private static String[] SENTENCE1_punc = {"Sentence", "number", "1", "has", "6", "words", "."};
+  private static final String SENTENCE1 = "Sentence number 1 has 6 words.";
+  private static final String[] SENTENCE1_punc = {
+    "Sentence", "number", "1", "has", "6", "words", "."
+  };
 
   @Test
   public void testTokenizer() throws IOException {

@@ -82,6 +82,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
   protected final AtomicInteger addCount = new AtomicInteger();
   protected final AtomicInteger delCount = new AtomicInteger();
   protected final AtomicInteger packCount = new AtomicInteger();
+  protected AtomicLong maxAdvancedSegmentCounter = new AtomicLong(0);
 
   protected Directory dir;
   protected IndexWriter writer;
@@ -187,6 +188,20 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
                     doc.add(newTextField(addedField, "a random field", Field.Store.YES));
                   } else {
                     addedField = null;
+                  }
+
+                  // Maybe advance segment counter. Run with a relatively low probability to avoid
+                  // testing slowdowns caused by synchronous operations.
+                  if (random().nextInt(7) == 5) {
+                    long newSegmentCounter = writer.getSegmentInfosCounter() + 100;
+                    writer.advanceSegmentInfosCounter(newSegmentCounter);
+                    if (VERBOSE) {
+                      System.out.println(
+                          Thread.currentThread().getName()
+                              + " advance segment counter to "
+                              + newSegmentCounter);
+                    }
+                    maxAdvancedSegmentCounter.accumulateAndGet(newSegmentCounter, Math::max);
                   }
 
                   if (random().nextBoolean()) {
@@ -540,7 +555,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           }
 
           IndexSearcher searcher = newSearcher(reader, false);
-          sum += searcher.search(new TermQuery(new Term("body", "united")), 10).totalHits.value;
+          sum += searcher.search(new TermQuery(new Term("body", "united")), 10).totalHits.value();
 
           if (VERBOSE) {
             System.out.println("TEST: warm visited " + sum + " fields");
@@ -606,6 +621,8 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
       thread.join();
     }
 
+    assertTrue(writer.getSegmentInfosCounter() >= maxAdvancedSegmentCounter.get());
+
     if (VERBOSE) {
       System.out.println(
           "TEST: done join indexing threads ["
@@ -613,7 +630,9 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
               + " ms]; addCount="
               + addCount
               + " delCount="
-              + delCount);
+              + delCount
+              + " segmentCounter="
+              + writer.getSegmentInfosCounter());
     }
 
     final IndexSearcher s = getFinalSearcher();
@@ -628,12 +647,12 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     // Verify: make sure delIDs are in fact deleted:
     for (String id : delIDs) {
       final TopDocs hits = s.search(new TermQuery(new Term("docid", id)), 1);
-      if (hits.totalHits.value != 0) {
+      if (hits.totalHits.value() != 0) {
         System.out.println(
             "doc id="
                 + id
                 + " is supposed to be deleted, but got "
-                + hits.totalHits.value
+                + hits.totalHits.value()
                 + " hits; first docID="
                 + hits.scoreDocs[0].doc);
         doFail = true;
@@ -643,12 +662,12 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
     // Verify: make sure delPackIDs are in fact deleted:
     for (String id : delPackIDs) {
       final TopDocs hits = s.search(new TermQuery(new Term("packID", id)), 1);
-      if (hits.totalHits.value != 0) {
+      if (hits.totalHits.value() != 0) {
         System.out.println(
             "packID="
                 + id
                 + " is supposed to be deleted, but got "
-                + hits.totalHits.value
+                + hits.totalHits.value()
                 + " matches");
         doFail = true;
       }
@@ -660,14 +679,14 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
       StoredFields storedFields = s.storedFields();
       if (!subDocs.deleted) {
         // We sort by relevance but the scores should be identical so sort falls back to by docID:
-        if (hits.totalHits.value != subDocs.subIDs.size()) {
+        if (hits.totalHits.value() != subDocs.subIDs.size()) {
           System.out.println(
               "packID="
                   + subDocs.packID
                   + ": expected "
                   + subDocs.subIDs.size()
                   + " hits but got "
-                  + hits.totalHits.value);
+                  + hits.totalHits.value());
           doFail = true;
         } else {
           int lastDocID = -1;
@@ -687,7 +706,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
           lastDocID = startDocID - 1;
           for (String subID : subDocs.subIDs) {
             hits = s.search(new TermQuery(new Term("docid", subID)), 1);
-            assertEquals(1, hits.totalHits.value);
+            assertEquals(1, hits.totalHits.value());
             final int docID = hits.scoreDocs[0].doc;
             if (lastDocID != -1) {
               assertEquals(1 + lastDocID, docID);
@@ -700,7 +719,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
         // deleted.  We can't verify packID is deleted
         // because we can re-use packID for update:
         for (String subID : subDocs.subIDs) {
-          assertEquals(0, s.search(new TermQuery(new Term("docid", subID)), 1).totalHits.value);
+          assertEquals(0, s.search(new TermQuery(new Term("docid", subID)), 1).totalHits.value());
         }
       }
     }
@@ -714,12 +733,12 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
       String stringID = "" + id;
       if (!delIDs.contains(stringID)) {
         final TopDocs hits = s.search(new TermQuery(new Term("docid", stringID)), 1);
-        if (hits.totalHits.value != 1) {
+        if (hits.totalHits.value() != 1) {
           System.out.println(
               "doc id="
                   + stringID
                   + " is not supposed to be deleted, but got hitCount="
-                  + hits.totalHits.value
+                  + hits.totalHits.value()
                   + "; delIDs="
                   + delIDs);
           doFail = true;
@@ -779,9 +798,11 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
   private long runQuery(IndexSearcher s, Query q) throws Exception {
     s.search(q, 10);
     long hitCount =
-        s.search(q, 10, new Sort(new SortField("titleDV", SortField.Type.STRING))).totalHits.value;
+        s.search(q, 10, new Sort(new SortField("titleDV", SortField.Type.STRING)))
+            .totalHits
+            .value();
     final Sort dvSort = new Sort(new SortField("titleDV", SortField.Type.STRING));
-    long hitCount2 = s.search(q, 10, dvSort).totalHits.value;
+    long hitCount2 = s.search(q, 10, dvSort).totalHits.value();
     assertEquals(hitCount, hitCount2);
     return hitCount;
   }

@@ -211,7 +211,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
   }
 
   @Test
-  /** LUCENE-4916 */
+  /* LUCENE-4916 */
   public void testWithinLeafApproxRule() throws IOException {
     setupQuadGrid(2, randomBoolean()); // 4x4 grid
     // indexed shape will simplify to entire right half (2 top cells)
@@ -346,16 +346,16 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
         case 0:
           queryShape = randomPoint();
           break;
-          // LUCENE-5549
-          // TODO debug: -Dtests.method=testWithin -Dtests.multiplier=3
-          // -Dtests.seed=5F5294CE2E075A3E:AAD2F0F79288CA64
-          //        case 1:case 2:case 3:
-          //          if (!indexedAtLeastOneShapePair) {
-          // // avoids ShapePair.relate(ShapePair), which isn't reliable
-          //            queryShape = randomShapePairRect(!biasContains);
-          // // invert biasContains for query side
-          //            break;
-          //          }
+        // LUCENE-5549
+        // TODO debug: -Dtests.method=testWithin -Dtests.multiplier=3
+        // -Dtests.seed=5F5294CE2E075A3E:AAD2F0F79288CA64
+        //        case 1:case 2:case 3:
+        //          if (!indexedAtLeastOneShapePair) {
+        // // avoids ShapePair.relate(ShapePair), which isn't reliable
+        //            queryShape = randomShapePairRect(!biasContains);
+        // // invert biasContains for query side
+        //            break;
+        //          }
 
         case 4:
           // choose an existing indexed shape
@@ -366,7 +366,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
               break;
             }
           }
-          // fall-through
+        // fall-through
 
         default:
           queryShape = randomRectangle();
@@ -459,8 +459,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
 
   protected Shape gridSnap(Shape snapMe) {
     if (snapMe == null) return null;
-    if (snapMe instanceof ShapePair) {
-      ShapePair me = (ShapePair) snapMe;
+    if (snapMe instanceof ShapePair me) {
       return new ShapePair(gridSnap(me.shape1), gridSnap(me.shape2), me.biasContainsThenWithin);
     }
     if (snapMe instanceof Point) {
@@ -505,8 +504,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
 
     private Shape toNonGeo(Shape shape) {
       if (!ctx.isGeo()) return shape; // already non-geo
-      if (shape instanceof Rectangle) {
-        Rectangle rect = (Rectangle) shape;
+      if (shape instanceof Rectangle rect) {
         if (rect.getCrossesDateLine()) {
           return new ShapePair(
               ctx2D.makeRectangle(rect.getMinX(), 180, rect.getMinY(), rect.getMaxY()),

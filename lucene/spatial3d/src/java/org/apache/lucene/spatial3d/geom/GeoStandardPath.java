@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * GeoShape representing a path across the surface of the globe, with a specified half-width. Path
@@ -429,14 +430,7 @@ class GeoStandardPath extends GeoBasePath {
         + "}}";
   }
 
-  private static class DistancePair {
-    public final double pathCenterDistance;
-    public final double distanceAlongPath;
-
-    public DistancePair(final double pathCenterDistance, final double distanceAlongPath) {
-      this.pathCenterDistance = pathCenterDistance;
-      this.distanceAlongPath = distanceAlongPath;
-    }
+  private record DistancePair(double pathCenterDistance, double distanceAlongPath) {
 
     @Override
     public String toString() {
@@ -1957,18 +1951,18 @@ class GeoStandardPath extends GeoBasePath {
 
   private static class TreeBuilder {
     private final List<PathComponent> componentStack;
-    private final List<Integer> depthStack;
+    private final IntArrayList depthStack;
 
     public TreeBuilder(final int max) {
       componentStack = new ArrayList<>(max);
-      depthStack = new ArrayList<>(max);
+      depthStack = new IntArrayList(max);
     }
 
     public void addComponent(final PathComponent component) {
       componentStack.add(component);
       depthStack.add(0);
       while (depthStack.size() >= 2) {
-        if (depthStack.get(depthStack.size() - 1).equals(depthStack.get(depthStack.size() - 2))) {
+        if (depthStack.get(depthStack.size() - 1) == depthStack.get(depthStack.size() - 2)) {
           mergeTop();
         } else {
           break;
@@ -1987,9 +1981,9 @@ class GeoStandardPath extends GeoBasePath {
     }
 
     private void mergeTop() {
-      depthStack.remove(depthStack.size() - 1);
+      depthStack.removeAt(depthStack.size() - 1);
       PathComponent secondComponent = componentStack.remove(componentStack.size() - 1);
-      int newDepth = depthStack.remove(depthStack.size() - 1) + 1;
+      int newDepth = depthStack.removeAt(depthStack.size() - 1) + 1;
       PathComponent firstComponent = componentStack.remove(componentStack.size() - 1);
       depthStack.add(newDepth);
       componentStack.add(new PathNode(firstComponent, secondComponent));

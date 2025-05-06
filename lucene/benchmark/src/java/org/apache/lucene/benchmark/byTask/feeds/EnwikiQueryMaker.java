@@ -40,7 +40,7 @@ import org.apache.lucene.util.automaton.Operations;
 public class EnwikiQueryMaker extends AbstractQueryMaker {
 
   // common and a few uncommon queries from wikipedia search logs
-  private static String[] STANDARD_QUERIES = {
+  private static final String[] STANDARD_QUERIES = {
     "Images catbox gif",
     "Imunisasi haram",
     "Favicon ico",

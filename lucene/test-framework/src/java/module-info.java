@@ -18,12 +18,11 @@
 /** Lucene test framework. */
 @SuppressWarnings({"module", "requires-automatic", "requires-transitive-automatic"})
 module org.apache.lucene.test_framework {
-  uses org.apache.lucene.codecs.KnnVectorsFormat;
-
   requires org.apache.lucene.core;
   requires org.apache.lucene.codecs;
   requires transitive junit;
   requires transitive randomizedtesting.runner;
+  requires org.hamcrest;
 
   // Open certain packages for junit because it scans methods via reflection.
   opens org.apache.lucene.tests.index to
@@ -51,7 +50,6 @@ module org.apache.lucene.test_framework {
   exports org.apache.lucene.tests.store;
   exports org.apache.lucene.tests.util.automaton;
   exports org.apache.lucene.tests.util.fst;
-  exports org.apache.lucene.tests.util.hnsw;
   exports org.apache.lucene.tests.util;
 
   provides org.apache.lucene.codecs.Codec with

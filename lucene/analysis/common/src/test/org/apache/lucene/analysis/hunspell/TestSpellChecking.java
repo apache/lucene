@@ -59,6 +59,14 @@ public class TestSpellChecking extends LuceneTestCase {
 
   public void testRepSuggestions() throws Exception {
     doTest("rep");
+
+    //noinspection DataFlowIssue
+    Path aff = Path.of(getClass().getResource("rep.aff").toURI());
+    Dictionary dictionary = TestAllDictionaries.loadDictionary(aff);
+    Suggester suggester = new Suggester(dictionary);
+    assertEquals(List.of("auto's"), suggester.suggestNoTimeout("autos", () -> {}));
+    assertEquals(
+        List.of("auto's", "auto"), suggester.proceedPastRep().suggestNoTimeout("autos", () -> {}));
   }
 
   public void testPhSuggestions() throws Exception {

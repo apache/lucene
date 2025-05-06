@@ -34,19 +34,14 @@ final class FSTOrdsOutputs extends Outputs<FSTOrdsOutputs.Output> {
 
   private static final BytesRef NO_BYTES = new BytesRef();
 
-  public static final class Output {
-    public final BytesRef bytes;
-    // Inclusive:
-    public final long startOrd;
-    // Inclusive:
-    public final long endOrd;
-
-    public Output(BytesRef bytes, long startOrd, long endOrd) {
+  /**
+   * @param startOrd Inclusive:
+   * @param endOrd Inclusive:
+   */
+  public record Output(BytesRef bytes, long startOrd, long endOrd) {
+    public Output {
       assert startOrd >= 0 : "startOrd=" + startOrd;
       assert endOrd >= 0 : "endOrd=" + endOrd;
-      this.bytes = bytes;
-      this.startOrd = startOrd;
-      this.endOrd = endOrd;
     }
 
     @Override
@@ -59,24 +54,6 @@ final class FSTOrdsOutputs extends Outputs<FSTOrdsOutputs.Output> {
         x = -endOrd;
       }
       return startOrd + " to " + x;
-    }
-
-    @Override
-    public int hashCode() {
-      int hash = bytes.hashCode();
-      hash = (int) (hash ^ startOrd);
-      hash = (int) (hash ^ endOrd);
-      return hash;
-    }
-
-    @Override
-    public boolean equals(Object _other) {
-      if (_other instanceof Output) {
-        Output other = (Output) _other;
-        return bytes.equals(other.bytes) && startOrd == other.startOrd && endOrd == other.endOrd;
-      } else {
-        return false;
-      }
     }
   }
 

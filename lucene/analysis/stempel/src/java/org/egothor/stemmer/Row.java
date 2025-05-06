@@ -59,11 +59,13 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Iterator;
-import java.util.TreeMap;
+import org.apache.lucene.internal.hppc.CharCursor;
+import org.apache.lucene.internal.hppc.CharObjectHashMap;
+import org.apache.lucene.internal.hppc.ObjectCursor;
 
 /** The Row class represents a row in a matrix representation of a trie. */
 public class Row {
-  TreeMap<Character, Cell> cells = new TreeMap<>();
+  CharObjectHashMap<Cell> cells = new CharObjectHashMap<>();
   int uniformCnt = 0;
   int uniformSkip = 0;
 
@@ -98,12 +100,12 @@ public class Row {
   }
 
   /**
-   * Set the command in the Cell of the given Character to the given integer.
+   * Set the command in the Cell of the given character to the given integer.
    *
-   * @param way the Character defining the Cell
+   * @param way the character defining the Cell
    * @param cmd the new command
    */
-  public void setCmd(Character way, int cmd) {
+  public void setCmd(char way, int cmd) {
     Cell c = at(way);
     if (c == null) {
       c = new Cell();
@@ -116,12 +118,12 @@ public class Row {
   }
 
   /**
-   * Set the reference to the next row in the Cell of the given Character to the given integer.
+   * Set the reference to the next row in the Cell of the given character to the given integer.
    *
-   * @param way the Character defining the Cell
+   * @param way the character defining the Cell
    * @param ref The new ref value
    */
-  public void setRef(Character way, int ref) {
+  public void setRef(char way, int ref) {
     Cell c = at(way);
     if (c == null) {
       c = new Cell();
@@ -138,10 +140,10 @@ public class Row {
    * @return the number of cells in use
    */
   public int getCells() {
-    Iterator<Character> i = cells.keySet().iterator();
+    Iterator<CharCursor> i = cells.keys().iterator();
     int size = 0;
     for (; i.hasNext(); ) {
-      Character c = i.next();
+      char c = i.next().value;
       Cell e = at(c);
       if (e.cmd >= 0 || e.ref >= 0) {
         size++;
@@ -156,10 +158,10 @@ public class Row {
    * @return the number of references
    */
   public int getCellsPnt() {
-    Iterator<Character> i = cells.keySet().iterator();
+    Iterator<CharCursor> i = cells.keys().iterator();
     int size = 0;
     for (; i.hasNext(); ) {
-      Character c = i.next();
+      char c = i.next().value;
       Cell e = at(c);
       if (e.ref >= 0) {
         size++;
@@ -174,10 +176,10 @@ public class Row {
    * @return the number of patch commands
    */
   public int getCellsVal() {
-    Iterator<Character> i = cells.keySet().iterator();
+    Iterator<CharCursor> i = cells.keys().iterator();
     int size = 0;
     for (; i.hasNext(); ) {
-      Character c = i.next();
+      char c = i.next().value;
       Cell e = at(c);
       if (e.cmd >= 0) {
         size++;
@@ -187,35 +189,35 @@ public class Row {
   }
 
   /**
-   * Return the command in the Cell associated with the given Character.
+   * Return the command in the Cell associated with the given character.
    *
-   * @param way the Character associated with the Cell holding the desired command
+   * @param way the character associated with the Cell holding the desired command
    * @return the command
    */
-  public int getCmd(Character way) {
+  public int getCmd(char way) {
     Cell c = at(way);
     return (c == null) ? -1 : c.cmd;
   }
 
   /**
-   * Return the number of patch commands were in the Cell associated with the given Character before
+   * Return the number of patch commands were in the Cell associated with the given character before
    * the Trie containing this Row was reduced.
    *
-   * @param way the Character associated with the desired Cell
+   * @param way the character associated with the desired Cell
    * @return the number of patch commands before reduction
    */
-  public int getCnt(Character way) {
+  public int getCnt(char way) {
     Cell c = at(way);
     return (c == null) ? -1 : c.cnt;
   }
 
   /**
-   * Return the reference to the next Row in the Cell associated with the given Character.
+   * Return the reference to the next Row in the Cell associated with the given character.
    *
-   * @param way the Character associated with the desired Cell
+   * @param way the character associated with the desired Cell
    * @return the reference, or -1 if the Cell is <code>null</code>
    */
-  public int getRef(Character way) {
+  public int getRef(char way) {
     Cell c = at(way);
     return (c == null) ? -1 : c.ref;
   }
@@ -228,15 +230,15 @@ public class Row {
    */
   public void store(DataOutput os) throws IOException {
     os.writeInt(cells.size());
-    Iterator<Character> i = cells.keySet().iterator();
+    Iterator<CharCursor> i = cells.keys().iterator();
     for (; i.hasNext(); ) {
-      Character c = i.next();
+      char c = i.next().value;
       Cell e = at(c);
       if (e.cmd < 0 && e.ref < 0) {
         continue;
       }
 
-      os.writeChar(c.charValue());
+      os.writeChar(c);
       os.writeInt(e.cmd);
       os.writeInt(e.cnt);
       os.writeInt(e.ref);
@@ -251,12 +253,12 @@ public class Row {
    * @return the number of identical Cells, or -1 if there are (at least) two different cells
    */
   public int uniformCmd(boolean eqSkip) {
-    Iterator<Cell> i = cells.values().iterator();
+    Iterator<ObjectCursor<Cell>> i = cells.values().iterator();
     int ret = -1;
     uniformCnt = 1;
     uniformSkip = 0;
     for (; i.hasNext(); ) {
-      Cell c = i.next();
+      Cell c = i.next().value;
       if (c.ref >= 0) {
         return -1;
       }
@@ -284,15 +286,15 @@ public class Row {
 
   /** Write the contents of this Row to the printstream. */
   public void print(PrintStream out) {
-    for (Iterator<Character> i = cells.keySet().iterator(); i.hasNext(); ) {
-      Character ch = i.next();
+    for (Iterator<CharCursor> i = cells.keys().iterator(); i.hasNext(); ) {
+      char ch = i.next().value;
       Cell c = at(ch);
       out.print("[" + ch + ":" + c + "]");
     }
     out.println();
   }
 
-  Cell at(Character index) {
+  Cell at(char index) {
     return cells.get(index);
   }
 }

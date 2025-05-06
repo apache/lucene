@@ -45,8 +45,7 @@ public class IntervalQueryNodeProcessor extends QueryNodeProcessorImpl {
 
   @Override
   protected QueryNode preProcessNode(QueryNode node) throws QueryNodeException {
-    if (node instanceof IntervalQueryNode) {
-      var intervalQueryNode = (IntervalQueryNode) node;
+    if (node instanceof IntervalQueryNode intervalQueryNode) {
       if (this.analyzer == null) {
         throw new QueryNodeException(
             new MessageImpl(QueryParserMessages.ANALYZER_REQUIRED, intervalQueryNode.toString()));

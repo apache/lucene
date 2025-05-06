@@ -163,19 +163,7 @@ final class CompletionFieldsConsumer extends FieldsConsumer {
     }
   }
 
-  private static class CompletionMetaData {
-    private final long filePointer;
-    private final long minWeight;
-    private final long maxWeight;
-    private final byte type;
-
-    private CompletionMetaData(long filePointer, long minWeight, long maxWeight, byte type) {
-      this.filePointer = filePointer;
-      this.minWeight = minWeight;
-      this.maxWeight = maxWeight;
-      this.type = type;
-    }
-  }
+  private record CompletionMetaData(long filePointer, long minWeight, long maxWeight, byte type) {}
 
   // builds an FST based on the terms written
   private static class CompletionTermWriter {

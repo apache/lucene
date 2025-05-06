@@ -76,8 +76,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
       throws IOException {
     IndexSearcher searcher = newSearcher(indexReader);
     TopFieldCollectorManager manager =
-        new TopFieldCollectorManager(
-            sort, numResults, null, thresHold, searcher.getSlices().length > 1);
+        new TopFieldCollectorManager(sort, numResults, null, thresHold);
     return searcher.search(q, manager);
   }
 
@@ -87,8 +86,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(indexReader, true, true, true);
 
     TopFieldCollectorManager collectorManager =
-        new TopFieldCollectorManager(
-            sort, numResults, null, threshold, searcher.getSlices().length > 1);
+        new TopFieldCollectorManager(sort, numResults, null, threshold);
 
     TopDocs topDoc = searcher.search(q, collectorManager);
 
@@ -122,7 +120,7 @@ public class TestTopFieldCollector extends LuceneTestCase {
     for (int i = 0; i < sort.length; i++) {
       Query q = new MatchAllDocsQuery();
       TopFieldCollectorManager tdc =
-          new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE, false);
+          new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE);
       TopDocs td = is.search(q, tdc);
       ScoreDoc[] sd = td.scoreDocs;
       for (int j = 0; j < sd.length; j++) {
@@ -384,9 +382,9 @@ public class TestTopFieldCollector extends LuceneTestCase {
     Sort[] sort = new Sort[] {new Sort(SortField.FIELD_DOC), new Sort()};
     for (int i = 0; i < sort.length; i++) {
       TopDocsCollector<Entry> tdc =
-          new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE, false).newCollector();
+          new TopFieldCollectorManager(sort[i], 10, null, Integer.MAX_VALUE).newCollector();
       TopDocs td = tdc.topDocs();
-      assertEquals(0, td.totalHits.value);
+      assertEquals(0, td.totalHits.value());
     }
   }
 
@@ -577,47 +575,45 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     scorer.score = 3;
     leafCollector.collect(0);
-    assertNull(minValueChecker.get());
+    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
     assertNull(scorer.minCompetitiveScore);
 
     scorer2.score = 6;
     leafCollector2.collect(0);
-    assertNull(minValueChecker.get());
+    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
     assertNull(scorer2.minCompetitiveScore);
 
     scorer.score = 2;
     leafCollector.collect(1);
-    assertEquals(2f, minValueChecker.get().score, 0f);
-    assertEquals(2f, scorer.minCompetitiveScore, 0f);
-    assertNull(scorer2.minCompetitiveScore);
+    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(scorer.minCompetitiveScore);
 
     scorer2.score = 9;
     leafCollector2.collect(1);
-    assertEquals(6f, minValueChecker.get().score, 0f);
-    assertEquals(2f, scorer.minCompetitiveScore, 0f);
-    assertEquals(6f, scorer2.minCompetitiveScore, 0f);
+    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(scorer2.minCompetitiveScore);
 
     scorer2.score = 7;
     leafCollector2.collect(2);
-    assertEquals(7f, minValueChecker.get().score, 0f);
-    assertEquals(2f, scorer.minCompetitiveScore, 0f);
+    assertEquals(7f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
+    assertNull(scorer.minCompetitiveScore);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
     scorer2.score = 1;
     leafCollector2.collect(3);
-    assertEquals(7f, minValueChecker.get().score, 0f);
-    assertEquals(2f, scorer.minCompetitiveScore, 0f);
+    assertEquals(7f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
+    assertNull(scorer.minCompetitiveScore);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
     scorer.score = 10;
     leafCollector.collect(2);
-    assertEquals(7f, minValueChecker.get().score, 0f);
+    assertEquals(7f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
     assertEquals(7f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
     scorer.score = 11;
     leafCollector.collect(3);
-    assertEquals(10f, minValueChecker.get().score, 0f);
+    assertEquals(10f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
     assertEquals(10f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
 
@@ -629,25 +625,25 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     scorer3.score = 1f;
     leafCollector3.collect(0);
-    assertEquals(10f, minValueChecker.get().score, 0f);
+    assertEquals(10f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
     scorer.score = 11;
     leafCollector.collect(4);
-    assertEquals(11f, minValueChecker.get().score, 0f);
+    assertEquals(11f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
     assertEquals(11f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
     assertEquals(10f, scorer3.minCompetitiveScore, 0f);
 
     scorer3.score = 2f;
     leafCollector3.collect(1);
-    assertEquals(11f, minValueChecker.get().score, 0f);
+    assertEquals(11f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
     assertEquals(11f, scorer.minCompetitiveScore, 0f);
     assertEquals(7f, scorer2.minCompetitiveScore, 0f);
     assertEquals(11f, scorer3.minCompetitiveScore, 0f);
 
     TopFieldDocs topDocs = manager.reduce(Arrays.asList(collector, collector2, collector3));
-    assertEquals(11, topDocs.totalHits.value);
+    assertEquals(11, topDocs.totalHits.value());
     assertEquals(new TotalHits(11, TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO), topDocs.totalHits);
 
     leafCollector.setScorer(scorer);
@@ -695,8 +691,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
       TopDocs tdc = doConcurrentSearchWithThreshold(5, 0, query, sort, indexReader);
       TopDocs tdc2 = doSearchWithThreshold(5, 0, query, sort, indexReader);
 
-      assertTrue(tdc.totalHits.value > 0);
-      assertTrue(tdc2.totalHits.value > 0);
+      assertTrue(tdc.totalHits.value() > 0);
+      assertTrue(tdc2.totalHits.value() > 0);
       CheckHits.checkEqual(query, tdc.scoreDocs, tdc2.scoreDocs);
     }
 
@@ -718,21 +714,20 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
       try (IndexReader reader = DirectoryReader.open(w)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        TopFieldCollectorManager collectorManager =
-            new TopFieldCollectorManager(sort, 2, null, 10, true);
+        TopFieldCollectorManager collectorManager = new TopFieldCollectorManager(sort, 2, null, 10);
         TopDocs topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertEquals(10, topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+        assertEquals(10, topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
 
-        collectorManager = new TopFieldCollectorManager(sort, 2, null, 2, true);
+        collectorManager = new TopFieldCollectorManager(sort, 2, null, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertTrue(10 >= topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+        assertTrue(10 >= topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
-        collectorManager = new TopFieldCollectorManager(sort, 10, null, 2, true);
+        collectorManager = new TopFieldCollectorManager(sort, 10, null, 2);
         topDocs = searcher.search(new TermQuery(new Term("f", "foo")), collectorManager);
-        assertEquals(10, topDocs.totalHits.value);
-        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation);
+        assertEquals(10, topDocs.totalHits.value());
+        assertEquals(TotalHits.Relation.EQUAL_TO, topDocs.totalHits.relation());
       }
     }
   }

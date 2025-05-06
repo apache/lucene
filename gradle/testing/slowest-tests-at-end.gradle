@@ -22,7 +22,7 @@ def allSuites = []
 
 allprojects {
   plugins.withType(JavaPlugin) {
-    ext {
+    project.ext {
       testOptions += [
           [propName: 'tests.slowestTests', value: true, description: "Print the summary of the slowest tests."],
           [propName: 'tests.slowestSuites', value: true, description: "Print the summary of the slowest suites."]

@@ -130,13 +130,20 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
       for (j = 0; j < array.length; ) {
         final int l = TestUtil.nextInt(random(), 1, array.length - j);
         DocIdSetBuilder.BulkAdder adder = null;
-        for (int k = 0, budget = 0; k < l; ++k) {
-          if (budget == 0 || rarely()) {
-            budget = TestUtil.nextInt(random(), 1, l - k + 5);
-            adder = builder.grow(budget);
+        if (usually()) {
+          for (int k = 0, budget = 0; k < l; ++k) {
+            if (budget == 0 || rarely()) {
+              budget = TestUtil.nextInt(random(), 1, l - k + 5);
+              adder = builder.grow(budget);
+            }
+            adder.add(array[j++]);
+            budget--;
           }
-          adder.add(array[j++]);
-          budget--;
+        } else {
+          IntsRef intsRef = new IntsRef(array, j, l);
+          adder = builder.grow(l);
+          adder.add(intsRef);
+          j += l;
         }
       }
 
@@ -167,14 +174,14 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
 
   public void testEmptyPoints() throws IOException {
     PointValues values = new DummyPointValues(0, 0);
-    DocIdSetBuilder builder = new DocIdSetBuilder(1, values, "foo");
+    DocIdSetBuilder builder = new DocIdSetBuilder(1, values);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
   }
 
   public void testLeverageStats() throws IOException {
     // single-valued points
     PointValues values = new DummyPointValues(42, 42);
-    DocIdSetBuilder builder = new DocIdSetBuilder(100, values, "foo");
+    DocIdSetBuilder builder = new DocIdSetBuilder(100, values);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertFalse(builder.multivalued);
     DocIdSetBuilder.BulkAdder adder = builder.grow(2);
@@ -186,7 +193,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
 
     // multi-valued points
     values = new DummyPointValues(42, 63);
-    builder = new DocIdSetBuilder(100, values, "foo");
+    builder = new DocIdSetBuilder(100, values);
     assertEquals(1.5, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
     adder = builder.grow(2);
@@ -198,12 +205,12 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
 
     // incomplete stats
     values = new DummyPointValues(42, -1);
-    builder = new DocIdSetBuilder(100, values, "foo");
+    builder = new DocIdSetBuilder(100, values);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
 
     values = new DummyPointValues(-1, 84);
-    builder = new DocIdSetBuilder(100, values, "foo");
+    builder = new DocIdSetBuilder(100, values);
     assertEquals(1d, builder.numValuesPerDoc, 0d);
     assertTrue(builder.multivalued);
 

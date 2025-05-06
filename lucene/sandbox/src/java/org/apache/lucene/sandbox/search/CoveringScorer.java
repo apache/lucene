@@ -26,7 +26,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
-import org.apache.lucene.search.Weight;
 
 /** A {@link Scorer} whose number of matches is per-document. */
 final class CoveringScorer extends Scorer {
@@ -46,18 +45,16 @@ final class CoveringScorer extends Scorer {
 
   final long cost;
 
-  CoveringScorer(Weight weight, Collection<Scorer> scorers, LongValues minMatchValues, int maxDoc) {
-    super(weight);
-
+  CoveringScorer(Collection<Scorer> scorers, LongValues minMatchValues, int maxDoc) {
     this.numScorers = scorers.size();
     this.maxDoc = maxDoc;
     this.minMatchValues = minMatchValues;
     this.doc = -1;
 
-    subScorers = new DisiPriorityQueue(scorers.size());
+    subScorers = DisiPriorityQueue.ofMaxSize(scorers.size());
 
     for (Scorer scorer : scorers) {
-      subScorers.add(new DisiWrapper(scorer));
+      subScorers.add(new DisiWrapper(scorer, false));
     }
 
     this.cost = scorers.stream().map(Scorer::iterator).mapToLong(DocIdSetIterator::cost).sum();
@@ -213,7 +210,7 @@ final class CoveringScorer extends Scorer {
     setTopListAndFreqIfNecessary();
     double score = 0;
     for (DisiWrapper w = topList; w != null; w = w.next) {
-      score += w.scorer.score();
+      score += w.scorable.score();
     }
     return (float) score;
   }

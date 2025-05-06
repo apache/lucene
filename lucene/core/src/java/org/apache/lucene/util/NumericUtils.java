@@ -61,8 +61,9 @@ public final class NumericUtils {
    * Converts a <code>float</code> value to a sortable signed <code>int</code>. The value is
    * converted by getting their IEEE 754 floating-point &quot;float format&quot; bit layout and then
    * some bits are swapped, to be able to compare the result as int. By this the precision is not
-   * reduced, but the value can easily used as an int. The sort order (including {@link Float#NaN})
-   * is defined by {@link Float#compareTo}; {@code NaN} is greater than positive infinity.
+   * reduced, but the value can easily be used as an int. The sort order (including {@link
+   * Float#NaN}) is defined by {@link Float#compareTo}; {@code NaN} is greater than positive
+   * infinity.
    *
    * @see #sortableIntToFloat
    */

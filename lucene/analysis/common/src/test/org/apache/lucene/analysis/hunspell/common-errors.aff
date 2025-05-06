@@ -1,0 +1,9 @@
+SET UTF-8
+
+# add some suffix off-by-ones here, feel free to add more
+# SFX A: wrong count, come up short on entries and stampede into SFX B.
+# SFX B: wrong count, hit EOF
+SFX A Y 2
+SFX A 0 ing .
+SFX B Y 2
+SFX B 0 ed .

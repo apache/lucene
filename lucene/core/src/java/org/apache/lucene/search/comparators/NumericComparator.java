@@ -23,6 +23,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
@@ -30,6 +31,8 @@ import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
@@ -95,7 +98,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private final LeafReaderContext context;
     protected final NumericDocValues docValues;
     private final PointValues pointValues;
-    private final PointValues.PointTree pointTree;
+    // lazily constructed to avoid performance overhead when this is not used
+    private PointValues.PointTree pointTree;
     // if skipping functionality should be enabled on this segment
     private final boolean enableSkipping;
     private final int maxDoc;
@@ -139,7 +143,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
                   + " expected "
                   + bytesCount);
         }
-        this.pointTree = pointValues.getPointTree();
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
         this.competitiveIterator = DocIdSetIterator.all(maxDoc);
@@ -147,7 +150,6 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
           encodeTop();
         }
       } else {
-        this.pointTree = null;
         this.enableSkipping = false;
         this.maxDoc = 0;
       }
@@ -252,6 +254,19 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             }
 
             @Override
+            public void visit(DocIdSetIterator iterator) throws IOException {
+              if (iterator.advance(maxDocVisited + 1) != DocIdSetIterator.NO_MORE_DOCS) {
+                adder.add(iterator.docID());
+                adder.add(iterator);
+              }
+            }
+
+            @Override
+            public void visit(IntsRef ref) {
+              adder.add(ref, maxDocVisited + 1);
+            }
+
+            @Override
             public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               long min = sortableBytesToLong(minPackedValue);
               long max = sortableBytesToLong(maxPackedValue);
@@ -273,7 +288,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
       final long threshold = iteratorCost >>> 3;
 
-      if (PointValues.isEstimatedPointCountGreaterThanOrEqualTo(visitor, pointTree, threshold)) {
+      if (PointValues.isEstimatedPointCountGreaterThanOrEqualTo(
+          visitor, getPointTree(), threshold)) {
         // the new range is not selective enough to be worth materializing, it doesn't reduce number
         // of docs at least 8x
         updateSkipInterval(false);
@@ -288,6 +304,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       competitiveIterator = result.build().iterator();
       iteratorCost = competitiveIterator.cost();
       updateSkipInterval(true);
+    }
+
+    private PointValues.PointTree getPointTree() throws IOException {
+      if (pointTree == null) {
+        pointTree = pointValues.getPointTree();
+      }
+      return pointTree;
     }
 
     private void updateSkipInterval(boolean success) {
@@ -353,41 +376,45 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     }
 
     private boolean isMissingValueCompetitive() {
-      // if queue is full, always compare with bottom,
-      // if not, check if we can compare with topValue
+      // if queue is full, compare with bottom first,
+      // if competitive, then check if we can compare with topValue
       if (queueFull) {
         int result = Long.compare(missingValueAsLong, bottomAsComparableLong());
         // in reverse (desc) sort missingValue is competitive when it's greater or equal to bottom,
         // in asc sort missingValue is competitive when it's smaller or equal to bottom
-        return reverse
-            ? (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result > 0 : result >= 0)
-            : (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result < 0 : result <= 0);
-      } else if (leafTopSet) {
+        final boolean competitive =
+            reverse
+                ? (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result > 0 : result >= 0)
+                : (pruning == Pruning.GREATER_THAN_OR_EQUAL_TO ? result < 0 : result <= 0);
+        if (competitive == false) {
+          return false;
+        }
+      }
+
+      if (leafTopSet) {
         int result = Long.compare(missingValueAsLong, topAsComparableLong());
         // in reverse (desc) sort missingValue is competitive when it's smaller or equal to
         // topValue,
         // in asc sort missingValue is competitive when it's greater or equal to topValue
         return reverse ? (result <= 0) : (result >= 0);
-      } else {
-        // by default competitive
-        return true;
       }
+
+      // by default competitive
+      return true;
     }
 
     @Override
     public DocIdSetIterator competitiveIterator() {
       if (enableSkipping == false) return null;
-      return new DocIdSetIterator() {
-        private int docID = competitiveIterator.docID();
+      return new AbstractDocIdSetIterator() {
 
-        @Override
-        public int nextDoc() throws IOException {
-          return advance(docID + 1);
+        {
+          doc = competitiveIterator.docID();
         }
 
         @Override
-        public int docID() {
-          return docID;
+        public int nextDoc() throws IOException {
+          return advance(doc + 1);
         }
 
         @Override
@@ -397,7 +424,18 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
         @Override
         public int advance(int target) throws IOException {
-          return docID = competitiveIterator.advance(target);
+          return doc = competitiveIterator.advance(target);
+        }
+
+        @Override
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+          // The competitive iterator is usually a BitSetIterator, which has an optimized
+          // implementation of #intoBitSet.
+          if (competitiveIterator.docID() < doc) {
+            competitiveIterator.advance(doc);
+          }
+          competitiveIterator.intoBitSet(upTo, bitSet, offset);
+          doc = competitiveIterator.docID();
         }
       };
     }

@@ -21,9 +21,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.util.FixedBitSet;
 
 /** Wraps a Scorer with additional checks */
 public class AssertingScorer extends Scorer {
@@ -55,7 +57,6 @@ public class AssertingScorer extends Scorer {
 
   private AssertingScorer(
       Random random, Scorer in, ScoreMode scoreMode, boolean canCallMinCompetitiveScore) {
-    super(in.getWeight());
     this.random = random;
     this.in = in;
     this.scoreMode = scoreMode;
@@ -148,7 +149,7 @@ public class AssertingScorer extends Scorer {
   public DocIdSetIterator iterator() {
     final DocIdSetIterator in = this.in.iterator();
     assert in != null;
-    return new DocIdSetIterator() {
+    return new FilterDocIdSetIterator(in) {
 
       @Override
       public int docID() {
@@ -184,14 +185,25 @@ public class AssertingScorer extends Scorer {
         } else {
           state = IteratorState.ITERATING;
         }
-        assert in.docID() == advanced;
+        assert in.docID() == advanced : in.docID() + " != " + advanced + " in " + in;
         assert AssertingScorer.this.in.docID() == in.docID();
         return doc = advanced;
       }
 
       @Override
-      public long cost() {
-        return in.cost();
+      public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+        assert docID() != -1;
+        assert offset <= docID();
+        in.intoBitSet(upTo, bitSet, offset);
+        assert docID() >= upTo;
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        assert state == IteratorState.ITERATING;
+        int nextNonMatchingDocID = in.docIDRunEnd();
+        assert nextNonMatchingDocID > docID();
+        return nextNonMatchingDocID;
       }
     };
   }
@@ -205,12 +217,7 @@ public class AssertingScorer extends Scorer {
     final DocIdSetIterator inApproximation = in.approximation();
     assert inApproximation.docID() == doc;
     final DocIdSetIterator assertingApproximation =
-        new DocIdSetIterator() {
-
-          @Override
-          public int docID() {
-            return inApproximation.docID();
-          }
+        new FilterDocIdSetIterator(inApproximation) {
 
           @Override
           public int nextDoc() throws IOException {
@@ -241,11 +248,6 @@ public class AssertingScorer extends Scorer {
             }
             assert inApproximation.docID() == advanced;
             return doc = advanced;
-          }
-
-          @Override
-          public long cost() {
-            return inApproximation.cost();
           }
         };
     return new TwoPhaseIterator(assertingApproximation) {

@@ -97,7 +97,7 @@ public class MappingCharFilterFactory extends CharFilterFactory implements Resou
   }
 
   // "source" => "target"
-  static Pattern p = Pattern.compile("\"(.*)\"\\s*=>\\s*\"(.*)\"\\s*$");
+  private static final Pattern p = Pattern.compile("\"(.*)\"\\s*=>\\s*\"(.*)\"\\s*$");
 
   protected void parseRules(List<String> rules, NormalizeCharMap.Builder builder) {
     for (String rule : rules) {

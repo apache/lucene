@@ -161,12 +161,9 @@ class SimplePrimaryNode extends PrimaryNode {
     // iwc.setInfoStream(new PrintStreamInfoStream(System.out));
 
     // Force more frequent merging so we stress merge warming:
-    if (mp instanceof TieredMergePolicy) {
-      TieredMergePolicy tmp = (TieredMergePolicy) mp;
+    if (mp instanceof TieredMergePolicy tmp) {
       tmp.setSegmentsPerTier(3);
-      tmp.setMaxMergeAtOnce(3);
-    } else if (mp instanceof LogMergePolicy) {
-      LogMergePolicy lmp = (LogMergePolicy) mp;
+    } else if (mp instanceof LogMergePolicy lmp) {
       lmp.setMergeFactor(3);
     }
 
@@ -388,17 +385,17 @@ class SimplePrimaryNode extends PrimaryNode {
   private static void writeCopyState(CopyState state, DataOutput out) throws IOException {
     // TODO (opto): we could encode to byte[] once when we created the copyState, and then just send
     // same byts to all replicas...
-    out.writeVInt(state.infosBytes.length);
-    out.writeBytes(state.infosBytes, 0, state.infosBytes.length);
-    out.writeVLong(state.gen);
-    out.writeVLong(state.version);
-    TestSimpleServer.writeFilesMetaData(out, state.files);
+    out.writeVInt(state.infosBytes().length);
+    out.writeBytes(state.infosBytes(), 0, state.infosBytes().length);
+    out.writeVLong(state.gen());
+    out.writeVLong(state.version());
+    TestSimpleServer.writeFilesMetaData(out, state.files());
 
-    out.writeVInt(state.completedMergeFiles.size());
-    for (String fileName : state.completedMergeFiles) {
+    out.writeVInt(state.completedMergeFiles().size());
+    for (String fileName : state.completedMergeFiles()) {
       out.writeString(fileName);
     }
-    out.writeVLong(state.primaryGen);
+    out.writeVLong(state.primaryGen());
   }
 
   /** Called when another node (replica) wants to copy files from us */
@@ -417,7 +414,7 @@ class SimplePrimaryNode extends PrimaryNode {
     } else if (b == 1) {
       // Caller does not have CopyState; we pull the latest one:
       copyState = getCopyState();
-      Thread.currentThread().setName("send-R" + replicaID + "-" + copyState.version);
+      Thread.currentThread().setName("send-R" + replicaID + "-" + copyState.version());
     } else {
       // Protocol error:
       throw new IllegalArgumentException("invalid CopyState byte=" + b);
