@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * NeighborArray encodes the neighbors of a node and their mutual scores in the HNSW graph as a pair
@@ -30,7 +32,10 @@ import org.apache.lucene.internal.hppc.IntArrayList;
  *
  * @lucene.internal
  */
-public class NeighborArray {
+public class NeighborArray implements Accountable {
+  private static final long BASE_RAM_BYTES_USED =
+      RamUsageEstimator.shallowSizeOfInstance(NeighborArray.class);
+
   private final boolean scoresDescOrder;
   private int size;
   private final int maxSize;
@@ -307,5 +312,10 @@ public class NeighborArray {
 
   public int maxSize() {
     return maxSize;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return BASE_RAM_BYTES_USED + nodes.ramBytesUsed() + scores.ramBytesUsed();
   }
 }
