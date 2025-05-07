@@ -23,7 +23,28 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.SloppyMath;
 
 /**
- * Basic reusable geo-spatial utility methods
+ * Utility methods for geo-spatial calculations and coordinate validation.
+ *
+ * <p>This class provides:
+ *
+ * <ul>
+ *   <li>Coordinate validation methods
+ *   <li>Earth model constants
+ *   <li>Common geometric calculations
+ *   <li>Coordinate normalization utilities
+ * </ul>
+ *
+ * <p>Important Constants:
+ *
+ * <ul>
+ *   <li>Earth's mean radius: 6,371,008.7714 meters
+ *   <li>Latitude range: -90° to +90°
+ *   <li>Longitude range: -180° to +180°
+ * </ul>
+ *
+ * <p>Note: This class uses a spherical Earth model for simplicity and performance. For applications
+ * requiring higher precision, consider using a geodetic library that implements the WGS84 ellipsoid
+ * model.
  *
  * @lucene.experimental
  */
