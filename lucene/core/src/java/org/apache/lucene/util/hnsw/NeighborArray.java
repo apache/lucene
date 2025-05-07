@@ -20,7 +20,7 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.internal.hppc.FloatArrayList;
-import org.apache.lucene.internal.hppc.IntArrayList;
+import org.apache.lucene.internal.hppc.MaxSizedIntArrayList;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -40,12 +40,12 @@ public class NeighborArray implements Accountable {
   private int size;
   private final int maxSize;
   private final FloatArrayList scores;
-  private final IntArrayList nodes;
+  private final MaxSizedIntArrayList nodes;
   private int sortedNodeSize;
 
   public NeighborArray(int maxSize, boolean descOrder) {
     this.maxSize = maxSize;
-    nodes = new IntArrayList(maxSize / 8);
+    nodes = new MaxSizedIntArrayList(maxSize, maxSize / 8);
     scores = new FloatArrayList(maxSize / 8);
     this.scoresDescOrder = descOrder;
   }
