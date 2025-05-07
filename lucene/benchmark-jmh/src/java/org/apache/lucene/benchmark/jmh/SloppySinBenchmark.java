@@ -14,24 +14,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.benchmark.jmh;
 
-/** Advice regarding the read access pattern. */
-public enum ReadAdvice {
-  /**
-   * Normal behavior. Data is expected to be read mostly sequentially. The system is expected to
-   * cache the hottest pages.
-   */
-  NORMAL,
-  /**
-   * Data is expected to be read in a random-access fashion, either by {@link IndexInput#seek(long)
-   * seeking} often and reading relatively short sequences of bytes at once, or by reading data
-   * through the {@link RandomAccessInput} abstraction in random order.
-   */
-  RANDOM,
-  /**
-   * Data is expected to be read sequentially with very little seeking at most. The system may read
-   * ahead aggressively and free pages soon after they are accessed.
-   */
-  SEQUENTIAL
+import java.util.concurrent.TimeUnit;
+import org.apache.lucene.util.SloppyMath;
+import org.openjdk.jmh.annotations.*;
+
+@State(Scope.Thread)
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@Fork(value = 1, warmups = 1)
+@Warmup(iterations = 1, time = 1)
+@Measurement(iterations = 3, time = 2)
+public class SloppySinBenchmark {
+  @Benchmark
+  public double standardSin(ExecutionPlan plan) {
+    return Math.sin(plan.value);
+  }
+
+  @Benchmark
+  public double sloppySin(ExecutionPlan plan) {
+    return SloppyMath.sin(plan.value);
+  }
+
+  @State(Scope.Benchmark)
+  public static class ExecutionPlan {
+
+    // Test with different input ranges
+    @Param({"0.1", "0.5", "1.0", "2.0", "3.14"})
+    public double value;
+  }
 }
