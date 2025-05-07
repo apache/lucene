@@ -74,17 +74,17 @@ final class HistogramCollector implements Collector {
     }
 
     // We can use multi range traversal logic to collect the histogram on numeric
-    // field indexed as point for MATCH_ALL cases. In future, this can be extended
-    // for Point Range Query cases as well
+    // field indexed as point for MATCH_ALL or PointRangeQuery
     final PointRangeQuery pointRangeQuery = getPointRangeQuery(field);
     if (isMatchAll(context) || pointRangeQuery != null) {
       final PointValues pointValues = context.reader().getPointValues(field);
-      if (PointTreeBulkCollector.canCollectEfficiently(pointValues, bucketWidth)) {
+      final PointTreeBulkCollector pointTreeBulkCollector =
+          new PointTreeBulkCollector(pointValues, pointRangeQuery, bucketWidth);
+      if (pointTreeBulkCollector.canCollectEfficiently(weight.count(context))) {
         // In case of intra segment concurrency, only one collector should collect
         // documents for all the partitions to avoid duplications across collectors
         if (leafBulkCollected.putIfAbsent(context, true) == null) {
-          PointTreeBulkCollector.collect(
-              pointValues, pointRangeQuery, bucketWidth, counts, maxBuckets);
+          pointTreeBulkCollector.collect(counts, maxBuckets);
         }
         // Either the collection is finished on this collector, or some other collector
         // already started that collection, so this collector can finish early!

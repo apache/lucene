@@ -35,6 +35,32 @@ import org.apache.lucene.util.NumericUtils;
  * @lucene.experimental
  */
 class PointTreeBulkCollector {
+  private final PointValues pointValues;
+  private long leafMin, leafMax;
+
+  private Function<byte[], Long> byteToLong;
+
+  private final long bucketWidth;
+
+  PointTreeBulkCollector(
+      final PointValues pointValues, final PointRangeQuery prq, final long bucketWidth)
+      throws IOException {
+    this.pointValues = pointValues;
+    if (this.pointValues != null && pointValues.getNumDimensions() == 1) {
+      byteToLong = bytesToLong(pointValues.getBytesPerDimension());
+      if (byteToLong != null) {
+        leafMin = byteToLong.apply(pointValues.getMinPackedValue());
+        leafMax = byteToLong.apply(pointValues.getMaxPackedValue());
+        if (prq != null) {
+          leafMin = Math.max(leafMin, byteToLong.apply(prq.getLowerPoint()));
+          leafMax = Math.min(leafMax, byteToLong.apply(prq.getUpperPoint()));
+        }
+      }
+    }
+
+    this.bucketWidth = bucketWidth;
+  }
+
   private static Function<byte[], Long> bytesToLong(int numBytes) {
     if (numBytes == Long.BYTES) {
       // Used by LongPoint, DoublePoint
@@ -47,49 +73,29 @@ class PointTreeBulkCollector {
     return null;
   }
 
-  static boolean canCollectEfficiently(final PointValues pointValues, final long bucketWidth)
-      throws IOException {
+  boolean canCollectEfficiently(final long weightCount) throws IOException {
     // We need pointValues.getDocCount() == pointValues.size() to count each doc only
     // once, including docs that have two values that fall into the same bucket.
     if (pointValues == null
         || pointValues.getNumDimensions() != 1
-        || pointValues.getDocCount() != pointValues.size()) {
+        || pointValues.getDocCount() != pointValues.size()
+        || byteToLong == null) {
       return false;
     }
 
-    final Function<byte[], Long> byteToLong = bytesToLong(pointValues.getBytesPerDimension());
-    if (byteToLong == null) {
-      return false;
-    }
-
-    long leafMinBucket =
-        Math.floorDiv(byteToLong.apply(pointValues.getMinPackedValue()), bucketWidth);
-    long leafMaxBucket =
-        Math.floorDiv(byteToLong.apply(pointValues.getMaxPackedValue()), bucketWidth);
+    long leafMinBucket = Math.floorDiv(leafMin, bucketWidth);
+    long leafMaxBucket = Math.floorDiv(leafMax, bucketWidth);
 
     // We want that # leaf nodes is more than # buckets so that we can completely skip over
     // some of the leaf nodes. Higher this ratio, more efficient it is than naive approach!
-    if ((pointValues.size() / 512) < (leafMaxBucket - leafMinBucket)) {
+    if ((weightCount / 512) < (leafMaxBucket - leafMinBucket)) {
       return false;
     }
 
     return true;
   }
 
-  static void collect(
-      final PointValues pointValues,
-      final PointRangeQuery prq,
-      final long bucketWidth,
-      final LongIntHashMap collectorCounts,
-      final int maxBuckets)
-      throws IOException {
-    final Function<byte[], Long> byteToLong = bytesToLong(pointValues.getBytesPerDimension());
-    long leafMin = byteToLong.apply(pointValues.getMinPackedValue());
-    long leafMax = byteToLong.apply(pointValues.getMaxPackedValue());
-    if (prq != null) {
-      leafMin = Math.max(leafMin, byteToLong.apply(prq.getLowerPoint()));
-      leafMax = Math.min(leafMax, byteToLong.apply(prq.getUpperPoint()));
-    }
+  void collect(final LongIntHashMap collectorCounts, final int maxBuckets) throws IOException {
     BucketManager collector =
         new BucketManager(
             collectorCounts,
