@@ -147,7 +147,7 @@ public abstract class PointRangeQuery extends Query {
    * <p>Optimize query performance by reducing the number of comparisons between dimensions. This
    * implementation is used when the upper and lower bounds of all dimensions are exactly the same.
    */
-  protected static class SinglePointRangeQueryWeight extends PointRangeQueryWeight {
+  protected class SinglePointRangeQueryWeight extends PointRangeQueryWeight {
 
     protected SinglePointRangeQueryWeight(Query query, ScoreMode scoreMode, float boost) {
       super(query, scoreMode, boost);
@@ -201,7 +201,7 @@ public abstract class PointRangeQuery extends Query {
    * <p>When the lower bound (lowerPoint) of the query is not equal to the upper bound (upperPoint),
    * this implementation is used to check whether each dimension is within the query range.
    */
-  protected static class MultiPointRangeQueryWeight extends PointRangeQueryWeight {
+  protected class MultiPointRangeQueryWeight extends PointRangeQueryWeight {
 
     protected MultiPointRangeQueryWeight(Query query, ScoreMode scoreMode, float boost) {
       super(query, scoreMode, boost);
@@ -256,7 +256,7 @@ public abstract class PointRangeQuery extends Query {
    * @see SinglePointRangeQueryWeight for the specific implementation of single-point range query.
    * @see MultiPointRangeQueryWeight for the specific implementation of multi-point range query.
    */
-  private abstract static class PointRangeQueryWeight extends ConstantScoreWeight {
+  private abstract class PointRangeQueryWeight extends ConstantScoreWeight {
 
     protected ScoreMode scoreMode;
     protected ByteArrayComparator comparator;
