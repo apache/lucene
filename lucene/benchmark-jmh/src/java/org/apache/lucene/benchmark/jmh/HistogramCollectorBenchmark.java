@@ -138,19 +138,26 @@ public class HistogramCollectorBenchmark {
     int lowerBound = r.nextInt(params.docCount / 4, 3 * params.docCount / 4);
     // Filter for about 1/10 of the available documents
     int upperBound = lowerBound + params.docCount / 10;
-    byte[] lowerPoint = new byte[Long.BYTES];
-    byte[] upperPoint = new byte[Long.BYTES];
-    NumericUtils.longToSortableBytes(lowerBound, lowerPoint, 0);
-    NumericUtils.longToSortableBytes(upperBound, upperPoint, 0);
-    final PointRangeQuery prq =
-        new PointRangeQuery("f", lowerPoint, upperPoint, 1) {
-          @Override
-          protected String toString(int dimension, byte[] value) {
-            return Long.toString(NumericUtils.sortableBytesToLong(value, 0));
-          }
-        };
 
-    // Don't need to increase the default bucket count
-    searcher.search(prq, new HistogramCollectorManager("f", params.bucketWidth));
+    if (params.pointEnabled) {
+      byte[] lowerPoint = new byte[Long.BYTES];
+      byte[] upperPoint = new byte[Long.BYTES];
+      NumericUtils.longToSortableBytes(lowerBound, lowerPoint, 0);
+      NumericUtils.longToSortableBytes(upperBound, upperPoint, 0);
+      final PointRangeQuery prq =
+          new PointRangeQuery("f", lowerPoint, upperPoint, 1) {
+            @Override
+            protected String toString(int dimension, byte[] value) {
+              return Long.toString(NumericUtils.sortableBytesToLong(value, 0));
+            }
+          };
+
+      // Don't need to increase the default bucket count
+      searcher.search(prq, new HistogramCollectorManager("f", params.bucketWidth));
+    } else {
+      searcher.search(
+          NumericDocValuesField.newSlowRangeQuery("f", lowerBound, upperBound),
+          new HistogramCollectorManager("f", params.bucketWidth));
+    }
   }
 }
