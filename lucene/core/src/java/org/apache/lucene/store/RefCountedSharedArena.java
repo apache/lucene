@@ -38,7 +38,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * permitted and {@link #acquire()} returns false. This is independent of the actual number of the
  * ref count.
  */
-@SuppressWarnings("preview")
 final class RefCountedSharedArena implements Arena {
 
   // default maximum permits

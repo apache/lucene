@@ -25,6 +25,7 @@ dependencies {
   moduleImplementation project(':lucene:core')
 
   moduleImplementation project(':lucene:analysis:common')
+  moduleImplementation project(':lucene:analysis:phonetic')
   moduleImplementation project(':lucene:facet')
   moduleImplementation project(':lucene:highlighter')
   moduleImplementation project(':lucene:queries')

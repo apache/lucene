@@ -21,7 +21,6 @@ import java.lang.foreign.MemorySegment;
 import java.util.Optional;
 import org.apache.lucene.util.Constants;
 
-@SuppressWarnings("preview")
 abstract class NativeAccess {
 
   /** Invoke the {@code madvise} call for the given {@link MemorySegment}. */
