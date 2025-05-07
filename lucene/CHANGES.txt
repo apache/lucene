@@ -81,9 +81,11 @@ New Features
 
 Improvements
 ---------------------
-* GITHUB#14458 : Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
+* GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
 
 * GITHUB#14476: Removing unnecessary splitX in ComponentTree (Ankit Jain)
+
+* GITHUB#14534: Improve user-facing docs for geo package (Ankit Jain)
 
 * GITHUB#14602: Refactor the expressions compiler to use official ClassData BSM with indexed lookup
   (Uwe Schindler)
