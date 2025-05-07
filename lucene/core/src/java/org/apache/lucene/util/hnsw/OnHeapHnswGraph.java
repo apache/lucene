@@ -164,6 +164,15 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       nonZeroLevelSize.incrementAndGet();
     }
     maxNodeId.accumulateAndGet(node, Math::max);
+    // update graphRamBytesUsed every 1000 nodes
+    if (level == 0 && node % 1000 == 0) {
+      updateGraphRamBytesUsed();
+    }
+  }
+
+  /** Finish building the graph. */
+  public void finishBuild() {
+    updateGraphRamBytesUsed();
   }
 
   @Override
@@ -294,7 +303,8 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     lastFreezeSize = size();
   }
 
-  public void updateRamBytesUsedEstimate() {
+  /** Update the estimated ram bytes used for the neighbor array. */
+  public void updateGraphRamBytesUsed() {
     long currentRamBytesUsedEstimate = RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
     for (int node = 0; node < graph.length; node++) {
       if (graph[node] == null) {

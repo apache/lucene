@@ -212,9 +212,6 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
     addGraphNodeInternal(node, scorer, null);
-    if (node % 1000 == 0) {
-      hnsw.updateRamBytesUsedEstimate();
-    }
   }
 
   private void addGraphNodeInternal(int node, UpdateableRandomVectorScorer scorer, IntHashSet eps0)
@@ -447,7 +444,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     //  see: https://github.com/apache/lucene/issues/14214
     // connectComponents();
     frozen = true;
-    hnsw.updateRamBytesUsedEstimate();
+    hnsw.finishBuild();
   }
 
   @SuppressWarnings("unused")
