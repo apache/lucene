@@ -256,7 +256,7 @@ public abstract class PointRangeQuery extends Query {
    * @see SinglePointRangeQueryWeight for the specific implementation of single-point range query.
    * @see MultiPointRangeQueryWeight for the specific implementation of multi-point range query.
    */
-  protected abstract class PointRangeQueryWeight extends ConstantScoreWeight {
+  private abstract class PointRangeQueryWeight extends ConstantScoreWeight {
 
     protected ScoreMode scoreMode;
     protected ByteArrayComparator comparator;
@@ -624,7 +624,7 @@ public abstract class PointRangeQuery extends Query {
   }
 
   // for test
-  public boolean isEqualValues() {
+  boolean isEqualValues() {
     return equalValues;
   }
 
