@@ -58,7 +58,13 @@ public class WindowsFS extends HandleTrackingFS {
     BasicFileAttributeView view =
         Files.getFileAttributeView(existing, BasicFileAttributeView.class);
     BasicFileAttributes attributes = view.readAttributes();
-    return attributes.fileKey();
+    Object key = attributes.fileKey();
+    if (key != null) {
+      return key;
+    }
+    // the key may be null, e.g. on real Windows!
+    // in that case we fallback to the real path
+    return existing.toRealPath();
   }
 
   @Override
