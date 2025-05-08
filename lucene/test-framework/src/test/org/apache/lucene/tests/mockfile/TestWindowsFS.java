@@ -29,6 +29,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Random;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.util.Constants;
 
 /** Basic tests for WindowsFS */
 public class TestWindowsFS extends MockFileSystemTestCase {
@@ -205,7 +206,11 @@ public class TestWindowsFS extends MockFileSystemTestCase {
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo:bar:tar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo?bar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo<bar"));
-    expectThrows(InvalidPathException.class, () -> dir.resolve("foo\\bar"));
+    if (!Constants.WINDOWS) {
+      // we need to exclude that test on Windows, because the backslash is resolved before our code
+      // checks the filename:
+      expectThrows(InvalidPathException.class, () -> dir.resolve("foo\\bar"));
+    }
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo*bar|tar"));
     expectThrows(InvalidPathException.class, () -> dir.resolve("foo|bar?tar"));
   }
