@@ -21,10 +21,10 @@ import java.nio.file.CopyOption;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * FileSystem that (imperfectly) acts like windows.
@@ -55,10 +55,10 @@ public class WindowsFS extends HandleTrackingFS {
 
   /** Returns file "key" (e.g. inode) for the specified path */
   private Object getKey(Path existing) throws IOException {
-    BasicFileAttributeView view =
-        Files.getFileAttributeView(existing, BasicFileAttributeView.class);
-    BasicFileAttributes attributes = view.readAttributes();
-    return attributes.fileKey();
+    // the key may be null, e.g. on real Windows!
+    // in that case we fallback to the file path as key.
+    return Optional.ofNullable(Files.readAttributes(existing, BasicFileAttributes.class).fileKey())
+        .orElse(existing);
   }
 
   @Override

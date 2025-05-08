@@ -88,7 +88,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.LockObtainFailedException;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.store.NoLockFactory;
 import org.apache.lucene.store.SimpleFSLockFactory;
@@ -107,7 +106,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -1274,16 +1272,9 @@ public class TestIndexWriter extends LuceneTestCase {
       WindowsFS provider = new WindowsFS(path.getFileSystem());
       Path indexPath = provider.wrapPath(path);
 
-      // NOTE: on Unix, we cannot use MMapDir, because WindowsFS doesn't see/think it keeps file
-      // handles open.  Yet, on Windows, we MUST use
-      // MMapDir because the windows OS will in fact prevent file deletion for us, and fails
-      // otherwise:
-      FSDirectory dir;
-      if (Constants.WINDOWS) {
-        dir = new MMapDirectory(indexPath);
-      } else {
-        dir = new NIOFSDirectory(indexPath);
-      }
+      // NOTE: We cannot use MMapDir, because WindowsFS doesn't see/think it keeps file
+      // handles open.
+      FSDirectory dir = new NIOFSDirectory(indexPath);
 
       MergePolicy mergePolicy = newLogMergePolicy(true);
 
@@ -2945,9 +2936,6 @@ public class TestIndexWriter extends LuceneTestCase {
   }
 
   public void testPendingDeleteDVGeneration() throws IOException {
-    // irony: currently we don't emulate windows well enough to work on windows!
-    assumeFalse("windows is not supported", Constants.WINDOWS);
-
     Path path = createTempDir();
 
     // Use WindowsFS to prevent open files from being deleted:
@@ -3017,9 +3005,6 @@ public class TestIndexWriter extends LuceneTestCase {
   }
 
   public void testPendingDeletionsRollbackWithReader() throws IOException {
-    // irony: currently we don't emulate windows well enough to work on windows!
-    assumeFalse("windows is not supported", Constants.WINDOWS);
-
     Path path = createTempDir();
 
     // Use WindowsFS to prevent open files from being deleted:
@@ -3056,9 +3041,6 @@ public class TestIndexWriter extends LuceneTestCase {
   }
 
   public void testWithPendingDeletions() throws Exception {
-    // irony: currently we don't emulate windows well enough to work on windows!
-    assumeFalse("windows is not supported", Constants.WINDOWS);
-
     Path path = createTempDir();
 
     // Use WindowsFS to prevent open files from being deleted:
@@ -3112,8 +3094,6 @@ public class TestIndexWriter extends LuceneTestCase {
 
   public void testPendingDeletesAlreadyWrittenFiles() throws IOException {
     Path path = createTempDir();
-    // irony: currently we don't emulate windows well enough to work on windows!
-    assumeFalse("windows is not supported", Constants.WINDOWS);
 
     // Use WindowsFS to prevent open files from being deleted:
     WindowsFS provider = new WindowsFS(path.getFileSystem());
