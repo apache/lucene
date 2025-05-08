@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * FileSystem that (imperfectly) acts like windows.
@@ -54,13 +55,10 @@ public class WindowsFS extends HandleTrackingFS {
 
   /** Returns file "key" (e.g. inode) for the specified path */
   private Object getKey(Path existing) throws IOException {
-    Object key = Files.readAttributes(existing, BasicFileAttributes.class).fileKey();
-    if (key != null) {
-      return key;
-    }
     // the key may be null, e.g. on real Windows!
     // in that case we fallback to the real path
-    return existing.toRealPath();
+    return Optional.ofNullable(Files.readAttributes(existing, BasicFileAttributes.class).fileKey())
+        .orElse(existing);
   }
 
   @Override
