@@ -29,7 +29,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.Random;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.lucene.util.Constants;
 
 /** Basic tests for WindowsFS */
 public class TestWindowsFS extends MockFileSystemTestCase {
@@ -37,11 +36,6 @@ public class TestWindowsFS extends MockFileSystemTestCase {
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    // irony: currently we don't emulate windows well enough to work on windows!
-    // TODO: Can we fork this class and create a new class with only those tests that can run on
-    // Windows and then check if
-    // the Lucene WindowsFS error is same as the one OG Windows throws
-    assumeFalse("windows is not supported", Constants.WINDOWS);
   }
 
   @Override

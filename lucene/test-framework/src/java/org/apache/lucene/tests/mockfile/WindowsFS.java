@@ -21,7 +21,6 @@ import java.nio.file.CopyOption;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
@@ -55,10 +54,7 @@ public class WindowsFS extends HandleTrackingFS {
 
   /** Returns file "key" (e.g. inode) for the specified path */
   private Object getKey(Path existing) throws IOException {
-    BasicFileAttributeView view =
-        Files.getFileAttributeView(existing, BasicFileAttributeView.class);
-    BasicFileAttributes attributes = view.readAttributes();
-    Object key = attributes.fileKey();
+    Object key = Files.readAttributes(existing, BasicFileAttributes.class).fileKey();
     if (key != null) {
       return key;
     }
