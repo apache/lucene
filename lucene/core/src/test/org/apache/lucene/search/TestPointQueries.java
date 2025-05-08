@@ -170,12 +170,55 @@ public class TestPointQueries extends LuceneTestCase {
     doc.add(new LongPoint("point", 3));
     w.addDocument(doc);
 
+    doc = new Document();
+    doc.add(new LongPoint("point", 4));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 5));
+    w.addDocument(doc);
+
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher s = new IndexSearcher(r);
     assertEquals(2, s.count(LongPoint.newRangeQuery("point", -8L, 1L)));
     assertEquals(3, s.count(LongPoint.newRangeQuery("point", -7L, 3L)));
     assertEquals(1, s.count(LongPoint.newExactQuery("point", -7L)));
     assertEquals(0, s.count(LongPoint.newExactQuery("point", -6L)));
+    w.close();
+    r.close();
+    dir.close();
+  }
+
+  public void testVisitWithSoredDim() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+
+    Document doc = new Document();
+    doc.add(new LongPoint("point", -7));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 0));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 3));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 4));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 5));
+    w.addDocument(doc);
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+    assertEquals(2, s.search(LongPoint.newRangeQuery("point", -8L, 1L), 10).scoreDocs.length);
+    assertEquals(3, s.search(LongPoint.newRangeQuery("point", -7L, 3L), 10).scoreDocs.length);
+    assertEquals(1, s.search(LongPoint.newExactQuery("point", -7L), 10).scoreDocs.length);
+    assertEquals(0, s.search(LongPoint.newExactQuery("point", -6L), 10).scoreDocs.length);
     w.close();
     r.close();
     dir.close();
