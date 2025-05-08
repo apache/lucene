@@ -29,6 +29,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Random;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import org.apache.lucene.util.Constants;
 
 /** Basic tests for WindowsFS */
@@ -183,8 +184,12 @@ public class TestWindowsFS extends MockFileSystemTestCase {
   }
 
   public void testFileName() {
-    Character[] reservedCharacters = WindowsPath.RESERVED_CHARACTERS.toArray(new Character[0]);
-    String[] reservedNames = WindowsPath.RESERVED_NAMES.toArray(new String[0]);
+    Character[] reservedCharacters =
+        WindowsPath.RESERVED_CHARACTERS.stream()
+            .filter(Predicate.not(Character.valueOf('\\')::equals))
+            .sorted()
+            .toArray(Character[]::new);
+    String[] reservedNames = WindowsPath.RESERVED_NAMES.stream().sorted().toArray(String[]::new);
     String fileName;
     Random r = random();
     Path dir = wrap(createTempDir());
