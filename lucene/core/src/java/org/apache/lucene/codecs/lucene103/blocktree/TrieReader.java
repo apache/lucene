@@ -17,8 +17,11 @@
 package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
+import java.util.Arrays;
+import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.IOSupplier;
 
 class TrieReader {
 
@@ -75,11 +78,39 @@ class TrieReader {
   final IndexInput input;
   final Node root;
 
-  TrieReader(IndexInput input, long rootFP) throws IOException {
+  // A global mapping across the entire trie that maps the written labels to compact ordinals for
+  // more efficient storage and negligible impact on terms lookup performance.
+  final int[] labelMap;
+
+  static IOSupplier<TrieReader> readerSupplier(DataInput metaIn, IndexInput indexIn)
+      throws IOException {
+    int[] labelMap = TrieReader.labelMap(metaIn);
+    long start = metaIn.readVLong();
+    long rootFP = metaIn.readVLong();
+    long end = metaIn.readVLong();
+    return () -> new TrieReader(indexIn.slice("outputs", start, end - start), rootFP, labelMap);
+  }
+
+  private TrieReader(IndexInput input, long rootFP, int[] labelMap) throws IOException {
     this.access = input.randomAccessSlice(0, input.length());
+    this.labelMap = labelMap;
     this.input = input;
     this.root = new Node();
     load(root, rootFP);
+  }
+
+  private static int[] labelMap(DataInput in) throws IOException {
+    int cnt = in.readVInt();
+    if (cnt == 0) {
+      return null;
+    } else {
+      int[] labelMap = new int[TrieBuilder.BYTE_RANGE];
+      Arrays.fill(labelMap, -1);
+      for (int i = 0; i < cnt; i++) {
+        labelMap[in.readByte() & 0xFF] = i;
+      }
+      return labelMap;
+    }
   }
 
   private void load(Node node, long fp) throws IOException {
@@ -190,9 +221,19 @@ class TrieReader {
       return null;
     }
 
+    int lookUpLabel;
+    if (labelMap == null) {
+      lookUpLabel = targetLabel;
+    } else {
+      lookUpLabel = labelMap[targetLabel];
+      if (lookUpLabel == -1) {
+        return null;
+      }
+    }
+
     if (sign != TrieBuilder.SIGN_MULTI_CHILDREN) {
       // single child
-      if (targetLabel != parent.minChildrenLabel) {
+      if (lookUpLabel != parent.minChildrenLabel) {
         return null;
       }
       child.label = targetLabel;
@@ -205,12 +246,12 @@ class TrieReader {
     final int strategyBytes = parent.strategyBytes;
 
     int position = -1;
-    if (targetLabel == minLabel) {
+    if (lookUpLabel == minLabel) {
       position = 0;
-    } else if (targetLabel > minLabel) {
+    } else if (lookUpLabel > minLabel) {
       position =
           TrieBuilder.ChildSaveStrategy.byCode(parent.childSaveStrategy)
-              .lookup(targetLabel, access, strategyBytesStartFp, strategyBytes, minLabel);
+              .lookup(lookUpLabel, access, strategyBytesStartFp, strategyBytes, minLabel);
     }
 
     if (position < 0) {

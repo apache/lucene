@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree;
 
+import static org.apache.lucene.codecs.lucene103.blocktree.TrieBuilder.BYTE_RANGE;
 import static org.apache.lucene.codecs.lucene103.blocktree.TrieBuilder.ChildSaveStrategy;
 
 import java.io.IOException;
@@ -28,7 +29,9 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.junit.Assert;
 
 public class TestTrie extends LuceneTestCase {
@@ -68,6 +71,58 @@ public class TestTrie extends LuceneTestCase {
     int round = atLeast(50);
     for (int i = 0; i < round; i++) {
       testTrieLookup(supplier, 10);
+    }
+  }
+
+  public void testContinuousValues0To255() throws Exception {
+    testTrieLookup(
+        () -> {
+          byte[] bytes = new byte[260];
+          for (int i = 0; i < 256; i++) {
+            bytes[i + 4] = (byte) i;
+          }
+          return bytes;
+        },
+        10);
+  }
+
+  public void testContinuousValues() throws Exception {
+    for (int iter = 0; iter < 5; iter++) {
+      int min = random().nextInt(128);
+      int max = TestUtil.nextInt(random(), min, 255);
+      testTrieLookup(
+          () -> {
+            byte[] bytes = new byte[256];
+            for (int i = 0; i < bytes.length; i++) {
+              int b = TestUtil.nextInt(random(), min, max);
+              bytes[i] = (byte) b;
+            }
+            return bytes;
+          },
+          10);
+    }
+  }
+
+  public void testLimitedValues() throws Exception {
+    for (int iter = 0; iter < 5; iter++) {
+      int valueCount = 1 + random().nextInt(100);
+      FixedBitSet bitSet = new FixedBitSet(TrieBuilder.BYTE_RANGE);
+      while (bitSet.cardinality() < valueCount) {
+        bitSet.set(random().nextInt(TrieBuilder.BYTE_RANGE));
+      }
+      testTrieLookup(
+          () -> {
+            byte[] bytes = new byte[128];
+            for (int i = 0; i < bytes.length; i++) {
+              int b = random().nextInt(BYTE_RANGE);
+              while (!bitSet.get(b)) {
+                b = random().nextInt(BYTE_RANGE);
+              }
+              bytes[i] = (byte) b;
+            }
+            return bytes;
+          },
+          10);
     }
   }
 
@@ -145,10 +200,7 @@ public class TestTrie extends LuceneTestCase {
 
         try (IndexInput indexIn = directory.openInput("index", IOContext.DEFAULT);
             IndexInput metaIn = directory.openInput("meta", IOContext.DEFAULT)) {
-          long start = metaIn.readVLong();
-          long rootFP = metaIn.readVLong();
-          long end = metaIn.readVLong();
-          TrieReader reader = new TrieReader(indexIn.slice("outputs", start, end - start), rootFP);
+          TrieReader reader = TrieReader.readerSupplier(metaIn, indexIn).get();
 
           for (Map.Entry<BytesRef, TrieBuilder.Output> entry : expected.entrySet()) {
             assertResult(reader, entry.getKey(), entry.getValue());
