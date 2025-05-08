@@ -36,7 +36,6 @@ import org.apache.lucene.tests.mockfile.WindowsFS;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Constants;
 
 public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
 
@@ -172,7 +171,6 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
   public void testDeleteAndList() throws IOException {
     // relies on windows semantics
     Path path = createTempDir();
-    assumeFalse("Irony we seem to not emulate windows well enough", Constants.WINDOWS);
     WindowsFS provider = new WindowsFS(path.getFileSystem());
     Path indexPath = provider.wrapPath(path);
     try (final FileSwitchDirectory dir =

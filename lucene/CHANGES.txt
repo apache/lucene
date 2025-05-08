@@ -121,6 +121,10 @@ Other
 
 * GITHUB#14516: Move sloppySin into SloppyMath from GeoUtils (Ankit Jain)
 
+* GITHUB#14627, GITHUB#11920: Fix mock filesystem WindowsFS to also work on Windows.
+  This is required to make tests pass on Windows 11 which no longer has
+  all limitations of previous Windows versions.  (Uwe Schindler)
+
 
 ======================= Lucene 10.2.1 =======================
 
