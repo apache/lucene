@@ -56,7 +56,7 @@ public class WindowsFS extends HandleTrackingFS {
   /** Returns file "key" (e.g. inode) for the specified path */
   private Object getKey(Path existing) throws IOException {
     // the key may be null, e.g. on real Windows!
-    // in that case we fallback to the real path
+    // in that case we fallback to the file path as key.
     return Optional.ofNullable(Files.readAttributes(existing, BasicFileAttributes.class).fileKey())
         .orElse(existing);
   }
