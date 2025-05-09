@@ -132,6 +132,8 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
   }
 
   public void testPreload() throws Exception {
+    assumeTrue("madvise for preloading only works on linux/mac", MMapDirectory.supportsMadvise());
+
     final int size = 8 * 1024;
     byte[] bytes = new byte[size];
     random().nextBytes(bytes);
