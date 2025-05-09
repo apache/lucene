@@ -17,8 +17,6 @@
 
 @SuppressWarnings({"requires-automatic"})
 module org.apache.lucene.expressions {
-  requires org.objectweb.asm;
-  requires org.objectweb.asm.commons;
   requires org.antlr.antlr4.runtime;
   requires org.apache.lucene.core;
   requires org.apache.lucene.codecs;

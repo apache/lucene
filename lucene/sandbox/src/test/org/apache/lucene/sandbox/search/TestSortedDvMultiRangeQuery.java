@@ -28,7 +28,9 @@ import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -50,7 +52,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
-public class TestSsDvMultiRangeQuery extends LuceneTestCase {
+public class TestSortedDvMultiRangeQuery extends LuceneTestCase {
   private Codec getCodec() {
     // small interval size to test with many intervals
     return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(4, 16)));
@@ -69,8 +71,11 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
         w = new RandomIndexWriter(random(), dir);
       } else {
         IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
-        config.setIndexSort(
-            new Sort(new SortField("docVal", SortField.Type.STRING, random().nextBoolean())));
+        SortField sortField =
+            random().nextBoolean()
+                ? new SortField("docVal", SortField.Type.STRING, random().nextBoolean())
+                : new SortField("numVal", SortField.Type.LONG, random().nextBoolean());
+        config.setIndexSort(new Sort(sortField));
         w = new RandomIndexWriter(random(), dir);
       }
 
@@ -84,17 +89,22 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
             scratch[v] = RandomNumbers.randomLongBetween(random(), 0, atLeast(100));
           }
           doc.add(new LongPoint("point", scratch));
+          assert scratch.length == 1;
           if (singleton) {
             if (sortedIndex) {
               doc.add(SortedDocValuesField.indexedField("docVal", LongPoint.pack(scratch)));
+              doc.add(NumericDocValuesField.indexedField("numVal", scratch[0]));
             } else {
               doc.add(new SortedDocValuesField("docVal", LongPoint.pack(scratch)));
+              doc.add(new NumericDocValuesField("numVal", scratch[0]));
             }
           } else {
             if (sortedIndex) {
               doc.add(SortedSetDocValuesField.indexedField("docVal", LongPoint.pack(scratch)));
+              doc.add(SortedNumericDocValuesField.indexedField("numVal", scratch[0]));
             } else {
               doc.add(new SortedSetDocValuesField("docVal", LongPoint.pack(scratch)));
+              doc.add(new SortedNumericDocValuesField("numVal", scratch[0]));
             }
           }
         }
@@ -112,6 +122,8 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
       BooleanQuery.Builder builder2 = new BooleanQuery.Builder();
       DocValuesMultiRangeQuery.SortedSetStabbingBuilder builder3 =
           new DocValuesMultiRangeQuery.SortedSetStabbingBuilder("docVal");
+      DocValuesMultiRangeQuery.SortedNumericStabbingBuilder builderNumeric =
+          new DocValuesMultiRangeQuery.SortedNumericStabbingBuilder("numVal");
 
       for (int i = 0; i < numRanges; i++) {
         long[] lower = new long[dims];
@@ -127,21 +139,27 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
         } else {
           builder3.add(LongPoint.pack(lower), LongPoint.pack(upper));
         }
+        builderNumeric.add(lower[0], upper[0]);
       }
 
       Query query1 = builder1.build();
       Query query2 = builder2.build();
       Query query3 = builder3.build();
+      Query queryNumeric = builderNumeric.build();
       TopDocs result1 = searcher.search(query1, reader.maxDoc(), Sort.INDEXORDER);
       TopDocs result2 = searcher.search(query2, reader.maxDoc(), Sort.INDEXORDER);
       TopDocs result3 = searcher.search(query3, reader.maxDoc(), Sort.INDEXORDER);
+      TopDocs resultNumeric = searcher.search(queryNumeric, reader.maxDoc(), Sort.INDEXORDER);
       assertEquals(result2.totalHits, result1.totalHits);
       assertEquals(result2.totalHits, result3.totalHits);
+      assertEquals(resultNumeric.totalHits, result3.totalHits);
       assertEquals(result2.scoreDocs.length, result1.scoreDocs.length);
       assertEquals(result2.scoreDocs.length, result3.scoreDocs.length);
+      assertEquals(resultNumeric.scoreDocs.length, result3.scoreDocs.length);
       for (int i = 0; i < result2.scoreDocs.length; i++) {
         assertEquals(result2.scoreDocs[i].doc, result1.scoreDocs[i].doc);
         assertEquals(result2.scoreDocs[i].doc, result3.scoreDocs[i].doc);
+        assertEquals(result3.scoreDocs[i].doc, resultNumeric.scoreDocs[i].doc);
       }
 
       IOUtils.close(reader, w, dir);
@@ -158,8 +176,23 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
     QueryUtils.checkUnequal(q1, mrSsDvQ("bar", 3, 5, 7, 9));
   }
 
+  public void testNumericEquals() {
+    Query q1 = mrSNumDvQ("foo", 3, 5, 7, 9);
+    QueryUtils.checkEqual(q1, mrSNumDvQ("foo", 3, 5, 7, 9));
+    QueryUtils.checkEqual(q1, mrSNumDvQ("foo", 7, 9, 3, 5));
+    QueryUtils.checkUnequal(q1, mrSNumDvQ("foo", 7, 9, 5, 3));
+    QueryUtils.checkUnequal(q1, mrSNumDvQ("foo", 3, 5 + 1, 7, 9));
+    QueryUtils.checkUnequal(q1, mrSNumDvQ("foo", 3, 5, 7 + 1, 9));
+    QueryUtils.checkUnequal(q1, mrSNumDvQ("bar", 3, 5, 7, 9));
+  }
+
   private Query mrSsDvQ(String field, int... ends) {
     DocValuesMultiRangeQuery.SortedSetStabbingBuilder b = mrSsDvBuilder(field, ends);
+    return b.build();
+  }
+
+  private Query mrSNumDvQ(String field, int... ends) {
+    DocValuesMultiRangeQuery.SortedNumericStabbingBuilder b = mrSNumDvBuilder(field, ends);
     return b.build();
   }
 
@@ -182,11 +215,44 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
     return b;
   }
 
+  private static DocValuesMultiRangeQuery.SortedNumericStabbingBuilder mrSNumDvBuilder(
+      String field, int... ends) {
+    DocValuesMultiRangeQuery.SortedNumericStabbingBuilder b =
+        new DocValuesMultiRangeQuery.SortedNumericStabbingBuilder(field);
+    List<Integer> posns =
+        IntStream.range(0, ends.length / 2).map(i -> i * 2).boxed().collect(Collectors.toList());
+    Collections.shuffle(posns, random());
+    for (Integer pos : posns) {
+      int lower = ends[pos];
+      int upper = ends[pos + 1];
+      b.add(lower, upper);
+      for (int repeat = 0; repeat < random().nextInt(3); repeat++) {
+        if (rarely()) {
+          b.add(lower, upper); // plain repeat
+        } else {
+          if (random().nextBoolean()) {
+            b.add(lower, lower); // lower point repeat
+          } else {
+            b.add(upper, upper); // upper point repeat
+          }
+        }
+      }
+    }
+    return b;
+  }
+
   public void testToString() {
     Query q1 = mrSsDvQ("foo", 3, 5, 7, 9);
     assertEquals("foo:[[80 0 0 3]..[80 0 0 5], [80 0 0 7]..[80 0 0 9]]", q1.toString());
     assertEquals("[[80 0 0 3]..[80 0 0 5], [80 0 0 7]..[80 0 0 9]]", q1.toString("foo"));
     assertEquals("foo:[[80 0 0 3]..[80 0 0 5], [80 0 0 7]..[80 0 0 9]]", q1.toString("bar"));
+  }
+
+  public void testNumericToString() {
+    Query q1 = mrSNumDvQ("foo", 3, 5, 7, 9);
+    assertEquals("foo:[3..5, 7..9]", q1.toString());
+    assertEquals("[3..5, 7..9]", q1.toString("foo"));
+    assertEquals("foo:[3..5, 7..9]", q1.toString("bar"));
   }
 
   public void testOverrideToString() {
@@ -218,6 +284,33 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
     assertEquals("1 2", myrange.toString());
   }
 
+  public void testOverrideNumericsToString() {
+    DocValuesMultiRangeQuery.SortedNumericStabbingBuilder b =
+        new DocValuesMultiRangeQuery.SortedNumericStabbingBuilder("foo") {
+          @Override
+          protected Query createSortedNumericDocValuesMultiRangeQuery() {
+            return new SortedNumericDocValuesMultiRangeQuery(fieldName, clauses) {
+              @Override
+              public String toString(String fld) {
+                return fieldName + " " + sortedClauses.size();
+              }
+            };
+          }
+        };
+    b.add(1, 2);
+    b.add(3, 4);
+    assertEquals("foo 2", b.build().toString());
+
+    DocValuesMultiRangeQuery.LongRange myrange =
+        new DocValuesMultiRangeQuery.LongRange(1, 2) {
+          @Override
+          public String toString() {
+            return lower + " " + upper;
+          }
+        };
+    assertEquals("1 2", myrange.toString());
+  }
+
   public void testMissingField() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
@@ -225,7 +318,7 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
     IndexReader reader = iw.getReader();
     iw.close();
     IndexSearcher searcher = newSearcher(reader);
-    for (Query query : Collections.singletonList(mrSsDvQ("foo", 1, 2))) {
+    for (Query query : List.of(mrSsDvQ("foo", 1, 2), mrSNumDvQ("foo", 1, 2))) {
       Weight w = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
       assertNull(w.scorer(searcher.getIndexReader().leaves().getFirst()));
     }
@@ -269,6 +362,47 @@ public class TestSsDvMultiRangeQuery extends LuceneTestCase {
     // hit by value as a range upper==lower
     TopDocs hit1 = searcher.search(mrSsDvQ("foo", 2, 3, 4, 5, -5, -2, 1, 1), 1);
     TopDocs hit10 = searcher.search(mrSsDvQ("foo", 2, 3, 4, 5, -5, -2, 10, 10), 1);
+    assertEquals(1, hit1.totalHits.value());
+    assertEquals(1, hit10.totalHits.value());
+    assertNotEquals(hit1.scoreDocs[0].doc, hit10.scoreDocs[0].doc);
+    reader.close();
+    dir.close();
+  }
+
+  public void testNumericCases() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    final Document doc1 = new Document();
+    doc1.add(new SortedNumericDocValuesField("foo", 1L));
+    iw.addDocument(doc1);
+    final Document doc2 = new Document();
+    doc2.add(new SortedNumericDocValuesField("foo", 10L));
+    iw.addDocument(doc2);
+
+    IndexReader reader = iw.getReader();
+    iw.close();
+    IndexSearcher searcher = newSearcher(reader);
+    for (DocValuesMultiRangeQuery.SortedNumericStabbingBuilder builder :
+        List.of(
+            mrSNumDvBuilder("foo", 2, 3, 4, 5, -5, -2),
+            mrSNumDvBuilder("foo", 2, 3, 4, 5, 12, 15))) {
+      assertEquals("no match", 0, searcher.search(builder.build(), 1).totalHits.value());
+      long lower;
+      long upper;
+      builder.add(lower = 100, 200);
+      assertEquals("no match", 0, searcher.search(builder.build(), 1).totalHits.value());
+      lower = 1;
+      upper = 10;
+      builder.add(lower, upper);
+      Query query = builder.build();
+      assertEquals(
+          "sanity check for potential match " + query,
+          2,
+          searcher.search(query, 100).totalHits.value());
+    }
+    // hit by value as a range upper==lower
+    TopDocs hit1 = searcher.search(mrSNumDvQ("foo", 2, 3, 4, 5, -5, -2, 1, 1), 1);
+    TopDocs hit10 = searcher.search(mrSNumDvQ("foo", 2, 3, 4, 5, -5, -2, 10, 10), 1);
     assertEquals(1, hit1.totalHits.value());
     assertEquals(1, hit10.totalHits.value());
     assertNotEquals(hit1.scoreDocs[0].doc, hit10.scoreDocs[0].doc);

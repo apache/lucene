@@ -415,7 +415,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
             segmentInfo,
             fieldInfos.finish(),
             pendingUpdates,
-            new IOContext(new FlushInfo(numDocsInRAM, lastCommittedBytesUsed)));
+            IOContext.flush(new FlushInfo(numDocsInRAM, lastCommittedBytesUsed)));
     final double startMBUsed = lastCommittedBytesUsed / 1024. / 1024.;
 
     // Apply delete-by-docID now (delete-byDocID only
@@ -599,7 +599,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     IndexWriter.setDiagnostics(newSegment.info, IndexWriter.SOURCE_FLUSH);
 
     IOContext context =
-        new IOContext(new FlushInfo(newSegment.info.maxDoc(), newSegment.sizeInBytes()));
+        IOContext.flush(new FlushInfo(newSegment.info.maxDoc(), newSegment.sizeInBytes()));
 
     boolean success = false;
     try {
