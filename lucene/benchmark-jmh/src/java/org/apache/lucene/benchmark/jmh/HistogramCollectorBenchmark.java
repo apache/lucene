@@ -33,8 +33,10 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.sandbox.facet.plain.histograms.HistogramCollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.PointRangeQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.util.NumericUtils;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -122,9 +124,40 @@ public class HistogramCollectorBenchmark {
   }
 
   @Benchmark
-  public void collectHistogram(BenchmarkParams params) throws IOException {
+  public void matchAllQueryHistogram(BenchmarkParams params) throws IOException {
     IndexSearcher searcher = new IndexSearcher(reader);
     searcher.search(
         new MatchAllDocsQuery(), new HistogramCollectorManager("f", params.bucketWidth, 10000));
+  }
+
+  @Benchmark
+  public void pointRangeQueryHistogram(BenchmarkParams params) throws IOException {
+    IndexSearcher searcher = new IndexSearcher(reader);
+
+    Random r = new Random(0);
+    int lowerBound = r.nextInt(params.docCount / 4, 3 * params.docCount / 4);
+    // Filter for about 1/10 of the available documents
+    int upperBound = lowerBound + params.docCount / 10;
+
+    if (params.pointEnabled) {
+      byte[] lowerPoint = new byte[Long.BYTES];
+      byte[] upperPoint = new byte[Long.BYTES];
+      NumericUtils.longToSortableBytes(lowerBound, lowerPoint, 0);
+      NumericUtils.longToSortableBytes(upperBound, upperPoint, 0);
+      final PointRangeQuery prq =
+          new PointRangeQuery("f", lowerPoint, upperPoint, 1) {
+            @Override
+            protected String toString(int dimension, byte[] value) {
+              return Long.toString(NumericUtils.sortableBytesToLong(value, 0));
+            }
+          };
+
+      // Don't need to increase the default bucket count
+      searcher.search(prq, new HistogramCollectorManager("f", params.bucketWidth));
+    } else {
+      searcher.search(
+          NumericDocValuesField.newSlowRangeQuery("f", lowerBound, upperBound),
+          new HistogramCollectorManager("f", params.bucketWidth));
+    }
   }
 }
