@@ -300,14 +300,14 @@ final class LatLonPointDistanceQuery extends Query {
           }
 
           @Override
-          public boolean visitWithSortedDim(int docID, byte[] packedValue, int sortedDim) {
+          public PointValues.VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim) {
             int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.MATCH) {
               visit(docID);
             } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
-              return false;
+              return PointValues.VisitState.TERMINATE;
             }
-            return true;
+            return PointValues.VisitState.CONTINUE;
           }
 
           @Override
@@ -318,15 +318,15 @@ final class LatLonPointDistanceQuery extends Query {
           }
 
           @Override
-          public boolean visitWithSortedDim(
+          public PointValues.VisitState visitWithSortedDim(
               DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
             int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.MATCH) {
               adder.add(iterator);
             } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
-              return false;
+              return PointValues.VisitState.TERMINATE;
             }
-            return true;
+            return PointValues.VisitState.CONTINUE;
           }
 
           @Override
@@ -368,10 +368,33 @@ final class LatLonPointDistanceQuery extends Query {
           }
 
           @Override
+          public PointValues.VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim) {
+            int matchState = matchesWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              return PointValues.VisitState.MATCH_REMAINING;
+            } else if (matchState != PointValues.MatchState.MATCH) {
+              visit(docID);
+            }
+            return PointValues.VisitState.CONTINUE;
+          }
+
+          @Override
           public void visit(DocIdSetIterator iterator, byte[] packedValue) throws IOException {
             if (matches(packedValue) == false) {
               visit(iterator);
             }
+          }
+
+          @Override
+          public PointValues.VisitState visitWithSortedDim(
+              DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
+            int matchState = matchesWithState(packedValue, sortedDim);
+            if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              return PointValues.VisitState.MATCH_REMAINING;
+            } else if (matchState != PointValues.MatchState.MATCH) {
+              visit(iterator);
+            }
+            return PointValues.VisitState.CONTINUE;
           }
 
           @Override

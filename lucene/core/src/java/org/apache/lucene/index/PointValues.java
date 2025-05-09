@@ -229,6 +229,16 @@ public abstract class PointValues {
     CELL_CROSSES_QUERY
   };
 
+  /** Visit states for current value. */
+  public enum VisitState {
+    /** value match */
+    CONTINUE,
+    /** Return this if MatchState is PointValues.MatchState.HIGH_IN_SORTED_DIM in IntersectVisitor, so we can terminate visiting. */
+    TERMINATE,
+    /** Return this if MatchState is PointValues.MatchState.HIGH_IN_SORTED_DIM in Inverse IntersectVisitor, so we can terminate visiting and match remaining values. */
+    MATCH_REMAINING
+  };
+
   /** Math states for current value. */
   public static final class MatchState {
     private MatchState() {}
@@ -249,7 +259,7 @@ public abstract class PointValues {
     public static final int HIGH_IN_NON_SORTED_DIM = 3;
 
     /** Packed value does not match the range in this dimension */
-    public static final int NOT_MATCH = 3;
+    public static final int NOT_MATCH = 4;
   }
 
   /** Create a new {@link PointTree} to navigate the index */
@@ -349,12 +359,12 @@ public abstract class PointValues {
      * stop processing points on the leaf by returning false when for example the sorted dimension
      * value is too high to be matched by the query.
      *
-     * @return true if the visitor should continue visiting points on this leaf, otherwise false.
+     * @return VisitState.CONTINUE if the visitor should continue visiting points on this leaf, otherwise false.
      */
-    default boolean visitWithSortedDim(int docID, byte[] packedValue, int sortedDim)
+    default VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim)
         throws IOException {
       visit(docID, packedValue);
-      return true;
+      return VisitState.CONTINUE;
     }
 
     /**
@@ -375,12 +385,12 @@ public abstract class PointValues {
      * Implementers can stop processing points on the leaf by returning false when for example the
      * sorted dimension value is too high to be matched by the query.
      *
-     * @return true if the visitor should continue visiting points on this leaf, otherwise false.
+     * @return VisitState.CONTINUE if the visitor should continue visiting points on this leaf, otherwise false.
      */
-    default boolean visitWithSortedDim(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
+    default VisitState visitWithSortedDim(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
         throws IOException {
       visit(iterator, packedValue);
-      return true;
+      return VisitState.CONTINUE;
     }
 
     /**

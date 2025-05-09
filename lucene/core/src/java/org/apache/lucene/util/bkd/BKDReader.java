@@ -919,7 +919,13 @@ public class BKDReader extends PointValues {
               config.bytesPerDim() - prefix);
         }
         scratchIterator.reset(i, length);
-        if (visitor.visitWithSortedDim(scratchIterator, scratchPackedValue, sortedDim) == false) {
+        VisitState visitState = visitor.visitWithSortedDim(scratchIterator, scratchPackedValue, sortedDim);
+        if (visitState == VisitState.TERMINATE) {
+          break;
+        } else if (visitState == VisitState.MATCH_REMAINING) {
+          // TODO: match remaining.
+          scratchIterator.reset(i, count - i);
+          visitor.visit(scratchIterator);
           break;
         }
         i += length;
@@ -989,7 +995,7 @@ public class BKDReader extends PointValues {
           compressedDim * config.bytesPerDim() + commonPrefixLengths[compressedDim];
       commonPrefixLengths[compressedDim]++;
       int i;
-      boolean continueVisit = true;
+      VisitState visitState = null;
       for (i = 0; i < count; ) {
         scratchPackedValue[compressedByteOffset] = in.readByte();
         final int runLen = Byte.toUnsignedInt(in.readByte());
@@ -1002,14 +1008,21 @@ public class BKDReader extends PointValues {
                 config.bytesPerDim() - prefix);
           }
           int offset = i + j;
-          continueVisit =
+          visitState =
               visitor.visitWithSortedDim(
                   scratchIterator.docIDs[offset], scratchPackedValue, compressedDim);
-          if (continueVisit == false) {
+          if (visitState == VisitState.TERMINATE) {
+            break;
+          } else if (visitState == VisitState.MATCH_REMAINING) {
+            // TODO: match remaining.
+            scratchIterator.reset(offset, count - offset);
+            visitor.visit(scratchIterator);
             break;
           }
         }
-        if (continueVisit == false) break;
+        if (visitState == VisitState.TERMINATE || visitState == VisitState.MATCH_REMAINING) {
+          break;
+        }
         i += runLen;
       }
     }

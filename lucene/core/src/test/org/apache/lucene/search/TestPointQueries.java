@@ -215,8 +215,11 @@ public class TestPointQueries extends LuceneTestCase {
 
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher s = new IndexSearcher(r);
+    // Test visit compressed docValues with inverse visitor.
     assertEquals(2, s.search(LongPoint.newRangeQuery("point", -8L, 1L), 10).scoreDocs.length);
+    // Test visit compressed docValues with inverse visitor.
     assertEquals(3, s.search(LongPoint.newRangeQuery("point", -7L, 3L), 10).scoreDocs.length);
+    // Test visit compressed docValues with inverse visitor.
     assertEquals(1, s.search(LongPoint.newExactQuery("point", -7L), 10).scoreDocs.length);
     assertEquals(0, s.search(LongPoint.newExactQuery("point", -6L), 10).scoreDocs.length);
     w.close();

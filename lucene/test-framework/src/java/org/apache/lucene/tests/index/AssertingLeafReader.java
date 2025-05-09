@@ -1644,7 +1644,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public boolean visitWithSortedDim(int docID, byte[] packedValue, int sortedDim)
+    public PointValues.VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim)
         throws IOException {
       assert --docBudget >= 0 : "called add() more times than the last call to grow() reserved";
 
