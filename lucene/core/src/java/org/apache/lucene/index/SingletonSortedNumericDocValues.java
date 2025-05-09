@@ -59,16 +59,6 @@ final class SingletonSortedNumericDocValues extends SortedNumericDocValues {
   }
 
   @Override
-  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    in.intoBitSet(upTo, bitSet, offset);
-  }
-
-  @Override
-  public int docIDRunEnd() throws IOException {
-    return in.docIDRunEnd();
-  }
-
-  @Override
   public boolean advanceExact(int target) throws IOException {
     return in.advanceExact(target);
   }
