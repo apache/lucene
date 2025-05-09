@@ -62,8 +62,8 @@ import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.blocktreeords.BlockTreeOrdsPostingsFormat;
-import org.apache.lucene.codecs.lucene101.Lucene101Codec;
-import org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
+import org.apache.lucene.codecs.lucene103.Lucene103Codec;
+import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
@@ -1341,7 +1341,7 @@ public final class TestUtil {
    * different from {@link Codec#getDefault()} because that is randomized.
    */
   public static Codec getDefaultCodec() {
-    return new Lucene101Codec();
+    return new Lucene103Codec();
   }
 
   /**
@@ -1349,7 +1349,7 @@ public final class TestUtil {
    * Lucene.
    */
   public static PostingsFormat getDefaultPostingsFormat() {
-    return new Lucene101PostingsFormat();
+    return new Lucene103PostingsFormat();
   }
 
   /**
@@ -1360,7 +1360,7 @@ public final class TestUtil {
    */
   public static PostingsFormat getDefaultPostingsFormat(
       int minItemsPerBlock, int maxItemsPerBlock) {
-    return new Lucene101PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
+    return new Lucene103PostingsFormat(minItemsPerBlock, maxItemsPerBlock);
   }
 
   /** Returns a random postings format that supports term ordinals */
