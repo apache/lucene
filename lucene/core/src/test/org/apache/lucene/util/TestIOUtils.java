@@ -41,7 +41,6 @@ import java.util.Set;
 import org.apache.lucene.tests.mockfile.FilterFileSystemProvider;
 import org.apache.lucene.tests.mockfile.FilterPath;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.hamcrest.Matchers;
 
 /** Simple test methods for IOUtils */
 public class TestIOUtils extends LuceneTestCase {
@@ -86,7 +85,7 @@ public class TestIOUtils extends LuceneTestCase {
 
     Exception ex = new Exception("Ex");
     IOUtils.closeWhileSuppressingExceptions(ex, exceptionClose);
-    assertThat(ex.getSuppressed(), arrayContaining(Matchers.instanceOf(IOException.class)));
+    assertThat(ex.getSuppressed(), arrayContaining(instanceOf(IOException.class)));
 
     Error topErr = new Error("Err");
     Error thrown =
