@@ -41,6 +41,10 @@ Optimizations
 
 * GITHUB#14425: KeywordField.newSetQuery() reuses prefixed terms (Mikhail Khludnev)
 
+* GITHUB#14333: Introduce a specialized trie for block tree index, instead of FST. (Guo Feng)
+
+* GITHUB#14447: Compute the doc range more efficiently when flushing doc block. (Pan Guixin)
+
 Bug Fixes
 ---------------------
 (No changes)
@@ -57,6 +61,10 @@ Other
 * GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
 
 * GITHUB#14516: Move sloppySin into SloppyMath from GeoUtils (Ankit Jain)
+
+* GITHUB#14627, GITHUB#11920: Fix mock filesystem WindowsFS to also work on Windows.
+  This is required to make tests pass on Windows 11 which no longer has
+  all limitations of previous Windows versions.  (Uwe Schindler)
 
 
 ======================= Lucene 10.2.1 =======================
