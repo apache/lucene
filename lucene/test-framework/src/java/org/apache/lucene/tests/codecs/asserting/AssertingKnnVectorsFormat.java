@@ -19,7 +19,6 @@ package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -35,6 +34,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -114,19 +114,17 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       implements HnswGraphProvider {
     public final KnnVectorsReader delegate;
     final FieldInfos fis;
-    final boolean mergeInstance;
-    AtomicInteger mergeInstanceCount = new AtomicInteger();
-    AtomicInteger finishMergeCount = new AtomicInteger();
+    final boolean merging;
 
     AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
       this(delegate, fis, false);
     }
 
-    AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis, boolean mergeInstance) {
+    AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis, boolean merging) {
       assert delegate != null;
       this.delegate = delegate;
       this.fis = fis;
-      this.mergeInstance = mergeInstance;
+      this.merging = merging;
     }
 
     @Override
@@ -165,7 +163,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert !mergeInstance;
+      assert !merging;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -176,7 +174,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert !mergeInstance;
+      assert !merging;
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -185,40 +183,12 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public KnnVectorsReader getMergeInstance() {
-      assert !mergeInstance;
-      var mergeVectorsReader = delegate.getMergeInstance();
-      assert mergeVectorsReader != null;
-      mergeInstanceCount.incrementAndGet();
+    public KnnVectorsReader getMergeInstance(IOContext context) throws IOException {
+      assert !merging;
+      assert context.context() == IOContext.Context.MERGE;
 
-      final var parent = this;
       return new AssertingKnnVectorsReader(
-          mergeVectorsReader, AssertingKnnVectorsReader.this.fis, true) {
-        @Override
-        public KnnVectorsReader getMergeInstance() {
-          assert false; // merging from a merge instance it not allowed
-          return null;
-        }
-
-        @Override
-        public void finishMerge() throws IOException {
-          assert mergeInstance;
-          delegate.finishMerge();
-          parent.finishMergeCount.incrementAndGet();
-        }
-
-        @Override
-        public void close() {
-          assert false; // closing the merge instance it not allowed
-        }
-      };
-    }
-
-    @Override
-    public void finishMerge() throws IOException {
-      assert mergeInstance;
-      delegate.finishMerge();
-      finishMergeCount.incrementAndGet();
+          delegate.getMergeInstance(context), AssertingKnnVectorsReader.this.fis, true);
     }
 
     @Override
@@ -228,10 +198,9 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public void close() throws IOException {
-      assert !mergeInstance;
+      assert !merging;
       delegate.close();
       delegate.close();
-      assert finishMergeCount.get() <= 0 || mergeInstanceCount.get() == finishMergeCount.get();
     }
 
     @Override

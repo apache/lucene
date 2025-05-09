@@ -20,6 +20,7 @@ package org.apache.lucene.codecs.hnsw;
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -91,12 +92,12 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
-   * that called {@link #getMergeInstance()}.
+   * that called {@link KnnVectorsReader#getMergeInstance(IOContext)}.
    *
    * <p>The default implementation returns {@code this}
    */
   @Override
-  public FlatVectorsReader getMergeInstance() {
+  public FlatVectorsReader getMergeInstance(IOContext context) throws IOException {
     return this;
   }
 }

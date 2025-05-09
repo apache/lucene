@@ -40,6 +40,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
@@ -241,25 +242,19 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
       }
     }
 
-    private FieldsReader(final FieldsReader fieldsReader) {
+    private FieldsReader(FieldsReader fieldsReader, IOContext mergeContext) throws IOException {
       this.fieldInfos = fieldsReader.fieldInfos;
       for (FieldInfo fi : this.fieldInfos) {
-        if (fi.hasVectorValues() && fieldsReader.fields.containsKey(fi.number)) {
-          this.fields.put(fi.number, fieldsReader.fields.get(fi.number).getMergeInstance());
+        KnnVectorsReader reader;
+        if (fi.hasVectorValues() && (reader = fieldsReader.fields.get(fi.number)) != null) {
+          this.fields.put(fi.number, reader.getMergeInstance(mergeContext));
         }
       }
     }
 
     @Override
-    public KnnVectorsReader getMergeInstance() {
-      return new FieldsReader(this);
-    }
-
-    @Override
-    public void finishMerge() throws IOException {
-      for (ObjectCursor<KnnVectorsReader> knnVectorReader : fields.values()) {
-        knnVectorReader.value.finishMerge();
-      }
+    public KnnVectorsReader getMergeInstance(IOContext context) throws IOException {
+      return new FieldsReader(this, context);
     }
 
     /**

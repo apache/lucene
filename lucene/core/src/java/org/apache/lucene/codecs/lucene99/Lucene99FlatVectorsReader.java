@@ -21,7 +21,6 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSi
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -45,7 +44,6 @@ import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -60,13 +58,14 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsFormat.class);
 
-  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields;
   private final IndexInput vectorData;
   private final FieldInfos fieldInfos;
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
     super(scorer);
+    this.fields = new IntObjectHashMap<>();
     int versionMeta = readMetadata(state);
     this.fieldInfos = state.fieldInfos;
     boolean success = false;
@@ -87,6 +86,17 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         IOUtils.closeWhileHandlingException(this);
       }
     }
+  }
+
+  private Lucene99FlatVectorsReader(
+      IntObjectHashMap<FieldEntry> fields,
+      IndexInput vectorData,
+      FieldInfos fieldInfos,
+      FlatVectorsScorer scorer) {
+    super(scorer);
+    this.fields = fields;
+    this.vectorData = vectorData;
+    this.fieldInfos = fieldInfos;
   }
 
   private int readMetadata(SegmentReadState state) throws IOException {
@@ -183,14 +193,10 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
-  public FlatVectorsReader getMergeInstance() {
-    try {
-      // Update the read advice since vectors are guaranteed to be accessed sequentially for merge
-      this.vectorData.updateReadAdvice(ReadAdvice.SEQUENTIAL);
-      return this;
-    } catch (IOException exception) {
-      throw new UncheckedIOException(exception);
-    }
+  public FlatVectorsReader getMergeInstance(IOContext context) throws IOException {
+    IndexInput mergeData = vectorData.clone();
+    mergeData.changeContext(context);
+    return new Lucene99FlatVectorsReader(fields, mergeData, fieldInfos, vectorScorer);
   }
 
   private FieldEntry getFieldEntryOrThrow(String field) {
@@ -276,13 +282,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             fieldEntry.vectorDataLength,
             vectorData),
         target);
-  }
-
-  @Override
-  public void finishMerge() throws IOException {
-    // This makes sure that the access pattern hint is reverted back since HNSW implementation
-    // needs it
-    this.vectorData.updateReadAdvice(ReadAdvice.RANDOM);
   }
 
   @Override

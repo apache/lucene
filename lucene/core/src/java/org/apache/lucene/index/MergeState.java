@@ -31,6 +31,7 @@ import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.packed.PackedInts;
@@ -96,6 +97,7 @@ public class MergeState {
       List<CodecReader> readers,
       SegmentInfo segmentInfo,
       InfoStream infoStream,
+      IOContext mergeContext,
       Executor intraMergeTaskExecutor)
       throws IOException {
     verifyIndexSort(readers, segmentInfo);
@@ -154,7 +156,7 @@ public class MergeState {
 
       knnVectorsReaders[i] = reader.getVectorReader();
       if (knnVectorsReaders[i] != null) {
-        knnVectorsReaders[i] = knnVectorsReaders[i].getMergeInstance();
+        knnVectorsReaders[i] = knnVectorsReaders[i].getMergeInstance(mergeContext);
       }
 
       numDocs += reader.numDocs();

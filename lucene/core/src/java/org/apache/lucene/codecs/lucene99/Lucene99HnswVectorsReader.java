@@ -128,13 +128,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public KnnVectorsReader getMergeInstance() {
-    return new Lucene99HnswVectorsReader(this, this.flatVectorsReader.getMergeInstance());
-  }
-
-  @Override
-  public void finishMerge() throws IOException {
-    flatVectorsReader.finishMerge();
+  public KnnVectorsReader getMergeInstance(IOContext context) throws IOException {
+    return new Lucene99HnswVectorsReader(this, this.flatVectorsReader.getMergeInstance(context));
   }
 
   private static IndexInput openDataInput(

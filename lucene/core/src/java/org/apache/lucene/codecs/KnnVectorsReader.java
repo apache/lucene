@@ -29,6 +29,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Bits;
 
@@ -120,20 +121,13 @@ public abstract class KnnVectorsReader implements Closeable {
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread
-   * that called {@link #getMergeInstance()}.
+   * that called {@link #getMergeInstance(IOContext)}.
    *
    * <p>The default implementation returns {@code this}
    */
-  public KnnVectorsReader getMergeInstance() {
+  public KnnVectorsReader getMergeInstance(IOContext context) throws IOException {
     return this;
   }
-
-  /**
-   * Optional: reset or close merge resources used in the reader
-   *
-   * <p>The default implementation is empty
-   */
-  public void finishMerge() throws IOException {}
 
   /**
    * Returns the desired size of off-heap memory the given field. This size can be used to help
