@@ -138,103 +138,96 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
     final String fieldsStreamFN =
         IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION);
-    ChecksumIndexInput metaIn = null;
-    try {
-      // Open the data file
-      fieldsStream =
-          d.openInput(fieldsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
-      version =
-          CodecUtil.checkIndexHeader(
-              fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
-      assert CodecUtil.indexHeaderLength(formatName, segmentSuffix)
-          == fieldsStream.getFilePointer();
+    // Open the data file
+    fieldsStream =
+        d.openInput(fieldsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
+    version =
+        CodecUtil.checkIndexHeader(
+            fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
+    assert CodecUtil.indexHeaderLength(formatName, segmentSuffix) == fieldsStream.getFilePointer();
 
-      final String metaStreamFN =
-          IndexFileNames.segmentFileName(segment, segmentSuffix, META_EXTENSION);
-      metaIn = d.openChecksumInput(metaStreamFN);
-      CodecUtil.checkIndexHeader(
-          metaIn,
-          INDEX_CODEC_NAME + "Meta",
-          META_VERSION_START,
-          version,
-          si.getId(),
-          segmentSuffix);
-
-      chunkSize = metaIn.readVInt();
-
-      decompressor = compressionMode.newDecompressor();
-      this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
-      Arrays.fill(prefetchedBlockIDCache, -1);
-      this.merging = false;
-      this.state = new BlockState();
-
-      // NOTE: data file is too costly to verify checksum against all the bytes on open,
-      // but for now we at least verify proper structure of the checksum footer: which looks
-      // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
-      // such as file truncation.
-      CodecUtil.retrieveChecksum(fieldsStream);
-
-      long maxPointer = -1;
-      FieldsIndex indexReader = null;
-
-      FieldsIndexReader fieldsIndexReader =
-          new FieldsIndexReader(
-              d,
-              si.name,
-              segmentSuffix,
-              INDEX_EXTENSION,
-              INDEX_CODEC_NAME,
-              si.getId(),
-              metaIn,
-              context);
-      indexReader = fieldsIndexReader;
-      maxPointer = fieldsIndexReader.getMaxPointer();
-
-      this.maxPointer = maxPointer;
-      this.indexReader = indexReader;
-
-      numChunks = metaIn.readVLong();
-      numDirtyChunks = metaIn.readVLong();
-      numDirtyDocs = metaIn.readVLong();
-
-      if (numChunks < numDirtyChunks) {
-        throw new CorruptIndexException(
-            "Cannot have more dirty chunks than chunks: numChunks="
-                + numChunks
-                + ", numDirtyChunks="
-                + numDirtyChunks,
-            metaIn);
-      }
-      if ((numDirtyChunks == 0) != (numDirtyDocs == 0)) {
-        throw new CorruptIndexException(
-            "Cannot have dirty chunks without dirty docs or vice-versa: numDirtyChunks="
-                + numDirtyChunks
-                + ", numDirtyDocs="
-                + numDirtyDocs,
-            metaIn);
-      }
-      if (numDirtyDocs < numDirtyChunks) {
-        throw new CorruptIndexException(
-            "Cannot have more dirty chunks than documents within dirty chunks: numDirtyChunks="
-                + numDirtyChunks
-                + ", numDirtyDocs="
-                + numDirtyDocs,
-            metaIn);
-      }
-
-      CodecUtil.checkFooter(metaIn, null);
-      metaIn.close();
-    } catch (Throwable t) {
+    final String metaStreamFN =
+        IndexFileNames.segmentFileName(segment, segmentSuffix, META_EXTENSION);
+    try (ChecksumIndexInput metaIn = d.openChecksumInput(metaStreamFN)) {
       try {
+        CodecUtil.checkIndexHeader(
+            metaIn,
+            INDEX_CODEC_NAME + "Meta",
+            META_VERSION_START,
+            version,
+            si.getId(),
+            segmentSuffix);
+
+        chunkSize = metaIn.readVInt();
+
+        decompressor = compressionMode.newDecompressor();
+        this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
+        Arrays.fill(prefetchedBlockIDCache, -1);
+        this.merging = false;
+        this.state = new BlockState();
+
+        // NOTE: data file is too costly to verify checksum against all the bytes on open,
+        // but for now we at least verify proper structure of the checksum footer: which looks
+        // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
+        // such as file truncation.
+        CodecUtil.retrieveChecksum(fieldsStream);
+
+        long maxPointer = -1;
+        FieldsIndex indexReader = null;
+
+        FieldsIndexReader fieldsIndexReader =
+            new FieldsIndexReader(
+                d,
+                si.name,
+                segmentSuffix,
+                INDEX_EXTENSION,
+                INDEX_CODEC_NAME,
+                si.getId(),
+                metaIn,
+                context);
+        indexReader = fieldsIndexReader;
+        maxPointer = fieldsIndexReader.getMaxPointer();
+
+        this.maxPointer = maxPointer;
+        this.indexReader = indexReader;
+
+        numChunks = metaIn.readVLong();
+        numDirtyChunks = metaIn.readVLong();
+        numDirtyDocs = metaIn.readVLong();
+
+        if (numChunks < numDirtyChunks) {
+          throw new CorruptIndexException(
+              "Cannot have more dirty chunks than chunks: numChunks="
+                  + numChunks
+                  + ", numDirtyChunks="
+                  + numDirtyChunks,
+              metaIn);
+        }
+        if ((numDirtyChunks == 0) != (numDirtyDocs == 0)) {
+          throw new CorruptIndexException(
+              "Cannot have dirty chunks without dirty docs or vice-versa: numDirtyChunks="
+                  + numDirtyChunks
+                  + ", numDirtyDocs="
+                  + numDirtyDocs,
+              metaIn);
+        }
+        if (numDirtyDocs < numDirtyChunks) {
+          throw new CorruptIndexException(
+              "Cannot have more dirty chunks than documents within dirty chunks: numDirtyChunks="
+                  + numDirtyChunks
+                  + ", numDirtyDocs="
+                  + numDirtyDocs,
+              metaIn);
+        }
+
+        CodecUtil.checkFooter(metaIn, null);
+      } catch (Throwable t) {
         if (metaIn != null) {
           CodecUtil.checkFooter(metaIn, t);
           throw new AssertionError("unreachable");
         } else {
           throw t;
         }
-      } catch (Throwable ct) {
-        IOUtils.closeWhileSuppressingExceptions(ct, metaIn);
-        throw ct;
       }
     }
   }
