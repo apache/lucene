@@ -104,6 +104,8 @@ Optimizations
 
 * GITHUB#14447: Compute the doc range more efficiently when flushing doc block. (Pan Guixin)
 
+* GITHUB#14527: Reduce NeighborArray heap memory. (weizijun)
+
 Bug Fixes
 ---------------------
 (No changes)
