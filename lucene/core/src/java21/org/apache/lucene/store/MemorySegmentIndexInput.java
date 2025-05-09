@@ -25,6 +25,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
@@ -57,6 +58,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   final boolean confined;
   final Arena arena;
   final MemorySegment[] segments;
+  final Function<IOContext, ReadAdvice> toReadAdvice;
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -70,14 +72,15 @@ abstract class MemorySegmentIndexInput extends IndexInput
       MemorySegment[] segments,
       long length,
       int chunkSizePower,
-      boolean confined) {
+      boolean confined,
+      Function<IOContext, ReadAdvice> toReadAdvice) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
     if (segments.length == 1) {
       return new SingleSegmentImpl(
-          resourceDescription, arena, segments[0], length, chunkSizePower, confined);
+          resourceDescription, arena, segments[0], length, chunkSizePower, confined, toReadAdvice);
     } else {
       return new MultiSegmentImpl(
-          resourceDescription, arena, segments, 0, length, chunkSizePower, confined);
+          resourceDescription, arena, segments, 0, length, chunkSizePower, confined, toReadAdvice);
     }
   }
 
@@ -87,7 +90,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
       MemorySegment[] segments,
       long length,
       int chunkSizePower,
-      boolean confined) {
+      boolean confined,
+      Function<IOContext, ReadAdvice> toReadAdvice) {
     super(resourceDescription);
     this.arena = arena;
     this.segments = segments;
@@ -96,6 +100,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
     this.confined = confined;
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
     this.curSegment = segments[0];
+    this.toReadAdvice = toReadAdvice;
   }
 
   void ensureOpen() {
@@ -570,7 +575,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
               segments[0],
               length,
               chunkSizePower,
-              confined);
+              confined,
+              toReadAdvice);
     } else {
       clone =
           new MultiSegmentImpl(
@@ -580,7 +586,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
               ((MultiSegmentImpl) this).offset,
               length,
               chunkSizePower,
-              confined);
+              confined,
+              toReadAdvice);
     }
     try {
       clone.seek(getFilePointer());
@@ -618,7 +625,7 @@ abstract class MemorySegmentIndexInput extends IndexInput
   public final MemorySegmentIndexInput slice(
       String sliceDescription, long offset, long length, IOContext context) throws IOException {
     MemorySegmentIndexInput slice = slice(sliceDescription, offset, length);
-    ReadAdvice advice = context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
+    ReadAdvice advice = toReadAdvice.apply(context);
     if (NATIVE_ACCESS.isPresent() && advice != ReadAdvice.NORMAL) {
       // No need to madvise with a normal advice, since it's the OS' default.
       final NativeAccess nativeAccess = NATIVE_ACCESS.get();
@@ -670,7 +677,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
           isClone ? slices[0] : slices[0].asSlice(offset, length),
           length,
           chunkSizePower,
-          confined);
+          confined,
+          toReadAdvice);
     } else {
       return new MultiSegmentImpl(
           newResourceDescription,
@@ -679,7 +687,8 @@ abstract class MemorySegmentIndexInput extends IndexInput
           offset,
           length,
           chunkSizePower,
-          confined);
+          confined,
+          toReadAdvice);
     }
   }
 
@@ -724,14 +733,16 @@ abstract class MemorySegmentIndexInput extends IndexInput
         MemorySegment segment,
         long length,
         int chunkSizePower,
-        boolean confined) {
+        boolean confined,
+        Function<IOContext, ReadAdvice> toReadAdvice) {
       super(
           resourceDescription,
           arena,
           new MemorySegment[] {segment},
           length,
           chunkSizePower,
-          confined);
+          confined,
+          toReadAdvice);
       this.curSegmentIndex = 0;
     }
 
@@ -834,8 +845,9 @@ abstract class MemorySegmentIndexInput extends IndexInput
         long offset,
         long length,
         int chunkSizePower,
-        boolean confined) {
-      super(resourceDescription, arena, segments, length, chunkSizePower, confined);
+        boolean confined,
+        Function<IOContext, ReadAdvice> toReadAdvice) {
+      super(resourceDescription, arena, segments, length, chunkSizePower, confined, toReadAdvice);
       this.offset = offset;
       try {
         seek(0L);
