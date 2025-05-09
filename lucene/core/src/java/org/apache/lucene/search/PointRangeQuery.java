@@ -33,7 +33,6 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IntsRef;
@@ -49,8 +48,8 @@ import org.apache.lucene.util.IntsRef;
  * <p>For a single-dimensional field this query is a simple range query; in a multi-dimensional
  * field it's a box shape.
  *
- * @lucene.experimental
  * @see PointValues
+ * @lucene.experimental
  */
 public abstract class PointRangeQuery extends Query {
   final String field;
@@ -58,6 +57,7 @@ public abstract class PointRangeQuery extends Query {
   final int bytesPerDim;
   final byte[] lowerPoint;
   final byte[] upperPoint;
+  final ByteArrayComparator comparator;
 
   /**
    * Expert: create a multidimensional range query for point values.
@@ -93,6 +93,8 @@ public abstract class PointRangeQuery extends Query {
 
     this.lowerPoint = lowerPoint;
     this.upperPoint = upperPoint;
+
+    this.comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
   }
 
   /**
@@ -129,8 +131,6 @@ public abstract class PointRangeQuery extends Query {
 
     return new ConstantScoreWeight(this, boost) {
 
-      private final ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
-
       private boolean matches(byte[] packedValue) {
         int offset = 0;
         for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
@@ -144,30 +144,6 @@ public abstract class PointRangeQuery extends Query {
           }
         }
         return true;
-      }
-
-      private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
-
-        boolean crosses = false;
-        int offset = 0;
-
-        for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
-
-          if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0
-              || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {
-            return Relation.CELL_OUTSIDE_QUERY;
-          }
-
-          crosses |=
-              comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
-                  || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
-        }
-
-        if (crosses) {
-          return Relation.CELL_CROSSES_QUERY;
-        } else {
-          return Relation.CELL_INSIDE_QUERY;
-        }
       }
 
       private IntersectVisitor getIntersectVisitor(DocIdSetBuilder result) {
@@ -379,7 +355,8 @@ public abstract class PointRangeQuery extends Query {
           // docCount == size : counting according number of points in leaf node, so must be
           // single-valued.
           if (numDims == 1 && values.getDocCount() == values.size()) {
-            return (int) pointCount(values.getPointTree(), this::relate, this::matches);
+            return (int)
+                pointCount(values.getPointTree(), PointRangeQuery.this::relate, this::matches);
           }
         }
         return super.count(context);
@@ -569,44 +546,24 @@ public abstract class PointRangeQuery extends Query {
     // fetch the global min/max packed values across all segments
     byte[] globalMinPacked = PointValues.getMinPackedValue(reader, getField());
     byte[] globalMaxPacked = PointValues.getMaxPackedValue(reader, getField());
+
     if (globalMinPacked == null || globalMaxPacked == null) {
       return super.rewrite(searcher);
     }
 
-    int dims = getNumDims();
-    int bytesPerDim = getBytesPerDim();
-    byte[] queryLow = getLowerPoint();
-    byte[] queryHigh = getUpperPoint();
-
-    int fullyContainedCount = 0;
-    int fullyExcludedCount = 0;
-
-    // Check each dimension individually
-    for (int dim = 0; dim < dims; dim++) {
-      int offset = dim * bytesPerDim;
-      BytesRef qLow = new BytesRef(queryLow, offset, bytesPerDim);
-      BytesRef qHigh = new BytesRef(queryHigh, offset, bytesPerDim);
-      BytesRef gMin = new BytesRef(globalMinPacked, offset, bytesPerDim);
-      BytesRef gMax = new BytesRef(globalMaxPacked, offset, bytesPerDim);
-
-      if (qLow.compareTo(gMin) <= 0 && qHigh.compareTo(gMax) >= 0) {
-        fullyContainedCount++;
-      } else if (qLow.compareTo(gMax) > 0 || qHigh.compareTo(gMin) < 0) {
-        fullyExcludedCount++;
+    return switch (relate(globalMinPacked, globalMaxPacked)) {
+      case CELL_INSIDE_QUERY -> {
+        if (canRewriteToMatchAllQuery(reader)) {
+          yield new MatchAllDocsQuery();
+        } else if (canRewriteToFieldExistsQuery(reader)) {
+          yield new FieldExistsQuery(field);
+        } else {
+          yield super.rewrite(searcher);
+        }
       }
-    }
-
-    if (fullyContainedCount == dims) {
-      if (canRewriteToMatchAllQuery(reader)) {
-        return new MatchAllDocsQuery();
-      } else if (canRewriteToFieldExistsQuery(reader)) {
-        return new FieldExistsQuery(field);
-      }
-    } else if (fullyExcludedCount == dims) {
-      return new MatchNoDocsQuery();
-    }
-
-    return super.rewrite(searcher);
+      case CELL_OUTSIDE_QUERY -> new MatchNoDocsQuery();
+      case CELL_CROSSES_QUERY -> super.rewrite(searcher);
+    };
   }
 
   private boolean canRewriteToMatchAllQuery(IndexReader reader) throws IOException {
@@ -636,6 +593,29 @@ public abstract class PointRangeQuery extends Query {
     }
 
     return true;
+  }
+
+  private Relation relate(byte[] minPackedValue, byte[] maxPackedValue) {
+    boolean crosses = false;
+    int offset = 0;
+
+    for (int dim = 0; dim < numDims; dim++, offset += bytesPerDim) {
+
+      if (comparator.compare(minPackedValue, offset, upperPoint, offset) > 0
+          || comparator.compare(maxPackedValue, offset, lowerPoint, offset) < 0) {
+        return Relation.CELL_OUTSIDE_QUERY;
+      }
+
+      crosses |=
+          comparator.compare(minPackedValue, offset, lowerPoint, offset) < 0
+              || comparator.compare(maxPackedValue, offset, upperPoint, offset) > 0;
+    }
+
+    if (crosses) {
+      return Relation.CELL_CROSSES_QUERY;
+    } else {
+      return Relation.CELL_INSIDE_QUERY;
+    }
   }
 
   private boolean checkValidPointValues(PointValues values) throws IOException {
