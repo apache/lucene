@@ -47,6 +47,8 @@ Optimizations
 
 * GITHUB#14529, GITHUB#14555, GITHUB#14618: Impl intoBitset for IndexedDISI and Docvalues. (Guo Feng)
 
+* GITHUB#14552: Speed up flush of softdelete by intoBitset. (Guo Feng)
+
 Bug Fixes
 ---------------------
 (No changes)
