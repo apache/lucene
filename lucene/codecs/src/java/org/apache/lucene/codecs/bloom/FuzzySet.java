@@ -268,18 +268,31 @@ public class FuzzySet implements Accountable {
   }
 
   public int getEstimatedUniqueValues() {
-    return getEstimatedNumberUniqueValuesAllowingForCollisions(bloomSize, filter.cardinality());
+    return getEstimatedNumberUniqueValuesAllowingForCollisions(
+        bloomSize, filter.cardinality(), hashCount);
   }
 
-  // Given a set size and a the number of set bits, produces an estimate of the number of unique
-  // values recorded
+  /**
+   * Given a set size and the number of set bits, produces an estimate of the number of unique
+   * values recorded (assuming a single hash function is used)
+   */
   public static int getEstimatedNumberUniqueValuesAllowingForCollisions(
       int setSize, int numRecordedBits) {
+    return getEstimatedNumberUniqueValuesAllowingForCollisions(setSize, numRecordedBits, 1);
+  }
+
+  /**
+   * Given a set size, the number of set bits and hash function count, produces an estimate of the
+   * number of unique values recorded
+   */
+  public static int getEstimatedNumberUniqueValuesAllowingForCollisions(
+      int setSize, int numRecordedBits, int hashCount) {
     double setSizeAsDouble = setSize;
     double numRecordedBitsAsDouble = numRecordedBits;
+    double hashCountAsDouble = hashCount;
     double saturation = numRecordedBitsAsDouble / setSizeAsDouble;
     double logInverseSaturation = Math.log(1 - saturation) * -1;
-    return (int) (setSizeAsDouble * logInverseSaturation);
+    return (int) (setSizeAsDouble * logInverseSaturation / hashCountAsDouble);
   }
 
   public float getTargetMaxSaturation() {
