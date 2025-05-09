@@ -309,7 +309,7 @@ public final class IOUtils {
   }
 
   /**
-   * Deletes all given files, ignoring all thrown Throwables.
+   * Deletes all given files, suppressing all thrown Throwables in {@code ex}.
    *
    * <p>Some of the files may be null, if so they are ignored.
    */
@@ -318,7 +318,7 @@ public final class IOUtils {
   }
 
   /**
-   * Deletes all given files, ignoring all thrown Throwables.
+   * Deletes all given files, suppressing all thrown Throwables in {@code ex}.
    *
    * <p>Some of the files may be null, if so they are ignored.
    */

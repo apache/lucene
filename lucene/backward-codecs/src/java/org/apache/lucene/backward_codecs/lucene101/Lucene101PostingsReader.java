@@ -90,49 +90,43 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.META_EXTENSION);
     final long expectedDocFileLength, expectedPosFileLength, expectedPayFileLength;
-    ChecksumIndexInput metaIn = null;
     int version;
-    try {
-      metaIn = state.directory.openChecksumInput(metaName);
-      version =
-          CodecUtil.checkIndexHeader(
-              metaIn,
-              META_CODEC,
-              VERSION_START,
-              VERSION_CURRENT,
-              state.segmentInfo.getId(),
-              state.segmentSuffix);
-      maxNumImpactsAtLevel0 = metaIn.readInt();
-      maxImpactNumBytesAtLevel0 = metaIn.readInt();
-      maxNumImpactsAtLevel1 = metaIn.readInt();
-      maxImpactNumBytesAtLevel1 = metaIn.readInt();
-      expectedDocFileLength = metaIn.readLong();
-      if (state.fieldInfos.hasProx()) {
-        expectedPosFileLength = metaIn.readLong();
-        if (state.fieldInfos.hasPayloads() || state.fieldInfos.hasOffsets()) {
-          expectedPayFileLength = metaIn.readLong();
+    try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName)) {
+      try {
+        version =
+            CodecUtil.checkIndexHeader(
+                metaIn,
+                META_CODEC,
+                VERSION_START,
+                VERSION_CURRENT,
+                state.segmentInfo.getId(),
+                state.segmentSuffix);
+        maxNumImpactsAtLevel0 = metaIn.readInt();
+        maxImpactNumBytesAtLevel0 = metaIn.readInt();
+        maxNumImpactsAtLevel1 = metaIn.readInt();
+        maxImpactNumBytesAtLevel1 = metaIn.readInt();
+        expectedDocFileLength = metaIn.readLong();
+        if (state.fieldInfos.hasProx()) {
+          expectedPosFileLength = metaIn.readLong();
+          if (state.fieldInfos.hasPayloads() || state.fieldInfos.hasOffsets()) {
+            expectedPayFileLength = metaIn.readLong();
+          } else {
+            expectedPayFileLength = -1;
+          }
         } else {
+          expectedPosFileLength = -1;
           expectedPayFileLength = -1;
         }
-      } else {
-        expectedPosFileLength = -1;
-        expectedPayFileLength = -1;
-      }
-      CodecUtil.checkFooter(metaIn, null);
-    } catch (Throwable t) {
-      try {
+        CodecUtil.checkFooter(metaIn, null);
+      } catch (Throwable t) {
         if (metaIn != null) {
           CodecUtil.checkFooter(metaIn, t);
           throw new AssertionError("unreachable");
         } else {
           throw t;
         }
-      } catch (Throwable ct) {
-        IOUtils.closeWhileSuppressingExceptions(ct, metaIn);
-        throw ct;
       }
     }
-    metaIn.close();
 
     IndexInput docIn = null;
     IndexInput posIn = null;

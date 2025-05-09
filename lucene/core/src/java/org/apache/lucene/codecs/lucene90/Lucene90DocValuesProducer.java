@@ -116,7 +116,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
     // Doc-values have a forward-only access pattern
     this.data = state.directory.openInput(dataName, state.context.withHints(FileTypeHint.DATA));
-    boolean success = false;
     try {
       final int version2 =
           CodecUtil.checkIndexHeader(
@@ -136,12 +135,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
       // such as file truncation.
       CodecUtil.retrieveChecksum(data);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this.data);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, data);
+      throw t;
     }
   }
 
