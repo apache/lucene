@@ -91,7 +91,6 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
             state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.META_EXTENSION);
     final long expectedDocFileLength, expectedPosFileLength, expectedPayFileLength;
     ChecksumIndexInput metaIn = null;
-    boolean success = false;
     int version;
     try {
       metaIn = state.directory.openChecksumInput(metaName);
@@ -120,23 +119,21 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         expectedPayFileLength = -1;
       }
       CodecUtil.checkFooter(metaIn, null);
-      success = true;
     } catch (Throwable t) {
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, t);
-        throw new AssertionError("unreachable");
-      } else {
-        throw t;
-      }
-    } finally {
-      if (success) {
-        metaIn.close();
-      } else {
-        IOUtils.closeWhileHandlingException(metaIn);
+      try {
+        if (metaIn != null) {
+          CodecUtil.checkFooter(metaIn, t);
+          throw new AssertionError("unreachable");
+        } else {
+          throw t;
+        }
+      } catch (Throwable ct) {
+        IOUtils.closeWhileSuppressingExceptions(ct, metaIn);
+        throw ct;
       }
     }
+    metaIn.close();
 
-    success = false;
     IndexInput docIn = null;
     IndexInput posIn = null;
     IndexInput payIn = null;
@@ -182,11 +179,9 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
       this.docIn = docIn;
       this.posIn = posIn;
       this.payIn = payIn;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(docIn, posIn, payIn);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, docIn, posIn, payIn);
+      throw t;
     }
   }
 

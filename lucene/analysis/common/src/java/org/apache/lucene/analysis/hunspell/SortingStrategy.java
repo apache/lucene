@@ -120,17 +120,13 @@ public abstract class SortingStrategy {
             var sorter = new OfflineSorter(tempDir, tempFileNamePrefix, BytesRefComparator.NATURAL);
 
             String sorted;
-            boolean success = false;
             try {
               sorted = sorter.sort(output.getName());
-              success = true;
-            } finally {
-              if (success) {
-                tempDir.deleteFile(output.getName());
-              } else {
-                IOUtils.deleteFilesIgnoringExceptions(tempDir, output.getName());
-              }
+            } catch (Throwable t) {
+              IOUtils.deleteFilesSuppressingExceptions(t, tempDir, output.getName());
+              throw t;
             }
+            tempDir.deleteFile(output.getName());
             return sorted;
           }
         };
