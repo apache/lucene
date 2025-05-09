@@ -131,6 +131,31 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
+  public void testPreload() throws Exception {
+    assumeTrue("madvise for preloading only works on linux/mac", MMapDirectory.supportsMadvise());
+
+    final int size = 8 * 1024;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testPreload"))) {
+      dir.setPreload(MMapDirectory.PRELOAD_HINT);
+      try (IndexOutput out =
+          dir.createOutput("test", IOContext.DEFAULT.withHints(PreloadHint.INSTANCE))) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
+      try (final IndexInput in =
+          dir.openInput("test", IOContext.DEFAULT.withHints(PreloadHint.INSTANCE))) {
+        // the data should be loaded in memory
+        assertTrue(in.isLoaded().orElse(false));
+        final byte[] readBytes = new byte[size];
+        in.readBytes(readBytes, 0, readBytes.length);
+        assertArrayEquals(bytes, readBytes);
+      }
+    }
+  }
+
   // Opens the input with ReadAdvice.READONCE to ensure slice and clone are appropriately confined
   public void testConfined() throws Exception {
     final int size = 16;

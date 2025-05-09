@@ -45,6 +45,7 @@ import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
@@ -110,7 +111,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
               state.context.withHints(
-                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
+                  FileTypeHint.DATA,
+                  FileDataHint.KNN_VECTORS,
+                  DataAccessHint.RANDOM,
+                  PreloadHint.INSTANCE));
       success = true;
     } finally {
       if (success == false) {
