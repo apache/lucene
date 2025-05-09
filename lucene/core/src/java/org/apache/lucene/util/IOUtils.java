@@ -113,14 +113,26 @@ public final class IOUtils {
    */
   public static void closeWhileSuppressingExceptions(
       Throwable ex, Iterable<? extends Closeable> objects) {
+    Error firstError = ex instanceof Error err ? err : null;
+
     for (Closeable object : objects) {
       try {
         if (object != null) {
           object.close();
         }
       } catch (Throwable e) {
-        ex.addSuppressed(e);
+        if (firstError == null && e instanceof Error err) {
+          // don't try and suppress it - this Error should be the thing that is thrown
+          firstError = err;
+          firstError.addSuppressed(ex);
+        } else {
+          ex.addSuppressed(e);
+        }
       }
+    }
+
+    if (firstError != null) {
+      throw firstError;
     }
   }
 
@@ -236,12 +248,24 @@ public final class IOUtils {
    */
   public static void deleteFilesSuppressingExceptions(
       Throwable ex, Directory dir, Collection<String> files) {
+    Error firstError = ex instanceof Error err ? err : null;
+
     for (String name : files) {
       try {
         dir.deleteFile(name);
       } catch (Throwable d) {
-        ex.addSuppressed(d);
+        if (firstError == null && d instanceof Error err) {
+          // don't try and suppress it - this Error should be the thing that is thrown
+          firstError = err;
+          firstError.addSuppressed(ex);
+        } else {
+          ex.addSuppressed(d);
+        }
       }
+    }
+
+    if (firstError != null) {
+      throw firstError;
     }
   }
 

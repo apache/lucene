@@ -229,6 +229,9 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
           throw t;
         }
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 

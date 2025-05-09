@@ -234,6 +234,9 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
           throw t;
         }
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
