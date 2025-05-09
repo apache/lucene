@@ -95,7 +95,13 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
         new PriorityQueue<>(clauses.size() * 2) {
           @Override
           protected boolean lessThan(Edge a, Edge b) {
-            return a.getValue() - b.getValue() < 0;
+            if (a.getValue() < b.getValue()) {
+              return true;
+            } else if (a.getValue() == b.getValue()) {
+              return a.point; // if a point on the edge of the gap, pass point first
+            } else {
+              return false;
+            }
           }
         };
     for (DocValuesMultiRangeQuery.LongRange r : clauses) {
@@ -115,7 +121,8 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
     for (int i = 0; i < totalEdges; i++) {
       Edge smallest = heap.pop();
       if (depth == 0 && smallest.point) {
-        if (i < totalEdges - 1 && heap.top().point) { // repeating same points
+        if (i < totalEdges - 1 // && heap.top().point
+        ) { // repeating same points
           if (smallest.getValue() == heap.top().getValue()) {
             continue;
           }
@@ -131,11 +138,13 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
         } else {
           depth--;
           if (depth == 0) {
-            sortedClauses.add(
-                started.range == smallest.range // no overlap case, the most often
-                    ? smallest.range
-                    : new DocValuesMultiRangeQuery.LongRange(
-                        started.getValue(), smallest.getValue()));
+            boolean strictlyIncreasing =
+                sortedClauses.add(
+                    started.range == smallest.range // no overlap case, the most often
+                        ? smallest.range
+                        : new DocValuesMultiRangeQuery.LongRange(
+                            started.getValue(), smallest.getValue()));
+            assert strictlyIncreasing;
             started = null;
           }
         }
