@@ -100,7 +100,7 @@ public class MMapDirectory extends FSDirectory {
    * are hinted to do so.
    */
   public static final BiPredicate<String, IOContext> PRELOAD_HINT =
-      (_, c) -> c.hints().contains(PreloadHint.INSTANCE);
+      (filename, context) -> context.hints().contains(PreloadHint.INSTANCE);
 
   /**
    * This sysprop allows to control the total maximum number of mmapped files that can be associated
