@@ -28,22 +28,55 @@ import static org.apache.lucene.geo.GeoUtils.MIN_LAT_RADIANS;
 import static org.apache.lucene.geo.GeoUtils.MIN_LON_RADIANS;
 import static org.apache.lucene.geo.GeoUtils.checkLatitude;
 import static org.apache.lucene.geo.GeoUtils.checkLongitude;
-import static org.apache.lucene.geo.GeoUtils.sloppySin;
 import static org.apache.lucene.util.SloppyMath.asin;
 import static org.apache.lucene.util.SloppyMath.cos;
+import static org.apache.lucene.util.SloppyMath.sin;
 
-/** Represents a lat/lon rectangle. */
+/**
+ * Represents a rectangular bounding box on Earth's surface.
+ *
+ * <p>A rectangle is defined by its minimum and maximum latitude/longitude coordinates. It can cross
+ * the dateline, in which case minLon &gt; maxLon.
+ *
+ * <p>Key Features:
+ *
+ * <ul>
+ *   <li>Handles dateline crossing automatically
+ *   <li>Supports point-in-box testing
+ *   <li>Can be used to create spatial queries
+ *   <li>Useful for creating bounding boxes around other shapes
+ * </ul>
+ *
+ * <p>Example usage:
+ *
+ * <pre>{@code
+ * // Create a rectangle covering central London
+ * Rectangle bbox = new Rectangle(51.4, 51.6, -0.2, 0.0);
+ *
+ * // Create a rectangle crossing the dateline
+ * Rectangle datelineBox = new Rectangle(20, 30, 170, -170);
+ *
+ * // Create a bounding box around a point with given radius
+ * Rectangle circle = Rectangle.fromPointDistance(lat, lon, radiusMeters);
+ * }</pre>
+ *
+ * <p>Note: When working with areas near poles, consider that rectangles become highly distorted and
+ * may not provide accurate representation of the actual area.
+ */
 public class Rectangle extends LatLonGeometry {
-  /** maximum longitude value (in degrees) */
+  /** Minimum latitude in degrees (-90 to 90) */
   public final double minLat;
 
-  /** minimum longitude value (in degrees) */
-  public final double minLon;
-
-  /** maximum latitude value (in degrees) */
+  /** Maximum latitude in degrees (-90 to 90) */
   public final double maxLat;
 
-  /** minimum latitude value (in degrees) */
+  /**
+   * Minimum longitude in degrees (-180 to 180). May be greater than maxLon when crossing the
+   * dateline.
+   */
+  public final double minLon;
+
+  /** Maximum longitude in degrees (-180 to 180) */
   public final double maxLon;
 
   /**
@@ -121,7 +154,7 @@ public class Rectangle extends LatLonGeometry {
     double maxLon;
 
     if (minLat > MIN_LAT_RADIANS && maxLat < MAX_LAT_RADIANS) {
-      double deltaLon = asin(sloppySin(radDistance) / cos(radLat));
+      double deltaLon = asin(sin(radDistance) / cos(radLat));
       minLon = radLon - deltaLon;
       if (minLon < MIN_LON_RADIANS) {
         minLon += 2d * PI;

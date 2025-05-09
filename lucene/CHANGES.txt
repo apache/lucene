@@ -60,6 +60,8 @@ Other
 
 * GITHUB#14564: Remove abstractions from MMapDirectory as we need no MR-JAR anymore.  (Uwe Schindler)
 
+* GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
+
 ======================= Lucene 10.3.0 =======================
 
 API Changes
@@ -79,9 +81,11 @@ New Features
 
 Improvements
 ---------------------
-* GITHUB#14458 : Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
+* GITHUB#14458: Add an IndexDeletion policy that retains the last N commits. (Owais Kazi)
 
 * GITHUB#14476: Removing unnecessary splitX in ComponentTree (Ankit Jain)
+
+* GITHUB#14534: Improve user-facing docs for geo package (Ankit Jain)
 
 * GITHUB#14602: Refactor the expressions compiler to use official ClassData BSM with indexed lookup
   (Uwe Schindler)
@@ -90,7 +94,7 @@ Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
 
-* GITHUB#14439: Efficient Histogram Collection using multi range traversal over PointTrees (Ankit Jain)
+* GITHUB#14439, GITHUB#14560: Efficient Histogram Collection using multi range traversal over PointTrees (Ankit Jain)
 
 * GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
 
@@ -116,6 +120,13 @@ Other
 * GITHUB#14459: Minor refactoring of DocValuesConsumer to allow subclasses to reuse some of its merge logic. (Martijn van Groningen)
 
 * GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
+
+* GITHUB#14516: Move sloppySin into SloppyMath from GeoUtils (Ankit Jain)
+
+* GITHUB#14627, GITHUB#11920: Fix mock filesystem WindowsFS to also work on Windows.
+  This is required to make tests pass on Windows 11 which no longer has
+  all limitations of previous Windows versions.  (Uwe Schindler)
+
 
 ======================= Lucene 10.2.1 =======================
 
