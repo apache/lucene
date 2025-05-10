@@ -163,29 +163,6 @@ public final class JavascriptCompiler {
   }
 
   /**
-   * Converts a legacy map with reflective {@link java.lang.reflect.Method} functions to {@code
-   * Map<String,MethodHandle} for use with {@link #compile(String, Map)}.
-   *
-   * @param functions a map with only public and accessible reflective methods
-   * @return a new (modifiable) map with the same function declarations, but converted to {@link
-   *     MethodHandle}
-   * @throws IllegalAccessException if any of the methods in {@code functions} are not accessible by
-   *     the public {@link Lookup}.
-   * @deprecated Only use this to convert Lucene 9.x or earlier legacy code. For new code use {@link
-   *     MethodHandle}.
-   */
-  @Deprecated
-  public static Map<String, MethodHandle> convertLegacyFunctions(
-      Map<String, java.lang.reflect.Method> functions) throws IllegalAccessException {
-    final var lookup = MethodHandles.publicLookup();
-    final Map<String, MethodHandle> newMap = new HashMap<>();
-    for (var e : functions.entrySet()) {
-      newMap.put(e.getKey(), lookup.unreflect(e.getValue()));
-    }
-    return newMap;
-  }
-
-  /**
    * Compiles the given expression with the supplied custom functions.
    *
    * <p>Functions must be {@code public static}, return {@code double} and can take from zero to 256
