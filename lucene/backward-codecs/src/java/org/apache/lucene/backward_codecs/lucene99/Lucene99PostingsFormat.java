@@ -390,15 +390,11 @@ public class Lucene99PostingsFormat extends PostingsFormat {
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
     PostingsReaderBase postingsReader = new Lucene99PostingsReader(state);
-    boolean success = false;
     try {
-      FieldsProducer ret = new Lucene90BlockTreeTermsReader(postingsReader, state);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsReader);
-      }
+      return new Lucene90BlockTreeTermsReader(postingsReader, state);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsReader);
+      throw t;
     }
   }
 

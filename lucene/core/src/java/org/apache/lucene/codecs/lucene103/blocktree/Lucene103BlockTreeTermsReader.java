@@ -106,8 +106,6 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
   /** Sole constructor. */
   public Lucene103BlockTreeTermsReader(PostingsReaderBase postingsReader, SegmentReadState state)
       throws IOException {
-    boolean success = false;
-
     this.postingsReader = postingsReader;
     this.segment = state.segmentInfo.name;
 
@@ -235,12 +233,9 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
       fieldInfos = state.fieldInfos;
       this.fieldMap = fieldMap;
       this.fieldList = sortFieldNames(fieldMap, state.fieldInfos);
-      success = true;
-    } finally {
-      if (!success) {
-        // this.close() will close in:
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 

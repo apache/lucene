@@ -57,7 +57,6 @@ public class Lucene90PointsReader extends PointsReader {
             readState.segmentSuffix,
             Lucene90PointsFormat.DATA_EXTENSION);
 
-    boolean success = false;
     try {
       indexIn =
           readState.directory.openInput(
@@ -119,11 +118,9 @@ public class Lucene90PointsReader extends PointsReader {
       // know that indexLength and dataLength are very likely correct.
       CodecUtil.retrieveChecksum(indexIn, indexLength);
       CodecUtil.retrieveChecksum(dataIn, dataLength);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 

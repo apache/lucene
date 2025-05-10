@@ -124,7 +124,6 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     this.endOffsets = new int[16];
     this.numBufferedDocs = 0;
 
-    boolean success = false;
     try {
       metaStream =
           directory.createOutput(
@@ -154,12 +153,9 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
               context);
 
       metaStream.writeVInt(chunkSize);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(metaStream, fieldsStream, indexWriter);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, metaStream, fieldsStream, indexWriter);
+      throw t;
     }
   }
 

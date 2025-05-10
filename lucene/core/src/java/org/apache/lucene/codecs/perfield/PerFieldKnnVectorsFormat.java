@@ -206,7 +206,6 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     public FieldsReader(final SegmentReadState readState) throws IOException {
       this.fieldInfos = readState.fieldInfos;
       // Init each unique format:
-      boolean success = false;
       Map<String, KnnVectorsReader> formats = new HashMap<>();
       try {
         // Read field name -> format name
@@ -233,11 +232,9 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
             }
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(formats.values());
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, formats.values());
+        throw t;
       }
     }
 

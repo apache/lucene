@@ -16,6 +16,13 @@
  */
 package org.apache.lucene.util;
 
+import static org.hamcrest.Matchers.arrayContaining;
+import static org.hamcrest.Matchers.arrayContainingInAnyOrder;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.sameInstance;
+
+import java.io.Closeable;
+import java.io.IOError;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
@@ -64,6 +71,42 @@ public class TestIOUtils extends LuceneTestCase {
     assertFalse(Files.exists(file2));
     // no exception
     // actually deletes file2
+  }
+
+  public void testCloseExposesErrors() {
+    Closeable exceptionClose =
+        () -> {
+          throw new IOException("IO");
+        };
+    Closeable errorClose =
+        () -> {
+          throw new IOError(new IOException("IOERR"));
+        };
+
+    Exception ex = new Exception("Ex");
+    IOUtils.closeWhileSuppressingExceptions(ex, exceptionClose);
+    assertThat(ex.getSuppressed(), arrayContaining(instanceOf(IOException.class)));
+
+    Error topErr = new Error("Err");
+    Error thrown =
+        expectThrows(
+            Error.class,
+            () -> IOUtils.closeWhileSuppressingExceptions(topErr, exceptionClose, errorClose));
+    assertThat(thrown, sameInstance(topErr));
+    assertThat(
+        thrown.getSuppressed(),
+        arrayContainingInAnyOrder(instanceOf(IOException.class), instanceOf(IOError.class)));
+
+    // the IOError takes precedence, and is thrown in preference to the Exception
+    Exception suppressedEx = new Exception("Ex");
+    thrown =
+        expectThrows(
+            IOError.class,
+            () ->
+                IOUtils.closeWhileSuppressingExceptions(suppressedEx, exceptionClose, errorClose));
+    assertThat(thrown.getSuppressed(), arrayContaining(suppressedEx));
+    assertThat(
+        thrown.getSuppressed()[0].getSuppressed(), arrayContaining(instanceOf(IOException.class)));
   }
 
   public void testDeleteFileIfExists() throws Exception {

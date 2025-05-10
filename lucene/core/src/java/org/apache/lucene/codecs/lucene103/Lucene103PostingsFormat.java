@@ -409,32 +409,23 @@ public final class Lucene103PostingsFormat extends PostingsFormat {
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     PostingsWriterBase postingsWriter = new Lucene103PostingsWriter(state, version);
-    boolean success = false;
     try {
-      FieldsConsumer ret =
-          new Lucene103BlockTreeTermsWriter(
-              state, postingsWriter, minTermBlockSize, maxTermBlockSize);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsWriter);
-      }
+      return new Lucene103BlockTreeTermsWriter(
+          state, postingsWriter, minTermBlockSize, maxTermBlockSize);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsWriter);
+      throw t;
     }
   }
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
     PostingsReaderBase postingsReader = new Lucene103PostingsReader(state);
-    boolean success = false;
     try {
-      FieldsProducer ret = new Lucene103BlockTreeTermsReader(postingsReader, state);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsReader);
-      }
+      return new Lucene103BlockTreeTermsReader(postingsReader, state);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsReader);
+      throw t;
     }
   }
 

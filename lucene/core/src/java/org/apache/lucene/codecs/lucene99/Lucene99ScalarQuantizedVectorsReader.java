@@ -80,7 +80,6 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             state.segmentInfo.name,
             state.segmentSuffix,
             Lucene99ScalarQuantizedVectorsFormat.META_EXTENSION);
-    boolean success = false;
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
@@ -108,11 +107,9 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
               // graph.
               state.context.withHints(
                   FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -222,7 +219,6 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
-    boolean success = false;
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -243,12 +239,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 

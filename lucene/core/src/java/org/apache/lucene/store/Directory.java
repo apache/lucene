@@ -176,15 +176,12 @@ public abstract class Directory implements Closeable {
    */
   public void copyFrom(Directory from, String src, String dest, IOContext context)
       throws IOException {
-    boolean success = false;
     try (IndexInput is = from.openInput(src, IOContext.READONCE);
         IndexOutput os = createOutput(dest, context)) {
       os.copyBytes(is, is.length());
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.deleteFilesIgnoringExceptions(this, dest);
-      }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, this, dest);
+      throw t;
     }
   }
 

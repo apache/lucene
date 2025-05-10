@@ -27,6 +27,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.IOUtils;
 
 final class FieldsIndexReader extends FieldsIndex {
 
@@ -68,16 +69,13 @@ final class FieldsIndexReader extends FieldsIndex {
     indexInput =
         EndiannessReverserUtil.openInput(
             dir, IndexFileNames.segmentFileName(name, suffix, extension), IOContext.DEFAULT);
-    boolean success = false;
     try {
       CodecUtil.checkIndexHeader(
           indexInput, codecName + "Idx", VERSION_START, VERSION_CURRENT, id, suffix);
       CodecUtil.retrieveChecksum(indexInput);
-      success = true;
-    } finally {
-      if (success == false) {
-        indexInput.close();
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, indexInput);
+      throw t;
     }
     final RandomAccessInput docsSlice =
         indexInput.randomAccessSlice(docsStartPointer, docsEndPointer - docsStartPointer);
