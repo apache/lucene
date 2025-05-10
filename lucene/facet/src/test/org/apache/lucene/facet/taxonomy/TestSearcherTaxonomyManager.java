@@ -32,6 +32,7 @@ import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.SearcherTaxonomyManager.SearcherAndTaxonomy;
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexCommit;
@@ -401,7 +402,9 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     int colorIndex = 0;
     final String[] colors = new String[] {"red", "green", "blue", "yellow"};
     FacetsConfig config = new FacetsConfig();
-    SearcherTaxonomyManager sat = new SearcherTaxonomyManager(dir, taxoDir, null);
+    DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
+    SearcherTaxonomyManager sat = new SearcherTaxonomyManager(DirectoryReader.open(dir), taxoReader, null, new NextCommitSelector());
+
     final int numCommits = 5;
     for (int i = 0; i < numCommits; i++) {
       for (int j = 0; j < 20; j++) {
@@ -414,7 +417,6 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
       w.commit();
       tw.commit();
     }
-    sat.setRefreshCommitSupplier(new NextCommitSelector());
 
     // maybeRefresh only refreshes on the next incremental commit
     // so it takes us numCommits to get to latest

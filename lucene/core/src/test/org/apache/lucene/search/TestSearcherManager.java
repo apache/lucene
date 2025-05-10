@@ -782,7 +782,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
       w.addDocument(doc);
     }
     w.commit();
-    SearcherManager sm = new SearcherManager(dir, null);
+    SearcherManager sm = new SearcherManager(DirectoryReader.open(dir), null, new NextCommitSelector());
     final int numCommits = 5;
     for (int i = 0; i < numCommits; i++) {
       for (int j = 0; j < 20; j++) {
@@ -792,7 +792,6 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
       }
       w.commit();
     }
-    sm.setRefreshCommitSupplier(new NextCommitSelector());
 
     // maybeRefresh only refreshes on the next incremental commit
     // so it takes us numCommits to get to latest

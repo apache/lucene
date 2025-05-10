@@ -90,6 +90,34 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
       boolean writeAllDeletes,
       SearcherFactory searcherFactory)
       throws IOException {
+    this(writer, applyAllDeletes, writeAllDeletes, searcherFactory, null);
+  }
+
+  /**
+   * Expert: creates and returns a new SearcherManager from the given {@link IndexWriter},
+   * controlling whether past deletions should be applied.
+   *
+   * @param writer the IndexWriter to open the IndexReader from.
+   * @param applyAllDeletes If <code>true</code>, all buffered deletes will be applied (made
+   *     visible) in the {@link IndexSearcher} / {@link DirectoryReader}. If <code>false</code>, the
+   *     deletes may or may not be applied, but remain buffered (in IndexWriter) so that they will
+   *     be applied in the future. Applying deletes can be costly, so if your app can tolerate
+   *     deleted documents being returned you might gain some performance by passing <code>false
+   *     </code>. See {@link DirectoryReader#openIfChanged(DirectoryReader, IndexWriter, boolean)}.
+   * @param writeAllDeletes If <code>true</code>, new deletes will be forcefully written to index
+   *     files.
+   * @param searcherFactory An optional {@link SearcherFactory}. Pass <code>null</code> if you don't
+   *     require the searcher to be warmed before going live or other custom behavior.
+   * @param refreshCommitSupplier supplier for providing the commit to refresh on
+   * @throws IOException if there is a low-level I/O error
+   */
+  public SearcherManager(
+      IndexWriter writer,
+      boolean applyAllDeletes,
+      boolean writeAllDeletes,
+      SearcherFactory searcherFactory,
+      RefreshCommitSupplier refreshCommitSupplier)
+      throws IOException {
     if (searcherFactory == null) {
       searcherFactory = new SearcherFactory();
     }
@@ -97,6 +125,9 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
     current =
         getSearcher(
             searcherFactory, DirectoryReader.open(writer, applyAllDeletes, writeAllDeletes), null);
+    if (refreshCommitSupplier != null) {
+      this.refreshCommitSupplier = refreshCommitSupplier;
+    }
   }
 
   /**
@@ -126,29 +157,34 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
    */
   public SearcherManager(DirectoryReader reader, SearcherFactory searcherFactory)
       throws IOException {
+    this(reader, searcherFactory, null);
+  }
+
+  /**
+   * Creates and returns a new SearcherManager from an existing {@link DirectoryReader}. Note that
+   * this steals the incoming reference.
+   *
+   * @param reader the DirectoryReader.
+   * @param searcherFactory An optional {@link SearcherFactory}. Pass <code>null</code> if you don't
+   *     require the searcher to be warmed before going live or other custom behavior.
+   * @param refreshCommitSupplier supplier for providing the commit to refresh on
+   * @throws IOException if there is a low-level I/O error
+   */
+  public SearcherManager(DirectoryReader reader, SearcherFactory searcherFactory, RefreshCommitSupplier refreshCommitSupplier)
+      throws IOException {
     if (searcherFactory == null) {
       searcherFactory = new SearcherFactory();
     }
     this.searcherFactory = searcherFactory;
     this.current = getSearcher(searcherFactory, reader, null);
-  }
-
-  /** Set supplier for selecting commits to refresh on */
-  public void setRefreshCommitSupplier(RefreshCommitSupplier refreshCommitSupplier) {
-    this.refreshCommitSupplier = refreshCommitSupplier;
+    if (refreshCommitSupplier != null) {
+      this.refreshCommitSupplier = refreshCommitSupplier;
+    }
   }
 
   @Override
   protected void decRef(IndexSearcher reference) throws IOException {
     reference.getIndexReader().decRef();
-  }
-
-  /** Return index commit generation for current searcher */
-  public long getSearcherCommitGeneration() throws IOException {
-    IndexSearcher s = acquire();
-    long gen = ((DirectoryReader) s.getIndexReader()).getIndexCommit().getGeneration();
-    release(s);
-    return gen;
   }
 
   @Override
@@ -177,12 +213,24 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
   }
 
   /**
+   * Return index commit generation for current searcher
+   * pkg-private for testing
+   */
+  long getSearcherCommitGeneration() throws IOException {
+    IndexSearcher s = acquire();
+    long gen = ((DirectoryReader) s.getIndexReader()).getIndexCommit().getGeneration();
+    release(s);
+    return gen;
+  }
+
+  /**
    * Returns <code>true</code> if no changes have occurred since this searcher ie. reader was
    * opened, otherwise <code>false</code>.
+   * pkg-private for testing
    *
    * @see DirectoryReader#isCurrent()
    */
-  public boolean isSearcherCurrent() throws IOException {
+  boolean isSearcherCurrent() throws IOException {
     final IndexSearcher searcher = acquire();
     try {
       final IndexReader r = searcher.getIndexReader();

@@ -71,6 +71,20 @@ public class SearcherTaxonomyManager
       SearcherFactory searcherFactory,
       DirectoryTaxonomyWriter taxoWriter)
       throws IOException {
+    this(writer, applyAllDeletes, searcherFactory, taxoWriter, null);
+  }
+
+  /**
+   * Expert: creates near-real-time searcher and taxonomy reader from the corresponding writers,
+   * controlling whether deletes should be applied.
+   */
+  public SearcherTaxonomyManager(
+      IndexWriter writer,
+      boolean applyAllDeletes,
+      SearcherFactory searcherFactory,
+      DirectoryTaxonomyWriter taxoWriter,
+      RefreshCommitSupplier refreshCommitSupplier)
+      throws IOException {
     if (searcherFactory == null) {
       searcherFactory = new SearcherFactory();
     }
@@ -83,6 +97,9 @@ public class SearcherTaxonomyManager
                 searcherFactory, DirectoryReader.open(writer, applyAllDeletes, false), null),
             taxoReader);
     this.taxoEpoch = taxoWriter.getTaxonomyEpoch();
+    if (refreshCommitSupplier != null) {
+      this.refreshCommitSupplier = refreshCommitSupplier;
+    }
   }
 
   /**
@@ -114,6 +131,16 @@ public class SearcherTaxonomyManager
   public SearcherTaxonomyManager(
       IndexReader reader, DirectoryTaxonomyReader taxoReader, SearcherFactory searcherFactory)
       throws IOException {
+    this(reader, taxoReader, searcherFactory, null);
+  }
+
+  /**
+   * Creates this from already opened {@link IndexReader} and {@link DirectoryTaxonomyReader}
+   * instances. Note that the incoming readers will be closed when you call {@link #close}.
+   */
+  public SearcherTaxonomyManager(
+      IndexReader reader, DirectoryTaxonomyReader taxoReader, SearcherFactory searcherFactory, RefreshCommitSupplier refreshCommitSupplier)
+      throws IOException {
     if (searcherFactory == null) {
       searcherFactory = new SearcherFactory();
     }
@@ -123,11 +150,9 @@ public class SearcherTaxonomyManager
             SearcherManager.getSearcher(searcherFactory, reader, null), taxoReader);
     this.taxoWriter = null;
     taxoEpoch = -1;
-  }
-
-  /** Set supplier for selecting commits to refresh on */
-  public void setRefreshCommitSupplier(RefreshCommitSupplier refreshCommitSupplier) {
-    this.refreshCommitSupplier = refreshCommitSupplier;
+    if (refreshCommitSupplier != null) {
+      this.refreshCommitSupplier = refreshCommitSupplier;
+    }
   }
 
   @Override
@@ -196,18 +221,13 @@ public class SearcherTaxonomyManager
     }
   }
 
-  /** Return index commit generation for current searcher */
-  public long getSearcherCommitGeneration() throws IOException {
+  /**
+   * Return index commit generation for current searcher
+   * pkg-private for testing
+   */
+  long getSearcherCommitGeneration() throws IOException {
     SearcherAndTaxonomy sat = acquire();
     long gen = ((DirectoryReader) sat.searcher.getIndexReader()).getIndexCommit().getGeneration();
-    release(sat);
-    return gen;
-  }
-
-  /** Return index commit generation for current taxonomy reader */
-  public long getTaxonomyCommitGeneration() throws IOException {
-    SearcherAndTaxonomy sat = acquire();
-    long gen = sat.taxonomyReader.getInternalIndexReader().getIndexCommit().getGeneration();
     release(sat);
     return gen;
   }
@@ -215,10 +235,11 @@ public class SearcherTaxonomyManager
   /**
    * Returns <code>true</code> if no new changes have occurred since the current searcher (i.e.
    * reader) was opened; <code>false</code> otherwise
+   * pkg-private for testing
    *
    * @see DirectoryReader#isCurrent()
    */
-  public boolean isSearcherCurrent() throws IOException {
+  boolean isSearcherCurrent() throws IOException {
     final SearcherAndTaxonomy sat = acquire();
     try {
       final IndexReader r = sat.searcher.getIndexReader();
@@ -233,10 +254,11 @@ public class SearcherTaxonomyManager
   /**
    * Returns <code>true</code> if no new changes have occurred since the current taxonomy reader was
    * opened; <code>false</code> otherwise
+   * pkg-private for testing
    *
    * @see DirectoryReader#isCurrent()
    */
-  public boolean isTaxonomyCurrent() throws IOException {
+  boolean isTaxonomyCurrent() throws IOException {
     final SearcherAndTaxonomy sat = acquire();
     try {
       return sat.taxonomyReader.getInternalIndexReader().isCurrent();
