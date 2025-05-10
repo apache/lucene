@@ -548,7 +548,7 @@ public abstract class PointRangeQuery extends Query {
     byte[] globalMaxPacked = PointValues.getMaxPackedValue(reader, getField());
 
     if (globalMinPacked == null || globalMaxPacked == null) {
-      return super.rewrite(searcher);
+      return new MatchNoDocsQuery();
     }
 
     return switch (relate(globalMinPacked, globalMaxPacked)) {
