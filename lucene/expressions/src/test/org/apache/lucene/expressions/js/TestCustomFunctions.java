@@ -292,20 +292,4 @@ public class TestCustomFunctions extends CompilerTestCase {
     Expression expr = compile("foo.bar() + bar.foo(7)", functions);
     assertEquals(16, expr.evaluate(null), DELTA);
   }
-
-  public void testLegacyFunctions() throws Exception {
-    var functions =
-        Map.of("foo", TestCustomFunctions.class.getMethod("oneArgMethod", double.class));
-    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
-    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    Expression expr = compile("foo(3) + abs(-7)", newFunctions);
-    assertEquals(13, expr.evaluate(null), DELTA);
-  }
-
-  public void testInvalidLegacyFunctions() throws Exception {
-    var functions = Map.of("foo", TestCustomFunctions.class.getMethod("nonStaticMethod"));
-    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
-    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    expectThrows(IllegalArgumentException.class, () -> compile("foo(3) + abs(-7)", newFunctions));
-  }
 }
