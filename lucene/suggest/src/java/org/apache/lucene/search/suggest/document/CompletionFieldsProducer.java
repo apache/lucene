@@ -36,7 +36,9 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.CollectionUtil;
@@ -77,7 +79,9 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
       String dictFile =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, DICT_EXTENSION);
-      dictIn = state.directory.openInput(dictFile, state.context);
+      dictIn =
+          state.directory.openInput(
+              dictFile, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
       CodecUtil.checkIndexHeader(
           dictIn,
           codecName,
