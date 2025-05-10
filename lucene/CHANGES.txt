@@ -49,6 +49,9 @@ Optimizations
 
 * GITHUB#14552: Speed up flush of softdelete by intoBitset. (Guo Feng)
 
+* GITHUB#14609: Optimizes PointRangeQuery by rewriting to MatchAllDocsQuery/FieldExistsQuery/MatchNoDocsQuery if all
+  docs in index are contained or excluded (Elliott Bradshaw)
+
 Bug Fixes
 ---------------------
 (No changes)
