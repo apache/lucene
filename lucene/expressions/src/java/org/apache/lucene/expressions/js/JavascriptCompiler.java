@@ -29,6 +29,7 @@ import java.lang.classfile.Opcode;
 import java.lang.classfile.TypeKind;
 import java.lang.classfile.attribute.ExceptionsAttribute;
 import java.lang.classfile.instruction.BranchInstruction;
+import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.classfile.instruction.OperatorInstruction;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
@@ -49,6 +50,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -424,15 +426,19 @@ public final class JavascriptCompiler {
                 ctx.start.getStartIndex());
           }
 
-          // place dynamic constant with MethodHandle on top of stack
-          final int index = constantsMap.computeIfAbsent(text, _ -> constantsMap.size());
-          final var constantDesc =
-              DynamicConstantDesc.ofNamed(
-                  ConstantDescs.BSM_CLASS_DATA_AT,
-                  ConstantDescs.DEFAULT_NAME,
-                  ConstantDescs.CD_MethodHandle,
-                  index);
-          gen.loadConstant(constantDesc);
+          final var cracked = crackAsInvokeStatic(mh);
+
+          if (cracked.isEmpty()) {
+            // place dynamic constant with MethodHandle on top of stack
+            final int index = constantsMap.computeIfAbsent(text, _ -> constantsMap.size());
+            final var constantDesc =
+                DynamicConstantDesc.ofNamed(
+                    ConstantDescs.BSM_CLASS_DATA_AT,
+                    ConstantDescs.DEFAULT_NAME,
+                    ConstantDescs.CD_MethodHandle,
+                    index);
+            gen.loadConstant(constantDesc);
+          }
 
           // add arguments:
           typeStack.push(TypeKind.DOUBLE);
@@ -441,11 +447,15 @@ public final class JavascriptCompiler {
           }
           typeStack.pop();
 
-          // invoke MethodHandle of function:
-          gen.invokevirtual(
-              ConstantDescs.CD_MethodHandle,
-              "invokeExact",
-              mh.type().describeConstable().orElseThrow());
+          cracked.ifPresentOrElse(
+              gen::with,
+              () -> {
+                // invoke MethodHandle of function:
+                gen.invokevirtual(
+                    ConstantDescs.CD_MethodHandle,
+                    "invokeExact",
+                    mh.type().describeConstable().orElseThrow());
+              });
 
           gen.conversion(TypeKind.DOUBLE, typeStack.peek());
         } else if (!parens || arguments == 0 && text.contains(".")) {
@@ -463,6 +473,25 @@ public final class JavascriptCompiler {
               ctx.start.getStartIndex());
         }
         return null;
+      }
+
+      private Optional<InvokeInstruction> crackAsInvokeStatic(MethodHandle mh) {
+        try {
+          final MethodHandleInfo cracked = LOOKUP.revealDirect(mh);
+          if (cracked.getReferenceKind() != MethodHandleInfo.REF_invokeStatic) {
+            return Optional.empty();
+          }
+          return Optional.of(
+              InvokeInstruction.of(
+                  Opcode.INVOKESTATIC,
+                  gen.constantPool()
+                      .methodRefEntry(
+                          cracked.getDeclaringClass().describeConstable().orElseThrow(),
+                          cracked.getName(),
+                          cracked.getMethodType().describeConstable().orElseThrow())));
+        } catch (IllegalArgumentException | SecurityException _) {
+          return Optional.empty();
+        }
       }
 
       @Override
@@ -872,7 +901,7 @@ public final class JavascriptCompiler {
                   + "#"
                   + cracked.getName()
                   + cracked.getMethodType();
-    } catch (@SuppressWarnings("unused") IllegalArgumentException | SecurityException iae) {
+    } catch (IllegalArgumentException | SecurityException _) {
       // can't check for static, we assume it is static
       // (it does not matter as we call the MethodHandle directly if it is compatible):
       refKind = MethodHandleInfo.REF_invokeStatic;
