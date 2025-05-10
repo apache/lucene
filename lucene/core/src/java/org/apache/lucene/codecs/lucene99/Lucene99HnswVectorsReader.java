@@ -111,6 +111,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
               Lucene99HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME,
               state.context.withHints(
+                  // Even though this input is referred to an `indexIn`, it doesn't qualify as
+                  // FileTypeHint#INDEX since it's a large file
                   FileTypeHint.DATA,
                   FileDataHint.KNN_VECTORS,
                   DataAccessHint.RANDOM,

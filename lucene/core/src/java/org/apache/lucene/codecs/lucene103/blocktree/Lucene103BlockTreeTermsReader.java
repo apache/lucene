@@ -114,7 +114,7 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
     try {
       String termsName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_EXTENSION);
-      termsIn = state.directory.openInput(termsName, state.context);
+      termsIn = state.directory.openInput(termsName, state.context.withHints(FileTypeHint.DATA));
       version =
           CodecUtil.checkIndexHeader(
               termsIn,
