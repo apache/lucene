@@ -41,6 +41,8 @@ Optimizations
 ---------------------
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
+* GITHUB#14609: Optimizes PointRangeQuery by rewriting to MatchAllDocsQuery/FieldExistsQuery/MatchNoDocsQuery if all
+  docs in index are contained or excluded (Elliott Bradshaw)
 
 Bug Fixes
 ---------------------
