@@ -198,7 +198,8 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertTrue(expected.getMessage().contains("is not static"));
   }
 
-  static double nonPublicMethod() {
+  @SuppressWarnings("unused")
+  private static double nonPublicMethod() {
     return 7;
   }
 
@@ -209,7 +210,8 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertEquals(7, expr.evaluate(null), DELTA);
   }
 
-  static class NestedNotPublic {
+  @SuppressWarnings("unused")
+  private static class NestedNotPublic {
     public static double method() {
       return 41;
     }
