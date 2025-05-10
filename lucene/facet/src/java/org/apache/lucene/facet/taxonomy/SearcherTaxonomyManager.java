@@ -139,7 +139,10 @@ public class SearcherTaxonomyManager
    * instances. Note that the incoming readers will be closed when you call {@link #close}.
    */
   public SearcherTaxonomyManager(
-      IndexReader reader, DirectoryTaxonomyReader taxoReader, SearcherFactory searcherFactory, RefreshCommitSupplier refreshCommitSupplier)
+      IndexReader reader,
+      DirectoryTaxonomyReader taxoReader,
+      SearcherFactory searcherFactory,
+      RefreshCommitSupplier refreshCommitSupplier)
       throws IOException {
     if (searcherFactory == null) {
       searcherFactory = new SearcherFactory();
@@ -221,10 +224,7 @@ public class SearcherTaxonomyManager
     }
   }
 
-  /**
-   * Return index commit generation for current searcher
-   * pkg-private for testing
-   */
+  /** Return index commit generation for current searcher. pkg-private for testing */
   long getSearcherCommitGeneration() throws IOException {
     SearcherAndTaxonomy sat = acquire();
     long gen = ((DirectoryReader) sat.searcher.getIndexReader()).getIndexCommit().getGeneration();
@@ -234,8 +234,7 @@ public class SearcherTaxonomyManager
 
   /**
    * Returns <code>true</code> if no new changes have occurred since the current searcher (i.e.
-   * reader) was opened; <code>false</code> otherwise
-   * pkg-private for testing
+   * reader) was opened, <code>false</code> otherwise. pkg-private for testing
    *
    * @see DirectoryReader#isCurrent()
    */
@@ -253,8 +252,7 @@ public class SearcherTaxonomyManager
 
   /**
    * Returns <code>true</code> if no new changes have occurred since the current taxonomy reader was
-   * opened; <code>false</code> otherwise
-   * pkg-private for testing
+   * opened, <code>false</code> otherwise. pkg-private for testing
    *
    * @see DirectoryReader#isCurrent()
    */

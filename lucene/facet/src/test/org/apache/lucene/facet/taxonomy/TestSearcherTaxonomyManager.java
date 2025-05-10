@@ -403,7 +403,9 @@ public class TestSearcherTaxonomyManager extends FacetTestCase {
     final String[] colors = new String[] {"red", "green", "blue", "yellow"};
     FacetsConfig config = new FacetsConfig();
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
-    SearcherTaxonomyManager sat = new SearcherTaxonomyManager(DirectoryReader.open(dir), taxoReader, null, new NextCommitSelector());
+    SearcherTaxonomyManager sat =
+        new SearcherTaxonomyManager(
+            DirectoryReader.open(dir), taxoReader, null, new NextCommitSelector());
 
     final int numCommits = 5;
     for (int i = 0; i < numCommits; i++) {

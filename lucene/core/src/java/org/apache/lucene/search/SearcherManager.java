@@ -170,7 +170,10 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
    * @param refreshCommitSupplier supplier for providing the commit to refresh on
    * @throws IOException if there is a low-level I/O error
    */
-  public SearcherManager(DirectoryReader reader, SearcherFactory searcherFactory, RefreshCommitSupplier refreshCommitSupplier)
+  public SearcherManager(
+      DirectoryReader reader,
+      SearcherFactory searcherFactory,
+      RefreshCommitSupplier refreshCommitSupplier)
       throws IOException {
     if (searcherFactory == null) {
       searcherFactory = new SearcherFactory();
@@ -212,10 +215,7 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
     return reference.getIndexReader().getRefCount();
   }
 
-  /**
-   * Return index commit generation for current searcher
-   * pkg-private for testing
-   */
+  /** Return index commit generation for current searcher. pkg-private for testing */
   long getSearcherCommitGeneration() throws IOException {
     IndexSearcher s = acquire();
     long gen = ((DirectoryReader) s.getIndexReader()).getIndexCommit().getGeneration();
@@ -225,8 +225,7 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
 
   /**
    * Returns <code>true</code> if no changes have occurred since this searcher ie. reader was
-   * opened, otherwise <code>false</code>.
-   * pkg-private for testing
+   * opened, otherwise <code>false</code>. pkg-private for testing
    *
    * @see DirectoryReader#isCurrent()
    */
