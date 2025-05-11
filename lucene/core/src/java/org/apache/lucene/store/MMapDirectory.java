@@ -290,11 +290,6 @@ public class MMapDirectory extends FSDirectory {
       return ReadAdvice.SEQUENTIAL;
     }
 
-    if (context.hints().contains(FileTypeHint.DATA)
-        || context.hints().contains(FileTypeHint.INDEX)) {
-      return ReadAdvice.NORMAL;
-    }
-
     return Constants.DEFAULT_READADVICE;
   }
 

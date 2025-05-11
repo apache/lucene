@@ -70,17 +70,10 @@ public class SerialIOCountingDirectory extends FilterDirectory {
     return super.openChecksumInput(name);
   }
 
-  private static boolean defaultDataAccess(IOContext context) {
-    // Data or index file type, and no data access hints
-    return (context.hints().contains(FileTypeHint.DATA)
-            || context.hints().contains(FileTypeHint.INDEX))
-        && context.hints(DataAccessHint.class).findAny().isEmpty();
-  }
-
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
-    if (defaultDataAccess(context)) {
-      // expected to be loaded in memory, only count 1 at open time
+    if (context.hints().contains(FileTypeHint.INDEX)) {
+      // expected to be small and fit in the page cache, only count 1 at open time
       counter.increment();
       return super.openInput(name, context);
     }

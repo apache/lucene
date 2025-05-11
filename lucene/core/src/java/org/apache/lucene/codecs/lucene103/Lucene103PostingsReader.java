@@ -160,7 +160,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         String proxName =
             IndexFileNames.segmentFileName(
                 state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.POS_EXTENSION);
-        posIn = state.directory.openInput(proxName, state.context);
+        posIn = state.directory.openInput(proxName, state.context.withHints(FileTypeHint.DATA));
         CodecUtil.checkIndexHeader(
             posIn, POS_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
         CodecUtil.retrieveChecksum(posIn, expectedPosFileLength);
@@ -171,7 +171,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
                   state.segmentInfo.name,
                   state.segmentSuffix,
                   Lucene103PostingsFormat.PAY_EXTENSION);
-          payIn = state.directory.openInput(payName, state.context);
+          payIn = state.directory.openInput(payName, state.context.withHints(FileTypeHint.DATA));
           CodecUtil.checkIndexHeader(
               payIn, PAY_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
           CodecUtil.retrieveChecksum(payIn, expectedPayFileLength);
