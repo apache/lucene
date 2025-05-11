@@ -24,7 +24,7 @@ package org.apache.lucene.analysis.wikipedia;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 /** JFlex-generated tokenizer that is aware of Wikipedia syntax. */
-@SuppressWarnings("fallthrough")
+@SuppressWarnings({"fallthrough", "unused"})
 class WikipediaTokenizerImpl {
 
   /** This character denotes the end of file. */

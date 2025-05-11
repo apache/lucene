@@ -42,7 +42,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
  * </ul>
  */
 
-@SuppressWarnings("fallthrough")
+@SuppressWarnings({"fallthrough","unused"})
 public final class StandardTokenizerImpl {
 
   /** This character denotes the end of file. */
