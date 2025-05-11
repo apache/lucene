@@ -49,8 +49,9 @@ import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -152,9 +153,9 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.DOC_EXTENSION);
     try {
-      // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-      // readahead.
-      docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
+      docIn =
+          state.directory.openInput(
+              docName, state.context.withHints(FileTypeHint.DATA, FileDataHint.POSTINGS));
       CodecUtil.checkIndexHeader(
           docIn, DOC_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
       CodecUtil.retrieveChecksum(docIn, expectedDocFileLength);
@@ -163,7 +164,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
         String proxName =
             IndexFileNames.segmentFileName(
                 state.segmentInfo.name, state.segmentSuffix, Lucene103PostingsFormat.POS_EXTENSION);
-        posIn = state.directory.openInput(proxName, state.context);
+        posIn = state.directory.openInput(proxName, state.context.withHints(FileTypeHint.DATA));
         CodecUtil.checkIndexHeader(
             posIn, POS_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
         CodecUtil.retrieveChecksum(posIn, expectedPosFileLength);
@@ -174,7 +175,7 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
                   state.segmentInfo.name,
                   state.segmentSuffix,
                   Lucene103PostingsFormat.PAY_EXTENSION);
-          payIn = state.directory.openInput(payName, state.context);
+          payIn = state.directory.openInput(payName, state.context.withHints(FileTypeHint.DATA));
           CodecUtil.checkIndexHeader(
               payIn, PAY_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
           CodecUtil.retrieveChecksum(payIn, expectedPayFileLength);

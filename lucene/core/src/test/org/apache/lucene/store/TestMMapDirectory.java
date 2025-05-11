@@ -23,9 +23,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -111,19 +111,44 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         MMapDirectory.supportsMadvise());
   }
 
-  // Opens the input with ReadAdvice.NORMAL to ensure basic code path coverage.
+  // RANDOM is the default (see Constants.DEFAULT_READADVICE), so test with NORMAL too
   public void testWithNormal() throws Exception {
     final int size = 8 * 1024;
     byte[] bytes = new byte[size];
     random().nextBytes(bytes);
 
-    try (Directory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testWithRandom"))) {
       try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
         out.writeBytes(bytes, 0, bytes.length);
       }
 
+      dir.setReadAdviceOverride((_, _) -> Optional.of(ReadAdvice.NORMAL));
+      try (final IndexInput in = dir.openInput("test", IOContext.DEFAULT)) {
+        final byte[] readBytes = new byte[size];
+        in.readBytes(readBytes, 0, readBytes.length);
+        assertArrayEquals(bytes, readBytes);
+      }
+    }
+  }
+
+  public void testPreload() throws Exception {
+    assumeTrue("madvise for preloading only works on linux/mac", MMapDirectory.supportsMadvise());
+
+    final int size = 8 * 1024;
+    byte[] bytes = new byte[size];
+    random().nextBytes(bytes);
+
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testPreload"))) {
+      dir.setPreload(MMapDirectory.PRELOAD_HINT);
+      try (IndexOutput out =
+          dir.createOutput("test", IOContext.DEFAULT.withHints(PreloadHint.INSTANCE))) {
+        out.writeBytes(bytes, 0, bytes.length);
+      }
+
       try (final IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL))) {
+          dir.openInput("test", IOContext.DEFAULT.withHints(PreloadHint.INSTANCE))) {
+        // the data should be loaded in memory
+        assertTrue(in.isLoaded().orElse(false));
         final byte[] readBytes = new byte[size];
         in.readBytes(readBytes, 0, readBytes.length);
         assertArrayEquals(bytes, readBytes);
@@ -227,10 +252,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         }
       }
 
-      if (!(dir.attachment instanceof ConcurrentHashMap<?, ?> map)) {
-        throw new AssertionError("unexpected attachment: " + dir.attachment);
-      }
-      assertEquals(0, map.size());
+      assertEquals(0, dir.arenas.size());
     }
   }
 
@@ -279,10 +301,7 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
         closeable.close();
       }
 
-      if (!(dir.attachment instanceof ConcurrentHashMap<?, ?> map)) {
-        throw new AssertionError("unexpected attachment: " + dir.attachment);
-      }
-      assertEquals(0, map.size());
+      assertEquals(0, dir.arenas.size());
     }
   }
 

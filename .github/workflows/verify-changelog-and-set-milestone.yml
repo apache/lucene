@@ -6,6 +6,7 @@ on:
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   ISSUE: ${{ github.event.issue.html_url }}
+  BASE_REPO: ${{ github.repository }}
   SKIP_CHANGELOG_CHECK_LABEL: ${{ '"skip-changelog-check"' }}
   CHANGE_LOG_FILE: ${{ 'lucene/CHANGES.txt' }}
 
@@ -25,7 +26,8 @@ jobs:
         run: |
           echo "################## STEP 1 ##################"
           echo "Get all labels from PR #${{ github.event.number }}"
-          mapfile -t labels < <(gh pr view ${{ github.event.number }} --json labels -q '.labels[].name')
+          # Use the BASE_REPO variable to ensure it expands correctly
+          mapfile -t labels < <(gh pr view ${{ github.event.number }} --repo "$BASE_REPO" --json labels -q '.labels[].name')
           IFS=','; echo "${labels[*]}"
           for label in "${labels[@]}"; do
             if [[ $label == ${{ env.SKIP_CHANGELOG_CHECK_LABEL }} ]]; then
@@ -38,10 +40,23 @@ jobs:
           echo -e "\n"
           echo "################## STEP 2 ##################"
           echo "Checking for change log entry in ${{ env.CHANGE_LOG_FILE }}"
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          git log  --pretty=oneline | tail -n 2 | cat
-          echo "merge base sha: ${{ github.event.pull_request.base.sha }}, merge head sha: ${{ github.event.pull_request.head.sha }}"
-          if ! git diff ${{ github.event.pull_request.base.sha }} --name-only | grep -q "${{ env.CHANGE_LOG_FILE }}"; then
+          git remote add upstream https://github.com/${{ github.repository }}.git
+
+          # Add and fetch full history of the base branch
+          BASE_BRANCH=${{ github.event.pull_request.base.ref }}
+          # We need this to ensure we will be able to find the merge base
+          git fetch upstream $BASE_BRANCH --unshallow
+
+          # Find merge base commit to diff against
+          BASE_COMMIT=$(git merge-base HEAD upstream/$BASE_BRANCH)
+          echo "Using merge base for comparison: $BASE_COMMIT"
+          echo "Last 3 commits up to merge base:"
+          git log --oneline -n 3 $BASE_COMMIT
+          echo "Last 3 commits up to PR head:"
+          git log --oneline -n 3 HEAD
+
+          echo "Diff:"
+          if git diff --exit-code --name-only $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}; then
             echo "Change log file:${{ env.CHANGE_LOG_FILE }} does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
             exit 0
           else
@@ -54,7 +69,9 @@ jobs:
           echo "Extracting Lucene version from change log entry"
           # git diff header pattern -> "@@ -15,0 +16,4 @@" 
           # try to extract the line number at which new entry is added, here it's line number 16
-          diff=$(git diff ${{ github.event.pull_request.base.sha }} --unified=0 -- ${{ env.CHANGE_LOG_FILE }})
+          echo "Diff:"
+          git diff --unified=0 $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}
+          diff=$(git diff --unified=0 $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }})
           lucene_version=""
           diff_header_pattern="@@ -[0-9]+,?[0-9]* \+([0-9]*),?[0-9]* @@"
           if [[ $diff =~ $diff_header_pattern ]]; then
