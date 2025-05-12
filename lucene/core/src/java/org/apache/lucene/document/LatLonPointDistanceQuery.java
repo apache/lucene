@@ -172,7 +172,7 @@ final class LatLonPointDistanceQuery extends Query {
         };
       }
 
-      private int matchesWithState(byte[] packedValue, int sortedDim) {
+      private PointValues.MatchState matchesWithState(byte[] packedValue, int sortedDim) {
         if (sortedDim == 0) {
           int lat = NumericUtils.sortableBytesToInt(packedValue, 0);
           // bounding box check
@@ -302,7 +302,7 @@ final class LatLonPointDistanceQuery extends Query {
           @Override
           public PointValues.VisitState visitWithSortedDim(
               int docID, byte[] packedValue, int sortedDim) {
-            int matchState = matchesWithState(packedValue, sortedDim);
+            PointValues.MatchState matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.MATCH) {
               visit(docID);
             } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
@@ -321,7 +321,7 @@ final class LatLonPointDistanceQuery extends Query {
           @Override
           public PointValues.VisitState visitWithSortedDim(
               DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
-            int matchState = matchesWithState(packedValue, sortedDim);
+            PointValues.MatchState matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.MATCH) {
               adder.add(iterator);
             } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
@@ -371,7 +371,7 @@ final class LatLonPointDistanceQuery extends Query {
           @Override
           public PointValues.VisitState visitWithSortedDim(
               int docID, byte[] packedValue, int sortedDim) {
-            int matchState = matchesWithState(packedValue, sortedDim);
+            PointValues.MatchState matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
               // Leave this doc in remaining docs to visit.
               return PointValues.VisitState.MATCH_REMAINING;
@@ -391,7 +391,7 @@ final class LatLonPointDistanceQuery extends Query {
           @Override
           public PointValues.VisitState visitWithSortedDim(
               DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
-            int matchState = matchesWithState(packedValue, sortedDim);
+            PointValues.MatchState matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
               // Leave this iterator in remaining docs to visit.
               return PointValues.VisitState.MATCH_REMAINING;

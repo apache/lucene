@@ -246,26 +246,25 @@ public abstract class PointValues {
   };
 
   /** Math states for current value. */
-  public static final class MatchState {
-    private MatchState() {}
+  public enum MatchState {
 
     /** Invalid state */
-    public static final int INVALID = -1;
+    INVALID,
 
     /** Packed value matches the range in this dimension */
-    public static final int MATCH = 0;
+    MATCH,
 
     /** Packed value is too low in this SORTED or NON-SORTED dimension */
-    public static final int LOW = 1;
+    LOW,
 
     /** Packed value is too high in SORTED dimension */
-    public static final int HIGH_IN_SORTED_DIM = 2;
+    HIGH_IN_SORTED_DIM,
 
     /** Packed value is too high in NON-SORTED dimension */
-    public static final int HIGH_IN_NON_SORTED_DIM = 3;
+    HIGH_IN_NON_SORTED_DIM,
 
     /** Packed value does not match the range in this dimension */
-    public static final int NOT_MATCH = 4;
+    NOT_MATCH
   }
 
   /** Create a new {@link PointTree} to navigate the index */

@@ -142,7 +142,7 @@ public abstract class PointRangeQuery extends Query {
         return true;
       }
 
-      private int matchesWithState(byte[] packedValue, int sortedDim) {
+      private PointValues.MatchState matchWithState(byte[] packedValue, int sortedDim) {
         int offset = sortedDim * bytesPerDim;
         if (comparator.compare(packedValue, offset, lowerPoint, offset) < 0) {
           // Doc's value is too low, in sorted dimension
@@ -227,7 +227,7 @@ public abstract class PointRangeQuery extends Query {
           @Override
           public PointValues.VisitState visitWithSortedDim(
               int docID, byte[] packedValue, int sortedDim) {
-            int matchState = matchesWithState(packedValue, sortedDim);
+            PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.MATCH) {
               visit(docID);
             } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
@@ -246,7 +246,7 @@ public abstract class PointRangeQuery extends Query {
           @Override
           public PointValues.VisitState visitWithSortedDim(
               DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
-            int matchState = matchesWithState(packedValue, sortedDim);
+            PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.MATCH) {
               adder.add(iterator);
             } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
@@ -296,7 +296,7 @@ public abstract class PointRangeQuery extends Query {
           @Override
           public PointValues.VisitState visitWithSortedDim(
               int docID, byte[] packedValue, int sortedDim) {
-            int matchState = matchesWithState(packedValue, sortedDim);
+            PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
               // Leave this docID in remaining docs to visit.
               return PointValues.VisitState.MATCH_REMAINING;
@@ -316,7 +316,7 @@ public abstract class PointRangeQuery extends Query {
           @Override
           public PointValues.VisitState visitWithSortedDim(
               DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
-            int matchState = matchesWithState(packedValue, sortedDim);
+            PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
               // Leave this iterator in remaining docs to visit.
               return PointValues.VisitState.MATCH_REMAINING;
@@ -527,7 +527,7 @@ public abstract class PointRangeQuery extends Query {
               @Override
               public PointValues.VisitState visitWithSortedDim(
                   int docID, byte[] packedValue, int sortedDim) throws IOException {
-                int matchState = matchesWithState(packedValue, sortedDim);
+                PointValues.MatchState matchState = matchWithState(packedValue, sortedDim);
                 if (matchState == PointValues.MatchState.MATCH) {
                   matchingNodeCount[0]++;
                 } else if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
