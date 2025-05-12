@@ -225,7 +225,8 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
-          public PointValues.VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim) {
+          public PointValues.VisitState visitWithSortedDim(
+              int docID, byte[] packedValue, int sortedDim) {
             int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.MATCH) {
               visit(docID);
@@ -293,12 +294,11 @@ public abstract class PointRangeQuery extends Query {
           }
 
           @Override
-          public PointValues.VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim) {
+          public PointValues.VisitState visitWithSortedDim(
+              int docID, byte[] packedValue, int sortedDim) {
             int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
-              // TODO: We need visit this docID/iterator, since we have consumed AssertingLeafReader#docBudget.
-              // Or we can implement visit(DocIdSetIterator iterator) to call in.visit(DocIdSetIterator iterator) instead of default method.
-              visit(docID);
+              // Leave this docID in remaining docs to visit.
               return PointValues.VisitState.MATCH_REMAINING;
             } else if (matchState != PointValues.MatchState.MATCH) {
               visit(docID);
@@ -318,9 +318,7 @@ public abstract class PointRangeQuery extends Query {
               DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
             int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
-              // TODO: We need visit this docID/iterator, since we have consumed AssertingLeafReader#docBudget.
-              // Or we can implement visit(DocIdSetIterator iterator) to call in.visit(DocIdSetIterator iterator) instead of default method.
-              visit(iterator);
+              // Leave this iterator in remaining docs to visit.
               return PointValues.VisitState.MATCH_REMAINING;
             } else if (matchState != PointValues.MatchState.MATCH) {
               visit(iterator);
@@ -527,8 +525,8 @@ public abstract class PointRangeQuery extends Query {
               }
 
               @Override
-              public PointValues.VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim)
-                  throws IOException {
+              public PointValues.VisitState visitWithSortedDim(
+                  int docID, byte[] packedValue, int sortedDim) throws IOException {
                 int matchState = matchesWithState(packedValue, sortedDim);
                 if (matchState == PointValues.MatchState.MATCH) {
                   matchingNodeCount[0]++;

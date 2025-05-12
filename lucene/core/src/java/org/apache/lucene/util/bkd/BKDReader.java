@@ -919,12 +919,11 @@ public class BKDReader extends PointValues {
               config.bytesPerDim() - prefix);
         }
         scratchIterator.reset(i, length);
-        VisitState visitState = visitor.visitWithSortedDim(scratchIterator, scratchPackedValue, sortedDim);
+        VisitState visitState =
+            visitor.visitWithSortedDim(scratchIterator, scratchPackedValue, sortedDim);
         if (visitState == VisitState.TERMINATE) {
           break;
         } else if (visitState == VisitState.MATCH_REMAINING) {
-          // TODO: match remaining.
-          i = i + length;
           scratchIterator.reset(i, count - i);
           visitor.visit(scratchIterator);
           break;
@@ -1015,8 +1014,7 @@ public class BKDReader extends PointValues {
           if (visitState == VisitState.TERMINATE) {
             break;
           } else if (visitState == VisitState.MATCH_REMAINING) {
-            // TODO: match remaining.
-            scratchIterator.reset(++offset, count - offset);
+            scratchIterator.reset(offset, count - offset);
             visitor.visit(scratchIterator);
             break;
           }

@@ -233,9 +233,15 @@ public abstract class PointValues {
   public enum VisitState {
     /** value match */
     CONTINUE,
-    /** Return this if MatchState is PointValues.MatchState.HIGH_IN_SORTED_DIM in IntersectVisitor, so we can terminate visiting. */
+    /**
+     * Return this if MatchState is PointValues.MatchState.HIGH_IN_SORTED_DIM in IntersectVisitor,
+     * so we can terminate visiting.
+     */
     TERMINATE,
-    /** Return this if MatchState is PointValues.MatchState.HIGH_IN_SORTED_DIM in Inverse IntersectVisitor, so we can terminate visiting and match remaining values. */
+    /**
+     * Return this if MatchState is PointValues.MatchState.HIGH_IN_SORTED_DIM in Inverse
+     * IntersectVisitor, so we can terminate visiting and match remaining values.
+     */
     MATCH_REMAINING
   };
 
@@ -359,7 +365,8 @@ public abstract class PointValues {
      * stop processing points on the leaf by returning false when for example the sorted dimension
      * value is too high to be matched by the query.
      *
-     * @return VisitState.CONTINUE if the visitor should continue visiting points on this leaf, otherwise false.
+     * @return VisitState.CONTINUE if the visitor should continue visiting points on this leaf,
+     *     otherwise false.
      */
     default VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim)
         throws IOException {
@@ -385,10 +392,11 @@ public abstract class PointValues {
      * Implementers can stop processing points on the leaf by returning false when for example the
      * sorted dimension value is too high to be matched by the query.
      *
-     * @return VisitState.CONTINUE if the visitor should continue visiting points on this leaf, otherwise false.
+     * @return VisitState.CONTINUE if the visitor should continue visiting points on this leaf,
+     *     otherwise false.
      */
-    default VisitState visitWithSortedDim(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
-        throws IOException {
+    default VisitState visitWithSortedDim(
+        DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
       visit(iterator, packedValue);
       return VisitState.CONTINUE;
     }
