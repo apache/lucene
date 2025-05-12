@@ -27,7 +27,6 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-@SuppressWarnings("preview")
 final class PosixNativeAccess extends NativeAccess {
 
   private static final Logger LOG = Logger.getLogger(PosixNativeAccess.class.getName());
@@ -158,7 +157,6 @@ final class PosixNativeAccess extends NativeAccess {
       case NORMAL -> POSIX_MADV_NORMAL;
       case RANDOM -> POSIX_MADV_RANDOM;
       case SEQUENTIAL -> POSIX_MADV_SEQUENTIAL;
-      case RANDOM_PRELOAD -> POSIX_MADV_NORMAL;
     };
   }
 

@@ -21,13 +21,13 @@ import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
 import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.CloseableThreadLocal;
-import org.apache.lucene.util.Constants;
 
 /**
  * A {@link Directory} wrapper that counts the number of times that Lucene may wait for I/O to
@@ -72,34 +72,33 @@ public class SerialIOCountingDirectory extends FilterDirectory {
 
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
-    ReadAdvice readAdvice = context.readAdvice().orElse(Constants.DEFAULT_READADVICE);
-    if (readAdvice == ReadAdvice.RANDOM_PRELOAD) {
-      // expected to be loaded in memory, only count 1 at open time
+    if (context.hints().contains(FileTypeHint.INDEX)) {
+      // expected to be small and fit in the page cache, only count 1 at open time
       counter.increment();
       return super.openInput(name, context);
     }
-    return new SerializedIOCountingIndexInput(super.openInput(name, context), readAdvice);
+    return new SerializedIOCountingIndexInput(super.openInput(name, context), context);
   }
 
   private class SerializedIOCountingIndexInput extends IndexInput {
 
     private final IndexInput in;
     private final long sliceOffset, sliceLength;
-    private final ReadAdvice readAdvice;
+    private final IOContext context;
     private final LongHashSet pendingPages = new LongHashSet();
     private long currentPage = Long.MIN_VALUE;
 
-    public SerializedIOCountingIndexInput(IndexInput in, ReadAdvice readAdvice) {
-      this(in, readAdvice, 0L, in.length());
+    public SerializedIOCountingIndexInput(IndexInput in, IOContext context) {
+      this(in, context, 0L, in.length());
     }
 
     public SerializedIOCountingIndexInput(
-        IndexInput in, ReadAdvice readAdvice, long offset, long length) {
+        IndexInput in, IOContext context, long offset, long length) {
       super(in.toString());
       this.in = in;
       this.sliceOffset = offset;
       this.sliceLength = length;
-      this.readAdvice = readAdvice;
+      this.context = context;
     }
 
     private void onRead(long offset, int len) {
@@ -111,7 +110,7 @@ public class SerialIOCountingDirectory extends FilterDirectory {
 
       for (long page = firstPage; page <= lastPage; ++page) {
         long readAheadUpto;
-        if (readAdvice == ReadAdvice.RANDOM) {
+        if (context.hints().contains(DataAccessHint.RANDOM)) {
           readAheadUpto = currentPage;
         } else {
           // Assume that the next few pages are always free to read thanks to read-ahead.
@@ -132,7 +131,7 @@ public class SerialIOCountingDirectory extends FilterDirectory {
       final long lastPage = (sliceOffset + offset + length - 1) >> PAGE_SHIFT;
 
       long readAheadUpto;
-      if (readAdvice == ReadAdvice.RANDOM) {
+      if (context.hints().contains(DataAccessHint.RANDOM)) {
         readAheadUpto = currentPage;
       } else {
         // Assume that the next few pages are always free to read thanks to read-ahead.
@@ -189,28 +188,24 @@ public class SerialIOCountingDirectory extends FilterDirectory {
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
-      return slice(offset, length, readAdvice);
+      return slice(sliceDescription, offset, length, context);
     }
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
         throws IOException {
-      return slice(offset, length, context.readAdvice().orElse(Constants.DEFAULT_READADVICE));
-    }
-
-    private IndexInput slice(long offset, long length, ReadAdvice readAdvice) throws IOException {
       if ((length | offset) < 0 || length > sliceLength - offset) {
         throw new IllegalArgumentException();
       }
       IndexInput clone = in.clone();
       clone.seek(sliceOffset + offset);
-      return new SerializedIOCountingIndexInput(clone, readAdvice, sliceOffset + offset, length);
+      return new SerializedIOCountingIndexInput(clone, context, sliceOffset + offset, length);
     }
 
     @Override
     public IndexInput clone() {
       IndexInput clone = in.clone();
-      return new SerializedIOCountingIndexInput(clone, readAdvice, sliceOffset, sliceLength);
+      return new SerializedIOCountingIndexInput(clone, context, sliceOffset, sliceLength);
     }
 
     @Override

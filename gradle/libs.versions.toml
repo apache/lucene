@@ -1,46 +1,69 @@
 # Run "gradlew writeLocks" and "gradlew updateLicenses" after modifying this file!
 [versions]
+# expressions/ grammars
 antlr = "4.13.2"
-asm = "9.8"
+# test assertions
 assertj = "3.27.3"
+# analysis/phonetic/ algorithms, gradle build checksums
 commons-codec = "1.18.0"
-commons-compress = "1.19"
+# benchmark/ bzip2 compression
+commons-compress = "1.27.1"
 # @keep This version refers to ECJ batch compiler from p2 repositories ("drops").
 ecjP2Drop = "ecj-4.36M1"
-errorprone = "2.36.0"
+# java linting
+errorprone = "2.38.0"
+# markdown documentation generation
 flexmark = "0.64.8"
-# @keep This is GJF version for spotless/ tidy.
+# @keep This is GJF version for spotless/ tidy source code formatting
 googleJavaFormat = "1.23.0"
+# gradle build support
 groovy = "4.0.26"
+# test assertions
 hamcrest = "3.0"
+# analysis/icu/, gradle regeneration unicode support
 icu4j = "77.1"
+# queryparsers/ grammars
 javacc = "7.0.13"
-jflex = "1.8.2"
+# analysis/ tokenizer grammars
+jflex = "1.9.1"
+# gradle checkWorkingCopy support
 jgit = "7.2.0.202503040940-r"
+# benchmark-jmh/ microbenchmarks
 jmh = "1.37"
+# spatial-extras/ support
 jts = "1.20.0"
+# unit tests
 junit = "4.13.2"
 # @keep Minimum gradle version to run the build
 minGradle = "8.14"
 # @keep This is the minimum required Java version.
 minJava = "24"
+# analysis/morfologik polish support
 morfologik = "2.1.9"
+# analysis/morfologik ukrainian support
 morfologik-ukrainian = "4.9.1"
+# benchmark/ html parsing
 nekohtml = "1.9.22"
+# analysis/opennlp/ support
 opennlp = "2.5.4"
+# distribution.tests/ process management
 procfork = "1.0.6"
+# unit tests
 randomizedtesting = "2.8.3"
+# license checks
 rat = "0.14"
+# spatial-extras/ support
 s2-geometry = "1.0.0"
+# spatial-extras/ support
 spatial4j = "0.8"
+# benchmark/ XML parsing
 xerces = "2.12.2"
-zstd = "1.5.7-2"
+# external datasets decompression
+zstd = "1.5.7-3"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
-asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
-asm-core = { module = "org.ow2.asm:asm", version.ref = "asm" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
