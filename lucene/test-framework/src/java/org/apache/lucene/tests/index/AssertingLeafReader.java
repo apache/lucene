@@ -1698,6 +1698,61 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public PointValues.VisitState visitWithSortedDim(DocIdSetIterator iterator, byte[] packedValue, int sortedDim)
+        throws IOException {
+      // TODO: docBudget -= iterator.length.
+//      assert --docBudget >= 0 : "called add() more times than the last call to grow() reserved";
+
+      // This method, to filter each doc's value, should only be invoked when the cell crosses the
+      // query shape:
+      assert lastCompareResult == null
+          || lastCompareResult == PointValues.Relation.CELL_CROSSES_QUERY;
+
+      if (lastCompareResult != null) {
+        // This doc's packed value should be contained in the last cell passed to compare:
+        for (int dim = 0; dim < numIndexDims; dim++) {
+          assert Arrays.compareUnsigned(
+              lastMinPackedValue,
+              dim * bytesPerDim,
+              dim * bytesPerDim + bytesPerDim,
+              packedValue,
+              dim * bytesPerDim,
+              dim * bytesPerDim + bytesPerDim)
+              <= 0
+              : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
+          assert Arrays.compareUnsigned(
+              lastMaxPackedValue,
+              dim * bytesPerDim,
+              dim * bytesPerDim + bytesPerDim,
+              packedValue,
+              dim * bytesPerDim,
+              dim * bytesPerDim + bytesPerDim)
+              >= 0
+              : "dim=" + dim + " of " + numDataDims + " value=" + new BytesRef(packedValue);
+        }
+        lastCompareResult = null;
+      }
+
+      // TODO: we should assert that this "matches" whatever relation the last call to compare had
+      // returned
+      assert packedValue.length == numDataDims * bytesPerDim;
+//      if (numDataDims == 1) {
+//        int cmp = Arrays.compareUnsigned(lastDocValue, 0, bytesPerDim, packedValue, 0, bytesPerDim);
+//        if (cmp < 0) {
+//          // ok
+//        } else if (cmp == 0) {
+//          assert lastDocID <= docID : "doc ids are out of order when point values are the same!";
+//        } else {
+//          // out of order!
+//          assert false : "point values are out of order";
+//        }
+//        System.arraycopy(packedValue, 0, lastDocValue, 0, bytesPerDim);
+//        lastDocID = docID;
+//      }
+      return in.visitWithSortedDim(iterator, packedValue, sortedDim);
+    }
+
+    @Override
     public void grow(int count) {
       in.grow(count);
       docBudget = count;

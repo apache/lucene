@@ -296,6 +296,9 @@ public abstract class PointRangeQuery extends Query {
           public PointValues.VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim) {
             int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              // TODO: We need visit this docID/iterator, since we have consumed AssertingLeafReader#docBudget.
+              // Or we can implement visit(DocIdSetIterator iterator) to call in.visit(DocIdSetIterator iterator) instead of default method.
+              visit(docID);
               return PointValues.VisitState.MATCH_REMAINING;
             } else if (matchState != PointValues.MatchState.MATCH) {
               visit(docID);
@@ -315,6 +318,9 @@ public abstract class PointRangeQuery extends Query {
               DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
             int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              // TODO: We need visit this docID/iterator, since we have consumed AssertingLeafReader#docBudget.
+              // Or we can implement visit(DocIdSetIterator iterator) to call in.visit(DocIdSetIterator iterator) instead of default method.
+              visit(iterator);
               return PointValues.VisitState.MATCH_REMAINING;
             } else if (matchState != PointValues.MatchState.MATCH) {
               visit(iterator);
@@ -426,6 +432,7 @@ public abstract class PointRangeQuery extends Query {
               if (values.getDocCount() == reader.maxDoc()
                   && values.getDocCount() == values.size()
                   && cost() > reader.maxDoc() / 2) {
+
                 // If all docs have exactly one value and the cost is greater
                 // than half the leaf size then maybe we can make things faster
                 // by computing the set of documents that do NOT match the range

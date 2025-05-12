@@ -371,6 +371,9 @@ final class LatLonPointDistanceQuery extends Query {
           public PointValues.VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim) {
             int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              // TODO: We need visit this docID/iterator, since we have consumed AssertingLeafReader#docBudget.
+              // Or we can implement visit(DocIdSetIterator iterator) to call in.visit(DocIdSetIterator iterator) instead of default method.
+              visit(docID);
               return PointValues.VisitState.MATCH_REMAINING;
             } else if (matchState != PointValues.MatchState.MATCH) {
               visit(docID);
@@ -390,6 +393,9 @@ final class LatLonPointDistanceQuery extends Query {
               DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
             int matchState = matchesWithState(packedValue, sortedDim);
             if (matchState == PointValues.MatchState.HIGH_IN_SORTED_DIM) {
+              // TODO: We need visit this docID/iterator, since we have consumed AssertingLeafReader#docBudget.
+              // Or we can implement visit(DocIdSetIterator iterator) to call in.visit(DocIdSetIterator iterator) instead of default method.
+              visit(iterator);
               return PointValues.VisitState.MATCH_REMAINING;
             } else if (matchState != PointValues.MatchState.MATCH) {
               visit(iterator);

@@ -924,6 +924,7 @@ public class BKDReader extends PointValues {
           break;
         } else if (visitState == VisitState.MATCH_REMAINING) {
           // TODO: match remaining.
+          i = i + length;
           scratchIterator.reset(i, count - i);
           visitor.visit(scratchIterator);
           break;
@@ -1015,7 +1016,7 @@ public class BKDReader extends PointValues {
             break;
           } else if (visitState == VisitState.MATCH_REMAINING) {
             // TODO: match remaining.
-            scratchIterator.reset(offset, count - offset);
+            scratchIterator.reset(++offset, count - offset);
             visitor.visit(scratchIterator);
             break;
           }
