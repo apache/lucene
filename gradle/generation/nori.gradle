@@ -62,6 +62,7 @@ configure(project(":lucene:analysis:nori")) {
       src dictionarySource
       dest dictionaryFile
       onlyIfModified true
+      retries 3
 
       doLast {
         // Unpack the downloaded archive.

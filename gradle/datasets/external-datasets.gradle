@@ -58,6 +58,7 @@ configure(project(":lucene:benchmark")) {
     dest ext.intermediate
     overwrite false
     compress false
+    retries 3
 
     doLast {
       logger.lifecycle("Decompressing ${ext.name}...")
@@ -79,6 +80,7 @@ configure(project(":lucene:benchmark")) {
     dest ext.intermediate
     overwrite false
     compress false
+    retries 3
 
     doLast {
       logger.lifecycle("Decompressing ${ext.name}...")
@@ -103,6 +105,7 @@ configure(project(":lucene:benchmark")) {
     dest ext.intermediate
     overwrite false
     compress false
+    retries 3
 
     doLast {
       logger.lifecycle("Decompressing ${ext.name}...")
@@ -124,6 +127,7 @@ configure(project(":lucene:benchmark")) {
     dest ext.intermediate
     overwrite false
     compress false
+    retries 3
 
     doLast {
       logger.lifecycle("Decompressing ${ext.name}...")
@@ -148,6 +152,7 @@ configure(project(":lucene:benchmark")) {
     dest ext.intermediate
     overwrite false
     compress false
+    retries 3
 
     doLast {
       def untarPath = file("$temporaryDir/reuters-untar")

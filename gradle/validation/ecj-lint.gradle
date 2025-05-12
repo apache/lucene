@@ -26,6 +26,7 @@ configure(rootProject) {
     src "https://www.eclipse.org/downloads/download.php?r=1&file=/eclipse/downloads/drops4/S-4.36M1-202504031800/${ecjVersion}.jar"
     dest project.layout.buildDirectory.dir("ecj-drop")
     overwrite false
+    retries 3
     onlyIf {
       !ecjDropJar.get().asFile.exists()
     }

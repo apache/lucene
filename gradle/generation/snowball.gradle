@@ -53,6 +53,7 @@ configure(project(":lucene:analysis:common")) {
     dest file("${snowballStemmerDir}.zip")
     overwrite false
     tempAndMove true
+    retries 3
 
     doLast {
       unpackFromZip(dest, snowballStemmerDir)
@@ -66,6 +67,7 @@ configure(project(":lucene:analysis:common")) {
     dest snowballWebsiteZip
     overwrite false
     tempAndMove true
+    retries 3
 
     doLast {
       unpackFromZip(snowballWebsiteZip, snowballWebsiteDir)

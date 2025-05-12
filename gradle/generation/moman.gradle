@@ -30,6 +30,7 @@ configure(project(":lucene:core")) {
     src momanSource
     dest momanZip
     onlyIfModified true
+    retries 3
 
     doLast {
       ant.unzip(src: momanZip, dest: momanDir, overwrite: "true") {
