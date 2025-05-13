@@ -58,7 +58,7 @@ jobs:
           echo "Diff:"
           if git diff --exit-code --name-only $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}; then
             echo "Change log file:${{ env.CHANGE_LOG_FILE }} does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
-            gh pr comment ${{ github.event.number }} --body "This PR does not have an entry in lucene/CHANGES.txt. Consider adding one."
+            gh pr comment ${{ github.event.number }} --body "This PR does not have an entry in lucene/CHANGES.txt. Consider adding one. If the PR doesn't need a changelog entry, then add the `skip-changelog-check` label to it and you will stop receiving this reminder on future updates to the PR."
             exit 0
           else
             echo "${{ env.CHANGE_LOG_FILE }} contains change log entry. Proceeding with next steps."
