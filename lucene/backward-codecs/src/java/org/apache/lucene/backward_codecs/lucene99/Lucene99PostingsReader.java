@@ -66,7 +66,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
   /** Sole constructor. */
   public Lucene99PostingsReader(SegmentReadState state) throws IOException {
-    boolean success = false;
     IndexInput docIn = null;
     IndexInput posIn = null;
     IndexInput payIn = null;
@@ -118,11 +117,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       this.docIn = docIn;
       this.posIn = posIn;
       this.payIn = payIn;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(docIn, posIn, payIn);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, docIn, posIn, payIn);
+      throw t;
     }
   }
 

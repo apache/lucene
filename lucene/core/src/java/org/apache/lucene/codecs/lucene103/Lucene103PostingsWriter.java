@@ -152,7 +152,6 @@ public class Lucene103PostingsWriter extends PushPostingsWriterBase {
     metaOut = state.directory.createOutput(metaFileName, state.context);
     IndexOutput posOut = null;
     IndexOutput payOut = null;
-    boolean success = false;
     try {
       docOut = state.directory.createOutput(docFileName, state.context);
       CodecUtil.writeIndexHeader(
@@ -205,11 +204,9 @@ public class Lucene103PostingsWriter extends PushPostingsWriterBase {
       }
       this.payOut = payOut;
       this.posOut = posOut;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(metaOut, docOut, posOut, payOut);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, metaOut, docOut, posOut, payOut);
+      throw t;
     }
 
     docDeltaBuffer = new int[BLOCK_SIZE];
@@ -694,38 +691,37 @@ public class Lucene103PostingsWriter extends PushPostingsWriterBase {
   @Override
   public void close() throws IOException {
     // TODO: add a finish() at least to PushBase? DV too...?
-    boolean success = false;
     try {
-      if (docOut != null) {
-        CodecUtil.writeFooter(docOut);
-      }
-      if (posOut != null) {
-        CodecUtil.writeFooter(posOut);
-      }
-      if (payOut != null) {
-        CodecUtil.writeFooter(payOut);
-      }
-      if (metaOut != null) {
-        metaOut.writeInt(maxNumImpactsAtLevel0);
-        metaOut.writeInt(maxImpactNumBytesAtLevel0);
-        metaOut.writeInt(maxNumImpactsAtLevel1);
-        metaOut.writeInt(maxImpactNumBytesAtLevel1);
-        metaOut.writeLong(docOut.getFilePointer());
-        if (posOut != null) {
-          metaOut.writeLong(posOut.getFilePointer());
-          if (payOut != null) {
-            metaOut.writeLong(payOut.getFilePointer());
-          }
+      try {
+        if (docOut != null) {
+          CodecUtil.writeFooter(docOut);
         }
-        CodecUtil.writeFooter(metaOut);
+        if (posOut != null) {
+          CodecUtil.writeFooter(posOut);
+        }
+        if (payOut != null) {
+          CodecUtil.writeFooter(payOut);
+        }
+        if (metaOut != null) {
+          metaOut.writeInt(maxNumImpactsAtLevel0);
+          metaOut.writeInt(maxImpactNumBytesAtLevel0);
+          metaOut.writeInt(maxNumImpactsAtLevel1);
+          metaOut.writeInt(maxImpactNumBytesAtLevel1);
+          metaOut.writeLong(docOut.getFilePointer());
+          if (posOut != null) {
+            metaOut.writeLong(posOut.getFilePointer());
+            if (payOut != null) {
+              metaOut.writeLong(payOut.getFilePointer());
+            }
+          }
+          CodecUtil.writeFooter(metaOut);
+        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, metaOut, docOut, posOut, payOut);
+        throw t;
       }
-      success = true;
+      IOUtils.close(metaOut, docOut, posOut, payOut);
     } finally {
-      if (success) {
-        IOUtils.close(metaOut, docOut, posOut, payOut);
-      } else {
-        IOUtils.closeWhileHandlingException(metaOut, docOut, posOut, payOut);
-      }
       metaOut = docOut = posOut = payOut = null;
     }
   }

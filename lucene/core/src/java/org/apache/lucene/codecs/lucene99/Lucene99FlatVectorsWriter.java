@@ -87,7 +87,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
             state.segmentSuffix,
             Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION);
 
-    boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
@@ -104,11 +103,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           Lucene99FlatVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -260,7 +257,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         segmentWriteState.directory.createTempOutput(
             vectorData.getName(), "temp", segmentWriteState.context);
     IndexInput vectorDataInput = null;
-    boolean success = false;
     try {
       // write the vector data to a temporary file
       DocsWithFieldSet docsWithField =
@@ -297,8 +293,10 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           vectorDataOffset,
           vectorDataLength,
           docsWithField);
-      success = true;
+
       final IndexInput finalVectorDataInput = vectorDataInput;
+      vectorDataInput = null;
+
       final RandomVectorScorerSupplier randomVectorScorerSupplier =
           switch (fieldInfo.getVectorEncoding()) {
             case BYTE ->
@@ -329,12 +327,11 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           },
           docsWithField.cardinality(),
           randomVectorScorerSupplier);
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(vectorDataInput, tempVectorData);
-        IOUtils.deleteFilesIgnoringExceptions(
-            segmentWriteState.directory, tempVectorData.getName());
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, vectorDataInput, tempVectorData);
+      IOUtils.deleteFilesSuppressingExceptions(
+          t, segmentWriteState.directory, tempVectorData.getName());
+      throw t;
     }
   }
 

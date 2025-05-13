@@ -133,7 +133,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       throws IOException {
     this.compressionMode = compressionMode;
     final String segment = si.name;
-    boolean success = false;
     fieldInfos = fn;
     numDocs = si.maxDoc();
 
@@ -225,18 +224,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       CodecUtil.checkFooter(metaIn, null);
       metaIn.close();
-
-      success = true;
     } catch (Throwable t) {
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, t);
-        throw new AssertionError("unreachable");
-      } else {
-        throw t;
-      }
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this, metaIn);
+      try {
+        if (metaIn != null) {
+          CodecUtil.checkFooter(metaIn, t);
+          throw new AssertionError("unreachable");
+        } else {
+          throw t;
+        }
+      } finally {
+        IOUtils.closeWhileSuppressingExceptions(t, this, metaIn);
       }
     }
   }
