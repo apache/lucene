@@ -62,7 +62,6 @@ configure(project(":lucene:analysis:kuromoji")) {
       src dictionarySource
       dest dictionaryFile
       onlyIfModified true
-      retries 3
 
       doLast {
         // Unpack the downloaded archive.
@@ -112,7 +111,6 @@ configure(project(":lucene:analysis:kuromoji")) {
       src dictionarySource
       dest dictionaryFile
       onlyIfModified true
-      retries 3
 
       doLast {
         // Unpack the downloaded archive.
