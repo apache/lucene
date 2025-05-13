@@ -31,7 +31,6 @@ group = "org.apache"
 
 // Make sure the build environment is consistent.
 apply from: file('../../gradle/_to-remove/conventions.gradle')
-apply from: file('../../gradle/validation/check-environment.gradle')
 
 // Add spotless/ tidy.
 tasks.register("checkJdkInternalsExportedToGradle") {}
@@ -76,6 +75,7 @@ dependencies {
   implementation plugin(deps.plugins.spotless)
 }
 
+def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map(this.class.module::canRead).orElse(false)
 if (!hasJavaFlightRecorder) {
   logger.warn('Module jdk.jfr is not available; skipping compilation of Java Flight Recorder support.')
   tasks.named('compileJava').configure {

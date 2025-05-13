@@ -26,7 +26,8 @@ allprojects {
     }
 
     if (resolvedTestOption("tests.profile").toBoolean()) {
-      if (rootProject.hasJavaFlightRecorder) {
+      def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map(this.class.module::canRead).orElse(false)
+      if (hasJavaFlightRecorder) {
         tasks.withType(Test) {
           jvmArgs("-XX:StartFlightRecording=dumponexit=true,maxsize=250M,settings=" + rootProject.file("gradle/testing/profiling.jfc"),
               "-XX:+UnlockDiagnosticVMOptions",
