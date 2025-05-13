@@ -29,7 +29,7 @@ plugins.apply(SpotlessPlugin.class)
 
 spotless.format("gradleScripts", GroovyGradleExtension.class, { ext ->
   ext.greclipse()
-  ext.indentWithSpaces(2)
+  ext.leadingTabsToSpaces(2)
   ext.trimTrailingWhitespace()
   ext.endWithNewline()
   ext.target("build-tools/build-infra/src/main/groovy/**/*.gradle")
