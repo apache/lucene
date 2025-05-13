@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-// LUCENE-9518: Set up sane defaults for any gradle archiving task.
 allprojects {project ->
     // Limit configuration to just those projects that actually have the plugin enabled.
     plugins.matching { Plugin plugin ->
