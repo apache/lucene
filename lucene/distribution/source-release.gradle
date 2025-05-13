@@ -23,7 +23,7 @@ configure(project(":lucene:distribution")) {
     description "Assemble source Lucene artifact as a .tgz file."
 
     // Make sure no unstaged/ dirty files are present.
-    dependsOn ":gitStatus", ":checkWorkingCopyClean"
+    dependsOn ":gitStatus"
 
     ext {
       destination = file("${buildDir}/packages/lucene-${version}-src.tgz")

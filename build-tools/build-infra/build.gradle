@@ -54,8 +54,17 @@ gradlePlugin {
   }
 }
 
+// Convert a plugin dependency to a regular dependency so that we can
+// use [plugins] section in the top-level toml but declare regular
+// project dependencies here.
 def Provider<String> plugin(Provider<PluginDependency> plugin) {
-  return plugin.map { "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString() }
+  return plugin.map {
+    if (it.pluginId == "de.thetaphi.forbiddenapis") {
+      return "de.thetaphi:forbiddenapis:${it.version}".toString()
+    } else {
+      "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
+    }
+  }
 }
 
 dependencies {
@@ -63,6 +72,7 @@ dependencies {
   implementation localGroovy()
   implementation deps.commons.codec
 
+  implementation plugin(deps.plugins.forbiddenapis)
   implementation plugin(deps.plugins.spotless)
 }
 

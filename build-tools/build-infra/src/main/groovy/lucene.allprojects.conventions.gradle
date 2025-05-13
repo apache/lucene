@@ -23,9 +23,12 @@ if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
-// Determine project version.
-project.plugins.apply(BuildOptionsPlugin)
+// Apply build options plugin to the root project early.
+
+rootProject.plugins.apply(BuildOptionsPlugin)
 def buildOptions = rootProject.getExtensions().getByType(BuildOptionsExtension.class)
+
+// Determine project version.
 
 String luceneVersion = deps.versions.lucene.get()
 def versionReleaseProperty = buildOptions.addOption("version.release", "Explicitly sets project version to the provided string (x.y.z).").getValue()
@@ -38,12 +41,10 @@ if (versionReleaseProperty.isPresent()) {
 }
 
 allprojects {project ->
-  // all projects have the base plugin (convention tasks like 'check', etc.)
+  // All projects have the base plugin (convention tasks like 'check', etc.)
   apply plugin: 'base'
 
-  // all projects may declare 'build options', which may have some defaults but
-  // can be overridden via command line (via -Poption=value, -Doption=value) or
-  // via developer-local 'build-options.local.properties' file.
+  // Apply build options plugin to all projects, even if they don't declare any options.
   project.plugins.apply(BuildOptionsPlugin)
 
   // Project group and version.
@@ -60,7 +61,6 @@ allprojects {project ->
   baseExt.archivesName.convention(project.path.replaceAll("^:", "").replace(':', '-'))
 
   // Common tasks or meta-tasks.
-
   tasks.register("tidy", {
     description "Applies all code formatters and other enforced cleanups to the project."
     group "verification"

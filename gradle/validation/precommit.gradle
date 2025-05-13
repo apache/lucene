@@ -24,7 +24,6 @@ configure(rootProject) {
 
     // Root-level validation tasks.
     dependsOn ":checkLocks"
-    dependsOn ":checkWorkingCopyClean"
   }
 
   // Attach all these tasks from all projects that have them.

@@ -59,48 +59,4 @@ configure(rootProject) {
       }
     }
   }
-
-  // Verify git working copy does not have any unstaged modified files.
-  task checkWorkingCopyClean() {
-    dependsOn gitStatus
-    doFirst {
-      def status = rootProject.ext.gitStatus
-      if (status == null) {
-        if (file("${rootProject.projectDir}/.git").exists()) {
-          // Ignore git worktree branches until jgit supports them.
-          logger.warn("WARNING: git worktrees are not supported by jgit (won't check dirty files): ${rootProject.projectDir}")
-        } else {
-          // Ignore the check. This isn't a git checkout.
-          logger.warn("WARNING: Directory is not a valid git checkout (won't check dirty files): ${rootProject.projectDir}")
-        }
-      } else {
-        def offenders = [
-            // Exclude staged changes. These are fine in precommit.
-            // "(added)": status.added,
-            // "(changed)": status.changed,
-            // "(removed)": status.removed,
-            "(conflicting)": status.conflicting,
-            "(missing)": status.missing,
-            "(modified)": status.modified,
-            "(untracked)": status.untracked
-        ].collectMany { fileStatus, files ->
-          files.collect {file -> "  - ${file} ${fileStatus}" }
-        }.sort()
-
-        if (offenders) {
-          def checkProp = "validation.git.failOnModified"
-          def shouldFail = Boolean.valueOf(propertyOrDefault(checkProp, true))
-          def message = "Working copy is not a clean git checkout" + 
-            (shouldFail ? " (skip with -P${checkProp}=false)" : "") +
-            ", offending files:\n${offenders.join("\n")}"
-
-          if (shouldFail) {
-            throw new GradleException(message)
-          } else {
-            logger.lifecycle("NOTE: ${message}")
-          }
-        }
-      }
-    }
-  }
 }

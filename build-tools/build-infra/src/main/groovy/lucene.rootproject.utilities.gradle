@@ -17,7 +17,7 @@
 
 import org.apache.lucene.gradle.buildoptions.*
 
-// Adds utility tasks and functions to the root project.
+// Adds misc utility tasks and functions to the root project.
 
 if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)

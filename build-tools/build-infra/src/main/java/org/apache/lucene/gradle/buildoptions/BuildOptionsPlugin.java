@@ -1,6 +1,24 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.gradle.buildoptions;
 
+import de.thetaphi.forbiddenapis.SuppressForbidden;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Locale;
 import java.util.Map;
@@ -134,15 +152,18 @@ public class BuildOptionsPlugin implements Plugin<Project> {
         .map(v -> new BuildOptionValue(v, false, source));
   }
 
+  // We use File, it's ok.
+  @SuppressForbidden
   private static @NotNull Map<String, String> readBuildOptions(
       Project project, String buildOptionsFile) {
     Map<String, String> localOptions = new TreeMap<>();
     var localOptionsFile =
         project.getRootProject().getLayout().getProjectDirectory().file(buildOptionsFile);
     if (localOptionsFile.getAsFile().exists()) {
-      try (var is = Files.newInputStream(localOptionsFile.getAsFile().toPath())) {
+      try (var reader =
+          Files.newBufferedReader(localOptionsFile.getAsFile().toPath(), StandardCharsets.UTF_8)) {
         var v = new Properties();
-        v.load(is);
+        v.load(reader);
         v.stringPropertyNames().forEach(key -> localOptions.put(key, v.getProperty(key)));
       } catch (IOException e) {
         throw new GradleException("Can't read the " + buildOptionsFile + " file.", e);
