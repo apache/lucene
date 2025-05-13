@@ -99,7 +99,9 @@ allprojects {
         assert project.java.sourceCompatibility == project.java.targetCompatibility
 
         // Compilation environment.
-        args += ["-$project.java.sourceCompatibility"] // "compliance" level
+        // we use -source/-target as it is significantly faster than --release
+        args += [ "-source", project.java.sourceCompatibility ]
+        args += [ "-target", project.java.targetCompatibility ]
         args += [ "-encoding", "UTF-8"]
         args += [ "-proc:none" ]
         args += [ "-nowarn" ]
