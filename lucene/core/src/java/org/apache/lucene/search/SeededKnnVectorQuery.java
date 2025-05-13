@@ -179,11 +179,11 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     return delegate.createVectorScorer(context, fi);
   }
 
-  private static class MappedDISI extends DocIdSetIterator {
+  static class MappedDISI extends DocIdSetIterator {
     KnnVectorValues.DocIndexIterator indexedDISI;
     DocIdSetIterator sourceDISI;
 
-    private MappedDISI(KnnVectorValues.DocIndexIterator indexedDISI, DocIdSetIterator sourceDISI) {
+    MappedDISI(KnnVectorValues.DocIndexIterator indexedDISI, DocIdSetIterator sourceDISI) {
       this.indexedDISI = indexedDISI;
       this.sourceDISI = sourceDISI;
     }
@@ -225,11 +225,11 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
     }
   }
 
-  private static class TopDocsDISI extends DocIdSetIterator {
+  static class TopDocsDISI extends DocIdSetIterator {
     private final int[] sortedDocIds;
     private int idx = -1;
 
-    private TopDocsDISI(TopDocs topDocs, LeafReaderContext ctx) {
+    TopDocsDISI(TopDocs topDocs, LeafReaderContext ctx) {
       sortedDocIds = new int[topDocs.scoreDocs.length];
       for (int i = 0; i < topDocs.scoreDocs.length; i++) {
         // Remove the doc base as added by the collector

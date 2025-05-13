@@ -124,18 +124,16 @@ public abstract class IndexInput extends DataInput implements Closeable {
       throws IOException;
 
   /**
-   * Create a slice with a specific {@link ReadAdvice}. This is typically used by {@link
-   * CompoundFormat} implementations to honor the {@link ReadAdvice} of each file within the
-   * compound file.
+   * Create a slice with a new {@link IOContext}. This is typically used by {@link CompoundFormat}
+   * implementations to modify the {@link IOContext} for specific files within the compound file.
    *
-   * <p><b>NOTE</b>: it is only legal to call this method if this {@link IndexInput} has been open
-   * with {@link ReadAdvice#NORMAL}. However, this method accepts any {@link ReadAdvice} value but
-   * {@code null} as a read advice for the slice.
+   * <p><b>NOTE</b>: only certain {@link IOContext} may be usable here, depending on how this
+   * instance was opened.
    *
    * <p>The default implementation delegates to {@link #slice(String, long, long)} and ignores the
-   * {@link ReadAdvice}.
+   * {@link IOContext}.
    */
-  public IndexInput slice(String sliceDescription, long offset, long length, ReadAdvice readAdvice)
+  public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
       throws IOException {
     return slice(sliceDescription, offset, length);
   }

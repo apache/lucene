@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+# SPDX-License-Identifier: Apache-2.0
+#
 
 ##############################################################################
 #
@@ -55,7 +57,7 @@
 #       Darwin, MinGW, and NonStop.
 #
 #   (3) This script is generated from the Groovy template
-#       https://github.com/gradle/gradle/blob/HEAD/subprojects/plugins/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
+#       https://github.com/gradle/gradle/blob/HEAD/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
 #       within the Gradle project.
 #
 #       You can find Gradle at https://github.com/gradle/gradle/.
@@ -84,7 +86,7 @@ done
 # shellcheck disable=SC2034
 APP_BASE_NAME=${0##*/}
 # Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
-APP_HOME=$( cd "${APP_HOME:-./}" > /dev/null && pwd -P ) || exit
+APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s\n' "$PWD" ) || exit
 
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD=maximum
@@ -112,7 +114,7 @@ case "$( uname )" in                #(
   NONSTOP* )        nonstop=true ;;
 esac
 
-CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+CLASSPATH="\\\"\\\""
 
 
 # Determine the Java command to use to start the JVM.
@@ -139,47 +141,6 @@ Please set the JAVA_HOME variable in your environment to match the
 location of your Java installation."
     fi
 fi
-
-# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
-DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
-
-# LUCENE-9471: workaround for gradle leaving junk temp. files behind.
-GRADLE_TEMPDIR="$APP_HOME/.gradle/tmp"
-mkdir -p "$GRADLE_TEMPDIR"
-if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
-    GRADLE_TEMPDIR=`cygpath --path --mixed "$GRADLE_TEMPDIR"`
-fi
-DEFAULT_JVM_OPTS="$DEFAULT_JVM_OPTS \"-Djava.io.tmpdir=$GRADLE_TEMPDIR\""
-
-# LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
-if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
-    APP_HOME=`cygpath --path --mixed "$APP_HOME"`
-fi
-
-GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
-if [ ! -e "$GRADLE_WRAPPER_JAR" ]; then
-    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
-    WRAPPER_STATUS=$?
-    if [ "$WRAPPER_STATUS" -eq 1 ]; then
-        echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 23."
-        exit $WRAPPER_STATUS
-    elif [ "$WRAPPER_STATUS" -ne 0 ]; then
-        exit $WRAPPER_STATUS
-    fi
-fi
-
-CLASSPATH=$GRADLE_WRAPPER_JAR
-
-# START OF LUCENE CUSTOMIZATION
-# Generate gradle.properties if they don't exist
-if [ ! -e "$APP_HOME/gradle.properties" ]; then
-    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "$APP_HOME/gradle/template.gradle.properties" "$APP_HOME/gradle.properties"
-    GENERATOR_STATUS=$?
-    if [ "$GENERATOR_STATUS" -ne 0 ]; then
-        exit $GENERATOR_STATUS
-    fi
-fi
-# END OF LUCENE CUSTOMIZATION
 
 # Increase the maximum file descriptors if we can.
 if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
@@ -239,11 +200,51 @@ if "$cygwin" || "$msys" ; then
     done
 fi
 
+# START OF LUCENE CUSTOMIZATION
+
+# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+
 # Prevent jgit from forking/searching git.exe
 export GIT_CONFIG_NOSYSTEM=1
 
+# LUCENE-9471: workaround for gradle leaving junk temp. files behind.
+GRADLE_TEMPDIR="$APP_HOME/.gradle/tmp"
+mkdir -p "$GRADLE_TEMPDIR"
+if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
+    GRADLE_TEMPDIR=`cygpath --path --mixed "$GRADLE_TEMPDIR"`
+fi
+DEFAULT_JVM_OPTS="$DEFAULT_JVM_OPTS \"-Djava.io.tmpdir=$GRADLE_TEMPDIR\""
+
+# LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
+if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
+    APP_HOME=`cygpath --path --mixed "$APP_HOME"`
+fi
+
+GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+if ! ( cd "$APP_HOME/gradle/wrapper" && sha256sum --status -c "${GRADLE_WRAPPER_JAR}.sha256" ); then
+    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
+    WRAPPER_STATUS=$?
+    if [ "$WRAPPER_STATUS" -eq 1 ]; then
+        echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 23."
+        exit $WRAPPER_STATUS
+    elif [ "$WRAPPER_STATUS" -ne 0 ]; then
+        exit $WRAPPER_STATUS
+    fi
+fi
+
+# Generate gradle.properties if they don't exist
+if [ ! -e "$APP_HOME/gradle.properties" ]; then
+    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "$APP_HOME/gradle/template.gradle.properties" "$APP_HOME/gradle.properties"
+    GENERATOR_STATUS=$?
+    if [ "$GENERATOR_STATUS" -ne 0 ]; then
+        exit $GENERATOR_STATUS
+    fi
+fi
+# END OF LUCENE CUSTOMIZATION
+
 # Collect all arguments for the java command:
-#   * DEFAULT_JVM_OPTS, JAVA_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
+#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
 #     and any embedded shellness will be escaped.
 #   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
 #     treated as '${Hostname}' itself on the command line.
@@ -251,7 +252,7 @@ export GIT_CONFIG_NOSYSTEM=1
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
         -classpath "$CLASSPATH" \
-        org.gradle.wrapper.GradleWrapperMain \
+        -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" \
         "$@"
 
 # Stop when "xargs" is not available.

@@ -1816,13 +1816,13 @@ public abstract class LuceneTestCase extends Assert {
     if (oldContext.flushInfo() != null) {
       // Always return at least the estimatedSegmentSize of
       // the incoming IOContext:
-      return new IOContext(
+      return IOContext.flush(
           new FlushInfo(
               randomNumDocs, Math.max(oldContext.flushInfo().estimatedSegmentSize(), size)));
     } else if (oldContext.mergeInfo() != null) {
       // Always return at least the estimatedMergeBytes of
       // the incoming IOContext:
-      return new IOContext(
+      return IOContext.merge(
           new MergeInfo(
               randomNumDocs,
               Math.max(oldContext.mergeInfo().estimatedMergeBytes(), size),
@@ -1836,10 +1836,10 @@ public abstract class LuceneTestCase extends Assert {
           context = IOContext.DEFAULT;
           break;
         case 1:
-          context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
+          context = IOContext.merge(new MergeInfo(randomNumDocs, size, true, -1));
           break;
         case 2:
-          context = new IOContext(new FlushInfo(randomNumDocs, size));
+          context = IOContext.flush(new FlushInfo(randomNumDocs, size));
           break;
         default:
           context = IOContext.DEFAULT;

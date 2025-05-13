@@ -167,45 +167,45 @@ public class TestDirectIODirectory extends BaseDirectoryTestCase {
       assertTrue(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, largeSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, largeSize, true, -1)),
               OptionalLong.empty()));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, smallSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, smallSize, true, -1)),
               OptionalLong.empty()));
 
       assertTrue(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, largeSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, largeSize, true, -1)),
               OptionalLong.of(largeSize)));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, smallSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, smallSize, true, -1)),
               OptionalLong.of(smallSize)));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, smallSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, smallSize, true, -1)),
               OptionalLong.of(largeSize)));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new MergeInfo(numDocs, largeSize, true, -1)),
+              IOContext.merge(new MergeInfo(numDocs, largeSize, true, -1)),
               OptionalLong.of(smallSize)));
 
       assertFalse(
           dir.useDirectIO(
-              "dummy", new IOContext(new FlushInfo(numDocs, largeSize)), OptionalLong.empty()));
+              "dummy", IOContext.flush(new FlushInfo(numDocs, largeSize)), OptionalLong.empty()));
       assertFalse(
           dir.useDirectIO(
-              "dummy", new IOContext(new FlushInfo(numDocs, smallSize)), OptionalLong.empty()));
+              "dummy", IOContext.flush(new FlushInfo(numDocs, smallSize)), OptionalLong.empty()));
       assertFalse(
           dir.useDirectIO(
               "dummy",
-              new IOContext(new FlushInfo(numDocs, largeSize)),
+              IOContext.flush(new FlushInfo(numDocs, largeSize)),
               OptionalLong.of(largeSize)));
     }
   }

@@ -47,8 +47,9 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -69,6 +70,10 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
   // less than 128 docs left to evaluate anyway.
   private static final List<Impact> DUMMY_IMPACTS =
       Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+
+  // We stopped storing a placeholder impact with freq=1 for fields with DOCS after 9.12.0
+  private static final List<Impact> DUMMY_IMPACTS_NO_FREQS =
+      Collections.singletonList(new Impact(1, 1L));
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -145,9 +150,9 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene101PostingsFormat.DOC_EXTENSION);
     try {
-      // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-      // readahead.
-      docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
+      docIn =
+          state.directory.openInput(
+              docName, state.context.withHints(FileTypeHint.DATA, FileDataHint.POSTINGS));
       CodecUtil.checkIndexHeader(
           docIn, DOC_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
       CodecUtil.retrieveChecksum(docIn, expectedDocFileLength);
@@ -1325,13 +1330,14 @@ public final class Lucene101PostingsReader extends PostingsReaderBase {
 
           @Override
           public List<Impact> getImpacts(int level) {
-            if (indexHasFreq) {
-              if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
-                return readImpacts(level0SerializedImpacts, level0Impacts);
-              }
-              if (level == 1) {
-                return readImpacts(level1SerializedImpacts, level1Impacts);
-              }
+            if (indexHasFreq == false) {
+              return DUMMY_IMPACTS_NO_FREQS;
+            }
+            if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
+              return readImpacts(level0SerializedImpacts, level0Impacts);
+            }
+            if (level == 1) {
+              return readImpacts(level1SerializedImpacts, level1Impacts);
             }
             return DUMMY_IMPACTS;
           }
