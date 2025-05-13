@@ -58,6 +58,7 @@ jobs:
           echo "Diff:"
           if git diff --exit-code --name-only $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}; then
             echo "Change log file:${{ env.CHANGE_LOG_FILE }} does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
+            gh pr comment ${{ github.event.number }} --body "This PR does not have an entry in lucene/CHANGES.txt. Consider adding one."
             exit 0
           else
             echo "${{ env.CHANGE_LOG_FILE }} contains change log entry. Proceeding with next steps."
@@ -117,6 +118,5 @@ jobs:
             echo "Milestone:${lucene_version} does not exist. Please create the milestone and run the workflow again."
             exit 0
           fi
-          # Will uncomment this line after we ensure it runs perfectly in production.
-          # gh pr edit ${{ github.event.number }} --milestone "${lucene_version}"
           echo "Adding/Updating milestone for the PR to:${lucene_version}"
+          gh pr edit ${{ github.event.number }} --milestone "${lucene_version}"
