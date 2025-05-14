@@ -192,36 +192,39 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
           IteratorAndCount itAndCount = null;
           LeafReader reader = context.reader();
 
+          Sort indexSort = reader.getMetaData().sort();
+          if (indexSort == null
+              || indexSort.getSort().length == 0
+              || indexSort.getSort()[0].getField().equals(field) == false) {
+            // If the index sort is actually using `field` we can't optimize and need to fall back:
+            return fallbackWeight.count(context);
+          }
+          SortField sortField = indexSort.getSort()[0];
+
           // first use bkd optimization if possible
           SortedNumericDocValues sortedNumericValues = DocValues.getSortedNumeric(reader, field);
           NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
           PointValues pointValues = reader.getPointValues(field);
           if (pointValues != null && pointValues.getDocCount() == reader.maxDoc()) {
-            itAndCount = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
+            itAndCount = getDocIdSetIteratorOrNullFromBkd(sortField, context, numericValues);
           }
           if (itAndCount != null && itAndCount.count != -1) {
             return itAndCount.count;
           }
 
           // use index sort optimization if possible
-          Sort indexSort = reader.getMetaData().sort();
-          if (indexSort != null
-              && indexSort.getSort().length > 0
-              && indexSort.getSort()[0].getField().equals(field)) {
-            final SortField sortField = indexSort.getSort()[0];
-            final SortField.Type sortFieldType = getSortFieldType(sortField);
-            // The index sort optimization is only supported for Type.INT and Type.LONG
-            if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
-              Object missingValue = sortField.getMissingValue();
-              final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
-              // all documents have docValues or missing value falls outside the range
-              if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
-                  || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
-                itAndCount = getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
-              }
-              if (itAndCount != null && itAndCount.count != -1) {
-                return itAndCount.count;
-              }
+          final SortField.Type sortFieldType = getSortFieldType(sortField);
+          // The index sort optimization is only supported for Type.INT and Type.LONG
+          if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
+            Object missingValue = sortField.getMissingValue();
+            final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+            // all documents have docValues or missing value falls outside the range
+            if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
+                || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
+              itAndCount = getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
+            }
+            if (itAndCount != null && itAndCount.count != -1) {
+              return itAndCount.count;
             }
           }
         }
@@ -431,15 +434,9 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
   }
 
   private IteratorAndCount getDocIdSetIteratorOrNullFromBkd(
-      LeafReaderContext context, DocIdSetIterator delegate) throws IOException {
-    Sort indexSort = context.reader().getMetaData().sort();
-    if (indexSort == null
-        || indexSort.getSort().length == 0
-        || indexSort.getSort()[0].getField().equals(field) == false) {
-      return null;
-    }
-
-    final boolean reverse = indexSort.getSort()[0].getReverse();
+      SortField sortField, LeafReaderContext context, DocIdSetIterator delegate)
+      throws IOException {
+    final boolean reverse = sortField.getReverse();
 
     PointValues points = context.reader().getPointValues(field);
     if (points == null) {
@@ -524,25 +521,27 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
       return IteratorAndCount.empty();
     }
 
+    Sort indexSort = context.reader().getMetaData().sort();
+    if (indexSort == null
+        || indexSort.getSort().length == 0
+        || indexSort.getSort()[0].getField().equals(field) == false) {
+      return null;
+    }
+    SortField sortField = indexSort.getSort()[0];
+
     SortedNumericDocValues sortedNumericValues =
         DocValues.getSortedNumeric(context.reader(), field);
     NumericDocValues numericValues = DocValues.unwrapSingleton(sortedNumericValues);
     if (numericValues != null) {
-      IteratorAndCount itAndCount = getDocIdSetIteratorOrNullFromBkd(context, numericValues);
+      IteratorAndCount itAndCount =
+          getDocIdSetIteratorOrNullFromBkd(sortField, context, numericValues);
       if (itAndCount != null) {
         return itAndCount;
       }
-      Sort indexSort = context.reader().getMetaData().sort();
-      if (indexSort != null
-          && indexSort.getSort().length > 0
-          && indexSort.getSort()[0].getField().equals(field)) {
-
-        final SortField sortField = indexSort.getSort()[0];
-        final SortField.Type sortFieldType = getSortFieldType(sortField);
-        // The index sort optimization is only supported for Type.INT and Type.LONG
-        if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
-          return getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
-        }
+      final SortField.Type sortFieldType = getSortFieldType(sortField);
+      // The index sort optimization is only supported for Type.INT and Type.LONG
+      if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
+        return getDocIdSetIterator(sortField, sortFieldType, context, numericValues);
       }
     }
     return null;
