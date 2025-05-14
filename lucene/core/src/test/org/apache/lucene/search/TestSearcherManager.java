@@ -26,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
@@ -321,7 +322,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
   public void testCloseTwice() throws Exception {
     // test that we can close SM twice (per Closeable's contract).
     Directory dir = newDirectory();
-    new IndexWriter(dir, new IndexWriterConfig(null)).close();
+    new IndexWriter(dir, new IndexWriterConfig((Analyzer) null)).close();
     SearcherManager sm = new SearcherManager(dir, null);
     sm.close();
     sm.close();
@@ -362,7 +363,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
 
   public void testEnsureOpen() throws Exception {
     Directory dir = newDirectory();
-    new IndexWriter(dir, new IndexWriterConfig(null)).close();
+    new IndexWriter(dir, new IndexWriterConfig((Analyzer) null)).close();
     SearcherManager sm = new SearcherManager(dir, null);
     IndexSearcher s = sm.acquire();
     sm.close();
@@ -389,7 +390,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
 
   public void testListenerCalled() throws Exception {
     Directory dir = newDirectory();
-    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(null));
+    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
     final AtomicBoolean afterRefreshCalled = new AtomicBoolean(false);
     SearcherManager sm = new SearcherManager(iw, false, false, new SearcherFactory());
     sm.addListener(
