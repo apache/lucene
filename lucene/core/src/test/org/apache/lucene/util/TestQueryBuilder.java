@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.AnalyzerWrapper;
 import org.apache.lucene.analysis.TokenFilter;
@@ -26,9 +27,11 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostAttribute;
 import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.CombinedFieldQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MultiPhraseQuery;
 import org.apache.lucene.search.PhraseQuery;
@@ -51,12 +54,53 @@ public class TestQueryBuilder extends LuceneTestCase {
     assertEquals(expected, builder.createBooleanQuery("field", "test"));
   }
 
+  public void testMultiFieldTerm() {
+    QueryBuilder builder = new QueryBuilder(new MockAnalyzer(random()));
+
+    Query expected1 =
+        new CombinedFieldQuery.Builder()
+            .addField("title", 10f)
+            .addField("body", 1f)
+            .addTerm(new BytesRef("test"))
+            .build();
+    Query actual1 =
+        builder.createBooleanQuery(
+            Map.of("title", 10f, "body", 1f), "test", BooleanClause.Occur.SHOULD);
+    assertEquals(expected1, actual1);
+  }
+
   public void testBoolean() {
     BooleanQuery.Builder expected = new BooleanQuery.Builder();
     expected.add(new TermQuery(new Term("field", "foo")), BooleanClause.Occur.SHOULD);
     expected.add(new TermQuery(new Term("field", "bar")), BooleanClause.Occur.SHOULD);
     QueryBuilder builder = new QueryBuilder(new MockAnalyzer(random()));
     assertEquals(expected.build(), builder.createBooleanQuery("field", "foo bar"));
+  }
+
+  public void testMultiFieldBoolean() {
+    QueryBuilder builder = new QueryBuilder(new MockAnalyzer(random()));
+
+    Query expected1 =
+        new BooleanQuery.Builder()
+            .add(
+                new CombinedFieldQuery.Builder()
+                    .addField("title", 10f)
+                    .addField("body", 1f)
+                    .addTerm(new BytesRef("foo"))
+                    .build(),
+                Occur.SHOULD)
+            .add(
+                new CombinedFieldQuery.Builder()
+                    .addField("title", 10f)
+                    .addField("body", 1f)
+                    .addTerm(new BytesRef("bar"))
+                    .build(),
+                Occur.SHOULD)
+            .build();
+    Query actual1 =
+        builder.createBooleanQuery(
+            Map.of("title", 10f, "body", 1f), "foo bar", BooleanClause.Occur.SHOULD);
+    assertEquals(expected1, actual1);
   }
 
   public void testBooleanMust() {
@@ -66,6 +110,32 @@ public class TestQueryBuilder extends LuceneTestCase {
     QueryBuilder builder = new QueryBuilder(new MockAnalyzer(random()));
     assertEquals(
         expected.build(), builder.createBooleanQuery("field", "foo bar", BooleanClause.Occur.MUST));
+  }
+
+  public void testMultiFieldBooleanMust() {
+    QueryBuilder builder = new QueryBuilder(new MockAnalyzer(random()));
+
+    Query expected1 =
+        new BooleanQuery.Builder()
+            .add(
+                new CombinedFieldQuery.Builder()
+                    .addField("title", 10f)
+                    .addField("body", 1f)
+                    .addTerm(new BytesRef("foo"))
+                    .build(),
+                Occur.MUST)
+            .add(
+                new CombinedFieldQuery.Builder()
+                    .addField("title", 10f)
+                    .addField("body", 1f)
+                    .addTerm(new BytesRef("bar"))
+                    .build(),
+                Occur.MUST)
+            .build();
+    Query actual1 =
+        builder.createBooleanQuery(
+            Map.of("title", 10f, "body", 1f), "foo bar", BooleanClause.Occur.MUST);
+    assertEquals(expected1, actual1);
   }
 
   public void testMinShouldMatchNone() {
@@ -132,6 +202,14 @@ public class TestQueryBuilder extends LuceneTestCase {
     assertNull(builder.createBooleanQuery("field", ""));
   }
 
+  public void testMultiFieldEmpty() {
+    QueryBuilder builder = new QueryBuilder(new MockAnalyzer(random()));
+    Map<String, Float> fields = Map.of("title", 1f, "body", 1f);
+
+    assertNull(builder.createBooleanQuery(fields, "", Occur.SHOULD));
+    assertNull(builder.createBooleanQuery(fields, "", Occur.SHOULD));
+  }
+
   /** adds synonym of "dog" for "dogs", and synonym of "cavy" for "guinea pig". */
   static class MockSynonymAnalyzer extends Analyzer {
     @Override
@@ -153,6 +231,23 @@ public class TestQueryBuilder extends LuceneTestCase {
     assertEquals(expected, builder.createPhraseQuery("field", "dogs"));
     assertEquals(expected, builder.createBooleanQuery("field", "dogs", BooleanClause.Occur.MUST));
     assertEquals(expected, builder.createPhraseQuery("field", "dogs"));
+  }
+
+  /** simple synonyms test */
+  public void testMultiFieldSynonyms() throws Exception {
+    QueryBuilder builder = new QueryBuilder(new MockSynonymAnalyzer());
+    Map<String, Float> fields = Map.of("title", 10f, "body", 1f);
+
+    Query expected1 =
+        new CombinedFieldQuery.Builder()
+            .addField("title", 10f)
+            .addField("body", 1f)
+            .addTerm(new BytesRef("dogs"))
+            .addTerm(new BytesRef("dog"))
+            .build();
+
+    assertEquals(expected1, builder.createBooleanQuery(fields, "dogs", Occur.SHOULD));
+    assertEquals(expected1, builder.createBooleanQuery(fields, "dogs", Occur.MUST));
   }
 
   /** forms multiphrase query */
@@ -244,6 +339,51 @@ public class TestQueryBuilder extends LuceneTestCase {
       assertEquals(
           expectedBooleanQuery,
           queryBuilder.createBooleanQuery("field", "the guinea pig story guinea pig", occur));
+    }
+  }
+
+  public void testMultiFieldMultiWordSynonymsBoolean() throws Exception {
+    QueryBuilder queryBuilder = new QueryBuilder(new MockSynonymAnalyzer());
+    Map<String, Float> fields = Map.of("title", 10f, "body", 1f);
+
+    for (BooleanClause.Occur occur :
+        new BooleanClause.Occur[] {BooleanClause.Occur.SHOULD, BooleanClause.Occur.MUST}) {
+
+      Query guinea =
+          new CombinedFieldQuery.Builder()
+              .addTerm(new BytesRef("guinea"))
+              .addField("title", 10f)
+              .addField("body", 1f)
+              .build();
+      Query pig =
+          new CombinedFieldQuery.Builder()
+              .addTerm(new BytesRef("pig"))
+              .addField("title", 10f)
+              .addField("body", 1f)
+              .build();
+      Query cavy =
+          new CombinedFieldQuery.Builder()
+              .addTerm(new BytesRef("cavy"))
+              .addField("title", 10f)
+              .addField("body", 1f)
+              .build();
+
+      Query syn1 =
+          new BooleanQuery.Builder()
+              .add(guinea, BooleanClause.Occur.MUST)
+              .add(pig, BooleanClause.Occur.MUST)
+              .build();
+
+      Query synQuery =
+          new BooleanQuery.Builder()
+              .add(syn1, BooleanClause.Occur.SHOULD)
+              .add(cavy, BooleanClause.Occur.SHOULD)
+              .build();
+
+      Query expectedGraphQuery = new BooleanQuery.Builder().add(synQuery, occur).build();
+
+      assertEquals(
+          expectedGraphQuery, queryBuilder.createBooleanQuery(fields, "guinea pig", occur));
     }
   }
 

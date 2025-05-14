@@ -46,8 +46,8 @@ to check if the results are what we expect):</p>
       try (DirectoryReader ireader = DirectoryReader.open(directory)) {
         IndexSearcher isearcher = new IndexSearcher(ireader);
         // Parse a simple query that searches for "text":
-        QueryParser parser = new QueryParser("fieldname", analyzer);
-        Query query = parser.parse("text");
+        QueryBuilder parser = new QueryBuilder(analyzer);
+        Query query = parser.createBooleanQuery("fieldname", "text");
         ScoreDoc[] hits = isearcher.search(query, 10).scoreDocs;
         assertEquals(1, hits.length);
         // Iterate through the results:
