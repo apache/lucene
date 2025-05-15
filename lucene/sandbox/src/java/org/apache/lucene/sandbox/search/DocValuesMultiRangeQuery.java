@@ -19,6 +19,7 @@ package org.apache.lucene.sandbox.search;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.search.*;
 import org.apache.lucene.util.BytesRef;
@@ -72,6 +73,42 @@ public final class DocValuesMultiRangeQuery {
     }
   }
 
+  /** Representation of a single clause in a MultiRangeQuery */
+  public static class LongRange {
+    protected long lower;
+    protected long upper;
+
+    /** copies ByteRefs passed */
+    public LongRange(long lowerValue, long upperValue) {
+      this.lower = lowerValue;
+      this.upper = upperValue;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      LongRange that = (LongRange) o;
+      return lower == that.lower && upper == that.upper;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = (int) lower;
+      result = (int) (31L * result + upper);
+      return result;
+    }
+
+    @Override
+    public String toString() {
+      return lower + ".." + upper;
+    }
+  }
+
   /**
    * Builder for creating a multi-range query for stabbing by SortedSet or Sorted field values. For
    * example, it matches IPs in docvalues field by multiple IP ranges. For the single range it
@@ -112,6 +149,41 @@ public final class DocValuesMultiRangeQuery {
 
     protected Query createSortedSetDocValuesMultiRangeQuery() {
       return new SortedSetDocValuesMultiRangeQuery(fieldName, clauses);
+    }
+  }
+
+  /**
+   * Builder for creating a multi-range query for stabbing by SortedNumerics or Numerics field
+   * values. For the single range it behaves like {@link
+   * SortedNumericDocValuesField#newSlowRangeQuery(String, long, long)}
+   */
+  public static class SortedNumericStabbingBuilder {
+    protected final String fieldName;
+    protected final List<LongRange> clauses = new ArrayList<>();
+
+    public SortedNumericStabbingBuilder(String fieldName) {
+      this.fieldName = Objects.requireNonNull(fieldName);
+    }
+
+    public SortedNumericStabbingBuilder add(long lowerValue, long upperValue) {
+      clauses.add(new LongRange(lowerValue, upperValue));
+      return this;
+    }
+
+    public Query build() {
+      if (clauses.isEmpty()) {
+        return new MatchNoDocsQuery();
+      }
+      if (clauses.size() == 1) {
+        LongRange theOnlyOne = clauses.getFirst();
+        return SortedNumericDocValuesField.newSlowRangeQuery(
+            fieldName, theOnlyOne.lower, theOnlyOne.upper);
+      }
+      return createSortedNumericDocValuesMultiRangeQuery();
+    }
+
+    protected Query createSortedNumericDocValuesMultiRangeQuery() {
+      return new SortedNumericDocValuesMultiRangeQuery(fieldName, clauses);
     }
   }
 }

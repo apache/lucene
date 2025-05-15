@@ -34,8 +34,8 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
@@ -106,15 +106,13 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
   /** Sole constructor. */
   public Lucene103BlockTreeTermsReader(PostingsReaderBase postingsReader, SegmentReadState state)
       throws IOException {
-    boolean success = false;
-
     this.postingsReader = postingsReader;
     this.segment = state.segmentInfo.name;
 
     try {
       String termsName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_EXTENSION);
-      termsIn = state.directory.openInput(termsName, state.context);
+      termsIn = state.directory.openInput(termsName, state.context.withHints(FileTypeHint.DATA));
       version =
           CodecUtil.checkIndexHeader(
               termsIn,
@@ -126,9 +124,7 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
 
       String indexName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_INDEX_EXTENSION);
-      indexIn =
-          state.directory.openInput(
-              indexName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
+      indexIn = state.directory.openInput(indexName, state.context.withHints(FileTypeHint.INDEX));
       CodecUtil.checkIndexHeader(
           indexIn,
           TERMS_INDEX_CODEC_NAME,
@@ -237,12 +233,9 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
       fieldInfos = state.fieldInfos;
       this.fieldMap = fieldMap;
       this.fieldList = sortFieldNames(fieldMap, state.fieldInfos);
-      success = true;
-    } finally {
-      if (!success) {
-        // this.close() will close in:
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
