@@ -17,6 +17,13 @@
 package org.apache.lucene.tests.util;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayWithSize;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.not;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
@@ -1478,29 +1485,34 @@ public final class TestUtil {
         "wrong total hits", expected.totalHits.value() == 0, actual.totalHits.value() == 0);
     if (expected.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
       if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
-        Assert.assertEquals(
-            "wrong total hits", expected.totalHits.value(), actual.totalHits.value());
+        assertThat(
+            "wrong total hits", actual.totalHits.value(), equalTo(expected.totalHits.value()));
       } else {
-        Assert.assertTrue(
-            "wrong total hits", expected.totalHits.value() >= actual.totalHits.value());
+        assertThat(
+            "wrong total hits",
+            actual.totalHits.value(),
+            lessThanOrEqualTo(expected.totalHits.value()));
       }
     } else if (actual.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
-      Assert.assertTrue("wrong total hits", expected.totalHits.value() <= actual.totalHits.value());
+      assertThat(
+          "wrong total hits",
+          actual.totalHits.value(),
+          greaterThanOrEqualTo(expected.totalHits.value()));
     }
-    Assert.assertEquals("wrong hit count", expected.scoreDocs.length, actual.scoreDocs.length);
+    assertThat("wrong hit count", actual.scoreDocs, arrayWithSize(expected.scoreDocs.length));
     for (int hitIDX = 0; hitIDX < expected.scoreDocs.length; hitIDX++) {
       final ScoreDoc expectedSD = expected.scoreDocs[hitIDX];
       final ScoreDoc actualSD = actual.scoreDocs[hitIDX];
-      Assert.assertEquals("wrong hit docID", expectedSD.doc, actualSD.doc);
+      assertThat("wrong hit docID", actualSD.doc, equalTo(expectedSD.doc));
       Assert.assertEquals("wrong hit score", expectedSD.score, actualSD.score, 0.0);
       if (expectedSD instanceof FieldDoc) {
-        Assert.assertTrue(actualSD instanceof FieldDoc);
+        assertThat(actualSD, instanceOf(FieldDoc.class));
         Assert.assertArrayEquals(
             "wrong sort field values",
             ((FieldDoc) expectedSD).fields,
             ((FieldDoc) actualSD).fields);
       } else {
-        Assert.assertFalse(actualSD instanceof FieldDoc);
+        assertThat(actualSD, not(instanceOf(FieldDoc.class)));
       }
     }
   }

@@ -16,8 +16,13 @@
  */
 package org.apache.lucene.util.automaton;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.emptyString;
+import static org.hamcrest.Matchers.hasToString;
+import static org.hamcrest.Matchers.matchesRegex;
+import static org.hamcrest.Matchers.not;
+
 import java.util.Locale;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
@@ -97,19 +102,19 @@ public class TestRegExp extends LuceneTestCase {
   public void testRepeatWithEmptyString() throws Exception {
     Automaton a = new RegExp("[^y]*{1,2}").toAutomaton();
     // paranoia:
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
   }
 
   public void testRepeatWithEmptyLanguage() throws Exception {
     Automaton a = new RegExp("#*").toAutomaton();
     // paranoia:
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
     a = new RegExp("#+").toAutomaton();
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
     a = new RegExp("#{2,10}").toAutomaton();
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
     a = new RegExp("#?").toAutomaton();
-    assertTrue(a.toString().length() > 0);
+    assertThat(a, hasToString(not(emptyString())));
   }
 
   boolean caseSensitiveQuery = true;
@@ -140,7 +145,7 @@ public class TestRegExp extends LuceneTestCase {
               () -> {
                 new RegExp(illegalExpression);
               });
-      assertTrue(expected.getMessage().contains("invalid character class"));
+      assertThat(expected.getMessage(), containsString("invalid character class"));
     }
   }
 
@@ -160,7 +165,7 @@ public class TestRegExp extends LuceneTestCase {
             () -> {
               new RegExp("a{99,11}");
             });
-    assertTrue(expected.getMessage().contains("out of order"));
+    assertThat(expected.getMessage(), containsString("out of order"));
   }
 
   static String randomDocValue(int minLength, boolean includeUnicode) {
@@ -291,9 +296,7 @@ public class TestRegExp extends LuceneTestCase {
         caseSensitiveQuery
             ? Pattern.compile(regexPattern)
             : Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-    Matcher matcher = pattern.matcher(docValue);
-    assertTrue(
-        "Java regex " + regexPattern + " did not match doc value " + docValue, matcher.matches());
+    assertThat(docValue, matchesRegex(pattern));
 
     int matchFlags =
         caseSensitiveQuery ? 0 : RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE;

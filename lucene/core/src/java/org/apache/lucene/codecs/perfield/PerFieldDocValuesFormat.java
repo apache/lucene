@@ -281,7 +281,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     public FieldsReader(final SegmentReadState readState) throws IOException {
 
       // Init each unique format:
-      boolean success = false;
       try {
         // Read field name -> format name
         for (FieldInfo fi : readState.fieldInfos) {
@@ -307,11 +306,9 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
             }
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(formats.values());
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, formats.values());
+        throw t;
       }
     }
 

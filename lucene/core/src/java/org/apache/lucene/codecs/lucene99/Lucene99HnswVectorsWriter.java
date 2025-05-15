@@ -104,7 +104,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
             state.segmentSuffix,
             Lucene99HnswVectorsFormat.VECTOR_INDEX_EXTENSION);
 
-    boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
       vectorIndex = state.directory.createOutput(indexDataFileName, state.context);
@@ -121,11 +120,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           Lucene99HnswVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -354,7 +351,6 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     CloseableRandomVectorScorerSupplier scorerSupplier =
         flatVectorWriter.mergeOneFieldToIndex(fieldInfo, mergeState);
-    boolean success = false;
     try {
       long vectorIndexOffset = vectorIndex.getFilePointer();
       // build the graph using the temporary vector data
@@ -403,14 +399,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           scorerSupplier.totalVectorCount(),
           graph,
           vectorIndexNodeOffsets);
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(scorerSupplier);
-      } else {
-        IOUtils.closeWhileHandlingException(scorerSupplier);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, scorerSupplier);
+      throw t;
     }
+    IOUtils.close(scorerSupplier);
   }
 
   /**

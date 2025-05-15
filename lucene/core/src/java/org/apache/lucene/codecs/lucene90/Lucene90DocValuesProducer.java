@@ -46,10 +46,11 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.compress.LZ4;
@@ -113,11 +114,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
     String dataName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
-    // Doc-values have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-    // readahead.
-    this.data =
-        state.directory.openInput(dataName, state.context.withReadAdvice(ReadAdvice.NORMAL));
-    boolean success = false;
+    // Doc-values have a forward-only access pattern
+    this.data = state.directory.openInput(dataName, state.context.withHints(FileTypeHint.DATA));
     try {
       final int version2 =
           CodecUtil.checkIndexHeader(
@@ -137,12 +135,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
       // such as file truncation.
       CodecUtil.retrieveChecksum(data);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this.data);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, data);
+      throw t;
     }
   }
 
@@ -501,6 +496,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
 
     @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      disi.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
     public long cost() {
       return disi.cost();
     }
@@ -781,6 +781,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public boolean advanceExact(int target) throws IOException {
       return disi.advanceExact(target);
     }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      disi.intoBitSet(upTo, bitSet, offset);
+    }
   }
 
   @Override
@@ -985,6 +990,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           @Override
           public int advance(int target) throws IOException {
             return disi.advance(target);
+          }
+
+          @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            disi.intoBitSet(upTo, bitSet, offset);
           }
 
           @Override
@@ -1491,6 +1501,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           return count;
         }
 
+        @Override
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+          set = false;
+          disi.intoBitSet(upTo, bitSet, offset);
+        }
+
         private void set() {
           if (set == false) {
             final int index = disi.index();
@@ -1639,6 +1655,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public int advance(int target) throws IOException {
             set = false;
             return disi.advance(target);
+          }
+
+          @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            set = false;
+            disi.intoBitSet(upTo, bitSet, offset);
           }
 
           @Override

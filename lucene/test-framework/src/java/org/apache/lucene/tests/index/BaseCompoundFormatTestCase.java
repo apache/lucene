@@ -171,7 +171,7 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   // LUCENE-5724: actually test we play nice with NRTCachingDir and massive file
   public void testLargeCFS() throws IOException {
     final String testfile = "_123.test";
-    IOContext context = new IOContext(new FlushInfo(0, 512 * 1024 * 1024));
+    IOContext context = IOContext.flush(new FlushInfo(0, 512 * 1024 * 1024));
 
     Directory dir = new NRTCachingDirectory(newFSDirectory(createTempDir()), 2.0, 25.0);
 
