@@ -236,7 +236,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     abstract void doUpdateCompetitiveIterator() throws IOException;
 
-    final DocIdSetIterator competitiveIterator() {
+    private DocIdSetIterator competitiveIterator() {
       return new AbstractDocIdSetIterator() {
 
         {
@@ -271,7 +271,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
       };
     }
 
-    final void setMaxDocVisited(int maxDocVisited) {
+    private void setMaxDocVisited(int maxDocVisited) {
       this.maxDocVisited = maxDocVisited;
     }
 

@@ -488,9 +488,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
-      float f = 1f * i;
-      doc.add(new FloatDocValuesField("my_field", f));
-      doc.add(new FloatPoint("my_field", i));
+      fieldsBuilder.apply("my_field", 1f * i).forEach(doc::add);
       writer.addDocument(doc);
     }
     final DirectoryReader reader = DirectoryReader.open(writer);
