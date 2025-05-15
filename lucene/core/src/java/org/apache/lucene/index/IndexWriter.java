@@ -2806,11 +2806,7 @@ public class IndexWriter
             // packet. The flush will retry this packet anyway to ensure all of them are applied
             tryApply(packet);
           } catch (Throwable t) {
-            try {
-              w.onTragicEvent(t, "applyUpdatesPacket");
-            } catch (Throwable t1) {
-              t.addSuppressed(t1);
-            }
+            w.onTragicEvent(t, "applyUpdatesPacket");
             throw t;
           }
           w.flushDeletesCount.incrementAndGet();
@@ -5698,11 +5694,16 @@ public class IndexWriter
     assert tragedy instanceof MergePolicy.MergeAbortedException == false;
     // How can it be a tragedy when nothing happened?
     assert tragedy != null;
-    if (infoStream.isEnabled("IW")) {
-      infoStream.message(
-          "IW", "hit tragic " + tragedy.getClass().getSimpleName() + " inside " + location);
+
+    try {
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message(
+            "IW", "hit tragic " + tragedy.getClass().getSimpleName() + " inside " + location);
+      }
+      this.tragedy.compareAndSet(null, tragedy); // only set it once
+    } catch (Throwable t) {
+      tragedy.addSuppressed(t);
     }
-    this.tragedy.compareAndSet(null, tragedy); // only set it once
   }
 
   /**
