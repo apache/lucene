@@ -310,7 +310,7 @@ public class MMapDirectory extends FSDirectory {
     path = Unwrappable.unwrapAll(path);
 
     boolean success = false;
-    final boolean confined = ReadOnceHint.isReadOnce(context);
+    final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
     Function<IOContext, ReadAdvice> toReadAdvice =
         c -> readAdviceOverride.apply(name, c).orElseGet(() -> toReadAdvice(c));
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);

@@ -1809,7 +1809,7 @@ public abstract class LuceneTestCase extends Assert {
 
   /** TODO: javadoc */
   public static IOContext newIOContext(Random random, IOContext oldContext) {
-    if (ReadOnceHint.isReadOnce(oldContext)) {
+    if (oldContext.hints().contains(ReadOnceHint.INSTANCE)) {
       return oldContext; // just return as-is
     }
     final int randomNumDocs = random.nextInt(4192);
