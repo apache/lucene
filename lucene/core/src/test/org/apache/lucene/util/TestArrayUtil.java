@@ -398,6 +398,55 @@ public class TestArrayUtil extends LuceneTestCase {
     assertEquals(minLength, growInRange(new int[] {1, 2, 3}, minLength, minLength).length);
   }
 
+  public void testGrowInRangeFloat() {
+    float[] array = new float[] {1f, 2f, 3f};
+
+    // If minLength is negative, an AssertionError is thrown (due to internal assert in growExact via oversize)
+    // For float[] the assertion is in growInRange itself.
+    expectThrows(AssertionError.class, () -> growInRange(array, -1, 4));
+    expectThrows(AssertionError.class, () -> growInRange(array, -1, 0));
+    expectThrows(AssertionError.class, () -> growInRange(array, -1, -1));
+
+    // If minLength > maxLength, we throw an exception
+    expectThrows(IllegalArgumentException.class, () -> growInRange(array, 1, 0));
+    expectThrows(IllegalArgumentException.class, () -> growInRange(array, 4, 3));
+    expectThrows(IllegalArgumentException.class, () -> growInRange(array, 5, 4));
+
+    // If array length is sufficient, we return the same array instance
+    assertSame(array, growInRange(array, 1, 4));
+    assertSame(array, growInRange(array, 3, 3)); // minLength == array.length
+    assertSame(array, growInRange(array, 0, 5)); // minLength < array.length
+
+    int minLength = 4;
+    // The array grows normally if maxLength permits
+    float[] grown1 = growInRange(new float[] {1f, 2f, 3f}, minLength, Integer.MAX_VALUE);
+    assertEquals(oversize(minLength, Float.BYTES), grown1.length);
+    assertArrayEquals(new float[] {1f, 2f, 3f, 0f}, grown1, 0.001f); // Assuming oversize(4, Float.BYTES) is at least 4
+
+    // The array grows to maxLength if maxLength is limiting
+    float[] grown2 = growInRange(new float[] {1f, 2f, 3f}, minLength, minLength); // maxLength is 4
+    assertEquals(minLength, grown2.length);
+    assertArrayEquals(new float[] {1f, 2f, 3f, 0f}, grown2, 0.001f);
+
+    // Test with initial empty array
+    float[] empty = new float[0];
+    float[] grownEmpty = growInRange(empty, 2, 5);
+    assertEquals(Math.min(5, oversize(2, Float.BYTES)), grownEmpty.length);
+
+    // Test when oversize result is greater than maxLength
+    float[] smallArray = new float[] {1f};
+    int desiredMin = 10;
+    int actualMax = 12;
+    float[] grownSmall = growInRange(smallArray, desiredMin, actualMax);
+    assertEquals(actualMax, grownSmall.length); // Should be capped by actualMax
+    assertEquals(1f, grownSmall[0], 0.001f);
+
+    // Test when array.length >= minLength
+    float[] arr = new float[5];
+    assertSame(arr, growInRange(arr, 3, 10));
+    assertSame(arr, growInRange(arr, 5, 5));
+  }
+
   public void testCopyOfSubArray() {
     short[] shortArray = {1, 2, 3};
     assertArrayEquals(new short[] {1}, copyOfSubArray(shortArray, 0, 1));
