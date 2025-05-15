@@ -3013,7 +3013,6 @@ public class IndexWriter
       // Best-effort up front check:
       testReserveDocs(totalMaxDoc);
 
-      boolean success = false;
       try {
         for (SegmentInfos sis : commits) {
           for (SegmentCommitInfo info : sis) {
@@ -3054,14 +3053,12 @@ public class IndexWriter
             infos.add(copySegmentAsIs(info, newSegName, context));
           }
         }
-        success = true;
-      } finally {
-        if (!success) {
-          for (SegmentCommitInfo sipc : infos) {
-            // Safe: these files must exist
-            deleteNewFiles(sipc.files());
-          }
+      } catch (Throwable t) {
+        for (SegmentCommitInfo sipc : infos) {
+          // Safe: these files must exist
+          deleteNewFiles(sipc.files());
         }
+        throw t;
       }
 
       synchronized (this) {
