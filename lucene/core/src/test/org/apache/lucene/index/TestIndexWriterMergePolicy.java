@@ -801,7 +801,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
                     new IndexSearcher(reader)
                         .search(new TermQuery(new Term("id", "1")), 10)
                         .totalHits
-                        .value);
+                        .value());
               }
             } else {
               if (random().nextBoolean()) {
@@ -815,7 +815,7 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
                     new IndexSearcher(open)
                         .search(new TermQuery(new Term("id", "1")), 10)
                         .totalHits
-                        .value);
+                        .value());
               }
             }
             numFullFlushes.decrementAndGet();
@@ -900,8 +900,10 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
   }
 
   public void testSetDiagnostics() throws IOException {
+    LogMergePolicy logMp = newLogMergePolicy(4);
+    logMp.setTargetSearchConcurrency(1);
     MergePolicy myMergePolicy =
-        new FilterMergePolicy(newLogMergePolicy(4)) {
+        new FilterMergePolicy(logMp) {
           @Override
           public MergeSpecification findMerges(
               MergeTrigger mergeTrigger, SegmentInfos segmentInfos, MergeContext mergeContext)

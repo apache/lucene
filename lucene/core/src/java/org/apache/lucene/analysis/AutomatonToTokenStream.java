@@ -29,7 +29,6 @@ import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.Transition;
 
 /** Converts an Automaton into a TokenStream. */
@@ -43,14 +42,10 @@ public class AutomatonToTokenStream {
    * position nodes for the TokenStream. The resulting TokenStream releases edges from the automaton
    * as tokens in order from the position nodes. This requires the automaton be a finite DAG.
    *
-   * @param automaton automaton to convert. Must be a finite DAG.
+   * @param automaton automaton to convert. Must be a finite DAG to avoid infinite loops!
    * @return TokenStream representation of automaton.
    */
   public static TokenStream toTokenStream(Automaton automaton) {
-    if (Operations.isFinite(automaton) == false) {
-      throw new IllegalArgumentException("Automaton must be finite");
-    }
-
     List<IntArrayList> positionNodes = new ArrayList<>();
 
     Transition[][] transitions = automaton.getSortedTransitions();
@@ -175,24 +170,8 @@ public class AutomatonToTokenStream {
   }
 
   /** Edge between position nodes. These edges will be output as tokens in the TokenStream */
-  private static class EdgeToken {
-    public final int destination;
-    public final int value;
-
-    public EdgeToken(int destination, int value) {
-      this.destination = destination;
-      this.value = value;
-    }
-  }
+  private record EdgeToken(int destination, int value) {}
 
   /** Node that contains original node id and position in TokenStream */
-  private static class RemapNode {
-    public final int id;
-    public final int pos;
-
-    public RemapNode(int id, int pos) {
-      this.id = id;
-      this.pos = pos;
-    }
-  }
+  private record RemapNode(int id, int pos) {}
 }

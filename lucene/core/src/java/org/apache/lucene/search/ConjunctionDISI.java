@@ -113,11 +113,11 @@ final class ConjunctionDISI extends DocIdSetIterator {
     List<BitSetIterator> bitSetIterators = new ArrayList<>();
     List<DocIdSetIterator> iterators = new ArrayList<>();
     for (DocIdSetIterator iterator : allIterators) {
-      if (iterator instanceof BitSetIterator && iterator.cost() > minCost) {
+      if (iterator instanceof BitSetIterator bitSetIterator && bitSetIterator.cost() > minCost) {
         // we put all bitset iterators into bitSetIterators
         // except if they have the minimum cost, since we need
         // them to lead the iteration in that case
-        bitSetIterators.add((BitSetIterator) iterator);
+        bitSetIterators.add(bitSetIterator);
       } else {
         iterators.add(iterator);
       }

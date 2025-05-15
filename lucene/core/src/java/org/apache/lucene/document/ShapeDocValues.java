@@ -570,7 +570,7 @@ abstract class ShapeDocValues {
   }
 
   /** Reads values from a ShapeDocValues Field */
-  private static final class Reader extends DataInput {
+  private final class Reader extends DataInput {
     /** data input array to read the docvalue data */
     private final ByteArrayDataInput data;
 
@@ -583,6 +583,11 @@ abstract class ShapeDocValues {
       // initialize scratch instances
       this.bbox =
           new BBox(Integer.MAX_VALUE, -Integer.MAX_VALUE, Integer.MAX_VALUE, -Integer.MAX_VALUE);
+    }
+
+    @Override
+    public Reader clone() {
+      return new Reader(ShapeDocValues.this.data);
     }
 
     /** rewinds the buffer to the beginning */
@@ -621,29 +626,32 @@ abstract class ShapeDocValues {
       data.skipBytes(numBytes);
     }
 
-    /**
-     * reads the component type (POINT, LINE, TRIANGLE) such that triangle gives the highest
-     * variable compression
-     */
-    private static TYPE readType(int bits) {
-      if ((bits & 0x04) == 0x04) { // _____1__ : indicates a point type
-        return TYPE.POINT;
-      }
-      if ((bits & 0x08) == 0x08) { // ____1___ : indicates a line type
-        return TYPE.LINE;
-      }
-      assert (bits & 0x0C) == 0x00 : "invalid component type in ShapeDocValuesField";
-      return TYPE.TRIANGLE; // ________ : indicates a triangle type
-    }
+    private final class Header {
 
-    /** reads if the left subtree is null */
-    private static boolean readHasLeftSubtree(int bits) {
-      return (bits & 0x02) == 0x02; // ______1_ : indicates left subtree is not null
-    }
+      /**
+       * reads the component type (POINT, LINE, TRIANGLE) such that triangle gives the highest
+       * variable compression
+       */
+      private static TYPE readType(int bits) {
+        if ((bits & 0x04) == 0x04) { // _____1__ : indicates a point type
+          return TYPE.POINT;
+        }
+        if ((bits & 0x08) == 0x08) { // ____1___ : indicates a line type
+          return TYPE.LINE;
+        }
+        assert (bits & 0x0C) == 0x00 : "invalid component type in ShapeDocValuesField";
+        return TYPE.TRIANGLE; // ________ : indicates a triangle type
+      }
 
-    /** reads if the right subtree is null */
-    private static boolean readHasRightSubtree(int bits) {
-      return (bits & 0x01) == 0x01; // _______1 : indicates right subtree is not null
+      /** reads if the left subtree is null */
+      private static boolean readHasLeftSubtree(int bits) {
+        return (bits & 0x02) == 0x02; // ______1_ : indicates left subtree is not null
+      }
+
+      /** reads if the right subtree is null */
+      private static boolean readHasRightSubtree(int bits) {
+        return (bits & 0x01) == 0x01; // _______1 : indicates right subtree is not null
+      }
     }
 
     private final class BBox extends SpatialQuery.EncodedRectangle {
@@ -765,21 +773,21 @@ abstract class ShapeDocValues {
         int x = Math.toIntExact(tMaxX - dvReader.readVLong());
         // relate the component
         if (relateComponent(
-                Reader.readType(headerBits), bbox, tMaxX, tMaxY, encoder.decodeX(x), query)
+                Reader.Header.readType(headerBits), bbox, tMaxX, tMaxY, encoder.decodeX(x), query)
             == Relation.CELL_CROSSES_QUERY) {
           return Relation.CELL_CROSSES_QUERY;
         }
         r = Relation.CELL_OUTSIDE_QUERY;
 
         // recurse the left subtree
-        if (Reader.readHasLeftSubtree(headerBits)) {
+        if (Reader.Header.readHasLeftSubtree(headerBits)) {
           if ((r = relate(query, false, tMaxX, tMaxY, Math.toIntExact(dvReader.readVInt())))
               == Relation.CELL_CROSSES_QUERY) {
             return Relation.CELL_CROSSES_QUERY;
           }
         }
         // recurse the right subtree
-        if (Reader.readHasRightSubtree(headerBits)) {
+        if (Reader.Header.readHasRightSubtree(headerBits)) {
           if (query.getMaxX() >= encoder.decodeX(tMinX)) {
             if ((r = relate(query, false, tMaxX, tMaxY, Math.toIntExact(dvReader.readVInt())))
                 == Relation.CELL_CROSSES_QUERY) {
@@ -828,13 +836,18 @@ abstract class ShapeDocValues {
       SpatialQuery.EncodedRectangle bbox = dvReader.resetBBox(tMinX, tMaxX, tMinY, tMaxY);
       // relate the component
       if (relateComponent(
-              Reader.readType(headerBits), bbox, pMaxX, pMaxY, encoder.decodeX(x), queryComponent2D)
+              Reader.Header.readType(headerBits),
+              bbox,
+              pMaxX,
+              pMaxY,
+              encoder.decodeX(x),
+              queryComponent2D)
           == Relation.CELL_CROSSES_QUERY) {
         return Relation.CELL_CROSSES_QUERY;
       }
 
       // traverse left subtree
-      if (Reader.readHasLeftSubtree(headerBits) == true) {
+      if (Reader.Header.readHasLeftSubtree(headerBits) == true) {
         if (relate(queryComponent2D, !splitX, tMaxX, tMaxY, Math.toIntExact(dvReader.readVInt()))
             == Relation.CELL_CROSSES_QUERY) {
           return Relation.CELL_CROSSES_QUERY;
@@ -842,7 +855,7 @@ abstract class ShapeDocValues {
       }
 
       // traverse right subtree
-      if (Reader.readHasRightSubtree(headerBits) == true) {
+      if (Reader.Header.readHasRightSubtree(headerBits) == true) {
         int size = Math.toIntExact(dvReader.readVInt());
         if ((splitX == false && queryComponent2D.getMaxY() >= encoder.decodeY(tMinY))
             || (splitX == true && queryComponent2D.getMaxX() >= encoder.decodeX(tMinX))) {

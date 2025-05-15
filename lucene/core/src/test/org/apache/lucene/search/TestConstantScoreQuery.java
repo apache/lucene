@@ -107,7 +107,7 @@ public class TestConstantScoreQuery extends LuceneTestCase {
       try {
         Collection<Scorable.ChildScorable> children = s.getChildren();
         if (children.size() == 0) return s;
-        s = children.stream().findFirst().get().child;
+        s = children.stream().findFirst().get().child();
       } catch (
           @SuppressWarnings("unused")
           Exception e) {
@@ -157,7 +157,7 @@ public class TestConstantScoreQuery extends LuceneTestCase {
 
       // for the combined BQ, the scorer should always be BooleanScorer's BucketScorer, because our
       // scorer supports out-of order collection!
-      final Class<ScoreAndDoc> bucketScorerClass = ScoreAndDoc.class;
+      final Class<Score> bucketScorerClass = Score.class;
       checkHits(searcher, csqbq, csqbq.getBoost(), bucketScorerClass);
     } finally {
       IOUtils.close(reader, directory);

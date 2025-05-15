@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.DataInput;
 import java.io.IOException;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -359,6 +360,14 @@ public final class IndexedDISI extends DocIdSetIterator {
 
     this.slice = blockSlice;
     this.jumpTable = jumpTable;
+    // Prefetch the first pages of data. Following pages are expected to get prefetched through
+    // read-ahead.
+    if (slice.length() > 0) {
+      slice.prefetch(0, 1);
+    }
+    if (jumpTable != null && jumpTable.length() > 0) {
+      jumpTable.prefetch(0, 1);
+    }
     this.jumpTableEntryCount = jumpTableEntryCount;
     this.denseRankPower = denseRankPower;
     final int rankIndexShift = denseRankPower - 7;
@@ -430,6 +439,40 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   // ALL variables
   int gap;
+
+  /**
+   * Returns an iterator that delegates to the IndexedDISI. Advancing this iterator will advance the
+   * underlying IndexedDISI, and vice-versa.
+   */
+  public static KnnVectorValues.DocIndexIterator asDocIndexIterator(IndexedDISI disi) {
+    // can we replace with fromDISI?
+    return new KnnVectorValues.DocIndexIterator() {
+      @Override
+      public int docID() {
+        return disi.docID();
+      }
+
+      @Override
+      public int index() {
+        return disi.index();
+      }
+
+      @Override
+      public int nextDoc() throws IOException {
+        return disi.nextDoc();
+      }
+
+      @Override
+      public int advance(int target) throws IOException {
+        return disi.advance(target);
+      }
+
+      @Override
+      public long cost() {
+        return disi.cost();
+      }
+    };
+  }
 
   @Override
   public int docID() {

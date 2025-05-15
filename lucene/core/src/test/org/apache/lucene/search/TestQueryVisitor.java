@@ -17,8 +17,6 @@
 
 package org.apache.lucene.search;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -75,7 +73,7 @@ public class TestQueryVisitor extends LuceneTestCase {
                 new Term("field1", "tm3"), new Term("field1", "term4"),
                 new Term("field1", "term5"), new Term("field2", "term10")));
     query.visit(QueryVisitor.termCollector(terms));
-    assertThat(terms, equalTo(expected));
+    assertEquals(expected, terms);
   }
 
   public void extractAllTerms() {
@@ -103,7 +101,7 @@ public class TestQueryVisitor extends LuceneTestCase {
                 new Term("field1", "term8"),
                 new Term("field2", "term10")));
     query.visit(visitor);
-    assertThat(terms, equalTo(expected));
+    assertEquals(expected, terms);
   }
 
   public void extractTermsFromField() {
@@ -121,7 +119,7 @@ public class TestQueryVisitor extends LuceneTestCase {
             actual.addAll(Arrays.asList(terms));
           }
         });
-    assertThat(actual, equalTo(expected));
+    assertEquals(expected, actual);
   }
 
   static class BoostedTermExtractor extends QueryVisitor {
@@ -160,7 +158,7 @@ public class TestQueryVisitor extends LuceneTestCase {
     expected.put(new Term("field1", "term4"), 3f);
     expected.put(new Term("field1", "term5"), 3f);
     expected.put(new Term("field2", "term10"), 6f);
-    assertThat(termsToBoosts, equalTo(expected));
+    assertEquals(expected, termsToBoosts);
   }
 
   public void testLeafQueryTypeCounts() {
@@ -343,13 +341,13 @@ public class TestQueryVisitor extends LuceneTestCase {
     extractor.collectTerms(minimumTermSet);
 
     Set<Term> expected1 = new HashSet<>(Collections.singletonList(new Term("field1", "t1")));
-    assertThat(minimumTermSet, equalTo(expected1));
+    assertEquals(expected1, minimumTermSet);
     assertTrue(extractor.nextTermSet());
     Set<Term> expected2 =
         new HashSet<>(Arrays.asList(new Term("field1", "tm2"), new Term("field1", "tm3")));
     minimumTermSet.clear();
     extractor.collectTerms(minimumTermSet);
-    assertThat(minimumTermSet, equalTo(expected2));
+    assertEquals(expected2, minimumTermSet);
 
     BooleanQuery bq =
         new BooleanQuery.Builder()
@@ -368,11 +366,10 @@ public class TestQueryVisitor extends LuceneTestCase {
     Set<Term> expected3 = new HashSet<>(Arrays.asList(new Term("f", "1"), new Term("f", "3333")));
     minimumTermSet.clear();
     ex2.collectTerms(minimumTermSet);
-    assertThat(minimumTermSet, equalTo(expected3));
+    assertEquals(expected3, minimumTermSet);
     ex2.getWeight(); // force sort order
-    assertThat(
-        ex2.toString(),
-        equalTo(
-            "AND(AND(OR(AND(TERM(f:3333),TERM(f:44444)),AND(TERM(f:1),TERM(f:61),AND(TERM(f:211))))))"));
+    assertEquals(
+        "AND(AND(OR(AND(TERM(f:3333),TERM(f:44444)),AND(TERM(f:1),TERM(f:61),AND(TERM(f:211))))))",
+        ex2.toString());
   }
 }

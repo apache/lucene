@@ -19,11 +19,13 @@ package org.apache.lucene.internal.vectorization;
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.lucene95.HasIndexSlice;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer {
 
@@ -38,15 +40,16 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
 
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
-      VectorSimilarityFunction similarityType, RandomAccessVectorValues vectorValues)
-      throws IOException {
+      VectorSimilarityFunction similarityType, KnnVectorValues vectorValues) throws IOException {
     // a quantized values here is a wrapping or delegation issue
-    assert !(vectorValues instanceof RandomAccessQuantizedByteVectorValues);
+    assert !(vectorValues instanceof QuantizedByteVectorValues);
     // currently only supports binary vectors
-    if (vectorValues instanceof RandomAccessVectorValues.Bytes && vectorValues.getSlice() != null) {
+    if (vectorValues instanceof ByteVectorValues bvv
+        && bvv instanceof HasIndexSlice byteVectorValues
+        && byteVectorValues.getSlice() != null) {
       var scorer =
           Lucene99MemorySegmentByteVectorScorerSupplier.create(
-              similarityType, vectorValues.getSlice(), vectorValues);
+              similarityType, byteVectorValues.getSlice(), vectorValues);
       if (scorer.isPresent()) {
         return scorer.get();
       }
@@ -56,9 +59,7 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityType,
-      RandomAccessVectorValues vectorValues,
-      float[] target)
+      VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, float[] target)
       throws IOException {
     // currently only supports binary vectors, so always delegate
     return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
@@ -66,17 +67,17 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(
-      VectorSimilarityFunction similarityType,
-      RandomAccessVectorValues vectorValues,
-      byte[] queryVector)
+      VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, byte[] queryVector)
       throws IOException {
     checkDimensions(queryVector.length, vectorValues.dimension());
     // a quantized values here is a wrapping or delegation issue
-    assert !(vectorValues instanceof RandomAccessQuantizedByteVectorValues);
-    if (vectorValues instanceof RandomAccessVectorValues.Bytes && vectorValues.getSlice() != null) {
+    assert !(vectorValues instanceof QuantizedByteVectorValues);
+    if (vectorValues instanceof ByteVectorValues bvv
+        && bvv instanceof HasIndexSlice byteVectorValues
+        && byteVectorValues.getSlice() != null) {
       var scorer =
           Lucene99MemorySegmentByteVectorScorer.create(
-              similarityType, vectorValues.getSlice(), vectorValues, queryVector);
+              similarityType, byteVectorValues.getSlice(), vectorValues, queryVector);
       if (scorer.isPresent()) {
         return scorer.get();
       }

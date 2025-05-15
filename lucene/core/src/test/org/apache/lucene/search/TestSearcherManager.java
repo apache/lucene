@@ -47,6 +47,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 
 @SuppressCodecs({"SimpleText", "Direct"})
 public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
@@ -105,11 +106,13 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     lifetimeMGR = new SearcherLifetimeManager();
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Override
   protected void doSearching(ExecutorService es, final int maxIterations) throws Exception {
 
     Thread reopenThread =
         new Thread() {
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           public void run() {
             try {

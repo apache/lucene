@@ -38,6 +38,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.spatial.SpatialStrategy;
@@ -269,7 +270,7 @@ public class PointVectorStrategy extends SpatialStrategy {
       Weight w = inner.createWeight(searcher, scoreMode, 1f);
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           Scorer in = w.scorer(context);
           if (in == null) return null;
           DoubleValues v = distanceSource.getValues(context, DoubleValuesSource.fromScorer(in));
@@ -286,7 +287,8 @@ public class PointVectorStrategy extends SpatialStrategy {
                   return 100; // distance calculation can be heavy!
                 }
               };
-          return new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

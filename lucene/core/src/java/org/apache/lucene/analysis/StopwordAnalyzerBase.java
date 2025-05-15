@@ -61,41 +61,6 @@ public abstract class StopwordAnalyzerBase extends Analyzer {
   }
 
   /**
-   * Creates a CharArraySet from a file resource associated with a class. (See {@link
-   * Class#getResourceAsStream(String)}).
-   *
-   * @param ignoreCase <code>true</code> if the set should ignore the case of the stopwords,
-   *     otherwise <code>false</code>
-   * @param aClass a class that is associated with the given stopwordResource
-   * @param resource name of the resource file associated with the given class
-   * @param comment comment string to ignore in the stopword file
-   * @return a CharArraySet containing the distinct stopwords from the given file
-   * @throws IOException if loading the stopwords throws an {@link IOException}
-   * @deprecated {@link Class#getResourceAsStream(String)} is caller sensitive and cannot load
-   *     resources across Java Modules. Please call the {@code getResourceAsStream()} and {@link
-   *     WordlistLoader#getWordSet(Reader, String, CharArraySet)} or other methods directly.
-   */
-  @Deprecated(forRemoval = true, since = "9.1")
-  protected static CharArraySet loadStopwordSet(
-      final boolean ignoreCase,
-      final Class<? extends Analyzer> aClass,
-      final String resource,
-      final String comment)
-      throws IOException {
-    var argModule = aClass.getModule();
-    if (argModule.isNamed() && argModule != StopwordAnalyzerBase.class.getModule()) {
-      throw new UnsupportedOperationException(
-          "loadStopwordSet(class,...) does not work when Java Module System is enabled.");
-    }
-    try (Reader reader =
-        IOUtils.getDecodingReader(
-            IOUtils.requireResourceNonNull(aClass.getResourceAsStream(resource), resource),
-            StandardCharsets.UTF_8)) {
-      return WordlistLoader.getWordSet(reader, comment, new CharArraySet(16, ignoreCase));
-    }
-  }
-
-  /**
    * Creates a CharArraySet from a path.
    *
    * @param stopwords the stopwords file to load

@@ -55,7 +55,6 @@ public class AssertingScorer extends Scorer {
 
   private AssertingScorer(
       Random random, Scorer in, ScoreMode scoreMode, boolean canCallMinCompetitiveScore) {
-    super(in.getWeight());
     this.random = random;
     this.in = in;
     this.scoreMode = scoreMode;
@@ -184,7 +183,7 @@ public class AssertingScorer extends Scorer {
         } else {
           state = IteratorState.ITERATING;
         }
-        assert in.docID() == advanced;
+        assert in.docID() == advanced : in.docID() + " != " + advanced + " in " + in;
         assert AssertingScorer.this.in.docID() == in.docID();
         return doc = advanced;
       }

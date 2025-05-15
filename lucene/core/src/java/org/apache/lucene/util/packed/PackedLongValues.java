@@ -138,7 +138,7 @@ public class PackedLongValues extends LongValues implements Accountable {
     int currentCount; // number of entries of the current page
 
     Iterator() {
-      currentValues = new long[pageMask + 1];
+      currentValues = new long[(int) Math.min(size, pageMask + 1)];
       vOff = pOff = 0;
       fillBlock();
     }

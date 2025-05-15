@@ -232,7 +232,7 @@ public class TestLatLonPointDistanceFeatureQuery extends LuceneTestCase {
 
     Query q = LatLonPoint.newDistanceFeatureQuery("foo", 3, 10, 10, 5000);
     TopDocs topHits = searcher.search(q, 2);
-    assertEquals(0, topHits.totalHits.value);
+    assertEquals(0, topHits.totalHits.value());
   }
 
   public void testMissingValue() throws IOException {

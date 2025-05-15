@@ -16,29 +16,25 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
-import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
-import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
-import static org.apache.lucene.index.VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT;
-
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Optional;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.FilterIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /** A score supplier of vectors whose element size is byte. */
-public abstract class Lucene99MemorySegmentByteVectorScorerSupplier
+public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     implements RandomVectorScorerSupplier {
   final int vectorByteSize;
   final int maxOrd;
   final MemorySegmentAccessInput input;
-  final RandomAccessVectorValues values; // to support ordToDoc/getAcceptOrds
+  final KnnVectorValues values; // to support ordToDoc/getAcceptOrds
   byte[] scratch1, scratch2;
 
   /**
@@ -46,28 +42,23 @@ public abstract class Lucene99MemorySegmentByteVectorScorerSupplier
    * optional is returned.
    */
   static Optional<RandomVectorScorerSupplier> create(
-      VectorSimilarityFunction type, IndexInput input, RandomAccessVectorValues values) {
+      VectorSimilarityFunction type, IndexInput input, KnnVectorValues values) {
+    assert values instanceof ByteVectorValues;
     input = FilterIndexInput.unwrapOnlyTest(input);
-    if (!(input instanceof MemorySegmentAccessInput)) {
+    if (!(input instanceof MemorySegmentAccessInput msInput)) {
       return Optional.empty();
     }
-    MemorySegmentAccessInput msInput = (MemorySegmentAccessInput) input;
     checkInvariants(values.size(), values.getVectorByteLength(), input);
-    if (type == COSINE) {
-      return Optional.of(new CosineSupplier(msInput, values));
-    } else if (type == DOT_PRODUCT) {
-      return Optional.of(new DotProductSupplier(msInput, values));
-    } else if (type == EUCLIDEAN) {
-      return Optional.of(new EuclideanSupplier(msInput, values));
-    } else if (type == MAXIMUM_INNER_PRODUCT) {
-      return Optional.of(new MaxInnerProductSupplier(msInput, values));
-    } else {
-      throw new IllegalArgumentException("unknown type: " + type);
-    }
+    return switch (type) {
+      case COSINE -> Optional.of(new CosineSupplier(msInput, values));
+      case DOT_PRODUCT -> Optional.of(new DotProductSupplier(msInput, values));
+      case EUCLIDEAN -> Optional.of(new EuclideanSupplier(msInput, values));
+      case MAXIMUM_INNER_PRODUCT -> Optional.of(new MaxInnerProductSupplier(msInput, values));
+    };
   }
 
   Lucene99MemorySegmentByteVectorScorerSupplier(
-      MemorySegmentAccessInput input, RandomAccessVectorValues values) {
+      MemorySegmentAccessInput input, KnnVectorValues values) {
     this.input = input;
     this.values = values;
     this.vectorByteSize = values.getVectorByteLength();
@@ -114,7 +105,7 @@ public abstract class Lucene99MemorySegmentByteVectorScorerSupplier
 
   static final class CosineSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
-    CosineSupplier(MemorySegmentAccessInput input, RandomAccessVectorValues values) {
+    CosineSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
       super(input, values);
     }
 
@@ -139,7 +130,7 @@ public abstract class Lucene99MemorySegmentByteVectorScorerSupplier
 
   static final class DotProductSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
-    DotProductSupplier(MemorySegmentAccessInput input, RandomAccessVectorValues values) {
+    DotProductSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
       super(input, values);
     }
 
@@ -166,7 +157,7 @@ public abstract class Lucene99MemorySegmentByteVectorScorerSupplier
 
   static final class EuclideanSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
-    EuclideanSupplier(MemorySegmentAccessInput input, RandomAccessVectorValues values) {
+    EuclideanSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
       super(input, values);
     }
 
@@ -192,7 +183,7 @@ public abstract class Lucene99MemorySegmentByteVectorScorerSupplier
 
   static final class MaxInnerProductSupplier extends Lucene99MemorySegmentByteVectorScorerSupplier {
 
-    MaxInnerProductSupplier(MemorySegmentAccessInput input, RandomAccessVectorValues values) {
+    MaxInnerProductSupplier(MemorySegmentAccessInput input, KnnVectorValues values) {
       super(input, values);
     }
 

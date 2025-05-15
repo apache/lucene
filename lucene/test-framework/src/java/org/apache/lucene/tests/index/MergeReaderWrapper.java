@@ -18,7 +18,6 @@
 package org.apache.lucene.tests.index;
 
 import java.io.IOException;
-import java.util.Objects;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -27,10 +26,10 @@ import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CodecReader;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
-import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -39,7 +38,6 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
@@ -191,6 +189,17 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null) {
+      // Field does not exist
+      return null;
+    }
+    return docValues.getSkipper(fi);
+  }
+
+  @Override
   public FieldInfos getFieldInfos() {
     return in.getFieldInfos();
   }
@@ -203,16 +212,6 @@ class MergeReaderWrapper extends LeafReader {
   @Override
   public void checkIntegrity() throws IOException {
     in.checkIntegrity();
-  }
-
-  @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    ensureOpen();
-    checkBounds(docID);
-    if (vectors == null) {
-      return null;
-    }
-    return vectors.get(docID);
   }
 
   @Override
@@ -263,13 +262,6 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    ensureOpen();
-    checkBounds(docID);
-    store.document(docID, visitor);
-  }
-
-  @Override
   public StoredFields storedFields() throws IOException {
     ensureOpen();
     return store;
@@ -288,10 +280,6 @@ class MergeReaderWrapper extends LeafReader {
   @Override
   public CacheHelper getReaderCacheHelper() {
     return in.getReaderCacheHelper();
-  }
-
-  private void checkBounds(int docID) {
-    Objects.checkIndex(docID, maxDoc());
   }
 
   @Override

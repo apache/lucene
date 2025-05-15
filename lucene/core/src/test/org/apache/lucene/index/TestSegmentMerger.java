@@ -105,7 +105,7 @@ public class TestSegmentMerger extends LuceneTestCase {
             si,
             InfoStream.getDefault(),
             mergedDir,
-            new FieldInfos.FieldNumbers(null, null, Version.LATEST.major),
+            new FieldInfos.FieldNumbers(null, null),
             newIOContext(random(), new IOContext(new MergeInfo(-1, -1, false, -1))),
             new SameThreadExecutorService());
     MergeState mergeState = merger.merge();
@@ -138,7 +138,7 @@ public class TestSegmentMerger extends LuceneTestCase {
 
     int tvCount = 0;
     for (FieldInfo fieldInfo : mergedReader.getFieldInfos()) {
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         tvCount++;
       }
     }

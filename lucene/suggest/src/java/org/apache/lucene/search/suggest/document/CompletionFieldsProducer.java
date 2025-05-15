@@ -74,7 +74,7 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
     delegateFieldsProducer = null;
     boolean success = false;
 
-    try (ChecksumIndexInput index = state.directory.openChecksumInput(indexFile, state.context)) {
+    try (ChecksumIndexInput index = state.directory.openChecksumInput(indexFile)) {
       // open up dict file containing all fsts
       String dictFile =
           IndexFileNames.segmentFileName(

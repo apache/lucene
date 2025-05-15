@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.SortedSet;
@@ -28,17 +27,10 @@ import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.AttributeSource;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.BytesRefComparator;
-import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.StringSorter;
+import org.apache.lucene.util.*;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 
 /**
  * Specialization for a disjunction over many terms that, by default, behaves like a {@link
@@ -84,30 +76,12 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     this(field, packTerms(field, terms));
   }
 
-  /**
-   * @deprecated Use {@link #TermInSetQuery(String, Collection)} instead.
-   */
-  @Deprecated(since = "9.10")
-  public TermInSetQuery(String field, BytesRef... terms) {
-    this(field, packTerms(field, Arrays.asList(terms)));
-  }
-
   /** Creates a new {@link TermInSetQuery} from the given collection of terms. */
   public TermInSetQuery(RewriteMethod rewriteMethod, String field, Collection<BytesRef> terms) {
     super(field, rewriteMethod);
     this.field = field;
     this.termData = packTerms(field, terms);
     termDataHashCode = termData.hashCode();
-  }
-
-  /**
-   * Creates a new {@link TermInSetQuery} from the given array of terms.
-   *
-   * @deprecated Use {@link #TermInSetQuery(RewriteMethod, String, Collection)} instead.
-   */
-  @Deprecated(since = "9.10")
-  public TermInSetQuery(RewriteMethod rewriteMethod, String field, BytesRef... terms) {
-    this(rewriteMethod, field, Arrays.asList(terms));
   }
 
   private TermInSetQuery(String field, PrefixCodedTerms termData) {
@@ -157,8 +131,18 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   }
 
   @Override
-  public long getTermsCount() throws IOException {
+  public long getTermsCount() {
     return termData.size();
+  }
+
+  /**
+   * Get an iterator over the encoded terms for query inspection.
+   *
+   * @lucene.experimental
+   */
+  public BytesRefIterator getBytesRefIterator() {
+    final TermIterator iterator = this.termData.iterator();
+    return () -> iterator.next();
   }
 
   @Override
@@ -179,7 +163,7 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   private ByteRunAutomaton asByteRunAutomaton() {
     try {
       Automaton a = Automata.makeBinaryStringUnion(termData.iterator());
-      return new ByteRunAutomaton(a, true, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+      return new ByteRunAutomaton(a, true);
     } catch (IOException e) {
       // Shouldn't happen since termData.iterator() provides an interator implementation that
       // never throws:
@@ -201,17 +185,6 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   @Override
   public int hashCode() {
     return 31 * classHash() + termDataHashCode;
-  }
-
-  /**
-   * Returns the terms wrapped in a PrefixCodedTerms.
-   *
-   * @deprecated the encoded terms will no longer be exposed in a future major version; this is an
-   *     implementation detail that could change at some point and shouldn't be relied on directly
-   */
-  @Deprecated
-  public PrefixCodedTerms getTermData() {
-    return termData;
   }
 
   @Override

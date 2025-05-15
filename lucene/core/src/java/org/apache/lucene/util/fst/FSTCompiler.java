@@ -817,7 +817,8 @@ public class FSTCompiler<T> {
     for (int idx = lastInput.length(); idx >= downTo; idx--) {
 
       final UnCompiledNode<T> node = frontier[idx];
-      final UnCompiledNode<T> parent = frontier[idx - 1];
+      final int prevIdx = idx - 1;
+      final UnCompiledNode<T> parent = frontier[prevIdx];
 
       final T nextFinalOutput = node.output;
 
@@ -833,7 +834,7 @@ public class FSTCompiler<T> {
       // this node makes it and we now compile it.  first,
       // compile any targets that were previously
       // undecided:
-      parent.replaceLast(lastInput.intAt(idx - 1), compileNode(node), nextFinalOutput, isFinal);
+      parent.replaceLast(lastInput.intAt(prevIdx), compileNode(node), nextFinalOutput, isFinal);
     }
   }
 
@@ -871,10 +872,7 @@ public class FSTCompiler<T> {
     int pos1 = 0;
     int pos2 = input.offset;
     final int pos1Stop = Math.min(lastInput.length(), input.length);
-    while (true) {
-      if (pos1 >= pos1Stop || lastInput.intAt(pos1) != input.ints[pos2]) {
-        break;
-      }
+    while (pos1 < pos1Stop && lastInput.intAt(pos1) == input.ints[pos2]) {
       pos1++;
       pos2++;
     }
@@ -913,17 +911,16 @@ public class FSTCompiler<T> {
       assert validOutput(lastOutput);
 
       final T commonOutputPrefix;
-      final T wordSuffix;
 
       if (lastOutput != NO_OUTPUT) {
         commonOutputPrefix = fst.outputs.common(output, lastOutput);
         assert validOutput(commonOutputPrefix);
-        wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
+        T wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
         assert validOutput(wordSuffix);
         parentNode.setLastOutput(input.ints[input.offset + idx - 1], commonOutputPrefix);
         node.prependOutput(wordSuffix);
       } else {
-        commonOutputPrefix = wordSuffix = NO_OUTPUT;
+        commonOutputPrefix = NO_OUTPUT;
       }
 
       output = fst.outputs.subtract(output, commonOutputPrefix);
@@ -1137,13 +1134,6 @@ public class FSTCompiler<T> {
       // assert target.node != -2;
       arc.nextFinalOutput = nextFinalOutput;
       arc.isFinal = isFinal;
-    }
-
-    void deleteLast(int label, Node target) {
-      assert numArcs > 0;
-      assert label == arcs[numArcs - 1].label;
-      assert target == arcs[numArcs - 1].target;
-      numArcs--;
     }
 
     void setLastOutput(int labelToMatch, T newOutput) {

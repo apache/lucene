@@ -94,7 +94,7 @@ public final class XYCircle extends XYGeometry {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("CIRCLE(");
+    sb.append("XYCircle(");
     sb.append("[" + x + "," + y + "]");
     sb.append(" radius = " + radius);
     sb.append(')');

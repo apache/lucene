@@ -18,7 +18,7 @@
 package org.apache.lucene.index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.hamcrest.core.StringContains.containsString;
+import static org.hamcrest.Matchers.containsString;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -88,6 +88,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
+import org.hamcrest.MatcherAssert;
 
 public class TestIndexSorting extends LuceneTestCase {
   static class AssertingNeedsIndexSortCodec extends FilterCodec {
@@ -153,7 +154,9 @@ public class TestIndexSorting extends LuceneTestCase {
     Sort indexSort = new Sort(sortField, new SortField("id", SortField.Type.INT));
     iwc.setIndexSort(indexSort);
     LogMergePolicy policy = newLogMergePolicy();
-    // make sure that merge factor is always > 2
+    // make sure that merge factor is always > 2 and target search concurrency is no more than 1 to
+    // avoid creating merges that are accidentally sorted
+    policy.setTargetSearchConcurrency(1);
     if (policy.getMergeFactor() <= 2) {
       policy.setMergeFactor(3);
     }
@@ -657,7 +660,7 @@ public class TestIndexSorting extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       SortField sortField = new SortField("foo", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(Long.valueOf(Long.MIN_VALUE));
+      sortField.setMissingValue(Long.MIN_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -704,7 +707,7 @@ public class TestIndexSorting extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       SortField sortField = new SortedNumericSortField("foo", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(Long.valueOf(Long.MIN_VALUE));
+      sortField.setMissingValue(Long.MIN_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -760,7 +763,7 @@ public class TestIndexSorting extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       SortField sortField = new SortField("foo", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(Long.valueOf(Long.MAX_VALUE));
+      sortField.setMissingValue(Long.MAX_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -808,7 +811,7 @@ public class TestIndexSorting extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       SortField sortField = new SortedNumericSortField("foo", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(Long.valueOf(Long.MAX_VALUE));
+      sortField.setMissingValue(Long.MAX_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -948,7 +951,7 @@ public class TestIndexSorting extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       SortField sortField = new SortField("foo", SortField.Type.INT, reverse);
-      sortField.setMissingValue(Integer.valueOf(Integer.MIN_VALUE));
+      sortField.setMissingValue(Integer.MIN_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -994,7 +997,7 @@ public class TestIndexSorting extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       SortField sortField = new SortedNumericSortField("foo", SortField.Type.INT, reverse);
-      sortField.setMissingValue(Integer.valueOf(Integer.MIN_VALUE));
+      sortField.setMissingValue(Integer.MIN_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1050,7 +1053,7 @@ public class TestIndexSorting extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       SortField sortField = new SortField("foo", SortField.Type.INT, reverse);
-      sortField.setMissingValue(Integer.valueOf(Integer.MAX_VALUE));
+      sortField.setMissingValue(Integer.MAX_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1098,7 +1101,7 @@ public class TestIndexSorting extends LuceneTestCase {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
       SortField sortField = new SortedNumericSortField("foo", SortField.Type.INT, reverse);
-      sortField.setMissingValue(Integer.valueOf(Integer.MAX_VALUE));
+      sortField.setMissingValue(Integer.MAX_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1777,9 +1780,9 @@ public class TestIndexSorting extends LuceneTestCase {
       TermQuery termQuery = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(termQuery, 1);
       if (deleted.get(i)) {
-        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.totalHits.value());
       } else {
-        assertEquals(1, topDocs.totalHits.value);
+        assertEquals(1, topDocs.totalHits.value());
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
@@ -1829,9 +1832,9 @@ public class TestIndexSorting extends LuceneTestCase {
       TermQuery termQuery = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(termQuery, 1);
       if (deleted.get(i)) {
-        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.totalHits.value());
       } else {
-        assertEquals(1, topDocs.totalHits.value);
+        assertEquals(1, topDocs.totalHits.value());
         NumericDocValues values = MultiDocValues.getNumericValues(reader, "id");
         assertEquals(topDocs.scoreDocs[0].doc, values.advance(topDocs.scoreDocs[0].doc));
         assertEquals(i, values.longValue());
@@ -1934,9 +1937,9 @@ public class TestIndexSorting extends LuceneTestCase {
       final TopDocs topDocs =
           searcher.search(new TermQuery(new Term("id", Integer.toString(i))), 1);
       if (values.containsKey(i) == false) {
-        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.totalHits.value());
       } else {
-        assertEquals(1, topDocs.totalHits.value);
+        assertEquals(1, topDocs.totalHits.value());
         NumericDocValues dvs = MultiDocValues.getNumericValues(reader, "foo");
         int docID = topDocs.scoreDocs[0].doc;
         assertEquals(docID, dvs.advance(docID));
@@ -2071,7 +2074,7 @@ public class TestIndexSorting extends LuceneTestCase {
     for (int i = 0; i < numDocs; ++i) {
       final TopDocs topDocs =
           searcher.search(new TermQuery(new Term("id", Integer.toString(i))), 1);
-      assertEquals(1, topDocs.totalHits.value);
+      assertEquals(1, topDocs.totalHits.value());
       NumericDocValues dvs = MultiDocValues.getNumericValues(reader, "bar");
       int hitDoc = topDocs.scoreDocs[0].doc;
       assertEquals(hitDoc, dvs.advance(hitDoc));
@@ -2103,13 +2106,13 @@ public class TestIndexSorting extends LuceneTestCase {
       w2.close();
       IllegalArgumentException expected =
           expectThrows(IllegalArgumentException.class, () -> w.addIndexes(dir2));
-      assertThat(expected.getMessage(), containsString("cannot change index sort"));
+      MatcherAssert.assertThat(expected.getMessage(), containsString("cannot change index sort"));
       CodecReader[] codecReaders = new CodecReader[reader.leaves().size()];
       for (int i = 0; i < codecReaders.length; ++i) {
         codecReaders[i] = (CodecReader) reader.leaves().get(i).reader();
       }
       expected = expectThrows(IllegalArgumentException.class, () -> w.addIndexes(codecReaders));
-      assertThat(expected.getMessage(), containsString("cannot change index sort"));
+      MatcherAssert.assertThat(expected.getMessage(), containsString("cannot change index sort"));
 
       reader.close();
       dir2.close();
@@ -2178,8 +2181,8 @@ public class TestIndexSorting extends LuceneTestCase {
       Query query = new TermQuery(new Term("id", Integer.toString(i)));
       final TopDocs topDocs = searcher.search(query, 1);
       final TopDocs topDocs2 = searcher2.search(query, 1);
-      assertEquals(topDocs.totalHits.value, topDocs2.totalHits.value);
-      if (topDocs.totalHits.value == 1) {
+      assertEquals(topDocs.totalHits.value(), topDocs2.totalHits.value());
+      if (topDocs.totalHits.value() == 1) {
         NumericDocValues dvs1 = MultiDocValues.getNumericValues(reader, "foo");
         int hitDoc1 = topDocs.scoreDocs[0].doc;
         assertEquals(hitDoc1, dvs1.advance(hitDoc1));
@@ -2214,11 +2217,7 @@ public class TestIndexSorting extends LuceneTestCase {
   public void testBadSort() throws Exception {
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              iwc.setIndexSort(Sort.RELEVANCE);
-            });
+        expectThrows(IllegalArgumentException.class, () -> iwc.setIndexSort(Sort.RELEVANCE));
     assertEquals("Cannot sort index with sort field <score>", expected.getMessage());
   }
 
@@ -2237,14 +2236,11 @@ public class TestIndexSorting extends LuceneTestCase {
     final IndexWriterConfig iwc2 = new IndexWriterConfig(new MockAnalyzer(random()));
     iwc2.setIndexSort(new Sort(new SortField("bar", SortField.Type.LONG)));
     IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              new IndexWriter(dir, iwc2);
-            });
+        expectThrows(IllegalArgumentException.class, () -> new IndexWriter(dir, iwc2));
     String message = e.getMessage();
-    assertTrue(message.contains("cannot change previous indexSort=<long: \"foo\">"));
-    assertTrue(message.contains("to new indexSort=<long: \"bar\">"));
+    MatcherAssert.assertThat(
+        message, containsString("cannot change previous indexSort=<long: \"foo\">"));
+    MatcherAssert.assertThat(message, containsString("to new indexSort=<long: \"bar\">"));
     dir.close();
   }
 
@@ -2362,7 +2358,7 @@ public class TestIndexSorting extends LuceneTestCase {
     // Must use the same seed for both RandomIndexWriters so they behave identically
     long seed = random().nextLong();
 
-    // We add document alread in ID order for the first writer:
+    // We add document already in ID order for the first writer:
     Directory dir1 = newFSDirectory(createTempDir());
 
     Random random1 = new Random(seed);
@@ -2416,7 +2412,7 @@ public class TestIndexSorting extends LuceneTestCase {
     if (VERBOSE) {
       System.out.println("TEST: now compare r1=" + r1 + " r2=" + r2);
     }
-    assertEquals(sort, getOnlyLeafReader(r2).getMetaData().getSort());
+    assertEquals(sort, getOnlyLeafReader(r2).getMetaData().sort());
     assertReaderEquals("left: sorted by hand; right: sorted by Lucene", r1, r2);
     IOUtils.close(w1, w2, r1, r2, dir1, dir2);
   }
@@ -2663,11 +2659,11 @@ public class TestIndexSorting extends LuceneTestCase {
           s2.search(new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, numHits, 1));
 
       if (VERBOSE) {
-        System.out.println("  topDocs query-time sort: totalHits=" + hits1.totalHits.value);
+        System.out.println("  topDocs query-time sort: totalHits=" + hits1.totalHits.value());
         for (ScoreDoc scoreDoc : hits1.scoreDocs) {
           System.out.println("    " + scoreDoc.doc);
         }
-        System.out.println("  topDocs index-time sort: totalHits=" + hits2.totalHits.value);
+        System.out.println("  topDocs index-time sort: totalHits=" + hits2.totalHits.value());
         for (ScoreDoc scoreDoc : hits2.scoreDocs) {
           System.out.println("    " + scoreDoc.doc);
         }
@@ -2833,7 +2829,7 @@ public class TestIndexSorting extends LuceneTestCase {
         doc.add(dvs.get(j));
         IllegalArgumentException exc =
             expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
-        assertThat(exc.getMessage(), containsString("expected field [field] to be "));
+        MatcherAssert.assertThat(exc.getMessage(), containsString("expected field [field] to be "));
         doc.clear();
         doc.add(dvs.get(i));
         w.addDocument(doc);
@@ -3179,6 +3175,25 @@ public class TestIndexSorting extends LuceneTestCase {
     dir.close();
   }
 
+  public void testParentFieldNotConfigured() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      Sort indexSort = new Sort(new SortField("foo", SortField.Type.INT));
+      iwc.setIndexSort(indexSort);
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        IllegalArgumentException ex =
+            expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  writer.addDocuments(Arrays.asList(new Document(), new Document()));
+                });
+        assertEquals(
+            "a parent field must be set in order to use document blocks with index sorting; see IndexWriterConfig#setParentField",
+            ex.getMessage());
+      }
+    }
+  }
+
   public void testBlockContainsParentField() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
@@ -3243,7 +3258,7 @@ public class TestIndexSorting extends LuceneTestCase {
       codec.numCalls = 0;
       codec.needsIndexSort = false;
       try (IndexWriter w = new IndexWriter(dir, iwc)) {
-        int numDocs = 50 + random().nextInt(50);
+        int numDocs = random().nextInt(50, 100);
         for (int i = 0; i < numDocs; i++) {
           Document child1 = new Document();
           child1.add(new StringField("id", Integer.toString(i), Store.YES));
@@ -3316,10 +3331,10 @@ public class TestIndexSorting extends LuceneTestCase {
       iwc.setIndexSort(indexSort);
       iwc.setParentField(parentField);
       RandomIndexWriter randomIndexWriter = new RandomIndexWriter(random(), dir, iwc);
-      int numDocs = 100 + random().nextInt(900);
+      int numDocs = random().nextInt(100, 1000);
       for (int i = 0; i < numDocs; i++) {
         if (rarely()) {
-          randomIndexWriter.deleteDocuments(new Term("id", "" + random().nextInt(i + 1)));
+          randomIndexWriter.deleteDocuments(new Term("id", "" + random().nextInt(0, i + 1)));
         }
         List<Document> docs = new ArrayList<>();
         switch (random().nextInt(100) % 5) {

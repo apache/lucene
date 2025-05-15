@@ -40,7 +40,7 @@
  * <p>If you care about what child documents matched for each parent document, then use the {@link
  * org.apache.lucene.search.join.ParentChildrenBlockJoinQuery} query to per matched parent document
  * retrieve the child documents that caused to match the parent document in first place. This query
- * should be used after your main query has been executed. For each hit execute the the {@link
+ * should be used after your main query has been executed. For each hit execute the {@link
  * org.apache.lucene.search.join.ParentChildrenBlockJoinQuery} query
  *
  * <pre class="prettyprint">

@@ -28,13 +28,16 @@ import java.util.Objects;
  * threads accessing this object.
  */
 public final class FieldInfo {
+
   /** Field's name */
   public final String name;
 
   /** Internal field number */
   public final int number;
 
-  private DocValuesType docValuesType;
+  private DocValuesType docValuesType = DocValuesType.NONE;
+
+  private final DocValuesSkipIndexType docValuesSkipIndex;
 
   // True if any document indexed term vectors
   private boolean storeTermVector;
@@ -80,6 +83,7 @@ public final class FieldInfo {
       boolean storePayloads,
       IndexOptions indexOptions,
       DocValuesType docValues,
+      DocValuesSkipIndexType docValuesSkipIndex,
       long dvGen,
       Map<String, String> attributes,
       int pointDimensionCount,
@@ -95,6 +99,7 @@ public final class FieldInfo {
     this.docValuesType =
         Objects.requireNonNull(
             docValues, "DocValuesType must not be null (field: \"" + name + "\")");
+    this.docValuesSkipIndex = docValuesSkipIndex;
     this.indexOptions =
         Objects.requireNonNull(
             indexOptions, "IndexOptions must not be null (field: \"" + name + "\")");
@@ -151,6 +156,15 @@ public final class FieldInfo {
 
     if (docValuesType == null) {
       throw new IllegalArgumentException("DocValuesType must not be null (field: '" + name + "')");
+    }
+    if (docValuesSkipIndex.isCompatibleWith(docValuesType) == false) {
+      throw new IllegalArgumentException(
+          "field '"
+              + name
+              + "' cannot have docValuesSkipIndexType="
+              + docValuesSkipIndex
+              + " with doc values type "
+              + docValuesType);
     }
     if (dvGen != -1 && docValuesType == DocValuesType.NONE) {
       throw new IllegalArgumentException(
@@ -227,15 +241,15 @@ public final class FieldInfo {
    * @param o – other FieldInfo whose schema is verified against this FieldInfo's schema
    * @throws IllegalArgumentException if the field schemas are not the same
    */
-  void verifySameSchema(FieldInfo o, boolean strictlyConsistent) {
+  void verifySameSchema(FieldInfo o) {
     String fieldName = this.name;
-    verifySameIndexOptions(fieldName, this.indexOptions, o.getIndexOptions(), strictlyConsistent);
+    verifySameIndexOptions(fieldName, this.indexOptions, o.getIndexOptions());
     if (this.indexOptions != IndexOptions.NONE) {
-      verifySameOmitNorms(fieldName, this.omitNorms, o.omitNorms, strictlyConsistent);
-      verifySameStoreTermVectors(
-          fieldName, this.storeTermVector, o.storeTermVector, strictlyConsistent);
+      verifySameOmitNorms(fieldName, this.omitNorms, o.omitNorms);
+      verifySameStoreTermVectors(fieldName, this.storeTermVector, o.storeTermVector);
     }
-    verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType, strictlyConsistent);
+    verifySameDocValuesType(fieldName, this.docValuesType, o.docValuesType);
+    verifySameDocValuesSkipIndex(fieldName, this.docValuesSkipIndex, o.docValuesSkipIndex);
     verifySamePointsOptions(
         fieldName,
         this.pointDimensionCount,
@@ -243,8 +257,7 @@ public final class FieldInfo {
         this.pointNumBytes,
         o.pointDimensionCount,
         o.pointIndexDimensionCount,
-        o.pointNumBytes,
-        strictlyConsistent);
+        o.pointNumBytes);
     verifySameVectorOptions(
         fieldName,
         this.vectorDimension,
@@ -261,14 +274,7 @@ public final class FieldInfo {
    * @throws IllegalArgumentException if they are not the same
    */
   static void verifySameIndexOptions(
-      String fieldName,
-      IndexOptions indexOptions1,
-      IndexOptions indexOptions2,
-      boolean strictlyConsistent) {
-    if (strictlyConsistent == false
-        && (indexOptions1 == IndexOptions.NONE || indexOptions2 == IndexOptions.NONE)) {
-      return;
-    }
+      String fieldName, IndexOptions indexOptions1, IndexOptions indexOptions2) {
     if (indexOptions1 != indexOptions2) {
       throw new IllegalArgumentException(
           "cannot change field \""
@@ -286,14 +292,7 @@ public final class FieldInfo {
    * @throws IllegalArgumentException if they are not the same
    */
   static void verifySameDocValuesType(
-      String fieldName,
-      DocValuesType docValuesType1,
-      DocValuesType docValuesType2,
-      boolean strictlyConsistent) {
-    if (strictlyConsistent == false
-        && (docValuesType1 == DocValuesType.NONE || docValuesType2 == DocValuesType.NONE)) {
-      return;
-    }
+      String fieldName, DocValuesType docValuesType1, DocValuesType docValuesType2) {
     if (docValuesType1 != docValuesType2) {
       throw new IllegalArgumentException(
           "cannot change field \""
@@ -306,16 +305,33 @@ public final class FieldInfo {
   }
 
   /**
+   * Verify that the provided docValues type are the same
+   *
+   * @throws IllegalArgumentException if they are not the same
+   */
+  static void verifySameDocValuesSkipIndex(
+      String fieldName,
+      DocValuesSkipIndexType hasDocValuesSkipIndex1,
+      DocValuesSkipIndexType hasDocValuesSkipIndex2) {
+    if (hasDocValuesSkipIndex1 != hasDocValuesSkipIndex2) {
+      throw new IllegalArgumentException(
+          "cannot change field \""
+              + fieldName
+              + "\" from docValuesSkipIndexType="
+              + hasDocValuesSkipIndex1
+              + " to inconsistent docValuesSkipIndexType="
+              + hasDocValuesSkipIndex2);
+    }
+  }
+
+  /**
    * Verify that the provided store term vectors options are the same
    *
    * @throws IllegalArgumentException if they are not the same
    */
   static void verifySameStoreTermVectors(
-      String fieldName,
-      boolean storeTermVector1,
-      boolean storeTermVector2,
-      boolean strictlyConsistent) {
-    if (strictlyConsistent && storeTermVector1 != storeTermVector2) {
+      String fieldName, boolean storeTermVector1, boolean storeTermVector2) {
+    if (storeTermVector1 != storeTermVector2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -331,9 +347,8 @@ public final class FieldInfo {
    *
    * @throws IllegalArgumentException if they are not the same
    */
-  static void verifySameOmitNorms(
-      String fieldName, boolean omitNorms1, boolean omitNorms2, boolean strictlyConsistent) {
-    if (strictlyConsistent && omitNorms1 != omitNorms2) {
+  static void verifySameOmitNorms(String fieldName, boolean omitNorms1, boolean omitNorms2) {
+    if (omitNorms1 != omitNorms2) {
       throw new IllegalArgumentException(
           "cannot change field \""
               + fieldName
@@ -356,11 +371,7 @@ public final class FieldInfo {
       int numBytes1,
       int pointDimensionCount2,
       int indexDimensionCount2,
-      int numBytes2,
-      boolean strictlyConsistent) {
-    if (strictlyConsistent == false && (pointDimensionCount1 == 0 || pointDimensionCount2 == 0)) {
-      return;
-    }
+      int numBytes2) {
     if (pointDimensionCount1 != pointDimensionCount2
         || indexDimensionCount1 != indexDimensionCount2
         || numBytes1 != numBytes2) {
@@ -412,151 +423,6 @@ public final class FieldInfo {
               + ", vector similarity function="
               + vsf2);
     }
-  }
-
-  /*
-  This method will create a new instance of FieldInfo if any attribute changes (and it changes in a compatible way).
-  It is intended only to be used in indices where schema validation is not strict (legacy indices). It will return null
-  if no changes are done on this FieldInfo
-   */
-  FieldInfo handleLegacySupportedUpdates(FieldInfo otherFi) {
-    IndexOptions newIndexOptions = this.indexOptions;
-    boolean newStoreTermVector = this.storeTermVector;
-    boolean newOmitNorms = this.omitNorms;
-    boolean newStorePayloads = this.storePayloads;
-    DocValuesType newDocValues = this.docValuesType;
-    int newPointDimensionCount = this.pointDimensionCount;
-    int newPointNumBytes = this.pointNumBytes;
-    int newPointIndexDimensionCount = this.pointIndexDimensionCount;
-    long newDvGen = this.dvGen;
-
-    boolean fieldInfoChanges = false;
-    // System.out.println("FI.update field=" + name + " indexed=" + indexed + " omitNorms=" +
-    // omitNorms + " this.omitNorms=" + this.omitNorms);
-    if (this.indexOptions != otherFi.indexOptions) {
-      if (this.indexOptions == IndexOptions.NONE) {
-        newIndexOptions = otherFi.indexOptions;
-        fieldInfoChanges = true;
-      } else if (otherFi.indexOptions != IndexOptions.NONE) {
-        throw new IllegalArgumentException(
-            "cannot change field \""
-                + name
-                + "\" from index options="
-                + this.indexOptions
-                + " to inconsistent index options="
-                + otherFi.indexOptions);
-      }
-    }
-
-    if (this.pointDimensionCount != otherFi.pointDimensionCount
-        && otherFi.pointDimensionCount != 0) {
-      if (this.pointDimensionCount == 0) {
-        fieldInfoChanges = true;
-        newPointDimensionCount = otherFi.pointDimensionCount;
-      } else {
-        throw new IllegalArgumentException(
-            "cannot change field \""
-                + name
-                + "\" from points dimensionCount="
-                + this.pointDimensionCount
-                + " to inconsistent dimensionCount="
-                + otherFi.pointDimensionCount);
-      }
-    }
-
-    if (this.pointIndexDimensionCount != otherFi.pointIndexDimensionCount
-        && otherFi.pointIndexDimensionCount != 0) {
-      if (this.pointIndexDimensionCount == 0) {
-        fieldInfoChanges = true;
-        newPointIndexDimensionCount = otherFi.pointIndexDimensionCount;
-      } else {
-        throw new IllegalArgumentException(
-            "cannot change field \""
-                + name
-                + "\" from points indexDimensionCount="
-                + this.pointIndexDimensionCount
-                + " to inconsistent indexDimensionCount="
-                + otherFi.pointIndexDimensionCount);
-      }
-    }
-
-    if (this.pointNumBytes != otherFi.pointNumBytes && otherFi.pointNumBytes != 0) {
-      if (this.pointNumBytes == 0) {
-        fieldInfoChanges = true;
-        newPointNumBytes = otherFi.pointNumBytes;
-      } else {
-        throw new IllegalArgumentException(
-            "cannot change field \""
-                + name
-                + "\" from points numBytes="
-                + this.pointNumBytes
-                + " to inconsistent numBytes="
-                + otherFi.pointNumBytes);
-      }
-    }
-
-    if (newIndexOptions
-        != IndexOptions.NONE) { // if updated field data is not for indexing, leave the updates out
-      if (this.storeTermVector != otherFi.storeTermVector && this.storeTermVector == false) {
-        fieldInfoChanges = true;
-        newStoreTermVector = true; // once vector, always vector
-      }
-      if (this.storePayloads != otherFi.storePayloads
-          && this.storePayloads == false
-          && newIndexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
-        fieldInfoChanges = true;
-        newStorePayloads = true;
-      }
-
-      // Awkward: only drop norms if incoming update is indexed:
-      if (otherFi.indexOptions != IndexOptions.NONE
-          && this.omitNorms != otherFi.omitNorms
-          && this.omitNorms == false) {
-        fieldInfoChanges = true;
-        newOmitNorms = true; // if one require omitNorms at least once, it remains off for life
-      }
-    }
-
-    if (otherFi.docValuesType != DocValuesType.NONE
-        && otherFi.docValuesType != this.docValuesType) {
-      if (this.docValuesType == DocValuesType.NONE) {
-        fieldInfoChanges = true;
-        newDocValues = otherFi.docValuesType;
-        newDvGen = otherFi.dvGen;
-      } else {
-        throw new IllegalArgumentException(
-            "cannot change DocValues type from "
-                + docValuesType
-                + " to "
-                + otherFi.docValuesType
-                + " for field \""
-                + name
-                + "\"");
-      }
-    }
-
-    if (!fieldInfoChanges) {
-      return null;
-    }
-    return new FieldInfo(
-        this.name,
-        this.number,
-        newStoreTermVector,
-        newOmitNorms,
-        newStorePayloads,
-        newIndexOptions,
-        newDocValues,
-        newDvGen,
-        this.attributes, // attributes don't need to be handled here because they are handled for
-        // the non-legacy case in FieldInfos
-        newPointDimensionCount,
-        newPointIndexDimensionCount,
-        newPointNumBytes,
-        this.vectorDimension,
-        this.vectorEncoding,
-        this.vectorSimilarityFunction,
-        this.softDeletesField,
-        this.isParentField);
   }
 
   /**
@@ -726,6 +592,11 @@ public final class FieldInfo {
     return docValuesType;
   }
 
+  /** Returns true if, and only if, this field has a skip index. */
+  public DocValuesSkipIndexType docValuesSkipIndexType() {
+    return docValuesSkipIndex;
+  }
+
   /** Sets the docValues generation of this field. */
   void setDocValuesGen(long dvGen) {
     this.dvGen = dvGen;
@@ -774,7 +645,7 @@ public final class FieldInfo {
   }
 
   /** Returns true if any term vectors exist for this field. */
-  public boolean hasVectors() {
+  public boolean hasTermVectors() {
     return storeTermVector;
   }
 

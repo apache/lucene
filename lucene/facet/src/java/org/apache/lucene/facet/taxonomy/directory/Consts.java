@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.facet.taxonomy.directory;
 
-import org.apache.lucene.util.BytesRef;
-
 /**
  * This class holds constants used by the directory taxonomy implementations.
  *
@@ -26,13 +24,6 @@ import org.apache.lucene.util.BytesRef;
 abstract class Consts {
   /** The name of the field containing the full path of a taxonomy document. */
   static final String FULL = "$full_path$";
-
-  // TODO: Remove following 3 lines in Lucene 10, those are only used when
-  //       parent facet ordinals are stored using term position, and is deprecated
-  //       and migrated to NumericDocValues in Lucene 9
-  static final String FIELD_PAYLOADS = "$payloads$";
-  static final String PAYLOAD_PARENT = "p";
-  static final BytesRef PAYLOAD_PARENT_BYTES_REF = new BytesRef(PAYLOAD_PARENT);
 
   /** The name of the field containing the ordinal of the parent of a taxonomy document. */
   static final String FIELD_PARENT_ORDINAL_NDV = "$parent_ndv$";

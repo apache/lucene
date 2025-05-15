@@ -322,8 +322,8 @@ public class HyphenationTree extends TernaryTree implements PatternConsumer {
         Object o = hw.get(i);
         // j = index(sw) = letterindex(word)?
         // result[k] = corresponding index(w)
-        if (o instanceof String) {
-          j += ((String) o).length();
+        if (o instanceof String s) {
+          j += s.length();
           if (j >= remainCharCount && j < (len - pushCharCount)) {
             result[k++] = j + iIgnoreAtBeginning;
           }

@@ -65,19 +65,19 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
 
-  /** Constructs a format using default graph construction parameters */
+  /** Constructs a format using default graph construction parameters with 7 bit quantization */
   public Lucene99HnswScalarQuantizedVectorsFormat() {
-    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, 7, true, null, null);
+    this(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, 7, false, null, null);
   }
 
   /**
-   * Constructs a format using the given graph construction parameters.
+   * Constructs a format using the given graph construction parameters with 7 bit quantization
    *
    * @param maxConn the maximum number of connections to a node in the HNSW graph
    * @param beamWidth the size of the queue maintained during graph construction.
    */
   public Lucene99HnswScalarQuantizedVectorsFormat(int maxConn, int beamWidth) {
-    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, 7, true, null, null);
+    this(maxConn, beamWidth, DEFAULT_NUM_MERGE_WORKER, 7, false, null, null);
   }
 
   /**
@@ -87,11 +87,11 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
    * @param beamWidth the size of the queue maintained during graph construction.
    * @param numMergeWorkers number of workers (threads) that will be used when doing merge. If
    *     larger than 1, a non-null {@link ExecutorService} must be passed as mergeExec
-   * @param bits the number of bits to use for scalar quantization (must be between 1 and 8,
-   *     inclusive)
-   * @param compress whether to compress the vectors, if true, the vectors that are quantized with
-   *     lte 4 bits will be compressed into a single byte. If false, the vectors will be stored as
-   *     is. This provides a trade-off of memory usage and speed.
+   * @param bits the number of bits to use for scalar quantization (must be 4 or 7)
+   * @param compress whether to compress the quantized vectors by another 50% when bits=4. If
+   *     `true`, pairs of (4 bit quantized) dimensions are packed into a single byte. This must be
+   *     `false` when bits=7. This provides a trade-off of 50% reduction in hot vector memory usage
+   *     during searching, at some decode speed penalty.
    * @param confidenceInterval the confidenceInterval for scalar quantizing the vectors, when `null`
    *     it is calculated based on the vector field dimensions. When `0`, the quantiles are
    *     dynamically determined by sampling many confidence intervals and determining the most

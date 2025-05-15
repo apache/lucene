@@ -26,7 +26,7 @@ configure(rootProject) {
   }
 
   dependencies {
-    javacc "net.java.dev.javacc:javacc:${scriptDepVersions['javacc']}"
+    javacc deps.javacc
   }
 
   task javacc() {
@@ -232,9 +232,14 @@ configure(project(":lucene:queryparser")) {
     description "Regenerate query parsers (javacc syntax definitions)."
     group "generation"
 
-    dependsOn wrapWithPersistentChecksums(javaccParserClassicInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
-        wrapWithPersistentChecksums(javaccParserSurroundInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
-        wrapWithPersistentChecksums(javaccParserFlexibleInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+    def extraConfig = [
+        andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+        mustRunBefore: [ "compileJava" ]
+    ]
+
+    dependsOn wrapWithPersistentChecksums(javaccParserClassicInternal, extraConfig),
+        wrapWithPersistentChecksums(javaccParserSurroundInternal, extraConfig),
+        wrapWithPersistentChecksums(javaccParserFlexibleInternal, extraConfig)
   }
 
   regenerate.dependsOn javacc

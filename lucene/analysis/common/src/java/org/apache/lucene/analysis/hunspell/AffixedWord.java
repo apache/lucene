@@ -67,8 +67,7 @@ public final class AffixedWord {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof AffixedWord)) return false;
-    AffixedWord that = (AffixedWord) o;
+    if (!(o instanceof AffixedWord that)) return false;
     return word.equals(that.word)
         && entry.equals(that.entry)
         && prefixes.equals(that.prefixes)
@@ -112,7 +111,7 @@ public final class AffixedWord {
 
     @Override
     public boolean equals(Object o) {
-      return this == o || o instanceof Affix && affixId == ((Affix) o).affixId;
+      return this == o || o instanceof Affix a && affixId == a.affixId;
     }
 
     @Override

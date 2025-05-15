@@ -20,53 +20,24 @@ import java.io.IOException;
 import java.util.Comparator;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.TopOrdAndIntNumberQueue;
+import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
 
-/**
- * Base class for all taxonomy-based facets that aggregate to a per-ords int[].
- *
- * @deprecated Visibility of this class will be reduced to pkg-private in a future version. This
- *     class is meant to host common code as an internal implementation detail to {@link
- *     FastTaxonomyFacetCounts} and {@link TaxonomyFacetIntAssociations},and is not intended as an
- *     extension point for user-created {@code Facets} implementations. If your code is relying on
- *     this, please migrate necessary functionality down into your own class.
- */
-@Deprecated
-public abstract class IntTaxonomyFacets extends TaxonomyFacets {
+/** Base class for all taxonomy-based facets that aggregate to int. */
+abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   /** Aggregation function used for combining values. */
   protected final AssociationAggregationFunction aggregationFunction;
 
-  /**
-   * Dense ordinal values.
-   *
-   * <p>We are making this and {@link #sparseValues} protected for some expert usage. e.g. It can be
-   * checked which is being used before a loop instead of calling {@link #increment} for each
-   * iteration.
-   */
-  protected int[] values;
+  /** Dense ordinal values. */
+  int[] values;
 
-  /**
-   * Sparse ordinal values.
-   *
-   * @see #values for why protected.
-   */
-  protected IntIntHashMap sparseValues;
+  /** Sparse ordinal values. */
+  IntIntHashMap sparseValues;
 
-  /**
-   * Constructor that defaults the aggregation function to {@link
-   * AssociationAggregationFunction#SUM}.
-   */
-  protected IntTaxonomyFacets(
-      String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
-      throws IOException {
-    this(indexFieldName, taxoReader, config, AssociationAggregationFunction.SUM, fc);
-  }
-
-  /** Constructor that uses the provided aggregation function. */
-  protected IntTaxonomyFacets(
+  /** Sole constructor. */
+  IntTaxonomyFacets(
       String indexFieldName,
       TaxonomyReader taxoReader,
       FacetsConfig config,
@@ -90,20 +61,6 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
       sparseValues = new IntIntHashMap();
     } else {
       values = new int[taxoReader.getSize()];
-    }
-  }
-
-  /** Increment the count for this ordinal by 1. */
-  protected void increment(int ordinal) {
-    increment(ordinal, 1);
-  }
-
-  /** Increment the count for this ordinal by {@code amount}.. */
-  protected void increment(int ordinal, int amount) {
-    if (sparseValues != null) {
-      sparseValues.addTo(ordinal, amount);
-    } else {
-      values[ordinal] += amount;
     }
   }
 
@@ -157,14 +114,12 @@ public abstract class IntTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
-    ((TopOrdAndIntNumberQueue.OrdAndInt) incomingOrdAndValue).value = getValue(ord);
+    ((TopOrdAndIntQueue.OrdAndInt) incomingOrdAndValue).value = getValue(ord);
   }
 
-  /** An accumulator for an integer aggregated value. */
   protected class IntAggregatedValue extends AggregatedValue {
     private int value;
 
-    /** Sole constructor. */
     public IntAggregatedValue(int value) {
       this.value = value;
     }

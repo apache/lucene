@@ -57,12 +57,8 @@ public class TestOrdinalData extends FacetTestCase {
           "Bob", 42L,
           "Lisa", 35L);
 
-  private static class OrdinalDataAppender implements BiConsumer<FacetLabel, Document> {
-    private final Map<String, Long> scores;
-
-    private OrdinalDataAppender(Map<String, Long> scores) {
-      this.scores = scores;
-    }
+  private record OrdinalDataAppender(Map<String, Long> scores)
+      implements BiConsumer<FacetLabel, Document> {
 
     @Override
     public void accept(FacetLabel facetLabel, Document doc) {
@@ -157,7 +153,7 @@ public class TestOrdinalData extends FacetTestCase {
       Query q = queryAndCount.getKey();
       int count = queryAndCount.getValue();
       TopDocs td = searcher.search(q, Integer.MAX_VALUE);
-      assertEquals(count, td.totalHits.value);
+      assertEquals(count, td.totalHits.value());
     }
   }
 

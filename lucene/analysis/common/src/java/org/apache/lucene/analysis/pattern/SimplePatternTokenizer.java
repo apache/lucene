@@ -98,7 +98,7 @@ public final class SimplePatternTokenizer extends Tokenizer {
       throw new IllegalArgumentException("please determinize the incoming automaton first");
     }
 
-    runDFA = new CharacterRunAutomaton(dfa, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    runDFA = new CharacterRunAutomaton(dfa);
   }
 
   @Override

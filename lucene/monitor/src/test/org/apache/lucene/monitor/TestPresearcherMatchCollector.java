@@ -17,11 +17,12 @@
 
 package org.apache.lucene.monitor;
 
-import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.Matchers.containsString;
 
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.hamcrest.MatcherAssert;
 
 public class TestPresearcherMatchCollector extends MonitorTestBase {
 
@@ -46,8 +47,8 @@ public class TestPresearcherMatchCollector extends MonitorTestBase {
 
       assertNotNull(matches.match("2", 0));
       String pm = matches.match("2", 0).presearcherMatches;
-      assertThat(pm, containsString("field:(foo test)"));
-      assertThat(pm, containsString("f2:(quuz)"));
+      MatcherAssert.assertThat(pm, containsString("field:(foo test)"));
+      MatcherAssert.assertThat(pm, containsString("f2:(quuz)"));
 
       assertNotNull(matches.match("3", 0));
       assertEquals(" field:(foo test)", matches.match("3", 0).presearcherMatches);

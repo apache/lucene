@@ -270,9 +270,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
 
     @Override
     public long nextValue() {
-      if (valueUpto == valueCount) {
-        throw new IllegalStateException();
-      }
       valueUpto++;
       return valuesIter.next();
     }
@@ -289,7 +286,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     private int docID = -1;
     private long upto;
     private int numValues = -1;
-    private long limit;
 
     SortingSortedNumericDocValues(SortedNumericDocValues in, LongValues values) {
       this.in = in;
@@ -311,7 +307,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       } while (values.offsets[docID] <= 0);
       upto = values.offsets[docID];
       numValues = Math.toIntExact(values.values.get(upto - 1));
-      limit = upto + numValues;
       return docID;
     }
 
@@ -326,21 +321,14 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       upto = values.offsets[docID];
       if (values.offsets[docID] > 0) {
         numValues = Math.toIntExact(values.values.get(upto - 1));
-        limit = upto + numValues;
         return true;
-      } else {
-        limit = upto;
       }
       return false;
     }
 
     @Override
     public long nextValue() {
-      if (upto == limit) {
-        throw new AssertionError();
-      } else {
-        return values.values.get(upto++);
-      }
+      return values.values.get(upto++);
     }
 
     @Override

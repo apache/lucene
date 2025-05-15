@@ -767,7 +767,7 @@ public class TestMultiRangeQueries extends LuceneTestCase {
 
   private void addRandomDocs(RandomIndexWriter w) throws IOException {
     Random random = random();
-    for (int i = 0, end = TestUtil.nextInt(random, 100, 500); i < end; i++) {
+    for (int i = 0, end = random.nextInt(100, 500); i < end; i++) {
       int numPoints = RandomNumbers.randomIntBetween(random(), 1, 200);
       long value = RandomNumbers.randomLongBetween(random(), 0, 2000);
       for (int j = 0; j < numPoints; j++) {

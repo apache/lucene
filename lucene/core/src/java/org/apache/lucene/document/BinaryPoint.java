@@ -17,7 +17,6 @@
 package org.apache.lucene.document;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.MatchNoDocsQuery;
@@ -238,14 +237,7 @@ public final class BinaryPoint extends Field {
 
     // Don't unexpectedly change the user's incoming values array:
     byte[][] sortedValues = values.clone();
-    Arrays.sort(
-        sortedValues,
-        new Comparator<byte[]>() {
-          @Override
-          public int compare(byte[] a, byte[] b) {
-            return Arrays.compareUnsigned(a, 0, a.length, b, 0, b.length);
-          }
-        });
+    Arrays.sort(sortedValues, (a, b) -> Arrays.compareUnsigned(a, 0, a.length, b, 0, b.length));
 
     final BytesRef encoded = new BytesRef(new byte[bytesPerDim]);
 

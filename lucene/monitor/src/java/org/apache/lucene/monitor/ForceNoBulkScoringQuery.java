@@ -26,7 +26,7 @@ import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
 /** Query wrapper that forces its wrapped Query to use the default doc-by-doc BulkScorer. */
@@ -86,8 +86,8 @@ class ForceNoBulkScoringQuery extends Query {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext leafReaderContext) throws IOException {
-        return innerWeight.scorer(leafReaderContext);
+      public ScorerSupplier scorerSupplier(LeafReaderContext leafReaderContext) throws IOException {
+        return innerWeight.scorerSupplier(leafReaderContext);
       }
 
       @Override

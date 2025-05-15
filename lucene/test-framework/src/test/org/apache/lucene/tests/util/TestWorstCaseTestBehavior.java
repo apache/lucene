@@ -18,6 +18,7 @@ package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.annotations.Timeout;
+import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Ignore;
 
 public class TestWorstCaseTestBehavior extends LuceneTestCase {
@@ -25,6 +26,7 @@ public class TestWorstCaseTestBehavior extends LuceneTestCase {
   public void testThreadLeak() {
     Thread t =
         new Thread() {
+          @SuppressForbidden(reason = "Thread sleep")
           @Override
           public void run() {
             try {
@@ -83,12 +85,14 @@ public class TestWorstCaseTestBehavior extends LuceneTestCase {
 
   @Ignore
   @Timeout(millis = 500)
+  @SuppressForbidden(reason = "Thread sleep")
   public void testTimeout() throws Exception {
     Thread.sleep(5000);
   }
 
   @Ignore
   @Timeout(millis = 1000)
+  @SuppressForbidden(reason = "Thread sleep")
   public void testZombie() throws Exception {
     while (true) {
       try {

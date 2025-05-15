@@ -29,9 +29,11 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 
 public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVectorQueryTestCase {
@@ -108,6 +110,20 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
             searcher, query, new float[] {score0, score1}, new String[] {"1", "2"}, 2);
       }
     }
+  }
+
+  public void testToString() {
+    // test without filter
+    Query query = getParentJoinKnnQuery("field", new float[] {0, 1}, null, 10, null);
+    assertEquals(
+        "DiversifyingChildrenFloatKnnVectorQuery:field[0.0,...][10]", query.toString("ignored"));
+
+    // test with filter
+    Query filter = new TermQuery(new Term("id", "text"));
+    query = getParentJoinKnnQuery("field", new float[] {0.0f, 1.0f}, filter, 10, null);
+    assertEquals(
+        "DiversifyingChildrenFloatKnnVectorQuery:field[0.0,...][10][id:text]",
+        query.toString("ignored"));
   }
 
   @Override

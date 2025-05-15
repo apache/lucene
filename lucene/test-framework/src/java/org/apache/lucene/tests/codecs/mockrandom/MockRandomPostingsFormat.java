@@ -35,10 +35,10 @@ import org.apache.lucene.codecs.blockterms.VariableGapTermsIndexReader;
 import org.apache.lucene.codecs.blockterms.VariableGapTermsIndexWriter;
 import org.apache.lucene.codecs.blocktreeords.OrdsBlockTreeTermsReader;
 import org.apache.lucene.codecs.blocktreeords.OrdsBlockTreeTermsWriter;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsReader;
+import org.apache.lucene.codecs.lucene101.Lucene101PostingsWriter;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsReader;
 import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsWriter;
 import org.apache.lucene.codecs.memory.FSTTermsReader;
 import org.apache.lucene.codecs.memory.FSTTermsWriter;
 import org.apache.lucene.index.FieldInfo;
@@ -121,7 +121,7 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
 
     random.nextInt(); // consume a random for buffersize
 
-    PostingsWriterBase postingsWriter = new Lucene99PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene101PostingsWriter(state);
 
     final FieldsConsumer fields;
     final int t1 = random.nextInt(4);
@@ -266,7 +266,7 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
 
     final String seedFileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, SEED_EXT);
-    final ChecksumIndexInput in = state.directory.openChecksumInput(seedFileName, state.context);
+    final ChecksumIndexInput in = state.directory.openChecksumInput(seedFileName);
     CodecUtil.checkIndexHeader(
         in, "MockRandomSeed", 0, 0, state.segmentInfo.getId(), state.segmentSuffix);
     final long seed = in.readLong();
@@ -289,7 +289,7 @@ public final class MockRandomPostingsFormat extends PostingsFormat {
       System.out.println("MockRandomCodec: readBufferSize=" + readBufferSize);
     }
 
-    PostingsReaderBase postingsReader = new Lucene99PostingsReader(state);
+    PostingsReaderBase postingsReader = new Lucene101PostingsReader(state);
 
     final FieldsProducer fields;
     final int t1 = random.nextInt(4);

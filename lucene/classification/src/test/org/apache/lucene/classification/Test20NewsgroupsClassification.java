@@ -64,6 +64,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NamedThreadFactory;
+import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Test;
 
 @LuceneTestCase.SuppressSysoutChecks(bugUrl = "none")
@@ -79,6 +80,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
   private static boolean index = true;
   private static boolean split = true;
 
+  @SuppressForbidden(reason = "Thread sleep")
   @Test
   public void test20Newsgroups() throws Exception {
 

@@ -43,7 +43,10 @@ configure(project(":lucene:test-framework")) {
       }
     }
   }
-  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiTokenizationTestInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  regenerate.dependsOn wrapWithPersistentChecksums(generateEmojiTokenizationTestInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
 
   task generateJavaUnicodeWordBreakTestInternal() {
     def unicodeVersion = "12.1"
@@ -71,6 +74,8 @@ configure(project(":lucene:test-framework")) {
     }
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateJavaUnicodeWordBreakTestInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
-
+  regenerate.dependsOn wrapWithPersistentChecksums(generateJavaUnicodeWordBreakTestInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
 }

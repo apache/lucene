@@ -59,9 +59,9 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * <p>This stemmer implements the following algorithm: <i>Indexing and Searching Strategies for the
  * Russian Language.</i> Ljiljana Dolamic and Jacques Savoy.
  */
-public class RussianLightStemmer {
+class RussianLightStemmer {
 
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     len = removeCase(s, len);
     return normalize(s, len);
   }

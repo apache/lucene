@@ -197,7 +197,7 @@ public class TestLongDistanceFeatureQuery extends LuceneTestCase {
 
     Query q = LongField.newDistanceFeatureQuery("foo", 3, 10, 5);
     TopDocs topHits = searcher.search(q, 2);
-    assertEquals(0, topHits.totalHits.value);
+    assertEquals(0, topHits.totalHits.value());
   }
 
   public void testMissingValue() throws IOException {

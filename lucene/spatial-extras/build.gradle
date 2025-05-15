@@ -27,18 +27,18 @@ dependencies {
   moduleApi project(':lucene:core')
   moduleApi project(':lucene:spatial3d')
 
-  moduleApi 'org.locationtech.spatial4j:spatial4j'
-  moduleApi 'io.sgr:s2-geometry-library-java'
+  moduleApi deps.spatial4j
+  moduleApi deps.s2.geometry
 
   moduleTestImplementation project(':lucene:test-framework')
   moduleTestImplementation project(':lucene:spatial-test-fixtures')
-  moduleTestImplementation 'org.locationtech.jts:jts-core'
+  moduleTestImplementation deps.jts
 
   // We add patched modules to this configuration because otherwise IDEs would not see the
   // dependency at all, even in classpath mode (they don't see --patch-module commands we
   // add to the compiler and test tasks).
-  moduleTestPatchOnly 'org.locationtech.spatial4j:spatial4j::tests'
-  spatial4jTestPatch 'org.locationtech.spatial4j:spatial4j::tests'
+  moduleTestPatchOnly(variantOf(deps.spatial4j) { classifier("tests") })
+  spatial4jTestPatch(variantOf(deps.spatial4j) { classifier("tests") })
 }
 
 sourceSets.test.extensions.configure("modularPaths", {

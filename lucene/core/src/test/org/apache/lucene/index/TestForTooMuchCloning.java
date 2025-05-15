@@ -75,12 +75,17 @@ public class TestForTooMuchCloning extends LuceneTestCase {
     final TopDocs hits =
         s.search(
             new TermRangeQuery("field", new BytesRef(), new BytesRef("\uFFFF"), true, true), 10);
-    assertTrue(hits.totalHits.value > 0);
+    assertTrue(hits.totalHits.value() > 0);
     final int queryCloneCount = dir.getInputCloneCount() - cloneCount;
     // System.out.println("query clone count=" + queryCloneCount);
+    // It is rather difficult to reliably predict how many query clone calls will be performed. One
+    // important factor is the number of segment partitions being searched, but it depends as well
+    // on the terms being indexed, and the distribution of the matches across the documents, which
+    // affects how the query gets rewritten and the subsequent number of clone calls it will
+    // perform.
     assertTrue(
         "too many calls to IndexInput.clone during TermRangeQuery: " + queryCloneCount,
-        queryCloneCount < 50);
+        queryCloneCount <= Math.max(s.getLeafContexts().size(), s.getSlices().length) * 5);
     r.close();
     dir.close();
   }

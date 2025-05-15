@@ -1142,7 +1142,12 @@ public class Dictionary {
       builder.add(entry, wordForm, morphDataID);
     }
 
-    return builder.build();
+    return new WordStorage(builder) {
+      @Override
+      char caseFold(char c) {
+        return Dictionary.this.caseFold(c);
+      }
+    };
   }
 
   /**

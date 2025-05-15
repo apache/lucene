@@ -29,16 +29,16 @@ configurations {
 dependencies {
   binaryDistribution project(path: ":lucene:distribution", configuration: "binaryDirForTests")
 
-  moduleTestImplementation "com.carrotsearch:procfork"
-  moduleTestImplementation("com.carrotsearch.randomizedtesting:randomizedtesting-runner", {
+  moduleTestImplementation deps.procfork
+  moduleTestImplementation(deps.randomizedtesting.runner, {
     exclude group: "junit"
   })
 
-  moduleTestImplementation("junit:junit", {
+  moduleTestImplementation(deps.junit, {
     exclude group: "org.hamcrest"
   })
-  moduleTestImplementation "org.hamcrest:hamcrest"
-  moduleTestImplementation "org.assertj:assertj-core"
+  moduleTestImplementation deps.hamcrest
+  moduleTestImplementation deps.assertj
 }
 
 test {

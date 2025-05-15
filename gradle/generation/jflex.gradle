@@ -25,7 +25,7 @@ configure(rootProject) {
   }
 
   dependencies {
-    jflex "de.jflex:jflex:${scriptDepVersions['jflex']}"
+    jflex deps.jflex
   }
 }
 
@@ -51,7 +51,10 @@ configure(project(":lucene:core")) {
     }
   }
 
-  def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  def generateStandardTokenizer = wrapWithPersistentChecksums(generateStandardTokenizerInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
 
   regenerate.dependsOn generateStandardTokenizer
 }
@@ -149,7 +152,11 @@ configure(project(":lucene:analysis:common")) {
     }
   }
 
-  def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  def generateUAX29URLEmailTokenizer = wrapWithPersistentChecksums(generateUAX29URLEmailTokenizerInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
+
   // UAX29URLEmailTokenizerImpl.jflex includes: ASCIITLD.jflex
   // so we make sure it is up to date. Also, make sure the ordering of internal
   // tasks is enforced (just scheduling top-level wrappers doesn't mean their subtask graphs cannot be reordered).
@@ -197,7 +204,12 @@ configure(project(":lucene:analysis:common")) {
     skeleton = skeletonDefault
   }
 
-  def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+  def extraConfig = [
+      andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+      mustRunBefore: [ "compileJava" ]
+  ]
+
+  def generateHTMLStripCharFilter = wrapWithPersistentChecksums(generateHTMLStripCharFilterInternal, extraConfig)
   // HTMLStripCharFilter.jflex includes HTMLCharacterEntities.jflex so we make sure it's up to date.
   configure(generateHTMLStripCharFilter) {
     dependsOn "generateHTMLCharacterEntities"
@@ -206,12 +218,12 @@ configure(project(":lucene:analysis:common")) {
     dependsOn "generateHTMLCharacterEntitiesInternal"
   }
 
-  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
-      wrapWithPersistentChecksums(generateClassicTokenizerInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ]),
+  regenerate.dependsOn wrapWithPersistentChecksums(generateWikipediaTokenizerInternal, extraConfig),
+      wrapWithPersistentChecksums(generateClassicTokenizerInternal, extraConfig),
       generateUAX29URLEmailTokenizer,
-      wrapWithPersistentChecksums(generateHTMLCharacterEntitiesInternal),
+      wrapWithPersistentChecksums(generateHTMLCharacterEntitiesInternal, extraConfig),
       generateHTMLStripCharFilter,
-      wrapWithPersistentChecksums(generateTldsInternal, [ andThenTasks: ["spotlessJava", "spotlessJavaApply"] ])
+      wrapWithPersistentChecksums(generateTldsInternal, extraConfig)
 }
 
 class JFlexTask extends DefaultTask {

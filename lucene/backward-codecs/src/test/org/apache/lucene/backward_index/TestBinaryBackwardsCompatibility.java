@@ -62,7 +62,6 @@ public class TestBinaryBackwardsCompatibility extends BackwardsCompatibilityTest
 
   @Nightly
   public void testReadNMinusTwoCommit() throws IOException {
-
     try (BaseDirectoryWrapper dir = newDirectory(directory)) {
       IndexCommit commit = DirectoryReader.listCommits(dir).get(0);
       StandardDirectoryReader.open(commit, MIN_BINARY_SUPPORTED_MAJOR, null).close();

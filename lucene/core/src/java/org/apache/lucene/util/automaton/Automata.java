@@ -580,7 +580,7 @@ public final class Automata {
     if (utf8Strings.iterator().hasNext() == false) {
       return makeEmpty();
     } else {
-      return DaciukMihovAutomatonBuilder.build(utf8Strings, false);
+      return StringsToAutomaton.build(utf8Strings, false);
     }
   }
 
@@ -597,7 +597,7 @@ public final class Automata {
     if (utf8Strings.iterator().hasNext() == false) {
       return makeEmpty();
     } else {
-      return DaciukMihovAutomatonBuilder.build(utf8Strings, true);
+      return StringsToAutomaton.build(utf8Strings, true);
     }
   }
 
@@ -610,7 +610,7 @@ public final class Automata {
    *     based (full unicode codepoints on transitions).
    */
   public static Automaton makeStringUnion(BytesRefIterator utf8Strings) throws IOException {
-    return DaciukMihovAutomatonBuilder.build(utf8Strings, false);
+    return StringsToAutomaton.build(utf8Strings, false);
   }
 
   /**
@@ -623,6 +623,6 @@ public final class Automata {
    *     based (UTF-8 encoded byte transition labels).
    */
   public static Automaton makeBinaryStringUnion(BytesRefIterator utf8Strings) throws IOException {
-    return DaciukMihovAutomatonBuilder.build(utf8Strings, true);
+    return StringsToAutomaton.build(utf8Strings, true);
   }
 }

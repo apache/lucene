@@ -46,6 +46,7 @@ import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * Data maintained by a performance test run.
@@ -204,7 +205,7 @@ public class PerfRunData implements Closeable {
     resetInputs();
 
     // release unused stuff
-    System.runFinalization();
+    runFinalization();
     System.gc();
 
     // Re-init clock
@@ -481,5 +482,11 @@ public class PerfRunData implements Closeable {
 
   public Map<String, AnalyzerFactory> getAnalyzerFactories() {
     return analyzerFactories;
+  }
+
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "requires to run finalization")
+  private static void runFinalization() {
+    System.runFinalization();
   }
 }

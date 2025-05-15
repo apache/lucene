@@ -46,12 +46,12 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     SegmentInfo si = newSegmentInfo(dir, segment);
     byte[] segId = si.getId();
     List<String> orderedFiles = new ArrayList<>();
-    int randomFileSize = random().nextInt(chunk);
+    int randomFileSize = random().nextInt(0, chunk);
     for (int i = 0; i < 10; i++) {
       String filename = segment + "." + i;
       createRandomFile(dir, filename, randomFileSize, segId);
       // increase the next files size by a random amount
-      randomFileSize += random().nextInt(100) + 1;
+      randomFileSize += random().nextInt(1, 100);
       orderedFiles.add(filename);
     }
     List<String> shuffledFiles = new ArrayList<>(orderedFiles);
@@ -62,8 +62,7 @@ public class TestLucene90CompoundFormat extends BaseCompoundFormatTestCase {
     // entries file should contain files ordered by their size
     String entriesFileName =
         IndexFileNames.segmentFileName(si.name, "", Lucene90CompoundFormat.ENTRIES_EXTENSION);
-    try (ChecksumIndexInput entriesStream =
-        dir.openChecksumInput(entriesFileName, IOContext.READ)) {
+    try (ChecksumIndexInput entriesStream = dir.openChecksumInput(entriesFileName)) {
       Throwable priorE = null;
       try {
         CodecUtil.checkIndexHeader(

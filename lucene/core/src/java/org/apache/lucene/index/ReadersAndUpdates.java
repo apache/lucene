@@ -192,7 +192,7 @@ final class ReadersAndUpdates {
 
   public synchronized boolean delete(int docID) throws IOException {
     if (reader == null && pendingDeletes.mustInitOnDelete()) {
-      getReader(IOContext.READ).decRef(); // pass a reader to initialize the pending deletes
+      getReader(IOContext.DEFAULT).decRef(); // pass a reader to initialize the pending deletes
     }
     return pendingDeletes.delete(docID);
   }
@@ -241,7 +241,7 @@ final class ReadersAndUpdates {
   private synchronized CodecReader getLatestReader() throws IOException {
     if (this.reader == null) {
       // get a reader and dec the ref right away we just make sure we have a reader
-      getReader(IOContext.READ).decRef();
+      getReader(IOContext.DEFAULT).decRef();
     }
     if (pendingDeletes.needsRefresh(reader)) {
       // we have a reader but its live-docs are out of sync. let's create a temporary one that we
@@ -708,11 +708,12 @@ final class ReadersAndUpdates {
     return new FieldInfo(
         fi.name,
         fieldNumber,
-        fi.hasVectors(),
+        fi.hasTermVectors(),
         fi.omitsNorms(),
         fi.hasPayloads(),
         fi.getIndexOptions(),
         fi.getDocValuesType(),
+        fi.docValuesSkipIndexType(),
         fi.getDocValuesGen(),
         new HashMap<>(fi.attributes()),
         fi.getPointDimensionCount(),

@@ -53,8 +53,7 @@ final class PendingSoftDeletes extends PendingDeletes {
     FixedBitSet mutableBits = getMutableBits();
     // hardDeletes
     if (hardDeletes.delete(docID)) {
-      if (mutableBits.get(docID)) { // delete it here too!
-        mutableBits.clear(docID);
+      if (mutableBits.getAndClear(docID)) { // delete it here too!
         assert hardDeletes.delete(docID) == false;
       } else {
         // if it was deleted subtract the delCount
@@ -77,15 +76,14 @@ final class PendingSoftDeletes extends PendingDeletes {
     hardDeletes.onNewReader(reader, info);
     // only re-calculate this if we haven't seen this generation
     if (dvGeneration < info.getDocValuesGen()) {
-      final DocIdSetIterator iterator =
-          FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
-      int newDelCount;
-      if (iterator
-          != null) { // nothing is deleted we don't have a soft deletes field in this segment
-        assert info.info.maxDoc() > 0 : "maxDoc is 0";
+      final int newDelCount;
+      var iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
+      if (iterator != null && iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+        iterator = FieldExistsQuery.getDocValuesDocIdSetIterator(field, reader);
         newDelCount = applySoftDeletes(iterator, getMutableBits());
         assert newDelCount >= 0 : " illegal pending delete count: " + newDelCount;
       } else {
+        // nothing is deleted we don't have a soft deletes field in this segment
         newDelCount = 0;
       }
       assert info.getSoftDelCount() == newDelCount
@@ -135,16 +133,14 @@ final class PendingSoftDeletes extends PendingDeletes {
             : null;
     while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       if (hasValue == null || hasValue.hasValue()) {
-        if (bits.get(docID)) { // doc is live - clear it
-          bits.clear(docID);
+        if (bits.getAndClear(docID)) { // doc is live - clear it
           newDeletes++;
           // now that we know we deleted it and we fully control the hard deletes we can do correct
           // accounting
           // below.
         }
       } else {
-        if (bits.get(docID) == false) {
-          bits.set(docID);
+        if (bits.getAndSet(docID) == false) {
           newDeletes--;
         }
       }
@@ -230,12 +226,7 @@ final class PendingSoftDeletes extends PendingDeletes {
       // updates always outside of CFS
       Closeable toClose;
       if (segInfo.getUseCompoundFile()) {
-        toClose =
-            dir =
-                segInfo
-                    .getCodec()
-                    .compoundFormat()
-                    .getCompoundReader(segInfo.dir, segInfo, IOContext.READONCE);
+        toClose = dir = segInfo.getCodec().compoundFormat().getCompoundReader(segInfo.dir, segInfo);
       } else {
         toClose = null;
         dir = segInfo.dir;

@@ -36,6 +36,7 @@ import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
@@ -52,7 +53,6 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
 
@@ -173,12 +173,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     // write vector values
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     switch (fieldData.fieldInfo.getVectorEncoding()) {
-      case BYTE:
-        writeByteVectors(fieldData);
-        break;
-      default:
-      case FLOAT32:
-        writeFloat32Vectors(fieldData);
+      case BYTE -> writeByteVectors(fieldData);
+      case FLOAT32 -> writeFloat32Vectors(fieldData);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
@@ -220,9 +216,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     final int[] docIdOffsets = new int[sortMap.size()];
     int offset = 1; // 0 means no vector for this (field, document)
     DocIdSetIterator iterator = fieldData.docsWithField.iterator();
-    for (int docID = iterator.nextDoc();
-        docID != DocIdSetIterator.NO_MORE_DOCS;
-        docID = iterator.nextDoc()) {
+    for (int docID = iterator.nextDoc(); docID != NO_MORE_DOCS; docID = iterator.nextDoc()) {
       int newDocID = sortMap.oldToNew(docID);
       docIdOffsets[newDocID] = offset++;
     }
@@ -242,17 +236,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     }
 
     // write vector values
-    long vectorDataOffset;
-    switch (fieldData.fieldInfo.getVectorEncoding()) {
-      case BYTE:
-        vectorDataOffset = writeSortedByteVectors(fieldData, ordMap);
-        break;
-      default:
-      case FLOAT32:
-        vectorDataOffset = writeSortedFloat32Vectors(fieldData, ordMap);
-        break;
-    }
-    ;
+    long vectorDataOffset =
+        switch (fieldData.fieldInfo.getVectorEncoding()) {
+          case BYTE -> writeSortedByteVectors(fieldData, ordMap);
+          case FLOAT32 -> writeSortedFloat32Vectors(fieldData, ordMap);
+        };
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     // write graph
@@ -315,9 +303,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     for (int level = 1; level < graph.numLevels(); level++) {
       NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
       int[] newNodes = new int[nodesOnLevel.size()];
-      int n = 0;
-      while (nodesOnLevel.hasNext()) {
-        newNodes[n++] = oldToNewMap[nodesOnLevel.nextInt()];
+      for (int n = 0; nodesOnLevel.hasNext(); n++) {
+        newNodes[n] = oldToNewMap[nodesOnLevel.nextInt()];
       }
       Arrays.sort(newNodes);
       nodesByLevel.add(newNodes);
@@ -397,22 +384,17 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     boolean success = false;
     try {
       // write the vector data to a temporary file
-      final DocsWithFieldSet docsWithField;
-      switch (fieldInfo.getVectorEncoding()) {
-        case BYTE:
-          docsWithField =
-              writeByteVectorData(
-                  tempVectorData, MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
-          break;
-        case FLOAT32:
-          docsWithField =
-              writeVectorData(
-                  tempVectorData, MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "unknown vector encoding=" + fieldInfo.getVectorEncoding());
-      }
+      DocsWithFieldSet docsWithField =
+          switch (fieldInfo.getVectorEncoding()) {
+            case BYTE ->
+                writeByteVectorData(
+                    tempVectorData,
+                    MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState));
+            case FLOAT32 ->
+                writeVectorData(
+                    tempVectorData,
+                    MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState));
+          };
       CodecUtil.writeFooter(tempVectorData);
       IOUtils.close(tempVectorData);
 
@@ -433,45 +415,42 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
       if (docsWithField.cardinality() != 0) {
         // build graph
-        switch (fieldInfo.getVectorEncoding()) {
-          case BYTE:
-            OffHeapByteVectorValues.DenseOffHeapVectorValues bytesValues =
-                new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-                    fieldInfo.getVectorDimension(),
-                    docsWithField.cardinality(),
-                    vectorDataInput,
-                    fieldInfo.getVectorSimilarityFunction(),
-                    byteSize);
-            RandomVectorScorerSupplier scorerBytesSupplier =
-                defaultFlatVectorScorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(), bytesValues);
-            HnswGraphBuilder bytesGraphBuilder =
-                HnswGraphBuilder.create(
-                    scorerBytesSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
-            bytesGraphBuilder.setInfoStream(segmentWriteState.infoStream);
-            graph = bytesGraphBuilder.build(bytesValues.size());
-            break;
-
-          case FLOAT32:
-            OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
-                new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-                    fieldInfo.getVectorDimension(),
-                    docsWithField.cardinality(),
-                    vectorDataInput,
-                    fieldInfo.getVectorSimilarityFunction(),
-                    byteSize);
-            RandomVectorScorerSupplier scorerSupplier =
-                defaultFlatVectorScorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(), vectorValues);
-            HnswGraphBuilder hnswGraphBuilder =
-                HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
-            graph = hnswGraphBuilder.build(vectorValues.size());
-            break;
-
-          default:
-            throw new IllegalArgumentException(
-                "unknown vector encoding=" + fieldInfo.getVectorEncoding());
-        }
+        graph =
+            switch (fieldInfo.getVectorEncoding()) {
+              case BYTE -> {
+                OffHeapByteVectorValues.DenseOffHeapVectorValues vectorValues =
+                    new OffHeapByteVectorValues.DenseOffHeapVectorValues(
+                        fieldInfo.getVectorDimension(),
+                        docsWithField.cardinality(),
+                        vectorDataInput,
+                        fieldInfo.getVectorSimilarityFunction(),
+                        byteSize);
+                RandomVectorScorerSupplier scorerSupplier =
+                    defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                        fieldInfo.getVectorSimilarityFunction(), vectorValues);
+                HnswGraphBuilder hnswGraphBuilder =
+                    HnswGraphBuilder.create(
+                        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+                hnswGraphBuilder.setInfoStream(segmentWriteState.infoStream);
+                yield hnswGraphBuilder.build(vectorValues.size());
+              }
+              case FLOAT32 -> {
+                OffHeapFloatVectorValues.DenseOffHeapVectorValues vectorValues =
+                    new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
+                        fieldInfo.getVectorDimension(),
+                        docsWithField.cardinality(),
+                        vectorDataInput,
+                        fieldInfo.getVectorSimilarityFunction(),
+                        byteSize);
+                RandomVectorScorerSupplier scorerSupplier =
+                    defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                        fieldInfo.getVectorSimilarityFunction(), vectorValues);
+                HnswGraphBuilder hnswGraphBuilder =
+                    HnswGraphBuilder.create(
+                        scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
+                yield hnswGraphBuilder.build(vectorValues.size());
+              }
+            };
         writeGraph(graph);
       }
       long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
@@ -503,9 +482,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
       int maxConnOnLevel = level == 0 ? (M * 2) : M;
-      NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
-      while (nodesOnLevel.hasNext()) {
-        int node = nodesOnLevel.nextInt();
+      int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
+      for (int node : sortedNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, node);
         int size = neighbors.size();
         vectorIndex.writeInt(size);
@@ -576,9 +554,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       final DirectMonotonicWriter ordToDocWriter =
           DirectMonotonicWriter.getInstance(meta, vectorData, count, DIRECT_MONOTONIC_BLOCK_SHIFT);
       DocIdSetIterator iterator = docsWithField.iterator();
-      for (int doc = iterator.nextDoc();
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = iterator.nextDoc()) {
+      for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
         ordToDocWriter.add(doc);
       }
       ordToDocWriter.finish();
@@ -592,11 +568,10 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     } else {
       meta.writeInt(graph.numLevels());
       for (int level = 0; level < graph.numLevels(); level++) {
-        NodesIterator nodesOnLevel = graph.getNodesOnLevel(level);
-        meta.writeInt(nodesOnLevel.size()); // number of nodes on a level
+        int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
+        meta.writeInt(sortedNodes.length); // number of nodes on a level
         if (level > 0) {
-          while (nodesOnLevel.hasNext()) {
-            int node = nodesOnLevel.nextInt();
+          for (int node : sortedNodes) {
             meta.writeInt(node); // list of nodes on a level
           }
         }
@@ -611,11 +586,10 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   private static DocsWithFieldSet writeByteVectorData(
       IndexOutput output, ByteVectorValues byteVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    for (int docV = byteVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = byteVectorValues.nextDoc()) {
+    KnnVectorValues.DocIndexIterator iter = byteVectorValues.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      byte[] binaryValue = byteVectorValues.vectorValue();
+      byte[] binaryValue = byteVectorValues.vectorValue(iter.index());
       assert binaryValue.length == byteVectorValues.dimension() * VectorEncoding.BYTE.byteSize;
       output.writeBytes(binaryValue, binaryValue.length);
       docsWithField.add(docV);
@@ -629,14 +603,13 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   private static DocsWithFieldSet writeVectorData(
       IndexOutput output, FloatVectorValues floatVectorValues) throws IOException {
     DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
     ByteBuffer binaryVector =
         ByteBuffer.allocate(floatVectorValues.dimension() * VectorEncoding.FLOAT32.byteSize)
             .order(ByteOrder.LITTLE_ENDIAN);
-    for (int docV = floatVectorValues.nextDoc();
-        docV != NO_MORE_DOCS;
-        docV = floatVectorValues.nextDoc()) {
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] vectorValue = floatVectorValues.vectorValue();
+      float[] vectorValue = floatVectorValues.vectorValue(iter.index());
       binaryVector.asFloatBuffer().put(vectorValue);
       output.writeBytes(binaryVector.array(), binaryVector.limit());
       docsWithField.add(docV);
@@ -662,23 +635,22 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     static FieldWriter<?> create(FieldInfo fieldInfo, int M, int beamWidth, InfoStream infoStream)
         throws IOException {
       int dim = fieldInfo.getVectorDimension();
-      switch (fieldInfo.getVectorEncoding()) {
-        case BYTE:
-          return new FieldWriter<byte[]>(fieldInfo, M, beamWidth, infoStream) {
-            @Override
-            public byte[] copyValue(byte[] value) {
-              return ArrayUtil.copyOfSubArray(value, 0, dim);
-            }
-          };
-        default:
-        case FLOAT32:
-          return new FieldWriter<float[]>(fieldInfo, M, beamWidth, infoStream) {
-            @Override
-            public float[] copyValue(float[] value) {
-              return ArrayUtil.copyOfSubArray(value, 0, dim);
-            }
-          };
-      }
+      return switch (fieldInfo.getVectorEncoding()) {
+        case BYTE ->
+            new FieldWriter<byte[]>(fieldInfo, M, beamWidth, infoStream) {
+              @Override
+              public byte[] copyValue(byte[] value) {
+                return ArrayUtil.copyOfSubArray(value, 0, dim);
+              }
+            };
+        case FLOAT32 ->
+            new FieldWriter<float[]>(fieldInfo, M, beamWidth, infoStream) {
+              @Override
+              public float[] copyValue(float[] value) {
+                return ArrayUtil.copyOfSubArray(value, 0, dim);
+              }
+            };
+      };
     }
 
     @SuppressWarnings("unchecked")
@@ -689,26 +661,17 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
       DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
-      final RandomVectorScorerSupplier scorerSupplier;
-      switch (fieldInfo.getVectorEncoding()) {
-        case BYTE:
-          scorerSupplier =
-              defaultFlatVectorScorer.getRandomVectorScorerSupplier(
-                  fieldInfo.getVectorSimilarityFunction(),
-                  RandomAccessVectorValues.fromBytes((List<byte[]>) vectors, dim));
-          break;
-
-        case FLOAT32:
-          scorerSupplier =
-              defaultFlatVectorScorer.getRandomVectorScorerSupplier(
-                  fieldInfo.getVectorSimilarityFunction(),
-                  RandomAccessVectorValues.fromFloats((List<float[]>) vectors, dim));
-          break;
-
-        default:
-          throw new IllegalArgumentException(
-              "unknown vector encoding=" + fieldInfo.getVectorEncoding());
-      }
+      RandomVectorScorerSupplier scorerSupplier =
+          switch (fieldInfo.getVectorEncoding()) {
+            case BYTE ->
+                defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
+                    ByteVectorValues.fromBytes((List<byte[]>) vectors, dim));
+            case FLOAT32 ->
+                defaultFlatVectorScorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
+                    FloatVectorValues.fromFloats((List<float[]>) vectors, dim));
+          };
       hnswGraphBuilder =
           HnswGraphBuilder.create(scorerSupplier, M, beamWidth, HnswGraphBuilder.randSeed);
       hnswGraphBuilder.setInfoStream(infoStream);
@@ -732,9 +695,9 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
       lastDocID = docID;
     }
 
-    OnHeapHnswGraph getGraph() {
+    OnHeapHnswGraph getGraph() throws IOException {
       if (vectors.size() > 0) {
-        return hnswGraphBuilder.getGraph();
+        return hnswGraphBuilder.getCompletedGraph();
       } else {
         return null;
       }

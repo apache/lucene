@@ -32,7 +32,6 @@ import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.ArrayUtil;
@@ -643,13 +642,13 @@ public class BKDWriter60 implements Closeable {
       throws IOException {
     assert docMaps == null || readers.size() == docMaps.size();
 
-    BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim, readers.size());
+    BKDMergeQueue queue = new BKDMergeQueue(config.bytesPerDim(), readers.size());
 
     for (int i = 0; i < readers.size(); i++) {
       PointValues pointValues = readers.get(i);
-      assert pointValues.getNumDimensions() == config.numDims
-          && pointValues.getBytesPerDimension() == config.bytesPerDim
-          && pointValues.getNumIndexDimensions() == config.numIndexDims;
+      assert pointValues.getNumDimensions() == config.numDims()
+          && pointValues.getBytesPerDimension() == config.bytesPerDim()
+          && pointValues.getNumIndexDimensions() == config.numIndexDims();
       MergeState.DocMap docMap;
       if (docMaps == null) {
         docMap = null;
@@ -1580,7 +1579,7 @@ public class BKDWriter60 implements Closeable {
       // We are reading from a temp file; go verify the checksum:
       String tempFileName = ((OfflinePointWriter) writer).name;
       if (tempDir.getCreatedFiles().contains(tempFileName)) {
-        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName, IOContext.READONCE)) {
+        try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
           CodecUtil.checkFooter(in, priorException);
         }
       }
@@ -1932,7 +1931,7 @@ public class BKDWriter60 implements Closeable {
   private void computePackedValueBounds(
       BKDRadixSelector.PathSlice slice, byte[] minPackedValue, byte[] maxPackedValue)
       throws IOException {
-    try (PointReader reader = slice.writer.getReader(slice.start, slice.count)) {
+    try (PointReader reader = slice.writer().getReader(slice.start(), slice.count())) {
       if (reader.next() == false) {
         return;
       }
@@ -1996,16 +1995,16 @@ public class BKDWriter60 implements Closeable {
       // least number of unique bytes at commonPrefixLengths[dim], which makes compression more
       // efficient
       HeapPointWriter heapSource;
-      if (points.writer instanceof HeapPointWriter == false) {
+      if (points.writer() instanceof HeapPointWriter == false) {
         // Adversarial cases can cause this, e.g. merging big segments with most of the points
         // deleted
-        heapSource = switchToHeap(points.writer);
+        heapSource = switchToHeap(points.writer());
       } else {
-        heapSource = (HeapPointWriter) points.writer;
+        heapSource = (HeapPointWriter) points.writer();
       }
 
-      int from = Math.toIntExact(points.start);
-      int to = Math.toIntExact(points.start + points.count);
+      int from = Math.toIntExact(points.start());
+      int to = Math.toIntExact(points.start() + points.count());
       // we store common prefix on scratch1
       computeCommonPrefixLength(heapSource, scratch1, from, to);
 
@@ -2108,8 +2107,8 @@ public class BKDWriter60 implements Closeable {
           : "nodeID=" + nodeID + " splitValues.length=" + splitPackedValues.length;
 
       // How many points will be in the left tree:
-      long rightCount = points.count / 2;
-      long leftCount = points.count - rightCount;
+      long rightCount = points.count() / 2;
+      long leftCount = points.count() - rightCount;
 
       BKDRadixSelector.PathSlice[] slices = new BKDRadixSelector.PathSlice[2];
 
@@ -2129,9 +2128,9 @@ public class BKDWriter60 implements Closeable {
           radixSelector.select(
               points,
               slices,
-              points.start,
-              points.start + points.count,
-              points.start + leftCount,
+              points.start(),
+              points.start() + points.count(),
+              points.start() + leftCount,
               splitDim,
               commonPrefixLen);
 

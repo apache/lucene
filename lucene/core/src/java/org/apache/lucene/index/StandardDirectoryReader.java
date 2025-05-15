@@ -91,7 +91,8 @@ public final class StandardDirectoryReader extends DirectoryReader {
         try {
           for (int i = sis.size() - 1; i >= 0; i--) {
             readers[i] =
-                new SegmentReader(sis.info(i), sis.getIndexCreatedVersionMajor(), IOContext.READ);
+                new SegmentReader(
+                    sis.info(i), sis.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
           }
           // This may throw CorruptIndexException if there are too many docs, so
           // it must be inside try clause so we close readers in that case:
@@ -229,7 +230,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
                 != oldReader.getSegmentInfo().info.getUseCompoundFile()) {
           // this is a new reader; in case we hit an exception we can decRef it safely
           newReader =
-              new SegmentReader(commitInfo, infos.getIndexCreatedVersionMajor(), IOContext.READ);
+              new SegmentReader(commitInfo, infos.getIndexCreatedVersionMajor(), IOContext.DEFAULT);
           newReaders[i] = newReader;
         } else {
           if (oldReader.isNRT) {

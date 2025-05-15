@@ -181,7 +181,7 @@ public abstract class PrimaryNode extends Node {
   }
 
   public long getCopyStateVersion() {
-    return copyState.version;
+    return copyState.version();
   }
 
   public synchronized long getLastCommitVersion() {
@@ -222,7 +222,7 @@ public abstract class PrimaryNode extends Node {
     // TODO (opto): it's a bit wasteful that we put "last refresh" version here, not the actual
     // version we are committing, because it means
     // on xlog replay we are replaying more ops than necessary.
-    commitData.put(VERSION_KEY, Long.toString(copyState.version));
+    commitData.put(VERSION_KEY, Long.toString(copyState.version()));
     message("top: commit commitData=" + commitData);
     writer.setLiveCommitData(commitData.entrySet(), false);
     writer.commit();
@@ -233,8 +233,8 @@ public abstract class PrimaryNode extends Node {
     ensureOpen(false);
     // message("top: getCopyState replicaID=" + replicaID + " replicaNodeID=" + replicaNodeID + "
     // version=" + curInfos.getVersion() + " infos=" + curInfos.toString());
-    assert curInfos == copyState.infos;
-    writer.incRefDeleter(copyState.infos);
+    assert curInfos == copyState.infos();
+    writer.incRefDeleter(copyState.infos());
     int count = copyingCount.incrementAndGet();
     assert count > 0;
     return copyState;
@@ -243,8 +243,8 @@ public abstract class PrimaryNode extends Node {
   /** Called once replica is done (or failed) copying an NRT point */
   public void releaseCopyState(CopyState copyState) throws IOException {
     // message("top: releaseCopyState version=" + copyState.version);
-    assert copyState.infos != null;
-    writer.decRefDeleter(copyState.infos);
+    assert copyState.infos() != null;
+    writer.decRefDeleter(copyState.infos());
     int count = copyingCount.decrementAndGet();
     assert count >= 0;
   }

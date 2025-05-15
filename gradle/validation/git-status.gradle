@@ -33,7 +33,7 @@ buildscript {
   }
 
   dependencies {
-    classpath "org.eclipse.jgit:org.eclipse.jgit:${scriptDepVersions['jgit']}"
+    classpath deps.jgit
   }
 }
 
@@ -74,21 +74,6 @@ configure(rootProject) {
           logger.warn("WARNING: Directory is not a valid git checkout (won't check dirty files): ${rootProject.projectDir}")
         }
       } else {
-        // git ignores any folders which are empty (this includes folders with recursively empty sub-folders).
-        def untrackedNonEmptyFolders = status.untrackedFolders.findAll { path ->
-          File location = file("${rootProject.projectDir}/${path}")
-          boolean hasFiles = false
-          Files.walkFileTree(location.toPath(), new SimpleFileVisitor<Path>() {
-            @Override
-            FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-              hasFiles = true
-              // Terminate early.
-              return FileVisitResult.TERMINATE
-            }
-          })
-          return hasFiles
-        }
-
         def offenders = [
             // Exclude staged changes. These are fine in precommit.
             // "(added)": status.added,
@@ -97,8 +82,7 @@ configure(rootProject) {
             "(conflicting)": status.conflicting,
             "(missing)": status.missing,
             "(modified)": status.modified,
-            "(untracked)": status.untracked,
-            "(untracked non-empty dir)": untrackedNonEmptyFolders
+            "(untracked)": status.untracked
         ].collectMany { fileStatus, files ->
           files.collect {file -> "  - ${file} ${fileStatus}" }
         }.sort()

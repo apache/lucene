@@ -544,9 +544,10 @@ public final class RamUsageEstimator {
       final Class<?> target = clazz;
       final Field[] fields;
       try {
-        fields =
-            AccessController.doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
-      } catch (AccessControlException e) {
+        fields = doPrivileged((PrivilegedAction<Field[]>) target::getDeclaredFields);
+      } catch (
+          @SuppressWarnings("removal")
+          AccessControlException e) {
         throw new RuntimeException("Can't access fields of class: " + target, e);
       }
 
@@ -557,6 +558,13 @@ public final class RamUsageEstimator {
       }
     }
     return alignObjectSize(size);
+  }
+
+  // Extracted to a method to give the SuppressForbidden annotation the smallest possible scope
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
   }
 
   /** Return shallow size of any <code>array</code>. */

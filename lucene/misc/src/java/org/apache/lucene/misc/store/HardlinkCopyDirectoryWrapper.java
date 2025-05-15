@@ -29,6 +29,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * This directory wrapper overrides {@link Directory#copyFrom(Directory, String, String, IOContext)}
@@ -66,27 +67,26 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
         // only try hardlinks if we have permission to access the files
         // if not super.copyFrom() will give us the right exceptions
         suppressedException =
-            AccessController.doPrivileged(
-                (PrivilegedAction<Exception>)
-                    () -> {
-                      try {
-                        Files.createLink(toPath.resolve(destFile), fromPath.resolve(srcFile));
-                      } catch (FileNotFoundException
-                          | NoSuchFileException
-                          | FileAlreadyExistsException ex) {
-                        return ex; // in these cases we bubble up since it's a true error condition.
-                      } catch (IOException
-                          // if the FS doesn't support hard-links
-                          | UnsupportedOperationException
-                          // we don't have permission to use hard-links just fall back to byte copy
-                          | SecurityException ex) {
-                        // hard-links are not supported or the files are on different filesystems
-                        // we could go deeper and check if their filesstores are the same and opt
-                        // out earlier but for now we just fall back to normal file-copy
-                        return ex;
-                      }
-                      return null;
-                    });
+            doPrivileged(
+                () -> {
+                  try {
+                    Files.createLink(toPath.resolve(destFile), fromPath.resolve(srcFile));
+                  } catch (FileNotFoundException
+                      | NoSuchFileException
+                      | FileAlreadyExistsException ex) {
+                    return ex; // in these cases we bubble up since it's a true error condition.
+                  } catch (IOException
+                      // if the FS doesn't support hard-links
+                      | UnsupportedOperationException
+                      // we don't have permission to use hard-links just fall back to byte copy
+                      | SecurityException ex) {
+                    // hard-links are not supported or the files are on different filesystems
+                    // we could go deeper and check if their filesstores are the same and opt
+                    // out earlier but for now we just fall back to normal file-copy
+                    return ex;
+                  }
+                  return null;
+                });
         tryCopy = suppressedException != null;
       }
     }
@@ -100,5 +100,12 @@ public final class HardlinkCopyDirectoryWrapper extends FilterDirectory {
         throw ex;
       }
     }
+  }
+
+  // Extracted to a method to give the SuppressForbidden annotation the smallest possible scope
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
+  private static <T> T doPrivileged(PrivilegedAction<T> action) {
+    return AccessController.doPrivileged(action);
   }
 }

@@ -47,12 +47,11 @@ public class TestKeywordField extends LuceneTestCase {
       } else {
         assertNull(field.storedValue());
       }
-      assertThrows(
-          IllegalArgumentException.class, () -> field.setBytesValue(newBytesRef("value2")));
-      assertEquals(newBytesRef("value"), field.binaryValue());
+      field.setBytesValue(newBytesRef("value2"));
+      assertEquals(newBytesRef("value2"), field.binaryValue());
       assertNull(field.stringValue());
       if (field.fieldType().stored()) {
-        assertEquals(newBytesRef("value"), field.storedValue().getBinaryValue());
+        assertEquals(newBytesRef("value2"), field.storedValue().getBinaryValue());
       } else {
         assertNull(field.storedValue());
       }

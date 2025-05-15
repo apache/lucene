@@ -50,7 +50,6 @@ import org.junit.Ignore;
 /** Benchmarks tests for implementations of {@link Lookup} interface. */
 @Ignore("COMMENT ME TO RUN BENCHMARKS!")
 public class TestLookupBenchmark extends LuceneTestCase {
-  @SuppressWarnings({"unchecked", "deprecation"})
   private final List<Class<? extends Lookup>> benchmarkClasses =
       Arrays.asList(
           FuzzySuggester.class,
@@ -82,7 +81,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
     assert false : "disable assertions before running benchmarks!";
     List<Input> input = readTop50KWiki();
     Collections.shuffle(input, random);
-    TestLookupBenchmark.dictionaryInput = input.toArray(new Input[input.size()]);
+    TestLookupBenchmark.dictionaryInput = input.toArray(new Input[0]);
     Collections.shuffle(input, random);
     TestLookupBenchmark.benchmarkInput = input;
   }
@@ -96,7 +95,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
     URL resource =
         IOUtils.requireResourceNonNull(TestLookupBenchmark.class.getResource(name), name);
 
-    String line = null;
+    String line;
     BufferedReader br = new BufferedReader(new InputStreamReader(resource.openStream(), UTF_8));
     while ((line = br.readLine()) != null) {
       int tab = line.indexOf('|');
@@ -115,21 +114,17 @@ public class TestLookupBenchmark extends LuceneTestCase {
     for (final Class<? extends Lookup> cls : benchmarkClasses) {
       BenchmarkResult result =
           measure(
-              new Callable<Integer>() {
-                @Override
-                public Integer call() throws Exception {
-                  final Lookup lookup = buildLookup(cls, dictionaryInput);
-                  return lookup.hashCode();
-                }
+              () -> {
+                final Lookup lookup = buildLookup(cls, dictionaryInput);
+                return lookup.hashCode();
               });
 
-      System.err.println(
-          String.format(
-              Locale.ROOT,
-              "%-15s input: %d, time[ms]: %s",
-              cls.getSimpleName(),
-              dictionaryInput.length,
-              result.average.toString()));
+      System.err.printf(
+          Locale.ROOT,
+          "%-15s input: %d, time[ms]: %s%n",
+          cls.getSimpleName(),
+          dictionaryInput.length,
+          result.average);
     }
   }
 
@@ -139,15 +134,14 @@ public class TestLookupBenchmark extends LuceneTestCase {
     for (Class<? extends Lookup> cls : benchmarkClasses) {
       Lookup lookup = buildLookup(cls, dictionaryInput);
       long sizeInBytes = lookup.ramBytesUsed();
-      System.err.println(
-          String.format(
-              Locale.ROOT, "%-15s size[B]:%,13d", lookup.getClass().getSimpleName(), sizeInBytes));
+      System.err.printf(
+          Locale.ROOT, "%-15s size[B]:%,13d%n", lookup.getClass().getSimpleName(), sizeInBytes);
     }
   }
 
   /** Create {@link Lookup} instance and populate it. */
   private Lookup buildLookup(Class<? extends Lookup> cls, Input[] input) throws Exception {
-    Lookup lookup = null;
+    Lookup lookup;
     if (cls == TSTLookup.class
         || cls == FSTCompletionLookup.class
         || cls == WFSTCompletionLookup.class) {
@@ -203,14 +197,13 @@ public class TestLookupBenchmark extends LuceneTestCase {
   public void runPerformanceTest(
       final int minPrefixLen, final int maxPrefixLen, final int num, final boolean onlyMorePopular)
       throws Exception {
-    System.err.println(
-        String.format(
-            Locale.ROOT,
-            "-- prefixes: %d-%d, num: %d, onlyMorePopular: %s",
-            minPrefixLen,
-            maxPrefixLen,
-            num,
-            onlyMorePopular));
+    System.err.printf(
+        Locale.ROOT,
+        "-- prefixes: %d-%d, num: %d, onlyMorePopular: %s%n",
+        minPrefixLen,
+        maxPrefixLen,
+        num,
+        onlyMorePopular);
 
     for (Class<? extends Lookup> cls : benchmarkClasses) {
       final Lookup lookup = buildLookup(cls, dictionaryInput);
@@ -228,25 +221,21 @@ public class TestLookupBenchmark extends LuceneTestCase {
 
       BenchmarkResult result =
           measure(
-              new Callable<Integer>() {
-                @Override
-                public Integer call() throws Exception {
-                  int v = 0;
-                  for (String term : input) {
-                    v += lookup.lookup(term, onlyMorePopular, num).size();
-                  }
-                  return v;
+              () -> {
+                int v = 0;
+                for (String term : input) {
+                  v += lookup.lookup(term, onlyMorePopular, num).size();
                 }
+                return v;
               });
 
-      System.err.println(
-          String.format(
-              Locale.ROOT,
-              "%-15s queries: %d, time[ms]: %s, ~kQPS: %.0f",
-              lookup.getClass().getSimpleName(),
-              input.size(),
-              result.average.toString(),
-              input.size() / result.average.avg));
+      System.err.printf(
+          Locale.ROOT,
+          "%-15s queries: %d, time[ms]: %s, ~kQPS: %.0f%n",
+          lookup.getClass().getSimpleName(),
+          input.size(),
+          result.average,
+          input.size() / result.average.avg());
     }
   }
 
@@ -258,7 +247,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
       List<Double> times = new ArrayList<>();
       for (int i = 0; i < warmup + rounds; i++) {
         final long start = System.nanoTime();
-        guard = callable.call().intValue();
+        guard = callable.call();
         times.add((System.nanoTime() - start) / NANOS_PER_MS);
       }
       return new BenchmarkResult(times, warmup, rounds);

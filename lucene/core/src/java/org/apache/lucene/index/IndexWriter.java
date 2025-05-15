@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -76,7 +77,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.store.LockValidatingDirectoryWrapper;
-import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.Accountable;
@@ -156,9 +156,9 @@ import org.apache.lucene.util.Version;
  * and it decides when and how to run the merges. The default is {@link ConcurrentMergeScheduler}.
  * <a id="OOME"></a>
  *
- * <p><b>NOTE</b>: if you hit a VirtualMachineError, or disaster strikes during a checkpoint then
- * IndexWriter will close itself. This is a defensive measure in case any internal state (buffered
- * documents, deletions, reference counts) were corrupted. Any subsequent calls will throw an
+ * <p><b>NOTE</b>: if you hit an Error, or disaster strikes during a checkpoint then IndexWriter
+ * will close itself. This is a defensive measure in case any internal state (buffered documents,
+ * deletions, reference counts) were corrupted. Any subsequent calls will throw an
  * AlreadyClosedException. <a id="thread-safety"></a>
  *
  * <p><b>NOTE</b>: {@link IndexWriter} instances are completely thread safe, meaning multiple
@@ -385,8 +385,8 @@ public class IndexWriter
   private final Deque<MergePolicy.OneMerge> pendingMerges = new ArrayDeque<>();
   private final Set<MergePolicy.OneMerge> runningMerges = new HashSet<>();
   private final List<MergePolicy.OneMerge> mergeExceptions = new ArrayList<>();
+  private final Merges merges = new Merges();
   private long mergeGen;
-  private Merges merges = new Merges();
   private boolean didMessageState;
   private final AtomicInteger flushCount = new AtomicInteger();
   private final AtomicInteger flushDeletesCount = new AtomicInteger();
@@ -541,7 +541,7 @@ public class IndexWriter
           final ReadersAndUpdates rld = getPooledInstance(sci, true);
           try {
             assert Thread.holdsLock(IndexWriter.this);
-            SegmentReader segmentReader = rld.getReadOnlyClone(IOContext.READ);
+            SegmentReader segmentReader = rld.getReadOnlyClone(IOContext.DEFAULT);
             // only track this if we actually do fullFlush merges
             if (maxFullFlushMergeWaitMillis > 0) {
               openedReadOnlyClones.put(sci.info.name, segmentReader);
@@ -659,7 +659,7 @@ public class IndexWriter
                                               sr.close();
                                             }
                                           })
-                              .collect(Collectors.toList()));
+                              .toList());
                     }
                   };
             }
@@ -707,7 +707,7 @@ public class IndexWriter
         infoStream.message("IW", "getReader took " + (System.currentTimeMillis() - tStart) + " ms");
       }
       success2 = true;
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "getReader");
       throw tragedy;
     } finally {
@@ -1255,8 +1255,7 @@ public class IndexWriter
       return reader.read(si.info.dir, si.info, segmentSuffix, IOContext.READONCE);
     } else if (si.info.getUseCompoundFile()) {
       // cfs
-      try (Directory cfs =
-          codec.compoundFormat().getCompoundReader(si.info.dir, si.info, IOContext.DEFAULT)) {
+      try (Directory cfs = codec.compoundFormat().getCompoundReader(si.info.dir, si.info)) {
         return reader.read(cfs, si.info, "", IOContext.READONCE);
       }
     } else {
@@ -1271,10 +1270,8 @@ public class IndexWriter
    */
   private FieldNumbers getFieldNumberMap() throws IOException {
     final FieldNumbers map =
-        new FieldNumbers(
-            config.softDeletesField,
-            config.getParentField(),
-            segmentInfos.getIndexCreatedVersionMajor());
+        new FieldNumbers(config.getSoftDeletesField(), config.getParentField());
+
     for (SegmentCommitInfo info : segmentInfos) {
       FieldInfos fis = readFieldInfos(info);
       for (FieldInfo fi : fis) {
@@ -1308,12 +1305,6 @@ public class IndexWriter
               + Version.LATEST.toString()
               + "\n"
               + config.toString());
-      final StringBuilder unmapInfo =
-          new StringBuilder(Boolean.toString(MMapDirectory.UNMAP_SUPPORTED));
-      if (!MMapDirectory.UNMAP_SUPPORTED) {
-        unmapInfo.append(" (").append(MMapDirectory.UNMAP_NOT_SUPPORTED_REASON).append(")");
-      }
-      infoStream.message("IW", "MMapDirectory.UNMAP_SUPPORTED=" + unmapInfo);
     }
   }
 
@@ -1561,7 +1552,7 @@ public class IndexWriter
       final long seqNo = maybeProcessEvents(docWriter.updateDocuments(docs, delNode));
       success = true;
       return seqNo;
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "updateDocuments");
       throw tragedy;
     } finally {
@@ -1798,7 +1789,7 @@ public class IndexWriter
     ensureOpen();
     try {
       return maybeProcessEvents(docWriter.deleteTerms(terms));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "deleteDocuments(Term..)");
       throw tragedy;
     }
@@ -1825,7 +1816,7 @@ public class IndexWriter
 
     try {
       return maybeProcessEvents(docWriter.deleteQueries(queries));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "deleteDocuments(Query..)");
       throw tragedy;
     }
@@ -1904,7 +1895,7 @@ public class IndexWriter
     try {
       return maybeProcessEvents(
           docWriter.updateDocValues(new NumericDocValuesUpdate(term, field, value)));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "updateNumericDocValue");
       throw tragedy;
     }
@@ -1934,7 +1925,7 @@ public class IndexWriter
     try {
       return maybeProcessEvents(
           docWriter.updateDocValues(new BinaryDocValuesUpdate(term, field, value)));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "updateBinaryDocValue");
       throw tragedy;
     }
@@ -1956,7 +1947,7 @@ public class IndexWriter
     DocValuesUpdate[] dvUpdates = buildDocValuesUpdate(term, updates);
     try {
       return maybeProcessEvents(docWriter.updateDocValues(dvUpdates));
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "updateDocValues");
       throw tragedy;
     }
@@ -2589,7 +2580,7 @@ public class IndexWriter
       } catch (Throwable t) {
         throwable.addSuppressed(t);
       } finally {
-        if (throwable instanceof VirtualMachineError) {
+        if (throwable instanceof Error) {
           try {
             tragicEvent(throwable, "rollbackInternal");
           } catch (Throwable t1) {
@@ -2690,7 +2681,7 @@ public class IndexWriter
           }
         }
       }
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "deleteAll");
       throw tragedy;
     }
@@ -3110,7 +3101,7 @@ public class IndexWriter
 
       successTop = true;
 
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "addIndexes(Directory...)");
       throw tragedy;
     } finally {
@@ -3127,22 +3118,22 @@ public class IndexWriter
 
   private void validateMergeReader(CodecReader leaf) {
     LeafMetaData segmentMeta = leaf.getMetaData();
-    if (segmentInfos.getIndexCreatedVersionMajor() != segmentMeta.getCreatedVersionMajor()) {
+    if (segmentInfos.getIndexCreatedVersionMajor() != segmentMeta.createdVersionMajor()) {
       throw new IllegalArgumentException(
           "Cannot merge a segment that has been created with major version "
-              + segmentMeta.getCreatedVersionMajor()
+              + segmentMeta.createdVersionMajor()
               + " into this index which has been created by major version "
               + segmentInfos.getIndexCreatedVersionMajor());
     }
 
-    if (segmentInfos.getIndexCreatedVersionMajor() >= 7 && segmentMeta.getMinVersion() == null) {
+    if (segmentInfos.getIndexCreatedVersionMajor() >= 7 && segmentMeta.minVersion() == null) {
       throw new IllegalStateException(
           "Indexes created on or after Lucene 7 must record the created version major, but "
               + leaf
               + " hides it");
     }
 
-    Sort leafIndexSort = segmentMeta.getSort();
+    Sort leafIndexSort = segmentMeta.sort();
     if (config.getIndexSort() != null
         && (leafIndexSort == null
             || isCongruentSort(config.getIndexSort(), leafIndexSort) == false)) {
@@ -3282,7 +3273,7 @@ public class IndexWriter
         throw new RuntimeException(
             "failed to successfully merge all provided readers in addIndexes(CodecReader...)");
       }
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "addIndexes(CodecReader...)");
       throw tragedy;
     }
@@ -3443,9 +3434,11 @@ public class IndexWriter
                 .map(FieldInfos::getParentField)
                 .anyMatch(Objects::isNull);
 
+    final Executor intraMergeExecutor = mergeScheduler.getIntraMergeExecutor(merge);
+
     if (hasIndexSort == false && hasBlocksButNoParentField == false && readers.isEmpty() == false) {
       CodecReader mergedReader = SlowCompositeCodecReaderWrapper.wrap(readers);
-      DocMap docMap = merge.reorder(mergedReader, directory);
+      DocMap docMap = merge.reorder(mergedReader, directory, intraMergeExecutor);
       if (docMap != null) {
         readers = Collections.singletonList(SortingCodecReader.wrap(mergedReader, docMap, null));
       }
@@ -3459,7 +3452,7 @@ public class IndexWriter
             trackingDir,
             globalFieldNumberMap,
             context,
-            mergeScheduler.getIntraMergeExecutor(merge));
+            intraMergeExecutor);
 
     if (!merger.shouldMerge()) {
       return;
@@ -3635,7 +3628,7 @@ public class IndexWriter
         return true; // we wrote a segment
       }
       return false;
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "flushNextBuffer");
       throw tragedy;
     } finally {
@@ -3751,7 +3744,7 @@ public class IndexWriter
             doAfterFlush();
           }
         }
-      } catch (VirtualMachineError tragedy) {
+      } catch (Error tragedy) {
         tragicEvent(tragedy, "prepareCommit");
         throw tragedy;
       } finally {
@@ -3937,9 +3930,9 @@ public class IndexWriter
                       }
 
                       @Override
-                      public Sorter.DocMap reorder(CodecReader reader, Directory dir)
-                          throws IOException {
-                        return toWrap.reorder(reader, dir); // must delegate
+                      public Sorter.DocMap reorder(
+                          CodecReader reader, Directory dir, Executor executor) throws IOException {
+                        return toWrap.reorder(reader, dir, executor); // must delegate
                       }
 
                       @Override
@@ -4279,13 +4272,7 @@ public class IndexWriter
       synchronized (fullFlushLock) {
         boolean flushSuccess = false;
         try {
-          long seqNo = docWriter.flushAllThreads();
-          if (seqNo < 0) {
-            seqNo = -seqNo;
-            anyChanges = true;
-          } else {
-            anyChanges = false;
-          }
+          anyChanges = (docWriter.flushAllThreads() < 0);
           if (!anyChanges) {
             // flushCount is incremented in flushAllThreads
             flushCount.incrementAndGet();
@@ -4311,7 +4298,7 @@ public class IndexWriter
         success = true;
         return anyChanges;
       }
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "doFlush");
       throw tragedy;
     } finally {
@@ -5220,6 +5207,8 @@ public class IndexWriter
         mergeReaders.add(wrappedReader);
       }
 
+      final Executor intraMergeExecutor = mergeScheduler.getIntraMergeExecutor(merge);
+
       MergeState.DocMap[] reorderDocMaps = null;
       // Don't reorder if an explicit sort is configured.
       final boolean hasIndexSort = config.getIndexSort() != null;
@@ -5234,7 +5223,7 @@ public class IndexWriter
       if (hasIndexSort == false && hasBlocksButNoParentField == false) {
         // Create a merged view of the input segments. This effectively does the merge.
         CodecReader mergedView = SlowCompositeCodecReaderWrapper.wrap(mergeReaders);
-        Sorter.DocMap docMap = merge.reorder(mergedView, directory);
+        Sorter.DocMap docMap = merge.reorder(mergedView, directory, intraMergeExecutor);
         if (docMap != null) {
           reorderDocMaps = new MergeState.DocMap[mergeReaders.size()];
           int docBase = 0;
@@ -5264,7 +5253,7 @@ public class IndexWriter
               dirWrapper,
               globalFieldNumberMap,
               context,
-              mergeScheduler.getIntraMergeExecutor(merge));
+              intraMergeExecutor);
       merge.info.setSoftDelCount(Math.toIntExact(softDeleteCount.get()));
       merge.checkAborted();
 
@@ -5321,7 +5310,7 @@ public class IndexWriter
               ("merge codec=" + codec)
                   + (" maxDoc=" + merge.info.info.maxDoc())
                   + ("; merged segment has "
-                      + (mergeState.mergeFieldInfos.hasVectors() ? "vectors" : "no vectors"))
+                      + (mergeState.mergeFieldInfos.hasTermVectors() ? "vectors" : "no vectors"))
                   + ("; " + (mergeState.mergeFieldInfos.hasNorms() ? "norms" : "no norms"))
                   + ("; "
                       + (mergeState.mergeFieldInfos.hasDocValues() ? "docValues" : "no docValues"))
@@ -5459,7 +5448,7 @@ public class IndexWriter
       final IndexReaderWarmer mergedSegmentWarmer = config.getMergedSegmentWarmer();
       if (readerPool.isReaderPoolingEnabled() && mergedSegmentWarmer != null) {
         final ReadersAndUpdates rld = getPooledInstance(merge.info, true);
-        final SegmentReader sr = rld.getReader(IOContext.READ);
+        final SegmentReader sr = rld.getReader(IOContext.DEFAULT);
         try {
           mergedSegmentWarmer.warm(sr);
         } finally {
@@ -5705,7 +5694,7 @@ public class IndexWriter
           segmentInfos.updateGeneration(toSync);
         }
       }
-    } catch (VirtualMachineError tragedy) {
+    } catch (Error tragedy) {
       tragicEvent(tragedy, "startCommit");
       throw tragedy;
     }
@@ -6411,16 +6400,16 @@ public class IndexWriter
         deleter.decRef(delFiles);
       }
 
-      if (result.anyDeletes) {
+      if (result.anyDeletes()) {
         maybeMerge.set(true);
         checkpoint();
       }
 
-      if (result.allDeleted != null) {
+      if (result.allDeleted() != null) {
         if (infoStream.isEnabled("IW")) {
-          infoStream.message("IW", "drop 100% deleted segments: " + segString(result.allDeleted));
+          infoStream.message("IW", "drop 100% deleted segments: " + segString(result.allDeleted()));
         }
-        for (SegmentCommitInfo info : result.allDeleted) {
+        for (SegmentCommitInfo info : result.allDeleted()) {
           dropDeletedSegment(info);
         }
         checkpoint();
@@ -6547,12 +6536,7 @@ public class IndexWriter
     }
   }
 
-  private static class IndexWriterMergeSource implements MergeScheduler.MergeSource {
-    private final IndexWriter writer;
-
-    private IndexWriterMergeSource(IndexWriter writer) {
-      this.writer = writer;
-    }
+  private record IndexWriterMergeSource(IndexWriter writer) implements MergeScheduler.MergeSource {
 
     @Override
     public MergePolicy.OneMerge getNextMerge() {
@@ -6666,10 +6650,9 @@ public class IndexWriter
           public FieldInfosBuilder newFieldInfosBuilder(
               String softDeletesFieldName, String parentFieldName) {
             return new FieldInfosBuilder() {
-              private FieldInfos.Builder builder =
+              private final FieldInfos.Builder builder =
                   new FieldInfos.Builder(
-                      new FieldInfos.FieldNumbers(
-                          softDeletesFieldName, parentFieldName, Version.LATEST.major));
+                      new FieldInfos.FieldNumbers(softDeletesFieldName, parentFieldName));
 
               @Override
               public FieldInfosBuilder add(FieldInfo fi) {

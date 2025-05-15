@@ -362,7 +362,7 @@ public class StageArtifacts {
             // Ignore locally generated maven metadata files.
             .filter(path -> !path.getFileName().toString().startsWith("maven-metadata."))
             .sorted(Comparator.comparing(Path::toString))
-            .collect(Collectors.toList());
+            .toList();
       }
 
       // Figure out nexus profile ID based on POMs. It is assumed that all artifacts

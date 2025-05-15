@@ -24,7 +24,7 @@ import static org.apache.lucene.analysis.util.StemmerUtil.*;
  * <p>Implements the algorithm described in: <i> Searching Strategies for the Bulgarian Language
  * </i> http://members.unine.ch/jacques.savoy/Papers/BUIR.pdf
  */
-public class BulgarianStemmer {
+class BulgarianStemmer {
 
   /**
    * Stem an input buffer of Bulgarian text.
@@ -33,7 +33,7 @@ public class BulgarianStemmer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  public int stem(final char[] s, int len) {
+  int stem(final char[] s, int len) {
     if (len < 4) // do not stem
     return len;
 

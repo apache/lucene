@@ -61,7 +61,7 @@ public class SimpleTextLiveDocsFormat extends LiveDocsFormat {
     ChecksumIndexInput in = null;
     boolean success = false;
     try {
-      in = dir.openChecksumInput(fileName, context);
+      in = dir.openChecksumInput(fileName);
 
       SimpleTextUtil.readLine(in, scratch);
       assert StringHelper.startsWith(scratch.get(), SIZE);
@@ -144,14 +144,7 @@ public class SimpleTextLiveDocsFormat extends LiveDocsFormat {
   }
 
   // read-only
-  static class SimpleTextBits implements Bits {
-    final BitSet bits;
-    final int size;
-
-    SimpleTextBits(BitSet bits, int size) {
-      this.bits = bits;
-      this.size = size;
-    }
+  record SimpleTextBits(BitSet bits, int size) implements Bits {
 
     @Override
     public boolean get(int index) {

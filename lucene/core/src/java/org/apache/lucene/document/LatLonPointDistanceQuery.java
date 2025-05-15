@@ -114,15 +114,6 @@ final class LatLonPointDistanceQuery extends Query {
           GeoEncodingUtils.createDistancePredicate(latitude, longitude, radiusMeters);
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
-      }
-
-      @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return true;
       }
@@ -146,7 +137,6 @@ final class LatLonPointDistanceQuery extends Query {
         DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
         final IntersectVisitor visitor = getIntersectVisitor(result);
 
-        final Weight weight = this;
         return new ScorerSupplier() {
 
           long cost = -1;
@@ -164,10 +154,10 @@ final class LatLonPointDistanceQuery extends Query {
               long[] cost = new long[] {reader.maxDoc()};
               values.intersect(getInverseIntersectVisitor(result, cost));
               final DocIdSetIterator iterator = new BitSetIterator(result, cost[0]);
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
             values.intersect(visitor);
-            return new ConstantScoreScorer(weight, score(), scoreMode, result.build().iterator());
+            return new ConstantScoreScorer(score(), scoreMode, result.build().iterator());
           }
 
           @Override

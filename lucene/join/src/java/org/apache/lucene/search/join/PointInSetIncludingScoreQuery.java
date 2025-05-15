@@ -41,6 +41,7 @@ import org.apache.lucene.search.PointInSetQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BitSetIterator;
@@ -171,7 +172,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
         FieldInfo fieldInfo = reader.getFieldInfos().fieldInfo(field);
         if (fieldInfo == null) {
@@ -202,30 +203,32 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         FixedBitSet result = new FixedBitSet(reader.maxDoc());
         float[] scores = new float[reader.maxDoc()];
         values.intersect(new MergePointVisitor(sortedPackedPoints, result, scores));
-        return new Scorer(this) {
+        final var scorer =
+            new Scorer() {
 
-          DocIdSetIterator disi = new BitSetIterator(result, 10L);
+              DocIdSetIterator disi = new BitSetIterator(result, 10L);
 
-          @Override
-          public float score() throws IOException {
-            return scores[docID()];
-          }
+              @Override
+              public float score() throws IOException {
+                return scores[docID()];
+              }
 
-          @Override
-          public float getMaxScore(int upTo) throws IOException {
-            return Float.POSITIVE_INFINITY;
-          }
+              @Override
+              public float getMaxScore(int upTo) throws IOException {
+                return Float.POSITIVE_INFINITY;
+              }
 
-          @Override
-          public int docID() {
-            return disi.docID();
-          }
+              @Override
+              public int docID() {
+                return disi.docID();
+              }
 
-          @Override
-          public DocIdSetIterator iterator() {
-            return disi;
-          }
-        };
+              @Override
+              public DocIdSetIterator iterator() {
+                return disi;
+              }
+            };
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override
@@ -273,8 +276,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
         if (cmp == 0) {
           // Query point equals index point, so collect and return
           if (multipleValuesPerDocument) {
-            if (result.get(docID) == false) {
-              result.set(docID);
+            if (result.getAndSet(docID) == false) {
               scores[docID] = nextScore;
             }
           } else {

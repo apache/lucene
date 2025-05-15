@@ -111,7 +111,8 @@ public class ReversePathHierarchyTokenizer extends Tokenizer {
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
-  private final PositionIncrementAttribute posAtt = addAttribute(PositionIncrementAttribute.class);
+  private final PositionIncrementAttribute posIncAtt =
+      addAttribute(PositionIncrementAttribute.class);
 
   private int endPosition = 0;
   private int finalOffset = 0;
@@ -157,10 +158,8 @@ public class ReversePathHierarchyTokenizer extends Tokenizer {
         endPosition = delimiterPositions.get(idx);
       }
       finalOffset = correctOffset(length);
-      posAtt.setPositionIncrement(1);
-    } else {
-      posAtt.setPositionIncrement(0);
     }
+    posIncAtt.setPositionIncrement(1);
 
     while (skipped < delimitersCount - skip - 1) {
       int start = delimiterPositions.get(skipped);

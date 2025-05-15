@@ -25,6 +25,9 @@ module org.apache.lucene.benchmark {
   requires org.apache.lucene.queryparser;
   requires org.apache.lucene.spatial_extras;
   requires spatial4j;
+  requires org.apache.commons.compress;
+  requires nekohtml;
+  requires com.ibm.icu;
 
   exports org.apache.lucene.benchmark;
   exports org.apache.lucene.benchmark.byTask;

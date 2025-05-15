@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
@@ -122,11 +121,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
     DirectoryTaxonomyReader ltr = new DirectoryTaxonomyReader(dir);
     ltr.close();
-    expectThrows(
-        AlreadyClosedException.class,
-        () -> {
-          ltr.getSize();
-        });
+    expectThrows(AlreadyClosedException.class, ltr::getSize);
 
     dir.close();
   }
@@ -491,8 +486,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     assertEquals(expectedOrds.length, sourcePaths.length);
     int bulkOperationsIteration = random().nextInt(sourcePaths.length);
     List<Integer> indexesShuffled =
-        new ArrayList<>(
-            IntStream.range(0, sourcePaths.length).boxed().collect(Collectors.toList()));
+        new ArrayList<>(IntStream.range(0, sourcePaths.length).boxed().toList());
     Collections.shuffle(indexesShuffled, random());
 
     for (int i = 0; i < bulkOperationsIteration; i++) {
@@ -521,7 +515,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     assertEquals(expectedPaths.length, sourceOrds.length);
     int bulkOperationsIteration = random().nextInt(sourceOrds.length);
     List<Integer> indexesShuffled =
-        new ArrayList<>(IntStream.range(0, sourceOrds.length).boxed().collect(Collectors.toList()));
+        new ArrayList<>(IntStream.range(0, sourceOrds.length).boxed().toList());
     Collections.shuffle(indexesShuffled, random());
 
     boolean illegalPathExceptionIsExpected =
@@ -664,13 +658,13 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     final int maxNumberOfLabelsToIndex = 1000;
     final int maxNumberOfUniqueLabelsToIndex = maxNumberOfLabelsToIndex / 2;
     final int cacheSize = maxNumberOfUniqueLabelsToIndex / 2; // to cause some cache evictions
-    String randomArray[] = new String[RandomizedTest.randomIntBetween(1, maxNumberOfLabelsToIndex)];
+    String[] randomArray = new String[RandomizedTest.randomIntBetween(1, maxNumberOfLabelsToIndex)];
     // adding a smaller bound on ints ensures that we will have some duplicate ordinals in random
     // test cases
     Arrays.setAll(
         randomArray, i -> Integer.toString(random().nextInt(maxNumberOfUniqueLabelsToIndex)));
 
-    FacetLabel allPaths[] = new FacetLabel[randomArray.length];
+    FacetLabel[] allPaths = new FacetLabel[randomArray.length];
 
     for (int i = 0; i < randomArray.length; i++) {
       allPaths[i] = new FacetLabel(randomArray[i]);
@@ -686,7 +680,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     DirectoryTaxonomyReader r1 = new DirectoryTaxonomyReader(src);
     r1.setCacheSize(cacheSize);
 
-    int allOrdinals[] = r1.getBulkOrdinals(allPaths);
+    int[] allOrdinals = r1.getBulkOrdinals(allPaths);
 
     // Assert getPath and getBulkPath first, then assert getOrdinal and getBulkOrdinals.
     // Create multiple threads to check result correctness and thread contention in the cache.
@@ -694,43 +688,43 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
       Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
       for (int z = 0; z < addThreads.length; z++) {
         addThreads[z] =
-            new Thread() {
-              @Override
-              public void run() {
-                // each thread iterates for numThreadIterations times
-                int numThreadIterations = random().nextInt(10);
-                for (int threadIterations = 0;
-                    threadIterations < numThreadIterations;
-                    threadIterations++) {
+            new Thread(
+                () -> {
+                  // each thread iterates for numThreadIterations times
+                  int numThreadIterations = random().nextInt(10);
+                  for (int threadIterations = 0;
+                      threadIterations < numThreadIterations;
+                      threadIterations++) {
 
-                  // length of the FacetLabel array that we are going to check
-                  int numOfOrdinalsToCheck = RandomizedTest.randomIntBetween(1, allOrdinals.length);
-                  int[] ordinals = new int[numOfOrdinalsToCheck];
-                  FacetLabel[] path = new FacetLabel[numOfOrdinalsToCheck];
+                    // length of the FacetLabel array that we are going to check
+                    int numOfOrdinalsToCheck =
+                        RandomizedTest.randomIntBetween(1, allOrdinals.length);
+                    int[] ordinals = new int[numOfOrdinalsToCheck];
+                    FacetLabel[] path = new FacetLabel[numOfOrdinalsToCheck];
 
-                  for (int i = 0; i < numOfOrdinalsToCheck; i++) {
-                    // we deliberately allow it to choose repeat indexes as this will exercise the
-                    // cache
-                    int ordinalIndex = random().nextInt(allOrdinals.length);
-                    ordinals[i] = allOrdinals[ordinalIndex];
-                    path[i] = allPaths[ordinalIndex];
-                  }
-
-                  try {
-                    // main check for correctness is done here
-                    if (assertGettingOrdinals) {
-                      assertGettingOrdinals(r1, ordinals, path);
-                    } else {
-                      assertGettingPaths(r1, path, ordinals);
+                    for (int i = 0; i < numOfOrdinalsToCheck; i++) {
+                      // we deliberately allow it to choose repeat indexes as this will exercise the
+                      // cache
+                      int ordinalIndex = random().nextInt(allOrdinals.length);
+                      ordinals[i] = allOrdinals[ordinalIndex];
+                      path[i] = allPaths[ordinalIndex];
                     }
-                  } catch (IOException e) {
-                    // this should ideally never occur, but if it does just rethrow the error to the
-                    // caller
-                    throw new RuntimeException(e);
+
+                    try {
+                      // main check for correctness is done here
+                      if (assertGettingOrdinals) {
+                        assertGettingOrdinals(r1, ordinals, path);
+                      } else {
+                        assertGettingPaths(r1, path, ordinals);
+                      }
+                    } catch (IOException e) {
+                      // this should ideally never occur, but if it does just rethrow the error to
+                      // the
+                      // caller
+                      throw new RuntimeException(e);
+                    }
                   }
-                }
-              }
-            };
+                });
       }
       for (Thread t : addThreads) t.start();
       for (Thread t : addThreads) t.join();

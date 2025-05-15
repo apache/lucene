@@ -124,10 +124,10 @@ public class MultiFieldQueryParser extends QueryParser {
       if (slop != mpq.getSlop()) {
         q = new MultiPhraseQuery.Builder(mpq).setSlop(slop).build();
       }
-    } else if (q instanceof BoostQuery) {
-      Query subQuery = ((BoostQuery) q).getQuery();
+    } else if (q instanceof BoostQuery boostQuery) {
+      Query subQuery = boostQuery.getQuery();
       subQuery = applySlop(subQuery, slop);
-      q = new BoostQuery(subQuery, ((BoostQuery) q).getBoost());
+      q = new BoostQuery(subQuery, boostQuery.getBoost());
     }
     return q;
   }
@@ -168,7 +168,7 @@ public class MultiFieldQueryParser extends QueryParser {
             if (fieldQueries[i] instanceof BooleanQuery) {
               List<BooleanClause> nestedClauses = ((BooleanQuery) fieldQueries[i]).clauses();
               if (termNum < nestedClauses.size()) {
-                q = nestedClauses.get(termNum).getQuery();
+                q = nestedClauses.get(termNum).query();
               }
             } else if (termNum == 0) { // e.g. TermQuery-s
               q = fieldQueries[i];

@@ -164,14 +164,7 @@ public class FSTTester<T> {
   }
 
   /** Holds one input/output pair. */
-  public static class InputOutput<T> implements Comparable<InputOutput<T>> {
-    public final IntsRef input;
-    public final T output;
-
-    public InputOutput(IntsRef input, T output) {
-      this.input = input;
-      this.output = output;
-    }
+  public record InputOutput<T>(IntsRef input, T output) implements Comparable<InputOutput<T>> {
 
     @Override
     public int compareTo(InputOutput<T> other) {

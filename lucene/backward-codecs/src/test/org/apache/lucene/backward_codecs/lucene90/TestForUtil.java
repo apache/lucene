@@ -14,7 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+<<<<<<<< HEAD:lucene/core/src/test/org/apache/lucene/codecs/lucene99/TestForUtil.java
+package org.apache.lucene.codecs.lucene99;
+========
 package org.apache.lucene.backward_codecs.lucene90;
+>>>>>>>> origin/branch_10_1:lucene/backward-codecs/src/test/org/apache/lucene/backward_codecs/lucene90/TestForUtil.java
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;

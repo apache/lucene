@@ -44,7 +44,7 @@ import org.apache.lucene.util.Bits;
  * synchronization, you should <b>not</b> synchronize on the <code>IndexReader</code> instance; use
  * your own (non-Lucene) objects instead.
  */
-public abstract class LeafReader extends IndexReader {
+public abstract non-sealed class LeafReader extends IndexReader {
 
   private final LeafReaderContext readerContext = new LeafReaderContext(this);
 
@@ -201,6 +201,13 @@ public abstract class LeafReader extends IndexReader {
    * NumericDocValues} were indexed. The returned instance should only be used by a single thread.
    */
   public abstract NumericDocValues getNormValues(String field) throws IOException;
+
+  /**
+   * Returns a {@link DocValuesSkipper} allowing skipping ranges of doc IDs that are not of
+   * interest, or {@code null} if a skip index was not indexed. The returned instance should be
+   * confined to the thread that created it.
+   */
+  public abstract DocValuesSkipper getDocValuesSkipper(String field) throws IOException;
 
   /**
    * Returns {@link FloatVectorValues} for this field, or null if no {@link FloatVectorValues} were

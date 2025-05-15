@@ -19,44 +19,24 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.TopOrdAndFloatNumberQueue;
+import org.apache.lucene.facet.TopOrdAndFloatQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
 import org.apache.lucene.internal.hppc.IntFloatHashMap;
 
-/**
- * Base class for all taxonomy-based facets that aggregate to a per-ords float[].
- *
- * @deprecated Visibility of this class will be reduced to pkg-private in a future version. This
- *     class is meant to host common code as an internal implementation detail to taxonomy
- *     faceting,and is not intended as an extension point for user-created {@code Facets}
- *     implementations. If your code is relying on this, please migrate necessary functionality down
- *     into your own class.
- */
-@Deprecated
-public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
+/** Base class for all taxonomy-based facets that aggregate to float. */
+abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   /** Aggregation function used for combining values. */
   protected final AssociationAggregationFunction aggregationFunction;
 
-  /** Per-ordinal value. */
-  protected float[] values;
+  /** Dense ordinal values. */
+  float[] values;
 
   /** Sparse ordinal values. */
   IntFloatHashMap sparseValues;
 
-  /**
-   * Constructor that defaults the aggregation function to {@link
-   * AssociationAggregationFunction#SUM}.
-   */
-  protected FloatTaxonomyFacets(
-      String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config) throws IOException {
-    super(indexFieldName, taxoReader, config);
-    this.aggregationFunction = AssociationAggregationFunction.SUM;
-    values = new float[taxoReader.getSize()];
-  }
-
-  /** Constructor that uses the provided aggregation function. */
-  protected FloatTaxonomyFacets(
+  /** Sole constructor. */
+  FloatTaxonomyFacets(
       String indexFieldName,
       TaxonomyReader taxoReader,
       AssociationAggregationFunction aggregationFunction,
@@ -121,7 +101,7 @@ public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   protected TopOrdAndNumberQueue makeTopOrdAndNumberQueue(int topN) {
-    return new TopOrdAndFloatNumberQueue(Math.min(taxoReader.getSize(), topN));
+    return new TopOrdAndFloatQueue(Math.min(taxoReader.getSize(), topN));
   }
 
   @Override
@@ -143,14 +123,12 @@ public abstract class FloatTaxonomyFacets extends TaxonomyFacets {
 
   @Override
   protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
-    ((TopOrdAndFloatNumberQueue.OrdAndFloat) incomingOrdAndValue).value = getValue(ord);
+    ((TopOrdAndFloatQueue.OrdAndFloat) incomingOrdAndValue).value = getValue(ord);
   }
 
-  /** An accumulator for a float aggregated value. */
   protected class FloatAggregatedValue extends AggregatedValue {
     private float value;
 
-    /** Sole constructor. */
     public FloatAggregatedValue(float value) {
       this.value = value;
     }

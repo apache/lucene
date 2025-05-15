@@ -82,9 +82,8 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
   public Lucene90CompoundFormat() {}
 
   @Override
-  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si, IOContext context)
-      throws IOException {
-    return new Lucene90CompoundReader(dir, si, context);
+  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si) throws IOException {
+    return new Lucene90CompoundReader(dir, si);
   }
 
   @Override
@@ -104,15 +103,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
     }
   }
 
-  private static class SizedFile {
-    private final String name;
-    private final long length;
-
-    private SizedFile(String name, long length) {
-      this.name = name;
-      this.length = length;
-    }
-  }
+  private record SizedFile(String name, long length) {}
 
   private static class SizedFileQueue extends PriorityQueue<SizedFile> {
     SizedFileQueue(int maxSize) {
@@ -141,7 +132,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
       // align file start offset
       long startOffset = data.alignFilePointer(Long.BYTES);
       // write bytes for file
-      try (ChecksumIndexInput in = dir.openChecksumInput(file, IOContext.READONCE)) {
+      try (ChecksumIndexInput in = dir.openChecksumInput(file)) {
 
         // just copies the index header, verifying that its id matches what we expect
         CodecUtil.verifyAndCopyIndexHeader(in, data, si.getId());

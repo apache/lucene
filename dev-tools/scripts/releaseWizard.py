@@ -66,7 +66,7 @@ from consolemenu.items import FunctionItem, SubmenuItem, ExitItem
 from scriptutil import BranchType, Version, download, run
 
 # Lucene-to-Java version mapping
-java_versions = {6: 8, 7: 8, 8: 8, 9: 11}
+java_versions = {6: 8, 7: 8, 8: 8, 9: 11, 10: 21}
 editor = None
 
 # Edit this to add other global jinja2 variables or filters
@@ -239,7 +239,7 @@ def maybe_remove_rc_from_svn():
                  logfile="svn_rm.log",
                  tee=True,
                  vars={
-                     'dist_folder': """lucene-{{ release_version }}-RC{{ rc_number }}-rev{{ build_rc.git_rev | default("<git_rev>", True) }}""",
+                     'dist_folder': """lucene-{{ release_version }}-RC{{ rc_number }}-rev-{{ build_rc.git_rev | default("<git_rev>", True) }}""",
                      'dist_url': "{{ dist_url_base }}/{{ dist_folder }}"
                  }
              )],

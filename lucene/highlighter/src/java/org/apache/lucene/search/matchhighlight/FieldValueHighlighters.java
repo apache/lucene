@@ -61,7 +61,7 @@ public final class FieldValueHighlighters {
       @Override
       public List<String> format(
           String field,
-          String[] values,
+          List<String> values,
           String contiguousValue,
           List<OffsetRange> valueRanges,
           List<MatchHighlighter.QueryOffsetRange> matchOffsets) {
@@ -99,7 +99,7 @@ public final class FieldValueHighlighters {
       @Override
       public List<String> format(
           String field,
-          String[] values,
+          List<String> values,
           String contiguousValue,
           List<OffsetRange> valueRanges,
           List<MatchHighlighter.QueryOffsetRange> matchOffsets) {
@@ -128,11 +128,11 @@ public final class FieldValueHighlighters {
       @Override
       public List<String> format(
           String field,
-          String[] values,
+          List<String> values,
           String contiguousValue,
           List<OffsetRange> valueRanges,
           List<MatchHighlighter.QueryOffsetRange> matchOffsets) {
-        return Arrays.asList(values);
+        return values;
       }
     };
   }
@@ -146,7 +146,7 @@ public final class FieldValueHighlighters {
       @Override
       public List<String> format(
           String field,
-          String[] values,
+          List<String> values,
           String contiguousValue,
           List<OffsetRange> valueRanges,
           List<MatchHighlighter.QueryOffsetRange> matchOffsets) {

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -111,7 +112,7 @@ public class GenerateJflexTLDMacros {
 
   public GenerateJflexTLDMacros(String tldFileURL, String jflexFile, String tldListFile)
       throws Exception {
-    this.tldFileURL = new URL(tldFileURL);
+    this.tldFileURL = URI.create(tldFileURL).toURL();
     this.jflexMacroFile = Paths.get(jflexFile);
     this.tldListFile = Paths.get(tldListFile);
   }

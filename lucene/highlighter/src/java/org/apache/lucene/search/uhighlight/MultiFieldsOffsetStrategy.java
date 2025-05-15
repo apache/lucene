@@ -44,7 +44,7 @@ public class MultiFieldsOffsetStrategy extends FieldOffsetStrategy {
   @Override
   public UnifiedHighlighter.OffsetSource getOffsetSource() {
     // TODO: what should be returned here as offset source?
-    return fieldsOffsetStrategies.get(0).getOffsetSource();
+    return fieldsOffsetStrategies.getFirst().getOffsetSource();
   }
 
   @Override

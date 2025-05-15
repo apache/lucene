@@ -162,14 +162,12 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
   private static class DeflateWithPresetDictCompressor extends Compressor {
 
     final Deflater compressor;
-    final BugfixDeflater_JDK8252739 deflaterBugfix;
     byte[] compressed;
     boolean closed;
     byte[] buffer;
 
     DeflateWithPresetDictCompressor(int level) {
       compressor = new Deflater(level, true);
-      deflaterBugfix = BugfixDeflater_JDK8252739.createBugfix(compressor);
       compressed = new byte[64];
       buffer = BytesRef.EMPTY_BYTES;
     }
@@ -204,7 +202,7 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
 
     @Override
     public void compress(ByteBuffersDataInput buffersInput, DataOutput out) throws IOException {
-      final int len = (int) (buffersInput.size() - buffersInput.position());
+      final int len = (int) (buffersInput.length() - buffersInput.position());
       final int dictLength = len / (NUM_SUB_BLOCKS * DICT_SIZE_FACTOR);
       final int blockLength = (len - dictLength + NUM_SUB_BLOCKS - 1) / NUM_SUB_BLOCKS;
       out.writeVInt(dictLength);
@@ -219,7 +217,7 @@ public final class DeflateWithPresetDictCompressionMode extends CompressionMode 
       // And then sub blocks
       for (int start = dictLength; start < len; start += blockLength) {
         compressor.reset();
-        deflaterBugfix.setDictionary(buffer, 0, dictLength);
+        compressor.setDictionary(buffer, 0, dictLength);
         int l = Math.min(blockLength, len - start);
         buffersInput.readBytes(buffer, dictLength, l);
         doCompress(buffer, dictLength, l, out);

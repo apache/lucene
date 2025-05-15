@@ -40,12 +40,12 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.IntToLongFunction;
-import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.index.BaseTermsEnum;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -81,6 +81,7 @@ import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 
 /** Helper class extracted from BasePostingsFormatTestCase to exercise a postings format. */
 public class RandomPostingsTester {
@@ -120,9 +121,9 @@ public class RandomPostingsTester {
   private long totalPayloadBytes;
 
   // Holds all postings:
-  private Map<String, SortedMap<BytesRef, SeedAndOrd>> fields;
+  private final Map<String, SortedMap<BytesRef, SeedAndOrd>> fields;
 
-  private FieldInfos fieldInfos;
+  private final FieldInfos fieldInfos;
 
   List<FieldAndTerm> allTerms;
   private int maxDoc;
@@ -157,6 +158,7 @@ public class RandomPostingsTester {
               true,
               IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
               DocValuesType.NONE,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -731,6 +733,7 @@ public class RandomPostingsTester {
               doPayloads,
               indexOptions,
               DocValuesType.NONE,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -839,7 +842,7 @@ public class RandomPostingsTester {
     currentFieldInfos = newFieldInfos;
 
     SegmentReadState readState =
-        new SegmentReadState(dir, segmentInfo, newFieldInfos, IOContext.READ);
+        new SegmentReadState(dir, segmentInfo, newFieldInfos, IOContext.DEFAULT);
 
     return codec.postingsFormat().fieldsProducer(readState);
   }
@@ -1253,9 +1256,7 @@ public class RandomPostingsTester {
           Impacts impacts = impactsEnum.getImpacts();
           INDEX_PACKAGE_ACCESS.checkImpacts(impacts, doc);
           impactsCopy =
-              impacts.getImpacts(0).stream()
-                  .map(i -> new Impact(i.freq, i.norm))
-                  .collect(Collectors.toList());
+              impacts.getImpacts(0).stream().map(i -> new Impact(i.freq, i.norm)).toList();
         }
         freq = impactsEnum.freq();
         long norm = docToNorm.applyAsLong(doc);
@@ -1302,9 +1303,7 @@ public class RandomPostingsTester {
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
               impactsCopy =
-                  impacts.getImpacts(level).stream()
-                      .map(i -> new Impact(i.freq, i.norm))
-                      .collect(Collectors.toList());
+                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
               break;
             }
           }
@@ -1343,9 +1342,7 @@ public class RandomPostingsTester {
           for (int level = 0; level < impacts.numLevels(); ++level) {
             if (impacts.getDocIdUpTo(level) >= max) {
               impactsCopy =
-                  impacts.getImpacts(level).stream()
-                      .map(i -> new Impact(i.freq, i.norm))
-                      .collect(Collectors.toList());
+                  impacts.getImpacts(level).stream().map(i -> new Impact(i.freq, i.norm)).toList();
               break;
             }
           }
@@ -1371,12 +1368,12 @@ public class RandomPostingsTester {
 
   private static class TestThread extends Thread {
     private Fields fieldsSource;
-    private EnumSet<Option> options;
-    private IndexOptions maxIndexOptions;
-    private IndexOptions maxTestOptions;
-    private boolean alwaysTestMax;
+    private final EnumSet<Option> options;
+    private final IndexOptions maxIndexOptions;
+    private final IndexOptions maxTestOptions;
+    private final boolean alwaysTestMax;
     private RandomPostingsTester postingsTester;
-    private Random random;
+    private final Random random;
 
     public TestThread(
         Random random,
@@ -1606,7 +1603,8 @@ public class RandomPostingsTester {
     for (String field : fields.keySet()) {
       while (true) {
         Automaton a = AutomatonTestUtil.randomAutomaton(random);
-        CompiledAutomaton ca = new CompiledAutomaton(a, null, true, Integer.MAX_VALUE, false);
+        a = Operations.determinize(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+        CompiledAutomaton ca = new CompiledAutomaton(a, false, true, false);
         if (ca.type != CompiledAutomaton.AUTOMATON_TYPE.NORMAL) {
           // Keep retrying until we get an A that will really "use" the PF's intersect code:
           continue;
@@ -1684,11 +1682,7 @@ public class RandomPostingsTester {
       }
     }
     assertFalse(iterator.hasNext());
-    LuceneTestCase.expectThrows(
-        NoSuchElementException.class,
-        () -> {
-          iterator.next();
-        });
+    LuceneTestCase.expectThrows(NoSuchElementException.class, iterator::next);
   }
 
   /**

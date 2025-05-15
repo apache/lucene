@@ -25,6 +25,7 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
@@ -43,18 +44,25 @@ import org.apache.lucene.util.automaton.RegExp;
 public class MockTokenizer extends Tokenizer {
   /** Acts Similar to WhitespaceTokenizer */
   public static final CharacterRunAutomaton WHITESPACE =
-      new CharacterRunAutomaton(new RegExp("[^ \t\r\n]+").toAutomaton());
+      new CharacterRunAutomaton(
+          Operations.determinize(
+              new RegExp("[^ \t\r\n]+").toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
 
   /**
    * Acts Similar to KeywordTokenizer. TODO: Keyword returns an "empty" token for an empty reader...
    */
   public static final CharacterRunAutomaton KEYWORD =
-      new CharacterRunAutomaton(new RegExp(".*").toAutomaton());
+      new CharacterRunAutomaton(
+          Operations.determinize(
+              new RegExp(".*").toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
 
   /** Acts like LetterTokenizer. */
   // the ugly regex below is incomplete Unicode 5.2 [:Letter:]
   public static final CharacterRunAutomaton SIMPLE =
-      new CharacterRunAutomaton(new RegExp("[A-Za-zªµºÀ-ÖØ-öø-ˁ一-鿌]+").toAutomaton());
+      new CharacterRunAutomaton(
+          Operations.determinize(
+              new RegExp("[A-Za-zªµºÀ-ÖØ-öø-ˁ一-鿌]+").toAutomaton(),
+              Operations.DEFAULT_DETERMINIZE_WORK_LIMIT));
 
   /**
    * Limit the default token length to a size that doesn't cause random analyzer failures on

@@ -23,7 +23,6 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 import org.junit.Assert;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
@@ -72,7 +71,7 @@ public class TestHunspellRepositoryTestCases {
       }
     }
 
-    return names.stream().map(s -> new Object[] {s, tests.resolve(s)}).collect(Collectors.toList());
+    return names.stream().map(s -> new Object[] {s, tests.resolve(s)}).toList();
   }
 
   @Test

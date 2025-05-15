@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.fst.FSTCompiler;
 import org.apache.lucene.util.fst.Outputs;
 
@@ -40,45 +39,17 @@ import org.apache.lucene.util.fst.Outputs;
  *
  * @lucene.experimental
  */
-@SuppressForbidden(reason = "Uses a Long instance as a marker")
 public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
 
   /** Holds two long outputs. */
-  public static final class TwoLongs {
-    public final long first;
-    public final long second;
-
-    public TwoLongs(long first, long second) {
-      this.first = first;
-      this.second = second;
+  public record TwoLongs(long first, long second) {
+    public TwoLongs {
       assert first >= 0;
       assert second >= 0;
     }
-
-    @Override
-    public String toString() {
-      return "TwoLongs:" + first + "," + second;
-    }
-
-    @Override
-    public boolean equals(Object _other) {
-      if (_other instanceof TwoLongs) {
-        final TwoLongs other = (TwoLongs) _other;
-        return first == other.first && second == other.second;
-      } else {
-        return false;
-      }
-    }
-
-    @Override
-    public int hashCode() {
-      return (int) ((first ^ (first >>> 32)) ^ (second ^ (second >> 32)));
-    }
   }
 
-  // Ignore the deprecated constructor. We do want a unique object here.
-  @SuppressWarnings({"all"})
-  private static final Long NO_OUTPUT = new Long(0);
+  private static final Long NO_OUTPUT = 0L;
 
   private final boolean doShare;
 

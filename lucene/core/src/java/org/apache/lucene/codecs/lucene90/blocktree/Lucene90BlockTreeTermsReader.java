@@ -34,8 +34,8 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.fst.ByteSequenceOutputs;
@@ -145,7 +145,9 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
 
       String indexName =
           IndexFileNames.segmentFileName(segment, state.segmentSuffix, TERMS_INDEX_EXTENSION);
-      indexIn = state.directory.openInput(indexName, IOContext.LOAD);
+      indexIn =
+          state.directory.openInput(
+              indexName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
       CodecUtil.checkIndexHeader(
           indexIn,
           TERMS_INDEX_CODEC_NAME,
@@ -160,8 +162,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       IntObjectHashMap<FieldReader> fieldMap = null;
       Throwable priorE = null;
       long indexLength = -1, termsLength = -1;
-      try (ChecksumIndexInput metaIn =
-          state.directory.openChecksumInput(metaName, IOContext.READONCE)) {
+      try (ChecksumIndexInput metaIn = state.directory.openChecksumInput(metaName)) {
         try {
           CodecUtil.checkIndexHeader(
               metaIn,
@@ -199,6 +200,11 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
             final int docCount = metaIn.readVInt();
             BytesRef minTerm = readBytesRef(metaIn);
             BytesRef maxTerm = readBytesRef(metaIn);
+            if (numTerms == 1) {
+              assert maxTerm.equals(minTerm);
+              // save heap for edge case of a single term only so min == max
+              maxTerm = minTerm;
+            }
             if (docCount < 0
                 || docCount > state.segmentInfo.maxDoc()) { // #docs with field must be <= #docs
               throw new CorruptIndexException(
@@ -269,9 +275,8 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       throw new CorruptIndexException("invalid bytes length: " + numBytes, in);
     }
 
-    BytesRef bytes = new BytesRef();
+    BytesRef bytes = new BytesRef(numBytes);
     bytes.length = numBytes;
-    bytes.bytes = new byte[numBytes];
     in.readBytes(bytes.bytes, 0, numBytes);
 
     return bytes;

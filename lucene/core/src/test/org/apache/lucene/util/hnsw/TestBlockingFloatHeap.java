@@ -46,7 +46,7 @@ public class TestBlockingFloatHeap extends LuceneTestCase {
     double sum = 0, sum2 = 0;
 
     for (int i = 0; i < size; i++) {
-      float next = random().nextFloat();
+      float next = random().nextFloat(100f);
       sum += next;
       heap.offer(next);
     }

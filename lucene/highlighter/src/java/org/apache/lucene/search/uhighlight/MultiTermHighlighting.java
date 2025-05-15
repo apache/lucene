@@ -48,7 +48,7 @@ final class MultiTermHighlighting {
   }
 
   /**
-   * Indicates if the the leaf query (from {@link QueryVisitor#visitLeaf(Query)}) is a type of query
+   * Indicates if the leaf query (from {@link QueryVisitor#visitLeaf(Query)}) is a type of query
    * that we can extract automata from.
    */
   public static boolean canExtractAutomataFromLeafQuery(Query query) {

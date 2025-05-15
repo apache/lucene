@@ -39,7 +39,6 @@ import org.apache.lucene.index.IndexReader.ClosedListener;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
-import org.apache.lucene.util.CloseableThreadLocal;
 import org.apache.lucene.util.IOUtils;
 
 /** Holds core readers that are shared (unchanged) when SegmentReader is cloned or reopened */
@@ -69,26 +68,6 @@ final class SegmentCoreReaders {
    */
   final FieldInfos coreFieldInfos;
 
-  // TODO: make a single thread local w/ a
-  // Thingy class holding fieldsReader, termVectorsReader,
-  // normsProducer
-
-  final CloseableThreadLocal<StoredFieldsReader> fieldsReaderLocal =
-      new CloseableThreadLocal<StoredFieldsReader>() {
-        @Override
-        protected StoredFieldsReader initialValue() {
-          return fieldsReaderOrig.clone();
-        }
-      };
-
-  final CloseableThreadLocal<TermVectorsReader> termVectorsLocal =
-      new CloseableThreadLocal<TermVectorsReader>() {
-        @Override
-        protected TermVectorsReader initialValue() {
-          return (termVectorsReaderOrig == null) ? null : termVectorsReaderOrig.clone();
-        }
-      };
-
   private final Set<IndexReader.ClosedListener> coreClosedListeners =
       Collections.synchronizedSet(new LinkedHashSet<IndexReader.ClosedListener>());
 
@@ -101,7 +80,7 @@ final class SegmentCoreReaders {
 
     try {
       if (si.info.getUseCompoundFile()) {
-        cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info, context);
+        cfsDir = cfsReader = codec.compoundFormat().getCompoundReader(dir, si.info);
       } else {
         cfsReader = null;
         cfsDir = dir;
@@ -138,7 +117,7 @@ final class SegmentCoreReaders {
               .storedFieldsFormat()
               .fieldsReader(cfsDir, si.info, coreFieldInfos, context);
 
-      if (coreFieldInfos.hasVectors()) { // open term vector files only as needed
+      if (coreFieldInfos.hasTermVectors()) { // open term vector files only as needed
         termVectorsReaderOrig =
             si.info
                 .getCodec()
@@ -191,8 +170,6 @@ final class SegmentCoreReaders {
     if (ref.decrementAndGet() == 0) {
       try (Closeable finalizer = this::notifyCoreClosedListeners) {
         IOUtils.close(
-            termVectorsLocal,
-            fieldsReaderLocal,
             fields,
             termVectorsReaderOrig,
             fieldsReaderOrig,

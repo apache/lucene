@@ -30,7 +30,7 @@ import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.Accountable;
@@ -102,7 +102,7 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
+      public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
         if (context.reader().getFieldInfos().fieldInfo(field) == null) {
           return null;
         }
@@ -150,7 +150,8 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
                 }
               };
         }
-        return new ConstantScoreScorer(this, score(), scoreMode, iterator);
+        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
+        return new DefaultScorerSupplier(scorer);
       }
     };
   }

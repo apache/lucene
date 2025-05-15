@@ -53,6 +53,7 @@ import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestAddIndexes extends LuceneTestCase {
 
@@ -1255,6 +1256,7 @@ public class TestAddIndexes extends LuceneTestCase {
   }
 
   // LUCENE-1335: test simultaneous addIndexes & close
+  @SuppressForbidden(reason = "Thread sleep")
   public void testAddIndexesWithCloseNoWait() throws Throwable {
 
     final int NUM_COPY = 50;
@@ -1279,6 +1281,7 @@ public class TestAddIndexes extends LuceneTestCase {
   }
 
   // LUCENE-1335: test simultaneous addIndexes & close
+  @SuppressForbidden(reason = "Thread sleep")
   public void testAddIndexesWithRollback() throws Throwable {
 
     final int NUM_COPY = TEST_NIGHTLY ? 50 : 5;
@@ -1825,9 +1828,9 @@ public class TestAddIndexes extends LuceneTestCase {
       boolean baseHasBlocks = baseHasBlocksPerm[perm];
       try (Directory dir = newDirectory()) {
         try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
-          int numBlocks = 1 + random().nextInt(10);
+          int numBlocks = random().nextInt(1, 10);
           for (int i = 0; i < numBlocks; i++) {
-            int numDocs = baseHasBlocks ? 2 + random().nextInt(10) : 1;
+            int numDocs = baseHasBlocks ? random().nextInt(2, 10) : 1;
             List<Document> docs = new ArrayList<>();
             for (int j = 0; j < numDocs; j++) {
               Document doc = new Document();
@@ -1841,10 +1844,10 @@ public class TestAddIndexes extends LuceneTestCase {
         }
 
         try (Directory addDir = newDirectory()) {
-          int numBlocks = 1 + random().nextInt(10);
+          int numBlocks = random().nextInt(1, 10);
           try (RandomIndexWriter writer = new RandomIndexWriter(random(), addDir)) {
             for (int i = 0; i < numBlocks; i++) {
-              int numDocs = addHasBlocks ? 2 + random().nextInt(10) : 1;
+              int numDocs = addHasBlocks ? random().nextInt(2, 10) : 1;
               List<Document> docs = new ArrayList<>();
               for (int j = 0; j < numDocs; j++) {
                 Document doc = new Document();

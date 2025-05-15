@@ -66,7 +66,7 @@ public class TestSimpleTextSegmentInfoFormat extends BaseSegmentInfoFormatTestCa
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     String segFileName =
         IndexFileNames.segmentFileName("_123", "", SimpleTextSegmentInfoFormat.SI_EXTENSION);
-    try (ChecksumIndexInput input = dir.openChecksumInput(segFileName, IOContext.READONCE)) {
+    try (ChecksumIndexInput input = dir.openChecksumInput(segFileName)) {
       long length = input.length();
       if (length > 5_000) {
         // Avoid allocating a huge array if the length is wrong

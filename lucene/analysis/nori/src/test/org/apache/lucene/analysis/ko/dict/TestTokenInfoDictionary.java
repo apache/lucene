@@ -16,10 +16,10 @@
  */
 package org.apache.lucene.analysis.ko.dict;
 
-import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.DICT_FILENAME_SUFFIX;
-import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
-import static org.apache.lucene.analysis.ko.dict.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
 import static org.apache.lucene.analysis.ko.dict.TokenInfoDictionary.FST_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.morph.BinaryDictionary.DICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.morph.BinaryDictionary.POSDICT_FILENAME_SUFFIX;
+import static org.apache.lucene.analysis.morph.BinaryDictionary.TARGETMAP_FILENAME_SUFFIX;
 
 import java.io.BufferedInputStream;
 import java.io.InputStream;
@@ -30,7 +30,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.apache.lucene.analysis.ko.POS;
-import org.apache.lucene.analysis.ko.util.DictionaryBuilder;
 import org.apache.lucene.store.InputStreamDataInput;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IntsRef;
@@ -144,13 +143,13 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
 
         tid.getWordCost(wordId);
 
-        POS.Type type = tid.getPOSType(wordId);
-        POS.Tag leftPOS = tid.getLeftPOS(wordId);
-        POS.Tag rightPOS = tid.getRightPOS(wordId);
+        POS.Type type = tid.getMorphAttributes().getPOSType(wordId);
+        POS.Tag leftPOS = tid.getMorphAttributes().getLeftPOS(wordId);
+        POS.Tag rightPOS = tid.getMorphAttributes().getRightPOS(wordId);
 
         if (type == POS.Type.MORPHEME) {
           assertSame(leftPOS, rightPOS);
-          String reading = tid.getReading(wordId);
+          String reading = tid.getMorphAttributes().getReading(wordId);
           boolean isHanja = charDef.isHanja(surfaceForm.charAt(0));
           if (isHanja) {
             assertNotNull(reading);
@@ -166,18 +165,19 @@ public class TestTokenInfoDictionary extends LuceneTestCase {
             assertSame(leftPOS, rightPOS);
             assertTrue(leftPOS == POS.Tag.NNG || rightPOS == POS.Tag.NNP);
           }
-          Dictionary.Morpheme[] decompound = tid.getMorphemes(wordId, chars, 0, chars.length);
+          KoMorphData.Morpheme[] decompound =
+              tid.getMorphAttributes().getMorphemes(wordId, chars, 0, chars.length);
           if (decompound != null) {
             int offset = 0;
-            for (Dictionary.Morpheme morph : decompound) {
-              assertTrue(UnicodeUtil.validUTF16String(morph.surfaceForm));
-              assertFalse(morph.surfaceForm.isEmpty());
-              assertEquals(morph.surfaceForm.trim(), morph.surfaceForm);
+            for (KoMorphData.Morpheme morph : decompound) {
+              assertTrue(UnicodeUtil.validUTF16String(morph.surfaceForm()));
+              assertFalse(morph.surfaceForm().isEmpty());
+              assertEquals(morph.surfaceForm().trim(), morph.surfaceForm());
               if (type != POS.Type.INFLECT) {
                 assertEquals(
-                    morph.surfaceForm,
-                    surfaceForm.substring(offset, offset + morph.surfaceForm.length()));
-                offset += morph.surfaceForm.length();
+                    morph.surfaceForm(),
+                    surfaceForm.substring(offset, offset + morph.surfaceForm().length()));
+                offset += morph.surfaceForm().length();
               }
             }
             assertTrue(offset <= surfaceForm.length());

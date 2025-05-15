@@ -27,6 +27,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestWeakIdentityMap extends LuceneTestCase {
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testSimpleHashMap() {
     final WeakIdentityMap<String, String> map = WeakIdentityMap.newHashMap(random().nextBoolean());
     // we keep strong references to the keys,
@@ -119,7 +120,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     int size = map.size();
     for (int i = 0; size > 0 && i < 10; i++)
       try {
-        System.runFinalization();
+        runFinalization();
         System.gc();
         int newSize = map.size();
         assertTrue("previousSize(" + size + ")>=newSize(" + newSize + ")", size >= newSize);
@@ -162,6 +163,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     assertTrue(map.isEmpty());
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testConcurrentHashMap() throws Exception {
     // don't make threadCount and keyCount random, otherwise easily OOMs or fails otherwise:
     final int threadCount = TEST_NIGHTLY ? 8 : 2;
@@ -231,7 +233,7 @@ public class TestWeakIdentityMap extends LuceneTestCase {
     int size = map.size();
     for (int i = 0; size > 0 && i < 10; i++)
       try {
-        System.runFinalization();
+        runFinalization();
         System.gc();
         int newSize = map.size();
         assertTrue("previousSize(" + size + ")>=newSize(" + newSize + ")", size >= newSize);
@@ -250,5 +252,11 @@ public class TestWeakIdentityMap extends LuceneTestCase {
           @SuppressWarnings("unused")
           InterruptedException ie) {
       }
+  }
+
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "requires to run finalization")
+  private static void runFinalization() {
+    System.runFinalization();
   }
 }

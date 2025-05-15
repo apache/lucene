@@ -464,7 +464,7 @@ class GeoDegeneratePath extends GeoBasePath {
      * @param x is the point x.
      * @param y is the point y.
      * @param z is the point z.
-     * @return true of within.
+     * @return true if within.
      */
     @Override
     public boolean isWithin(final double x, final double y, final double z) {
@@ -472,12 +472,12 @@ class GeoDegeneratePath extends GeoBasePath {
     }
 
     /**
-     * Check if point is within this section's purview.
+     * Check if point is within the section handled by this endpoint.
      *
-     * @param x is the point x
-     * @param y is the point y
-     * @param z is the point z
-     * @return true if this point "belongs" to this section, falso otherwise.
+     * @param x is the point x.
+     * @param y is the point y.
+     * @param z is the point z.
+     * @return true if within.
      */
     public boolean isWithinSection(final double x, final double y, final double z) {
       for (final Membership m : cutoffPlanes) {

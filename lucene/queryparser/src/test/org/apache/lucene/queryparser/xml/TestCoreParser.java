@@ -130,7 +130,7 @@ public class TestCoreParser extends LuceneTestCase {
 
   public void testCustomFieldUserQueryXML() throws ParserException, IOException {
     Query q = parse("UserInputQueryCustomField.xml");
-    long h = searcher().search(q, 1000).totalHits.value;
+    long h = searcher().search(q, 1000).totalHits.value();
     assertEquals("UserInputQueryCustomField should produce 0 result ", 0, h);
   }
 
@@ -149,7 +149,7 @@ public class TestCoreParser extends LuceneTestCase {
 
   public void testSpanPositionRangeQueryXML() throws Exception {
     Query q = parse("SpanPositionRangeQuery.xml");
-    long h = searcher().search(q, 10).totalHits.value;
+    long h = searcher().search(q, 10).totalHits.value();
     assertEquals("SpanPositionRangeQuery should produce 2 result ", 2, h);
     SpanQuery sq = parseAsSpan("SpanPositionRangeQuery.xml");
     dumpResults("SpanPositionRangeQuery", sq, 5);
@@ -323,7 +323,7 @@ public class TestCoreParser extends LuceneTestCase {
     }
     final IndexSearcher searcher = searcher();
     TopDocs hits = searcher.search(q, numDocs);
-    final boolean producedResults = (hits.totalHits.value > 0);
+    final boolean producedResults = (hits.totalHits.value() > 0);
     if (!producedResults) {
       System.out.println(
           "TEST: qType="
@@ -338,7 +338,7 @@ public class TestCoreParser extends LuceneTestCase {
     if (VERBOSE) {
       ScoreDoc[] scoreDocs = hits.scoreDocs;
       StoredFields storedFields = searcher.storedFields();
-      for (int i = 0; i < Math.min(numDocs, hits.totalHits.value); i++) {
+      for (int i = 0; i < Math.min(numDocs, hits.totalHits.value()); i++) {
         Document ldoc = storedFields.document(scoreDocs[i].doc);
         System.out.println("[" + ldoc.get("date") + "]" + ldoc.get("contents"));
       }

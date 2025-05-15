@@ -74,7 +74,7 @@ public class TestSweetSpotSimilarity extends LuceneTestCase {
   public void testSweetSpotComputeNorm() throws IOException {
 
     final SweetSpotSimilarity ss = new SweetSpotSimilarity();
-    ss.setLengthNormFactors(1, 1, 0.5f, true);
+    ss.setLengthNormFactors(1, 1, 0.5f);
 
     Similarity d = new ClassicSimilarity();
     Similarity s = ss;
@@ -87,7 +87,7 @@ public class TestSweetSpotSimilarity extends LuceneTestCase {
 
     // make a sweet spot
 
-    ss.setLengthNormFactors(3, 10, 0.5f, true);
+    ss.setLengthNormFactors(3, 10, 0.5f);
 
     for (int i = 3; i <= 10; i++) {
       assertEquals("3,10: spot i=" + i, 1.0f, computeNorm(ss, "bogus", i), 0.0f);
@@ -101,14 +101,14 @@ public class TestSweetSpotSimilarity extends LuceneTestCase {
 
     // separate sweet spot for certain fields
 
-    final SweetSpotSimilarity ssBar = new SweetSpotSimilarity();
-    ssBar.setLengthNormFactors(8, 13, 0.5f, false);
-    final SweetSpotSimilarity ssYak = new SweetSpotSimilarity();
-    ssYak.setLengthNormFactors(6, 9, 0.5f, false);
-    final SweetSpotSimilarity ssA = new SweetSpotSimilarity();
-    ssA.setLengthNormFactors(5, 8, 0.5f, false);
-    final SweetSpotSimilarity ssB = new SweetSpotSimilarity();
-    ssB.setLengthNormFactors(5, 8, 0.1f, false);
+    final SweetSpotSimilarity ssBar = new SweetSpotSimilarity(false);
+    ssBar.setLengthNormFactors(8, 13, 0.5f);
+    final SweetSpotSimilarity ssYak = new SweetSpotSimilarity(false);
+    ssYak.setLengthNormFactors(6, 9, 0.5f);
+    final SweetSpotSimilarity ssA = new SweetSpotSimilarity(false);
+    ssA.setLengthNormFactors(5, 8, 0.5f);
+    final SweetSpotSimilarity ssB = new SweetSpotSimilarity(false);
+    ssB.setLengthNormFactors(5, 8, 0.1f);
 
     Similarity sp =
         new PerFieldSimilarityWrapper() {

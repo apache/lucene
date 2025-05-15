@@ -32,7 +32,7 @@ import java.util.Arrays;
  *   <li>Stemming of common suffixes.
  * </ul>
  */
-public class PersianStemmer {
+class PersianStemmer {
   private static final char ALEF = '\u0627';
   private static final char HEH = '\u0647';
   private static final char TEH = '\u062A';
@@ -59,7 +59,7 @@ public class PersianStemmer {
    * @param len length of input buffer
    * @return length of input buffer after normalization
    */
-  public int stem(char[] s, int len) {
+  int stem(char[] s, int len) {
     len = stemSuffix(s, len);
 
     return len;

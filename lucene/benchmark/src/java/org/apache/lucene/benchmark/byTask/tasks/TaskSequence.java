@@ -25,8 +25,10 @@ import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.feeds.NoMoreDataException;
 import org.apache.lucene.benchmark.byTask.stats.TaskStats;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.SuppressForbidden;
 
 /** Sequence of parallel or sequential tasks. */
+@SuppressForbidden(reason = "Thread sleep")
 public class TaskSequence extends PerfTask {
   public static int REPEAT_EXHAUST = -2;
   private ArrayList<PerfTask> tasks;

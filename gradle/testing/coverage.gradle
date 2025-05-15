@@ -45,7 +45,7 @@ if (withCoverage) {
 
       // Synthetic task to enable test coverage (and reports).
       task coverage() {
-        dependsOn jacocoTestReport
+        dependsOn test, jacocoTestReport
       }
 
       tasks.withType(Test) { Task testTask ->
@@ -56,8 +56,8 @@ if (withCoverage) {
           destinationFile = file("${testTask.workingDir}/jacoco.exec")
         }
 
-        // Test reports, if any, must be preceded by test execution.
-        jacocoTestReport.dependsOn testTask
+        // Test reports run after the test task, if it's run at all.
+        testTask.finalizedBy jacocoTestReport
       }
 
       configure(jacocoTestReport) {

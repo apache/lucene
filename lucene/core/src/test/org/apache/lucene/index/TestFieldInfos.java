@@ -16,24 +16,16 @@
  */
 package org.apache.lucene.index;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.sameInstance;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
-import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.Version;
 
 public class TestFieldInfos extends LuceneTestCase {
 
@@ -147,7 +139,7 @@ public class TestFieldInfos extends LuceneTestCase {
           assertEquals("testValue2", fi.getAttribute("testKey1"));
           break;
         default:
-          assertFalse("Unknown field", true);
+          fail("Unknown field");
       }
     }
     reader.close();
@@ -193,7 +185,7 @@ public class TestFieldInfos extends LuceneTestCase {
     FieldInfo fi1 = fis.fieldInfo("f1");
     assertEquals("attdoc1", fi1.getAttribute("att1"));
     assertEquals("attdoc1", fi1.getAttribute("att2"));
-    assertEquals(null, fi1.getAttribute("att3"));
+    assertNull(fi1.getAttribute("att3"));
 
     // test that attributes for f2 are introduced by d2
     FieldInfo fi2 = fis.fieldInfo("f2");
@@ -210,9 +202,8 @@ public class TestFieldInfos extends LuceneTestCase {
 
     IndexReader reader = DirectoryReader.open(writer);
     FieldInfos actual = FieldInfos.getMergedFieldInfos(reader);
-    FieldInfos expected = FieldInfos.EMPTY;
 
-    assertThat(actual, sameInstance(expected));
+    assertSame(FieldInfos.EMPTY, actual);
 
     reader.close();
     writer.close();
@@ -239,8 +230,8 @@ public class TestFieldInfos extends LuceneTestCase {
     FieldInfos actual = FieldInfos.getMergedFieldInfos(reader);
     FieldInfos expected = reader.leaves().get(0).reader().getFieldInfos();
 
-    assertThat(reader.leaves().size(), equalTo(1));
-    assertThat(actual, sameInstance(expected));
+    assertEquals(1, reader.leaves().size());
+    assertSame(expected, actual);
 
     reader.close();
     writer.close();
@@ -248,8 +239,7 @@ public class TestFieldInfos extends LuceneTestCase {
   }
 
   public void testFieldNumbersAutoIncrement() {
-    FieldInfos.FieldNumbers fieldNumbers =
-        new FieldInfos.FieldNumbers("softDeletes", "parentDoc", Version.LATEST.major);
+    FieldInfos.FieldNumbers fieldNumbers = new FieldInfos.FieldNumbers("softDeletes", "parentDoc");
     for (int i = 0; i < 10; i++) {
       fieldNumbers.addOrGet(
           new FieldInfo(
@@ -260,6 +250,7 @@ public class TestFieldInfos extends LuceneTestCase {
               false,
               IndexOptions.NONE,
               DocValuesType.NONE,
+              DocValuesSkipIndexType.NONE,
               -1,
               new HashMap<>(),
               0,
@@ -281,6 +272,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 false,
                 IndexOptions.NONE,
                 DocValuesType.NONE,
+                DocValuesSkipIndexType.NONE,
                 -1,
                 new HashMap<>(),
                 0,
@@ -304,6 +296,7 @@ public class TestFieldInfos extends LuceneTestCase {
                 false,
                 IndexOptions.NONE,
                 DocValuesType.NONE,
+                DocValuesSkipIndexType.NONE,
                 -1,
                 new HashMap<>(),
                 0,
@@ -315,92 +308,5 @@ public class TestFieldInfos extends LuceneTestCase {
                 false,
                 false));
     assertEquals("Field numbers should reset after clear()", 0, idx);
-  }
-
-  public void testRelaxConsistencyCheckForOldIndices() throws IOException {
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig config =
-          new IndexWriterConfig()
-              .setIndexCreatedVersionMajor(8)
-              .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-      try (IndexWriter writer = new IndexWriter(dir, config)) {
-        // first segment with DV
-        Document d1 = new Document();
-        d1.add(new StringField("my_field", "first", Field.Store.NO));
-        d1.add(new BinaryDocValuesField("my_field", new BytesRef("first")));
-        writer.addDocument(d1);
-        writer.flush();
-        // second segment without DV
-        Document d2 = new Document();
-        d2.add(new StringField("my_field", "second", Field.Store.NO));
-        writer.addDocument(d2);
-        writer.flush();
-        writer.commit();
-      }
-      config = new IndexWriterConfig().setOpenMode(IndexWriterConfig.OpenMode.APPEND);
-      try (IndexWriter writer = new IndexWriter(dir, config)) {
-        // third segment with DV only
-        Document d3 = new Document();
-        d3.add(new BinaryDocValuesField("my_field", new BytesRef("third")));
-        writer.addDocument(d3);
-        writer.flush();
-        writer.commit();
-        // fails due to inconsistent DV type
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              Document d = new Document();
-              d.add(new NumericDocValuesField("my_field", 3));
-              writer.addDocument(d);
-            });
-        // fails due to inconsistent index options
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              Document d = new Document();
-              d.add(new TextField("my_field", "more", Field.Store.NO));
-              writer.addDocument(d);
-            });
-      }
-    }
-  }
-
-  public void testFieldInfosMergeBehaviorOnOldIndices() throws IOException {
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig config =
-          new IndexWriterConfig()
-              .setIndexCreatedVersionMajor(8)
-              .setMergeScheduler(new SerialMergeScheduler())
-              .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-      FieldType ft1 = new FieldType();
-      ft1.setIndexOptions(IndexOptions.NONE);
-      ft1.setStored(true);
-      FieldType ft2 = new FieldType();
-      ft2.setIndexOptions(IndexOptions.DOCS);
-      ft2.setStored(true);
-
-      try (IndexWriter writer = new IndexWriter(dir, config)) {
-        Document d1 = new Document();
-        // Document 1 has my_field with IndexOptions.NONE
-        d1.add(new Field("my_field", "first", ft1));
-        writer.addDocument(d1);
-        for (int i = 0; i < 100; i++) {
-          // Add some more docs to make sure segment 0 is the biggest one
-          Document d = new Document();
-          d.add(new Field("foo", "bar" + i, ft2));
-          writer.addDocument(d);
-        }
-        writer.flush();
-
-        Document d2 = new Document();
-        // Document 2 has my_field with IndexOptions.DOCS
-        d2.add(new Field("my_field", "first", ft2));
-        writer.addDocument(d2);
-        writer.flush();
-
-        writer.commit();
-        writer.forceMerge(1);
-      }
-    }
   }
 }

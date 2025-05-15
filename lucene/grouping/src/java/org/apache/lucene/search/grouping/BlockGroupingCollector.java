@@ -32,8 +32,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
-import org.apache.lucene.search.TopFieldCollector;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.ArrayUtil;
@@ -276,7 +276,7 @@ public class BlockGroupingCollector extends SimpleCollector {
     }
     int totalGroupedHitCount = 0;
 
-    final ScoreAndDoc fakeScorer = new ScoreAndDoc();
+    final Score fakeScorer = new Score();
 
     float maxScore = Float.MIN_VALUE;
 
@@ -294,12 +294,14 @@ public class BlockGroupingCollector extends SimpleCollector {
           throw new IllegalArgumentException(
               "cannot sort by relevance within group: needsScores=false");
         }
-        collector = TopScoreDocCollector.create(maxDocsPerGroup, Integer.MAX_VALUE);
+        collector =
+            new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE)
+                .newCollector();
       } else {
         // Sort by fields
         collector =
-            TopFieldCollector.create(
-                withinGroupSort, maxDocsPerGroup, Integer.MAX_VALUE); // TODO: disable exact counts?
+            new TopFieldCollectorManager(withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE)
+                .newCollector(); // TODO: disable exact counts?
       }
 
       float groupMaxScore = needsScores ? Float.NEGATIVE_INFINITY : Float.NaN;
@@ -307,7 +309,6 @@ public class BlockGroupingCollector extends SimpleCollector {
       leafCollector.setScorer(fakeScorer);
       for (int docIDX = 0; docIDX < og.count; docIDX++) {
         final int doc = og.docs[docIDX];
-        fakeScorer.doc = doc;
         if (needsScores) {
           fakeScorer.score = og.scores[docIDX];
           groupMaxScore = Math.max(groupMaxScore, fakeScorer.score);
@@ -499,15 +500,9 @@ public class BlockGroupingCollector extends SimpleCollector {
     return needsScores ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
   }
 
-  private static class ScoreAndDoc extends Scorable {
+  private static class Score extends Scorable {
 
     float score;
-    int doc = -1;
-
-    @Override
-    public int docID() {
-      return doc;
-    }
 
     @Override
     public float score() {

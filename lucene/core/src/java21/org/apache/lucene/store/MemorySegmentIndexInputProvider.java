@@ -23,30 +23,33 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.Unwrappable;
 
 @SuppressWarnings("preview")
-final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexInputProvider {
+final class MemorySegmentIndexInputProvider
+    implements MMapDirectory.MMapIndexInputProvider<
+        ConcurrentHashMap<String, RefCountedSharedArena>> {
 
   private final Optional<NativeAccess> nativeAccess;
+  private final int sharedArenaMaxPermits;
 
-  public MemorySegmentIndexInputProvider() {
+  MemorySegmentIndexInputProvider(int maxPermits) {
     this.nativeAccess = NativeAccess.getImplementation();
-    var log = Logger.getLogger(getClass().getName());
-    log.info(
-        String.format(
-            Locale.ENGLISH,
-            "Using MemorySegmentIndexInput%s with Java 21 or later; to disable start with -D%s=false",
-            nativeAccess.map(n -> " and native madvise support").orElse(""),
-            MMapDirectory.ENABLE_MEMORY_SEGMENTS_SYSPROP));
+    this.sharedArenaMaxPermits = checkMaxPermits(maxPermits);
   }
 
   @Override
-  public IndexInput openInput(Path path, IOContext context, int chunkSizePower, boolean preload)
+  public IndexInput openInput(
+      Path path,
+      IOContext context,
+      int chunkSizePower,
+      boolean preload,
+      Optional<String> group,
+      ConcurrentHashMap<String, RefCountedSharedArena> arenas)
       throws IOException {
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
@@ -54,16 +57,25 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
     path = Unwrappable.unwrapAll(path);
 
     boolean success = false;
-    final Arena arena = Arena.ofShared();
+    final boolean confined = context == IOContext.READONCE;
+    final Arena arena = confined ? Arena.ofConfined() : getSharedArena(group, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
       final IndexInput in =
           MemorySegmentIndexInput.newInstance(
               resourceDescription,
               arena,
-              map(arena, resourceDescription, fc, context, chunkSizePower, preload, fileSize),
+              map(
+                  arena,
+                  resourceDescription,
+                  fc,
+                  context.readAdvice(),
+                  chunkSizePower,
+                  preload,
+                  fileSize),
               fileSize,
-              chunkSizePower);
+              chunkSizePower,
+              confined);
       success = true;
       return in;
     } finally {
@@ -79,16 +91,6 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
   }
 
   @Override
-  public boolean isUnmapSupported() {
-    return true;
-  }
-
-  @Override
-  public String getUnmapNotSupportedReason() {
-    return null;
-  }
-
-  @Override
   public boolean supportsMadvise() {
     return nativeAccess.isPresent();
   }
@@ -97,7 +99,7 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
       Arena arena,
       String resourceDescription,
       FileChannel fc,
-      IOContext context,
+      ReadAdvice readAdvice,
       int chunkSizePower,
       boolean preload,
       long length)
@@ -123,15 +125,67 @@ final class MemorySegmentIndexInputProvider implements MMapDirectory.MMapIndexIn
         throw convertMapFailedIOException(ioe, resourceDescription, segSize);
       }
       // if preload apply it without madvise.
-      // if chunk size is too small (2 MiB), disable madvise support (incorrect alignment)
+      // skip madvise if the address of our segment is not page-aligned (small segments due to
+      // internal FileChannel logic)
       if (preload) {
         segment.load();
-      } else if (nativeAccess.isPresent() && chunkSizePower >= 21) {
-        nativeAccess.get().madvise(segment, context);
+      } else if (readAdvice != ReadAdvice.NORMAL
+          && nativeAccess.filter(na -> segment.address() % na.getPageSize() == 0).isPresent()) {
+        // No need to madvise with ReadAdvice.NORMAL since it is the OS' default read advice.
+        nativeAccess.get().madvise(segment, readAdvice);
       }
       segments[segNr] = segment;
       startOffset += segSize;
     }
     return segments;
+  }
+
+  @Override
+  public ConcurrentHashMap<String, RefCountedSharedArena> attachment() {
+    return new ConcurrentHashMap<>();
+  }
+
+  private static int checkMaxPermits(int maxPermits) {
+    if (RefCountedSharedArena.validMaxPermits(maxPermits)) {
+      return maxPermits;
+    }
+    Logger.getLogger(MemorySegmentIndexInputProvider.class.getName())
+        .warning(
+            "Invalid value for sysprop "
+                + MMapDirectory.SHARED_ARENA_MAX_PERMITS_SYSPROP
+                + ", must be positive and <= 0x07FF. The default value will be used.");
+    return RefCountedSharedArena.DEFAULT_MAX_PERMITS;
+  }
+
+  /**
+   * Gets an arena for the given group, potentially aggregating files from the same segment into a
+   * single ref counted shared arena. A ref counted shared arena, if created will be added to the
+   * given arenas map.
+   */
+  private Arena getSharedArena(
+      Optional<String> group, ConcurrentHashMap<String, RefCountedSharedArena> arenas) {
+    if (group.isEmpty()) {
+      return Arena.ofShared();
+    }
+
+    String key = group.get();
+    var refCountedArena =
+        arenas.computeIfAbsent(
+            key, s -> new RefCountedSharedArena(s, () -> arenas.remove(s), sharedArenaMaxPermits));
+    if (refCountedArena.acquire()) {
+      return refCountedArena;
+    } else {
+      return arenas.compute(
+          key,
+          (s, v) -> {
+            if (v != null && v.acquire()) {
+              return v;
+            } else {
+              v = new RefCountedSharedArena(s, () -> arenas.remove(s), sharedArenaMaxPermits);
+              v.acquire(); // guaranteed to succeed
+              return v;
+            }
+          });
+    }
   }
 }

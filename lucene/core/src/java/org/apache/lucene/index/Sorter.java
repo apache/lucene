@@ -22,6 +22,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.TimSorter;
+import org.apache.lucene.util.Version;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -218,6 +219,14 @@ public final class Sorter {
           in ->
               (docID1, docID2) ->
                   in.compare(parents.nextSetBit(docID1), parents.nextSetBit(docID2));
+    }
+    if (metaData.hasBlocks()
+        && fieldInfos.getParentField() == null
+        && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
+      throw new CorruptIndexException(
+          "parent field is not set but the index has blocks. indexCreatedVersionMajor: "
+              + metaData.createdVersionMajor(),
+          "Sorter");
     }
 
     for (int i = 0; i < fields.length; i++) {

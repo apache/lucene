@@ -25,7 +25,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 /**
@@ -94,7 +93,7 @@ public class TestAutomatonQueryUnicode extends LuceneTestCase {
   }
 
   private long automatonQueryNrHits(AutomatonQuery query) throws IOException {
-    return searcher.search(query, 5).totalHits.value;
+    return searcher.search(query, 5).totalHits.value();
   }
 
   private void assertAutomatonHits(int expected, Automaton automaton) throws IOException {
@@ -102,27 +101,18 @@ public class TestAutomatonQueryUnicode extends LuceneTestCase {
         expected,
         automatonQueryNrHits(
             new AutomatonQuery(
-                newTerm("bogus"),
-                automaton,
-                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                false,
-                MultiTermQuery.SCORING_BOOLEAN_REWRITE)));
+                newTerm("bogus"), automaton, false, MultiTermQuery.SCORING_BOOLEAN_REWRITE)));
+    assertEquals(
+        expected,
+        automatonQueryNrHits(
+            new AutomatonQuery(
+                newTerm("bogus"), automaton, false, MultiTermQuery.CONSTANT_SCORE_REWRITE)));
     assertEquals(
         expected,
         automatonQueryNrHits(
             new AutomatonQuery(
                 newTerm("bogus"),
                 automaton,
-                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                false,
-                MultiTermQuery.CONSTANT_SCORE_REWRITE)));
-    assertEquals(
-        expected,
-        automatonQueryNrHits(
-            new AutomatonQuery(
-                newTerm("bogus"),
-                automaton,
-                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
                 false,
                 MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE)));
     assertEquals(
@@ -131,7 +121,6 @@ public class TestAutomatonQueryUnicode extends LuceneTestCase {
             new AutomatonQuery(
                 newTerm("bogus"),
                 automaton,
-                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
                 false,
                 MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE)));
   }

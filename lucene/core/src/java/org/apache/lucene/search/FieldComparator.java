@@ -134,7 +134,8 @@ public abstract class FieldComparator<T> {
   /**
    * Sorts by descending relevance. NOTE: if you are sorting only by descending relevance and then
    * secondarily by ascending docID, performance is faster using {@link TopScoreDocCollector}
-   * directly (which {@link IndexSearcher#search} uses when no {@link Sort} is specified).
+   * directly (which {@link IndexSearcher#search(Query, int)} uses when no {@link Sort} is
+   * specified).
    */
   public static final class RelevanceComparator extends FieldComparator<Float>
       implements LeafFieldComparator {
@@ -183,10 +184,7 @@ public abstract class FieldComparator<T> {
 
     @Override
     public void setScorer(Scorable scorer) {
-      // wrap with a ScoreCachingWrappingScorer so that successive calls to
-      // score() will not incur score computation over and
-      // over again.
-      this.scorer = ScoreCachingWrappingScorer.wrap(scorer);
+      this.scorer = scorer;
     }
 
     @Override

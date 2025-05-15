@@ -18,11 +18,12 @@ package org.apache.lucene.expressions.js;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.lang.constant.ConstantDescs;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandleInfo;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.ArrayDeque;
@@ -32,7 +33,11 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -46,10 +51,13 @@ import org.apache.lucene.expressions.js.JavascriptParser.ExpressionContext;
 import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.util.IOUtils;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.ConstantDynamic;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.Method;
 
 /**
  * An expression compiler for javascript expressions.
@@ -63,68 +71,73 @@ import org.objectweb.asm.commons.GeneratorAdapter;
  * <p>See the {@link org.apache.lucene.expressions.js package documentation} for the supported
  * syntax and default functions.
  *
- * <p>You can compile with an alternate set of functions via {@link #compile(String, Map,
- * ClassLoader)}. For example:
+ * <p>You can compile with an alternate set of functions via {@link #compile(String, Map)}. For
+ * example:
  *
  * <pre class="prettyprint">
- *   Map&lt;String,Method&gt; functions = new HashMap&lt;&gt;();
+ *   Map&lt;String,MethodHandle&gt; functions = new HashMap&lt;&gt;();
  *   // add all the default functions
  *   functions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
  *   // add cbrt()
- *   functions.put("cbrt", Math.class.getMethod("cbrt", double.class));
+ *   functions.put("cbrt", MethodHandles.publicLookup().findStatic(Math.class, "cbrt",
+ *                 MethodType.methodType(double.class, double.class)));
  *   // call compile with customized function map
  *   Expression foo = JavascriptCompiler.compile("cbrt(score)+ln(popularity)",
- *                                               functions,
- *                                               getClass().getClassLoader());
+ *                                               functions);
  * </pre>
+ *
+ * <p>It is possible to pass any {@link MethodHandle} as function that only takes {@code double}
+ * parameters and returns a {@code double}. The method does not need to be public, it just needs to
+ * be resolved correctly using a private {@link Lookup} instance. Ideally the methods should be
+ * {@code static}, but you can use {@link MethodHandle#bindTo(Object)} to bind it to a receiver.
  *
  * @lucene.experimental
  */
 public final class JavascriptCompiler {
-  static final class Loader extends ClassLoader {
-    Loader(ClassLoader parent) {
-      super(parent);
-    }
 
-    public Class<? extends Expression> define(String className, byte[] bytecode) {
-      return defineClass(className, bytecode, 0, bytecode.length).asSubclass(Expression.class);
-    }
-  }
+  private static final Lookup LOOKUP = MethodHandles.lookup();
 
-  private static final int CLASSFILE_VERSION = Opcodes.V1_8;
+  private static final int CLASSFILE_VERSION = Opcodes.V21;
 
-  // We use the same class name for all generated classes as they all have their own class loader.
+  private static final MethodType MT_EXPRESSION_CTOR_LOOKUP =
+      MethodType.methodType(void.class, String.class, String[].class);
+
+  // We use the same class name for all generated classes (they are hidden anyways).
   // The source code is displayed as "source file name" in stack trace.
   private static final String COMPILED_EXPRESSION_CLASS =
       JavascriptCompiler.class.getName() + "$CompiledExpression";
   private static final String COMPILED_EXPRESSION_INTERNAL =
       COMPILED_EXPRESSION_CLASS.replace('.', '/');
 
-  static final Type EXPRESSION_TYPE = Type.getType(Expression.class);
-  static final Type FUNCTION_VALUES_TYPE = Type.getType(DoubleValues.class);
-
-  private static final org.objectweb.asm.commons.Method
+  private static final Type EXPRESSION_TYPE = Type.getType(Expression.class),
+      FUNCTION_VALUES_TYPE = Type.getType(DoubleValues.class),
+      METHOD_HANDLE_TYPE = Type.getType(MethodHandle.class),
+      JAVASCRIPT_COMPILER_TYPE = Type.getType(JavascriptCompiler.class),
+      THROWABLE_TYPE = Type.getType(Throwable.class);
+  private static final Method
       EXPRESSION_CTOR = getAsmMethod(void.class, "<init>", String.class, String[].class),
-      EVALUATE_METHOD = getAsmMethod(double.class, "evaluate", DoubleValues[].class);
-
-  static final org.objectweb.asm.commons.Method DOUBLE_VAL_METHOD =
-      getAsmMethod(double.class, "doubleValue");
+      EVALUATE_METHOD = getAsmMethod(double.class, "evaluate", DoubleValues[].class),
+      DOUBLE_VAL_METHOD = getAsmMethod(double.class, "doubleValue"),
+      PATCH_STACK_METHOD =
+          getAsmMethod(Throwable.class, "patchStackTrace", Throwable.class, Expression.class);
+  private static final Type[] EVALUATE_EXCEPTIONS = new Type[] {Type.getType(IOException.class)};
+  private static final Handle DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE =
+      new Handle(
+          Opcodes.H_INVOKESTATIC,
+          JAVASCRIPT_COMPILER_TYPE.getInternalName(),
+          "dynamicConstantBootstrap",
+          MethodType.methodType(
+                  MethodHandle.class, Lookup.class, String.class, Class.class, String.class)
+              .toMethodDescriptorString(),
+          false);
 
   /** create an ASM Method object from return type, method name, and parameters. */
-  private static org.objectweb.asm.commons.Method getAsmMethod(
-      Class<?> rtype, String name, Class<?>... ptypes) {
-    return new org.objectweb.asm.commons.Method(
-        name, MethodType.methodType(rtype, ptypes).toMethodDescriptorString());
+  private static Method getAsmMethod(Class<?> rtype, String name, Class<?>... ptypes) {
+    return new Method(name, MethodType.methodType(rtype, ptypes).toMethodDescriptorString());
   }
 
-  // This maximum length is theoretically 65535 bytes, but as it's CESU-8 encoded we dont know how
-  // large it is in bytes, so be safe
-  // rcmuir: "If your ranking function is that large you need to check yourself into a mental
-  // institution!"
-  private static final int MAX_SOURCE_LENGTH = 16384;
-
   final String sourceText;
-  final Map<String, Method> functions;
+  final Map<String, MethodHandle> functions;
   final boolean picky;
 
   /**
@@ -135,7 +148,7 @@ public final class JavascriptCompiler {
    * @throws ParseException on failure to compile
    */
   public static Expression compile(String sourceText) throws ParseException {
-    return compile(sourceText, DEFAULT_FUNCTIONS, JavascriptCompiler.class.getClassLoader());
+    return compile(sourceText, DEFAULT_FUNCTIONS);
   }
 
   /**
@@ -146,15 +159,36 @@ public final class JavascriptCompiler {
    * {@code double} parameters.
    *
    * @param sourceText The expression to compile
-   * @param functions map of String names to functions
-   * @param parent a {@code ClassLoader} that should be used as the parent of the loaded class. It
-   *     must contain all classes referred to by the given {@code functions}.
+   * @param functions map of String names to {@link MethodHandle}s
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
-  public static Expression compile(
-      String sourceText, Map<String, Method> functions, ClassLoader parent) throws ParseException {
-    return compile(sourceText, functions, parent, false);
+  public static Expression compile(String sourceText, Map<String, MethodHandle> functions)
+      throws ParseException {
+    return compile(sourceText, functions, false);
+  }
+
+  /**
+   * Converts a legacy map with reflective {@link java.lang.reflect.Method} functions to {@code
+   * Map<String,MethodHandle} for use with {@link #compile(String, Map)}.
+   *
+   * @param functions a map with only public and accessible reflective methods
+   * @return a new (modifiable) map with the same function declarations, but converted to {@link
+   *     MethodHandle}
+   * @throws IllegalAccessException if any of the methods in {@code functions} are not accessible by
+   *     the public {@link Lookup}.
+   * @deprecated Only use this to convert Lucene 9.x or earlier legacy code. For new code use {@link
+   *     MethodHandle}.
+   */
+  @Deprecated
+  public static Map<String, MethodHandle> convertLegacyFunctions(
+      Map<String, java.lang.reflect.Method> functions) throws IllegalAccessException {
+    final var lookup = MethodHandles.publicLookup();
+    final Map<String, MethodHandle> newMap = new HashMap<>();
+    for (var e : functions.entrySet()) {
+      newMap.put(e.getKey(), lookup.unreflect(e.getValue()));
+    }
+    return newMap;
   }
 
   /**
@@ -164,36 +198,18 @@ public final class JavascriptCompiler {
    * {@code double} parameters.
    *
    * @param sourceText The expression to compile
-   * @param functions map of String names to functions
-   * @param parent a {@code ClassLoader} that should be used as the parent of the loaded class. It
-   *     must contain all classes referred to by the given {@code functions}.
+   * @param functions map of String names to {@link MethodHandle}s
    * @param picky whether to throw exception on ambiguity or other internal parsing issues (this
    *     option makes things slower too, it is only for debugging).
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
-  static Expression compile(
-      String sourceText, Map<String, Method> functions, ClassLoader parent, boolean picky)
+  static Expression compile(String sourceText, Map<String, MethodHandle> functions, boolean picky)
       throws ParseException {
-    if (parent == null) {
-      throw new NullPointerException("A parent ClassLoader must be given.");
-    }
-    for (Method m : functions.values()) {
-      checkFunctionClassLoader(m, parent);
+    for (MethodHandle m : functions.values()) {
       checkFunction(m);
     }
-    return new JavascriptCompiler(sourceText, functions, picky).compileExpression(parent);
-  }
-
-  /**
-   * This method is unused, it is just here to make sure that the function signatures don't change.
-   * If this method fails to compile, you also have to change the byte code generator to correctly
-   * use the FunctionValues class.
-   */
-  @SuppressWarnings({"unused", "null"})
-  private static void unusedTestCompile() throws IOException {
-    DoubleValues f = null;
-    f.doubleValue();
+    return new JavascriptCompiler(sourceText, functions, picky).compileExpression();
   }
 
   /**
@@ -201,45 +217,54 @@ public final class JavascriptCompiler {
    *
    * @param sourceText The expression to compile
    */
-  private JavascriptCompiler(String sourceText, Map<String, Method> functions, boolean picky) {
-    if (sourceText == null) {
-      throw new NullPointerException();
-    }
-    this.sourceText = sourceText;
-    this.functions = functions;
+  private JavascriptCompiler(
+      String sourceText, Map<String, MethodHandle> functions, boolean picky) {
+    this.sourceText = Objects.requireNonNull(sourceText, "sourceText");
+    this.functions = Map.copyOf(functions);
     this.picky = picky;
   }
 
   /**
-   * Compiles the given expression with the specified parent classloader
+   * Compiles the given expression as hidden class.
    *
    * @return A new compiled expression
    * @throws ParseException on failure to compile
    */
-  private Expression compileExpression(ClassLoader parent) throws ParseException {
+  private Expression compileExpression() throws ParseException {
     final Map<String, Integer> externalsMap = new LinkedHashMap<>();
     final ClassWriter classWriter =
         new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
 
     try {
       generateClass(getAntlrParseTree(), classWriter, externalsMap);
-
-      final Class<? extends Expression> evaluatorClass =
-          new Loader(parent).define(COMPILED_EXPRESSION_CLASS, classWriter.toByteArray());
-      final Constructor<? extends Expression> constructor =
-          evaluatorClass.getConstructor(String.class, String[].class);
-
-      return constructor.newInstance(
-          sourceText, externalsMap.keySet().toArray(new String[externalsMap.size()]));
     } catch (RuntimeException re) {
       if (re.getCause() instanceof ParseException) {
         throw (ParseException) re.getCause();
       }
       throw re;
+    }
+
+    try {
+      final Lookup lookup =
+          LOOKUP.defineHiddenClassWithClassData(classWriter.toByteArray(), functions, true);
+      return invokeConstructor(lookup, lookup.lookupClass(), externalsMap);
     } catch (ReflectiveOperationException exception) {
       throw new IllegalStateException(
           "An internal error occurred attempting to compile the expression (" + sourceText + ").",
           exception);
+    }
+  }
+
+  private Expression invokeConstructor(
+      Lookup lookup, Class<?> expressionClass, Map<String, Integer> externalsMap)
+      throws ReflectiveOperationException {
+    final MethodHandle ctor = lookup.findConstructor(expressionClass, MT_EXPRESSION_CTOR_LOOKUP);
+    try {
+      return (Expression) ctor.invoke(sourceText, externalsMap.keySet().toArray(String[]::new));
+    } catch (RuntimeException | Error e) {
+      throw e;
+    } catch (Throwable t) {
+      throw new AssertionError(t);
     }
   }
 
@@ -311,11 +336,6 @@ public final class JavascriptCompiler {
         null,
         EXPRESSION_TYPE.getInternalName(),
         null);
-    final String clippedSourceText =
-        (sourceText.length() <= MAX_SOURCE_LENGTH)
-            ? sourceText
-            : (sourceText.substring(0, MAX_SOURCE_LENGTH - 3) + "...");
-    classWriter.visitSource(clippedSourceText, null);
 
     final GeneratorAdapter constructor =
         new GeneratorAdapter(Opcodes.ACC_PUBLIC, EXPRESSION_CTOR, null, null, classWriter);
@@ -326,11 +346,18 @@ public final class JavascriptCompiler {
     constructor.endMethod();
 
     final GeneratorAdapter gen =
-        new GeneratorAdapter(Opcodes.ACC_PUBLIC, EVALUATE_METHOD, null, null, classWriter);
+        new GeneratorAdapter(
+            Opcodes.ACC_PUBLIC, EVALUATE_METHOD, null, EVALUATE_EXCEPTIONS, classWriter);
+
+    // add a try/catch block to rewrite stack trace of any Throwable
+    final Label beginTry = gen.newLabel(), endTry = gen.newLabel(), catchHandler = gen.newLabel();
+    gen.visitTryCatchBlock(beginTry, endTry, catchHandler, THROWABLE_TYPE.getInternalName());
+    gen.mark(beginTry);
 
     // to completely hide the ANTLR visitor we use an anonymous impl:
     new JavascriptBaseVisitor<Void>() {
       private final Deque<Type> typeStack = new ArrayDeque<>();
+      private final Map<String, Integer> constantsMap = new HashMap<>();
 
       @Override
       public Void visitCompile(JavascriptParser.CompileContext ctx) {
@@ -369,11 +396,11 @@ public final class JavascriptCompiler {
         String text = ctx.VARIABLE().getText();
         int arguments = ctx.expression().size();
         boolean parens = ctx.LP() != null && ctx.RP() != null;
-        Method method = parens ? functions.get(text) : null;
+        MethodHandle mh = parens ? functions.get(text) : null;
 
         try {
-          if (method != null) {
-            int arity = method.getParameterTypes().length;
+          if (mh != null) {
+            final int arity = mh.type().parameterCount();
 
             if (arguments != arity) {
               throw new ParseException(
@@ -389,30 +416,35 @@ public final class JavascriptCompiler {
                   ctx.start.getStartIndex());
             }
 
-            typeStack.push(Type.DOUBLE_TYPE);
+            // place dynamic constant with MethodHandle on top of stack
+            gen.visitLdcInsn(
+                new ConstantDynamic(
+                    "func" + constantsMap.computeIfAbsent(text, k -> constantsMap.size()),
+                    METHOD_HANDLE_TYPE.getDescriptor(),
+                    DYNAMIC_CONSTANT_BOOTSTRAP_HANDLE,
+                    text));
 
+            // add arguments:
+            typeStack.push(Type.DOUBLE_TYPE);
             for (int argument = 0; argument < arguments; ++argument) {
               visit(ctx.expression(argument));
             }
-
             typeStack.pop();
 
-            gen.invokeStatic(
-                Type.getType(method.getDeclaringClass()),
-                org.objectweb.asm.commons.Method.getMethod(method));
+            // invoke MethodHandle of function:
+            gen.visitMethodInsn(
+                Opcodes.INVOKEVIRTUAL,
+                METHOD_HANDLE_TYPE.getInternalName(),
+                "invokeExact",
+                mh.type().descriptorString(),
+                false);
 
             gen.cast(Type.DOUBLE_TYPE, typeStack.peek());
           } else if (!parens || arguments == 0 && text.contains(".")) {
             int index;
 
             text = normalizeQuotes(ctx.getText());
-
-            if (externalsMap.containsKey(text)) {
-              index = externalsMap.get(text);
-            } else {
-              index = externalsMap.size();
-              externalsMap.put(text, index);
-            }
+            index = externalsMap.computeIfAbsent(text, k -> externalsMap.size());
 
             gen.loadArg(0);
             gen.push(index);
@@ -729,7 +761,13 @@ public final class JavascriptCompiler {
       }
     }.visit(parseTree);
 
+    gen.mark(endTry);
     gen.returnValue();
+
+    gen.mark(catchHandler);
+    gen.loadThis();
+    gen.invokeStatic(JAVASCRIPT_COMPILER_TYPE, PATCH_STACK_METHOD);
+    gen.throwException();
     gen.endMethod();
 
     classWriter.visitEnd();
@@ -780,10 +818,11 @@ public final class JavascriptCompiler {
    *
    * <p>See the {@link org.apache.lucene.expressions.js package documentation} for a list.
    */
-  public static final Map<String, Method> DEFAULT_FUNCTIONS;
+  public static final Map<String, MethodHandle> DEFAULT_FUNCTIONS = loadDefaultFunctions();
 
-  static {
-    Map<String, Method> map = new HashMap<>();
+  private static Map<String, MethodHandle> loadDefaultFunctions() {
+    final Map<String, MethodHandle> map = new HashMap<>();
+    final Lookup publicLookup = MethodHandles.publicLookup();
     try {
       final Properties props = new Properties();
       var name = JavascriptCompiler.class.getSimpleName() + ".properties";
@@ -802,61 +841,92 @@ public final class JavascriptCompiler {
         final Class<?> clazz = Class.forName(vals[0].trim());
         final String methodName = vals[1].trim();
         final int arity = Integer.parseInt(vals[2].trim());
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        Class[] args = new Class[arity];
-        Arrays.fill(args, double.class);
-        Method method = clazz.getMethod(methodName, args);
-        checkFunction(method);
-        map.put(call, method);
+        final MethodHandle mh =
+            publicLookup.findStatic(
+                clazz,
+                methodName,
+                MethodType.methodType(double.class, Collections.nCopies(arity, double.class)));
+        checkFunction(mh);
+        map.put(call, mh);
       }
     } catch (ReflectiveOperationException | IOException e) {
       throw new Error("Cannot resolve function", e);
     }
-    DEFAULT_FUNCTIONS = Collections.unmodifiableMap(map);
+    return Collections.unmodifiableMap(map);
   }
 
   /** Check Method signature for compatibility. */
-  private static void checkFunction(Method method) {
-    // check that the Method is public in some public reachable class:
-    final MethodType type;
+  private static void checkFunction(MethodHandle method) {
+    Supplier<String> methodNameSupplier = method::toString;
+
+    // try to crack the handle and check if it is a static call:
+    int refKind;
     try {
-      type = MethodHandles.publicLookup().unreflect(method).type();
-    } catch (IllegalAccessException iae) {
-      throw new IllegalArgumentException(
-          method + " is not accessible (declaring class or method not public).", iae);
+      MethodHandleInfo cracked = LOOKUP.revealDirect(method);
+      refKind = cracked.getReferenceKind();
+      // we have a much better name for the method so display it instead:
+      methodNameSupplier =
+          () ->
+              cracked.getDeclaringClass().getName()
+                  + "#"
+                  + cracked.getName()
+                  + cracked.getMethodType();
+    } catch (@SuppressWarnings("unused") IllegalArgumentException | SecurityException iae) {
+      // can't check for static, we assume it is static
+      // (it does not matter as we call the MethodHandle directly if it is compatible):
+      refKind = MethodHandleInfo.REF_invokeStatic;
     }
+    if (refKind != MethodHandleInfo.REF_invokeStatic && refKind != MethodHandleInfo.REF_getStatic) {
+      throw new IllegalArgumentException(methodNameSupplier.get() + " is not static.");
+    }
+
     // do some checks if the signature is "compatible":
-    if (!Modifier.isStatic(method.getModifiers())) {
-      throw new IllegalArgumentException(method + " is not static.");
-    }
+    final MethodType type = method.type();
     for (int arg = 0, arity = type.parameterCount(); arg < arity; arg++) {
       if (type.parameterType(arg) != double.class) {
-        throw new IllegalArgumentException(method + " must take only double parameters.");
+        throw new IllegalArgumentException(
+            methodNameSupplier.get() + " must take only double parameters.");
       }
     }
     if (type.returnType() != double.class) {
-      throw new IllegalArgumentException(method + " does not return a double.");
+      throw new IllegalArgumentException(methodNameSupplier.get() + " does not return a double.");
     }
   }
 
   /**
-   * Cross check if declaring class of given method is the same as returned by the given parent
-   * {@link ClassLoader} on string lookup. This prevents {@link NoClassDefFoundError}.
+   * Bootstrap method for dynamic constants. This returns a {@link MethodHandle} for the {@code
+   * functionName} from the class data passed via {@link Lookup#defineHiddenClassWithClassData}. The
+   * {@code constantName} is ignored.
    */
-  private static void checkFunctionClassLoader(Method method, ClassLoader parent) {
-    boolean ok = false;
-    try {
-      final Class<?> clazz = method.getDeclaringClass();
-      ok = Class.forName(clazz.getName(), false, parent) == clazz;
-    } catch (
-        @SuppressWarnings("unused")
-        ClassNotFoundException e) {
-      ok = false;
+  static MethodHandle dynamicConstantBootstrap(
+      Lookup lookup, String constantName, Class<?> type, String functionName)
+      throws IllegalAccessException {
+    if (type != MethodHandle.class) {
+      throw new IllegalArgumentException("Invalid type of constant: " + type.getName());
     }
-    if (!ok) {
-      throw new IllegalArgumentException(
-          method
-              + " is not declared by a class which is accessible by the given parent ClassLoader.");
-    }
+    final var classData =
+        Objects.requireNonNull(
+            MethodHandles.classData(lookup, ConstantDescs.DEFAULT_NAME, Map.class),
+            "Missing class data for " + lookup);
+    return (MethodHandle)
+        Objects.requireNonNull(
+            classData.get(functionName), "Function does not exist: " + functionName);
+  }
+
+  /**
+   * Method called from try/catch handler in compiled expression. This patches the stack trace and
+   * adds back a hidden frame (including the source code of script as filename).
+   */
+  static Throwable patchStackTrace(Throwable t, Expression impl) {
+    var extra = new StackTraceElement(impl.getClass().getName(), "evaluate", impl.sourceText, -1);
+    var origStack = t.getStackTrace();
+    var myStack = new Throwable().getStackTrace();
+    var top = Arrays.stream(origStack).limit(Math.max(0, origStack.length - myStack.length + 1));
+    var tail = Arrays.stream(myStack).skip(1);
+    t.setStackTrace(
+        Stream.of(top, Stream.of(extra), tail)
+            .flatMap(Function.identity())
+            .toArray(StackTraceElement[]::new));
+    return t;
   }
 }

@@ -134,7 +134,7 @@ public class Line extends LatLonGeometry {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("LINE(");
+    sb.append("Line(");
     for (int i = 0; i < lats.length; i++) {
       sb.append("[").append(lons[i]).append(", ").append(lats[i]).append("]");
     }

@@ -27,10 +27,6 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ko.KoreanTokenizer.DecompoundMode;
-import org.apache.lucene.analysis.ko.dict.BinaryDictionary.ResourceScheme;
-import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
-import org.apache.lucene.analysis.ko.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ko.dict.UserDictionary;
 import org.apache.lucene.analysis.ko.tokenattributes.PartOfSpeechAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.ReadingAttribute;
@@ -159,8 +155,8 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         analyzer,
         "화학 이외의         것",
         new POS.Type[] {POS.Type.MORPHEME, POS.Type.MORPHEME, POS.Type.MORPHEME, POS.Type.MORPHEME},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNB},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNB});
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB},
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB});
   }
 
   public void testPartOfSpeechs() throws IOException {
@@ -175,8 +171,8 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         analyzer,
         "화학 이외의 것",
         new POS.Type[] {POS.Type.MORPHEME, POS.Type.MORPHEME, POS.Type.MORPHEME, POS.Type.MORPHEME},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNB},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNB});
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB},
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.NNB});
   }
 
   public void testPartOfSpeechsWithPunc() throws IOException {
@@ -200,10 +196,10 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
           POS.Type.MORPHEME
         },
         new POS.Tag[] {
-          POS.Tag.NNG, POS.Tag.SP, POS.Tag.NNG, POS.Tag.J, POS.Tag.SP, POS.Tag.NNB, POS.Tag.SF
+          POS.Tag.NNG, POS.Tag.SP, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.SP, POS.Tag.NNB, POS.Tag.SF
         },
         new POS.Tag[] {
-          POS.Tag.NNG, POS.Tag.SP, POS.Tag.NNG, POS.Tag.J, POS.Tag.SP, POS.Tag.NNB, POS.Tag.SF
+          POS.Tag.NNG, POS.Tag.SP, POS.Tag.NNG, POS.Tag.JKG, POS.Tag.SP, POS.Tag.NNB, POS.Tag.SF
         });
   }
 
@@ -244,8 +240,8 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
           POS.Type.MORPHEME,
           POS.Type.MORPHEME
         },
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP});
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP},
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP});
 
     assertAnalyzesTo(
         analyzerDecompound,
@@ -276,8 +272,10 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
           POS.Type.MORPHEME,
           POS.Type.MORPHEME
         },
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP},
-        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP});
+        new POS.Tag[] {POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP},
+        new POS.Tag[] {
+          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
+        });
 
     assertPartsOfSpeech(
         analyzerDecompoundKeep,
@@ -292,10 +290,10 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
           POS.Type.MORPHEME
         },
         new POS.Tag[] {
-          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
+          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
         },
         new POS.Tag[] {
-          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.NNG, POS.Tag.J, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
+          POS.Tag.NNG, POS.Tag.NNG, POS.Tag.NNG, POS.Tag.JX, POS.Tag.NNP, POS.Tag.NNP, POS.Tag.NNP
         });
   }
 
@@ -308,7 +306,7 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         "감싸여",
         new POS.Type[] {POS.Type.INFLECT},
         new POS.Tag[] {POS.Tag.VV},
-        new POS.Tag[] {POS.Tag.E});
+        new POS.Tag[] {POS.Tag.EC});
 
     assertAnalyzesTo(
         analyzerDecompound,
@@ -332,15 +330,15 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         analyzerDecompound,
         "감싸여",
         new POS.Type[] {POS.Type.MORPHEME, POS.Type.MORPHEME},
-        new POS.Tag[] {POS.Tag.VV, POS.Tag.E},
-        new POS.Tag[] {POS.Tag.VV, POS.Tag.E});
+        new POS.Tag[] {POS.Tag.VV, POS.Tag.EC},
+        new POS.Tag[] {POS.Tag.VV, POS.Tag.EC});
 
     assertPartsOfSpeech(
         analyzerDecompoundKeep,
         "감싸여",
         new POS.Type[] {POS.Type.INFLECT, POS.Type.MORPHEME, POS.Type.MORPHEME},
-        new POS.Tag[] {POS.Tag.VV, POS.Tag.VV, POS.Tag.E},
-        new POS.Tag[] {POS.Tag.E, POS.Tag.VV, POS.Tag.E});
+        new POS.Tag[] {POS.Tag.VV, POS.Tag.VV, POS.Tag.EC},
+        new POS.Tag[] {POS.Tag.EC, POS.Tag.VV, POS.Tag.EC});
   }
 
   public void testUnknownWord() throws IOException {
@@ -471,38 +469,6 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         new int[] {0},
         new int[] {8},
         new int[] {1});
-  }
-
-  // Make sure loading custom dictionaries from classpath works:
-  @SuppressWarnings("removal")
-  public void testCustomDictionary() throws Exception {
-    Tokenizer tokenizer =
-        new KoreanTokenizer(
-            newAttributeFactory(),
-            new TokenInfoDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ko/dict/TokenInfoDictionary"),
-            new UnknownDictionary(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ko/dict/UnknownDictionary"),
-            new ConnectionCosts(
-                ResourceScheme.CLASSPATH, "org/apache/lucene/analysis/ko/dict/ConnectionCosts"),
-            readDict(),
-            DecompoundMode.NONE,
-            false,
-            false);
-    try (Analyzer a =
-        new Analyzer() {
-          @Override
-          protected Analyzer.TokenStreamComponents createComponents(String fieldName) {
-            return new Analyzer.TokenStreamComponents(tokenizer, tokenizer);
-          }
-        }) {
-      assertTokenStreamContents(
-          a.tokenStream("foo", "커스텀사전검사"),
-          new String[] {"커스텀", "사전", "검사"},
-          new int[] {0, 3, 5},
-          new int[] {3, 5, 7},
-          7);
-    }
   }
 
   public void testInterpunct() throws IOException {

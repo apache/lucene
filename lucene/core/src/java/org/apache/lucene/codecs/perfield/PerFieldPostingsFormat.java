@@ -79,22 +79,13 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     super(PER_FIELD_NAME);
   }
 
-  /** Group of fields written by one PostingsFormat */
-  static class FieldsGroup {
-    final List<String> fields;
-    final int suffix;
-
-    /**
-     * Custom SegmentWriteState for this group of fields, with the segmentSuffix uniqueified for
-     * this PostingsFormat
-     */
-    final SegmentWriteState state;
-
-    private FieldsGroup(List<String> fields, int suffix, SegmentWriteState state) {
-      this.fields = fields;
-      this.suffix = suffix;
-      this.state = state;
-    }
+  /**
+   * Group of fields written by one PostingsFormat
+   *
+   * @param state Custom SegmentWriteState for this group of fields, with the segmentSuffix
+   *     uniqueified for this PostingsFormat
+   */
+  record FieldsGroup(List<String> fields, int suffix, SegmentWriteState state) {
 
     static class Builder {
       final Set<String> fields;

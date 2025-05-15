@@ -39,14 +39,14 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.fst.BytesRefFSTEnum;
 import org.apache.lucene.util.fst.BytesRefFSTEnum.InputOutput;
@@ -63,7 +63,6 @@ import org.apache.lucene.util.fst.Util;
  * @lucene.experimental
  */
 public class FSTTermsReader extends FieldsProducer {
-
   private final TreeMap<String, TermsReader> fields = new TreeMap<>();
   private final PostingsReaderBase postingsReader;
   private final IndexInput fstTermsInput;
@@ -75,7 +74,9 @@ public class FSTTermsReader extends FieldsProducer {
             state.segmentInfo.name, state.segmentSuffix, FSTTermsWriter.TERMS_EXTENSION);
 
     this.postingsReader = postingsReader;
-    this.fstTermsInput = state.directory.openInput(termsFileName, IOContext.LOAD);
+    this.fstTermsInput =
+        state.directory.openInput(
+            termsFileName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
 
     IndexInput in = this.fstTermsInput;
 
@@ -194,9 +195,10 @@ public class FSTTermsReader extends FieldsProducer {
       this.sumTotalTermFreq = sumTotalTermFreq;
       this.sumDocFreq = sumDocFreq;
       this.docCount = docCount;
-      OffHeapFSTStore offHeapFSTStore = new OffHeapFSTStore();
       FSTTermOutputs outputs = new FSTTermOutputs(fieldInfo);
-      this.dict = new FST<>(FST.readMetadata(in, outputs), in, offHeapFSTStore);
+      final var fstMetadata = FST.readMetadata(in, outputs);
+      OffHeapFSTStore offHeapFSTStore = new OffHeapFSTStore(in, in.getFilePointer(), fstMetadata);
+      this.dict = FST.fromFSTReader(fstMetadata, offHeapFSTStore);
       in.skipBytes(offHeapFSTStore.size());
     }
 
@@ -442,7 +444,7 @@ public class FSTTermsReader extends FieldsProducer {
       final Outputs<FSTTermOutputs.TermData> fstOutputs;
 
       /* query automaton to intersect with */
-      final ByteRunAutomaton fsa;
+      final ByteRunnable fsa;
 
       private final class Frame {
         /* fst stats */
@@ -470,7 +472,7 @@ public class FSTTermsReader extends FieldsProducer {
         this.fst = dict;
         this.fstReader = fst.getBytesReader();
         this.fstOutputs = dict.outputs;
-        this.fsa = compiled.runAutomaton;
+        this.fsa = compiled.getByteRunnable();
         this.level = -1;
         this.stack = new Frame[16];
         for (int i = 0; i < stack.length; i++) {

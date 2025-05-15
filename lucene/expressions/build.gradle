@@ -24,10 +24,10 @@ dependencies {
 
   moduleImplementation project(':lucene:codecs')
 
-  moduleImplementation 'org.antlr:antlr4-runtime'
+  moduleImplementation deps.antlr.runtime
 
-  moduleImplementation 'org.ow2.asm:asm'
-  moduleImplementation 'org.ow2.asm:asm-commons'
+  moduleImplementation deps.asm.core
+  moduleImplementation deps.asm.commons
 
   moduleTestImplementation project(':lucene:test-framework')
 }

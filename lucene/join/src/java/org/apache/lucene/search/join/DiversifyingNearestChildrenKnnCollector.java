@@ -278,15 +278,8 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
   }
 
   /** Keeps track of child node, parent node, and the stored score. */
-  private static class ParentChildScore implements Comparable<ParentChildScore> {
-    private final int parent, child;
-    private final float score;
-
-    ParentChildScore(int child, int parent, float score) {
-      this.child = child;
-      this.parent = parent;
-      this.score = score;
-    }
+  private record ParentChildScore(int child, int parent, float score)
+      implements Comparable<ParentChildScore> {
 
     @Override
     public int compareTo(ParentChildScore o) {

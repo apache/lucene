@@ -108,7 +108,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
   protected double targetMBPerSec = START_MB_PER_SEC;
 
   /** true if we should rate-limit writes for each merge */
-  private boolean doAutoIOThrottle = true;
+  private boolean doAutoIOThrottle = false;
 
   private double forceMergeMBPerSec = Double.POSITIVE_INFINITY;
 
@@ -181,7 +181,14 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
           Throwable ignored) {
       }
 
-      maxThreadCount = Math.max(1, Math.min(4, coreCount / 2));
+      // If you are indexing at full throttle, how many merge threads do you need to keep up? It
+      // depends: for most data structures, merging is cheaper than indexing/flushing, but for knn
+      // vectors, merges can require about as much work as the initial indexing/flushing. Plus
+      // documents are indexed/flushed only once, but may be merged multiple times.
+      // Here, we assume an intermediate scenario where merging requires about as much work as
+      // indexing/flushing overall, so we give half the core count to merges.
+
+      maxThreadCount = Math.max(1, coreCount / 2);
       maxMergeCount = maxThreadCount + 5;
     }
   }
@@ -202,7 +209,8 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
 
   /**
    * Turn on dynamic IO throttling, to adaptively rate limit writes bytes/sec to the minimal rate
-   * necessary so merges do not fall behind. By default this is enabled.
+   * necessary so merges do not fall behind. By default this is disabled and writes are not
+   * rate-limited.
    */
   public synchronized void enableAutoIOThrottle() {
     doAutoIOThrottle = true;
@@ -296,7 +304,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
         // This Directory is only supposed to be used during merging,
         // so all writes should have MERGE context, else there is a bug
         // somewhere that is failing to pass down the right IOContext:
-        assert context.context == IOContext.Context.MERGE : "got context=" + context.context;
+        assert context.context() == IOContext.Context.MERGE : "got context=" + context.context();
 
         return new RateLimitedIndexOutput(rateLimiter, in.createOutput(name, context));
       }

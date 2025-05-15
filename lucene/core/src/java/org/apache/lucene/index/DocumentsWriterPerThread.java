@@ -139,6 +139,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
   private final ReentrantLock lock = new ReentrantLock();
   private int[] deleteDocIDs = new int[0];
   private int numDeletedDocIds = 0;
+  private final int indexMajorVersionCreated;
   private final IndexingChain.ReservedField<NumericDocValuesField> parentField;
 
   DocumentsWriterPerThread(
@@ -151,6 +152,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
       FieldInfos.Builder fieldInfos,
       AtomicLong pendingNumDocs,
       boolean enableTestPoints) {
+    this.indexMajorVersionCreated = indexMajorVersionCreated;
     this.directory = new TrackingDirectoryWrapper(directory);
     this.fieldInfos = fieldInfos;
     this.indexWriterConfig = indexWriterConfig;
@@ -251,7 +253,16 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
             if (iterator.hasNext() == false) {
               doc = addParentField(doc, parentField);
             }
+          } else if (segmentInfo.getIndexSort() != null
+              && iterator.hasNext()
+              && indexMajorVersionCreated >= Version.LUCENE_10_0_0.major) {
+            // sort is configured but parent field is missing, yet we have a doc-block
+            // yet we must not fail if this index was created in an earlier version where this
+            // behavior was permitted.
+            throw new IllegalArgumentException(
+                "a parent field must be set in order to use document blocks with index sorting; see IndexWriterConfig#setParentField");
           }
+
           // Even on exception, the document is still added (but marked
           // deleted), so we don't need to un-reserve at that point.
           // Aborting exceptions will actually "lose" more than one
@@ -476,7 +487,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         infoStream.message(
             "DWPT",
             "new segment has "
-                + (flushState.fieldInfos.hasVectors() ? "vectors" : "no vectors")
+                + (flushState.fieldInfos.hasTermVectors() ? "vectors" : "no vectors")
                 + "; "
                 + (flushState.fieldInfos.hasNorms() ? "norms" : "no norms")
                 + "; "
@@ -705,6 +716,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
   /** Returns true iff this DWPT is marked as flush pending */
   boolean isFlushPending() {
     return flushPending.get() == Boolean.TRUE;
+  }
+
+  boolean isQueueAdvanced() {
+    return deleteQueue.isAdvanced();
   }
 
   /** Sets this DWPT as flush pending. This can only be set once. */

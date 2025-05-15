@@ -34,7 +34,19 @@ final class IntArrayDocIdSet extends DocIdSet {
       throw new IllegalArgumentException();
     }
     this.docs = docs;
+    assert assertArraySorted(docs, length)
+        : "IntArrayDocIdSet need docs to be sorted"
+            + Arrays.toString(ArrayUtil.copyOfSubArray(docs, 0, length));
     this.length = length;
+  }
+
+  private static boolean assertArraySorted(int[] docs, int length) {
+    for (int i = 1; i < length; i++) {
+      if (docs[i] < docs[i - 1]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

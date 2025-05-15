@@ -21,6 +21,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -95,6 +97,7 @@ public class TermVectorLeafReader extends LeafReader {
             terms.hasPayloads(),
             indexOptions,
             DocValuesType.NONE,
+            DocValuesSkipIndexType.NONE,
             -1,
             Collections.emptyMap(),
             0,
@@ -142,6 +145,11 @@ public class TermVectorLeafReader extends LeafReader {
   }
 
   @Override
+  public DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    return null;
+  }
+
+  @Override
   public NumericDocValues getNormValues(String field) throws IOException {
     return null; // Is this needed?  See MemoryIndex for a way to do it.
   }
@@ -183,14 +191,6 @@ public class TermVectorLeafReader extends LeafReader {
   public void checkIntegrity() throws IOException {}
 
   @Override
-  public Fields getTermVectors(int docID) throws IOException {
-    if (docID != 0) {
-      return null;
-    }
-    return fields;
-  }
-
-  @Override
   public TermVectors termVectors() throws IOException {
     return new TermVectors() {
       @Override
@@ -213,9 +213,6 @@ public class TermVectorLeafReader extends LeafReader {
   public int maxDoc() {
     return 1;
   }
-
-  @Override
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {}
 
   @Override
   public StoredFields storedFields() throws IOException {

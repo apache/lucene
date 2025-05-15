@@ -28,6 +28,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -153,30 +154,17 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         List<TermAndState> collectedTerms)
         throws IOException;
 
-    private WeightOrDocIdSetIterator rewrite(LeafReaderContext context, Terms terms)
-        throws IOException {
-      assert terms != null;
-
-      final int fieldDocCount = terms.getDocCount();
-      final TermsEnum termsEnum = q.getTermsEnum(terms);
-      assert termsEnum != null;
-
-      final List<TermAndState> collectedTerms = new ArrayList<>();
-      if (collectTerms(fieldDocCount, termsEnum, collectedTerms)) {
-        // build a boolean query
-        BooleanQuery.Builder bq = new BooleanQuery.Builder();
-        for (TermAndState t : collectedTerms) {
-          final TermStates termStates = new TermStates(searcher.getTopReaderContext());
-          termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
-          bq.add(new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
-        }
-        Query q = new ConstantScoreQuery(bq.build());
-        final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
-        return new WeightOrDocIdSetIterator(weight);
+    private WeightOrDocIdSetIterator rewriteAsBooleanQuery(
+        LeafReaderContext context, List<TermAndState> collectedTerms) throws IOException {
+      BooleanQuery.Builder bq = new BooleanQuery.Builder();
+      for (TermAndState t : collectedTerms) {
+        final TermStates termStates = new TermStates(searcher.getTopReaderContext());
+        termStates.register(t.state, context.ord, t.docFreq, t.totalTermFreq);
+        bq.add(new TermQuery(new Term(q.field, t.term), termStates), BooleanClause.Occur.SHOULD);
       }
-
-      // Too many terms to rewrite as a simple bq. Invoke rewriteInner logic to handle rewriting:
-      return rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
+      Query q = new ConstantScoreQuery(bq.build());
+      final Weight weight = searcher.rewrite(q).createWeight(searcher, scoreMode, score());
+      return new WeightOrDocIdSetIterator(weight);
     }
 
     private boolean collectTerms(int fieldDocCount, TermsEnum termsEnum, List<TermAndState> terms)
@@ -208,36 +196,7 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
       if (iterator == null) {
         return null;
       }
-      return new ConstantScoreScorer(this, score(), scoreMode, iterator);
-    }
-
-    @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      final Terms terms = context.reader().terms(q.getField());
-      if (terms == null) {
-        return null;
-      }
-      final WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
-      if (weightOrIterator == null) {
-        return null;
-      } else if (weightOrIterator.weight != null) {
-        return weightOrIterator.weight.bulkScorer(context);
-      } else {
-        final Scorer scorer = scorerForIterator(weightOrIterator.iterator);
-        if (scorer == null) {
-          return null;
-        }
-        return new DefaultBulkScorer(scorer);
-      }
-    }
-
-    @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      final ScorerSupplier scorerSupplier = scorerSupplier(context);
-      if (scorerSupplier == null) {
-        return null;
-      }
-      return scorerSupplier.get(Long.MAX_VALUE);
+      return new ConstantScoreScorer(score(), scoreMode, iterator);
     }
 
     @Override
@@ -260,13 +219,49 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
         return null;
       }
 
-      final long cost = estimateCost(terms, q.getTermsCount());
+      assert terms != null;
 
-      final Weight weight = this;
+      final int fieldDocCount = terms.getDocCount();
+      final TermsEnum termsEnum = q.getTermsEnum(terms);
+      assert termsEnum != null;
+
+      List<TermAndState> collectedTerms = new ArrayList<>();
+      boolean collectResult = collectTerms(fieldDocCount, termsEnum, collectedTerms);
+
+      final long cost;
+      if (collectResult) {
+        // Return a null supplier if no query terms were in the segment:
+        if (collectedTerms.isEmpty()) {
+          return null;
+        }
+
+        // TODO: Instead of replicating the cost logic of a BooleanQuery we could consider rewriting
+        // to a BQ eagerly at this point and delegating to its cost method (instead of lazily
+        // rewriting on #get). Not sure what the performance hit would be of doing this though.
+        long sumTermCost = 0;
+        for (TermAndState collectedTerm : collectedTerms) {
+          sumTermCost += collectedTerm.docFreq;
+        }
+        cost = sumTermCost;
+      } else {
+        cost = estimateCost(terms, q.getTermsCount());
+      }
+
+      IOSupplier<WeightOrDocIdSetIterator> weightOrIteratorSupplier =
+          () -> {
+            if (collectResult) {
+              return rewriteAsBooleanQuery(context, collectedTerms);
+            } else {
+              // Too many terms to rewrite as a simple bq.
+              // Invoke rewriteInner logic to handle rewriting:
+              return rewriteInner(context, fieldDocCount, terms, termsEnum, collectedTerms);
+            }
+          };
+
       return new ScorerSupplier() {
         @Override
         public Scorer get(long leadCost) throws IOException {
-          WeightOrDocIdSetIterator weightOrIterator = rewrite(context, terms);
+          WeightOrDocIdSetIterator weightOrIterator = weightOrIteratorSupplier.get();
           final Scorer scorer;
           if (weightOrIterator == null) {
             scorer = null;
@@ -281,8 +276,32 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
           // find that there are actually no hits, we need to return an empty Scorer as opposed
           // to null:
           return Objects.requireNonNullElseGet(
-              scorer,
-              () -> new ConstantScoreScorer(weight, score(), scoreMode, DocIdSetIterator.empty()));
+              scorer, () -> new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty()));
+        }
+
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          WeightOrDocIdSetIterator weightOrIterator = weightOrIteratorSupplier.get();
+          final BulkScorer bulkScorer;
+          if (weightOrIterator == null) {
+            bulkScorer = null;
+          } else if (weightOrIterator.weight != null) {
+            bulkScorer = weightOrIterator.weight.bulkScorer(context);
+          } else {
+            bulkScorer =
+                new DefaultBulkScorer(
+                    new ConstantScoreScorer(score(), scoreMode, weightOrIterator.iterator));
+          }
+
+          // It's against the API contract to return a null scorer from a non-null ScoreSupplier.
+          // So if our ScoreSupplier was non-null (i.e., thought there might be hits) but we now
+          // find that there are actually no hits, we need to return an empty BulkScorer as opposed
+          // to null:
+          return Objects.requireNonNullElseGet(
+              bulkScorer,
+              () ->
+                  new DefaultBulkScorer(
+                      new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty())));
         }
 
         @Override

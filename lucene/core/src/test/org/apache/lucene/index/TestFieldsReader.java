@@ -34,7 +34,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.DocHelper;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.Version;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -46,8 +45,7 @@ public class TestFieldsReader extends LuceneTestCase {
   @BeforeClass
   public static void beforeClass() throws Exception {
     testDoc = new Document();
-    fieldInfos =
-        new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, null, Version.LATEST.major));
+    fieldInfos = new FieldInfos.Builder(new FieldInfos.FieldNumbers(null, null));
     DocHelper.setupDoc(testDoc);
     for (IndexableField field : testDoc.getFields()) {
       IndexableFieldType ift = field.fieldType();
@@ -60,6 +58,7 @@ public class TestFieldsReader extends LuceneTestCase {
               false,
               ift.indexOptions(),
               ift.docValuesType(),
+              ift.docValuesSkipIndexType(),
               -1,
               new HashMap<>(),
               0,

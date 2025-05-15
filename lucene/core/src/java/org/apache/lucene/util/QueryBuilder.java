@@ -62,18 +62,16 @@ public class QueryBuilder {
   protected boolean enableGraphQueries = true;
   protected boolean autoGenerateMultiTermSynonymsPhraseQuery = false;
 
-  /** Wraps a term and boost */
-  public static class TermAndBoost {
-    /** the term */
-    public final BytesRef term;
-
-    /** the boost */
-    public final float boost;
-
+  /**
+   * Wraps a term and boost
+   *
+   * @param term the term
+   * @param boost the boost
+   */
+  public record TermAndBoost(BytesRef term, float boost) {
     /** Creates a new TermAndBoost */
-    public TermAndBoost(BytesRef term, float boost) {
-      this.term = BytesRef.deepCopyOf(term);
-      this.boost = boost;
+    public TermAndBoost {
+      term = BytesRef.deepCopyOf(term);
     }
   }
 
@@ -624,7 +622,7 @@ public class QueryBuilder {
     }
     BooleanQuery bq = builder.build();
     if (bq.clauses().size() == 1) {
-      return bq.clauses().get(0).getQuery();
+      return bq.clauses().get(0).query();
     }
     return bq;
   }

@@ -19,7 +19,6 @@ package org.apache.lucene.facet.taxonomy;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
@@ -72,11 +71,11 @@ public class FastTaxonomyFacetCounts extends TaxonomyFacets {
 
   private void count(List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       SortedNumericDocValues multiValued =
-          FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
+          hits.context().reader().getSortedNumericDocValues(indexFieldName);
       if (multiValued == null) {
         continue;
       }
@@ -86,7 +85,7 @@ public class FastTaxonomyFacetCounts extends TaxonomyFacets {
 
       DocIdSetIterator valuesIt = singleValued != null ? singleValued : multiValued;
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), valuesIt));
 
       if (singleValued != null) {
         if (counts != null) {
@@ -121,7 +120,7 @@ public class FastTaxonomyFacetCounts extends TaxonomyFacets {
   private void countAll(IndexReader reader) throws IOException {
     for (LeafReaderContext context : reader.leaves()) {
       SortedNumericDocValues multiValued =
-          FacetUtils.loadOrdinalValues(context.reader(), indexFieldName);
+          context.reader().getSortedNumericDocValues(indexFieldName);
       if (multiValued == null) {
         continue;
       }
@@ -129,8 +128,8 @@ public class FastTaxonomyFacetCounts extends TaxonomyFacets {
       assert counts != null;
 
       Bits liveDocs = context.reader().getLiveDocs();
-      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
 
+      NumericDocValues singleValued = DocValues.unwrapSingleton(multiValued);
       if (singleValued != null) {
         if (liveDocs == null) {
           for (int doc = singleValued.nextDoc();

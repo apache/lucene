@@ -184,7 +184,7 @@ public class OrdinalMap implements Accountable {
 
   // number of global ordinals
   final long valueCount;
-  // globalOrd -> (globalOrd - segmentOrd) where segmentOrd is the the ordinal in the first segment
+  // globalOrd -> (globalOrd - segmentOrd) where segmentOrd is the ordinal in the first segment
   // that contains this term
   final LongValues globalOrdDeltas;
   // globalOrd -> first segment container

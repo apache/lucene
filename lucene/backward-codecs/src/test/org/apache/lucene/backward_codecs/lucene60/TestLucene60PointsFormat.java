@@ -34,9 +34,11 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.BasePointsFormatTestCase;
 import org.apache.lucene.tests.index.MockRandomMergePolicy;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests Lucene60PointsFormat */
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene60PointsFormat extends BasePointsFormatTestCase {
   private final Codec codec;
   private final int maxPointsInLeafNode;

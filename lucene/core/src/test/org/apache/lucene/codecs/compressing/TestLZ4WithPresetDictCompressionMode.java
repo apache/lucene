@@ -16,10 +16,20 @@
  */
 package org.apache.lucene.codecs.compressing;
 
+<<<<<<<< HEAD:lucene/backward-codecs/src/test/org/apache/lucene/backward_codecs/lucene70/TestLucene70NormsFormat.java
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.tests.index.BaseNormsFormatTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+
+/** Tests Lucene70NormsFormat */
+@Nightly // N-2 formats are only tested on nightly runs
+public class TestLucene70NormsFormat extends BaseNormsFormatTestCase {
+========
 import org.apache.lucene.codecs.lucene90.LZ4WithPresetDictCompressionMode;
 
 public class TestLZ4WithPresetDictCompressionMode extends AbstractTestCompressionMode {
 
+>>>>>>>> origin/branch_10_1:lucene/core/src/test/org/apache/lucene/codecs/compressing/TestLZ4WithPresetDictCompressionMode.java
   @Override
   public void setUp() throws Exception {
     super.setUp();

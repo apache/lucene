@@ -83,25 +83,17 @@ public abstract class CodecReader extends LeafReader {
    */
   public abstract KnnVectorsReader getVectorReader();
 
-  // intentionally throw UOE for deprecated APIs: keep CodecReader clean!
-  // (IndexWriter should not be triggering threadlocals in any way)
-
-  @Override
-  @Deprecated
-  public void document(int docID, StoredFieldVisitor visitor) throws IOException {
-    throw new UnsupportedOperationException("deprecated document access is not supported");
-  }
-
-  @Override
-  @Deprecated
-  public Fields getTermVectors(int docID) throws IOException {
-    throw new UnsupportedOperationException("deprecated term vector access is not supported");
-  }
-
   @Override
   public final StoredFields storedFields() throws IOException {
     final StoredFields reader = getFieldsReader();
     return new StoredFields() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        // Don't trust the codec to do proper checks
+        Objects.checkIndex(docID, maxDoc());
+        reader.prefetch(docID);
+      }
+
       @Override
       public void document(int docID, StoredFieldVisitor visitor) throws IOException {
         // Don't trust the codec to do proper checks
@@ -202,6 +194,16 @@ public abstract class CodecReader extends LeafReader {
       return null;
     }
     return getDocValuesReader().getSortedSet(fi);
+  }
+
+  @Override
+  public final DocValuesSkipper getDocValuesSkipper(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.docValuesSkipIndexType() == DocValuesSkipIndexType.NONE) {
+      return null;
+    }
+    return getDocValuesReader().getSkipper(fi);
   }
 
   @Override

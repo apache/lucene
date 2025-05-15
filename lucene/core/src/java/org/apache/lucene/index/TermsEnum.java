@@ -17,9 +17,11 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
+import org.apache.lucene.util.IOBooleanSupplier;
 
 /**
  * Iterator to seek ({@link #seekCeil(BytesRef)}, {@link #seekExact(BytesRef)}) or step through
@@ -60,6 +62,23 @@ public abstract class TermsEnum implements BytesRefIterator {
    * @return true if the term is found; return false if the enum is unpositioned.
    */
   public abstract boolean seekExact(BytesRef text) throws IOException;
+
+  /**
+   * Two-phase {@link #seekExact}. The first phase typically calls {@link IndexInput#prefetch} on
+   * the right range of bytes under the hood, while the second phase {@link IOBooleanSupplier#get()}
+   * actually seeks the term within these bytes. This can be used to parallelize I/O across multiple
+   * terms by calling {@link #prepareSeekExact} on multiple terms enums before calling {@link
+   * IOBooleanSupplier#get()}.
+   *
+   * <p><b>NOTE</b>: It is illegal to call other methods on this {@link TermsEnum} after calling
+   * this method until {@link IOBooleanSupplier#get()} is called.
+   *
+   * <p><b>NOTE</b>: This may return {@code null} if this {@link TermsEnum} can identify that the
+   * term may not exist without performing any I/O.
+   *
+   * <p><b>NOTE</b>: The returned {@link IOBooleanSupplier} must be consumed in the same thread.
+   */
+  public abstract IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException;
 
   /**
    * Seeks to the specified term, if it exists, or to the next (ceiling) term. Returns SeekStatus to
@@ -178,9 +197,7 @@ public abstract class TermsEnum implements BytesRefIterator {
    * of unused Attributes does not matter.
    */
   public static final TermsEnum EMPTY =
-      new TermsEnum() {
-
-        private AttributeSource atts = null;
+      new BaseTermsEnum() {
 
         @Override
         public SeekStatus seekCeil(BytesRef term) {
@@ -223,19 +240,6 @@ public abstract class TermsEnum implements BytesRefIterator {
         @Override
         public BytesRef next() {
           return null;
-        }
-
-        @Override // make it synchronized here, to prevent double lazy init
-        public synchronized AttributeSource attributes() {
-          if (atts == null) {
-            atts = new AttributeSource();
-          }
-          return atts;
-        }
-
-        @Override
-        public boolean seekExact(BytesRef text) throws IOException {
-          return seekCeil(text) == SeekStatus.FOUND;
         }
 
         @Override

@@ -175,14 +175,14 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
             OffsetSource offsetSource = getOptimizedOffsetSource(components);
 
             // test all is accessible
-            components.getField();
-            components.getFieldMatcher();
-            components.getQuery();
-            components.getTerms();
-            components.getPhraseHelper();
-            components.getAutomata();
+            components.field();
+            components.fieldMatcher();
+            components.query();
+            components.terms();
+            components.phraseHelper();
+            components.automata();
             components.hasUnrecognizedQueryPart();
-            components.getHighlightFlags();
+            components.highlightFlags();
 
             return new CustomFieldHighlighter(
                 field,

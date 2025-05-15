@@ -76,7 +76,7 @@ goto fail
 @rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
 set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
 IF NOT EXIST "%GRADLE_WRAPPER_JAR%" (
-    "%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
+    "%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
     IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
     IF %ERRORLEVEL% NEQ 0 goto fail
 )
@@ -89,7 +89,7 @@ set CLASSPATH=%GRADLE_WRAPPER_JAR%
 IF NOT EXIST "%APP_HOME%\gradle.properties" (
   @rem local expansion is needed to check ERRORLEVEL inside control blocks.
   setlocal enableDelayedExpansion
-  "%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/buildSrc/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "%APP_HOME%\gradle\template.gradle.properties" "%APP_HOME%\gradle.properties"
+  "%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "%APP_HOME%\gradle\template.gradle.properties" "%APP_HOME%\gradle.properties"
   IF %ERRORLEVEL% NEQ 0 goto fail
   endlocal
 )
@@ -108,7 +108,7 @@ goto fail
 
 :failWithJvmMessage
 @rem https://github.com/apache/lucene/pull/819
-echo Error: Something went wrong. Make sure you're using Java 11 or later.
+echo Error: Something went wrong. Make sure you're using Java version of exactly 21.
 
 :fail
 rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of

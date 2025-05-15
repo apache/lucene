@@ -42,7 +42,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.IntConsumer;
-import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
@@ -74,6 +73,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestLRUQueryCache extends LuceneTestCase {
 
@@ -198,7 +198,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
                                         .map(
                                             filterCollector ->
                                                 (DummyTotalHitCountCollector) filterCollector.in)
-                                        .collect(Collectors.toList()));
+                                        .toList());
                               }
                             });
                     assertEquals(totalHits2, totalHits1);
@@ -234,6 +234,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
   }
 
+  @SuppressForbidden(reason = "Thread sleep")
   public void testLRUEviction() throws Exception {
     Directory dir = newDirectory();
     final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
@@ -461,7 +462,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           return null;
         }
 
@@ -555,7 +556,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
   }
 
   /** DummyQuery with Accountable, pretending to be a memory-eating query */
-  private class AccountableDummyQuery extends DummyQuery implements Accountable {
+  private static class AccountableDummyQuery extends DummyQuery implements Accountable {
 
     @Override
     public long ramBytesUsed() {
@@ -841,7 +842,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
           @Override
           protected void onHit(Object readerCoreKey, Query query) {
             super.onHit(readerCoreKey, query);
-            switch (indexId.get(readerCoreKey).intValue()) {
+            switch (indexId.get(readerCoreKey)) {
               case 1:
                 hitCount1.incrementAndGet();
                 break;
@@ -856,7 +857,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
           @Override
           protected void onMiss(Object readerCoreKey, Query query) {
             super.onMiss(readerCoreKey, query);
-            switch (indexId.get(readerCoreKey).intValue()) {
+            switch (indexId.get(readerCoreKey)) {
               case 1:
                 missCount1.incrementAndGet();
                 break;
@@ -1177,7 +1178,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           return null;
         }
 
@@ -1331,11 +1332,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     public void onUse(final Query query) {
       AtomicInteger count;
       synchronized (counts) {
-        count = counts.get(query);
-        if (count == null) {
-          count = new AtomicInteger();
-          counts.put(query, count);
-        }
+        count = counts.computeIfAbsent(query, k -> new AtomicInteger());
       }
       count.incrementAndGet();
     }
@@ -1358,15 +1355,30 @@ public class TestLRUQueryCache extends LuceneTestCase {
     }
 
     @Override
-    public Scorer scorer(LeafReaderContext context) throws IOException {
-      scorerCalled.set(true);
-      return in.scorer(context);
-    }
+    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+      final var scorerSupplier = in.scorerSupplier(context);
+      if (scorerSupplier == null) {
+        return null;
+      }
+      final var scorer = scorerSupplier.get(Long.MAX_VALUE);
+      return new ScorerSupplier() {
+        @Override
+        public Scorer get(long leadCost) throws IOException {
+          scorerCalled.set(true);
+          return scorer;
+        }
 
-    @Override
-    public BulkScorer bulkScorer(LeafReaderContext context) throws IOException {
-      bulkScorerCalled.set(true);
-      return in.bulkScorer(context);
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          bulkScorerCalled.set(true);
+          return in.bulkScorer(context);
+        }
+
+        @Override
+        public long cost() {
+          return scorer.iterator().cost();
+        }
+      };
     }
   }
 
@@ -1388,8 +1400,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
     weight = new WeightWrapper(weight, scorerCalled, bulkScorerCalled);
     weight = cache.doCache(weight, NEVER_CACHE);
     weight.bulkScorer(leaf);
-    assertEquals(true, bulkScorerCalled.get());
-    assertEquals(false, scorerCalled.get());
+    assertTrue(bulkScorerCalled.get());
+    assertFalse(scorerCalled.get());
     assertEquals(0, cache.getCacheCount());
 
     searcher.getIndexReader().close();
@@ -1539,7 +1551,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
         }
 
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           return null;
         }
 
@@ -1611,23 +1623,18 @@ public class TestLRUQueryCache extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          return scorerSupplier(context).get(Long.MAX_VALUE);
-        }
-
-        @Override
         public boolean isCacheable(LeafReaderContext ctx) {
           return true;
         }
 
         @Override
         public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-          final Weight weight = this;
+          final var scorer = new ConstantScoreScorer(boost, scoreMode, DocIdSetIterator.all(1));
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) throws IOException {
               scorerCreated.set(true);
-              return new ConstantScoreScorer(weight, boost, scoreMode, DocIdSetIterator.all(1));
+              return scorer;
             }
 
             @Override
@@ -1712,12 +1719,21 @@ public class TestLRUQueryCache extends LuceneTestCase {
     public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
       return new ConstantScoreWeight(this, 1) {
-
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
-          scorerCreatedCount.incrementAndGet();
-          return new ConstantScoreScorer(
-              this, 1, scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              scorerCreatedCount.incrementAndGet();
+              return new ConstantScoreScorer(
+                  1, scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
+            }
+
+            @Override
+            public long cost() {
+              return context.reader().maxDoc();
+            }
+          };
         }
 
         @Override
@@ -1779,7 +1795,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     assertEquals(2, searcher.count(query));
     assertEquals(2, query.scorerCreatedCount.get()); // both segments cached
 
-    w.updateNumericDocValue(new Term("text", "text"), "field", 2l);
+    w.updateNumericDocValue(new Term("text", "text"), "field", 2L);
     reader.close();
     reader = DirectoryReader.open(w);
     searcher =

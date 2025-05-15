@@ -95,9 +95,9 @@ public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
       TotalHits.Relation relation =
           queryTimeout.shouldExit()
               ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
-              : docs.totalHits.relation;
+              : docs.totalHits.relation();
 
-      return new TopDocs(new TotalHits(docs.totalHits.value, relation), docs.scoreDocs);
+      return new TopDocs(new TotalHits(docs.totalHits.value(), relation), docs.scoreDocs);
     }
   }
 }

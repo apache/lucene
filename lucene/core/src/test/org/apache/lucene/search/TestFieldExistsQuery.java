@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
@@ -34,8 +33,6 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -43,7 +40,9 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
 
@@ -649,6 +648,39 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     }
   }
 
+  public void testDeleteKnnVector() throws IOException {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      final int numDocs = atLeast(100);
+
+      boolean allDocsHaveVector = random().nextBoolean();
+      BitSet docWithVector = new FixedBitSet(numDocs);
+      for (int i = 0; i < numDocs; ++i) {
+        Document doc = new Document();
+        if (allDocsHaveVector || random().nextBoolean()) {
+          doc.add(new KnnFloatVectorField("vector", randomVector(5)));
+          docWithVector.set(i);
+        }
+        doc.add(new StringField("id", Integer.toString(i), Store.NO));
+        iw.addDocument(doc);
+      }
+      if (random().nextBoolean()) {
+        final int numDeleted = random().nextInt(numDocs) + 1;
+        for (int i = 0; i < numDeleted; ++i) {
+          iw.deleteDocuments(new Term("id", Integer.toString(i)));
+          docWithVector.clear(i);
+        }
+      }
+
+      try (IndexReader reader = iw.getReader()) {
+        final IndexSearcher searcher = newSearcher(reader);
+
+        final int count = searcher.count(new FieldExistsQuery("vector"));
+        assertEquals(docWithVector.cardinality(), count);
+      }
+    }
+  }
+
   public void testKnnVectorConjunction() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
@@ -696,32 +728,6 @@ public class TestFieldExistsQuery extends LuceneTestCase {
       try (IndexReader reader = iw.getReader()) {
         IndexSearcher searcher = newSearcher(reader);
         assertEquals(1, searcher.count(new FieldExistsQuery("vector")));
-      }
-    }
-  }
-
-  public void testOldIndices() throws Exception {
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig config =
-          new IndexWriterConfig()
-              .setIndexCreatedVersionMajor(8)
-              .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-      try (IndexWriter writer = new IndexWriter(dir, config)) {
-        Document d1 = new Document();
-        d1.add(new StringField("my_field", "text", Store.YES));
-        d1.add(new BinaryDocValuesField("my_field", new BytesRef("first")));
-        writer.addDocument(d1);
-        writer.flush();
-
-        Document d2 = new Document();
-        d2.add(new StringField("my_field", "text", Store.YES));
-        writer.addDocument(d2);
-        writer.flush();
-
-        try (IndexReader reader = DirectoryReader.open(writer)) {
-          IndexSearcher searcher = new IndexSearcher(reader);
-          assertEquals(1, searcher.count(new FieldExistsQuery("my_field")));
-        }
       }
     }
   }
@@ -798,7 +804,7 @@ public class TestFieldExistsQuery extends LuceneTestCase {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (scores) {

@@ -20,11 +20,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.facet.FacetField;
-import org.apache.lucene.facet.FacetUtils;
 import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.facet.FacetsConfig;
-import org.apache.lucene.facet.taxonomy.OrdinalsReader.OrdinalsSegmentReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
@@ -34,7 +32,6 @@ import org.apache.lucene.search.DoubleValues;
 import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IntsRef;
 
 /**
  * Aggregates float values associated with facet fields. Supports two different approaches:
@@ -52,8 +49,6 @@ import org.apache.lucene.util.IntsRef;
  * @lucene.experimental
  */
 public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
-
-  private final OrdinalsReader ordinalsReader;
 
   /** Create {@code TaxonomyFacetFloatAssociations} against the default index field. */
   public TaxonomyFacetFloatAssociations(
@@ -94,7 +89,6 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       AssociationAggregationFunction aggregationFunction)
       throws IOException {
     super(indexFieldName, taxoReader, aggregationFunction, config, fc);
-    ordinalsReader = null;
     aggregateValues(aggregationFunction, fc.getMatchingDocs());
   }
 
@@ -111,28 +105,6 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       DoubleValuesSource valuesSource)
       throws IOException {
     super(indexFieldName, taxoReader, aggregationFunction, config, fc);
-    ordinalsReader = null;
-    aggregateValues(aggregationFunction, fc.getMatchingDocs(), fc.getKeepScores(), valuesSource);
-  }
-
-  /**
-   * Create {@code TaxonomyFacetFloatAssociations} against the specified index field. Sources values
-   * from the provided {@code valuesSource}.
-   *
-   * @deprecated Custom binary encodings for taxonomy ordinals are no longer supported starting with
-   *     Lucene 9
-   */
-  @Deprecated
-  public TaxonomyFacetFloatAssociations(
-      OrdinalsReader ordinalsReader,
-      TaxonomyReader taxoReader,
-      FacetsConfig config,
-      FacetsCollector fc,
-      AssociationAggregationFunction aggregationFunction,
-      DoubleValuesSource valuesSource)
-      throws IOException {
-    super(ordinalsReader.getIndexFieldName(), taxoReader, aggregationFunction, config, fc);
-    this.ordinalsReader = ordinalsReader;
     aggregateValues(aggregationFunction, fc.getMatchingDocs(), fc.getKeepScores(), valuesSource);
   }
 
@@ -143,7 +115,7 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
 
       @Override
       public double doubleValue() throws IOException {
-        return hits.scores[index];
+        return hits.scores()[index];
       }
 
       @Override
@@ -161,65 +133,29 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       boolean keepScores,
       DoubleValuesSource valueSource)
       throws IOException {
-
-    if (ordinalsReader != null) {
-      // If the user provided a custom ordinals reader, use it to retrieve the document ordinals:
-      IntsRef scratch = new IntsRef();
-      for (MatchingDocs hits : matchingDocs) {
-        if (hits.totalHits == 0) {
-          continue;
-        }
-        initializeValueCounters();
-
-        OrdinalsSegmentReader ords = ordinalsReader.getReader(hits.context);
-        DoubleValues scores = keepScores ? scores(hits) : null;
-        DoubleValues functionValues = valueSource.getValues(hits.context, scores);
-        DocIdSetIterator docs = hits.bits.iterator();
-
-        int doc;
-        while ((doc = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          ords.get(doc, scratch);
-          if (functionValues.advanceExact(doc)) {
-            float value = (float) functionValues.doubleValue();
-            for (int i = 0; i < scratch.length; i++) {
-              int ord = scratch.ints[i];
-              float currentValue = getValue(ord);
-              float newValue = aggregationFunction.aggregate(currentValue, value);
-              setValue(ord, newValue);
-              setCount(ord, getCount(ord) + 1);
-            }
-          }
-        }
+    for (MatchingDocs hits : matchingDocs) {
+      if (hits.totalHits() == 0) {
+        continue;
       }
-    } else {
-      for (MatchingDocs hits : matchingDocs) {
-        if (hits.totalHits == 0) {
-          continue;
-        }
-        initializeValueCounters();
+      initializeValueCounters();
 
-        SortedNumericDocValues ordinalValues =
-            FacetUtils.loadOrdinalValues(hits.context.reader(), indexFieldName);
-        if (ordinalValues == null) {
-          continue;
-        }
+      SortedNumericDocValues ordinalValues =
+          DocValues.getSortedNumeric(hits.context().reader(), indexFieldName);
+      DoubleValues scores = keepScores ? scores(hits) : null;
+      DoubleValues functionValues = valueSource.getValues(hits.context(), scores);
+      DocIdSetIterator it =
+          ConjunctionUtils.intersectIterators(List.of(hits.bits().iterator(), ordinalValues));
 
-        DoubleValues scores = keepScores ? scores(hits) : null;
-        DoubleValues functionValues = valueSource.getValues(hits.context, scores);
-        DocIdSetIterator it =
-            ConjunctionUtils.intersectIterators(List.of(hits.bits.iterator(), ordinalValues));
-
-        for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
-          if (functionValues.advanceExact(doc)) {
-            float value = (float) functionValues.doubleValue();
-            int ordinalCount = ordinalValues.docValueCount();
-            for (int i = 0; i < ordinalCount; i++) {
-              int ord = (int) ordinalValues.nextValue();
-              float currentValue = getValue(ord);
-              float newValue = aggregationFunction.aggregate(currentValue, value);
-              setValue(ord, newValue);
-              setCount(ord, getCount(ord) + 1);
-            }
+      for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+        if (functionValues.advanceExact(doc)) {
+          float value = (float) functionValues.doubleValue();
+          int ordinalCount = ordinalValues.docValueCount();
+          for (int i = 0; i < ordinalCount; i++) {
+            int ord = (int) ordinalValues.nextValue();
+            float currentValue = getValue(ord);
+            float newValue = aggregationFunction.aggregate(currentValue, value);
+            setValue(ord, newValue);
+            setCount(ord, getCount(ord) + 1);
           }
         }
       }
@@ -235,14 +171,14 @@ public class TaxonomyFacetFloatAssociations extends FloatTaxonomyFacets {
       throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeValueCounters();
 
-      BinaryDocValues dv = DocValues.getBinary(hits.context.reader(), indexFieldName);
+      BinaryDocValues dv = DocValues.getBinary(hits.context().reader(), indexFieldName);
       DocIdSetIterator it =
-          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), dv));
+          ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), dv));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         final BytesRef bytesRef = dv.binaryValue();

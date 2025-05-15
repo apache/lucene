@@ -85,8 +85,7 @@ public abstract class SortingStrategy {
             writer.close();
             String sortedFile = sortWordsOffline();
             ByteSequencesReader reader =
-                new ByteSequencesReader(
-                    tempDir.openChecksumInput(sortedFile, IOContext.READONCE), sortedFile);
+                new ByteSequencesReader(tempDir.openChecksumInput(sortedFile), sortedFile);
             return new EntrySupplier() {
               boolean success = false;
 

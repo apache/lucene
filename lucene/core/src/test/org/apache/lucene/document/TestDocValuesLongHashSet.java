@@ -130,7 +130,7 @@ public class TestDocValuesLongHashSet extends LuceneTestCase {
       if (values.length > 0 && random().nextBoolean()) {
         values[values.length / 2] = Long.MIN_VALUE;
       }
-      Set<Long> set1 = LongStream.of(values).mapToObj(Long::valueOf).collect(Collectors.toSet());
+      Set<Long> set1 = LongStream.of(values).boxed().collect(Collectors.toSet());
       Arrays.sort(values);
       DocValuesLongHashSet set2 = new DocValuesLongHashSet(values);
       assertEquals(set1, set2);

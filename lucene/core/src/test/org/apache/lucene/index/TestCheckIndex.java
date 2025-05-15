@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
@@ -38,7 +40,6 @@ import org.apache.lucene.tests.index.BaseTestCheckIndex;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.VectorUtil;
 import org.junit.Test;
@@ -104,6 +105,9 @@ public class TestCheckIndex extends BaseTestCheckIndex {
           // doc value
           doc.add(new NumericDocValuesField("dv", random().nextLong()));
 
+          // doc value with skip index
+          doc.add(NumericDocValuesField.indexedField("dv_skip", random().nextLong()));
+
           // point value
           byte[] point = new byte[4];
           NumericUtils.intToSortableBytes(random().nextInt(), point, 0);
@@ -139,7 +143,9 @@ public class TestCheckIndex extends BaseTestCheckIndex {
       }
 
       ByteArrayOutputStream output = new ByteArrayOutputStream();
-      CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, true, output);
+      CheckIndex.Status status =
+          TestUtil.checkIndex(
+              dir, CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS, true, true, output);
 
       assertEquals(1, status.segmentInfos.size());
 
@@ -147,62 +153,63 @@ public class TestCheckIndex extends BaseTestCheckIndex {
 
       // confirm live docs testing status
       assertEquals(0, segStatus.liveDocStatus.numDeleted);
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: check live docs"));
+      assertTrue(output.toString(UTF_8).contains("test: check live docs"));
       assertNull(segStatus.liveDocStatus.error);
 
       // confirm field infos testing status
-      assertEquals(8, segStatus.fieldInfoStatus.totFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: field infos"));
+      assertEquals(9, segStatus.fieldInfoStatus.totFields);
+      assertTrue(output.toString(UTF_8).contains("test: field infos"));
       assertNull(segStatus.fieldInfoStatus.error);
 
       // confirm field norm (from term vector) testing status
       assertEquals(1, segStatus.fieldNormStatus.totFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: field norms"));
+      assertTrue(output.toString(UTF_8).contains("test: field norms"));
       assertNull(segStatus.fieldNormStatus.error);
 
       // confirm term index testing status
       assertTrue(segStatus.termIndexStatus.termCount > 0);
       assertTrue(segStatus.termIndexStatus.totFreq > 0);
       assertTrue(segStatus.termIndexStatus.totPos > 0);
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: terms, freq, prox"));
+      assertTrue(output.toString(UTF_8).contains("test: terms, freq, prox"));
       assertNull(segStatus.termIndexStatus.error);
 
       // confirm stored field testing status
       // add storedField from tombstone doc
       assertEquals(liveDocCount + 1, segStatus.storedFieldStatus.docCount);
       assertEquals(2 * liveDocCount, segStatus.storedFieldStatus.totFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: stored fields"));
+      assertTrue(output.toString(UTF_8).contains("test: stored fields"));
       assertNull(segStatus.storedFieldStatus.error);
 
       // confirm term vector testing status
       assertEquals(liveDocCount, segStatus.termVectorStatus.docCount);
       assertEquals(liveDocCount, segStatus.termVectorStatus.totVectors);
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: term vectors"));
+      assertTrue(output.toString(UTF_8).contains("test: term vectors"));
       assertNull(segStatus.termVectorStatus.error);
 
       // confirm doc values testing status
-      assertEquals(2, segStatus.docValuesStatus.totalNumericFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: docvalues"));
+      assertEquals(3, segStatus.docValuesStatus.totalNumericFields);
+      assertEquals(1, segStatus.docValuesStatus.totalSkippingIndex);
+      assertTrue(output.toString(UTF_8).contains("test: docvalues"));
       assertNull(segStatus.docValuesStatus.error);
 
       // confirm point values testing status
       assertEquals(1, segStatus.pointsStatus.totalValueFields);
       assertEquals(liveDocCount, segStatus.pointsStatus.totalValuePoints);
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: points"));
+      assertTrue(output.toString(UTF_8).contains("test: points"));
       assertNull(segStatus.pointsStatus.error);
 
       // confirm vector testing status
       assertEquals(2 * liveDocCount, segStatus.vectorValuesStatus.totalVectorValues);
       assertEquals(2, segStatus.vectorValuesStatus.totalKnnVectorFields);
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: vectors"));
+      assertTrue(output.toString(UTF_8).contains("test: vectors"));
       assertNull(segStatus.vectorValuesStatus.error);
 
       // confirm index sort testing status
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: index sort"));
+      assertTrue(output.toString(UTF_8).contains("test: index sort"));
       assertNull(segStatus.indexSortStatus.error);
 
       // confirm soft deletes testing status
-      assertTrue(output.toString(IOUtils.UTF_8).contains("test: check soft deletes"));
+      assertTrue(output.toString(UTF_8).contains("test: check soft deletes"));
       assertNull(segStatus.softDeletesStatus.error);
     }
   }

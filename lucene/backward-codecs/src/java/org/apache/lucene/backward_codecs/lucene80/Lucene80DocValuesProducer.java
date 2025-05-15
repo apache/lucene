@@ -17,8 +17,6 @@
 package org.apache.lucene.backward_codecs.lucene80;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectMonotonicReader;
 import org.apache.lucene.backward_codecs.packed.LegacyDirectReader;
 import org.apache.lucene.backward_codecs.store.EndiannessReverserUtil;
@@ -28,6 +26,7 @@ import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.ImpactsEnum;
@@ -40,6 +39,7 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -52,11 +52,11 @@ import org.apache.lucene.util.compress.LZ4;
 
 /** reader for {@link Lucene80DocValuesFormat} */
 final class Lucene80DocValuesProducer extends DocValuesProducer {
-  private final Map<String, NumericEntry> numerics = new HashMap<>();
-  private final Map<String, BinaryEntry> binaries = new HashMap<>();
-  private final Map<String, SortedEntry> sorted = new HashMap<>();
-  private final Map<String, SortedSetEntry> sortedSets = new HashMap<>();
-  private final Map<String, SortedNumericEntry> sortedNumerics = new HashMap<>();
+  private final IntObjectHashMap<NumericEntry> numerics = new IntObjectHashMap<>();
+  private final IntObjectHashMap<BinaryEntry> binaries = new IntObjectHashMap<>();
+  private final IntObjectHashMap<SortedEntry> sorted = new IntObjectHashMap<>();
+  private final IntObjectHashMap<SortedSetEntry> sortedSets = new IntObjectHashMap<>();
+  private final IntObjectHashMap<SortedNumericEntry> sortedNumerics = new IntObjectHashMap<>();
   private final IndexInput data;
   private final int maxDoc;
   private int version = -1;
@@ -138,7 +138,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       }
       byte type = meta.readByte();
       if (type == Lucene80DocValuesFormat.NUMERIC) {
-        numerics.put(info.name, readNumeric(meta));
+        numerics.put(info.number, readNumeric(meta));
       } else if (type == Lucene80DocValuesFormat.BINARY) {
         final boolean compressed;
         if (version >= Lucene80DocValuesFormat.VERSION_CONFIGURABLE_COMPRESSION) {
@@ -157,13 +157,13 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         } else {
           compressed = version >= Lucene80DocValuesFormat.VERSION_BIN_COMPRESSED;
         }
-        binaries.put(info.name, readBinary(meta, compressed));
+        binaries.put(info.number, readBinary(meta, compressed));
       } else if (type == Lucene80DocValuesFormat.SORTED) {
-        sorted.put(info.name, readSorted(meta));
+        sorted.put(info.number, readSorted(meta));
       } else if (type == Lucene80DocValuesFormat.SORTED_SET) {
-        sortedSets.put(info.name, readSortedSet(meta));
+        sortedSets.put(info.number, readSortedSet(meta));
       } else if (type == Lucene80DocValuesFormat.SORTED_NUMERIC) {
-        sortedNumerics.put(info.name, readSortedNumeric(meta));
+        sortedNumerics.put(info.number, readSortedNumeric(meta));
       } else {
         throw new CorruptIndexException("invalid type: " + type, meta);
       }
@@ -425,7 +425,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
   @Override
   public NumericDocValues getNumeric(FieldInfo field) throws IOException {
-    NumericEntry entry = numerics.get(field.name);
+    NumericEntry entry = numerics.get(field.number);
     return getNumeric(entry);
   }
 
@@ -914,7 +914,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
   @Override
   public BinaryDocValues getBinary(FieldInfo field) throws IOException {
-    BinaryEntry entry = binaries.get(field.name);
+    BinaryEntry entry = binaries.get(field.number);
     if (entry.compressed) {
       return getCompressedBinary(entry);
     } else {
@@ -972,7 +972,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedDocValues getSorted(FieldInfo field) throws IOException {
-    SortedEntry entry = sorted.get(field.name);
+    SortedEntry entry = sorted.get(field.number);
     return getSorted(entry);
   }
 
@@ -1406,7 +1406,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
-    SortedNumericEntry entry = sortedNumerics.get(field.name);
+    SortedNumericEntry entry = sortedNumerics.get(field.number);
     if (entry.numValues == entry.numDocsWithField) {
       return DocValues.singleton(getNumeric(entry));
     }
@@ -1542,7 +1542,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
-    SortedSetEntry entry = sortedSets.get(field.name);
+    SortedSetEntry entry = sortedSets.get(field.number);
     if (entry.singleValueEntry != null) {
       return DocValues.singleton(getSorted(entry.singleValueEntry));
     }
@@ -1560,7 +1560,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       return new BaseSortedSetDocValues(entry, data) {
 
         int doc = -1;
-        long start, end;
+        long curr;
         int count;
 
         @Override
@@ -1583,27 +1583,24 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
           if (target >= maxDoc) {
             return doc = NO_MORE_DOCS;
           }
-          start = addresses.get(target);
-          end = addresses.get(target + 1L);
-          count = (int) (end - start);
+          curr = addresses.get(target);
+          long end = addresses.get(target + 1L);
+          count = (int) (end - curr);
           return doc = target;
         }
 
         @Override
         public boolean advanceExact(int target) throws IOException {
-          start = addresses.get(target);
-          end = addresses.get(target + 1L);
-          count = (int) (end - start);
+          curr = addresses.get(target);
+          long end = addresses.get(target + 1L);
+          count = (int) (end - curr);
           doc = target;
           return true;
         }
 
         @Override
         public long nextOrd() throws IOException {
-          if (start == end) {
-            return NO_MORE_ORDS;
-          }
-          return ords.get(start++);
+          return ords.get(curr++);
         }
 
         @Override
@@ -1624,8 +1621,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
       return new BaseSortedSetDocValues(entry, data) {
 
         boolean set;
-        long start;
-        long end = 0;
+        long curr;
         int count;
 
         @Override
@@ -1656,27 +1652,20 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
           return disi.advanceExact(target);
         }
 
-        private boolean set() {
+        private void set() {
           if (set == false) {
             final int index = disi.index();
-            start = addresses.get(index);
-            end = addresses.get(index + 1L);
-            count = (int) (end - start);
+            curr = addresses.get(index);
+            long end = addresses.get(index + 1L);
+            count = (int) (end - curr);
             set = true;
-            return true;
           }
-          return false;
         }
 
         @Override
         public long nextOrd() throws IOException {
-          if (set()) {
-            return ords.get(start++);
-          } else if (start == end) {
-            return NO_MORE_ORDS;
-          } else {
-            return ords.get(start++);
-          }
+          set();
+          return ords.get(curr++);
         }
 
         @Override
@@ -1686,6 +1675,11 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
         }
       };
     }
+  }
+
+  @Override
+  public DocValuesSkipper getSkipper(FieldInfo field) {
+    return null;
   }
 
   @Override

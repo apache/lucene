@@ -113,10 +113,10 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
         DisiPriorityQueue subs = new DisiPriorityQueue(highFrequencyTerms.size() + 1);
         for (DocIdSetIterator disi : highFrequencyTerms) {
           Scorer s = wrapWithDummyScorer(this, disi);
-          subs.add(new DisiWrapper(s));
+          subs.add(new DisiWrapper(s, false));
         }
         Scorer s = wrapWithDummyScorer(this, otherTerms.build().iterator());
-        subs.add(new DisiWrapper(s));
+        subs.add(new DisiWrapper(s, false));
 
         return new WeightOrDocIdSetIterator(new DisjunctionDISIApproximation(subs));
       }
@@ -132,6 +132,6 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
   private static Scorer wrapWithDummyScorer(Weight weight, DocIdSetIterator disi) {
     // The score and score mode do not actually matter here, except that using TOP_SCORES results
     // in another wrapper object getting created around the disi, so we try to avoid that:
-    return new ConstantScoreScorer(weight, 1f, ScoreMode.COMPLETE_NO_SCORES, disi);
+    return new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, disi);
   }
 }

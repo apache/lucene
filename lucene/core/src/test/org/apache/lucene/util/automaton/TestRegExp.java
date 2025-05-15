@@ -19,6 +19,7 @@ package org.apache.lucene.util.automaton;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestRegExp extends LuceneTestCase {
@@ -34,62 +35,22 @@ public class TestRegExp extends LuceneTestCase {
     assertFalse(run.run("ad"));
   }
 
-  /**
-   * Compiles a regular expression that is prohibitively expensive to determinize and expexts to
-   * catch an exception for it.
-   */
-  public void testDeterminizeTooManyStates() {
-    // LUCENE-6046
-    String source = "[ac]*a[ac]{50,200}";
-    TooComplexToDeterminizeException expected =
-        expectThrows(
-            TooComplexToDeterminizeException.class,
-            () -> {
-              new RegExp(source).toAutomaton();
-            });
-    assertTrue(expected.getMessage().contains(source));
-  }
-
-  public void testSerializeTooManyStatesToRepeat() throws Exception {
-    String source = "a{50001}";
-    TooComplexToDeterminizeException expected =
-        expectThrows(
-            TooComplexToDeterminizeException.class,
-            () -> {
-              new RegExp(source).toAutomaton(50000);
-            });
-    assertTrue(expected.getMessage().contains(source));
-  }
-
-  // LUCENE-6713
-  public void testSerializeTooManyStatesToDeterminizeExc() throws Exception {
-    // LUCENE-6046
-    String source = "[ac]*a[ac]{50,200}";
-    TooComplexToDeterminizeException expected =
-        expectThrows(
-            TooComplexToDeterminizeException.class,
-            () -> {
-              new RegExp(source).toAutomaton();
-            });
-    assertTrue(expected.getMessage().contains(source));
-  }
-
   // LUCENE-6046
   public void testRepeatWithEmptyString() throws Exception {
-    Automaton a = new RegExp("[^y]*{1,2}").toAutomaton(1000);
+    Automaton a = new RegExp("[^y]*{1,2}").toAutomaton();
     // paranoia:
     assertTrue(a.toString().length() > 0);
   }
 
   public void testRepeatWithEmptyLanguage() throws Exception {
-    Automaton a = new RegExp("#*").toAutomaton(1000);
+    Automaton a = new RegExp("#*").toAutomaton();
     // paranoia:
     assertTrue(a.toString().length() > 0);
-    a = new RegExp("#+").toAutomaton(1000);
+    a = new RegExp("#+").toAutomaton();
     assertTrue(a.toString().length() > 0);
-    a = new RegExp("#{2,10}").toAutomaton(1000);
+    a = new RegExp("#{2,10}").toAutomaton();
     assertTrue(a.toString().length() > 0);
-    a = new RegExp("#?").toAutomaton(1000);
+    a = new RegExp("#?").toAutomaton();
     assertTrue(a.toString().length() > 0);
   }
 
@@ -268,7 +229,8 @@ public class TestRegExp extends LuceneTestCase {
 
     int matchFlags = caseSensitiveQuery ? 0 : RegExp.ASCII_CASE_INSENSITIVE;
     RegExp regex = new RegExp(regexPattern, RegExp.ALL, matchFlags);
-    Automaton automaton = regex.toAutomaton();
+    Automaton automaton =
+        Operations.determinize(regex.toAutomaton(), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     ByteRunAutomaton bytesMatcher = new ByteRunAutomaton(automaton);
     BytesRef br = newBytesRef(docValue);
     assertTrue(
@@ -286,6 +248,7 @@ public class TestRegExp extends LuceneTestCase {
     if (caseSensitiveQuery == false) {
       RegExp caseSensitiveRegex = new RegExp(regexPattern);
       Automaton csAutomaton = caseSensitiveRegex.toAutomaton();
+      csAutomaton = Operations.determinize(csAutomaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
       ByteRunAutomaton csBytesMatcher = new ByteRunAutomaton(csAutomaton);
       assertFalse(
           "[" + regexPattern + "] with case sensitive setting should not match [" + docValue + "]",
@@ -296,5 +259,20 @@ public class TestRegExp extends LuceneTestCase {
 
   public void testRegExpNoStackOverflow() {
     new RegExp("(a)|".repeat(50000) + "(a)");
+  }
+
+  /**
+   * Tests the deprecate complement flag. Keep the simple test only, no random tests to let it cause
+   * us pain.
+   *
+   * @deprecated Remove in Lucene 11
+   */
+  @Deprecated
+  public void testDeprecatedComplement() {
+    Automaton expected =
+        Operations.complement(
+            Automata.makeString("abcd"), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
+    Automaton actual = new RegExp("~(abcd)", RegExp.DEPRECATED_COMPLEMENT).toAutomaton();
+    assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
   }
 }

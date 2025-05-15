@@ -31,6 +31,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.NumericUtils;
@@ -173,7 +174,7 @@ public final class DoubleRange extends Range {
 
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) throws IOException {
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
           final int maxDoc = context.reader().maxDoc();
 
           final DocIdSetIterator approximation;
@@ -201,7 +202,115 @@ public final class DoubleRange extends Range {
                   return 100; // TODO: use cost of range.accept()
                 }
               };
-          return new ConstantScoreScorer(this, score(), scoreMode, twoPhase);
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
+          return new DefaultScorerSupplier(scorer);
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return valueSource.isCacheable(ctx);
+        }
+      };
+    }
+  }
+
+  private static class MultiValueSourceQuery extends Query {
+    private final DoubleRange range;
+    private final Query fastMatchQuery;
+    private final MultiDoubleValuesSource valueSource;
+
+    MultiValueSourceQuery(
+        DoubleRange range, Query fastMatchQuery, MultiDoubleValuesSource valueSource) {
+      this.range = range;
+      this.fastMatchQuery = fastMatchQuery;
+      this.valueSource = valueSource;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return sameClassAs(other) && equalsTo(getClass().cast(other));
+    }
+
+    private boolean equalsTo(MultiValueSourceQuery other) {
+      return range.equals(other.range)
+          && Objects.equals(fastMatchQuery, other.fastMatchQuery)
+          && valueSource.equals(other.valueSource);
+    }
+
+    @Override
+    public int hashCode() {
+      return classHash() + 31 * Objects.hash(range, fastMatchQuery, valueSource);
+    }
+
+    @Override
+    public String toString(String field) {
+      return "Filter(" + range.toString() + ")";
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      visitor.visitLeaf(this);
+    }
+
+    @Override
+    public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+      if (fastMatchQuery != null) {
+        final Query fastMatchRewritten = fastMatchQuery.rewrite(indexSearcher);
+        if (fastMatchRewritten != fastMatchQuery) {
+          return new MultiValueSourceQuery(range, fastMatchRewritten, valueSource);
+        }
+      }
+      return super.rewrite(indexSearcher);
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      final Weight fastMatchWeight =
+          fastMatchQuery == null
+              ? null
+              : searcher.createWeight(fastMatchQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
+
+      return new ConstantScoreWeight(this, boost) {
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final int maxDoc = context.reader().maxDoc();
+
+          final DocIdSetIterator approximation;
+          if (fastMatchWeight == null) {
+            approximation = DocIdSetIterator.all(maxDoc);
+          } else {
+            Scorer s = fastMatchWeight.scorer(context);
+            if (s == null) {
+              return null;
+            }
+            approximation = s.iterator();
+          }
+
+          final MultiDoubleValues values = valueSource.getValues(context);
+          final TwoPhaseIterator twoPhase =
+              new TwoPhaseIterator(approximation) {
+                @Override
+                public boolean matches() throws IOException {
+                  if (values.advanceExact(approximation.docID()) == false) {
+                    return false;
+                  }
+
+                  for (int i = 0; i < values.getValueCount(); i++) {
+                    if (range.accept(values.nextValue())) {
+                      return true;
+                    }
+                  }
+                  return false;
+                }
+
+                @Override
+                public float matchCost() {
+                  return 100; // TODO: use cost of range.accept()
+                }
+              };
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, twoPhase);
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

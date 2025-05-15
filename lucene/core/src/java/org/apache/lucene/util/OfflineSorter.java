@@ -291,8 +291,7 @@ public class OfflineSorter {
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
 
     boolean success = false;
-    try (ByteSequencesReader is =
-        getReader(dir.openChecksumInput(inputFileName, IOContext.READONCE), inputFileName)) {
+    try (ByteSequencesReader is = getReader(dir.openChecksumInput(inputFileName), inputFileName)) {
       while (true) {
         Partition part = readPartition(is);
         if (part.count == 0) {
@@ -375,7 +374,7 @@ public class OfflineSorter {
    */
   private void verifyChecksum(Throwable priorException, ByteSequencesReader reader)
       throws IOException {
-    try (ChecksumIndexInput in = dir.openChecksumInput(reader.name, IOContext.READONCE)) {
+    try (ChecksumIndexInput in = dir.openChecksumInput(reader.name)) {
       CodecUtil.checkFooter(in, priorException);
     }
   }
@@ -709,9 +708,7 @@ public class OfflineSorter {
         // Open streams and read the top for each file
         for (int i = 0; i < segmentsToMerge.size(); i++) {
           Partition segment = getPartition(segmentsToMerge.get(i));
-          streams[i] =
-              getReader(
-                  dir.openChecksumInput(segment.fileName, IOContext.READONCE), segment.fileName);
+          streams[i] = getReader(dir.openChecksumInput(segment.fileName), segment.fileName);
 
           BytesRef item = null;
           try {

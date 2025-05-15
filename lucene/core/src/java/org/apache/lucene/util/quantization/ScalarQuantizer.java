@@ -25,11 +25,13 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.HitQueue;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.IntroSelector;
 import org.apache.lucene.util.Selector;
+import org.apache.lucene.util.VectorUtil;
 
 /**
  * Will scalar quantize float vectors into `int8` byte values. This is a lossy transformation.
@@ -113,6 +115,7 @@ public class ScalarQuantizer {
    */
   public float quantize(float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
     assert src.length == dest.length;
+    assert similarityFunction != VectorSimilarityFunction.COSINE || VectorUtil.isUnitVector(src);
     float correction = 0;
     for (int i = 0; i < src.length; i++) {
       correction += quantizeFloat(src[i], dest, i);
@@ -267,11 +270,12 @@ public class ScalarQuantizer {
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
     }
+    KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
     if (confidenceInterval == 1f) {
       float min = Float.POSITIVE_INFINITY;
       float max = Float.NEGATIVE_INFINITY;
-      while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-        for (float v : floatVectorValues.vectorValue()) {
+      while (iterator.nextDoc() != NO_MORE_DOCS) {
+        for (float v : floatVectorValues.vectorValue(iterator.index())) {
           min = Math.min(min, v);
           max = Math.max(max, v);
         }
@@ -287,8 +291,8 @@ public class ScalarQuantizer {
     if (totalVectorCount <= quantizationSampleSize) {
       int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
       int i = 0;
-      while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-        float[] vectorValue = floatVectorValues.vectorValue();
+      while (iterator.nextDoc() != NO_MORE_DOCS) {
+        float[] vectorValue = floatVectorValues.vectorValue(iterator.index());
         System.arraycopy(
             vectorValue, 0, quantileGatheringScratch, i * vectorValue.length, vectorValue.length);
         i++;
@@ -309,11 +313,11 @@ public class ScalarQuantizer {
     for (int i : vectorsToTake) {
       while (index <= i) {
         // We cannot use `advance(docId)` as MergedVectorValues does not support it
-        floatVectorValues.nextDoc();
+        iterator.nextDoc();
         index++;
       }
-      assert floatVectorValues.docID() != NO_MORE_DOCS;
-      float[] vectorValue = floatVectorValues.vectorValue();
+      assert iterator.docID() != NO_MORE_DOCS;
+      float[] vectorValue = floatVectorValues.vectorValue(iterator.index());
       System.arraycopy(
           vectorValue, 0, quantileGatheringScratch, idx * vectorValue.length, vectorValue.length);
       idx++;
@@ -332,6 +336,7 @@ public class ScalarQuantizer {
       int totalVectorCount,
       byte bits)
       throws IOException {
+    assert function != VectorSimilarityFunction.COSINE;
     if (totalVectorCount == 0) {
       return new ScalarQuantizer(0f, 0f, bits);
     }
@@ -350,11 +355,16 @@ public class ScalarQuantizer {
                   / (floatVectorValues.dimension() + 1),
           1 - 1f / (floatVectorValues.dimension() + 1)
         };
+    KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
     if (totalVectorCount <= sampleSize) {
       int scratchSize = Math.min(SCRATCH_SIZE, totalVectorCount);
       int i = 0;
-      while (floatVectorValues.nextDoc() != NO_MORE_DOCS) {
-        gatherSample(floatVectorValues, quantileGatheringScratch, sampledDocs, i);
+      while (iterator.nextDoc() != NO_MORE_DOCS) {
+        gatherSample(
+            floatVectorValues.vectorValue(iterator.index()),
+            quantileGatheringScratch,
+            sampledDocs,
+            i);
         i++;
         if (i == scratchSize) {
           extractQuantiles(confidenceIntervals, quantileGatheringScratch, upperSum, lowerSum);
@@ -371,11 +381,15 @@ public class ScalarQuantizer {
       for (int i : vectorsToTake) {
         while (index <= i) {
           // We cannot use `advance(docId)` as MergedVectorValues does not support it
-          floatVectorValues.nextDoc();
+          iterator.nextDoc();
           index++;
         }
-        assert floatVectorValues.docID() != NO_MORE_DOCS;
-        gatherSample(floatVectorValues, quantileGatheringScratch, sampledDocs, idx);
+        assert iterator.docID() != NO_MORE_DOCS;
+        gatherSample(
+            floatVectorValues.vectorValue(iterator.index()),
+            quantileGatheringScratch,
+            sampledDocs,
+            idx);
         idx++;
         if (idx == SCRATCH_SIZE) {
           extractQuantiles(confidenceIntervals, quantileGatheringScratch, upperSum, lowerSum);
@@ -434,12 +448,7 @@ public class ScalarQuantizer {
   }
 
   private static void gatherSample(
-      FloatVectorValues floatVectorValues,
-      float[] quantileGatheringScratch,
-      List<float[]> sampledDocs,
-      int i)
-      throws IOException {
-    float[] vectorValue = floatVectorValues.vectorValue();
+      float[] vectorValue, float[] quantileGatheringScratch, List<float[]> sampledDocs, int i) {
     float[] copy = new float[vectorValue.length];
     System.arraycopy(vectorValue, 0, copy, 0, vectorValue.length);
     sampledDocs.add(copy);
@@ -611,19 +620,7 @@ public class ScalarQuantizer {
     }
   }
 
-  private static class ScoreDocsAndScoreVariance {
-    private final ScoreDoc[] scoreDocs;
-    private final float scoreVariance;
-
-    public ScoreDocsAndScoreVariance(ScoreDoc[] scoreDocs, float scoreVariance) {
-      this.scoreDocs = scoreDocs;
-      this.scoreVariance = scoreVariance;
-    }
-
-    public ScoreDoc[] getScoreDocs() {
-      return scoreDocs;
-    }
-  }
+  private record ScoreDocsAndScoreVariance(ScoreDoc[] scoreDocs, float scoreVariance) {}
 
   private static class OnlineMeanAndVar {
     private double mean = 0.0;
@@ -684,7 +681,7 @@ public class ScalarQuantizer {
       for (int i = 0; i < nearestNeighbors.size(); i++) {
         float queryCorrection = quantizer.quantize(vectors.get(i), query, function);
         ScoreDocsAndScoreVariance scoreDocsAndScoreVariance = nearestNeighbors.get(i);
-        ScoreDoc[] scoreDocs = scoreDocsAndScoreVariance.getScoreDocs();
+        ScoreDoc[] scoreDocs = scoreDocsAndScoreVariance.scoreDocs();
         float scoreVariance = scoreDocsAndScoreVariance.scoreVariance;
         // calculate the score for the vector against its nearest neighbors but with quantized
         // scores now

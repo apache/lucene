@@ -17,14 +17,10 @@
 
 package org.apache.lucene.codecs.hnsw;
 
-import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
-import org.apache.lucene.index.Sorter;
-import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 
 /**
@@ -32,7 +28,7 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
  *
  * @lucene.experimental
  */
-public abstract class FlatVectorsWriter implements Accountable, Closeable {
+public abstract class FlatVectorsWriter extends KnnVectorsWriter {
   /** Scorer for flat vectors */
   protected final FlatVectorsScorer vectorsScorer;
 
@@ -49,16 +45,14 @@ public abstract class FlatVectorsWriter implements Accountable, Closeable {
   }
 
   /**
-   * Add a new field for indexing, allowing the user to provide a writer that the flat vectors
-   * writer can delegate to if additional indexing logic is required.
+   * Add a new field for indexing
    *
    * @param fieldInfo fieldInfo of the field to add
-   * @param indexWriter the writer to delegate to, can be null
    * @return a writer for the field
    * @throws IOException if an I/O error occurs when adding the field
    */
-  public abstract FlatFieldVectorsWriter<?> addField(
-      FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException;
+  @Override
+  public abstract FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException;
 
   /**
    * Write the field for merging, providing a scorer over the newly merged flat vectors. This way
@@ -72,15 +66,4 @@ public abstract class FlatVectorsWriter implements Accountable, Closeable {
    */
   public abstract CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException;
-
-  /** Write field for merging */
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    IOUtils.close(mergeOneFieldToIndex(fieldInfo, mergeState));
-  }
-
-  /** Called once at the end before close */
-  public abstract void finish() throws IOException;
-
-  /** Flush all buffered data on disk * */
-  public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
 }

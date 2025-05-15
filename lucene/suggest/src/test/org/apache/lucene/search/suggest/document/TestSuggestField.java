@@ -17,14 +17,14 @@
 package org.apache.lucene.search.suggest.document;
 
 import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.assertTokenStreamContents;
-import static org.hamcrest.core.IsEqual.equalTo;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.startsWith;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -67,6 +67,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -89,22 +90,16 @@ public class TestSuggestField extends LuceneTestCase {
   public void testEmptySuggestion() throws Exception {
     IllegalArgumentException expected =
         expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              new SuggestField("suggest_field", "", 3);
-            });
-    assertTrue(expected.getMessage().contains("value"));
+            IllegalArgumentException.class, () -> new SuggestField("suggest_field", "", 3));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("value"));
   }
 
   @Test
   public void testNegativeWeight() throws Exception {
     IllegalArgumentException expected =
         expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              new SuggestField("suggest_field", "sugg", -1);
-            });
-    assertTrue(expected.getMessage().contains("weight"));
+            IllegalArgumentException.class, () -> new SuggestField("suggest_field", "sugg", -1));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("weight"));
   }
 
   @Test
@@ -115,28 +110,22 @@ public class TestSuggestField extends LuceneTestCase {
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
-            () -> {
-              new SuggestField("name", charsRefBuilder.toString(), 1);
-            });
-    assertTrue(expected.getMessage().contains("[0x1f]"));
+            () -> new SuggestField("name", charsRefBuilder.toString(), 1));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("[0x1f]"));
 
     charsRefBuilder.setCharAt(2, (char) CompletionAnalyzer.HOLE_CHARACTER);
     expected =
         expectThrows(
             IllegalArgumentException.class,
-            () -> {
-              new SuggestField("name", charsRefBuilder.toString(), 1);
-            });
-    assertTrue(expected.getMessage().contains("[0x1e]"));
+            () -> new SuggestField("name", charsRefBuilder.toString(), 1));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("[0x1e]"));
 
     charsRefBuilder.setCharAt(2, (char) NRTSuggesterBuilder.END_BYTE);
     expected =
         expectThrows(
             IllegalArgumentException.class,
-            () -> {
-              new SuggestField("name", charsRefBuilder.toString(), 1);
-            });
-    assertTrue(expected.getMessage().contains("[0x0]"));
+            () -> new SuggestField("name", charsRefBuilder.toString(), 1));
+    MatcherAssert.assertThat(expected.getMessage(), containsString("[0x0]"));
   }
 
   @Test
@@ -149,7 +138,7 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "ab"));
     TopSuggestDocs lookupDocs = suggestIndexSearcher.suggest(query, 3, false);
-    assertThat(lookupDocs.totalHits.value, equalTo(0L));
+    assertEquals(0L, lookupDocs.totalHits.value());
     reader.close();
     iw.close();
   }
@@ -382,13 +371,12 @@ public class TestSuggestField extends LuceneTestCase {
           expected.add(doc);
         }
       }
-      Collections.sort(
-          expected,
+      expected.sort(
           (a, b) -> {
             // sort by higher score:
             int cmp = Float.compare(b.value, a.value);
             if (cmp == 0) {
-              // tie break by completion key
+              // tie-break by completion key
               cmp = Lookup.CHARSEQUENCE_COMPARATOR.compare(a.output, b.output);
               if (cmp == 0) {
                 // prefer smaller doc id, in case of a tie
@@ -522,7 +510,7 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"), filter);
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-    assertThat(suggest.totalHits.value, equalTo(0L));
+    assertEquals(0L, suggest.totalHits.value());
     reader.close();
     iw.close();
   }
@@ -551,7 +539,7 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"));
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-    assertThat(suggest.totalHits.value, equalTo(0L));
+    assertEquals(0L, suggest.totalHits.value());
 
     reader.close();
     iw.close();
@@ -621,8 +609,7 @@ public class TestSuggestField extends LuceneTestCase {
 
     // check that the doc ids are consistent
     for (int i = 0; i < suggestDocs1.scoreDocs.length; i++) {
-      ScoreDoc suggestScoreDoc = suggestDocs1.scoreDocs[i];
-      assertThat(suggestScoreDoc.doc, equalTo(suggestDocs2.scoreDocs[i].doc));
+      assertEquals(suggestDocs1.scoreDocs[i].doc, suggestDocs2.scoreDocs[i].doc);
     }
 
     reader.close();
@@ -685,7 +672,7 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"));
     TopSuggestDocs suggest =
-        indexSearcher.suggest(query, (entries.size() == 0) ? 1 : entries.size(), false);
+        indexSearcher.suggest(query, entries.isEmpty() ? 1 : entries.size(), false);
     assertSuggestions(suggest, entries.toArray(new Entry[entries.size()]));
 
     reader.close();
@@ -715,11 +702,11 @@ public class TestSuggestField extends LuceneTestCase {
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "abc_"));
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-    assertEquals(num, suggest.totalHits.value);
+    assertEquals(num, suggest.totalHits.value());
     StoredFields storedFields = reader.storedFields();
     for (SuggestScoreDoc suggestScoreDoc : suggest.scoreLookupDocs()) {
       String key = suggestScoreDoc.key.toString();
-      assertTrue(key.startsWith("abc_"));
+      MatcherAssert.assertThat(key, startsWith("abc_"));
       String substring = key.substring(4);
       int fieldValue = Integer.parseInt(substring);
       Document doc = storedFields.document(suggestScoreDoc.doc);
@@ -741,8 +728,7 @@ public class TestSuggestField extends LuceneTestCase {
     Map<String, Integer> mappings = new HashMap<>();
     for (int i = 0; i < num; i++) {
       Document document = new Document();
-      String suggest =
-          prefixes[i % 3] + TestUtil.randomSimpleString(random(), 10) + "_" + String.valueOf(i);
+      String suggest = prefixes[i % 3] + TestUtil.randomSimpleString(random(), 10) + "_" + i;
       int weight = random().nextInt(Integer.MAX_VALUE);
       document.add(new SuggestField("suggest_field", suggest, weight));
       mappings.put(suggest, weight);
@@ -759,19 +745,19 @@ public class TestSuggestField extends LuceneTestCase {
       PrefixCompletionQuery query =
           new PrefixCompletionQuery(analyzer, new Term("suggest_field", prefix));
       TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-      assertTrue(suggest.totalHits.value > 0);
+      assertTrue(suggest.totalHits.value() > 0);
       float topScore = -1;
       for (SuggestScoreDoc scoreDoc : suggest.scoreLookupDocs()) {
         if (topScore != -1) {
           assertTrue(topScore >= scoreDoc.score);
         }
         topScore = scoreDoc.score;
-        assertThat((float) mappings.get(scoreDoc.key.toString()), equalTo(scoreDoc.score));
+        assertEquals(scoreDoc.score, (float) mappings.get(scoreDoc.key.toString()), 0);
         assertNotNull(mappings.remove(scoreDoc.key.toString()));
       }
     }
 
-    assertThat(mappings.size(), equalTo(0));
+    assertEquals(0, mappings.size());
     reader.close();
     iw.close();
   }
@@ -812,7 +798,7 @@ public class TestSuggestField extends LuceneTestCase {
       PrefixCompletionQuery query =
           new PrefixCompletionQuery(analyzer, new Term("suggest_field", title));
       TopSuggestDocs suggest = indexSearcher.suggest(query, mappings.size(), false);
-      assertTrue(suggest.totalHits.value > 0);
+      assertTrue(suggest.totalHits.value() > 0);
       boolean matched = false;
       for (ScoreDoc scoreDoc : suggest.scoreDocs) {
         matched = Float.compare(scoreDoc.score, (float) entry.getValue()) == 0;
@@ -939,11 +925,11 @@ public class TestSuggestField extends LuceneTestCase {
               + toString(expected[i])
               + " but actual: "
               + toString(lookupDoc);
-      assertThat(msg, lookupDoc.key.toString(), equalTo(expected[i].output));
-      assertThat(msg, lookupDoc.score, equalTo(expected[i].value));
-      assertThat(msg, lookupDoc.context, equalTo(expected[i].context));
+      assertEquals(msg, expected[i].output, lookupDoc.key.toString());
+      assertEquals(msg, expected[i].value, lookupDoc.score, 0);
+      assertEquals(msg, expected[i].context, lookupDoc.context);
     }
-    assertThat(suggestScoreDocs.length, equalTo(expected.length));
+    assertEquals(expected.length, suggestScoreDocs.length);
   }
 
   private static String toString(Entry expected) {
@@ -963,9 +949,9 @@ public class TestSuggestField extends LuceneTestCase {
     iwc.setMergePolicy(newLogMergePolicy());
     Codec filterCodec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          CompletionPostingsFormat.FSTLoadMode fstLoadMode =
+          final CompletionPostingsFormat.FSTLoadMode fstLoadMode =
               RandomPicks.randomFrom(random(), CompletionPostingsFormat.FSTLoadMode.values());
-          PostingsFormat postingsFormat = new Completion99PostingsFormat(fstLoadMode);
+          final PostingsFormat postingsFormat = new Completion101PostingsFormat(fstLoadMode);
 
           @Override
           public PostingsFormat postingsFormat() {
@@ -986,8 +972,8 @@ public class TestSuggestField extends LuceneTestCase {
   }
 
   public static final class PayloadAttrToTypeAttrFilter extends TokenFilter {
-    private PayloadAttribute payload = addAttribute(PayloadAttribute.class);
-    private TypeAttribute type = addAttribute(TypeAttribute.class);
+    private final PayloadAttribute payload = addAttribute(PayloadAttribute.class);
+    private final TypeAttribute type = addAttribute(TypeAttribute.class);
 
     protected PayloadAttrToTypeAttrFilter(TokenStream input) {
       super(input);

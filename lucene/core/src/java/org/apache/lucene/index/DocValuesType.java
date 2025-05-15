@@ -48,5 +48,5 @@ public enum DocValuesType {
    * presorted and allows access via document id, ordinal and by-value. Values must be {@code <=
    * 32766} bytes.
    */
-  SORTED_SET,
+  SORTED_SET;
 }

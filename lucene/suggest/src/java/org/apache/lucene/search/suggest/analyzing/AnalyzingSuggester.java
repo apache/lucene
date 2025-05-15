@@ -494,8 +494,7 @@ public class AnalyzingSuggester extends Lookup {
 
       reader =
           new OfflineSorter.ByteSequencesReader(
-              tempDir.openChecksumInput(tempSortedFileName, IOContext.READONCE),
-              tempSortedFileName);
+              tempDir.openChecksumInput(tempSortedFileName), tempSortedFileName);
 
       PairOutputs<Long, BytesRef> outputs =
           new PairOutputs<>(PositiveIntOutputs.getSingleton(), ByteSequenceOutputs.getSingleton());
@@ -718,7 +717,7 @@ public class AnalyzingSuggester extends Lookup {
 
         int count = 0;
         for (FSTUtil.Path<Pair<Long, BytesRef>> path : prefixPaths) {
-          if (fst.findTargetArc(END_BYTE, path.fstNode, scratchArc, bytesReader) != null) {
+          if (fst.findTargetArc(END_BYTE, path.fstNode(), scratchArc, bytesReader) != null) {
             // This node has END_BYTE arc leaving, meaning it's an
             // "exact" match:
             count++;
@@ -741,11 +740,14 @@ public class AnalyzingSuggester extends Lookup {
         // pruned our exact match from one of these nodes
         // ...:
         for (FSTUtil.Path<Pair<Long, BytesRef>> path : prefixPaths) {
-          if (fst.findTargetArc(END_BYTE, path.fstNode, scratchArc, bytesReader) != null) {
+          if (fst.findTargetArc(END_BYTE, path.fstNode(), scratchArc, bytesReader) != null) {
             // This node has END_BYTE arc leaving, meaning it's an
             // "exact" match:
             searcher.addStartPaths(
-                scratchArc, fst.outputs.add(path.output, scratchArc.output()), false, path.input);
+                scratchArc,
+                fst.outputs.add(path.output(), scratchArc.output()),
+                false,
+                path.input());
           }
         }
 
@@ -765,9 +767,9 @@ public class AnalyzingSuggester extends Lookup {
         // nodes we have and the
         // maxSurfaceFormsPerAnalyzedForm:
         for (Result<Pair<Long, BytesRef>> completion : completions) {
-          BytesRef output2 = completion.output.output2;
+          BytesRef output2 = completion.output().output2;
           if (sameSurfaceForm(utf8Key, output2)) {
-            results.add(getLookupResult(completion.output.output1, output2, spare));
+            results.add(getLookupResult(completion.output().output1, output2, spare));
             break;
           }
         }
@@ -815,7 +817,7 @@ public class AnalyzingSuggester extends Lookup {
       prefixPaths = getFullPrefixPaths(prefixPaths, lookupAutomaton, fst);
 
       for (FSTUtil.Path<Pair<Long, BytesRef>> path : prefixPaths) {
-        searcher.addStartPaths(path.fstNode, path.output, true, path.input);
+        searcher.addStartPaths(path.fstNode(), path.output(), true, path.input());
       }
 
       TopResults<Pair<Long, BytesRef>> completions = searcher.search();
@@ -824,7 +826,7 @@ public class AnalyzingSuggester extends Lookup {
       for (Result<Pair<Long, BytesRef>> completion : completions) {
 
         LookupResult result =
-            getLookupResult(completion.output.output1, completion.output.output2, spare);
+            getLookupResult(completion.output().output1, completion.output().output2, spare);
 
         // TODO: for fuzzy case would be nice to return
         // how many edits were required
@@ -873,9 +875,6 @@ public class AnalyzingSuggester extends Lookup {
 
     automaton = replaceSep(automaton);
     automaton = convertAutomaton(automaton);
-
-    // TODO: LUCENE-5660 re-enable this once we disallow massive suggestion strings
-    // assert SpecialOperations.isFinite(automaton);
 
     // Get all paths from the automaton (there can be
     // more than one path, eg if the analyzer created a

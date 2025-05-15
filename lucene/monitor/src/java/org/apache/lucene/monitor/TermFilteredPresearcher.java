@@ -186,7 +186,7 @@ public class TermFilteredPresearcher extends Presearcher {
                 + field
                 + ":"
                 + Term.toString(term));
-      bq.add(new TermQuery(new Term(field, BytesRef.deepCopyOf(term))), BooleanClause.Occur.SHOULD);
+      bq.add(new TermQuery(new Term(field, term)), BooleanClause.Occur.SHOULD);
     }
 
     BooleanQuery built = bq.build();

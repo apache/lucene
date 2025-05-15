@@ -51,8 +51,6 @@ public class TestTerms extends LuceneTestCase {
     BytesRef maxTerm = null;
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
-      Field field = new TextField("field", "", Field.Store.NO);
-      doc.add(field);
       // System.out.println("  doc " + i);
       CannedBinaryTokenStream.BinaryToken[] tokens =
           new CannedBinaryTokenStream.BinaryToken[atLeast(10)];
@@ -71,7 +69,9 @@ public class TestTerms extends LuceneTestCase {
         }
         tokens[j] = new CannedBinaryTokenStream.BinaryToken(tokenBytes);
       }
-      field.setTokenStream(new CannedBinaryTokenStream(tokens));
+      Field field =
+          new Field("field", new CannedBinaryTokenStream(tokens), TextField.TYPE_NOT_STORED);
+      doc.add(field);
       w.addDocument(doc);
     }
 

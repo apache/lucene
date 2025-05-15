@@ -23,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -75,7 +74,7 @@ import org.apache.lucene.util.Version;
  * <p>Each per-segment index lives in a private directory next to the main index, and they are
  * deleted once their segments are removed from the index. They are "volatile", meaning if e.g. the
  * index is replicated to another machine, it's OK to not copy parallel segments indices, since they
- * will just be regnerated (at a cost though).
+ * will just be regenerated (at a cost though).
  */
 
 // @SuppressSysoutChecks(bugUrl="we print stuff")
@@ -97,8 +96,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
     private final Path segsPath;
 
     /** Which segments have been closed, but their parallel index is not yet not removed. */
-    private final Set<SegmentIDAndGen> closedSegments =
-        Collections.newSetFromMap(new ConcurrentHashMap<SegmentIDAndGen, Boolean>());
+    private final Set<SegmentIDAndGen> closedSegments = ConcurrentHashMap.newKeySet();
 
     /** Holds currently open parallel readers for each segment. */
     private final Map<SegmentIDAndGen, LeafReader> parallelReaders = new ConcurrentHashMap<>();
@@ -154,8 +152,8 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
     protected abstract IndexWriterConfig getIndexWriterConfig() throws IOException;
 
     /**
-     * Optional method to validate that the provided parallell reader in fact reflects the changes
-     * in schemaGen.
+     * Optional method to validate that the provided parallel reader in fact reflects the changes in
+     * schemaGen.
      */
     protected void checkParallelReader(LeafReader reader, LeafReader parallelReader, long schemaGen)
         throws IOException {}
@@ -287,7 +285,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
 
     // Make sure we deleted all parallel indices for segments that are no longer in the main index:
     private void assertNoExtraSegments() throws IOException {
-      Set<String> liveIDs = new HashSet<String>();
+      Set<String> liveIDs = new HashSet<>();
       for (SegmentCommitInfo info : SegmentInfos.readLatestCommit(indexDir)) {
         String idString = StringHelper.idToString(info.info.getId());
         liveIDs.add(idString);
@@ -585,7 +583,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       SegmentInfos lastCommit = SegmentInfos.readLatestCommit(indexDir);
       if (DEBUG) System.out.println("TEST: prune");
 
-      Set<String> liveIDs = new HashSet<String>();
+      Set<String> liveIDs = new HashSet<>();
       for (SegmentCommitInfo info : lastCommit) {
         String idString = StringHelper.idToString(info.info.getId());
         liveIDs.add(idString);
@@ -790,7 +788,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
           throws IOException {
         IndexWriterConfig iwc = newIndexWriterConfig();
 
-        // The order of our docIDs must precisely matching incoming reader:
+        // The order of our docIDs must precisely match incoming reader:
         iwc.setMergePolicy(new LogByteSizeMergePolicy());
         IndexWriter w = new IndexWriter(parallelDir, iwc);
         int maxDoc = reader.maxDoc();
@@ -847,7 +845,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
           throws IOException {
         IndexWriterConfig iwc = newIndexWriterConfig();
 
-        // The order of our docIDs must precisely matching incoming reader:
+        // The order of our docIDs must precisely match incoming reader:
         iwc.setMergePolicy(new LogByteSizeMergePolicy());
         IndexWriter w = new IndexWriter(parallelDir, iwc);
         int maxDoc = reader.maxDoc();
@@ -957,7 +955,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         tmp.setFloorSegmentMB(.01);
         iwc.setMergePolicy(tmp);
         if (TEST_NIGHTLY) {
-          // during nightly tests, we might use too many files if we arent careful
+          // during nightly tests, we might use too many files if we aren't careful
           iwc.setUseCompoundFile(true);
         }
         return iwc;
@@ -977,7 +975,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
           throws IOException {
         IndexWriterConfig iwc = newIndexWriterConfig();
 
-        // The order of our docIDs must precisely matching incoming reader:
+        // The order of our docIDs must precisely match incoming reader:
         iwc.setMergePolicy(new LogByteSizeMergePolicy());
         IndexWriter w = new IndexWriter(parallelDir, iwc);
         int maxDoc = reader.maxDoc();
@@ -1596,14 +1594,7 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
         assertTrue(value <= max);
       }
 
-      Arrays.sort(
-          hits.scoreDocs,
-          new Comparator<ScoreDoc>() {
-            @Override
-            public int compare(ScoreDoc a, ScoreDoc b) {
-              return a.doc - b.doc;
-            }
-          });
+      Arrays.sort(hits.scoreDocs, Comparator.comparingInt(a -> a.doc));
 
       NumericDocValues numbers = MultiDocValues.getNumericValues(s.getIndexReader(), "number");
       for (ScoreDoc hit : hits.scoreDocs) {

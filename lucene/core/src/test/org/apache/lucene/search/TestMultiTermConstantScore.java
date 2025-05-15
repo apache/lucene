@@ -97,21 +97,6 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     small = null;
   }
 
-  /**
-   * macro for readability
-   *
-   * @deprecated please use {@link #cspq(Term, MultiTermQuery.RewriteMethod)} instead
-   */
-  @Deprecated
-  public static Query csrq(String f, String l, String h, boolean il, boolean ih) {
-    TermRangeQuery query =
-        TermRangeQuery.newStringRange(f, l, h, il, ih, MultiTermQuery.CONSTANT_SCORE_REWRITE);
-    if (VERBOSE) {
-      System.out.println("TEST: query=" + query);
-    }
-    return query;
-  }
-
   /** macro for readability */
   public static Query csrq(
       String f, String l, String h, boolean il, boolean ih, MultiTermQuery.RewriteMethod method) {
@@ -122,30 +107,9 @@ public class TestMultiTermConstantScore extends TestBaseRangeFilter {
     return query;
   }
 
-  /**
-   * macro for readability
-   *
-   * @deprecated please use {@link #cspq(Term, MultiTermQuery.RewriteMethod)} instead
-   */
-  @Deprecated
-  public static Query cspq(Term prefix) {
-    return new PrefixQuery(prefix, MultiTermQuery.CONSTANT_SCORE_REWRITE);
-  }
-
   /** macro for readability */
   public static Query cspq(Term prefix, MultiTermQuery.RewriteMethod method) {
     return new PrefixQuery(prefix, method);
-  }
-
-  /**
-   * macro for readability
-   *
-   * @deprecated please use {@link #cswcq(Term, MultiTermQuery.RewriteMethod)} instead
-   */
-  @Deprecated
-  public static Query cswcq(Term wild) {
-    return new WildcardQuery(
-        wild, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT, MultiTermQuery.CONSTANT_SCORE_REWRITE);
   }
 
   /** macro for readability */

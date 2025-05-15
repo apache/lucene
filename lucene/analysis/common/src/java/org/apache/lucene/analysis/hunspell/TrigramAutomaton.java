@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.hunspell;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
@@ -79,7 +78,7 @@ class TrigramAutomaton {
     return state;
   }
 
-  int ngramScore(CharsRef s2) {
+  int ngramScore(CharSequence s2) {
     countedSubstrings.clear();
 
     int score = 0;
@@ -87,9 +86,9 @@ class TrigramAutomaton {
     // states of running the automaton on substrings [i-1, i) and [i-2, i)
     int state1 = -1, state2 = -1;
 
-    int limit = s2.length + s2.offset;
-    for (int i = s2.offset; i < limit; i++) {
-      char c = transformChar(s2.chars[i]);
+    int limit = s2.length();
+    for (int i = 0; i < limit; i++) {
+      char c = s2.charAt(i);
       if (c < minChar || c > maxChar) {
         state1 = state2 = -1;
         continue;
@@ -113,10 +112,6 @@ class TrigramAutomaton {
     }
 
     return score;
-  }
-
-  char transformChar(char c) {
-    return c;
   }
 
   private int substringScore(int state, FixedBitSet countedSubstrings) {

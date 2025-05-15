@@ -44,6 +44,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /** MultiThreaded IndexWriter tests */
@@ -65,6 +66,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
       this.syncStart = syncStart;
     }
 
+    @SuppressForbidden(reason = "Thread sleep")
     @Override
     public void run() {
       try {
@@ -190,6 +192,7 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
   // threads are trying to add documents.  Strictly
   // speaking, this isn't valid us of Lucene's APIs, but we
   // still want to be robust to this case:
+  @SuppressForbidden(reason = "Thread sleep")
   public void testCloseWithThreads() throws Exception {
     int NUM_THREADS = 3;
     int numIterations = TEST_NIGHTLY ? 7 : 3;

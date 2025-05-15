@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
@@ -40,7 +41,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   private final TaskExecutor taskExecutor;
   private final ConcurrentMergeWorker[] workers;
+  private final HnswLock hnswLock;
   private InfoStream infoStream = InfoStream.getDefault();
+  private boolean frozen;
 
   public HnswConcurrentMergeBuilder(
       TaskExecutor taskExecutor,
@@ -54,6 +57,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     this.taskExecutor = taskExecutor;
     AtomicInteger workProgress = new AtomicInteger(0);
     workers = new ConcurrentMergeWorker[numWorker];
+    hnswLock = new HnswLock();
     for (int i = 0; i < numWorker; i++) {
       workers[i] =
           new ConcurrentMergeWorker(
@@ -62,6 +66,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               beamWidth,
               HnswGraphBuilder.randSeed,
               hnsw,
+              hnswLock,
               initializedNodes,
               workProgress);
     }
@@ -69,6 +74,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
   @Override
   public OnHeapHnswGraph build(int maxOrd) throws IOException {
+    if (frozen) {
+      throw new IllegalStateException("graph has already been built");
+    }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(
           HNSW_COMPONENT,
@@ -84,7 +92,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
-    return workers[0].getGraph();
+    finish();
+    frozen = true;
+    return workers[0].getCompletedGraph();
   }
 
   @Override
@@ -98,6 +108,20 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     for (HnswBuilder worker : workers) {
       worker.setInfoStream(infoStream);
     }
+  }
+
+  @Override
+  public OnHeapHnswGraph getCompletedGraph() throws IOException {
+    if (frozen == false) {
+      // should already have been called in build(), but just in case
+      finish();
+      frozen = true;
+    }
+    return getGraph();
+  }
+
+  private void finish() throws IOException {
+    workers[0].finish();
   }
 
   @Override
@@ -129,6 +153,7 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
         int beamWidth,
         long seed,
         OnHeapHnswGraph hnsw,
+        HnswLock hnswLock,
         BitSet initializedNodes,
         AtomicInteger workProgress)
         throws IOException {
@@ -138,8 +163,9 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           beamWidth,
           seed,
           hnsw,
+          hnswLock,
           new MergeSearcher(
-              new NeighborQueue(beamWidth, true), new FixedBitSet(hnsw.maxNodeId() + 1)));
+              new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
     }
@@ -184,26 +210,28 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
    * that concurrent modification of the graph will not impact the search
    */
   private static class MergeSearcher extends HnswGraphSearcher {
+    private final HnswLock hnswLock;
     private int[] nodeBuffer;
     private int upto;
     private int size;
 
-    private MergeSearcher(NeighborQueue candidates, BitSet visited) {
+    private MergeSearcher(NeighborQueue candidates, HnswLock hnswLock, BitSet visited) {
       super(candidates, visited);
+      this.hnswLock = hnswLock;
     }
 
     @Override
     void graphSeek(HnswGraph graph, int level, int targetNode) {
-      NeighborArray neighborArray = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
-      neighborArray.rwlock.readLock().lock();
+      Lock lock = hnswLock.read(level, targetNode);
       try {
+        NeighborArray neighborArray = ((OnHeapHnswGraph) graph).getNeighbors(level, targetNode);
         if (nodeBuffer == null || nodeBuffer.length < neighborArray.size()) {
           nodeBuffer = new int[neighborArray.size()];
         }
         size = neighborArray.size();
-        if (size >= 0) System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
+        System.arraycopy(neighborArray.nodes(), 0, nodeBuffer, 0, size);
       } finally {
-        neighborArray.rwlock.readLock().unlock();
+        lock.unlock();
       }
       upto = -1;
     }

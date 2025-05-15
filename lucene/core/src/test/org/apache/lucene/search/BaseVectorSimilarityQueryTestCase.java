@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,11 +34,14 @@ import org.apache.lucene.document.IntField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.hnsw.HnswUtil;
 
 @LuceneTestCase.SuppressCodecs("SimpleText")
 abstract class BaseVectorSimilarityQueryTestCase<
@@ -130,6 +135,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
+      assumeTrue("graph is disconnected", HnswUtil.graphIsRooted(reader, vectorField));
 
       // All vectors are above -Infinity
       Query query1 =
@@ -160,11 +166,12 @@ abstract class BaseVectorSimilarityQueryTestCase<
   public void testRandomFilter() throws IOException {
     // Filter a sub-range from 0 to numDocs
     int startIndex = random().nextInt(numDocs);
-    int endIndex = random().nextInt(numDocs - startIndex) + startIndex;
+    int endIndex = random().nextInt(startIndex, numDocs);
     Query filter = IntField.newRangeQuery(idField, startIndex, endIndex);
 
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
         IndexReader reader = DirectoryReader.open(indexStore)) {
+      assumeTrue("graph is disconnected", HnswUtil.graphIsRooted(reader, vectorField));
       IndexSearcher searcher = newSearcher(reader);
 
       Query query =
@@ -279,7 +286,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
   public void testSomeDeletes() throws IOException {
     // Delete a sub-range from 0 to numDocs
     int startIndex = random().nextInt(numDocs);
-    int endIndex = random().nextInt(numDocs - startIndex) + startIndex;
+    int endIndex = random().nextInt(startIndex, numDocs);
     Query delete = IntField.newRangeQuery(idField, startIndex, endIndex);
 
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
@@ -289,6 +296,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(indexStore)) {
+        assumeTrue("graph is disconnected", HnswUtil.graphIsRooted(reader, vectorField));
         IndexSearcher searcher = newSearcher(reader);
 
         Query query =
@@ -338,7 +346,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testBoostQuery() throws IOException {
     // Define the boost and allowed delta
-    float boost = random().nextInt(5) + 5;
+    float boost = random().nextFloat(5, 10);
     float delta = 1e-3f;
 
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
@@ -375,7 +383,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testVectorsAboveSimilarity() throws IOException {
     // Pick number of docs to accept
-    int numAccepted = random().nextInt(numDocs / 2 - numDocs / 3) + numDocs / 3;
+    int numAccepted = random().nextInt(numDocs / 3, numDocs / 2);
     float delta = 1e-3f;
 
     V[] vectors = getRandomVectors(numDocs, dim);
@@ -418,8 +426,8 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testFallbackToExact() throws IOException {
     // Restrictive filter, along with similarity to visit a large number of nodes
-    int numFiltered = random().nextInt(numDocs / 5 - numDocs / 10) + numDocs / 10;
-    int targetVisited = random().nextInt(numDocs - numFiltered * 2) + numFiltered * 2;
+    int numFiltered = random().nextInt(numDocs / 10, numDocs / 5);
+    int targetVisited = random().nextInt(numFiltered * 2, numDocs);
 
     V[] vectors = getRandomVectors(numDocs, dim);
     V queryVector = getRandomVector(dim);
@@ -443,7 +451,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
   public void testApproximate() throws IOException {
     // Non-restrictive filter, along with similarity to visit a small number of nodes
     int numFiltered = numDocs - 1;
-    int targetVisited = random().nextInt(numFiltered / 10 - 1) + 1;
+    int targetVisited = random().nextInt(1, numFiltered / 10);
 
     V[] vectors = getRandomVectors(numDocs, dim);
     V queryVector = getRandomVector(dim);
@@ -468,6 +476,62 @@ abstract class BaseVectorSimilarityQueryTestCase<
         // Does not fall back to exact search
         assertTrue(searcher.count(query) <= numFiltered);
       }
+    }
+  }
+
+  /** Test that the query times out correctly. */
+  public void testTimeout() throws IOException {
+    V[] vectors = getRandomVectors(numDocs, dim);
+    V queryVector = getRandomVector(dim);
+
+    try (Directory indexStore = getIndexStore(vectors);
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      IndexSearcher searcher = newSearcher(reader);
+
+      // This query is cacheable, explicitly prevent it
+      searcher.setQueryCache(null);
+
+      Query query =
+          new CountingQuery(
+              getVectorQuery(
+                  vectorField,
+                  queryVector,
+                  Float.NEGATIVE_INFINITY,
+                  Float.NEGATIVE_INFINITY,
+                  null));
+
+      assertEquals(numDocs, searcher.count(query)); // Expect some results without timeout
+
+      searcher.setTimeout(() -> true); // Immediately timeout
+      assertEquals(0, searcher.count(query)); // Expect no results with the timeout
+
+      searcher.setTimeout(new CountingQueryTimeout(numDocs - 1)); // Do not score all docs
+      int count = searcher.count(query);
+      assertTrue(
+          "0 < count=" + count + " < numDocs=" + numDocs,
+          count > 0 && count < numDocs); // Expect partial results
+
+      // Test timeout with filter
+      int numFiltered = random().nextInt(numDocs / 2, numDocs);
+      Query filter = IntField.newSetQuery(idField, getFiltered(numFiltered));
+      Query filteredQuery =
+          new CountingQuery(
+              getVectorQuery(
+                  vectorField,
+                  queryVector,
+                  Float.NEGATIVE_INFINITY,
+                  Float.NEGATIVE_INFINITY,
+                  filter));
+
+      searcher.setTimeout(() -> false); // Set a timeout which is never met
+      assertEquals(numFiltered, searcher.count(filteredQuery));
+
+      searcher.setTimeout(
+          new CountingQueryTimeout(numFiltered - 1)); // Timeout before scoring all filtered docs
+      int filteredCount = searcher.count(filteredQuery);
+      assertTrue(
+          "0 < filteredCount=" + filteredCount + " < numFiltered=" + numFiltered,
+          filteredCount > 0 && filteredCount < numFiltered); // Expect partial results
     }
   }
 
@@ -521,5 +585,95 @@ abstract class BaseVectorSimilarityQueryTestCase<
       }
     }
     return dir;
+  }
+
+  private static class CountingQueryTimeout implements QueryTimeout {
+    private int remaining;
+
+    public CountingQueryTimeout(int count) {
+      remaining = count;
+    }
+
+    @Override
+    public boolean shouldExit() {
+      if (remaining > 0) {
+        remaining--;
+        return false;
+      }
+      return true;
+    }
+  }
+
+  /**
+   * A {@link Query} that emulates {@link Weight#count(LeafReaderContext)} by counting number of
+   * docs of underlying {@link Scorer#iterator()}. TODO: This is a workaround to count partial
+   * results of {@link #delegate} because {@link TimeLimitingBulkScorer} immediately discards
+   * results after timeout.
+   */
+  private static class CountingQuery extends Query {
+    private final Query delegate;
+
+    private CountingQuery(Query delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      return new Weight(this) {
+        final Weight delegateWeight = delegate.createWeight(searcher, scoreMode, boost);
+
+        @Override
+        public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+          return delegateWeight.explain(context, doc);
+        }
+
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          return delegateWeight.scorerSupplier(context);
+        }
+
+        @Override
+        public int count(LeafReaderContext context) throws IOException {
+          Scorer scorer = scorer(context);
+          if (scorer == null) {
+            return 0;
+          }
+
+          int count = 0;
+          DocIdSetIterator iterator = scorer.iterator();
+          while (iterator.nextDoc() != NO_MORE_DOCS) {
+            count++;
+          }
+          return count;
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return delegateWeight.isCacheable(ctx);
+        }
+      };
+    }
+
+    @Override
+    public String toString(String field) {
+      return String.format(
+          Locale.ROOT, "%s[%s]", getClass().getSimpleName(), delegate.toString(field));
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      visitor.visitLeaf(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return sameClassAs(obj) && delegate.equals(((CountingQuery) obj).delegate);
+    }
+
+    @Override
+    public int hashCode() {
+      return delegate.hashCode();
+    }
   }
 }

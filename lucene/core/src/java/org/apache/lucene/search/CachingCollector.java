@@ -47,17 +47,11 @@ public abstract class CachingCollector extends FilterCollector {
     // the outer class does not incur access check by the JVM. The same
     // situation would be if they were defined in the outer class as private
     // members.
-    int doc;
     float score;
 
     @Override
     public final float score() {
       return score;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
   }
 
@@ -155,9 +149,8 @@ public abstract class CachingCollector extends FilterCollector {
       final CachedScorable scorer = new CachedScorable();
       collector.setScorer(scorer);
       for (int j = 0; j < docs.length; ++j) {
-        scorer.doc = docs[j];
         scorer.score = scores[j];
-        collector.collect(scorer.doc);
+        collector.collect(docs[j]);
       }
     }
   }

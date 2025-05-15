@@ -49,13 +49,11 @@ public final class ExtractJdkApis {
   
   private static final FileTime FIXED_FILEDATE = FileTime.from(Instant.parse("2022-01-01T00:00:00Z"));
   
-  private static final String PATTERN_PANAMA_FOREIGN      = "java.base/java/{lang/foreign/*,nio/channels/FileChannel,util/Objects}";
+  private static final String PATTERN_PANAMA_FOREIGN      = "java.base/{java/lang/foreign/*,java/nio/channels/FileChannel}";
   private static final String PATTERN_VECTOR_INCUBATOR    = "jdk.incubator.vector/jdk/incubator/vector/*";
   private static final String PATTERN_VECTOR_VM_INTERNALS = "java.base/jdk/internal/vm/vector/VectorSupport{,$Vector,$VectorMask,$VectorPayload,$VectorShuffle}";
   
   static final Map<Integer,List<String>> CLASSFILE_PATTERNS = Map.of(
-      19, List.of(PATTERN_PANAMA_FOREIGN),
-      20, List.of(PATTERN_PANAMA_FOREIGN, PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR),
       21, List.of(PATTERN_PANAMA_FOREIGN, PATTERN_VECTOR_VM_INTERNALS, PATTERN_VECTOR_INCUBATOR)
   );
   
@@ -82,7 +80,7 @@ public final class ExtractJdkApis {
     // Collect all files to process:
     final List<Path> filesToExtract;
     try (var stream = Files.walk(jrtPath)) {
-      filesToExtract = stream.filter(p -> pattern.matches(jrtPath.relativize(p))).collect(Collectors.toList());
+      filesToExtract = stream.filter(p -> pattern.matches(jrtPath.relativize(p))).toList();
     }
     
     // Process all class files:
@@ -143,7 +141,7 @@ public final class ExtractJdkApis {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-      super.visit(Opcodes.V11, access, name, signature, superName, interfaces);
+      super.visit(Opcodes.V21, access, name, signature, superName, interfaces);
       if (isVisible(access)) {
         classesToInclude.add(name);
       }
@@ -188,10 +186,6 @@ public final class ExtractJdkApis {
       }
     }
     
-    @Override
-    public void visitPermittedSubclass(String c) {
-    }
-
   }
   
 }

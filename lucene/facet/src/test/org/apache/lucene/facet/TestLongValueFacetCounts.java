@@ -17,7 +17,6 @@
 
 package org.apache.lucene.facet;
 
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -81,14 +80,12 @@ public class TestLongValueFacetCounts extends FacetTestCase {
         new String[0],
         6,
         101,
-        new LabelAndValue[] {
-          new LabelAndValue("0", 20),
-          new LabelAndValue("1", 20),
-          new LabelAndValue("2", 20),
-          new LabelAndValue("3", 20),
-          new LabelAndValue("4", 20),
-          new LabelAndValue("9223372036854775807", 1)
-        });
+        new LabelAndValue("0", 20),
+        new LabelAndValue("1", 20),
+        new LabelAndValue("2", 20),
+        new LabelAndValue("3", 20),
+        new LabelAndValue("4", 20),
+        new LabelAndValue("9223372036854775807", 1));
 
     r.close();
     d.close();
@@ -124,9 +121,8 @@ public class TestLongValueFacetCounts extends FacetTestCase {
         new String[0],
         2,
         9,
-        new LabelAndValue[] {
-          new LabelAndValue("0", 4), new LabelAndValue("1", 5),
-        });
+        new LabelAndValue("0", 4),
+        new LabelAndValue("1", 5));
 
     r.close();
     d.close();
@@ -157,11 +153,9 @@ public class TestLongValueFacetCounts extends FacetTestCase {
         new String[0],
         3,
         3,
-        new LabelAndValue[] {
-          new LabelAndValue("9223372036854775805", 1),
-          new LabelAndValue("9223372036854775806", 1),
-          new LabelAndValue("9223372036854775807", 1)
-        });
+        new LabelAndValue("9223372036854775805", 1),
+        new LabelAndValue("9223372036854775806", 1),
+        new LabelAndValue("9223372036854775807", 1));
 
     // since we have no insight into the value order in the hashMap, we sort labels by value and
     // count in
@@ -222,11 +216,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
     List<FacetResult> topDimsResults2 = facets.getTopDims(0, 1);
     assertEquals(0, topDimsResults2.size());
     // test getAllDims(0)
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          facets.getAllDims(0);
-        });
+    expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
     r.close();
     d.close();
@@ -365,8 +355,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
 
       // test getAllChildren
       expectedCounts.sort(
-          Comparator.comparing((Map.Entry<Long, Integer> a) -> a.getKey())
-              .thenComparingLong(Map.Entry::getValue));
+          Map.Entry.<Long, Integer>comparingByKey().thenComparingLong(Map.Entry::getValue));
       FacetResult allChildren = facetCounts.getAllChildren("field");
       // sort labels by value, count in ascending order
       Arrays.sort(
@@ -395,7 +384,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = random().nextInt(1, docCount);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -487,7 +476,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = random().nextInt(1, docCount);
       }
       actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
@@ -628,8 +617,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
 
       // test getAllChildren
       expectedCounts.sort(
-          Comparator.comparing((Map.Entry<Long, Integer> a) -> a.getKey())
-              .thenComparingLong(Map.Entry::getValue));
+          Map.Entry.<Long, Integer>comparingByKey().thenComparingLong(Map.Entry::getValue));
       FacetResult allChildren = facetCounts.getAllChildren("field");
       // sort labels by value, count in ascending order
       Arrays.sort(
@@ -658,7 +646,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = random().nextInt(1, docCount);
       }
       if (VERBOSE) {
         System.out.println("  topN=" + topN);
@@ -728,7 +716,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
       if (random().nextBoolean()) {
         topN = docCount;
       } else {
-        topN = RandomNumbers.randomIntBetween(random(), 1, docCount);
+        topN = random().nextInt(1, docCount);
       }
       actual = facetCounts.getTopChildren(topN, "field");
       assertSame(
@@ -834,9 +822,8 @@ public class TestLongValueFacetCounts extends FacetTestCase {
         new String[0],
         2,
         2,
-        new LabelAndValue[] {
-          new LabelAndValue("42", 1), new LabelAndValue("43", 1),
-        });
+        new LabelAndValue("42", 1),
+        new LabelAndValue("43", 1));
 
     r.close();
     dir.close();

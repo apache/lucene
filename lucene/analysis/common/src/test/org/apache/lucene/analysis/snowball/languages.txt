@@ -8,7 +8,6 @@ English
 Estonian
 Finnish
 French
-German2
 German
 Greek
 Hindi
@@ -16,9 +15,7 @@ Hungarian
 Indonesian
 Irish
 Italian
-Kp
 Lithuanian
-Lovins
 Nepali
 Norwegian
 Porter

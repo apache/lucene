@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.backward_codecs.lucene80;
 
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
+
 /** Test the merge instance of the Lucene80 norms format. */
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestLucene80NormsFormatMergeInstance extends TestLucene80NormsFormat {
 
   @Override

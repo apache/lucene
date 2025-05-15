@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.FilteredTermsEnum;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.SingleTermsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
@@ -52,11 +51,12 @@ import org.apache.lucene.util.AttributeSource;
  */
 public abstract class MultiTermQuery extends Query {
   protected final String field;
-  protected RewriteMethod rewriteMethod; // TODO make this final
+  protected final RewriteMethod rewriteMethod;
 
   /** Abstract class that defines how the query is rewritten. */
   public abstract static class RewriteMethod {
-    public abstract Query rewrite(IndexReader reader, MultiTermQuery query) throws IOException;
+    public abstract Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query)
+        throws IOException;
 
     /**
      * Returns the {@link MultiTermQuery}s {@link TermsEnum}
@@ -86,7 +86,7 @@ public abstract class MultiTermQuery extends Query {
   public static final RewriteMethod CONSTANT_SCORE_BLENDED_REWRITE =
       new RewriteMethod() {
         @Override
-        public Query rewrite(IndexReader reader, MultiTermQuery query) {
+        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
           return new MultiTermQueryConstantScoreBlendedWrapper<>(query);
         }
       };
@@ -103,7 +103,7 @@ public abstract class MultiTermQuery extends Query {
   public static final RewriteMethod CONSTANT_SCORE_REWRITE =
       new RewriteMethod() {
         @Override
-        public Query rewrite(IndexReader reader, MultiTermQuery query) {
+        public Query rewrite(IndexSearcher indexSearcher, MultiTermQuery query) {
           return new MultiTermQueryConstantScoreWrapper<>(query);
         }
       };
@@ -313,7 +313,7 @@ public abstract class MultiTermQuery extends Query {
    * Return the number of unique terms contained in this query, if known up-front. If not known, -1
    * will be returned.
    */
-  public long getTermsCount() throws IOException {
+  public long getTermsCount() {
     return -1;
   }
 
@@ -323,33 +323,21 @@ public abstract class MultiTermQuery extends Query {
    */
   @Override
   public final Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    return rewriteMethod.rewrite(indexSearcher.getIndexReader(), this);
-  }
-
-  public RewriteMethod getRewriteMethod() {
-    return rewriteMethod;
+    return rewriteMethod.rewrite(indexSearcher, this);
   }
 
   /**
-   * Sets the rewrite method to be used when executing the query. You can use one of the four core
-   * methods, or implement your own subclass of {@link RewriteMethod}.
-   *
-   * @deprecated set this using a constructor instead
+   * @return the rewrite method used to build the final query
    */
-  @Deprecated
-  public void setRewriteMethod(RewriteMethod method) {
-    rewriteMethod = method;
+  public RewriteMethod getRewriteMethod() {
+    return rewriteMethod;
   }
 
   @Override
   public int hashCode() {
     final int prime = 31;
     int result = classHash();
-    // rewriteMethod is mutable in 9x so we exclude it from hashcode
-    // calculates to ensure that the hash is stable; otherwise we
-    // can get assertion errors from wrapper queries like BQ that
-    // store their subqueries in Sets
-    // result = prime * result + rewriteMethod.hashCode();
+    result = prime * result + rewriteMethod.hashCode();
     result = prime * result + field.hashCode();
     return result;
   }

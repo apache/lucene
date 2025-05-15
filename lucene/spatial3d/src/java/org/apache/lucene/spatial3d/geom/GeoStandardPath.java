@@ -226,7 +226,6 @@ class GeoStandardPath extends GeoBasePath {
                 prevSegment.LRHC,
                 currentSegment.ULHC,
                 currentSegment.LLHC));
-        // }
       }
       // Do final endpoint. Cutoff plane is the end cutoff plane from the last path segment.
       // The final endpoint is the last segment's endpoint.
@@ -431,14 +430,7 @@ class GeoStandardPath extends GeoBasePath {
         + "}}";
   }
 
-  private static class DistancePair {
-    public final double pathCenterDistance;
-    public final double distanceAlongPath;
-
-    public DistancePair(final double pathCenterDistance, final double distanceAlongPath) {
-      this.pathCenterDistance = pathCenterDistance;
-      this.distanceAlongPath = distanceAlongPath;
-    }
+  private record DistancePair(double pathCenterDistance, double distanceAlongPath) {
 
     @Override
     public String toString() {

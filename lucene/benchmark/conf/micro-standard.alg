@@ -30,8 +30,7 @@ doc.tokenized=true
 doc.term.vector=false
 log.step=500
 
-work.dir=data
-docs.dir=reuters21578
+docs.dir=reuters-out
 
 #content.source=org.apache.lucene.benchmark.byTask.feeds.SingleDocSource
 content.source=org.apache.lucene.benchmark.byTask.feeds.ReutersContentSource

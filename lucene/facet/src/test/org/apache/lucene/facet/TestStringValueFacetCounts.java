@@ -468,11 +468,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       assertEquals(facetResult, topNDimsResult.get(0));
 
       // test getAllDims(0)
-      expectThrows(
-          IllegalArgumentException.class,
-          () -> {
-            facets.getAllDims(0);
-          });
+      expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
       // This is a little strange, but we request all labels at this point so that when we
       // secondarily sort by label value in order to compare to the expected results, we have
@@ -538,8 +534,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
     // sort expected counts by value, count
     expectedCountsSortedByValue.sort(
-        Comparator.comparing((Map.Entry<String, Integer> a) -> a.getKey())
-            .thenComparingInt(Map.Entry::getValue));
+        Map.Entry.<String, Integer>comparingByKey().thenComparingInt(Map.Entry::getValue));
 
     FacetResult facetResult = facets.getAllChildren("field");
     assertEquals(expectedTotalDocsWithValue, facetResult.value);

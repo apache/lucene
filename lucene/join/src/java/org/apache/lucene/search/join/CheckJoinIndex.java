@@ -63,7 +63,7 @@ public class CheckJoinIndex {
           for (int child = prevParentDoc + 1; child != parentDoc; child++) {
             final boolean childIsLive = liveDocs.get(child);
             if (parentIsLive != childIsLive) {
-              if (childIsLive) {
+              if (parentIsLive) {
                 throw new IllegalStateException(
                     "Parent doc "
                         + parentDoc

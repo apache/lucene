@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.Impact;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsSource;
@@ -101,8 +100,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     }
 
     approximation =
-        ConjunctionUtils.intersectIterators(
-            Arrays.stream(postings).map(p -> p.postings).collect(Collectors.toList()));
+        ConjunctionUtils.intersectIterators(Arrays.stream(postings).map(p -> p.postings).toList());
     // What would be a good upper bound of the sloppy frequency? A sum of the
     // sub frequencies would be correct, but it is usually so much higher than
     // the actual sloppy frequency that it doesn't help skip irrelevant
@@ -335,8 +333,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
   private int collide(PhrasePositions pp) {
     int tpPos = tpPos(pp);
     PhrasePositions[] rg = rptGroups[pp.rptGroup];
-    for (int i = 0; i < rg.length; i++) {
-      PhrasePositions pp2 = rg[i];
+    for (PhrasePositions pp2 : rg) {
       if (pp2 != pp && tpPos(pp2) == tpPos) {
         return pp2.rptInd;
       }
@@ -512,13 +509,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
    */
   private void sortRptGroups(ArrayList<ArrayList<PhrasePositions>> rgs) {
     rptGroups = new PhrasePositions[rgs.size()][];
-    Comparator<PhrasePositions> cmprtr =
-        new Comparator<PhrasePositions>() {
-          @Override
-          public int compare(PhrasePositions pp1, PhrasePositions pp2) {
-            return pp1.offset - pp2.offset;
-          }
-        };
+    Comparator<PhrasePositions> cmprtr = Comparator.comparingInt(pp -> pp.offset);
     for (int i = 0; i < rptGroups.length; i++) {
       PhrasePositions[] rg = rgs.get(i).toArray(new PhrasePositions[0]);
       Arrays.sort(rg, cmprtr);
@@ -587,8 +578,8 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     return res;
   }
 
-  /** Actual position in doc of a PhrasePosition, relies on that position = tpPos - offset) */
-  private final int tpPos(PhrasePositions pp) {
+  /** Actual position in doc of a PhrasePosition, relies on that position = tpPos - offset */
+  private int tpPos(PhrasePositions pp) {
     return pp.position + pp.offset;
   }
 

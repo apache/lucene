@@ -76,7 +76,7 @@ import org.apache.lucene.util.hnsw.HnswGraph;
  *       <ul>
  *         <li><b>[int]</b> the number of nodes on this level
  *         <li><b>array[int]</b> for levels greater than 0 list of nodes on this level, stored as
- *             the the level 0th nodes ordinals.
+ *             the level 0th nodes ordinals.
  *       </ul>
  * </ul>
  *
@@ -135,6 +135,11 @@ public class Lucene91HnswVectorsFormat extends KnnVectorsFormat {
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene91HnswVectorsReader(state);
+  }
+
+  @Override
+  public final int getMaxDimensions(String fieldName) {
+    return 1024;
   }
 
   @Override

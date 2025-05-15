@@ -45,8 +45,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
   // private static boolean DEBUG = false;
 
-  private final LeafCollector drillDownLeafCollector;
-
   private final DocsAndCost[] dims;
 
   // DrillDown DocsEnums:
@@ -68,7 +66,6 @@ class DrillSidewaysScorer extends BulkScorer {
   DrillSidewaysScorer(
       LeafReaderContext context,
       Scorer baseScorer,
-      LeafCollector drillDownLeafCollector,
       DocsAndCost[] dims,
       boolean scoreSubDocsAtOnce) {
     this.dims = dims;
@@ -81,7 +78,6 @@ class DrillSidewaysScorer extends BulkScorer {
     } else {
       this.baseApproximation = baseIterator;
     }
-    this.drillDownLeafCollector = drillDownLeafCollector;
     this.scoreSubDocsAtOnce = scoreSubDocsAtOnce;
   }
 
@@ -200,7 +196,8 @@ class DrillSidewaysScorer extends BulkScorer {
    */
   private void doQueryFirstScoring(Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims)
       throws IOException {
-    setScorer(collector, ScoreCachingWrappingScorer.wrap(baseScorer));
+    collector = ScoreCachingWrappingScorer.wrap(collector);
+    setScorer(collector, baseScorer);
 
     // Specialize the single-dim use-case as we have a more efficient implementation for that:
     if (dims.length == 1) {
@@ -341,7 +338,7 @@ class DrillSidewaysScorer extends BulkScorer {
   /** Used when drill downs are highly constraining vs baseQuery. */
   private void doDrillDownAdvanceScoring(
       Bits acceptDocs, LeafCollector collector, DocsAndCost[] dims) throws IOException {
-    setScorer(collector, new ScoreAndDoc());
+    setScorer(collector, new Score());
 
     final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
@@ -553,7 +550,7 @@ class DrillSidewaysScorer extends BulkScorer {
     // if (DEBUG) {
     //  System.out.println("  doUnionScoring");
     // }
-    setScorer(collector, new ScoreAndDoc());
+    setScorer(collector, new Score());
 
     final int maxDoc = context.reader().maxDoc();
     final int numDims = dims.length;
@@ -708,9 +705,6 @@ class DrillSidewaysScorer extends BulkScorer {
     // }
 
     collector.collect(collectDocID);
-    if (drillDownLeafCollector != null) {
-      drillDownLeafCollector.collect(collectDocID);
-    }
 
     // TODO: we could "fix" faceting of the sideways counts
     // to do this "union" (of the drill down hits) in the
@@ -724,9 +718,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private void collectHit(LeafCollector collector, DocsAndCost dim) throws IOException {
     collector.collect(collectDocID);
-    if (drillDownLeafCollector != null) {
-      drillDownLeafCollector.collect(collectDocID);
-    }
 
     // Tally sideways count:
     dim.sidewaysLeafCollector.collect(collectDocID);
@@ -734,9 +725,6 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private void collectHit(LeafCollector collector, List<DocsAndCost> dims) throws IOException {
     collector.collect(collectDocID);
-    if (drillDownLeafCollector != null) {
-      drillDownLeafCollector.collect(collectDocID);
-    }
 
     // Tally sideways counts:
     for (DocsAndCost dim : dims) {
@@ -755,9 +743,6 @@ class DrillSidewaysScorer extends BulkScorer {
     // Note: We _only_ call #finish on the facets collectors we're managing here, but not the
     // "main" collector. This is because IndexSearcher handles calling #finish on the main
     // collector.
-    if (drillDownLeafCollector != null) {
-      drillDownLeafCollector.finish();
-    }
     for (DocsAndCost dim : dims) {
       dim.sidewaysLeafCollector.finish();
     }
@@ -765,20 +750,12 @@ class DrillSidewaysScorer extends BulkScorer {
 
   private void setScorer(LeafCollector mainCollector, Scorable scorer) throws IOException {
     mainCollector.setScorer(scorer);
-    if (drillDownLeafCollector != null) {
-      drillDownLeafCollector.setScorer(scorer);
-    }
     for (DocsAndCost dim : dims) {
       dim.sidewaysLeafCollector.setScorer(scorer);
     }
   }
 
-  private final class ScoreAndDoc extends Scorable {
-
-    @Override
-    public int docID() {
-      return collectDocID;
-    }
+  private final class Score extends Scorable {
 
     @Override
     public float score() {

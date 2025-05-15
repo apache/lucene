@@ -26,7 +26,6 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.BaseDocValuesFormatTestCase;
@@ -37,6 +36,12 @@ import org.apache.lucene.util.BytesRef;
 /** Tests SimpleTextDocValuesFormat */
 public class TestSimpleTextDocValuesFormat extends BaseDocValuesFormatTestCase {
   private final Codec codec = new SimpleTextCodec();
+
+  @Override
+  protected boolean skipperHasAccurateDocBounds() {
+    // This format always returns minDocID = 0 and maxDocID = maxDoc - 1
+    return false;
+  }
 
   @Override
   protected Codec getCodec() {
@@ -60,7 +65,7 @@ public class TestSimpleTextDocValuesFormat extends BaseDocValuesFormatTestCase {
       }
       for (String file : dir.listAll()) {
         if (file.endsWith("dat")) {
-          try (IndexInput input = dir.openChecksumInput(file, IOContext.READONCE)) {
+          try (IndexInput input = dir.openChecksumInput(file)) {
             long length = input.length();
             if (length > 20_000) {
               // Avoid allocating a huge array if the length is wrong

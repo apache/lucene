@@ -82,11 +82,11 @@ public class QueryDecomposer {
     Set<Query> mandatory = new HashSet<>();
 
     for (BooleanClause clause : q) {
-      if (clause.getOccur() == BooleanClause.Occur.MUST
-          || clause.getOccur() == BooleanClause.Occur.FILTER) mandatory.add(clause.getQuery());
-      else if (clause.getOccur() == BooleanClause.Occur.MUST_NOT) exclusions.add(clause.getQuery());
+      if (clause.occur() == BooleanClause.Occur.MUST
+          || clause.occur() == BooleanClause.Occur.FILTER) mandatory.add(clause.query());
+      else if (clause.occur() == BooleanClause.Occur.MUST_NOT) exclusions.add(clause.query());
       else {
-        subqueries.addAll(decompose(clause.getQuery()));
+        subqueries.addAll(decompose(clause.query()));
       }
     }
 

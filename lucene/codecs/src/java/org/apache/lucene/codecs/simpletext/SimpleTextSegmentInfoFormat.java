@@ -78,7 +78,7 @@ public class SimpleTextSegmentInfoFormat extends SegmentInfoFormat {
     BytesRefBuilder scratch = new BytesRefBuilder();
     String segFileName =
         IndexFileNames.segmentFileName(segmentName, "", SimpleTextSegmentInfoFormat.SI_EXTENSION);
-    try (ChecksumIndexInput input = directory.openChecksumInput(segFileName, context)) {
+    try (ChecksumIndexInput input = directory.openChecksumInput(segFileName)) {
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), SI_VERSION);
       final Version version;

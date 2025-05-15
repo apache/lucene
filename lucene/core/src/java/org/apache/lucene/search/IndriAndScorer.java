@@ -25,9 +25,9 @@ import java.util.List;
  */
 public class IndriAndScorer extends IndriDisjunctionScorer {
 
-  protected IndriAndScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode, float boost)
+  protected IndriAndScorer(List<Scorer> subScorers, ScoreMode scoreMode, float boost)
       throws IOException {
-    super(weight, subScorers, scoreMode, boost);
+    super(subScorers, scoreMode, boost);
   }
 
   @Override

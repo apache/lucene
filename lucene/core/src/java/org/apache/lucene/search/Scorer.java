@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Objects;
 
 /**
  * Expert: Common scoring functionality for different types of queries.
@@ -27,26 +26,8 @@ import java.util.Objects;
  */
 public abstract class Scorer extends Scorable {
 
-  /** the Scorer's parent Weight */
-  protected final Weight weight;
-
-  /**
-   * Constructs a Scorer
-   *
-   * @param weight The scorers <code>Weight</code>.
-   */
-  protected Scorer(Weight weight) {
-    this.weight = Objects.requireNonNull(weight);
-  }
-
-  /**
-   * returns parent Weight
-   *
-   * @lucene.experimental
-   */
-  public Weight getWeight() {
-    return weight;
-  }
+  /** Returns the doc ID that is currently being scored. */
+  public abstract int docID();
 
   /**
    * Return a {@link DocIdSetIterator} over matching documents.

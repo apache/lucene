@@ -32,7 +32,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -307,9 +306,9 @@ public class WordFormGenerator {
         1,
         Integer.MAX_VALUE,
         false,
-        (root, lazyForms) -> {
-          String rootStr = root.toString();
-          IntsRef forms = lazyForms.get();
+        e -> {
+          String rootStr = e.root().toString();
+          IntsRef forms = e.forms();
           for (int i = 0; i < forms.length; i += dictionary.formStep()) {
             char[] encodedFlags = dictionary.flagLookup.getFlags(forms.ints[forms.offset + i]);
             if (shouldConsiderAtAll(encodedFlags)) {
@@ -348,41 +347,8 @@ public class WordFormGenerator {
     return new WordCompressor(words, forbidden, checkCanceled).compress();
   }
 
-  private static class AffixEntry {
-    final int id;
-    final char flag;
-    final AffixKind kind;
-    final String affix;
-    final String strip;
-    final AffixCondition condition;
-
-    AffixEntry(
-        int id, char flag, AffixKind kind, String affix, String strip, AffixCondition condition) {
-      this.id = id;
-      this.flag = flag;
-      this.kind = kind;
-      this.affix = affix;
-      this.strip = strip;
-      this.condition = condition;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof AffixEntry)) return false;
-      AffixEntry that = (AffixEntry) o;
-      return id == that.id
-          && flag == that.flag
-          && kind == that.kind
-          && affix.equals(that.affix)
-          && strip.equals(that.strip)
-          && condition.equals(that.condition);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(id, flag, kind, affix, strip, condition);
-    }
+  private record AffixEntry(
+      int id, char flag, AffixKind kind, String affix, String strip, AffixCondition condition) {
 
     AffixedWord apply(AffixedWord stem, Dictionary dictionary) {
       String word = stem.getWord();
@@ -486,8 +452,7 @@ public class WordFormGenerator {
           Comparator.comparing((String s) -> existingStems.contains(s))
               .thenComparing(s -> stemsToForms.get(s).size())
               .reversed();
-      List<String> sortedStems =
-          stemsToForms.keySet().stream().sorted(stemSorter).collect(Collectors.toList());
+      List<String> sortedStems = stemsToForms.keySet().stream().sorted(stemSorter).toList();
       PriorityQueue<State> queue = new PriorityQueue<>(solutionFitness);
       Set<Map<String, Set<FlagSet>>> visited = new HashSet<>();
       queue.offer(new State(Map.of(), wordSet.size(), 0, 0));
@@ -543,8 +508,7 @@ public class WordFormGenerator {
       }
 
       List<String> extraGenerated = new ArrayList<>();
-      for (String extra :
-          allGenerated(state.stemToFlags).distinct().sorted().collect(Collectors.toList())) {
+      for (String extra : allGenerated(state.stemToFlags).distinct().sorted().toList()) {
         if (wordSet.contains(extra) || existingStems.contains(extra)) continue;
 
         if (forbidden.contains(extra) && dictionary.forbiddenword != FLAG_UNSET) {
@@ -600,35 +564,11 @@ public class WordFormGenerator {
 
     private final Map<StemWithFlags, List<String>> expansionCache = new HashMap<>();
 
-    private class StemWithFlags {
-      final String stem;
-      final Set<FlagSet> flags;
-
-      StemWithFlags(String stem, Set<FlagSet> flags) {
-        this.stem = stem;
-        this.flags = flags;
-      }
-
-      @Override
-      public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof StemWithFlags)) return false;
-        StemWithFlags that = (StemWithFlags) o;
-        return stem.equals(that.stem) && flags.equals(that.flags);
-      }
-
-      @Override
-      public int hashCode() {
-        return Objects.hash(stem, flags);
-      }
-    }
+    private record StemWithFlags(String stem, Set<FlagSet> flags) {}
 
     private List<String> allGenerated(StemWithFlags swc) {
       Function<StemWithFlags, List<String>> expandToWords =
-          e ->
-              expand(e.stem, FlagSet.flatten(e.flags)).stream()
-                  .map(w -> w.getWord())
-                  .collect(Collectors.toList());
+          e -> expand(e.stem, FlagSet.flatten(e.flags)).stream().map(w -> w.getWord()).toList();
       return expansionCache.computeIfAbsent(swc, expandToWords);
     }
 
@@ -647,28 +587,7 @@ public class WordFormGenerator {
     }
   }
 
-  private static class FlagSet {
-    final CharHashSet flags;
-    final Dictionary dictionary;
-
-    FlagSet(CharHashSet flags, Dictionary dictionary) {
-      this.flags = flags;
-      this.dictionary = dictionary;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (!(o instanceof FlagSet)) return false;
-      FlagSet flagSet = (FlagSet) o;
-      return flags.equals(flagSet.flags) && dictionary.equals(flagSet.dictionary);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(flags, dictionary);
-    }
-
+  private record FlagSet(CharHashSet flags, Dictionary dictionary) {
     static CharHashSet flatten(Set<FlagSet> flagSets) {
       CharHashSet set = new CharHashSet(flagSets.size() << 1);
       flagSets.forEach(flagSet -> set.addAll(flagSet.flags));
@@ -681,23 +600,11 @@ public class WordFormGenerator {
     }
   }
 
-  private static class State {
-    final Map<String, Set<FlagSet>> stemToFlags;
-    final int underGenerated;
-    final int overGenerated;
+  private record State(
+      Map<String, Set<FlagSet>> stemToFlags,
+      int underGenerated,
+      int overGenerated,
 
-    // The maximum number of requested forms possibly generated by adding only flags to this state
-    final int potentialCoverage;
-
-    State(
-        Map<String, Set<FlagSet>> stemToFlags,
-        int underGenerated,
-        int overGenerated,
-        int potentialCoverage) {
-      this.stemToFlags = stemToFlags;
-      this.underGenerated = underGenerated;
-      this.overGenerated = overGenerated;
-      this.potentialCoverage = potentialCoverage;
-    }
-  }
+      // The maximum number of requested forms possibly generated by adding only flags to this state
+      int potentialCoverage) {}
 }

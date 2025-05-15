@@ -225,7 +225,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
 
     CheckHits.checkEqual(query, expected.scoreDocs, actual.scoreDocs);
 
-    if (size < actual.totalHits.value) {
+    if (size < actual.totalHits.value()) {
       expected = searcher.searchAfter(expected.scoreDocs[size - 1], query, size, sort);
       actual = searcher.searchAfter(actual.scoreDocs[size - 1], query, size, mutatedSort);
       CheckHits.checkEqual(query, expected.scoreDocs, actual.scoreDocs);

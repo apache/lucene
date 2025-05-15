@@ -108,8 +108,8 @@ public class StringValueFacetCounts extends Facets {
         int totalHits = 0;
         int totalDocs = 0;
         for (FacetsCollector.MatchingDocs matchingDocs : facetsCollector.getMatchingDocs()) {
-          totalHits += matchingDocs.totalHits;
-          totalDocs += matchingDocs.context.reader().maxDoc();
+          totalHits += matchingDocs.totalHits();
+          totalDocs += matchingDocs.context().reader().maxDoc();
         }
 
         // No counting needed if there are no hits:
@@ -178,10 +178,8 @@ public class StringValueFacetCounts extends Facets {
     validateDimAndPathForGetChildren(dim, path);
 
     topN = Math.min(topN, cardinality);
-    TopOrdAndIntNumberQueue q = null;
-    TopOrdAndIntNumberQueue.OrdAndInt reuse = null;
-    int bottomCount = 0;
-    int bottomOrd = Integer.MAX_VALUE;
+    TopOrdAndIntQueue q = null;
+    TopOrdAndIntQueue.OrdAndInt reuse = null;
     int childCount = 0; // total number of labels with non-zero count
 
     if (sparseCounts != null) {
@@ -189,44 +187,32 @@ public class StringValueFacetCounts extends Facets {
         childCount++; // every count in sparseValues should be non-zero
         int ord = sparseCount.key;
         int count = sparseCount.value;
-        if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
-          if (q == null) {
-            // Lazy init for sparse case:
-            q = new TopOrdAndIntNumberQueue(topN);
-          }
-          if (reuse == null) {
-            reuse = (TopOrdAndIntNumberQueue.OrdAndInt) q.newOrdAndValue();
-          }
-          reuse.ord = ord;
-          reuse.value = count;
-          reuse = (TopOrdAndIntNumberQueue.OrdAndInt) q.insertWithOverflow(reuse);
-          if (q.size() == topN) {
-            bottomCount = ((TopOrdAndIntNumberQueue.OrdAndInt) q.top()).value;
-            bottomOrd = q.top().ord;
-          }
+        if (q == null) {
+          // Lazy init for sparse case:
+          q = new TopOrdAndIntQueue(topN);
         }
+        if (reuse == null) {
+          reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+        }
+        reuse.ord = ord;
+        reuse.value = count;
+        reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
       }
     } else if (denseCounts != null) {
       for (int i = 0; i < denseCounts.length; i++) {
         int count = denseCounts[i];
         if (count != 0) {
           childCount++;
-          if (count > bottomCount || (count == bottomCount && i < bottomOrd)) {
-            if (q == null) {
-              // Lazy init for sparse case:
-              q = new TopOrdAndIntNumberQueue(topN);
-            }
-            if (reuse == null) {
-              reuse = (TopOrdAndIntNumberQueue.OrdAndInt) q.newOrdAndValue();
-            }
-            reuse.ord = i;
-            reuse.value = count;
-            reuse = (TopOrdAndIntNumberQueue.OrdAndInt) q.insertWithOverflow(reuse);
-            if (q.size() == topN) {
-              bottomCount = ((TopOrdAndIntNumberQueue.OrdAndInt) q.top()).value;
-              bottomOrd = q.top().ord;
-            }
+          if (q == null) {
+            // Lazy init for sparse case:
+            q = new TopOrdAndIntQueue(topN);
           }
+          if (reuse == null) {
+            reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+          }
+          reuse.ord = i;
+          reuse.value = count;
+          reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
         }
       }
     }
@@ -234,7 +220,7 @@ public class StringValueFacetCounts extends Facets {
     int resultCount = q == null ? 0 : q.size();
     LabelAndValue[] labelValues = new LabelAndValue[resultCount];
     for (int i = labelValues.length - 1; i >= 0; i--) {
-      TopOrdAndIntNumberQueue.OrdAndInt ordAndValue = (TopOrdAndIntNumberQueue.OrdAndInt) q.pop();
+      TopOrdAndIntQueue.OrdAndInt ordAndValue = (TopOrdAndIntQueue.OrdAndInt) q.pop();
       final BytesRef term = docValues.lookupOrd(ordAndValue.ord);
       labelValues[i] = new LabelAndValue(term.utf8ToString(), ordAndValue.value);
     }
@@ -311,22 +297,22 @@ public class StringValueFacetCounts extends Facets {
     if (matchingDocs.size() == 1) {
 
       FacetsCollector.MatchingDocs hits = matchingDocs.get(0);
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         return;
       }
 
       // Validate state before doing anything else:
-      validateState(hits.context);
+      validateState(hits.context());
 
       // Assuming the state is valid, ordinalMap should be null since we have one segment:
       assert ordinalMap == null;
 
-      countOneSegment(docValues, hits.context.ord, hits, null);
+      countOneSegment(docValues, hits.context().ord, hits, null);
     } else {
 
       // Validate state before doing anything else. We only check the first segment since they
       // should all ladder up to the same top-level reader:
-      validateState(matchingDocs.get(0).context);
+      validateState(matchingDocs.get(0).context());
 
       for (FacetsCollector.MatchingDocs hits : matchingDocs) {
         // Assuming the state is valid, ordinalMap should be non-null and docValues should be
@@ -334,14 +320,14 @@ public class StringValueFacetCounts extends Facets {
         assert ordinalMap != null;
         assert docValues instanceof MultiDocValues.MultiSortedSetDocValues;
 
-        if (hits.totalHits == 0) {
+        if (hits.totalHits() == 0) {
           continue;
         }
 
         MultiDocValues.MultiSortedSetDocValues multiValues =
             (MultiDocValues.MultiSortedSetDocValues) docValues;
 
-        countOneSegment(multiValues.values[hits.context.ord], hits.context.ord, hits, null);
+        countOneSegment(multiValues.values[hits.context().ord], hits.context().ord, hits, null);
       }
     }
   }
@@ -412,7 +398,7 @@ public class StringValueFacetCounts extends Facets {
       assert liveDocs != null;
       it = FacetUtils.liveDocsDISI(valuesIt, liveDocs);
     } else {
-      it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+      it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), valuesIt));
     }
 
     // TODO: yet another option is to count all segs
@@ -452,7 +438,7 @@ public class StringValueFacetCounts extends Facets {
       final LongValues ordMap = ordinalMap.getGlobalOrds(segmentOrd);
       int segmentCardinality = (int) multiValues.getValueCount();
 
-      if (hits != null && hits.totalHits < segmentCardinality / 10) {
+      if (hits != null && hits.totalHits() < segmentCardinality / 10) {
         // Remap every ord to global ord as we iterate:
         if (singleValues != null) {
           for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {

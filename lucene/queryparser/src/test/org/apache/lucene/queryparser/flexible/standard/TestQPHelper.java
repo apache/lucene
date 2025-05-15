@@ -1261,7 +1261,7 @@ public class TestQPHelper extends LuceneTestCase {
     assertEquals(new MatchAllDocsQuery(), qp.parse("(*:*)", "field"));
     BooleanQuery bq = (BooleanQuery) qp.parse("+*:* -*:*", "field");
     for (BooleanClause c : bq) {
-      assertTrue(c.getQuery().getClass() == MatchAllDocsQuery.class);
+      assertTrue(c.query().getClass() == MatchAllDocsQuery.class);
     }
   }
 
@@ -1329,7 +1329,7 @@ public class TestQPHelper extends LuceneTestCase {
 
     Query q = new StandardQueryParser(new CannedAnalyzer()).parse("\"a\"", "field");
     assertTrue(q instanceof MultiPhraseQuery);
-    assertEquals(1, s.search(q, 10).totalHits.value);
+    assertEquals(1, s.search(q, 10).totalHits.value());
     r.close();
     w.close();
     dir.close();

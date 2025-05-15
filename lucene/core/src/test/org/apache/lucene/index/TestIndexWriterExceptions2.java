@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -67,7 +69,7 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
 
     // log all exceptions we hit, in case we fail (for debugging)
     ByteArrayOutputStream exceptionLog = new ByteArrayOutputStream();
-    PrintStream exceptionStream = new PrintStream(exceptionLog, true, "UTF-8");
+    PrintStream exceptionStream = new PrintStream(exceptionLog, true, UTF_8);
     // PrintStream exceptionStream = System.out;
 
     // create lots of non-aborting exceptions with a broken analyzer
@@ -271,14 +273,14 @@ public class TestIndexWriterExceptions2 extends LuceneTestCase {
     } catch (Throwable t) {
       System.out.println("Unexpected exception: dumping fake-exception-log:...");
       exceptionStream.flush();
-      System.out.println(exceptionLog.toString("UTF-8"));
+      System.out.println(exceptionLog.toString(UTF_8));
       System.out.flush();
       Rethrow.rethrow(t);
     }
 
     if (VERBOSE) {
       System.out.println("TEST PASSED: dumping fake-exception-log:...");
-      System.out.println(exceptionLog.toString("UTF-8"));
+      System.out.println(exceptionLog.toString(UTF_8));
     }
   }
 }

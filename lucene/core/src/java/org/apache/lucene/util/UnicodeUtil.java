@@ -504,21 +504,16 @@ public final class UnicodeUtil {
     reuse.numBytes = numBytes;
     int v;
     switch (numBytes) {
-      case 1:
+      case 1 -> {
         reuse.codePoint = leadByte;
         return reuse;
-      case 2:
-        v = leadByte & 31; // 5 useful bits
-        break;
-      case 3:
-        v = leadByte & 15; // 4 useful bits
-        break;
-      case 4:
-        v = leadByte & 7; // 3 useful bits
-        break;
-      default:
-        throw new IllegalArgumentException(
-            "Invalid UTF8 header byte: 0x" + Integer.toHexString(leadByte));
+      }
+      case 2 -> v = leadByte & 31; // 5 useful bits
+      case 3 -> v = leadByte & 15; // 4 useful bits
+      case 4 -> v = leadByte & 7; // 3 useful bits
+      default ->
+          throw new IllegalArgumentException(
+              "Invalid UTF8 header byte: 0x" + Integer.toHexString(leadByte));
     }
 
     // TODO: this may read past utf8's limit.

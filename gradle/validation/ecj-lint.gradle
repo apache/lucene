@@ -23,7 +23,7 @@ configure(rootProject) {
   }
 
   dependencies {
-    ecjDeps "org.eclipse.jdt:ecj:${scriptDepVersions['ecj']}"
+    ecjDeps deps.ecj
   }
 }
 

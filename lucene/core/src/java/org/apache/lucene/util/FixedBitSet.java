@@ -272,16 +272,36 @@ public final class FixedBitSet extends BitSet {
 
   @Override
   public int nextSetBit(int index) {
+    // Override with a version that skips the bound check on the result since we know it will not
+    // go OOB:
+    return nextSetBitInRange(index, numBits);
+  }
+
+  @Override
+  public int nextSetBit(int start, int upperBound) {
+    int res = nextSetBitInRange(start, upperBound);
+    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Returns the next set bit in the specified range, but treats `upperBound` as a best-effort hint
+   * rather than a hard requirement. Note that this may return a result that is >= upperBound in
+   * some cases, so callers must add their own check if `upperBound` is a hard requirement.
+   */
+  private int nextSetBitInRange(int start, int upperBound) {
     // Depends on the ghost bits being clear!
-    assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
-    int i = index >> 6;
-    long word = bits[i] >> index; // skip all the bits to the right of index
+    assert start >= 0 && start < numBits : "index=" + start + ", numBits=" + numBits;
+    assert start < upperBound : "index=" + start + ", upperBound=" + upperBound;
+    assert upperBound <= numBits : "upperBound=" + upperBound + ", numBits=" + numBits;
+    int i = start >> 6;
+    long word = bits[i] >> start; // skip all the bits to the right of index
 
     if (word != 0) {
-      return index + Long.numberOfTrailingZeros(word);
+      return start + Long.numberOfTrailingZeros(word);
     }
 
-    while (++i < numWords) {
+    int limit = upperBound == numBits ? numWords : bits2words(upperBound);
+    while (++i < limit) {
       word = bits[i];
       if (word != 0) {
         return (i << 6) + Long.numberOfTrailingZeros(word);

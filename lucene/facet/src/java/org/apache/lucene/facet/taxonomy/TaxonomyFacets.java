@@ -32,36 +32,16 @@ import org.apache.lucene.facet.FacetsCollector;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.FacetsConfig.DimConfig;
 import org.apache.lucene.facet.LabelAndValue;
-import org.apache.lucene.facet.TopOrdAndFloatNumberQueue;
-import org.apache.lucene.facet.TopOrdAndIntNumberQueue;
+import org.apache.lucene.facet.TopOrdAndIntQueue;
 import org.apache.lucene.facet.TopOrdAndNumberQueue;
 import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.util.PriorityQueue;
 
-/**
- * Base class for all taxonomy-based facets impls.
- *
- * @deprecated Visibility of this class will be reduced to pkg-private in a future version. This
- *     class is meant to host common code as an internal implementation detail to taxonomy
- *     faceting,and is not intended as an extension point for user-created {@code Facets}
- *     implementations. If your code is relying on this, please migrate necessary functionality down
- *     into your own class.
- */
-@Deprecated
-public abstract class TaxonomyFacets extends Facets {
+/** Base class for all taxonomy-based facets impls. */
+abstract class TaxonomyFacets extends Facets {
   /** Intermediate result to store top children for a given path before resolving labels, etc. */
-  static class TopChildrenForPath {
-    Number pathValue;
-    int childCount;
-    TopOrdAndNumberQueue childQueue;
-
-    public TopChildrenForPath(Number pathValue, int childCount, TopOrdAndNumberQueue childQueue) {
-      this.pathValue = pathValue;
-      this.childCount = childCount;
-      this.childQueue = childQueue;
-    }
-  }
+  record TopChildrenForPath(Number pathValue, int childCount, TopOrdAndNumberQueue childQueue) {}
 
   private static class DimValue {
     String dim;
@@ -75,28 +55,14 @@ public abstract class TaxonomyFacets extends Facets {
     }
   }
 
-  private static final Comparator<FacetResult> BY_VALUE_THEN_DIM =
-      new Comparator<FacetResult>() {
-        @Override
-        public int compare(FacetResult a, FacetResult b) {
-          if (a.value.doubleValue() > b.value.doubleValue()) {
-            return -1;
-          } else if (b.value.doubleValue() > a.value.doubleValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        }
-      };
-
   /** Index field name provided to the constructor. */
-  protected final String indexFieldName;
+  final String indexFieldName;
 
   /** {@code TaxonomyReader} provided to the constructor. */
-  protected final TaxonomyReader taxoReader;
+  final TaxonomyReader taxoReader;
 
   /** {@code FacetsConfig} provided to the constructor. */
-  protected final FacetsConfig config;
+  final FacetsConfig config;
 
   /** {@code FacetsCollector} provided to the constructor. */
   final FacetsCollector fc;
@@ -110,18 +76,6 @@ public abstract class TaxonomyFacets extends Facets {
   /** Maps an ordinal to its parent, or -1 if there is no parent (root node). */
   final ParallelTaxonomyArrays.IntArray parents;
 
-  /**
-   * Constructor without a {@link FacetsCollector} - we don't have access to the hits, so we have to
-   * assume there are hits when initializing internal data structures.
-   *
-   * @deprecated To be removed in Lucene 10.
-   */
-  @Deprecated
-  protected TaxonomyFacets(String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config)
-      throws IOException {
-    this(indexFieldName, taxoReader, config, null);
-  }
-
   /** Dense ordinal counts. */
   int[] counts;
 
@@ -131,13 +85,9 @@ public abstract class TaxonomyFacets extends Facets {
   /** Have value counters been initialized. */
   boolean initialized;
 
-  /** Defines comparison between aggregated values. */
   protected Comparator<Number> valueComparator;
 
-  /**
-   * Constructor with a {@link FacetsCollector}, allowing lazy initialization of internal data
-   * structures.
-   */
+  /** Sole constructor. */
   TaxonomyFacets(
       String indexFieldName, TaxonomyReader taxoReader, FacetsConfig config, FacetsCollector fc)
       throws IOException {
@@ -150,7 +100,7 @@ public abstract class TaxonomyFacets extends Facets {
   }
 
   /** Return true if a sparse hash table should be used for counting, instead of a dense int[]. */
-  protected boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
+  private boolean useHashTable(FacetsCollector fc, TaxonomyReader taxoReader) {
     if (taxoReader.getSize() < 1024) {
       // small number of unique values: use an array
       return false;
@@ -164,15 +114,14 @@ public abstract class TaxonomyFacets extends Facets {
     int maxDoc = 0;
     int sumTotalHits = 0;
     for (FacetsCollector.MatchingDocs docs : fc.getMatchingDocs()) {
-      sumTotalHits += docs.totalHits;
-      maxDoc += docs.context.reader().maxDoc();
+      sumTotalHits += docs.totalHits();
+      maxDoc += docs.context().reader().maxDoc();
     }
 
     // if our result set is < 10% of the index, we collect sparsely (use hash map):
     return sumTotalHits < maxDoc / 10;
   }
 
-  /** If not done already, initialize the data structures storing counts. */
   protected void initializeValueCounters() {
     if (initialized) {
       return;
@@ -269,7 +218,7 @@ public abstract class TaxonomyFacets extends Facets {
    * @throws IllegalArgumentException if the provided dimension was manually configured, but its
    *     {@link DimConfig#indexFieldName} does not match {@link #indexFieldName}.
    */
-  protected DimConfig verifyDim(String dim) {
+  DimConfig verifyDim(String dim) {
     FacetsConfig.DimConfig dimConfig = config.getDimConfig(dim);
     if (config.isDimConfigured(dim) == true
         && dimConfig.indexFieldName.equals(indexFieldName) == false) {
@@ -295,11 +244,11 @@ public abstract class TaxonomyFacets extends Facets {
   }
 
   /**
-   * Return a {@link TopOrdAndNumberQueue} of the appropriate type, i.e. a {@link
-   * TopOrdAndIntNumberQueue} or a {@link TopOrdAndFloatNumberQueue}.
+   * Return a {@link TopOrdAndNumberQueue} of the appropriate type, i.e. a {@link TopOrdAndIntQueue}
+   * or a {@link org.apache.lucene.facet.TopOrdAndFloatQueue}.
    */
   protected TopOrdAndNumberQueue makeTopOrdAndNumberQueue(int topN) {
-    return new TopOrdAndIntNumberQueue(Math.min(taxoReader.getSize(), topN));
+    return new TopOrdAndIntQueue(Math.min(taxoReader.getSize(), topN));
   }
 
   // TODO: We don't need this if we're okay with having an integer -1 in the results even for float
@@ -310,7 +259,7 @@ public abstract class TaxonomyFacets extends Facets {
   }
 
   /** Rolls up any single-valued hierarchical dimensions. */
-  protected void rollup() throws IOException {
+  void rollup() throws IOException {
     if (initialized == false) {
       return;
     }
@@ -365,6 +314,7 @@ public abstract class TaxonomyFacets extends Facets {
 
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     int[] ordinals = new int[labelValues.length];
+    int[] counts = new int[labelValues.length];
     Number[] values = new Number[labelValues.length];
 
     for (int i = labelValues.length - 1; i >= 0; i--) {
@@ -372,6 +322,7 @@ public abstract class TaxonomyFacets extends Facets {
       assert ordAndValue != null;
       ordinals[i] = ordAndValue.ord;
       values[i] = ordAndValue.getValue();
+      counts[i] = getCount(ordinals[i]);
     }
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
@@ -380,8 +331,7 @@ public abstract class TaxonomyFacets extends Facets {
     int childComponentIdx = path.length + 1;
     for (int i = 0; i < labelValues.length; i++) {
       labelValues[i] =
-          new LabelAndValue(
-              bulkPath[i].components[childComponentIdx], values[i], getCount(ordinals[i]));
+          new LabelAndValue(bulkPath[i].components[childComponentIdx], values[i], counts[i]);
     }
 
     return new FacetResult(
@@ -464,15 +414,10 @@ public abstract class TaxonomyFacets extends Facets {
     return new FacetResult(dim, path, aggregatedValue, labelValues, ordinals.size());
   }
 
-  /**
-   * Set the value for a {@link org.apache.lucene.facet.TopOrdAndNumberQueue.OrdAndValue} to the one
-   * corresponding to the given ordinal.
-   */
   protected void setIncomingValue(TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
-    ((TopOrdAndIntNumberQueue.OrdAndInt) incomingOrdAndValue).value = getCount(ord);
+    ((TopOrdAndIntQueue.OrdAndInt) incomingOrdAndValue).value = getCount(ord);
   }
 
-  /** Insert an ordinal and the value corresponding to it into the queue. */
   protected TopOrdAndNumberQueue.OrdAndValue insertIntoQueue(
       TopOrdAndNumberQueue q, TopOrdAndNumberQueue.OrdAndValue incomingOrdAndValue, int ord) {
     if (incomingOrdAndValue == null) {
@@ -485,16 +430,12 @@ public abstract class TaxonomyFacets extends Facets {
     return incomingOrdAndValue;
   }
 
-  /** An accumulator for an aggregated value. */
   protected abstract static class AggregatedValue {
     /** Aggregate the value corresponding to the given ordinal into this value. */
     public abstract void aggregate(int ord);
 
     /** Retrieve the encapsulated value. */
     public abstract Number get();
-
-    /** Default constructor. */
-    public AggregatedValue() {}
   }
 
   private class AggregatedCount extends AggregatedValue {
@@ -515,7 +456,6 @@ public abstract class TaxonomyFacets extends Facets {
     }
   }
 
-  /** Initialize an accumulator. */
   protected AggregatedValue newAggregatedValue() {
     return new AggregatedCount(0);
   }
@@ -638,7 +578,16 @@ public abstract class TaxonomyFacets extends Facets {
     }
 
     // Sort by highest value, tie break by dim:
-    results.sort(BY_VALUE_THEN_DIM);
+    results.sort(
+        (a, b) -> {
+          if (a.value.doubleValue() > b.value.doubleValue()) {
+            return -1;
+          } else if (b.value.doubleValue() > a.value.doubleValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
+          }
+        });
     return results;
   }
 
@@ -707,7 +656,7 @@ public abstract class TaxonomyFacets extends Facets {
               intermediateResults = new HashMap<>();
             }
             intermediateResults.put(dim, topChildrenForPath);
-            dimValue = topChildrenForPath.pathValue;
+            dimValue = topChildrenForPath.pathValue();
           }
           if (valueComparator.compare(dimValue, 0) != 0) {
             if (pq.size() < topNDims) {

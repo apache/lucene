@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.IntUnaryOperator;
-import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.taxonomy.FacetLabel;
 import org.apache.lucene.facet.taxonomy.LRUHashMap;
@@ -457,10 +456,7 @@ public class DirectoryTaxonomyReader extends TaxonomyReader implements Accountab
 
     if (values == null
         || values.advanceExact(ordinal - indexReader.leaves().get(readerIndex).docBase) == false) {
-      // The index uses the older StoredField format to store the mapping
-      // On recreating the index, the values will be stored using the BinaryDocValuesField format
-      Document doc = indexReader.storedFields().document(ordinal);
-      ret = new FacetLabel(FacetsConfig.stringToPath(doc.get(Consts.FULL)));
+      throw new IllegalStateException();
     } else {
       // The index uses the BinaryDocValuesField format to store the mapping
       ret = new FacetLabel(FacetsConfig.stringToPath(values.binaryValue().utf8ToString()));

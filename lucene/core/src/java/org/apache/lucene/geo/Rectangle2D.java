@@ -274,7 +274,7 @@ final class Rectangle2D implements Component2D {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder();
-    sb.append("XYRectangle(x=");
+    sb.append("Rectangle2D(x=");
     sb.append(minX);
     sb.append(" TO ");
     sb.append(maxX);

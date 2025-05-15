@@ -333,14 +333,13 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
           allDocsMatch = false;
         }
 
-        final Weight weight = this;
         if (allDocsMatch) {
           // all docs have a value and all points are within bounds, so everything matches
           return new ScorerSupplier() {
             @Override
             public Scorer get(long leadCost) {
               return new ConstantScoreScorer(
-                  weight, score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
+                  score(), scoreMode, DocIdSetIterator.all(reader.maxDoc()));
             }
 
             @Override
@@ -359,7 +358,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
             public Scorer get(long leadCost) throws IOException {
               values.intersect(visitor);
               DocIdSetIterator iterator = result.build().iterator();
-              return new ConstantScoreScorer(weight, score(), scoreMode, iterator);
+              return new ConstantScoreScorer(score(), scoreMode, iterator);
             }
 
             @Override
@@ -376,17 +375,40 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
       }
 
       @Override
-      public Scorer scorer(LeafReaderContext context) throws IOException {
-        ScorerSupplier scorerSupplier = scorerSupplier(context);
-        if (scorerSupplier == null) {
-          return null;
-        }
-        return scorerSupplier.get(Long.MAX_VALUE);
+      public boolean isCacheable(LeafReaderContext ctx) {
+        return true;
       }
 
       @Override
-      public boolean isCacheable(LeafReaderContext ctx) {
-        return true;
+      public int count(LeafReaderContext context) throws IOException {
+        if (numDims != 1 || context.reader().hasDeletions() == true) {
+          return super.count(context);
+        }
+        PointValues pointValues = context.reader().getPointValues(field);
+        if (pointValues == null || pointValues.size() != pointValues.getDocCount()) {
+          return super.count(context);
+        }
+        int total = 0;
+        for (RangeClause rangeClause : rangeClauses) {
+          PointRangeQuery pointRangeQuery =
+              new PointRangeQuery(field, rangeClause.lowerValue, rangeClause.upperValue, numDims) {
+                @Override
+                protected String toString(int dimension, byte[] value) {
+                  return MultiRangeQuery.this.toString(dimension, value);
+                }
+              };
+          int count =
+              pointRangeQuery
+                  .createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f)
+                  .count(context);
+
+          if (count != -1) {
+            total += count;
+          } else {
+            return super.count(context);
+          }
+        }
+        return total;
       }
 
       @Override

@@ -87,8 +87,8 @@ public final class FlattenGraphFilter extends TokenFilter {
   }
 
   /**
-   * Gathers up merged input positions into a single output position, only for the current
-   * "frontier" of nodes we've seen but can't yet output because they are not frozen.
+   * Gathers merged input positions into a single output position, only for the current "frontier"
+   * of nodes we've seen but can't yet output because they are not frozen.
    */
   private static final class OutputNode implements RollingBuffer.Resettable {
     private final IntArrayList inputNodes = new IntArrayList();
@@ -116,7 +116,7 @@ public final class FlattenGraphFilter extends TokenFilter {
   }
 
   private final RollingBuffer<InputNode> inputNodes =
-      new RollingBuffer<InputNode>() {
+      new RollingBuffer<>() {
         @Override
         protected InputNode newInstance() {
           return new InputNode();
@@ -124,7 +124,7 @@ public final class FlattenGraphFilter extends TokenFilter {
       };
 
   private final RollingBuffer<OutputNode> outputNodes =
-      new RollingBuffer<OutputNode>() {
+      new RollingBuffer<>() {
         @Override
         protected OutputNode newInstance() {
           return new OutputNode();
@@ -194,10 +194,10 @@ public final class FlattenGraphFilter extends TokenFilter {
                 + " vs output.inputNodes.size()="
                 + output.inputNodes.size();
         InputNode inputNode = inputNodes.get(output.inputNodes.get(output.nextOut));
-        if (done && inputNode.tokens.size() == 0 && outputFrom >= outputNodes.getMaxPos()) {
+        if (done && inputNode.tokens.isEmpty() && outputFrom >= outputNodes.getMaxPos()) {
           return false;
         }
-        if (inputNode.tokens.size() == 0) {
+        if (inputNode.tokens.isEmpty()) {
           assert inputNode.nextOut == 0;
           // Hole dest nodes should never be merged since 1) we always
           // assign them to a new output position, and 2) since they never
@@ -211,7 +211,7 @@ public final class FlattenGraphFilter extends TokenFilter {
               continue;
             }
           }
-          // Don't free from a hole src. Since no edge leaves here book keeping may be incorrect.
+          // Don't free from a hole src. Since no edge leaves here bookkeeping may be incorrect.
           // Later output nodes may point to earlier input nodes. So we don't want to free them yet.
           freeBefore(output);
           continue;
@@ -272,7 +272,7 @@ public final class FlattenGraphFilter extends TokenFilter {
    * @param output target output node
    */
   private void freeBefore(OutputNode output) {
-    /* We've released all of the tokens that end at the current output, so free all output nodes before this.
+    /* We've released all the tokens that end at the current output, so free all output nodes before this.
     Input nodes are more complex. The second shingled tokens with alternate paths can appear later in the output graph
     than some of their alternate path tokens. Because of this case we can only free from the minimum because
     the minimum node will have come from before the second shingled token.
@@ -284,7 +284,7 @@ public final class FlattenGraphFilter extends TokenFilter {
     int freeBefore = output.inputNodes.stream().min().orElseThrow();
     // This will catch a node being freed early if it is input to the next output.
     // Could a freed early node be input to a later output?
-    assert outputNodes.get(outputFrom).inputNodes.stream().filter(n -> freeBefore > n).count() == 0
+    assert outputNodes.get(outputFrom).inputNodes.stream().noneMatch(n -> freeBefore > n)
         : "FreeBefore " + freeBefore + " will free in use nodes";
     inputNodes.freeBefore(freeBefore);
     outputNodes.freeBefore(outputFrom);

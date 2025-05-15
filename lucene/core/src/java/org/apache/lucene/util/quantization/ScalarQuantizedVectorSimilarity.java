@@ -38,25 +38,15 @@ public interface ScalarQuantizedVectorSimilarity {
    */
   static ScalarQuantizedVectorSimilarity fromVectorSimilarity(
       VectorSimilarityFunction sim, float constMultiplier, byte bits) {
-    switch (sim) {
-      case EUCLIDEAN:
-        return new Euclidean(constMultiplier);
-      case COSINE:
-      case DOT_PRODUCT:
-        if (bits <= 4) {
-          return new DotProduct(constMultiplier, VectorUtil::int4DotProduct);
-        } else {
-          return new DotProduct(constMultiplier, VectorUtil::dotProduct);
-        }
-      case MAXIMUM_INNER_PRODUCT:
-        if (bits <= 4) {
-          return new MaximumInnerProduct(constMultiplier, VectorUtil::int4DotProduct);
-        } else {
-          return new MaximumInnerProduct(constMultiplier, VectorUtil::dotProduct);
-        }
-      default:
-        throw new IllegalArgumentException("Unsupported similarity function: " + sim);
-    }
+    return switch (sim) {
+      case EUCLIDEAN -> new Euclidean(constMultiplier);
+      case COSINE, DOT_PRODUCT ->
+          new DotProduct(
+              constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+      case MAXIMUM_INNER_PRODUCT ->
+          new MaximumInnerProduct(
+              constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+    };
   }
 
   float score(byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset);

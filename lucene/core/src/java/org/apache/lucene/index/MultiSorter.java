@@ -25,6 +25,7 @@ import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.Version;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -66,6 +67,14 @@ final class MultiSorter {
           IndexSorter.ComparableProvider[] providers = comparables[i];
           IndexSorter.ComparableProvider provider = providers[j];
           providers[j] = docId -> provider.getAsComparableLong(parents.nextSetBit(docId));
+        }
+        if (metaData.hasBlocks()
+            && fieldInfos.getParentField() == null
+            && metaData.createdVersionMajor() >= Version.LUCENE_10_0_0.major) {
+          throw new CorruptIndexException(
+              "parent field is not set but the index has blocks and uses index sorting. indexCreatedVersionMajor: "
+                  + metaData.createdVersionMajor(),
+              "IndexingChain");
         }
       }
       reverseMuls[i] = fields[i].getReverse() ? -1 : 1;

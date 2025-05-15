@@ -32,11 +32,9 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   private final Sort sort;
   private final int numHits;
   private final FieldDoc after;
-  private final HitsThresholdChecker hitsThresholdChecker;
+  private final int totalHitsThreshold;
   private final MaxScoreAccumulator minScoreAcc;
   private final List<TopFieldCollector> collectors;
-  private final boolean supportsConcurrency;
-  private boolean collectorCreated;
 
   /**
    * Creates a new {@link TopFieldCollectorManager} from the given arguments.
@@ -53,9 +51,32 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
    *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
    *     count accurate, but this will also make query processing slower.
    * @param supportsConcurrency to use thread-safe and slower internal states for count tracking.
+   * @deprecated Use {@link #TopFieldCollectorManager(Sort, int, FieldDoc, int)}, the
+   *     supportsConcurrency parameter is now a no-op.
    */
+  @Deprecated
   public TopFieldCollectorManager(
       Sort sort, int numHits, FieldDoc after, int totalHitsThreshold, boolean supportsConcurrency) {
+    this(sort, numHits, after, totalHitsThreshold);
+  }
+
+  /**
+   * Creates a new {@link TopFieldCollectorManager} from the given arguments, with thread-safe
+   * internal states.
+   *
+   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
+   * <code>numHits</code>.
+   *
+   * @param sort the sort criteria (SortFields).
+   * @param numHits the number of results to collect.
+   * @param after the previous doc after which matching docs will be collected.
+   * @param totalHitsThreshold the number of docs to count accurately. If the query matches more
+   *     than {@code totalHitsThreshold} hits then its hit count will be a lower bound. On the other
+   *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
+   *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
+   *     count accurate, but this will also make query processing slower.
+   */
+  public TopFieldCollectorManager(Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
     if (totalHitsThreshold < 0) {
       throw new IllegalArgumentException(
           "totalHitsThreshold must be >= 0, got " + totalHitsThreshold);
@@ -88,33 +109,9 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     this.sort = sort;
     this.numHits = numHits;
     this.after = after;
-    this.supportsConcurrency = supportsConcurrency;
-    this.hitsThresholdChecker =
-        supportsConcurrency
-            ? HitsThresholdChecker.createShared(Math.max(totalHitsThreshold, numHits))
-            : HitsThresholdChecker.create(Math.max(totalHitsThreshold, numHits));
-    this.minScoreAcc = supportsConcurrency ? new MaxScoreAccumulator() : null;
+    this.totalHitsThreshold = totalHitsThreshold;
+    this.minScoreAcc = totalHitsThreshold != Integer.MAX_VALUE ? new MaxScoreAccumulator() : null;
     this.collectors = new ArrayList<>();
-  }
-
-  /**
-   * Creates a new {@link TopFieldCollectorManager} from the given arguments, with thread-safe
-   * internal states.
-   *
-   * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
-   * <code>numHits</code>.
-   *
-   * @param sort the sort criteria (SortFields).
-   * @param numHits the number of results to collect.
-   * @param after the previous doc after which matching docs will be collected.
-   * @param totalHitsThreshold the number of docs to count accurately. If the query matches more
-   *     than {@code totalHitsThreshold} hits then its hit count will be a lower bound. On the other
-   *     hand if the query matches less than or exactly {@code totalHitsThreshold} hits then the hit
-   *     count of the result will be accurate. {@link Integer#MAX_VALUE} may be used to make the hit
-   *     count accurate, but this will also make query processing slower.
-   */
-  public TopFieldCollectorManager(Sort sort, int numHits, FieldDoc after, int totalHitsThreshold) {
-    this(sort, numHits, after, totalHitsThreshold, true);
   }
 
   /**
@@ -138,13 +135,6 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
 
   @Override
   public TopFieldCollector newCollector() {
-    if (collectorCreated && supportsConcurrency == false) {
-      throw new IllegalStateException(
-          "This TopFieldCollectorManager was created without concurrency (supportsConcurrency=false), but multiple collectors are being created");
-    } else {
-      collectorCreated = true;
-    }
-
     FieldValueHitQueue<FieldValueHitQueue.Entry> queue =
         FieldValueHitQueue.create(sort.getSort(), numHits);
 
@@ -159,7 +149,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
       }
       collector =
           new TopFieldCollector.SimpleFieldCollector(
-              sort, queue, numHits, hitsThresholdChecker, minScoreAcc);
+              sort, queue, numHits, totalHitsThreshold, minScoreAcc);
     } else {
       if (after.fields == null) {
         throw new IllegalArgumentException(
@@ -175,7 +165,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
       }
       collector =
           new TopFieldCollector.PagingFieldCollector(
-              sort, queue, after, numHits, hitsThresholdChecker, minScoreAcc);
+              sort, queue, after, numHits, totalHitsThreshold, minScoreAcc);
     }
 
     collectors.add(collector);

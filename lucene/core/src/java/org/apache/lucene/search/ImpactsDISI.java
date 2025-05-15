@@ -106,6 +106,10 @@ public final class ImpactsDISI extends DocIdSetIterator {
 
   @Override
   public int nextDoc() throws IOException {
+    DocIdSetIterator in = this.in;
+    if (in.docID() < upTo) {
+      return in.nextDoc();
+    }
     return advance(in.docID() + 1);
   }
 

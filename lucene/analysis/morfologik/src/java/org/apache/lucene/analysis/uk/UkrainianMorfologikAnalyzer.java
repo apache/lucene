@@ -113,15 +113,7 @@ public final class UkrainianMorfologikAnalyzer extends StopwordAnalyzerBase {
     return defaultResources;
   }
 
-  private static class DefaultResources {
-    final CharArraySet stopSet;
-    final Dictionary dictionary;
-
-    private DefaultResources(CharArraySet stopSet, Dictionary dictionary) {
-      this.stopSet = stopSet;
-      this.dictionary = dictionary;
-    }
-  }
+  private record DefaultResources(CharArraySet stopSet, Dictionary dictionary) {}
 
   /** Returns the default stopword set for this analyzer */
   public static CharArraySet getDefaultStopwords() {

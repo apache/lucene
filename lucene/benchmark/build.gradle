@@ -31,17 +31,17 @@ dependencies {
   moduleImplementation project(':lucene:spatial-extras')
   moduleImplementation project(':lucene:queryparser')
 
-  moduleImplementation "org.apache.commons:commons-compress"
-  moduleImplementation "com.ibm.icu:icu4j"
-  moduleImplementation "org.locationtech.spatial4j:spatial4j"
-  moduleImplementation ("net.sourceforge.nekohtml:nekohtml", {
+  moduleImplementation deps.commons.compress
+  moduleImplementation deps.icu4j
+  moduleImplementation deps.spatial4j
+  moduleImplementation(deps.nekohtml, {
     exclude module: "xml-apis"
     // LUCENE-10337: Exclude xercesImpl from module path because it has split packages with the JDK (!)
     exclude module: "xercesImpl"
   })
 
   // LUCENE-10337: Include xercesImpl on regular classpath where it won't cause conflicts.
-  implementation ("xerces:xercesImpl", {
+  implementation (deps.xerces, {
     exclude module: "xml-apis"
   })
 

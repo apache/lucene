@@ -22,7 +22,6 @@ import java.awt.FlowLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -198,7 +197,7 @@ public class SimpleAnalyzeResultPanelProvider implements SimpleAnalyzeResultPane
                     att ->
                         att.getAttValues().entrySet().stream()
                             .map(e -> e.getKey() + "=" + e.getValue()))
-                .collect(Collectors.toList());
+                .toList();
         data[i][Column.ATTR.getIndex()] = String.join(",", attValues);
       }
     }

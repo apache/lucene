@@ -151,7 +151,7 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
-  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+  public void readGroupVInt(int[] dst, int offset) throws IOException {
     final int len =
         GroupVIntUtil.readGroupVInt(
             this, buffer.remaining(), p -> buffer.getInt((int) p), buffer.position(), dst, offset);
@@ -166,67 +166,6 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
       return buffer.getLong();
     } else {
       return super.readLong();
-    }
-  }
-
-  @Override
-  public final int readVInt() throws IOException {
-    if (5 <= buffer.remaining()) {
-      byte b = buffer.get();
-      if (b >= 0) return b;
-      int i = b & 0x7F;
-      b = buffer.get();
-      i |= (b & 0x7F) << 7;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7F) << 14;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7F) << 21;
-      if (b >= 0) return i;
-      b = buffer.get();
-      // Warning: the next ands use 0x0F / 0xF0 - beware copy/paste errors:
-      i |= (b & 0x0F) << 28;
-      if ((b & 0xF0) == 0) return i;
-      throw new IOException("Invalid vInt detected (too many bits)");
-    } else {
-      return super.readVInt();
-    }
-  }
-
-  @Override
-  public final long readVLong() throws IOException {
-    if (9 <= buffer.remaining()) {
-      byte b = buffer.get();
-      if (b >= 0) return b;
-      long i = b & 0x7FL;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 7;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 14;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 21;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 28;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 35;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 42;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 49;
-      if (b >= 0) return i;
-      b = buffer.get();
-      i |= (b & 0x7FL) << 56;
-      if (b >= 0) return i;
-      throw new IOException("Invalid vLong detected (negative values disallowed)");
-    } else {
-      return super.readVLong();
     }
   }
 
@@ -320,6 +259,27 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
   }
 
   @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    if (len <= bufferSize) {
+      // the buffer is big enough to satisfy this request
+      if (len > 0) { // to allow b to be null if len is 0...
+        long index = resolvePositionInBuffer(pos, len);
+        buffer.get((int) index, bytes, offset, len);
+      }
+    } else {
+      while (len > bufferSize) {
+        long index = resolvePositionInBuffer(pos, bufferSize);
+        buffer.get((int) index, bytes, offset, bufferSize);
+        len -= bufferSize;
+        offset += bufferSize;
+        pos += bufferSize;
+      }
+      long index = resolvePositionInBuffer(pos, len);
+      buffer.get((int) index, bytes, offset, len);
+    }
+  }
+
+  @Override
   public final short readShort(long pos) throws IOException {
     long index = resolvePositionInBuffer(pos, Short.BYTES);
     return buffer.getShort((int) index);
@@ -409,12 +369,11 @@ public abstract class BufferedIndexInput extends IndexInput implements RandomAcc
 
   /** Returns default buffer sizes for the given {@link IOContext} */
   public static int bufferSize(IOContext context) {
-    switch (context.context) {
+    switch (context.context()) {
       case MERGE:
         return MERGE_BUFFER_SIZE;
       case DEFAULT:
       case FLUSH:
-      case READ:
       default:
         return BUFFER_SIZE;
     }

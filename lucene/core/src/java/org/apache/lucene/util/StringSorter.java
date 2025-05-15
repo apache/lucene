@@ -50,8 +50,7 @@ public abstract class StringSorter extends Sorter {
 
   @Override
   public void sort(int from, int to) {
-    if (cmp instanceof BytesRefComparator) {
-      BytesRefComparator bCmp = (BytesRefComparator) cmp;
+    if (cmp instanceof BytesRefComparator bCmp) {
       radixSorter(bCmp).sort(from, to);
     } else {
       fallbackSorter(cmp).sort(from, to);

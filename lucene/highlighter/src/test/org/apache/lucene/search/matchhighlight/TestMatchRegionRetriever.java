@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
@@ -319,7 +321,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         .build(
             analyzer,
             reader -> {
-              assertThat(
+              MatcherAssert.assertThat(
                   highlights(
                       reader,
                       new IntervalQuery(
@@ -746,7 +748,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     AsciiMatchRangeHighlighter formatter = new AsciiMatchRangeHighlighter(analyzer);
 
     MatchRegionRetriever.MatchOffsetsConsumer highlightCollector =
-        (docId, leafReader, leafDocId, fieldHighlights) -> {
+        (docId, leafReader, leafDocId, fieldValueProvider, fieldHighlights) -> {
           StringBuilder sb = new StringBuilder();
 
           Document document = leafReader.storedFields().document(leafDocId);
@@ -765,9 +767,23 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
           }
         };
 
+    Predicate<String> fieldsToLoadUnconditionally = fieldName -> false;
+    Predicate<String> fieldsToLoadIfWithHits = fieldName -> true;
     MatchRegionRetriever highlighter =
-        new MatchRegionRetriever(searcher, rewrittenQuery, offsetsStrategySupplier);
-    highlighter.highlightDocuments(topDocs, highlightCollector);
+        new MatchRegionRetriever(
+            searcher,
+            rewrittenQuery,
+            offsetsStrategySupplier,
+            fieldsToLoadUnconditionally,
+            fieldsToLoadIfWithHits);
+    int maxBlocksProcessedInParallel = RandomizedTest.randomIntBetween(1, 5);
+    int maxBlockSize = RandomizedTest.randomFrom(new int[] {2, 10, 100});
+    highlighter.highlightDocuments(
+        Arrays.stream(topDocs.scoreDocs).mapToInt(scoreDoc -> scoreDoc.doc).sorted().iterator(),
+        highlightCollector,
+        field -> Integer.MAX_VALUE,
+        maxBlockSize,
+        maxBlocksProcessedInParallel);
 
     return highlights;
   }

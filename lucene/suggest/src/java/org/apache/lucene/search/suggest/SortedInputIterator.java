@@ -194,7 +194,7 @@ public class SortedInputIterator implements InputIterator {
 
     tempSortedFileName = sorter.sort(tempInput.getName());
     return new OfflineSorter.ByteSequencesReader(
-        tempDir.openChecksumInput(tempSortedFileName, IOContext.READONCE), tempSortedFileName);
+        tempDir.openChecksumInput(tempSortedFileName), tempSortedFileName);
   }
 
   private void close() throws IOException {

@@ -36,7 +36,6 @@ import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.tests.geo.GeoTestUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
 /** Simple tests for {@link org.apache.lucene.document.ShapeDocValuesField} */
 public class TestShapeDocValues extends LuceneTestCase {
@@ -57,12 +56,14 @@ public class TestShapeDocValues extends LuceneTestCase {
 
   public void testLatLonPolygonBBox() {
     Polygon p = GeoTestUtil.nextPolygon();
-    Rectangle expected = (Rectangle) computeBoundingBox(p);
-    LatLonShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
-    assertEquals(expected.minLat, dv.getBoundingBox().minLat, TOLERANCE);
-    assertEquals(expected.maxLat, dv.getBoundingBox().maxLat, TOLERANCE);
-    assertEquals(expected.minLon, dv.getBoundingBox().minLon, TOLERANCE);
-    assertEquals(expected.maxLon, dv.getBoundingBox().maxLon, TOLERANCE);
+    if (area(p) != 0) {
+      Rectangle expected = (Rectangle) computeBoundingBox(p);
+      LatLonShapeDocValuesField dv = LatLonShape.createDocValueField(FIELD_NAME, p);
+      assertEquals(expected.minLat, dv.getBoundingBox().minLat, TOLERANCE);
+      assertEquals(expected.maxLat, dv.getBoundingBox().maxLat, TOLERANCE);
+      assertEquals(expected.minLon, dv.getBoundingBox().minLon, TOLERANCE);
+      assertEquals(expected.maxLon, dv.getBoundingBox().maxLon, TOLERANCE);
+    }
   }
 
   public void testXYPolygonBBox() {
@@ -197,7 +198,7 @@ public class TestShapeDocValues extends LuceneTestCase {
     // scratch buffer
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
 
-    for (int i = 0; i < TestUtil.nextInt(random(), 100, 500); ++i) {
+    for (int i = 0; i < random().nextInt(100, 500); ++i) {
       // test variable int sizes
       int testInt = random().nextInt(Integer.MAX_VALUE);
       long pB = out.size();
@@ -206,7 +207,7 @@ public class TestShapeDocValues extends LuceneTestCase {
       assertEquals(ShapeDocValues.vIntSize(testInt), (int) (pA - pB));
 
       // test variable long sizes
-      long testLong = Math.abs(random().nextLong());
+      long testLong = random().nextLong(Long.MAX_VALUE);
       out.writeVLong(testLong);
       assertEquals(ShapeDocValues.vLongSize(testLong), out.size() - pA);
     }
@@ -255,5 +256,10 @@ public class TestShapeDocValues extends LuceneTestCase {
       tess.add(d);
     }
     return tess;
+  }
+
+  /** Compute signed area of rectangle */
+  private static double area(Polygon p) {
+    return (p.maxLon - p.minLon) * (p.maxLat - p.minLat);
   }
 }

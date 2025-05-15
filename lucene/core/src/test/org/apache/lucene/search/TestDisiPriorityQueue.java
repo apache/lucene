@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -30,7 +29,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
   public void testRandom() throws Exception {
     Random r = random();
 
-    int size = RandomNumbers.randomIntBetween(random(), 1, TEST_NIGHTLY ? 1000 : 10);
+    int size = r.nextInt(1, TEST_NIGHTLY ? 1000 : 10);
     DisiWrapper[] all = new DisiWrapper[size];
     for (int i = 0; i < size; i++) {
       DocIdSetIterator it = randomDisi(r);
@@ -45,7 +44,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
       }
     } else {
       if (r.nextInt(10) < 2 && size > 1) {
-        int len = RandomNumbers.randomIntBetween(random(), 1, size);
+        int len = random().nextInt(1, size);
         for (int i = 0; i < len; i++) {
           pq.add(all[i]);
         }
@@ -71,7 +70,7 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
   private static DisiWrapper wrapper(DocIdSetIterator iterator) throws IOException {
     Query q = new DummyQuery(iterator);
     Scorer s = q.createWeight(null, ScoreMode.COMPLETE_NO_SCORES, 1.0f).scorer(null);
-    return new DisiWrapper(s);
+    return new DisiWrapper(s, random().nextBoolean());
   }
 
   private static DocIdSetIterator randomDisi(Random r) {
@@ -125,8 +124,9 @@ public class TestDisiPriorityQueue extends LuceneTestCase {
         throws IOException {
       return new ConstantScoreWeight(this, boost) {
         @Override
-        public Scorer scorer(LeafReaderContext context) {
-          return new ConstantScoreScorer(this, score(), scoreMode, disi);
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          final var scorer = new ConstantScoreScorer(score(), scoreMode, disi);
+          return new DefaultScorerSupplier(scorer);
         }
 
         @Override

@@ -35,7 +35,6 @@ public class SpanGradientFormatter extends GradientFormatter {
 
   @Override
   public String highlightTerm(String originalText, TokenGroup tokenGroup) {
-    if (tokenGroup.getTotalScore() == 0) return originalText;
     float score = tokenGroup.getTotalScore();
     if (score == 0) {
       return originalText;

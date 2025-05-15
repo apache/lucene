@@ -430,10 +430,16 @@ final class DocumentsWriter implements Closeable, Accountable {
       }
       flushingDWPT = flushControl.doAfterDocument(dwpt);
     } finally {
-      if (dwpt.isFlushPending() || dwpt.isAborted()) {
-        dwpt.unlock();
-      } else {
-        perThreadPool.marksAsFreeAndUnlock(dwpt);
+      // If a flush is occurring, we don't want to allow this dwpt to be reused
+      // If it is aborted, we shouldn't allow it to be reused
+      // If the deleteQueue is advanced, this means the maximum seqNo has been set and it cannot be
+      // reused
+      synchronized (flushControl) {
+        if (dwpt.isFlushPending() || dwpt.isAborted() || dwpt.isQueueAdvanced()) {
+          dwpt.unlock();
+        } else {
+          perThreadPool.marksAsFreeAndUnlock(dwpt);
+        }
       }
       assert dwpt.isHeldByCurrentThread() == false : "we didn't release the dwpt even on abort";
     }

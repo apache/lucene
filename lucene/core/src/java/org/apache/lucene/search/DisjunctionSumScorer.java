@@ -28,12 +28,10 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
   /**
    * Construct a <code>DisjunctionScorer</code>.
    *
-   * @param weight The weight to be used.
    * @param subScorers Array of at least two subscorers.
    */
-  DisjunctionSumScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode)
-      throws IOException {
-    super(weight, subScorers, scoreMode);
+  DisjunctionSumScorer(List<Scorer> subScorers, ScoreMode scoreMode) throws IOException {
+    super(subScorers, scoreMode);
     this.scorers = subScorers;
   }
 
@@ -42,7 +40,7 @@ final class DisjunctionSumScorer extends DisjunctionScorer {
     double score = 0;
 
     for (DisiWrapper w = topList; w != null; w = w.next) {
-      score += w.scorer.score();
+      score += w.scorable.score();
     }
     return (float) score;
   }

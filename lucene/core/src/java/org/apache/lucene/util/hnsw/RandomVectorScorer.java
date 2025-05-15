@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.util.Bits;
 
 /** A {@link RandomVectorScorer} for scoring random nodes in batches against an abstract query. */
@@ -57,14 +58,14 @@ public interface RandomVectorScorer {
 
   /** Creates a default scorer for random access vectors. */
   abstract class AbstractRandomVectorScorer implements RandomVectorScorer {
-    private final RandomAccessVectorValues values;
+    private final KnnVectorValues values;
 
     /**
      * Creates a new scorer for the given vector values.
      *
      * @param values the vector values
      */
-    public AbstractRandomVectorScorer(RandomAccessVectorValues values) {
+    public AbstractRandomVectorScorer(KnnVectorValues values) {
       this.values = values;
     }
 

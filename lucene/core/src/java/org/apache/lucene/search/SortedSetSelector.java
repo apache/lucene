@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.index.SortedSetDocValues.NO_MORE_ORDS;
-
 import java.io.IOException;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.SortedDocValues;
@@ -155,8 +153,6 @@ public class SortedSetSelector {
     private void setOrd() throws IOException {
       if (docID() != NO_MORE_DOCS) {
         ord = (int) in.nextOrd();
-      } else {
-        ord = (int) NO_MORE_ORDS;
       }
     }
   }
@@ -230,8 +226,6 @@ public class SortedSetSelector {
           in.nextOrd();
         }
         ord = (int) in.nextOrd();
-      } else {
-        ord = (int) NO_MORE_ORDS;
       }
     }
   }
@@ -306,8 +300,6 @@ public class SortedSetSelector {
           in.nextOrd();
         }
         ord = (int) in.nextOrd();
-      } else {
-        ord = (int) NO_MORE_ORDS;
       }
     }
   }
@@ -382,8 +374,6 @@ public class SortedSetSelector {
           in.nextOrd();
         }
         ord = (int) in.nextOrd();
-      } else {
-        ord = (int) NO_MORE_ORDS;
       }
     }
   }

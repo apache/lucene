@@ -352,11 +352,12 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         new FieldInfo(
             proto.name,
             proto.number,
-            proto.hasVectors(),
+            proto.hasTermVectors(),
             proto.omitsNorms(),
             proto.hasPayloads(),
             proto.getIndexOptions(),
             proto.getDocValuesType(),
+            proto.docValuesSkipIndexType(),
             proto.getDocValuesGen(),
             new HashMap<>(),
             proto.getPointDimensionCount(),
@@ -374,7 +375,8 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         new SegmentWriteState(
             null, dir, segmentInfo, fieldInfos, null, new IOContext(new FlushInfo(1, 20)));
 
-    SegmentReadState readState = new SegmentReadState(dir, segmentInfo, fieldInfos, IOContext.READ);
+    SegmentReadState readState =
+        new SegmentReadState(dir, segmentInfo, fieldInfos, IOContext.DEFAULT);
 
     // PostingsFormat
     NormsProducer fakeNorms =
@@ -869,8 +871,8 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     }
 
     @Override
-    public ChecksumIndexInput openChecksumInput(String name, IOContext context) throws IOException {
-      ChecksumIndexInput in = super.openChecksumInput(name, context);
+    public ChecksumIndexInput openChecksumInput(String name) throws IOException {
+      ChecksumIndexInput in = super.openChecksumInput(name);
       final FixedBitSet set =
           readBytes.computeIfAbsent(name, n -> new FixedBitSet(Math.toIntExact(in.length())));
       if (set.length() != in.length()) {

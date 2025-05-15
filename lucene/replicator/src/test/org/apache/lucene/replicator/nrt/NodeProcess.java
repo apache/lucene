@@ -19,6 +19,7 @@ package org.apache.lucene.replicator.nrt;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.document.Document;
@@ -48,6 +49,8 @@ class NodeProcess implements Closeable {
   // SegmentInfos.version, which can be higher than the initCommitVersion
   final long initInfosVersion;
 
+  private final Optional<Thread> subprocessKiller;
+
   volatile boolean isOpen = true;
 
   final AtomicBoolean nodeIsClosing;
@@ -60,7 +63,8 @@ class NodeProcess implements Closeable {
       boolean isPrimary,
       long initCommitVersion,
       long initInfosVersion,
-      AtomicBoolean nodeIsClosing) {
+      AtomicBoolean nodeIsClosing,
+      Optional<Thread> subprocessKiller) {
     this.p = p;
     this.id = id;
     this.tcpPort = tcpPort;
@@ -69,6 +73,7 @@ class NodeProcess implements Closeable {
     this.initCommitVersion = initCommitVersion;
     this.initInfosVersion = initInfosVersion;
     this.nodeIsClosing = nodeIsClosing;
+    this.subprocessKiller = subprocessKiller;
     assert initInfosVersion >= initCommitVersion
         : "initInfosVersion=" + initInfosVersion + " initCommitVersion=" + initCommitVersion;
     lock = new ReentrantLock();
@@ -165,6 +170,11 @@ class NodeProcess implements Closeable {
           t.printStackTrace(System.out);
         }
         try {
+          if (subprocessKiller.isPresent()) {
+            var t = subprocessKiller.get();
+            t.interrupt();
+            t.join();
+          }
           p.waitFor();
           pumper.join();
         } catch (InterruptedException ie) {

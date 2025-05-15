@@ -68,7 +68,7 @@ public abstract class HnswGraph {
   /** Returns the number of nodes in the graph */
   public abstract int size();
 
-  /** Returns max node id, inclusive, normally this value will be size - 1 */
+  /** Returns max node id, inclusive. Normally this value will be size - 1. */
   public int maxNodeId() {
     return size() - 1;
   }
@@ -88,7 +88,8 @@ public abstract class HnswGraph {
   public abstract int entryNode() throws IOException;
 
   /**
-   * Get all nodes on a given level as node 0th ordinals
+   * Get all nodes on a given level as node 0th ordinals. The nodes are NOT guaranteed to be
+   * presented in any particular order.
    *
    * @param level level for which to get all nodes
    * @return an iterator over nodes where {@code nextInt} returns a next node on the level
@@ -129,8 +130,9 @@ public abstract class HnswGraph {
       };
 
   /**
-   * Iterator over the graph nodes on a certain level, Iterator also provides the size – the total
-   * number of nodes to be iterated over.
+   * Iterator over the graph nodes on a certain level. Iterator also provides the size – the total
+   * number of nodes to be iterated over. The nodes are NOT guaranteed to be presented in any
+   * particular order.
    */
   public abstract static class NodesIterator implements PrimitiveIterator.OfInt {
     protected final int size;

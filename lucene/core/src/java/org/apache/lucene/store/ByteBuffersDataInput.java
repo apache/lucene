@@ -83,16 +83,6 @@ public final class ByteBuffersDataInput extends DataInput
     this.pos = offset;
   }
 
-  /**
-   * Returns the total number of bytes in this stream.
-   *
-   * @deprecated Use {@link #length()} instead.
-   */
-  @Deprecated
-  public long size() {
-    return length();
-  }
-
   @Override
   public long ramBytesUsed() {
     // Return a rough estimation for allocated blocks. Note that we do not make
@@ -214,7 +204,7 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   @Override
-  protected void readGroupVInt(long[] dst, int offset) throws IOException {
+  public void readGroupVInt(int[] dst, int offset) throws IOException {
     final ByteBuffer block = blocks[blockIndex(pos)];
     final int blockOffset = blockOffset(pos);
     // We MUST save the return value to local variable, could not use pos += readGroupVInt(...).
@@ -241,6 +231,34 @@ public final class ByteBuffersDataInput extends DataInput
   public byte readByte(long pos) {
     pos += offset;
     return blocks[blockIndex(pos)].get(blockOffset(pos));
+  }
+
+  @Override
+  public void readBytes(long pos, byte[] bytes, int offset, int len) throws IOException {
+    long absPos = this.offset + pos;
+    try {
+      while (len > 0) {
+        ByteBuffer block = blocks[blockIndex(absPos)];
+        int blockPosition = blockOffset(absPos);
+        int chunk = Math.min(len, block.capacity() - blockPosition);
+        if (chunk == 0) {
+          throw new EOFException();
+        }
+
+        // Update pos early on for EOF detection, then try to get buffer content.
+        block.get(blockPosition, bytes, offset, chunk);
+
+        absPos += chunk;
+        len -= chunk;
+        offset += chunk;
+      }
+    } catch (BufferUnderflowException | ArrayIndexOutOfBoundsException e) {
+      if (absPos >= length()) {
+        throw new EOFException();
+      } else {
+        throw e; // Something is wrong.
+      }
+    }
   }
 
   @Override

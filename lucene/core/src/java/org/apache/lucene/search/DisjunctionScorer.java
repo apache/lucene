@@ -31,15 +31,13 @@ abstract class DisjunctionScorer extends Scorer {
   private final DocIdSetIterator approximation;
   private final TwoPhase twoPhase;
 
-  protected DisjunctionScorer(Weight weight, List<Scorer> subScorers, ScoreMode scoreMode)
-      throws IOException {
-    super(weight);
+  protected DisjunctionScorer(List<Scorer> subScorers, ScoreMode scoreMode) throws IOException {
     if (subScorers.size() <= 1) {
       throw new IllegalArgumentException("There must be at least 2 subScorers");
     }
     this.subScorers = new DisiPriorityQueue(subScorers.size());
     for (Scorer scorer : subScorers) {
-      final DisiWrapper w = new DisiWrapper(scorer);
+      final DisiWrapper w = new DisiWrapper(scorer, false);
       this.subScorers.add(w);
     }
     this.needsScores = scoreMode != ScoreMode.COMPLETE_NO_SCORES;

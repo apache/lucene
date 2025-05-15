@@ -30,15 +30,13 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
-import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
  * Read the quantized vector values and their score correction values from the index input. This
  * supports both iterated and random access.
  */
-public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues
-    implements RandomAccessQuantizedByteVectorValues {
+public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVectorValues {
 
   protected final int dimension;
   protected final int size;
@@ -142,11 +140,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
   }
 
   @Override
-  public float getScoreCorrectionConstant() {
-    return scoreCorrectionConstant[0];
-  }
-
-  @Override
   public float getScoreCorrectionConstant(int targetOrd) throws IOException {
     if (lastOrd == targetOrd) {
       return scoreCorrectionConstant[0];
@@ -213,8 +206,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
    */
   public static class DenseOffHeapVectorValues extends OffHeapQuantizedByteVectorValues {
 
-    private int doc = -1;
-
     public DenseOffHeapVectorValues(
         int dimension,
         int size,
@@ -224,30 +215,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
         FlatVectorsScorer vectorsScorer,
         IndexInput slice) {
       super(dimension, size, scalarQuantizer, similarityFunction, vectorsScorer, compress, slice);
-    }
-
-    @Override
-    public byte[] vectorValue() throws IOException {
-      return vectorValue(doc);
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      if (target >= size) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
     }
 
     @Override
@@ -270,19 +237,25 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
       DenseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer vectorScorer =
           vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorScorer.score(copy.doc);
+          return vectorScorer.score(iterator.index());
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy;
+          return iterator;
         }
       };
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
   }
 
@@ -312,24 +285,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public byte[] vectorValue() throws IOException {
-      return vectorValue(disi.index());
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      return disi.advance(target);
+    public DocIndexIterator iterator() {
+      return IndexedDISI.asDocIndexIterator(disi);
     }
 
     @Override
@@ -372,17 +329,18 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
       SparseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer vectorScorer =
           vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return vectorScorer.score(copy.disi.index());
+          return vectorScorer.score(iterator.index());
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return copy;
+          return iterator;
         }
       };
     }
@@ -404,8 +362,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
           null);
     }
 
-    private int doc = -1;
-
     @Override
     public int dimension() {
       return super.dimension();
@@ -417,23 +373,8 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
     }
 
     @Override
-    public byte[] vectorValue() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) {
-      return doc = NO_MORE_DOCS;
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
 
     @Override

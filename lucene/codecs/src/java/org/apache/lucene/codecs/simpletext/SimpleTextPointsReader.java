@@ -70,8 +70,7 @@ class SimpleTextPointsReader extends PointsReader {
             readState.segmentInfo.name,
             readState.segmentSuffix,
             SimpleTextPointsFormat.POINT_INDEX_EXTENSION);
-    try (ChecksumIndexInput in =
-        readState.directory.openChecksumInput(indexFileName, IOContext.DEFAULT)) {
+    try (ChecksumIndexInput in = readState.directory.openChecksumInput(indexFileName)) {
       readLine(in);
       int count = parseInt(FIELD_COUNT);
       for (int i = 0; i < count; i++) {
@@ -228,7 +227,7 @@ class SimpleTextPointsReader extends PointsReader {
 
     // checksum is fixed-width encoded with 20 bytes, plus 1 byte for newline (the space is included
     // in SimpleTextUtil.CHECKSUM):
-    long footerStartPos = dataIn.length() - (SimpleTextUtil.CHECKSUM.length + 21);
+    long footerStartPos = clone.length() - (SimpleTextUtil.CHECKSUM.length + 21);
     ChecksumIndexInput input = new BufferedChecksumIndexInput(clone);
     while (true) {
       SimpleTextUtil.readLine(input, scratch);

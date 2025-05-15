@@ -26,12 +26,10 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-abstract class OffHeapFloatVectorValues extends FloatVectorValues
-    implements RandomAccessVectorValues.Floats {
+abstract class OffHeapFloatVectorValues extends FloatVectorValues {
 
   protected final int dimension;
   protected final int size;
@@ -78,28 +76,31 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
 
   static OffHeapFloatVectorValues load(
       Lucene94HnswVectorsReader.FieldEntry fieldEntry, IndexInput vectorData) throws IOException {
-    if (fieldEntry.docsWithFieldOffset == -2) {
-      return new EmptyOffHeapVectorValues(fieldEntry.dimension);
+    if (fieldEntry.docsWithFieldOffset() == -2) {
+      return new EmptyOffHeapVectorValues(fieldEntry.dimension());
     }
     IndexInput bytesSlice =
-        vectorData.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
-    int byteSize = fieldEntry.dimension * fieldEntry.vectorEncoding.byteSize;
-    if (fieldEntry.docsWithFieldOffset == -1) {
+        vectorData.slice(
+            "vector-data", fieldEntry.vectorDataOffset(), fieldEntry.vectorDataLength());
+    int byteSize =
+        switch (fieldEntry.vectorEncoding()) {
+          case BYTE -> fieldEntry.dimension();
+          case FLOAT32 -> fieldEntry.dimension() * Float.BYTES;
+        };
+    if (fieldEntry.docsWithFieldOffset() == -1) {
       return new DenseOffHeapVectorValues(
-          fieldEntry.dimension,
-          fieldEntry.size,
+          fieldEntry.dimension(),
+          fieldEntry.size(),
           bytesSlice,
-          fieldEntry.similarityFunction,
+          fieldEntry.similarityFunction(),
           byteSize);
     } else {
       return new SparseOffHeapVectorValues(
-          fieldEntry, vectorData, bytesSlice, fieldEntry.similarityFunction, byteSize);
+          fieldEntry, vectorData, bytesSlice, fieldEntry.similarityFunction(), byteSize);
     }
   }
 
   static class DenseOffHeapVectorValues extends OffHeapFloatVectorValues {
-
-    private int doc = -1;
 
     public DenseOffHeapVectorValues(
         int dimension,
@@ -111,33 +112,14 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public float[] vectorValue() throws IOException {
-      return vectorValue(doc);
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      if (target >= size) {
-        return doc = NO_MORE_DOCS;
-      }
-      return doc = target;
-    }
-
-    @Override
     public DenseOffHeapVectorValues copy() throws IOException {
       return new DenseOffHeapVectorValues(
           dimension, size, slice.clone(), vectorSimilarityFunction, byteSize);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
 
     @Override
@@ -148,15 +130,18 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       DenseOffHeapVectorValues values = this.copy();
+      DocIndexIterator iterator = values.iterator();
+
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.vectorSimilarityFunction.compare(values.vectorValue(), query);
+          return values.vectorSimilarityFunction.compare(
+              values.vectorValue(iterator.index()), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return values;
+          return iterator;
         }
       };
     }
@@ -176,47 +161,32 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
         VectorSimilarityFunction vectorSimilarityFunction,
         int byteSize)
         throws IOException {
-      super(fieldEntry.dimension, fieldEntry.size, slice, vectorSimilarityFunction, byteSize);
+
+      super(fieldEntry.dimension(), fieldEntry.size(), slice, vectorSimilarityFunction, byteSize);
       this.fieldEntry = fieldEntry;
       final RandomAccessInput addressesData =
-          dataIn.randomAccessSlice(fieldEntry.addressesOffset, fieldEntry.addressesLength);
+          dataIn.randomAccessSlice(fieldEntry.addressesOffset(), fieldEntry.addressesLength());
       this.dataIn = dataIn;
-      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta, addressesData);
+      this.ordToDoc = DirectMonotonicReader.getInstance(fieldEntry.meta(), addressesData);
       this.disi =
           new IndexedDISI(
               dataIn,
-              fieldEntry.docsWithFieldOffset,
-              fieldEntry.docsWithFieldLength,
-              fieldEntry.jumpTableEntryCount,
-              fieldEntry.denseRankPower,
-              fieldEntry.size);
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      return vectorValue(disi.index());
-    }
-
-    @Override
-    public int docID() {
-      return disi.docID();
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return disi.nextDoc();
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      assert docID() < target;
-      return disi.advance(target);
+              fieldEntry.docsWithFieldOffset(),
+              fieldEntry.docsWithFieldLength(),
+              fieldEntry.jumpTableEntryCount(),
+              fieldEntry.denseRankPower(),
+              fieldEntry.size());
     }
 
     @Override
     public SparseOffHeapVectorValues copy() throws IOException {
       return new SparseOffHeapVectorValues(
           fieldEntry, dataIn, slice.clone(), vectorSimilarityFunction, byteSize);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return IndexedDISI.asDocIndexIterator(disi);
     }
 
     @Override
@@ -245,15 +215,17 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public VectorScorer scorer(float[] query) throws IOException {
       SparseOffHeapVectorValues values = this.copy();
+      DocIndexIterator iterator = values.iterator();
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return values.vectorSimilarityFunction.compare(values.vectorValue(), query);
+          return values.vectorSimilarityFunction.compare(
+              values.vectorValue(iterator.index()), query);
         }
 
         @Override
         public DocIdSetIterator iterator() {
-          return values;
+          return iterator;
         }
       };
     }
@@ -265,8 +237,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
       super(dimension, 0, null, VectorSimilarityFunction.COSINE, 0);
     }
 
-    private int doc = -1;
-
     @Override
     public int dimension() {
       return super.dimension();
@@ -275,26 +245,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public int size() {
       return 0;
-    }
-
-    @Override
-    public float[] vectorValue() throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int docID() {
-      return doc;
-    }
-
-    @Override
-    public int nextDoc() throws IOException {
-      return advance(doc + 1);
-    }
-
-    @Override
-    public int advance(int target) throws IOException {
-      return doc = NO_MORE_DOCS;
     }
 
     @Override
@@ -310,6 +260,11 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues
     @Override
     public int ordToDoc(int ord) {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
     }
 
     @Override

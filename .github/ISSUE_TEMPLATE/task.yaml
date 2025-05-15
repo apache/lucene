@@ -1,0 +1,10 @@
+name: Task
+description: File a general task
+labels: ["type:task"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true

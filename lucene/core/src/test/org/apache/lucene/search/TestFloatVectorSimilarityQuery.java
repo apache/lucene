@@ -33,7 +33,7 @@ public class TestFloatVectorSimilarityQuery
     idField = getClass().getSimpleName() + ":IdField";
     function = VectorSimilarityFunction.EUCLIDEAN;
     numDocs = atLeast(100);
-    dim = atLeast(50);
+    dim = atLeast(5);
   }
 
   @Override

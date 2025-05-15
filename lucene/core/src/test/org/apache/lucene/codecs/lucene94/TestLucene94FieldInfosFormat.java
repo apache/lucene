@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene94;
 
 import java.util.Arrays;
-import java.util.stream.Collectors;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.index.BaseFieldInfoFormatTestCase;
@@ -34,8 +33,7 @@ public class TestLucene94FieldInfosFormat extends BaseFieldInfoFormatTestCase {
   public void testVectorSimilarityFuncs() {
     // This does not necessarily have to be all similarity functions, but
     // differences should be considered carefully.
-    var expectedValues =
-        Arrays.stream(VectorSimilarityFunction.values()).collect(Collectors.toList());
+    var expectedValues = Arrays.stream(VectorSimilarityFunction.values()).toList();
 
     assertEquals(Lucene94FieldInfosFormat.SIMILARITY_FUNCTIONS, expectedValues);
   }

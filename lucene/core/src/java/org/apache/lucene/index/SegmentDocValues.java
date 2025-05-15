@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.util.stream.Collectors;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.internal.hppc.LongArrayList;
@@ -47,7 +46,7 @@ final class SegmentDocValues {
 
     // set SegmentReadState to list only the fields that are relevant to that gen
     SegmentReadState srs =
-        new SegmentReadState(dvDir, si.info, infos, IOContext.READ, segmentSuffix);
+        new SegmentReadState(dvDir, si.info, infos, IOContext.DEFAULT, segmentSuffix);
     DocValuesFormat dvFormat = si.info.getCodec().docValuesFormat();
     return new RefCount<DocValuesProducer>(dvFormat.fieldsProducer(srs)) {
       @SuppressWarnings("synthetic-access")
@@ -78,7 +77,7 @@ final class SegmentDocValues {
   /** Decrement the reference count of the given {@link DocValuesProducer} generations. */
   synchronized void decRef(LongArrayList dvProducersGens) throws IOException {
     IOUtils.applyToAll(
-        dvProducersGens.stream().mapToObj(Long::valueOf).collect(Collectors.toList()),
+        dvProducersGens.stream().mapToObj(Long::valueOf).toList(),
         gen -> {
           RefCount<DocValuesProducer> dvp = genDVProducers.get(gen);
           assert dvp != null : "gen=" + gen;

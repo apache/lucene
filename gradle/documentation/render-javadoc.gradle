@@ -1,7 +1,5 @@
 import org.gradle.internal.jvm.Jvm
 
-import javax.annotation.Nullable
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -34,7 +32,7 @@ allprojects {
       missingdoclet "org.apache.lucene.tools:missing-doclet"
     }
 
-    ext {
+    project.ext {
       relativeDocPath = project.path.replaceFirst(/:\w+:/, "").replace(':', '/')
     }
 
@@ -92,14 +90,14 @@ allprojects {
 // Set up titles and link up some offline docs for all documentation
 // (they may be unused but this doesn't do any harm).
 
-def javaJavadocPackages = rootProject.file("${resources}/java11/")
+def javaJavadocPackages = rootProject.file("${resources}/java21/")
 def junitJavadocPackages = rootProject.file("${resources}/junit/")
 allprojects {
   project.tasks.withType(RenderJavadocTask) {
     title = "Lucene ${project.version} ${project.name} API"
 
     offlineLinks += [
-        "https://docs.oracle.com/en/java/javase/11/docs/api/": javaJavadocPackages,
+        "https://docs.oracle.com/en/java/javase/21/docs/api/": javaJavadocPackages,
         "https://junit.org/junit4/javadoc/4.12/": junitJavadocPackages
     ]
 
@@ -240,8 +238,26 @@ configure(subprojects) {
   }
 }
 
+class OfflineLink implements Serializable {
+  @Input
+  String url
+
+  @InputDirectory
+  @PathSensitive(PathSensitivity.RELATIVE)
+  @IgnoreEmptyDirectories
+  File location
+
+  OfflineLink(String url, File location) {
+    this.url = url
+    this.location = location
+  }
+}
+
+@CacheableTask
 class RenderJavadocTask extends DefaultTask {
   @InputFiles
+  @PathSensitive(PathSensitivity.RELATIVE)
+  @IgnoreEmptyDirectories
   @SkipWhenEmpty
   SourceDirectorySet srcDirSet;
   
@@ -269,8 +285,14 @@ class RenderJavadocTask extends DefaultTask {
   @Input
   JavaVersion releaseVersion
 
-  @Input
+  @Internal
   Map<String, File> offlineLinks = [:]
+
+  // Computes cacheable inputs from the map in offlineLinks.
+  @Nested
+  List<OfflineLink> getCacheableOfflineLinks() {
+    return offlineLinks.collect { url, location -> new OfflineLink(url, location) }
+  }
 
   @Input
   @Optional
@@ -297,8 +319,10 @@ class RenderJavadocTask extends DefaultTask {
   final Property<String> executable = project.objects.property(String).convention(
       project.provider { Jvm.current().javadocExecutable.toString() })
 
-  @Input
-  def taskResources
+  @InputDirectory
+  @PathSensitive(PathSensitivity.RELATIVE)
+  @IgnoreEmptyDirectories
+  File taskResources
 
   /** Utility method to recursively collect all tasks with same name like this one that we depend on */
   private Set findRenderTasksInDependencies() {

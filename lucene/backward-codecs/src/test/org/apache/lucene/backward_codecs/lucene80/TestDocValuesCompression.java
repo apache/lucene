@@ -38,10 +38,12 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CollectionUtil;
 
+@Nightly // N-2 formats are only tested on nightly runs
 public class TestDocValuesCompression extends LuceneTestCase {
   private final Codec bestSpeed =
       TestUtil.alwaysDocValuesFormat(

@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /** An object representing *.dic file entry with its word, flags and morphological data. */
 public abstract class DictEntry {
@@ -47,8 +46,7 @@ public abstract class DictEntry {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof DictEntry)) return false;
-    DictEntry that = (DictEntry) o;
+    if (!(o instanceof DictEntry that)) return false;
     return stem.equals(that.stem)
         && getMorphologicalData().equals(that.getMorphologicalData())
         && getFlags().equals(that.getFlags());
@@ -94,7 +92,7 @@ public abstract class DictEntry {
     return Arrays.stream(data.split(" "))
         .filter(s -> s.startsWith(key))
         .map(s -> s.substring(3))
-        .collect(Collectors.toList());
+        .toList();
   }
 
   static DictEntry create(String stem, String flags) {

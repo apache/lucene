@@ -139,38 +139,19 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
   final PostingsWriterBase postingsWriter;
   final FieldInfos fieldInfos;
 
-  private static class FieldMetaData {
-    public final FieldInfo fieldInfo;
-    public final Output rootCode;
-    public final long numTerms;
-    public final long indexStartFP;
-    public final long sumTotalTermFreq;
-    public final long sumDocFreq;
-    public final int docCount;
-    public final BytesRef minTerm;
-    public final BytesRef maxTerm;
-
-    public FieldMetaData(
-        FieldInfo fieldInfo,
-        Output rootCode,
-        long numTerms,
-        long indexStartFP,
-        long sumTotalTermFreq,
-        long sumDocFreq,
-        int docCount,
-        BytesRef minTerm,
-        BytesRef maxTerm) {
+  private record FieldMetaData(
+      FieldInfo fieldInfo,
+      Output rootCode,
+      long numTerms,
+      long indexStartFP,
+      long sumTotalTermFreq,
+      long sumDocFreq,
+      int docCount,
+      BytesRef minTerm,
+      BytesRef maxTerm) {
+    private FieldMetaData {
       assert numTerms > 0;
-      this.fieldInfo = fieldInfo;
       assert rootCode != null : "field=" + fieldInfo.name + " numTerms=" + numTerms;
-      this.rootCode = rootCode;
-      this.indexStartFP = indexStartFP;
-      this.numTerms = numTerms;
-      this.sumTotalTermFreq = sumTotalTermFreq;
-      this.sumDocFreq = sumDocFreq;
-      this.docCount = docCount;
-      this.minTerm = minTerm;
-      this.maxTerm = maxTerm;
     }
   }
 
@@ -293,15 +274,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
     }
   }
 
-  private static final class SubIndex {
-    public final FST<Output> index;
-    public final long termOrdStart;
-
-    public SubIndex(FST<Output> index, long termOrdStart) {
-      this.index = index;
-      this.termOrdStart = termOrdStart;
-    }
-  }
+  private record SubIndex(FST<Output> index, long termOrdStart) {}
 
   private static final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
@@ -438,7 +411,7 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
         // long blockTermCount = output.endOrd - output.startOrd + 1;
         Output newOutput =
             FST_OUTPUTS.newOutput(
-                output.bytes, termOrdOffset + output.startOrd, output.endOrd - termOrdOffset);
+                output.bytes(), termOrdOffset + output.startOrd(), output.endOrd() - termOrdOffset);
         // System.out.println("  append sub=" + indexEnt.input + " output=" + indexEnt.output +
         // " termOrdOffset=" + termOrdOffset + " blockTermCount=" + blockTermCount  + " newOutput="
         // + newOutput  + " endOrd=" + (termOrdOffset+Long.MAX_VALUE-output.endOrd));
@@ -969,9 +942,11 @@ public final class OrdsBlockTreeTermsWriter extends FieldsConsumer {
         out.writeVInt(field.fieldInfo.number);
         assert field.numTerms > 0;
         out.writeVLong(field.numTerms);
-        out.writeVInt(field.rootCode.bytes.length);
+        out.writeVInt(field.rootCode.bytes().length);
         out.writeBytes(
-            field.rootCode.bytes.bytes, field.rootCode.bytes.offset, field.rootCode.bytes.length);
+            field.rootCode.bytes().bytes,
+            field.rootCode.bytes().offset,
+            field.rootCode.bytes().length);
         if (field.fieldInfo.getIndexOptions() != IndexOptions.DOCS) {
           out.writeVLong(field.sumTotalTermFreq);
         }

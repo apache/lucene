@@ -60,6 +60,7 @@ module org.apache.lucene.analysis.common {
   exports org.apache.lucene.analysis.lv;
   exports org.apache.lucene.analysis.minhash;
   exports org.apache.lucene.analysis.miscellaneous;
+  exports org.apache.lucene.analysis.morph;
   exports org.apache.lucene.analysis.ne;
   exports org.apache.lucene.analysis.ngram;
   exports org.apache.lucene.analysis.nl;
@@ -113,8 +114,6 @@ module org.apache.lucene.analysis.common {
   opens org.apache.lucene.analysis.eu to
       org.apache.lucene.core;
   opens org.apache.lucene.analysis.fa to
-      org.apache.lucene.core;
-  opens org.apache.lucene.analysis.ga to
       org.apache.lucene.core;
   opens org.apache.lucene.analysis.gl to
       org.apache.lucene.core;
@@ -248,6 +247,7 @@ module org.apache.lucene.analysis.common {
       org.apache.lucene.analysis.pt.PortugueseMinimalStemFilterFactory,
       org.apache.lucene.analysis.pt.PortugueseStemFilterFactory,
       org.apache.lucene.analysis.reverse.ReverseStringFilterFactory,
+      org.apache.lucene.analysis.ro.RomanianNormalizationFilterFactory,
       org.apache.lucene.analysis.ru.RussianLightStemFilterFactory,
       org.apache.lucene.analysis.shingle.ShingleFilterFactory,
       org.apache.lucene.analysis.shingle.FixedShingleFilterFactory,

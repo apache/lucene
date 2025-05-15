@@ -44,6 +44,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 
 @SuppressCodecs({"SimpleText", "Direct"})
@@ -282,7 +283,7 @@ public class TestTermsEnum extends LuceneTestCase {
         a = Automata.makeStringUnion(sortedAcceptTerms);
       }
 
-      final CompiledAutomaton c = new CompiledAutomaton(a, true, false, 1000000, false);
+      final CompiledAutomaton c = new CompiledAutomaton(a, true, false, false);
 
       final BytesRef[] acceptTermsArray = new BytesRef[acceptTerms.size()];
       final Set<BytesRef> acceptTermsSet = new HashSet<>();
@@ -624,15 +625,7 @@ public class TestTermsEnum extends LuceneTestCase {
     }
   }
 
-  private static class TermAndState {
-    public final BytesRef term;
-    public final TermState state;
-
-    public TermAndState(BytesRef term, TermState state) {
-      this.term = term;
-      this.state = state;
-    }
-  }
+  private record TermAndState(BytesRef term, TermState state) {}
 
   private void testRandomSeeks(IndexReader r, String... validTermStrings) throws IOException {
     final BytesRef[] validTerms = new BytesRef[validTermStrings.length];
@@ -829,6 +822,7 @@ public class TestTermsEnum extends LuceneTestCase {
     Terms terms = sub.terms("field");
 
     Automaton automaton = new RegExp(".*d", RegExp.NONE).toAutomaton();
+    automaton = Operations.determinize(automaton, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
     CompiledAutomaton ca = new CompiledAutomaton(automaton, false, false);
     TermsEnum te;
 

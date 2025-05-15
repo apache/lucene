@@ -88,7 +88,7 @@ public class Lucene90RWSegmentInfoFormat extends SegmentInfoFormat {
   public SegmentInfo read(Directory dir, String segment, byte[] segmentID, IOContext context)
       throws IOException {
     final String fileName = IndexFileNames.segmentFileName(segment, "", SI_EXTENSION);
-    try (ChecksumIndexInput input = dir.openChecksumInput(fileName, context)) {
+    try (ChecksumIndexInput input = dir.openChecksumInput(fileName)) {
       Throwable priorE = null;
       SegmentInfo si = null;
       try {

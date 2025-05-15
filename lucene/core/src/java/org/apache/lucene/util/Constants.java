@@ -18,7 +18,10 @@ package org.apache.lucene.util;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.logging.Logger;
+import org.apache.lucene.store.ReadAdvice;
 
 /** Some useful constants. */
 public final class Constants {
@@ -31,30 +34,6 @@ public final class Constants {
 
   /** JVM vendor name. */
   public static final String JVM_NAME = getSysProp("java.vm.name", UNKNOWN);
-
-  /**
-   * Get the full version string of the current runtime.
-   *
-   * @deprecated To detect Java versions use {@link Runtime#version()}
-   */
-  @Deprecated public static final String JVM_VERSION = Runtime.version().toString();
-
-  /**
-   * Gets the specification version of the current runtime. This is the feature version converted to
-   * String.
-   *
-   * @see java.lang.Runtime.Version#feature()
-   * @deprecated To detect Java versions use {@link Runtime#version()}
-   */
-  @Deprecated
-  public static final String JVM_SPEC_VERSION = Integer.toString(Runtime.version().feature());
-
-  /**
-   * The value of <code>System.getProperty("java.version")</code>.
-   *
-   * @deprecated To detect Java versions use {@link Runtime#version()}
-   */
-  @Deprecated public static final String JAVA_VERSION = System.getProperty("java.version");
 
   /** The value of <code>System.getProperty("os.name")</code>. * */
   public static final String OS_NAME = getSysProp("os.name", UNKNOWN);
@@ -176,6 +155,16 @@ public final class Constants {
     return false;
   }
 
+  /**
+   * The default {@link ReadAdvice} used for opening index files. It will be {@link
+   * ReadAdvice#RANDOM} by default, unless set by system property {@code
+   * org.apache.lucene.store.defaultReadAdvice}.
+   */
+  public static final ReadAdvice DEFAULT_READADVICE =
+      Optional.ofNullable(getSysProp("org.apache.lucene.store.defaultReadAdvice"))
+          .map(a -> ReadAdvice.valueOf(a.toUpperCase(Locale.ROOT)))
+          .orElse(ReadAdvice.RANDOM);
+
   private static String getSysProp(String property) {
     try {
       return doPrivileged(() -> System.getProperty(property));
@@ -209,28 +198,4 @@ public final class Constants {
   private static <T> T doPrivileged(PrivilegedAction<T> action) {
     return AccessController.doPrivileged(action);
   }
-
-  /**
-   * Always true.
-   *
-   * @deprecated This constant is useless and always {@code true}. To detect Java versions use
-   *     {@link Runtime#version()}
-   */
-  @Deprecated public static final boolean JRE_IS_MINIMUM_JAVA8 = true;
-
-  /**
-   * Always true.
-   *
-   * @deprecated This constant is useless and always {@code true}. To detect Java versions use
-   *     {@link Runtime#version()}
-   */
-  @Deprecated public static final boolean JRE_IS_MINIMUM_JAVA9 = true;
-
-  /**
-   * Always true.
-   *
-   * @deprecated This constant is useless and always {@code true}. To detect Java versions use
-   *     {@link Runtime#version()}
-   */
-  @Deprecated public static final boolean JRE_IS_MINIMUM_JAVA11 = true;
 }

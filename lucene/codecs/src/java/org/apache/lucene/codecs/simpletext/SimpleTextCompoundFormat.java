@@ -35,6 +35,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.StringHelper;
@@ -52,10 +53,10 @@ public class SimpleTextCompoundFormat extends CompoundFormat {
   public SimpleTextCompoundFormat() {}
 
   @Override
-  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si, IOContext context)
-      throws IOException {
+  public CompoundDirectory getCompoundReader(Directory dir, SegmentInfo si) throws IOException {
     String dataFile = IndexFileNames.segmentFileName(si.name, "", DATA_EXTENSION);
-    final IndexInput in = dir.openInput(dataFile, context);
+    final IndexInput in =
+        dir.openInput(dataFile, IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL));
 
     BytesRefBuilder scratch = new BytesRefBuilder();
 
@@ -135,7 +136,11 @@ public class SimpleTextCompoundFormat extends CompoundFormat {
       public IndexInput openInput(String name, IOContext context) throws IOException {
         ensureOpen();
         int index = getIndex(name);
-        return in.slice(name, startOffsets[index], endOffsets[index] - startOffsets[index]);
+        return in.slice(
+            name,
+            startOffsets[index],
+            endOffsets[index] - startOffsets[index],
+            context.readAdvice());
       }
 
       @Override

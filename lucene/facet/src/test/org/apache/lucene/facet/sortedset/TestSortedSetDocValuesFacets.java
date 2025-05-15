@@ -30,7 +30,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
@@ -112,11 +111,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[0],
               3,
               -1,
-              new LabelAndValue[] {
-                new LabelAndValue("bar", 1),
-                new LabelAndValue("foo", 2),
-                new LabelAndValue("zoo", 1)
-              });
+              new LabelAndValue("bar", 1),
+              new LabelAndValue("foo", 2),
+              new LabelAndValue("zoo", 1));
 
           // test getAllDims
           List<FacetResult> results = facets.getAllDims(10);
@@ -154,11 +151,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               topDimsResults1.get(0).toString());
 
           // test getTopDims(0)
-          expectThrows(
-              IllegalArgumentException.class,
-              () -> {
-                facets.getAllDims(0);
-              });
+          expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
           // test getSpecificValue
           assertEquals(2, facets.getSpecificValue("a", "foo"));
@@ -170,7 +163,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           q.add("a", "foo");
           q.add("b", "baz");
           TopDocs hits = searcher.search(q, 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -362,7 +355,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         try {
           Facets facets = getAllFacets(searcher, state, exec);
 
-          // since a is not set to be hierarchical but _is_ multi-valued, we expect a value of 2
+          // since a is not set to be hierarchical but _is_ multivalued, we expect a value of 2
           // (since two unique docs contain at least one value for this dim):
           assertEquals(
               "dim=a path=[] value=2 childCount=3\n  foo (2)\n  bar (1)\n  zoo (1)\n",
@@ -383,11 +376,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[0],
               3,
               2,
-              new LabelAndValue[] {
-                new LabelAndValue("bar", 1),
-                new LabelAndValue("foo", 2),
-                new LabelAndValue("zoo", 1)
-              });
+              new LabelAndValue("bar", 1),
+              new LabelAndValue("foo", 2),
+              new LabelAndValue("zoo", 1));
 
           assertFacetResult(
               facets.getAllChildren("c", "buzz"),
@@ -395,11 +386,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[] {"buzz"},
               3,
               2,
-              new LabelAndValue[] {
-                new LabelAndValue("bee", 1),
-                new LabelAndValue("bif", 2),
-                new LabelAndValue("biz", 1)
-              });
+              new LabelAndValue("bee", 1),
+              new LabelAndValue("bif", 2),
+              new LabelAndValue("biz", 1));
 
           assertFacetResult(
               facets.getAllChildren("c", "buzz", "bif"),
@@ -407,7 +396,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[] {"buzz", "bif"},
               1,
               2,
-              new LabelAndValue[] {new LabelAndValue("baf", 2)});
+              new LabelAndValue("baf", 2));
 
           // test getSpecificValue (and make sure hierarchical dims are supported: LUCENE-10584):
           assertEquals(2, facets.getSpecificValue("c", "buzz"));
@@ -421,17 +410,17 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           q.add("a", "foo");
           q.add("b", "baz");
           TopDocs hits = searcher.search(q, 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
 
           q = new DrillDownQuery(config);
           q.add("c", "buzz", "bif");
           hits = searcher.search(q, 2);
-          assertEquals(2, hits.totalHits.value);
+          assertEquals(2, hits.totalHits.value());
 
           q = new DrillDownQuery(config);
           q.add("c", "buzz", "biz", "bar");
           hits = searcher.search(q, 2);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -473,22 +462,11 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
         // test getAllChildren
         assertFacetResult(
-            facets.getAllChildren("a"),
-            "a",
-            new String[0],
-            1,
-            1,
-            new LabelAndValue[] {
-              new LabelAndValue("bar", 1),
-            });
+            facets.getAllChildren("a"), "a", new String[0], 1, 1, new LabelAndValue("bar", 1));
 
         // test topNChildren = 0
         Facets finalFacets = facets;
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              finalFacets.getTopChildren(0, "a");
-            });
+        expectThrows(IllegalArgumentException.class, () -> finalFacets.getTopChildren(0, "a"));
 
         ExecutorService exec =
             new ThreadPoolExecutor(
@@ -496,7 +474,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                 TestUtil.nextInt(random(), 2, 6),
                 Long.MAX_VALUE,
                 TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<Runnable>(),
+                new LinkedBlockingQueue<>(),
                 new NamedThreadFactory("TestIndexSearcher"));
         try {
           facets = new ConcurrentSortedSetDocValuesFacetCounts(state, exec);
@@ -579,9 +557,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
             new String[0],
             3,
             3,
-            new LabelAndValue[] {
-              new LabelAndValue("bar", 1), new LabelAndValue("baz", 1), new LabelAndValue("buz", 1),
-            });
+            new LabelAndValue("bar", 1),
+            new LabelAndValue("baz", 1),
+            new LabelAndValue("buz", 1));
 
         assertFacetResult(
             facets.getAllChildren("b"),
@@ -589,9 +567,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
             new String[0],
             2,
             3,
-            new LabelAndValue[] {
-              new LabelAndValue("bar", 2), new LabelAndValue("buzz", 1),
-            });
+            new LabelAndValue("bar", 2),
+            new LabelAndValue("buzz", 1));
 
         ExecutorService exec =
             new ThreadPoolExecutor(
@@ -599,7 +576,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                 TestUtil.nextInt(random(), 2, 6),
                 Long.MAX_VALUE,
                 TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<Runnable>(),
+                new LinkedBlockingQueue<>(),
                 new NamedThreadFactory("TestIndexSearcher"));
         try {
           facets = new ConcurrentSortedSetDocValuesFacetCounts(state, exec);
@@ -673,16 +650,15 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[0],
               2,
               3,
-              new LabelAndValue[] {
-                new LabelAndValue("baz", 1), new LabelAndValue("foo", 2),
-              });
+              new LabelAndValue("baz", 1),
+              new LabelAndValue("foo", 2));
 
           // DrillDown:
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("a", "foo");
           q.add("b", "bar");
           TopDocs hits = searcher.search(q, 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -734,12 +710,12 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           DrillDownQuery q = new DrillDownQuery(config);
           q.add("c", "buzz");
           TopDocs hits = searcher.search(q, 1);
-          assertEquals(2, hits.totalHits.value);
+          assertEquals(2, hits.totalHits.value());
 
           q = new DrillDownQuery(config);
           q.add("c", "buzz", "bar");
           hits = searcher.search(q, 1);
-          assertEquals(1, hits.totalHits.value);
+          assertEquals(1, hits.totalHits.value());
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -780,52 +756,52 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         DrillDownQuery q = new DrillDownQuery(config);
         q.add("c");
         TopDocs hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("c", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
       }
     }
   }
@@ -868,102 +844,102 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
         DrillDownQuery q = new DrillDownQuery(config);
         q.add("c");
         TopDocs hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("c", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("c", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("c", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("d", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("e", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("f", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g", "foo");
         hits = searcher.search(q, 1);
-        assertEquals(0, hits.totalHits.value);
+        assertEquals(0, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g", "biz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         q = new DrillDownQuery(config);
         q.add("g", "biz", "baz");
         hits = searcher.search(q, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
       }
     }
   }
@@ -998,10 +974,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
 
           expectThrows(
-              IllegalStateException.class,
-              () -> {
-                new SortedSetDocValuesFacetCounts(state, c);
-              });
+              IllegalStateException.class, () -> new SortedSetDocValuesFacetCounts(state, c));
         }
       }
     }
@@ -1108,11 +1081,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[0],
               3,
               3,
-              new LabelAndValue[] {
-                new LabelAndValue("foo1", 1),
-                new LabelAndValue("foo2", 1),
-                new LabelAndValue("foo3", 1),
-              });
+              new LabelAndValue("foo1", 1),
+              new LabelAndValue("foo2", 1),
+              new LabelAndValue("foo3", 1));
 
           assertFacetResult(
               facets.getAllChildren("b"),
@@ -1120,17 +1091,11 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[0],
               2,
               2,
-              new LabelAndValue[] {
-                new LabelAndValue("bar1", 1), new LabelAndValue("bar2", 1),
-              });
+              new LabelAndValue("bar1", 1),
+              new LabelAndValue("bar2", 1));
 
           assertFacetResult(
-              facets.getAllChildren("c"),
-              "c",
-              new String[0],
-              1,
-              1,
-              new LabelAndValue[] {new LabelAndValue("baz1", 1)});
+              facets.getAllChildren("c"), "c", new String[0], 1, 1, new LabelAndValue("baz1", 1));
 
           assertFacetResult(
               facets.getAllChildren("d"),
@@ -1138,7 +1103,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[0],
               2,
               2,
-              new LabelAndValue[] {new LabelAndValue("biz1", 1), new LabelAndValue("biz2", 1)});
+              new LabelAndValue("biz1", 1),
+              new LabelAndValue("biz2", 1));
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
@@ -1217,14 +1183,10 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[] {"foo"},
               2,
               2,
-              new LabelAndValue[] {new LabelAndValue("bar", 1), new LabelAndValue("baz", 1)});
+              new LabelAndValue("bar", 1),
+              new LabelAndValue("baz", 1));
           assertFacetResult(
-              facets.getAllChildren("d"),
-              "d",
-              new String[0],
-              1,
-              2,
-              new LabelAndValue[] {new LabelAndValue("foo", 2)});
+              facets.getAllChildren("d"), "d", new String[0], 1, 2, new LabelAndValue("foo", 2));
 
           Collection<Accountable> resources = state.getChildResources();
           assertTrue(state.toString().contains(FacetsConfig.DEFAULT_INDEX_FIELD_NAME));
@@ -1285,7 +1247,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[0],
               2,
               2,
-              new LabelAndValue[] {new LabelAndValue("foo1", 1), new LabelAndValue("foo2", 1)});
+              new LabelAndValue("foo1", 1),
+              new LabelAndValue("foo2", 1));
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -1346,7 +1309,8 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               new String[0],
               2,
               2,
-              new LabelAndValue[] {new LabelAndValue("boo", 1), new LabelAndValue("foo", 2)});
+              new LabelAndValue("boo", 1),
+              new LabelAndValue("foo", 2));
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -1398,9 +1362,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               if (VERBOSE) {
                 System.out.println("\nTEST: iter content=" + searchToken);
               }
-              FacetsCollector fc = new FacetsCollector();
-              FacetsCollector.search(
-                  searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+              FacetsCollector fc =
+                  FacetsCollectorManager.search(
+                          searcher,
+                          new TermQuery(new Term("content", searchToken)),
+                          10,
+                          new FacetsCollectorManager())
+                      .facetsCollector();
               Facets facets;
               if (exec != null) {
                 facets = new ConcurrentSortedSetDocValuesFacetCounts(state, fc, exec);
@@ -1411,20 +1379,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               // Slow, yet hopefully bug-free, faceting:
               @SuppressWarnings({"rawtypes", "unchecked"})
               Map<String, Integer>[] expectedCounts = new HashMap[numDims];
-              for (int i = 0; i < numDims; i++) {
-                expectedCounts[i] = new HashMap<>();
-              }
+              Arrays.setAll(expectedCounts, i -> new HashMap<>());
 
               for (TestDoc doc : testDocs) {
                 if (doc.content.equals(searchToken)) {
                   for (int j = 0; j < numDims; j++) {
                     if (doc.dims[j] != null) {
-                      Integer v = expectedCounts[j].get(doc.dims[j]);
-                      if (v == null) {
-                        expectedCounts[j].put(doc.dims[j], 1);
-                      } else {
-                        expectedCounts[j].put(doc.dims[j], v.intValue() + 1);
-                      }
+                      expectedCounts[j].merge(doc.dims[j], 1, Integer::sum);
                     }
                   }
                 }
@@ -1445,12 +1406,12 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                           "dim" + i,
                           new String[0],
                           totCount,
-                          labelValues.toArray(new LabelAndValue[labelValues.size()]),
+                          labelValues.toArray(new LabelAndValue[0]),
                           labelValues.size()));
                 }
               }
 
-              // Sort by highest value, tie break by value:
+              // Sort by highest value, tie-break by value:
               sortFacetResults(expected);
 
               List<FacetResult> actual = facets.getAllDims(10);
@@ -1546,9 +1507,13 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
               if (VERBOSE) {
                 System.out.println("\nTEST: iter content=" + searchToken);
               }
-              FacetsCollector fc = new FacetsCollector();
-              FacetsCollector.search(
-                  searcher, new TermQuery(new Term("content", searchToken)), 10, fc);
+              FacetsCollector fc =
+                  FacetsCollectorManager.search(
+                          searcher,
+                          new TermQuery(new Term("content", searchToken)),
+                          10,
+                          new FacetsCollectorManager())
+                      .facetsCollector();
               Facets facets;
               if (exec != null) {
                 facets = new ConcurrentSortedSetDocValuesFacetCounts(state, fc, exec);
@@ -1603,18 +1568,15 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
                     } else {
                       newLabelAndValues = labelAndValues;
                     }
-                    newLabelAndValues =
-                        Arrays.stream(newLabelAndValues)
-                            .sorted(
-                                (o1, o2) -> {
-                                  if (o1.value.equals(o2.value)) {
-                                    return new BytesRef(o1.label).compareTo(new BytesRef(o2.label));
-                                  } else {
-                                    return o2.value.intValue() - o1.value.intValue();
-                                  }
-                                })
-                            .collect(Collectors.toList())
-                            .toArray(LabelAndValue[]::new);
+                    Arrays.sort(
+                        newLabelAndValues,
+                        (o1, o2) -> {
+                          if (o1.value.equals(o2.value)) {
+                            return new BytesRef(o1.label).compareTo(new BytesRef(o2.label));
+                          } else {
+                            return o2.value.intValue() - o1.value.intValue();
+                          }
+                        });
                     FacetResult newResult =
                         new FacetResult(result.dim, result.path, 0, newLabelAndValues, childCount);
                     expectedResults.put(parentDimPathString, newResult);
@@ -1842,9 +1804,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
           expectThrows(
               IllegalArgumentException.class,
-              () -> {
-                facets.getTopChildren(5, "non-existent dimension", "with a path");
-              });
+              () -> facets.getTopChildren(5, "non-existent dimension", "with a path"));
         } finally {
           if (exec != null) exec.shutdownNow();
         }
@@ -1911,7 +1871,7 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
           TestUtil.nextInt(random(), 2, 6),
           Long.MAX_VALUE,
           TimeUnit.MILLISECONDS,
-          new LinkedBlockingQueue<Runnable>(),
+          new LinkedBlockingQueue<>(),
           new NamedThreadFactory("TestIndexSearcher"));
     }
   }

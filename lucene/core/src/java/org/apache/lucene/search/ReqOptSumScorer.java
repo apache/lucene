@@ -48,7 +48,6 @@ class ReqOptSumScorer extends Scorer {
    */
   public ReqOptSumScorer(Scorer reqScorer, Scorer optScorer, ScoreMode scoreMode)
       throws IOException {
-    super(reqScorer.weight);
     assert reqScorer != null;
     assert optScorer != null;
     this.reqScorer = reqScorer;

@@ -26,11 +26,8 @@ import org.apache.lucene.facet.taxonomy.TaxonomyReader;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.internal.hppc.IntHashSet;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.ArrayUtil;
@@ -192,13 +189,9 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
   }
 
   // Read the parents of the new categories
-  private void initParents(int[][] parentsArray, IndexReader reader, int first) throws IOException {
+  private static void initParents(int[][] parentsArray, IndexReader reader, int first)
+      throws IOException {
     if (reader.maxDoc() == first) {
-      return;
-    }
-
-    if (getMajorVersion(reader) <= 8) {
-      loadParentUsingTermPosition(parentsArray, reader, first);
       return;
     }
 
@@ -224,55 +217,6 @@ class TaxonomyIndexArrays extends ParallelTaxonomyArrays implements Accountable 
         int pos = doc + leafContext.docBase;
         parentsArray[pos >> CHUNK_SIZE_BITS][pos & CHUNK_MASK] =
             Math.toIntExact(parentValues.longValue());
-      }
-    }
-  }
-
-  private static int getMajorVersion(IndexReader reader) {
-    assert reader.leaves().size() > 0;
-    return reader.leaves().get(0).reader().getMetaData().getCreatedVersionMajor();
-  }
-
-  /**
-   * Try loading the old way of storing parent ordinal first, return true if the parent array is
-   * loaded Or false if not, and we will try loading using NumericDocValues
-   */
-  // TODO: Remove in Lucene 10, this is only for back-compatibility
-  private void loadParentUsingTermPosition(int[][] parentsArray, IndexReader reader, int first)
-      throws IOException {
-    // it's ok to use MultiTerms because we only iterate on one posting list.
-    // breaking it to loop over the leaves() only complicates code for no
-    // apparent gain.
-    PostingsEnum positions =
-        MultiTerms.getTermPostingsEnum(
-            reader, Consts.FIELD_PAYLOADS, Consts.PAYLOAD_PARENT_BYTES_REF, PostingsEnum.PAYLOADS);
-
-    // shouldn't really happen, if it does, something's wrong
-    if (positions == null || positions.advance(first) == DocIdSetIterator.NO_MORE_DOCS) {
-      throw new CorruptIndexException(
-          "[Lucene 8] Missing parent data for category " + first, reader.toString());
-    }
-
-    int num = reader.maxDoc();
-    for (int i = first; i < num; i++) {
-      if (positions.docID() == i) {
-        if (positions.freq() == 0) { // shouldn't happen
-          throw new CorruptIndexException(
-              "[Lucene 8] Missing parent data for category " + i, reader.toString());
-        }
-
-        parentsArray[i >> CHUNK_SIZE_BITS][i & CHUNK_MASK] = positions.nextPosition();
-
-        if (positions.nextDoc() == DocIdSetIterator.NO_MORE_DOCS) {
-          if (i + 1 < num) {
-            throw new CorruptIndexException(
-                "[Lucene 8] Missing parent data for category " + (i + 1), reader.toString());
-          }
-          break;
-        }
-      } else { // this shouldn't happen
-        throw new CorruptIndexException(
-            "[Lucene 8] Missing parent data for category " + i, reader.toString());
       }
     }
   }
