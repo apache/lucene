@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.index.Impact;
@@ -260,12 +261,8 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
             final int docIdUpTo = getDocIdUpTo(level);
 
             PriorityQueue<SubIterator> pq =
-                new PriorityQueue<>(impacts.length) {
-                  @Override
-                  protected boolean lessThan(SubIterator a, SubIterator b) {
-                    return a.current.freq < b.current.freq;
-                  }
-                };
+                PriorityQueue.usingComparator(
+                    impacts.length, Comparator.comparingInt(si -> si.current.freq));
 
             boolean hasImpacts = false;
             List<Impact> onlyImpactList = null;

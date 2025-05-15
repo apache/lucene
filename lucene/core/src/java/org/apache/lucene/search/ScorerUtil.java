@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search;
 
+import java.util.Comparator;
 import java.util.stream.LongStream;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
@@ -47,12 +48,7 @@ class ScorerUtil {
     // If we recurse infinitely, we find out that the cost of a msm query is the sum of the
     // costs of the num_scorers - minShouldMatch + 1 least costly scorers
     final PriorityQueue<Long> pq =
-        new PriorityQueue<Long>(numScorers - minShouldMatch + 1) {
-          @Override
-          protected boolean lessThan(Long a, Long b) {
-            return a > b;
-          }
-        };
+        PriorityQueue.usingComparator(numScorers - minShouldMatch + 1, Comparator.reverseOrder());
     costs.forEach(pq::insertWithOverflow);
     return StreamSupport.stream(pq.spliterator(), false).mapToLong(Number::longValue).sum();
   }

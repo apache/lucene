@@ -18,7 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Objects;
+import java.util.Comparator;
 import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -40,43 +40,14 @@ final class BooleanScorer extends BulkScorer {
     int freq;
   }
 
-  static final class HeadPriorityQueue extends PriorityQueue<DisiWrapper> {
-
-    public HeadPriorityQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(DisiWrapper a, DisiWrapper b) {
-      return a.doc < b.doc;
-    }
-  }
-
-  static final class TailPriorityQueue extends PriorityQueue<DisiWrapper> {
-
-    public TailPriorityQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(DisiWrapper a, DisiWrapper b) {
-      return a.cost < b.cost;
-    }
-
-    public DisiWrapper get(int i) {
-      Objects.checkIndex(i, size());
-      return (DisiWrapper) getHeapArray()[1 + i];
-    }
-  }
-
   // One bucket per doc ID in the window, non-null if scores are needed or if frequencies need to be
   // counted
   final Bucket[] buckets;
   final FixedBitSet matching = new FixedBitSet(SIZE);
 
   final DisiWrapper[] leads;
-  final HeadPriorityQueue head;
-  final TailPriorityQueue tail;
+  final PriorityQueue<DisiWrapper> head;
+  final PriorityQueue<DisiWrapper> tail;
   final Score score = new Score();
   final int minShouldMatch;
   final long cost;
@@ -100,8 +71,11 @@ final class BooleanScorer extends BulkScorer {
       buckets = null;
     }
     this.leads = new DisiWrapper[scorers.size()];
-    this.head = new HeadPriorityQueue(scorers.size() - minShouldMatch + 1);
-    this.tail = new TailPriorityQueue(minShouldMatch - 1);
+    this.head =
+        PriorityQueue.usingComparator(
+            scorers.size() - minShouldMatch + 1, Comparator.comparingInt(d -> d.doc));
+    this.tail =
+        PriorityQueue.usingComparator(minShouldMatch - 1, Comparator.comparingLong(d -> d.cost));
     this.minShouldMatch = minShouldMatch;
     this.needsScores = needsScores;
     LongArrayList costs = new LongArrayList(scorers.size());
@@ -191,8 +165,8 @@ final class BooleanScorer extends BulkScorer {
 
   private DisiWrapper advance(int min) throws IOException {
     assert tail.size() == minShouldMatch - 1;
-    final HeadPriorityQueue head = this.head;
-    final TailPriorityQueue tail = this.tail;
+    final PriorityQueue<DisiWrapper> head = this.head;
+    final PriorityQueue<DisiWrapper> tail = this.tail;
     DisiWrapper headTop = head.top();
     DisiWrapper tailTop = tail.top();
     while (headTop.doc < min) {
@@ -233,8 +207,8 @@ final class BooleanScorer extends BulkScorer {
 
     if (maxFreq >= minShouldMatch) {
       // There might be matches in other scorers from the tail too
-      for (int i = 0; i < tail.size(); ++i) {
-        leads[maxFreq++] = tail.get(i);
+      for (DisiWrapper disiWrapper : tail) {
+        leads[maxFreq++] = disiWrapper;
       }
       tail.clear();
 
