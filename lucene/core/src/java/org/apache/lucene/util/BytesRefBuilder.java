@@ -174,6 +174,6 @@ public class BytesRefBuilder {
 
   @Override
   public String toString() {
-    return ToStringUtils.bytesRefToString(this);
+    return this.get().toString();
   }
 }
