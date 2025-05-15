@@ -42,6 +42,7 @@ import org.apache.lucene.search.knn.TopKnnCollectorManager;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Uses {@link KnnVectorsReader#search} to perform nearest neighbour search.
@@ -228,6 +229,16 @@ abstract class AbstractKnnVectorQuery extends Query {
             @Override
             protected boolean match(int doc) {
               return liveDocs == null || liveDocs.get(doc);
+            }
+
+            @Override
+            public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+              assert bitSet.scanIsEmpty()
+                  : "By contract we should not clear bits in this bitset, but it should be empty here.";
+              iterator.intoBitSet(upTo, bitSet, offset);
+              if (liveDocs != null) {
+                liveDocs.applyMask(bitSet, offset);
+              }
             }
           };
       return BitSet.of(filterIterator, maxDoc);
