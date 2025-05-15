@@ -209,6 +209,25 @@ public abstract class Similarity {
     public abstract float score(float freq, long norm);
 
     /**
+     * Batch-score documents. This method scores {@code size} documents at once. The default
+     * implementation can be found below:
+     *
+     * <pre class="prettyprint">
+     * for (int i = 0; i &lt; size; ++i) {
+     *   scores[i] = score(freqs[i], norms[i]);
+     * }
+     * </pre>
+     *
+     * @see #score(float, long)
+     * @lucene.internal
+     */
+    public void score(int size, int[] freqs, long[] norms, float[] scores) {
+      for (int i = 0; i < size; ++i) {
+        scores[i] = score(freqs[i], norms[i]);
+      }
+    }
+
+    /**
      * Explain the score for a single document
      *
      * @param freq Explanation of how the sloppy term frequency was computed

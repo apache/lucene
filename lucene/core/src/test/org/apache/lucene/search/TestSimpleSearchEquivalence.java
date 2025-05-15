@@ -37,6 +37,7 @@ public class TestSimpleSearchEquivalence extends SearchEquivalenceTestBase {
     BooleanQuery.Builder q2 = new BooleanQuery.Builder();
     q2.add(new TermQuery(t1), Occur.SHOULD);
     q2.add(new TermQuery(t2), Occur.SHOULD);
+
     assertSubsetOf(q1, q2.build());
   }
 

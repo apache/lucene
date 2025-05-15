@@ -50,6 +50,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -576,6 +577,21 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert payload == null || payload.length > 0
           : "getPayload() returned payload with invalid length!";
       return payload;
+    }
+
+    @Override
+    public DocAndFreqBuffer nextPostings(int upTo, DocAndFreqBuffer reuse) throws IOException {
+      assert state != DocsEnumState.START : "nextPostings() called before nextDoc()/advance()";
+      DocAndFreqBuffer result = in.nextPostings(upTo, reuse);
+      doc = in.docID();
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        state = DocsEnumState.FINISHED;
+        positionMax = 0;
+      } else {
+        state = DocsEnumState.ITERATING;
+        positionMax = super.freq();
+      }
+      return result;
     }
 
     void reset() {

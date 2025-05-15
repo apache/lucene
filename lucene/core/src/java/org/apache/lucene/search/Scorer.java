@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.Bits;
 
 /**
  * Expert: Common scoring functionality for different types of queries.
@@ -76,4 +77,54 @@ public abstract class Scorer extends Scorable {
    * {@link #advanceShallow(int) shallow-advanced} to included and {@code upTo} included.
    */
   public abstract float getMaxScore(int upTo) throws IOException;
+
+  /**
+   * Return a new batch of doc IDs and scores, starting at the current doc ID, and ending before
+   * {@code upTo}.
+   *
+   * <p>An empty return value indicates that there are no postings left between the current doc ID
+   * and {@code upTo}.
+   *
+   * <p>This method behaves as if implemented as below, which is the default implementation:
+   *
+   * <pre class="prettyprint">
+   * int batchSize = 16;
+   * reuse.grow(batchSize);
+   * int size = 0;
+   * DocIdSetIterator iterator = iterator();
+   * for (int doc = docID(); doc &lt; upTo &amp;&amp; size &lt; batchSize; doc = iterator.nextDoc()) {
+   *   if (liveDocs == null || liveDocs.get(doc)) {
+   *     reuse.docs[size] = doc;
+   *     reuse.scores[size] = score();
+   *     ++size;
+   *   }
+   * }
+   * reuse.size = size;
+   * return reuse;
+   * </pre>
+   *
+   * <p><b>NOTE</b>: The returned {@link DocAndScoreBuffer} should not hold references to internal
+   * data structures.
+   *
+   * <p><b>NOTE</b>: In case this {@link Scorer} exposes a {@link #twoPhaseIterator()
+   * TwoPhaseIterator}, it should be positioned on a matching document before this method is called.
+   *
+   * @lucene.internal
+   */
+  public DocAndScoreBuffer nextScores(int upTo, Bits liveDocs, DocAndScoreBuffer reuse)
+      throws IOException {
+    int batchSize = 16;
+    reuse.grow(batchSize);
+    int size = 0;
+    DocIdSetIterator iterator = iterator();
+    for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
+      if (liveDocs == null || liveDocs.get(doc)) {
+        reuse.docs[size] = doc;
+        reuse.scores[size] = score();
+        ++size;
+      }
+    }
+    reuse.size = size;
+    return reuse;
+  }
 }

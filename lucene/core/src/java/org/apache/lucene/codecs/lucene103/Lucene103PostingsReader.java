@@ -46,6 +46,7 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -1032,6 +1033,95 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
             break;
         }
       }
+    }
+
+    @Override
+    public DocAndFreqBuffer nextPostings(int upTo, DocAndFreqBuffer reuse) throws IOException {
+      if (needsFreq == false) {
+        return super.nextPostings(upTo, reuse);
+      }
+      assert needsRefilling == false;
+
+      if (doc >= upTo) {
+        reuse.size = 0;
+        return reuse;
+      }
+
+      // Only return docs from the current block
+      reuse.grow(BLOCK_SIZE);
+      upTo = (int) Math.min(upTo, level0LastDocID + 1L);
+
+      // Frequencies are decoded lazily, calling freq() makes sure that the freq block is decoded
+      freq();
+
+      int start, size;
+
+      switch (encoding) {
+        case PACKED:
+          start = docBufferUpto - 1;
+          int end = computeBufferEndBoundary(upTo);
+          size = end - start;
+          System.arraycopy(docBuffer, start, reuse.docs, 0, size);
+          break;
+        case UNARY:
+          start = docBufferUpto - 1;
+          if (upTo > level0LastDocID) {
+            assert upTo == level0LastDocID + 1;
+            end = BLOCK_SIZE;
+          } else {
+            int numBits = upTo - docBitSetBase;
+            int lastWordIndex = numBits >> 6;
+            end =
+                docCumulativeWordPopCounts[lastWordIndex]
+                    - Long.bitCount(docBitSet.getBits()[lastWordIndex] >>> numBits);
+          }
+          size = end - start;
+
+          int firstWordIndex = (doc - docBitSetBase) >> 6;
+          int lastWordIndex = (upTo - 1 - docBitSetBase) >> 6;
+
+          int size2 =
+              enumerateSetBits(
+                  docBitSet.getBits()[firstWordIndex], firstWordIndex << 6, reuse.docs, 0);
+          // Remove docs from the first word that are before the current doc
+          int numDocsBeforeCurrentDoc = size2;
+          for (int i = 0; i < size2; ++i) {
+            if (reuse.docs[i] >= doc - docBitSetBase) {
+              numDocsBeforeCurrentDoc = i;
+              break;
+            }
+          }
+          size2 -= numDocsBeforeCurrentDoc;
+          System.arraycopy(reuse.docs, numDocsBeforeCurrentDoc, reuse.docs, 0, size2);
+
+          for (int i = firstWordIndex + 1; i <= lastWordIndex; ++i) {
+            size2 = enumerateSetBits(docBitSet.getBits()[i], i << 6, reuse.docs, size2);
+          }
+          assert size2 >= size : size2 + " < " + size;
+          for (int i = 0; i < size; ++i) {
+            reuse.docs[i] += docBitSetBase;
+          }
+          break;
+        default:
+          throw new AssertionError();
+      }
+
+      assert size > 0;
+      System.arraycopy(freqBuffer, start, reuse.freqs, 0, size);
+      reuse.size = size;
+
+      advance(upTo);
+
+      return reuse;
+    }
+
+    private static int enumerateSetBits(long word, int base, int[] dest, int offset) {
+      while (word != 0L) {
+        int ntz = Long.numberOfTrailingZeros(word);
+        dest[offset++] = base + ntz;
+        word ^= 1L << ntz;
+      }
+      return offset;
     }
 
     private int computeBufferEndBoundary(int upTo) {
