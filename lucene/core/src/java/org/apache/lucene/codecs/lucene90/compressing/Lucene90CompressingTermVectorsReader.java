@@ -138,7 +138,6 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
       throws IOException {
     this.compressionMode = compressionMode;
     final String segment = si.name;
-    boolean success = false;
     fieldInfos = fn;
     numDocs = si.maxDoc();
 
@@ -227,18 +226,16 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
 
       this.prefetchedBlockIDCache = new long[PREFETCH_CACHE_SIZE];
       Arrays.fill(prefetchedBlockIDCache, -1);
-
-      success = true;
     } catch (Throwable t) {
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, t);
-        throw new AssertionError("unreachable");
-      } else {
-        throw t;
-      }
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this, metaIn);
+      try {
+        if (metaIn != null) {
+          CodecUtil.checkFooter(metaIn, t);
+          throw new AssertionError("unreachable");
+        } else {
+          throw t;
+        }
+      } finally {
+        IOUtils.closeWhileSuppressingExceptions(t, this, metaIn);
       }
     }
   }

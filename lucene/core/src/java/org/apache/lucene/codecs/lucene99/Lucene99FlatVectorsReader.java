@@ -69,7 +69,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     super(scorer);
     int versionMeta = readMetadata(state);
     this.fieldInfos = state.fieldInfos;
-    boolean success = false;
     try {
       vectorData =
           openDataInput(
@@ -81,11 +80,9 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               // in the HNSW graph.
               state.context.withHints(
                   FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -125,7 +122,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
-    boolean success = false;
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -146,12 +142,10 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 

@@ -293,7 +293,6 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
             state.segmentSuffix,
             Lucene103BlockTreeTermsReader.TERMS_EXTENSION);
     termsOut = state.directory.createOutput(termsName, state.context);
-    boolean success = false;
     IndexOutput metaOut = null, indexOut = null;
     try {
       CodecUtil.writeIndexHeader(
@@ -334,11 +333,9 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
       this.metaOut = metaOut;
       this.indexOut = indexOut;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(metaOut, termsOut, indexOut);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, metaOut, termsOut, indexOut);
+      throw t;
     }
   }
 
@@ -1132,7 +1129,6 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
     }
     closed = true;
 
-    boolean success = false;
     try {
       metaOut.writeVInt(fields.size());
       for (ByteBuffersDataOutput fieldMeta : fields) {
@@ -1143,14 +1139,11 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
       CodecUtil.writeFooter(termsOut);
       metaOut.writeLong(termsOut.getFilePointer());
       CodecUtil.writeFooter(metaOut);
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(metaOut, termsOut, indexOut, postingsWriter);
-      } else {
-        IOUtils.closeWhileHandlingException(metaOut, termsOut, indexOut, postingsWriter);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, metaOut, termsOut, indexOut, postingsWriter);
+      throw t;
     }
+    IOUtils.close(metaOut, termsOut, indexOut, postingsWriter);
   }
 
   private static void writeBytesRef(DataOutput out, BytesRef bytes) throws IOException {

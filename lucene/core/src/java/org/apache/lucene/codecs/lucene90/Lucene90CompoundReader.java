@@ -64,7 +64,6 @@ final class Lucene90CompoundReader extends CompoundDirectory {
     String entriesFileName =
         IndexFileNames.segmentFileName(segmentName, "", Lucene90CompoundFormat.ENTRIES_EXTENSION);
     this.entries = readEntries(si.getId(), directory, entriesFileName);
-    boolean success = false;
 
     // find the last FileEntry in the map (largest offset+length) and add length of codec footer:
     final long expectedLength =
@@ -92,12 +91,9 @@ final class Lucene90CompoundReader extends CompoundDirectory {
             "length should be " + expectedLength + " bytes, but is " + handle.length() + " instead",
             handle);
       }
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(handle);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, handle);
+      throw t;
     }
   }
 
