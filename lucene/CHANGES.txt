@@ -94,7 +94,7 @@ Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
 
-* GITHUB#14439, GITHUB#14560: Efficient Histogram Collection using multi range traversal over PointTrees (Ankit Jain)
+* GITHUB#14439, GITHUB#14560, GITHUB#14622: Efficient Histogram Collection using multi range traversal over PointTrees (Ankit Jain)
 
 * GITHUB#14268: PointInSetQuery early exit on non-matching segments. (hanbj)
 
@@ -105,6 +105,13 @@ Optimizations
 * GITHUB#14447: Compute the doc range more efficiently when flushing doc block. (Pan Guixin)
 
 * GITHUB#14527: Reduce NeighborArray heap memory. (weizijun)
+
+* GITHUB#14529, GITHUB#14555, GITHUB#14618: Impl intoBitset for IndexedDISI and Docvalues. (Guo Feng)
+
+* GITHUB#14552: Speed up flush of softdelete by intoBitset. (Guo Feng)
+
+* GITHUB#14609: Optimizes PointRangeQuery by rewriting to MatchAllDocsQuery/FieldExistsQuery/MatchNoDocsQuery if all
+  docs in index are contained or excluded (Elliott Bradshaw)
 
 Bug Fixes
 ---------------------
@@ -122,6 +129,10 @@ Other
 * GITHUB#7145: Adding basic unit tests for SpanWithinQuery. (Jakub Slowinski)
 
 * GITHUB#14516: Move sloppySin into SloppyMath from GeoUtils (Ankit Jain)
+
+* GITHUB#14627, GITHUB#11920: Fix mock filesystem WindowsFS to also work on Windows.
+  This is required to make tests pass on Windows 11 which no longer has
+  all limitations of previous Windows versions.  (Uwe Schindler)
 
 
 ======================= Lucene 10.2.1 =======================

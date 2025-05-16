@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Exposes multi-valued view over a single-valued instance.
@@ -60,6 +61,16 @@ final class SingletonSortedNumericDocValues extends SortedNumericDocValues {
   @Override
   public boolean advanceExact(int target) throws IOException {
     return in.advanceExact(target);
+  }
+
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    in.intoBitSet(upTo, bitSet, offset);
+  }
+
+  @Override
+  public int docIDRunEnd() throws IOException {
+    return in.docIDRunEnd();
   }
 
   @Override

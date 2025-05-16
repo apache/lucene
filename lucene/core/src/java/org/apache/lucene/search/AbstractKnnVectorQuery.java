@@ -109,7 +109,10 @@ abstract class AbstractKnnVectorQuery extends Query {
     Map<Integer, TopDocs> perLeafResults = new HashMap<>();
     TopDocs topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
     int reentryCount = 0;
-    if (topK.scoreDocs.length > 0 && perLeafResults.size() > 1) {
+    if (topK.scoreDocs.length > 0
+        && perLeafResults.size() > 1
+        // don't re-enter the search if we early terminated
+        && topK.totalHits.relation() == TotalHits.Relation.EQUAL_TO) {
       float minTopKScore = topK.scoreDocs[topK.scoreDocs.length - 1].score;
       TimeLimitingKnnCollectorManager knnCollectorManagerInner =
           new TimeLimitingKnnCollectorManager(

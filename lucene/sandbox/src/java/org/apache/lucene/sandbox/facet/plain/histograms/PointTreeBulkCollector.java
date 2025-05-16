@@ -187,8 +187,11 @@ class PointTreeBulkCollector {
           }
         }
 
-        // Not possible to have the CELL_OUTSIDE_QUERY, as bucket lower bound is updated
-        // while finalizing the previous bucket
+        // CELL_OUTSIDE_QUERY is possible for the first bucket
+        // in case of PointRangeQuery [min, max] lower
+        if (!collector.withinLowerBound(maxPackedValue)) {
+          return PointValues.Relation.CELL_OUTSIDE_QUERY;
+        }
         if (collector.withinRange(minPackedValue) && collector.withinRange(maxPackedValue)) {
           return PointValues.Relation.CELL_INSIDE_QUERY;
         }

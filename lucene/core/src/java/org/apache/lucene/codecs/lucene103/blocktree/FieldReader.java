@@ -39,7 +39,6 @@ public final class FieldReader extends Terms {
   final long sumTotalTermFreq;
   final long sumDocFreq;
   final int docCount;
-  final long rootBlockFP;
   final BytesRef minTerm;
   final BytesRef maxTerm;
   final long indexStart;
@@ -82,9 +81,6 @@ public final class FieldReader extends Terms {
     this.rootFP = metaIn.readVLong();
     this.indexEnd = metaIn.readVLong();
     this.indexIn = indexIn;
-
-    TrieReader trieReader = newReader();
-    this.rootBlockFP = trieReader.root.outputFp;
   }
 
   private TrieReader newReader() throws IOException {
