@@ -25,6 +25,7 @@ plugins {
 
 repositories {
   mavenCentral()
+  gradlePluginPortal()
 }
 
 group = "org.apache"
@@ -58,10 +59,12 @@ gradlePlugin {
 // project dependencies here.
 def Provider<String> plugin(Provider<PluginDependency> plugin) {
   return plugin.map {
-    if (it.pluginId == "de.thetaphi.forbiddenapis") {
+    if (it.pluginId == "com.carrotsearch.gradle.buildinfra") {
+      return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
+    } else if (it.pluginId == "de.thetaphi.forbiddenapis") {
       return "de.thetaphi:forbiddenapis:${it.version}".toString()
     } else {
-      "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
+      return "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
     }
   }
 }
@@ -71,6 +74,7 @@ dependencies {
   implementation localGroovy()
   implementation deps.commons.codec
 
+  implementation plugin(deps.plugins.carrotsearch.buildinfra)
   implementation plugin(deps.plugins.forbiddenapis)
   implementation plugin(deps.plugins.spotless)
 }

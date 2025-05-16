@@ -14,38 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import org.apache.lucene.gradle.buildoptions.*
-
 // Common setup for all projects.
 
 if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
-// Apply build options plugin to the root project early.
-
-rootProject.plugins.apply(BuildOptionsPlugin)
-def buildOptions = rootProject.getExtensions().getByType(BuildOptionsExtension.class)
-
-// Determine project version.
-
-String luceneVersion = deps.versions.lucene.get()
-def versionReleaseProperty = buildOptions.addOption("version.release", "Explicitly sets project version to the provided string (x.y.z).").getValue()
-def versionSuffixProperty = buildOptions.addOption("version.suffix", "Appends project version suffix to base version (${luceneVersion}).", "SNAPSHOT").getValue()
-
-if (versionReleaseProperty.isPresent()) {
-  project.version = versionReleaseProperty
-} else {
-  project.version = "${luceneVersion}-${versionSuffixProperty}"
-}
-
 allprojects {project ->
   // All projects have the base plugin (convention tasks like 'check', etc.)
   apply plugin: 'base'
-
-  // Apply build options plugin to all projects, even if they don't declare any options.
-  project.plugins.apply(BuildOptionsPlugin)
 
   // Project group and version.
   group = "org.apache"

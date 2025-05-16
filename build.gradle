@@ -19,14 +19,15 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
 plugins {
-  // Apply convention plugins from build-infra. Order here may matter.
-  id "lucene.rootproject.utilities"
-  id "lucene.allprojects.conventions"
+  // Apply convention plugins from the composite build-infra project.
+  // The order of plugins will typically matter.
+  id "lucene.rootproject.setup"
+  id "lucene.allprojects.setup"
 
   id "lucene.help"
 
-  id "lucene.validation.spotless-groovy"
   id "lucene.validation.check-environment"
+  id "lucene.validation.spotless-groovy"
 
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"

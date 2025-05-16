@@ -15,14 +15,38 @@
  * limitations under the License.
  */
 
-import org.apache.lucene.gradle.buildoptions.*
+import com.carrotsearch.gradle.buildinfra.buildoptions.*
 
-// Adds misc utility tasks and functions to the root project.
+// Prepare the root project and some global infrastructure.
 
 if (project != project.rootProject) {
   throw new GradleException("Applicable to rootProject only: " + project.path)
 }
 
+//
+// Register these plugins early.
+//
+allprojects {
+  plugins.apply(BuildOptionsPlugin)
+}
+
+//
+// Figure out project version based on the base version and, suffix (or overrides of these options).
+//
+Provider<String> versionBase = buildOptions.addOption("version.base", "Base Lucene version")
+Provider<String> versionSuffix = buildOptions.addOption("version.suffix", "Appends project version suffix to 'version.base'.", "SNAPSHOT")
+Provider<String> versionProvider = buildOptions.addOption("version.release", "Lucene project version.",
+    versionSuffix
+    .map { suffix ->
+      versionBase.get() + "-" + suffix
+    }
+    .orElse(versionBase))
+
+rootProject.version = versionProvider.get()
+
+//
+// Register utility tasks on the root project.
+//
 tasks.register("checkJdkInternalsExportedToGradle", {
   doFirst {
     def jdkCompilerModule = ModuleLayer.boot().findModule("jdk.compiler").orElseThrow()
