@@ -223,7 +223,7 @@ public class FSTCompletion {
     }
 
     try {
-      return lookupSortedByWeight(new BytesRef(key));
+      return lookupSortedByWeight(BytesRef.of(key));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -399,7 +399,7 @@ public class FSTCompletion {
    * exists.
    */
   public int getBucket(CharSequence key) {
-    return getExactMatchStartingFromRootArc(0, new BytesRef(key));
+    return getExactMatchStartingFromRootArc(0, BytesRef.of(key));
   }
 
   /** Returns the internal automaton. */

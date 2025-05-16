@@ -139,7 +139,7 @@ public class ContextQuery extends CompletionQuery implements Accountable {
       }
     }
     contexts.put(
-        IntsRef.deepCopyOf(Util.toIntsRef(new BytesRef(context), scratch)),
+        IntsRef.deepCopyOf(Util.toIntsRef(BytesRef.of(context), scratch)),
         new ContextMetaData(boost, exact));
     updateRamBytesUsed();
   }

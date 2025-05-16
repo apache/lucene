@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.nio.CharBuffer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -49,6 +50,26 @@ public class TestBytesRef extends LuceneTestCase {
 
     // only for 4.x
     assertEquals("\uFFFF", new BytesRef("\uFFFF").utf8ToString());
+  }
+
+  public void testFromCharSequence() {
+    for (int i = 0; i < 100; i++) {
+      String s = TestUtil.randomUnicodeString(random());
+      String s2 = new BytesRef((CharSequence) s).utf8ToString();
+      String s3 = new BytesRef(s).utf8ToString();
+      String s4 = new BytesRef(CharBuffer.wrap(s)).utf8ToString();
+      String s5 = BytesRef.of(s).utf8ToString();
+      String s6 = BytesRef.of(CharBuffer.wrap(s)).utf8ToString();
+      assertEquals(s, s2);
+      assertEquals(s, s3);
+      assertEquals(s, s4);
+      assertEquals(s, s5);
+      assertEquals(s, s6);
+    }
+
+    // only for 4.x
+    assertEquals("\uFFFF", new BytesRef(CharBuffer.wrap("\uFFFF")).utf8ToString());
+    assertEquals("\uFFFF", BytesRef.of(CharBuffer.wrap("\uFFFF")).utf8ToString());
   }
 
   public void testInvalidDeepCopy() {
