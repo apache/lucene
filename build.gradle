@@ -21,12 +21,14 @@ import java.time.format.DateTimeFormatter
 plugins {
   // Apply convention plugins from the composite build-infra project.
   // The order of plugins will typically matter.
+  id "lucene.validation.check-environment"
+
   id "lucene.rootproject.setup"
   id "lucene.allprojects.setup"
 
   id "lucene.help"
 
-  id "lucene.validation.check-environment"
+
   id "lucene.validation.spotless-groovy"
 
   // perhaps move this to a convention plugin or remove entirely?
@@ -52,23 +54,6 @@ description = 'Grandparent project for Apache Lucene Core'
 apply from: file('gradle/_to-remove/globals.gradle')
 
 ext {
-  // "base" version is stripped of the qualifier. Compute it.
-  baseVersion = {
-    def m = (version =~ /^(\d+\.\d+\.\d+)(-(.+))?/)
-    if (!m) {
-      throw new GradleException("Can't strip version to just x.y.z: " + rootProject.version)
-    }
-    return m[0][1]
-  }()
-  // "majorVersion" is an integer with just the major version. Compute it.
-  majorVersion = {
-    def m = (version =~ /^(\d+)\.\d+\.\d+(-(.+))?/)
-    if (!m) {
-      throw new GradleException("Can't strip version to just major version: " + rootProject.version)
-    }
-    return m[0][1] as int
-  }
-
   // Minimum Java version required to compile and run Lucene.
   minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
 
@@ -78,9 +63,6 @@ ext {
     JavaVersion.VERSION_22,
     JavaVersion.VERSION_23,
     JavaVersion.VERSION_24 ] as Set
-
-  // snapshot build marker used in scripts.
-  snapshotBuild = version.contains("SNAPSHOT")
 
   // Build timestamp.
   def tstamp = ZonedDateTime.now()

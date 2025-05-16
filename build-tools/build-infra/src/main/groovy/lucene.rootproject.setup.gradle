@@ -42,7 +42,26 @@ Provider<String> versionProvider = buildOptions.addOption("version.release", "Lu
     }
     .orElse(versionBase))
 
-rootProject.version = versionProvider.get()
+String luceneVersion = versionProvider.get()
+rootProject.version = luceneVersion
+
+//
+// Expose parts of the final project version to the build. We can't use Runtime.Version, sadly.
+//
+ext {
+  // "base" version is stripped of the qualifier. Compute it because somebody might have passed
+  // -Pversion.release=x.y.z directly.
+  baseVersion = {
+    def m = (luceneVersion =~ /^(\d+\.\d+\.\d+)(-(.+))?/)
+    if (!m) {
+      throw new GradleException("Can't strip version to just x.y.z: " + rootProject.version)
+    }
+    return m[0][1]
+  }()
+
+  // snapshot build marker used in scripts.
+  snapshotBuild = luceneVersion.contains("SNAPSHOT")
+}
 
 //
 // Register utility tasks on the root project.
