@@ -401,7 +401,8 @@ public class TestArrayUtil extends LuceneTestCase {
   public void testGrowInRangeFloat() {
     float[] array = new float[] {1f, 2f, 3f};
 
-    // If minLength is negative, an AssertionError is thrown (due to internal assert in growExact via oversize)
+    // If minLength is negative, an AssertionError is thrown (due to internal assert in growExact
+    // via oversize)
     // For float[] the assertion is in growInRange itself.
     expectThrows(AssertionError.class, () -> growInRange(array, -1, 4));
     expectThrows(AssertionError.class, () -> growInRange(array, -1, 0));
@@ -421,7 +422,10 @@ public class TestArrayUtil extends LuceneTestCase {
     // The array grows normally if maxLength permits
     float[] grown1 = growInRange(new float[] {1f, 2f, 3f}, minLength, Integer.MAX_VALUE);
     assertEquals(oversize(minLength, Float.BYTES), grown1.length);
-    assertArrayEquals(new float[] {1f, 2f, 3f, 0f}, grown1, 0.001f); // Assuming oversize(4, Float.BYTES) is at least 4
+    assertArrayEquals(
+        new float[] {1f, 2f, 3f, 0f},
+        grown1,
+        0.001f); // Assuming oversize(4, Float.BYTES) is at least 4
 
     // The array grows to maxLength if maxLength is limiting
     float[] grown2 = growInRange(new float[] {1f, 2f, 3f}, minLength, minLength); // maxLength is 4

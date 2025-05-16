@@ -351,7 +351,7 @@ public final class ArrayUtil {
    * growing exponentially if it needs to grow.
    */
   public static float[] growInRange(float[] array, int minLength, int maxLength) {
-    assert minLength >= 0 
+    assert minLength >= 0
         : "minLength must be positive (got " + minLength + "): likely integer overflow?";
 
     if (minLength > maxLength) {

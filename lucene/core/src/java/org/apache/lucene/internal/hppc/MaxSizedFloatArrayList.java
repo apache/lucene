@@ -64,9 +64,8 @@ public class MaxSizedFloatArrayList extends FloatArrayList {
     if (elementsCount + expectedAdditions > maxSize) {
       throw new IllegalStateException("Cannot grow beyond maxSize: " + maxSize);
     }
-    int minLength = elementsCount + expectedAdditions;
-    if (minLength > buffer.length) {
-      this.buffer = ArrayUtil.growInRange(this.buffer, minLength, this.maxSize);
+    if (elementsCount + expectedAdditions > buffer.length) {
+      this.buffer = ArrayUtil.growInRange(buffer, elementsCount + expectedAdditions, maxSize);
     }
   }
 
@@ -100,4 +99,4 @@ public class MaxSizedFloatArrayList extends FloatArrayList {
   public long ramBytesUsed() {
     return BASE_RAM_BYTES_USED + RamUsageEstimator.sizeOf(buffer);
   }
-} 
+}

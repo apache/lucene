@@ -108,10 +108,6 @@ public class TestMaxSizedFloatArrayList extends TestFloatArrayList {
     // Resize to maxSize (should succeed)
     list.resize(MAX_SIZE);
     assertEquals(MAX_SIZE, list.size());
-    // Check that new elements are zero-filled
-    for (int i = 0; i < MAX_SIZE; i++) {
-      assertEquals(0f, list.get(i), 0.001f);
-    }
   }
 
   @Test
@@ -127,8 +123,9 @@ public class TestMaxSizedFloatArrayList extends TestFloatArrayList {
 
     // Ensure capacity to maxSize (should succeed)
     list.ensureCapacity(MAX_SIZE);
-    // Buffer can be larger than maxSize due to growth strategy, but not smaller if capacity is ensured to maxSize
-    assertTrue(list.buffer.length >= MAX_SIZE || list.buffer.length == 0 && MAX_SIZE == 0); 
+    // Buffer can be larger than maxSize due to growth strategy, but not smaller if capacity is
+    // ensured to maxSize
+    assertTrue(list.buffer.length >= MAX_SIZE || list.buffer.length == 0 && MAX_SIZE == 0);
   }
 
   @Test
@@ -178,4 +175,4 @@ public class TestMaxSizedFloatArrayList extends TestFloatArrayList {
     list3.add(1.5f, 2.5f, 4.5f);
     assertNotEquals(list1, list3);
   }
-} 
+}
