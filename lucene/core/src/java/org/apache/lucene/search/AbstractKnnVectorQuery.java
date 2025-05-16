@@ -223,25 +223,25 @@ abstract class AbstractKnnVectorQuery extends Query {
       // If we already have a BitSet and no deletions, reuse the BitSet
       return bitSetIterator.getBitSet();
     } else {
-      // Create a new BitSet from matching and live docs
-      FilteredDocIdSetIterator filterIterator =
-          new FilteredDocIdSetIterator(iterator) {
-            @Override
-            protected boolean match(int doc) {
-              return liveDocs == null || liveDocs.get(doc);
-            }
-
-            @Override
-            public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-              assert bitSet.scanIsEmpty()
-                  : "By contract we should not clear bits in this bitset, but it should be empty here.";
-              iterator.intoBitSet(upTo, bitSet, offset);
-              if (liveDocs != null) {
-                liveDocs.applyMask(bitSet, offset);
+      int threshold = maxDoc >> 7; // same as BitSet#of
+      if (iterator.cost() >= threshold) {
+        // take advantage of Disi#intoBitset and Bits#applyMask
+        FixedBitSet bitSet = new FixedBitSet(maxDoc);
+        bitSet.or(iterator);
+        if (liveDocs != null) {
+          liveDocs.applyMask(bitSet, 0);
+        }
+        return bitSet;
+      } else {
+        FilteredDocIdSetIterator filterIterator =
+            new FilteredDocIdSetIterator(iterator) {
+              @Override
+              protected boolean match(int doc) {
+                return liveDocs == null || liveDocs.get(doc);
               }
-            }
-          };
-      return BitSet.of(filterIterator, maxDoc);
+            };
+        return BitSet.of(filterIterator, maxDoc); // create a sparse bitset
+      }
     }
   }
 
