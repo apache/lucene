@@ -21,8 +21,14 @@ can also make such tweaks persistent (locally) by placing them
 in your build-options.local.properties file.
 
 
+The biggest gain from using this plugin is that you can now see
+all options and their values, including their source (where their
+value is defined). For example:
+
+./gradlew :buildOptions
+
+
 * Lucene's "base" version is now a build option. The default
 value is in build-options.properties. You can override
 any of 'version.suffix', 'version.base' or 'version.release'
 using any of build option plugin's methods (see above).
-
