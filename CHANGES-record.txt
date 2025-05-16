@@ -1,0 +1,28 @@
+This is a record of changes to the modernized gradle build.
+
+
+* Instead of the "propertyOrDefault", an external
+plugin for configuring various build options is now used:
+
+https://github.com/carrotsearch/gradle-build-infra#plugin-comcarrotsearchgradlebuildinfrabuildoptionsbuildoptionsplugin
+
+this plugin will source the given build option from several places, in
+order:
+
+- system property (-Dfoo=value),
+- gradle property (-Pfoo=value),
+- environment variable (foo=value ./gradlew ...)
+- a *not versioned*, build-options.local.properties property file,
+- a *versioned* build-options.properties property file.
+
+It works much like before - you can override any build option
+temporarily by passing, for example "-Ptests.verbose=true". But you
+can also make such tweaks persistent (locally) by placing them
+in your build-options.local.properties file.
+
+
+* Lucene's "base" version is now a build option. The default
+value is in build-options.properties. You can override
+any of 'version.suffix', 'version.base' or 'version.release'
+using any of build option plugin's methods (see above).
+
