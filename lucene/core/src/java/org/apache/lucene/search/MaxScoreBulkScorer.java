@@ -51,6 +51,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private final long[] windowMatches = new long[FixedBitSet.bits2words(INNER_WINDOW_SIZE)];
   private final double[] windowScores = new double[INNER_WINDOW_SIZE];
 
+  private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
+
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
     this.maxDoc = maxDoc;
     this.filter = filter == null ? null : new DisiWrapper(filter, false);
@@ -218,12 +220,14 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     // single essential clause in this window, we can iterate it directly and skip the bitset.
     // this is a common case for 2-clauses queries
-    for (int doc = top.doc; doc < upTo; doc = top.iterator.nextDoc()) {
-      if (acceptDocs != null && acceptDocs.get(doc) == false) {
-        continue;
+    for (DocAndScoreBuffer buffer = top.scorer.nextScores(upTo, acceptDocs, docAndScoreBuffer);
+        buffer.size > 0;
+        buffer = top.scorer.nextScores(upTo, acceptDocs, docAndScoreBuffer)) {
+      for (int i = 0; i < buffer.size; ++i) {
+        scoreNonEssentialClauses(collector, buffer.docs[i], buffer.scores[i], firstEssentialScorer);
       }
-      scoreNonEssentialClauses(collector, doc, top.scorable.score(), firstEssentialScorer);
     }
+
     top.doc = top.iterator.docID();
     essentialQueue.updateTop();
   }
@@ -304,13 +308,19 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     // Collect matches of essential clauses into a bitset
     do {
-      for (int doc = top.doc; doc < innerWindowMax; doc = top.iterator.nextDoc()) {
-        if (acceptDocs == null || acceptDocs.get(doc)) {
+      for (DocAndScoreBuffer buffer =
+              top.scorer.nextScores(innerWindowMax, acceptDocs, docAndScoreBuffer);
+          buffer.size > 0;
+          buffer = top.scorer.nextScores(innerWindowMax, acceptDocs, docAndScoreBuffer)) {
+        for (int index = 0; index < buffer.size; ++index) {
+          final int doc = buffer.docs[index];
+          final float score = buffer.scores[index];
           final int i = doc - innerWindowMin;
           windowMatches[i >>> 6] |= 1L << i;
-          windowScores[i] += top.scorable.score();
+          windowScores[i] += score;
         }
       }
+
       top.doc = top.iterator.docID();
       top = essentialQueue.updateTop();
     } while (top.doc < innerWindowMax);

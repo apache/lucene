@@ -81,6 +81,7 @@ final class BooleanScorer extends BulkScorer {
   final int minShouldMatch;
   final long cost;
   final boolean needsScores;
+  private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
 
   BooleanScorer(Collection<Scorer> scorers, int minShouldMatch, boolean needsScores) {
     if (minShouldMatch < 1 || minShouldMatch > scorers.size()) {
@@ -135,22 +136,25 @@ final class BooleanScorer extends BulkScorer {
       assert w.doc < max;
 
       DocIdSetIterator it = w.iterator;
-      int doc = w.doc;
-      if (doc < min) {
-        doc = it.advance(min);
+      if (w.doc < min) {
+        it.advance(min);
       }
       if (buckets == null) {
         // This doesn't apply live docs, so we'll need to apply them later
         it.intoBitSet(max, matching, base);
       } else {
-        for (; doc < max; doc = it.nextDoc()) {
-          if (acceptDocs == null || acceptDocs.get(doc)) {
+        for (DocAndScoreBuffer buffer = w.scorer.nextScores(max, acceptDocs, docAndScoreBuffer);
+            buffer.size > 0;
+            buffer = w.scorer.nextScores(max, acceptDocs, docAndScoreBuffer)) {
+          for (int index = 0; index < buffer.size; ++index) {
+            final int doc = buffer.docs[index];
+            final float score = buffer.scores[index];
             final int d = doc & MASK;
             matching.set(d);
             final Bucket bucket = buckets[d];
             bucket.freq++;
             if (needsScores) {
-              bucket.score += w.scorable.score();
+              bucket.score += score;
             }
           }
         }

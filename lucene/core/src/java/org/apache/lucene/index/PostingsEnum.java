@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
@@ -97,4 +98,44 @@ public abstract class PostingsEnum extends DocIdSetIterator {
    * anything (neither members of the returned BytesRef nor bytes in the byte[]).
    */
   public abstract BytesRef getPayload() throws IOException;
+
+  /**
+   * Return a new batch of doc IDs and frequencies, starting at the current doc ID, and ending
+   * before {@code upTo}.
+   *
+   * <p>An empty return value indicates that there are no postings left between the current doc ID
+   * and {@code upTo}.
+   *
+   * <p>This method behaves as if implemented as below, which is the default implementation:
+   *
+   * <pre class="prettyprint">
+   * int batchSize = 16;
+   * reuse.grow(batchSize);
+   * int size = 0;
+   * for (int doc = docID(); doc &lt; upTo &amp;&amp; size &lt; batchSize; doc = nextDoc()) {
+   *   reuse.docs[size] = doc;
+   *   reuse.freqs[size] = freq();
+   *   ++size;
+   * }
+   * reuse.size = size;
+   * return reuse;
+   * </pre>
+   *
+   * <p><b>NOTE</b>: The returned {@link DocAndFreqBuffer} should not hold references to internal
+   * data structures.
+   *
+   * @lucene.internal
+   */
+  public DocAndFreqBuffer nextPostings(int upTo, DocAndFreqBuffer reuse) throws IOException {
+    int batchSize = 16;
+    reuse.grow(batchSize);
+    int size = 0;
+    for (int doc = docID(); doc < upTo && size < batchSize; doc = nextDoc()) {
+      reuse.docs[size] = doc;
+      reuse.freqs[size] = freq();
+      ++size;
+    }
+    reuse.size = size;
+    return reuse;
+  }
 }

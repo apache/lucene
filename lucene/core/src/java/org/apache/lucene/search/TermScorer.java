@@ -17,11 +17,15 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
+import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.LongsRef;
 
 /**
  * Expert: A <code>Scorer</code> for documents matching a <code>Term</code>.
@@ -35,6 +39,8 @@ public final class TermScorer extends Scorer {
   private final NumericDocValues norms;
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
+  private DocAndFreqBuffer docAndFreqBuffer;
+  private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
   public TermScorer(PostingsEnum postingsEnum, SimScorer scorer, NumericDocValues norms) {
@@ -119,5 +125,50 @@ public final class TermScorer extends Scorer {
     if (impactsDisi != null) {
       impactsDisi.setMinCompetitiveScore(minScore);
     }
+  }
+
+  @Override
+  public DocAndScoreBuffer nextScores(int upTo, Bits liveDocs, DocAndScoreBuffer reuse)
+      throws IOException {
+    if (docAndFreqBuffer == null) {
+      docAndFreqBuffer = new DocAndFreqBuffer();
+    }
+
+    DocAndFreqBuffer docAndFreqBuffer;
+    for (; ; ) {
+      docAndFreqBuffer = postingsEnum.nextPostings(upTo, this.docAndFreqBuffer);
+      if (liveDocs != null && docAndFreqBuffer.size != 0) {
+        // An empty return value indicates that there are no more docs before upTo. We may be
+        // unlucky, and there are docs left, but all docs from the current batch happen to be marked
+        // as deleted. So we need to iterate until we find a batch that has at least one non-deleted
+        // doc.
+        docAndFreqBuffer.apply(liveDocs);
+        if (docAndFreqBuffer.size == 0) {
+          continue;
+        }
+      }
+      break;
+    }
+
+    int size = docAndFreqBuffer.size;
+    normValues = ArrayUtil.grow(normValues, size);
+    if (norms == null) {
+      Arrays.fill(normValues, 0, size, 1L);
+    } else {
+      for (int i = 0; i < size; ++i) {
+        if (norms.advanceExact(docAndFreqBuffer.docs[i])) {
+          normValues[i] = norms.longValue();
+        } else {
+          normValues[i] = 1L;
+        }
+      }
+    }
+
+    reuse.grow(size);
+    reuse.size = size;
+    System.arraycopy(docAndFreqBuffer.docs, 0, reuse.docs, 0, size);
+    scorer.score(size, docAndFreqBuffer.freqs, normValues, reuse.scores);
+
+    return reuse;
   }
 }
