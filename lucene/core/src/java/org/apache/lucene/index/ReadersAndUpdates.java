@@ -638,8 +638,6 @@ final class ReadersAndUpdates {
     // Do this so we can delete any created files on
     // exception; this saves all codecs from having to do it:
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
-
-    boolean success = false;
     try {
       final Codec codec = info.info.getCodec();
 
@@ -696,20 +694,17 @@ final class ReadersAndUpdates {
           reader.close();
         }
       }
+    } catch (Throwable t) {
+      // Advance only the nextWriteFieldInfosGen and nextWriteDocValuesGen, so
+      // that a 2nd attempt to write will write to a new file
+      info.advanceNextWriteFieldInfosGen();
+      info.advanceNextWriteDocValuesGen();
 
-      success = true;
-    } finally {
-      if (success == false) {
-        // Advance only the nextWriteFieldInfosGen and nextWriteDocValuesGen, so
-        // that a 2nd attempt to write will write to a new file
-        info.advanceNextWriteFieldInfosGen();
-        info.advanceNextWriteDocValuesGen();
-
-        // Delete any partially created file(s):
-        for (String fileName : trackingDir.getCreatedFiles()) {
-          IOUtils.deleteFilesIgnoringExceptions(dir, fileName);
-        }
+      // Delete any partially created file(s):
+      for (String fileName : trackingDir.getCreatedFiles()) {
+        IOUtils.deleteFilesSuppressingExceptions(t, dir, fileName);
       }
+      throw t;
     }
 
     // Prune the now-written DV updates:
@@ -806,15 +801,12 @@ final class ReadersAndUpdates {
             pendingDeletes.getHardLiveDocs(),
             pendingDeletes.numDocs(),
             true);
-    boolean success2 = false;
     try {
       pendingDeletes.onNewReader(newReader, info);
       reader.decRef();
-      success2 = true;
-    } finally {
-      if (success2 == false) {
-        newReader.decRef();
-      }
+    } catch (Throwable t) {
+      newReader.decRef();
+      throw t;
     }
     return newReader;
   }
