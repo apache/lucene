@@ -175,6 +175,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockFactory;
 import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
+import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.AlcoholicMergePolicy;
 import org.apache.lucene.tests.index.AssertingDirectoryReader;
@@ -1808,8 +1809,8 @@ public abstract class LuceneTestCase extends Assert {
 
   /** TODO: javadoc */
   public static IOContext newIOContext(Random random, IOContext oldContext) {
-    if (oldContext == IOContext.READONCE) {
-      return oldContext; // don't mess with the READONCE singleton
+    if (oldContext.hints().contains(ReadOnceHint.INSTANCE)) {
+      return oldContext; // just return as-is
     }
     final int randomNumDocs = random.nextInt(4192);
     final int size = random.nextInt(512) * randomNumDocs;
@@ -1829,7 +1830,7 @@ public abstract class LuceneTestCase extends Assert {
               random.nextBoolean(),
               TestUtil.nextInt(random, 1, 100)));
     } else {
-      // Make a totally random IOContext, except READONCE which has semantic implications
+      // Make a totally random IOContext
       final IOContext context;
       switch (random.nextInt(3)) {
         case 0:
