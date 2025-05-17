@@ -49,6 +49,9 @@ Bug Fixes
 
 * GITHUB#14075: Remove duplicate and add missing entry on brazilian portuguese stopwords list. (Arthur Caccavo)
 
+* GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
+  instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)

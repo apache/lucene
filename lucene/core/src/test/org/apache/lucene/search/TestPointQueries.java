@@ -2599,4 +2599,33 @@ public class TestPointQueries extends LuceneTestCase {
     w.close();
     dir.close();
   }
+
+  public void testOutOfOrderValuesInPointInSetQuery() throws Exception {
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new PointInSetQuery(
+                  "foo",
+                  1,
+                  1,
+                  new PointInSetQuery.Stream() {
+                    private final BytesRef[] values = {
+                      newBytesRef(new byte[] {2}), newBytesRef(new byte[] {1}) // out of order
+                    };
+                    int index = 0;
+
+                    @Override
+                    public BytesRef next() {
+                      return index < values.length ? values[index++] : null;
+                    }
+                  }) {
+                @Override
+                protected String toString(byte[] point) {
+                  return Arrays.toString(point);
+                }
+              };
+            });
+    assertEquals("values are out of order: saw [2] before [1]", expected.getMessage());
+  }
 }
