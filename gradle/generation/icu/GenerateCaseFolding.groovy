@@ -11,7 +11,24 @@ def unicodeVersion = UCharacter.getUnicodeVersion().toString()
 
 def outputFile = Paths.get(args[0])
 
-def generateSwitch() {
+def generateFoldSwitch() {
+  StringBuilder sb = new StringBuilder()
+  sb.append("switch(c) {\n")
+  for (int c = UCharacter.MIN_CODE_POINT; c <= UCharacter.MAX_CODE_POINT; c++) {
+    int lower = UCharacter.toLowerCase(c)
+    int folded = UCharacter.foldCase(c, true)
+    if (folded != lower) {
+      sb.append(String.format(Locale.ROOT, "      case 0x%04X: // %s\n", c, UCharacter.getName(c)))
+      sb.append(String.format(Locale.ROOT, "        return 0x%04X; // %s vs %s\n", folded, UCharacter.getName(folded), UCharacter.getName(lower)))
+    }
+  }
+  sb.append("      default:\n")
+  sb.append("        return Character.toLowerCase(c);\n")
+  sb.append("    }")
+  return sb.toString()
+}
+
+def generateExpandSwitch() {
   StringBuilder sb = new StringBuilder()
   sb.append("switch(c) {\n")
   for (int c = UCharacter.MIN_CODE_POINT; c <= UCharacter.MAX_CODE_POINT; c++) {
@@ -54,16 +71,23 @@ def code = """
  * limitations under the License.
  */
 
-package org.apache.lucene.util.automaton;
+package org.apache.lucene.util;
 
 import java.util.function.IntConsumer;
 
 /**
- * This file contains unicode properties used by {@code RegExp}.
+ * This file contains unicode properties used by {@code UnicodeUtil}.
  * The data was generated using ICU4J v${icuVersion}, unicode version: ${unicodeVersion}.
  */
 final class CaseFolding {
   private CaseFolding() {}
+
+  /**
+   * Returns the simple case folding of {@code c}
+   */
+  static int fold(int c) {
+    ${generateFoldSwitch()}
+  }
 
   /**
    * Calls {@code fn} consumer with {@code c} itself and its {@code scf} mappings. 
@@ -82,7 +106,7 @@ final class CaseFolding {
       fn.accept(lower);
     }
     // add special casing variants
-    ${generateSwitch()}
+    ${generateExpandSwitch()}
   }
 }
 """
