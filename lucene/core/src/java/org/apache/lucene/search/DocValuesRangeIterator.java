@@ -67,7 +67,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
 
     // Track a decision for all doc IDs between the current doc ID and upTo inclusive.
     Match match = Match.MAYBE;
-    int upTo = -1;
+    int upTo;
 
     Approximation(
         DocIdSetIterator innerApproximation,
@@ -78,6 +78,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
       this.skipper = skipper;
       this.lowerValue = lowerValue;
       this.upperValue = upperValue;
+      this.upTo = skipper.maxDocID(0);
     }
 
     @Override
