@@ -200,6 +200,7 @@ apply from: file('gradle/documentation/markdown.gradle')
 apply from: file('gradle/documentation/render-javadoc.gradle')
 apply from: file('gradle/documentation/check-broken-links.gradle')
 
+apply from: file('gradle/hacks/downloader-retries.gradle')
 apply from: file('gradle/hacks/gradle-archives.gradle')
 apply from: file('gradle/hacks/wipe-temp.gradle')
 apply from: file('gradle/hacks/hashmapAssertions.gradle')
