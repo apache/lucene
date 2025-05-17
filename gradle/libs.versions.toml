@@ -18,6 +18,8 @@ flexmark = "0.64.8"
 googleJavaFormat = "1.23.0"
 # gradle build support
 groovy = "4.0.26"
+# up-to-date version for a transitive dependency in spatial-extras (s2-geometry)
+guava = "33.4.8-jre"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -53,7 +55,7 @@ randomizedtesting = "2.8.3"
 # license checks
 rat = "0.14"
 # spatial-extras/ support
-s2-geometry = "1.0.0"
+s2-geometry = "2.0.0"
 # spatial-extras/ support
 spatial4j = "0.8"
 # benchmark/ XML parsing
@@ -74,6 +76,7 @@ flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attribut
 flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
 groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 javacc = { module = "net.java.dev.javacc:javacc", version.ref = "javacc" }
@@ -91,7 +94,7 @@ opennlp-tools = { module = "org.apache.opennlp:opennlp-tools", version.ref = "op
 procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork" }
 randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
 rat = { module = "org.apache.rat:apache-rat", version.ref = "rat" }
-s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
+s2-geometry = { module = "com.google.geometry:s2-geometry", version.ref = "s2-geometry" }
 spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "spatial4j" }
 xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
 zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }

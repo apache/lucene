@@ -19,7 +19,6 @@ package org.apache.lucene.spatial.prefix.tree;
 
 import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import com.google.common.geometry.S2CellId;
-import com.google.common.geometry.S2Projections;
 import org.apache.lucene.spatial.spatial4j.Geo3dSpatialContextFactory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
@@ -113,7 +112,7 @@ public class TestS2PrefixTree extends LuceneTestCase {
       cell = (S2PrefixTreeCell) iterator.next();
     }
     assertTrue(cell.getLevel() == level);
-    double precisionCell = S2Projections.MAX_WIDTH.getValue(cell.cellId.level());
+    double precisionCell = S2PrefixTree.PROJECTION.maxWidth.getValue(cell.cellId.level());
     assertTrue(precision > precisionCell);
   }
 }
