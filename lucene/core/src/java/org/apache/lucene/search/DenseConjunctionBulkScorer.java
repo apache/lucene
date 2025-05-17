@@ -198,17 +198,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     int bitsetWindowMax = (int) Math.min(minDocIDRunEnd, (long) WINDOW_SIZE + min);
 
     if (windowTwoPhases.isEmpty()) {
-      if (acceptDocs == null && windowApproximations.size() == 1) {
-        // We have a range of doc IDs where all matches of an iterator are matches of the
-        // conjunction.
-        DocIdSetIterator iterator = windowApproximations.get(0);
-        if (iterator.docID() < min) {
-          iterator.advance(min);
-        }
-        collector.collect(new DISIDocIdStream(iterator, bitsetWindowMax, clauseWindowMatches));
-      } else {
-        scoreWindowUsingBitSet(collector, acceptDocs, windowApproximations, min, bitsetWindowMax);
-      }
+      scoreWindowUsingBitSet(collector, acceptDocs, windowApproximations, min, bitsetWindowMax);
     } else {
       windowTwoPhases.sort(Comparator.comparingDouble(TwoPhaseIterator::matchCost));
       scoreWindowUsingLeapFrog(
