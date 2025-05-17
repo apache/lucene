@@ -220,7 +220,7 @@ public final class StemmerOverrideFilter extends TokenFilter {
         int id = sort[i];
         BytesRef bytesRef = hash.get(id, spare);
         intsSpare.copyUTF8Bytes(bytesRef);
-        fstCompiler.add(intsSpare.get(), new BytesRef(outputValues.get(id)));
+        fstCompiler.add(intsSpare.get(), BytesRef.of(outputValues.get(id)));
       }
       return new StemmerOverrideMap(
           FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()), ignoreCase);

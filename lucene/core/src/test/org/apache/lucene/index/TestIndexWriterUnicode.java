@@ -178,7 +178,7 @@ public class TestIndexWriterUnicode extends LuceneTestCase {
     for (int iter = 0; iter < num; iter++) {
       boolean hasIllegal = fillUnicode(buffer, expected, 0, 20);
 
-      BytesRef utf8 = new BytesRef(CharBuffer.wrap(buffer, 0, 20));
+      BytesRef utf8 = BytesRef.of(CharBuffer.wrap(buffer, 0, 20));
       if (!hasIllegal) {
         byte[] b = new String(buffer, 0, 20).getBytes(StandardCharsets.UTF_8);
         assertEquals(b.length, utf8.length);
@@ -210,7 +210,7 @@ public class TestIndexWriterUnicode extends LuceneTestCase {
         chars[len++] = (char) (((ch - 0x0010000) & 0x3FFL) + UnicodeUtil.UNI_SUR_LOW_START);
       }
 
-      BytesRef utf8 = new BytesRef(CharBuffer.wrap(chars, 0, len));
+      BytesRef utf8 = BytesRef.of(CharBuffer.wrap(chars, 0, len));
 
       String s1 = new String(chars, 0, len);
       String s2 = new String(utf8.bytes, 0, utf8.length, StandardCharsets.UTF_8);

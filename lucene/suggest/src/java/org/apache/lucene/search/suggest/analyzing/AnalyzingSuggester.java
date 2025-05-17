@@ -690,7 +690,7 @@ public class AnalyzingSuggester extends Lookup {
             "lookup key cannot contain unit separator character U+001F; this character is reserved");
       }
     }
-    final BytesRef utf8Key = new BytesRef(key);
+    final BytesRef utf8Key = BytesRef.of(key);
     try {
       Automaton lookupAutomaton = toLookupAutomaton(key);
 

@@ -242,7 +242,7 @@ public class WFSTCompletionLookup extends Lookup {
     Arc<Long> arc = new Arc<>();
     Long result = null;
     try {
-      result = lookupPrefix(new BytesRef(key), arc);
+      result = lookupPrefix(BytesRef.of(key), arc);
     } catch (IOException bogus) {
       throw new RuntimeException(bogus);
     }

@@ -48,7 +48,7 @@ public class RegexpQueryNode extends QueryNodeImpl implements TextableQueryNode,
   }
 
   public BytesRef textToBytesRef() {
-    return new BytesRef(text);
+    return BytesRef.of(text);
   }
 
   @Override

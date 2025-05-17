@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
@@ -79,6 +80,26 @@ public final class BytesRef implements Comparable<BytesRef>, Cloneable {
   public BytesRef(CharSequence text) {
     this(UnicodeUtil.maxUTF8Length(text.length()));
     length = UnicodeUtil.UTF16toUTF8(text, 0, text.length(), bytes);
+  }
+
+  /**
+   * Initialize the byte[] from the UTF8 bytes for the provided String.
+   *
+   * @param text This must be well-formed unicode text, with no unpaired surrogates.
+   */
+  public BytesRef(String text) {
+    this(text.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * @param text This must be well-formed unicode text, with no unpaired surrogates.
+   * @return BytesRef instance from the provided String.
+   */
+  public static BytesRef of(CharSequence text) {
+    if (text instanceof String string) {
+      return new BytesRef(string);
+    }
+    return new BytesRef(text);
   }
 
   /**
