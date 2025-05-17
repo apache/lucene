@@ -320,6 +320,12 @@ public abstract class ValueSource {
     }
 
     @Override
+    public SortField getSortField(boolean reverse) {
+      // avoids indirection and supports a better needsScores()
+      return in.getSortField(reverse);
+    }
+
+    @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
