@@ -1274,7 +1274,11 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
   }
 
   private Analyzer getAnalyzer(SynonymMap.Builder b, final boolean ignoreCase) throws IOException {
-    final SynonymMap map = b.build();
+    SynonymMapDirectory synonymMapDirectory = null;
+    if (random().nextBoolean()) {
+      synonymMapDirectory = closeAfterTest(new SynonymMapDirectory(createTempDir()));
+    }
+    final SynonymMap map = b.build(synonymMapDirectory);
     return new Analyzer() {
       @Override
       protected TokenStreamComponents createComponents(String fieldName) {
