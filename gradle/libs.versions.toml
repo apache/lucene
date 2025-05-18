@@ -51,7 +51,7 @@ procfork = "1.0.6"
 # unit tests
 randomizedtesting = "2.8.3"
 # license checks
-rat = "0.14"
+rat = "0.15"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
