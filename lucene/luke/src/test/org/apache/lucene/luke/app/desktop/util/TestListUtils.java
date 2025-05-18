@@ -17,25 +17,21 @@
 
 package org.apache.lucene.luke.app.desktop.util;
 
+import java.util.Arrays;
 import java.util.List;
-import java.util.function.IntFunction;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import javax.swing.JList;
-import javax.swing.ListModel;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.Test;
 
-/** List model utilities */
-public class ListUtils {
+public class TestListUtils extends LuceneTestCase {
 
-  public static <T> List<T> getAllItems(JList<T> jlist) {
-    ListModel<T> model = jlist.getModel();
-    return getAllItems(jlist, model::getElementAt);
+  @Test
+  public void testGetAllItems() {
+    JList<String> list = new JList<>(new String[] {"Item 1", "Item 2"});
+    List<String> items = ListUtils.getAllItems(list);
+    assertEquals(Arrays.asList("Item 1", "Item 2"), items);
+    // test mutability
+    items.add("Item 3");
+    assertEquals(Arrays.asList("Item 1", "Item 2", "Item 3"), items);
   }
-
-  public static <T, R> List<R> getAllItems(JList<T> jlist, IntFunction<R> mapFunc) {
-    ListModel<T> model = jlist.getModel();
-    return IntStream.range(0, model.getSize()).mapToObj(mapFunc).collect(Collectors.toList());
-  }
-
-  private ListUtils() {}
 }
