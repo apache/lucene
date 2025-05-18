@@ -15,9 +15,15 @@
  * limitations under the License.
  */
 
-// Configure sanity check for conflicting dependencies across certain configurations
+import com.carrotsearch.gradle.buildinfra.dependencychecks.DependencyChecksPlugin
+
+// Configure dependency checks plugin which validates and updates the top-level
+// versions.lock, taking care of cross-configuration consistency of transitive dependencies.
+//
+// https://github.com/carrotsearch/gradle-build-infra#plugin-comcarrotsearchgradlebuildinfradependencychecksdependencychecksplugin
+
 allprojects {
-  apply plugin: deps.plugins.dependencychecks.get().pluginId
+  plugins.apply(DependencyChecksPlugin)
 
   def mainConfigurations = project.configurations.matching {
     it.name in [
@@ -39,11 +45,19 @@ allprojects {
 
     configurationGroups {
       main_dependencies {
-        include mainConfigurations
+        include provider {
+          mainConfigurations.collect {
+            it.name
+          }
+        }
       }
 
       test_dependencies {
-        include testConfigurations
+        include provider {
+          testConfigurations.collect {
+            it.name
+          }
+        }
       }
     }
   }
@@ -55,47 +69,4 @@ allprojects {
       }
     }
   }
-}
-
-// Configure version catalog cleanups plugin.
-configure(rootProject) {
-  apply plugin: deps.plugins.versionCatalogUpdate.get().pluginId
-
-  versionCatalogUpdate {
-    sortByKey = true
-
-    versionCatalogs {
-      deps {
-        catalogFile = file("gradle/libs.versions.toml")
-      }
-    }
-  }
-
-  tasks.matching { it.name == "tidy" }.configureEach {
-    it.dependsOn(":versionCatalogFormatDeps")
-  }
-
-  // correct crlf/ default encoding after version catalog formatting finishes.
-  tasks.matching {
-    it.path in [
-      ":versionCatalogFormatDeps"
-    ]
-  }.configureEach {
-    it.doLast {
-      ant.fixcrlf(file: it.catalogFile.get().asFile,
-        eol: "lf", fixlast: "true", encoding: "UTF-8")
-    }
-  }
-
-  tasks.matching {
-    it.path in [
-      ":versionCatalogUpdateDeps"
-    ]
-  }.configureEach {
-    it.interactive = true
-  }
-
-  tasks.register("updateDeps", {
-    dependsOn ":versionCatalogUpdateDeps"
-  })
 }

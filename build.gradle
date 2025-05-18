@@ -28,8 +28,9 @@ plugins {
 
   id "lucene.help"
 
-
   id "lucene.validation.spotless-groovy"
+  id "lucene.validation.lockfile"
+  id "lucene.validation.gradle-versions-cleanup"
 
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
@@ -37,7 +38,6 @@ plugins {
   // TODO: review stuff below this line.
 
   // Apply other plugins.
-  alias(deps.plugins.dependencychecks)
   alias(deps.plugins.spotless) apply false
   alias(deps.plugins.benmanes.versions)
   alias(deps.plugins.forbiddenapis) apply false
@@ -125,7 +125,6 @@ apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')
 apply from: file('gradle/validation/ecj-lint.gradle')
 apply from: file('gradle/validation/gradlew-scripts-tweaked.gradle')
-apply from: file('gradle/validation/dependencies.gradle')
 apply from: file('gradle/validation/spotless.gradle')
 
 // Wire up included builds to some validation tasks.
