@@ -31,6 +31,8 @@ Improvements
 * GITHUB#14602: Refactor the expressions compiler to use official ClassData BSM with indexed lookup
   (Uwe Schindler)
 
+* GITHUB#14443: Support adaptive refresh in Searcher Managers (Vigya Sharma)
+
 Optimizations
 ---------------------
 * GITHUB#14418: Quick exit on filter query matching no docs when rewriting knn query. (Pan Guixin)
