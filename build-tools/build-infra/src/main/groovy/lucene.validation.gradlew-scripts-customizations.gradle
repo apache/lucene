@@ -17,27 +17,30 @@ import java.nio.charset.StandardCharsets
  * limitations under the License.
  */
 
-// This ensures 'gradlew*' scripts contain the manual fix so that they
-// don't fork a daemon subprocess on the initial run.
+// Check if Lucene customizations to gradlew scripts are present.
 
-configure(rootProject) {
-  task gradlewScriptsTweaked() { task ->
-    def scripts = [
-        file("gradlew"),
-        file("gradlew.bat")
-    ]
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
 
-    inputs.files(scripts)
+def gradlewScriptsTweaked = tasks.register("gradlewScriptsTweaked", {
+  def scripts = [
+    file("gradlew"),
+    file("gradlew.bat")
+  ]
 
-    doFirst {
-      scripts.each { file ->
-        def content = new String(file.readBytes(), StandardCharsets.US_ASCII)
-        if (content.indexOf("GradlePropertiesGenerator") < 0) {
-          throw new GradleException("Launch script ${file} does not have a tweak to generate gradle.properties.")
-        }
+  inputs.files(scripts)
+
+  doFirst {
+    scripts.each { file ->
+      def content = new String(file.readBytes(), StandardCharsets.US_ASCII)
+      if (content.indexOf("START OF LUCENE CUSTOMIZATION") < 0) {
+        throw new GradleException("Launch script ${file} does not have Lucene customizations?")
       }
     }
   }
+})
 
-  check.dependsOn gradlewScriptsTweaked
+tasks.named("check").configure {
+  dependsOn gradlewScriptsTweaked
 }
