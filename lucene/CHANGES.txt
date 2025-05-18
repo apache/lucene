@@ -113,7 +113,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
+  used if the DoubleValuesSource needed scores. (David Smiley)
+
+* GITHUB#14682 : Fix for add char and token filters in Luke Analysis tab. (Amir Raza)
 
 Build
 ---------------------
