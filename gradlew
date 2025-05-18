@@ -227,7 +227,7 @@ if [ "$darwin" ]; then
 else
     shasumcmd=sha256sum
 fi
-if ! ( cd "$APP_HOME/gradle/wrapper" && "$shasumcmd" --status -c "${GRADLE_WRAPPER_JAR}.sha256" ); then
+if [ ! -e "$GRADLE_WRAPPER_JAR" ] || ! ( cd "$APP_HOME/gradle/wrapper" && "$shasumcmd" --status -c "${GRADLE_WRAPPER_JAR}.sha256" ); then
     "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
     WRAPPER_STATUS=$?
     if [ "$WRAPPER_STATUS" -eq 1 ]; then
