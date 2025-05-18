@@ -222,7 +222,7 @@ if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
 fi
 
 GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
-if [ "$darwin" ]; then
+if "$darwin"; then
     shasumcmd=shasum
 else
     shasumcmd=sha256sum
