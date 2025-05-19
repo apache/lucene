@@ -25,7 +25,7 @@ allprojects {project ->
   apply plugin: 'base'
 
   // Project group and version.
-  group = "org.apache"
+  group = "org.apache.lucene"
   version = rootProject.version
 
   // Source repositories for dependencies.
