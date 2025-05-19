@@ -159,6 +159,9 @@ public class WrapperDownloader {
         }
 
         switch (connection.getResponseCode()) {
+          case /* TOO_MANY_REQUESTS */ 429:
+          // it may not be possible to recover from this using a short delay
+          // but try anyway.
           case HttpURLConnection.HTTP_INTERNAL_ERROR:
           case HttpURLConnection.HTTP_UNAVAILABLE:
           case HttpURLConnection.HTTP_BAD_GATEWAY:
