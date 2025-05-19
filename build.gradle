@@ -29,6 +29,7 @@ plugins {
 
   id "lucene.java.folder-layout"
   id "lucene.java.javac"
+  id "lucene.java.jar-manifest"
 
   id "lucene.help"
 
@@ -106,7 +107,6 @@ apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/testing/alternative-jdk-support.gradle')
-apply from: file('gradle/java/jar-manifest.gradle')
 apply from: file('gradle/java/modules.gradle')
 
 // IDE support, settings and specials.
