@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-
 import com.diffplug.gradle.spotless.SpotlessPlugin
 
 import java.time.ZonedDateTime
@@ -24,10 +23,12 @@ import java.time.format.DateTimeFormatter
 plugins {
   // Apply convention plugins from the composite build-infra project.
   // The order of plugins will typically matter.
-  id "lucene.validation.check-environment"
+  id "lucene.root-project.check-environment"
+  id "lucene.root-project.conventions"
+  id "lucene.all-projects.conventions"
 
-  id "lucene.rootproject.setup"
-  id "lucene.allprojects.setup"
+  id "lucene.java.folder-layout"
+  id "lucene.java.javac"
 
   id "lucene.help"
 
@@ -100,8 +101,6 @@ apply from: file('gradle/_to-remove/conventions.gradle')
 
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
-apply from: file('gradle/java/folder-layout.gradle')
-apply from: file('gradle/java/javac.gradle')
 apply from: file('gradle/java/core-mrjar.gradle')
 apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')

@@ -26,7 +26,7 @@ import com.diffplug.spotless.LineEnding
 configure(allprojects) { prj ->
   plugins.apply(SpotlessPlugin)
 
-  plugins.withType(JavaBasePlugin).configureEach {
+  plugins.withType(JavaPlugin).configureEach {
     spotless {
       java {
         lineEndings(LineEnding.UNIX)

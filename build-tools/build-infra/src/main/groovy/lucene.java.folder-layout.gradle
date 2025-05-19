@@ -14,32 +14,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Common setup for all projects.
-
-if (project != project.rootProject) {
-  throw new GradleException("Applicable to rootProject only: " + project.path)
-}
 
 allprojects {project ->
-  // All projects have the base plugin (convention tasks like 'check', etc.)
-  apply plugin: 'base'
+  plugins.withType(JavaPlugin).configureEach {
+    sourceSets {
+      main.java.srcDirs = ['src/java']
+      main.resources.srcDirs = ['src/resources']
+      test.java.srcDirs = ['src/test']
+      test.resources.srcDirs = ['src/test-files']
+    }
 
-  // Project group and version.
-  group = "org.apache.lucene"
-  version = rootProject.version
+    tasks.named('processTestResources').configure {
+      from('src/test') {
+        exclude '**/*.java'
+      }
+    }
 
-  // Source repositories for dependencies.
-  repositories {
-    mavenCentral()
+    // if 'src/tools' exists, add it as a separate sourceSet.
+    if (project.file('src/tools/java').exists()) {
+      sourceSets {
+        tools {
+          java {
+            srcDirs = ['src/tools/java']
+          }
+        }
+      }
+
+      // Inherit any dependencies for this source set from the main source set.
+      configurations {
+        toolsImplementation.extendsFrom implementation
+      }
+    }
   }
-
-  // Common archive artifact naming.
-  var baseExt = project.getExtensions().getByType(BasePluginExtension)
-  baseExt.archivesName.convention(project.path.replaceAll("^:", "").replace(':', '-'))
-
-  // Common tasks or meta-tasks.
-  tasks.register("tidy", {
-    description "Applies all code formatters and other enforced cleanups to the project."
-    group "verification"
-  })
 }

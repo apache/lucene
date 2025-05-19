@@ -15,21 +15,24 @@
  * limitations under the License.
  */
 
-// Configure Java project defaults.
+def minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
 
-allprojects { project ->
-  plugins.withType(JavaPlugin) {
-    sourceCompatibility = rootProject.minJavaVersion
-    targetCompatibility = rootProject.minJavaVersion
+allprojects {project ->
+  plugins.withType(JavaPlugin).configureEach {
+    Provider<Boolean> failOnWarningsOption = buildOptions.addBooleanOption("javac.failOnWarnings", "Triggers failures on javac warnings.", true)
 
-    // Use 'release' flag instead of 'source' and 'target'
-    tasks.withType(JavaCompile) {
-      options.compilerArgs += ["--release", rootProject.minJavaVersion.toString()]
-    }
+    sourceCompatibility = minJavaVersion
+    targetCompatibility = minJavaVersion
 
-    // Configure warnings.
-    // Use 'javac --help-lint' to get the supported list
-    tasks.withType(JavaCompile) {
+    tasks.withType(JavaCompile).configureEach {
+      // Use 'release' flag instead of 'source' and 'target'
+      options.compilerArgs += [
+        "--release",
+        minJavaVersion.toString()
+      ]
+
+      // Configure warnings.
+      // Use 'javac --help-lint' to get the supported list
       options.encoding = "UTF-8"
       options.compilerArgs += [
         "-Xlint:auxiliaryclass",
@@ -77,10 +80,10 @@ allprojects { project ->
       } else {
         // proc:none was added because of LOG4J2-1925 / JDK-8186647
         options.compilerArgs += [
-            "-proc:none"
+          "-proc:none"
         ]
 
-        if (propertyOrDefault("javac.failOnWarnings", true).toBoolean()) {
+        if (failOnWarningsOption.get()) {
           options.compilerArgs += "-Werror"
         }
       }
