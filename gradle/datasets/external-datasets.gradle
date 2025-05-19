@@ -37,7 +37,6 @@ def unzstd(java.nio.file.Path src, java.nio.file.Path dst) {
 
 // TODO: not sure whether this should live in benchmarks, but for now let it be.
 configure(project(":lucene:benchmark")) {
-  apply plugin: "java"
   apply plugin: deps.plugins.undercouch.download.get().pluginId
 
   ext {

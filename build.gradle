@@ -15,6 +15,9 @@
  * limitations under the License.
  */
 
+
+import com.diffplug.gradle.spotless.SpotlessPlugin
+
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
@@ -29,6 +32,7 @@ plugins {
   id "lucene.help"
 
   id "lucene.validation.spotless-groovy"
+  id "lucene.validation.spotless-java"
   id "lucene.validation.lockfile"
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.gradlew-scripts-customizations"
@@ -124,7 +128,6 @@ apply from: file('gradle/validation/validate-source-patterns.gradle')
 apply from: file('gradle/validation/rat-sources.gradle')
 apply from: file('gradle/validation/owasp-dependency-check.gradle')
 apply from: file('gradle/validation/ecj-lint.gradle')
-apply from: file('gradle/validation/spotless.gradle')
 
 // Wire up included builds to some validation tasks.
 rootProject.tasks.named("tidy").configure {
