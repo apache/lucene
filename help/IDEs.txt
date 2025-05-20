@@ -18,3 +18,50 @@ File -> Import... -> Existing Project into Workspace
 Please note that Eclipse does not distinguish between sub-projects
 and package sets (main/ test) so pretty much all the sources and dependencies
 are available in one large bin.
+
+
+VSCode
+======
+
+Run the following to set up Eclipse project files:
+
+./gradlew eclipse
+
+Open the lucene checkout in VSCode.
+
+Install the recommended "Extension Pack for Java" if asked.
+
+View -> Command Palette -> Preferences: Open Settings UI
+Type 'java.import.gradle.enabled' and uncheck it.
+Type 'java.import.maven.enabled' and uncheck it.
+
+Restart VSCode.
+
+
+Neovim
+======
+
+Run the following to set up Eclipse project files:
+
+./gradlew eclipse
+
+Install jdtls: https://projects.eclipse.org/projects/eclipse.jdt.ls
+Create lsp/jdtls.lua, see https://github.com/neovim/nvim-lspconfig for example.
+Modify lsp/jdtls.lua to disable gradle/maven integration:
+
+  init_options = {
+    settings = {
+      java = {
+        import = {
+          gradle = {
+            enabled = false,
+          },
+          maven = {
+            enabled = false,
+          },
+        },
+      },
+    },
+  },
+
+Enable 'jdtls' language server with vim.lsp.enable()

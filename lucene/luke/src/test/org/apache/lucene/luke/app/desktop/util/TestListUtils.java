@@ -14,20 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
 
-/**
- * Hints on the type of file being opened.
- *
- * <p><b>NOTE</b>: There is no constant for metadata files, since metadata files should be opened
- * with {@link Directory#openChecksumInput(String)}, which doesn't take hints.
- */
-public enum FileTypeHint implements IOContext.FileOpenHint {
-  /**
-   * The file contains indexes. It is small (~1% or less of the data size) and generally fits in the
-   * page cache.
-   */
-  INDEX,
-  /** The file contains field data. */
-  DATA
+package org.apache.lucene.luke.app.desktop.util;
+
+import java.util.Arrays;
+import java.util.List;
+import javax.swing.JList;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.Test;
+
+public class TestListUtils extends LuceneTestCase {
+
+  @Test
+  public void testGetAllItems() {
+    JList<String> list = new JList<>(new String[] {"Item 1", "Item 2"});
+    List<String> items = ListUtils.getAllItems(list);
+    assertEquals(Arrays.asList("Item 1", "Item 2"), items);
+    // test mutability
+    items.add("Item 3");
+    assertEquals(Arrays.asList("Item 1", "Item 2", "Item 3"), items);
+  }
 }

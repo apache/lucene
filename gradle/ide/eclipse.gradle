@@ -96,7 +96,8 @@ configure(rootProject) {
         from rootProject.file("${resources}/dot.settings")
         into rootProject.file(".settings")
         filter(ReplaceTokens, tokens: [
-                'ecj-lint-config': ecjLintFile.getText('UTF-8').replaceAll(/=error\b/, '=' + errorMode)
+                'ecj-lint-config': ecjLintFile.getText('UTF-8').replaceAll(/=error\b/, '=' + errorMode),
+                'eclipseJavaVersion': eclipseJavaVersion as String
         ])
         filteringCharset = 'UTF-8'
 

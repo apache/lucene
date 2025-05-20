@@ -14,20 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.search;
+
+import java.io.IOException;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexCommit;
 
 /**
- * Hints on the type of file being opened.
+ * Expert: Interface to supply commit for searcher refresh.
  *
- * <p><b>NOTE</b>: There is no constant for metadata files, since metadata files should be opened
- * with {@link Directory#openChecksumInput(String)}, which doesn't take hints.
+ * @lucene.experimental
  */
-public enum FileTypeHint implements IOContext.FileOpenHint {
+public interface RefreshCommitSupplier {
+
   /**
-   * The file contains indexes. It is small (~1% or less of the data size) and generally fits in the
-   * page cache.
+   * Expert: Returns the index commit that searcher should refresh on. A null return value (default)
+   * indicates reader should refresh on the latest commit.
+   *
+   * @param reader DirectoryReader to refresh
    */
-  INDEX,
-  /** The file contains field data. */
-  DATA
+  default IndexCommit getSearcherRefreshCommit(DirectoryReader reader) throws IOException {
+    return null;
+  }
 }

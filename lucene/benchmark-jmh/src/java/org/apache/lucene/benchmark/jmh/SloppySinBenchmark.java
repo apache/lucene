@@ -14,20 +14,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.store;
+package org.apache.lucene.benchmark.jmh;
 
-/**
- * Hints on the type of file being opened.
- *
- * <p><b>NOTE</b>: There is no constant for metadata files, since metadata files should be opened
- * with {@link Directory#openChecksumInput(String)}, which doesn't take hints.
- */
-public enum FileTypeHint implements IOContext.FileOpenHint {
-  /**
-   * The file contains indexes. It is small (~1% or less of the data size) and generally fits in the
-   * page cache.
-   */
-  INDEX,
-  /** The file contains field data. */
-  DATA
+import java.util.concurrent.TimeUnit;
+import org.apache.lucene.util.SloppyMath;
+import org.openjdk.jmh.annotations.*;
+
+@State(Scope.Thread)
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@Fork(value = 1, warmups = 1)
+@Warmup(iterations = 1, time = 1)
+@Measurement(iterations = 3, time = 2)
+public class SloppySinBenchmark {
+  @Benchmark
+  public double standardSin(ExecutionPlan plan) {
+    return Math.sin(plan.value);
+  }
+
+  @Benchmark
+  public double sloppySin(ExecutionPlan plan) {
+    return SloppyMath.sin(plan.value);
+  }
+
+  @State(Scope.Benchmark)
+  public static class ExecutionPlan {
+
+    // Test with different input ranges
+    @Param({"0.1", "0.5", "1.0", "2.0", "3.14"})
+    public double value;
+  }
 }

@@ -25,7 +25,7 @@ icu4j = "77.1"
 # queryparsers/ grammars
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
-jflex = "1.8.2"
+jflex = "1.9.1"
 # gradle checkWorkingCopy support
 jgit = "7.2.0.202503040940-r"
 # benchmark-jmh/ microbenchmarks
@@ -51,7 +51,7 @@ procfork = "1.0.6"
 # unit tests
 randomizedtesting = "2.8.3"
 # license checks
-rat = "0.14"
+rat = "0.15"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
@@ -59,7 +59,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-2"
+zstd = "1.5.7-3"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }

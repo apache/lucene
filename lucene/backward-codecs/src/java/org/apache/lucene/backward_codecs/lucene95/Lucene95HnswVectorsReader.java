@@ -71,7 +71,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   Lucene95HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
-    boolean success = false;
     try {
       vectorData =
           openDataInput(
@@ -85,11 +84,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               versionMeta,
               Lucene95HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
               Lucene95HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -125,7 +122,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, state.context);
-    boolean success = false;
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -146,12 +142,10 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 

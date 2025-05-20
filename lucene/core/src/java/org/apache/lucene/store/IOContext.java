@@ -17,8 +17,8 @@
 package org.apache.lucene.store;
 
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * IOContext holds additional details on the merge/search context. An IOContext object can never be
@@ -42,13 +42,13 @@ public interface IOContext {
   interface FileOpenHint {}
 
   /**
-   * A default context for normal reads/writes. Use {@link #withReadAdvice(ReadAdvice)} to specify
-   * another {@link ReadAdvice}.
+   * A default context for normal reads/writes. Use {@link #withHints} to specify additional
+   * information on how the file is to be used.
    *
    * <p>It will use {@link ReadAdvice#RANDOM} by default, unless set by system property {@code
    * org.apache.lucene.store.defaultReadAdvice}.
    */
-  IOContext DEFAULT = new DefaultIOContext(Optional.empty());
+  IOContext DEFAULT = new DefaultIOContext();
 
   /**
    * A default context for reads with {@link ReadAdvice#SEQUENTIAL}.
@@ -56,7 +56,7 @@ public interface IOContext {
    * <p>This context should only be used when the read operations will be performed in the same
    * thread as the thread that opens the underlying storage.
    */
-  IOContext READONCE = new DefaultIOContext(Optional.of(ReadAdvice.SEQUENTIAL));
+  IOContext READONCE = new DefaultIOContext(DataAccessHint.SEQUENTIAL);
 
   /** Returns an {@link IOContext} for merging with the specified {@link MergeInfo} */
   static IOContext merge(MergeInfo mergeInfo) {
@@ -84,16 +84,6 @@ public interface IOContext {
 
       @Override
       public IOContext withHints(FileOpenHint... hints) {
-        return this;
-      }
-
-      @Override
-      public Optional<ReadAdvice> readAdvice() {
-        return Optional.of(ReadAdvice.SEQUENTIAL);
-      }
-
-      @Override
-      public IOContext withReadAdvice(ReadAdvice advice) {
         return this;
       }
     };
@@ -127,16 +117,6 @@ public interface IOContext {
       public IOContext withHints(FileOpenHint... hints) {
         return this;
       }
-
-      @Override
-      public Optional<ReadAdvice> readAdvice() {
-        return Optional.of(ReadAdvice.SEQUENTIAL);
-      }
-
-      @Override
-      public IOContext withReadAdvice(ReadAdvice advice) {
-        return this;
-      }
     };
   }
 
@@ -152,20 +132,11 @@ public interface IOContext {
   /** Any hints on how the file will be opened */
   Set<FileOpenHint> hints();
 
+  /** Finds all hints of type {@code cls} */
+  default <T extends FileOpenHint> Stream<T> hints(Class<T> cls) {
+    return hints().stream().filter(cls::isInstance).map(cls::cast);
+  }
+
   /** Sets the hints on this IOContext, if it makes sense to do so for this specific context */
   IOContext withHints(FileOpenHint... hints);
-
-  /** Advice on the expected read access pattern */
-  @Deprecated
-  Optional<ReadAdvice> readAdvice();
-
-  /**
-   * Return an updated {@link IOContext} that has the provided {@link ReadAdvice}, if the provided
-   * advice is compatible with the current context, otherwise return this existing instance. This
-   * helps preserve a {@link ReadAdvice#SEQUENTIAL} advice for merging, which is always the right
-   * choice, while allowing {@link IndexInput}s open for searching to use arbitrary {@link
-   * ReadAdvice}s.
-   */
-  @Deprecated
-  IOContext withReadAdvice(ReadAdvice advice);
 }

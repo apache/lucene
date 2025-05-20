@@ -86,6 +86,8 @@ allprojects {
         classpath = ecjConfiguration
         mainClass = "org.eclipse.jdt.internal.compiler.batch.Main"
 
+        // DOCS: https://help.eclipse.org/latest/index.jsp?topic=%2Forg.eclipse.jdt.doc.user%2Ftasks%2Ftask-using_batch_compiler.htm
+
         // Don't emit any .class files.
         // Hack around "-d none" still emitting package-info.class
         // by running in a temporary directory.
@@ -93,6 +95,8 @@ allprojects {
         workingDir tmpDst
 
         args += [ "-d", "none" ]
+
+        assert project.java.sourceCompatibility == project.java.targetCompatibility
 
         // Compilation environment.
         // we use -source/-target as it is significantly faster than --release

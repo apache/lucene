@@ -14,6 +14,7 @@ jobs:
   changelog-verifier-and-milestone-setter:
     name: Verify Change Log Entry and Set Milestone
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
 
     steps:
       - name: Checkout repository
@@ -45,8 +46,7 @@ jobs:
           # Add and fetch full history of the base branch
           BASE_BRANCH=${{ github.event.pull_request.base.ref }}
           # We need this to ensure we will be able to find the merge base
-          git fetch --unshallow || true
-          git fetch upstream $BASE_BRANCH
+          git fetch upstream $BASE_BRANCH --unshallow
 
           # Find merge base commit to diff against
           BASE_COMMIT=$(git merge-base HEAD upstream/$BASE_BRANCH)
@@ -57,9 +57,9 @@ jobs:
           git log --oneline -n 3 HEAD
 
           echo "Diff:"
-          git diff --name-only $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}
-          if ! git diff --name-only $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}; then
+          if git diff --exit-code --name-only $BASE_COMMIT HEAD -- ${{ env.CHANGE_LOG_FILE }}; then
             echo "Change log file:${{ env.CHANGE_LOG_FILE }} does not contains an entry corresponding to changes introduced in PR. Please add a changelog entry."
+            gh pr comment ${{ github.event.number }} --body "This PR does not have an entry in lucene/CHANGES.txt. Consider adding one. If the PR doesn't need a changelog entry, then add the skip-changelog-check label to it and you will stop receiving this reminder on future updates to the PR."
             exit 0
           else
             echo "${{ env.CHANGE_LOG_FILE }} contains change log entry. Proceeding with next steps."
@@ -119,6 +119,5 @@ jobs:
             echo "Milestone:${lucene_version} does not exist. Please create the milestone and run the workflow again."
             exit 0
           fi
-          # Will uncomment this line after we ensure it runs perfectly in production.
-          # gh pr edit ${{ github.event.number }} --milestone "${lucene_version}"
           echo "Adding/Updating milestone for the PR to:${lucene_version}"
+          gh pr edit ${{ github.event.number }} --milestone "${lucene_version}"

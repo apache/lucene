@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -35,8 +36,10 @@ public class TestForTooMuchCloning extends LuceneTestCase {
   // during merging and searching:
   public void test() throws Exception {
     final MockDirectoryWrapper dir = newMockDirectory();
+    dir.setVerboseClone(false); // set true to view clone stacks.
     final TieredMergePolicy tmp = new TieredMergePolicy();
     tmp.setSegmentsPerTier(2);
+    AtomicInteger segmentsMerged = new AtomicInteger();
     final RandomIndexWriter w =
         new RandomIndexWriter(
             random(),
@@ -45,9 +48,13 @@ public class TestForTooMuchCloning extends LuceneTestCase {
                 // to reduce flakiness on merge clone count
                 .setMergeScheduler(new SerialMergeScheduler())
                 .setMaxBufferedDocs(2)
-                // use a FilterMP otherwise RIW will randomly reconfigure
-                // the MP while the test runs
-                .setMergePolicy(new FilterMergePolicy(tmp)));
+                .setMergePolicy(
+                    new OneMergeWrappingMergePolicy(
+                        tmp,
+                        oneMerge -> {
+                          segmentsMerged.addAndGet(oneMerge.segments.size());
+                          return oneMerge;
+                        })));
     final int numDocs = 20;
     for (int docs = 0; docs < numDocs; docs++) {
       StringBuilder sb = new StringBuilder();
@@ -64,7 +71,7 @@ public class TestForTooMuchCloning extends LuceneTestCase {
     // System.out.println("merge clone count=" + cloneCount);
     assertTrue(
         "too many calls to IndexInput.clone during merging: " + dir.getInputCloneCount(),
-        dir.getInputCloneCount() < 600);
+        dir.getInputCloneCount() < (r.leaves().size() + segmentsMerged.get()) * 50);
 
     final IndexSearcher s = newSearcher(r);
     // important: set this after newSearcher, it might have run checkindex

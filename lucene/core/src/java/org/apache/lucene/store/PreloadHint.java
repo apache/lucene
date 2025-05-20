@@ -16,18 +16,7 @@
  */
 package org.apache.lucene.store;
 
-/**
- * Hints on the type of file being opened.
- *
- * <p><b>NOTE</b>: There is no constant for metadata files, since metadata files should be opened
- * with {@link Directory#openChecksumInput(String)}, which doesn't take hints.
- */
-public enum FileTypeHint implements IOContext.FileOpenHint {
-  /**
-   * The file contains indexes. It is small (~1% or less of the data size) and generally fits in the
-   * page cache.
-   */
-  INDEX,
-  /** The file contains field data. */
-  DATA
+/** A hint that the file should be preloaded into memory */
+public enum PreloadHint implements IOContext.FileOpenHint {
+  INSTANCE
 }
