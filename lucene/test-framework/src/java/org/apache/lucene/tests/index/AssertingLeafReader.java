@@ -578,6 +578,24 @@ public class AssertingLeafReader extends FilterLeafReader {
       return payload;
     }
 
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assertThread("Docs enums", creationThread);
+      assert state != DocsEnumState.START : "intoBitSet() called before nextDoc()/advance()";
+      in.intoBitSet(upTo, bitSet, offset);
+      assert in.docID() >= upTo;
+      assert in.docID() >= doc;
+      doc = in.docID();
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        state = DocsEnumState.FINISHED;
+        positionMax = 0;
+      } else {
+        state = DocsEnumState.ITERATING;
+        positionMax = super.freq();
+      }
+      positionCount = 0;
+    }
+
     void reset() {
       state = DocsEnumState.START;
       doc = in.docID();
