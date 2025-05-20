@@ -580,9 +580,9 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public void nextPostings(int upTo, DocAndFreqBuffer reuse) throws IOException {
+    public void nextPostings(int upTo, DocAndFreqBuffer buffer) throws IOException {
       assert state != DocsEnumState.START : "nextPostings() called before nextDoc()/advance()";
-      in.nextPostings(upTo, reuse);
+      in.nextPostings(upTo, buffer);
       doc = in.docID();
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
         state = DocsEnumState.FINISHED;

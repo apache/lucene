@@ -103,7 +103,7 @@ public abstract class Scorer extends Scorable {
    *     ++size;
    *   }
    * }
-   * reuse.size = size;
+   * buffer.size = size;
    * </pre>
    *
    * <p><b>NOTE</b>: The provided {@link DocAndScoreBuffer} should not hold references to internal
