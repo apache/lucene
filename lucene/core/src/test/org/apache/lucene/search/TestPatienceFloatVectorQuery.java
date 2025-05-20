@@ -35,6 +35,7 @@ public class TestPatienceFloatVectorQuery extends BaseKnnVectorQueryTestCase {
   private boolean wrapSeeded;
 
   @Before
+  @Override
   public void setUp() throws Exception {
     super.setUp();
     wrapSeeded = random().nextBoolean();
