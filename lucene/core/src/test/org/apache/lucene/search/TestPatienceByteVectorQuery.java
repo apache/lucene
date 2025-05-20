@@ -95,7 +95,7 @@ public class TestPatienceByteVectorQuery extends BaseKnnVectorQueryTestCase {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10);
       assertEquals(
           "PatienceKnnVectorQuery{saturationThreshold=0.995, patience=7, delegate="
-              + (wrapSeeded ? "SeededKnnVectorQuery{seed=*:*, seedWeight=null, delegate=" : "")
+              + (wrapSeeded ? "SeededKnnVectorQuery{seed=MatchNoDocsQuery(\"\"), seedWeight=null, delegate=" : "")
               + "KnnByteVectorQuery:field[0,...][10]"
               + (wrapSeeded ? "}" : "")
               + "}",
@@ -108,7 +108,7 @@ public class TestPatienceByteVectorQuery extends BaseKnnVectorQueryTestCase {
       query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10, filter);
       assertEquals(
           "PatienceKnnVectorQuery{saturationThreshold=0.995, patience=7, delegate="
-              + (wrapSeeded ? "SeededKnnVectorQuery{seed=*:*, seedWeight=null, delegate=" : "")
+              + (wrapSeeded ? "SeededKnnVectorQuery{seed=MatchNoDocsQuery(\"\"), seedWeight=null, delegate=" : "")
               + "KnnByteVectorQuery:field[0,...][10][id:text]"
               + (wrapSeeded ? "}" : "")
               + "}",
