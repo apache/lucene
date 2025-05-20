@@ -40,9 +40,10 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 
@@ -82,7 +83,7 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
               DATA_CODEC_NAME,
               VERSION_START,
               VERSION_CURRENT,
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
+              state.context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
 
       Map.Entry<String, IndexEntry> entry;
       while ((entry = parseNextField(state)) != null) {
