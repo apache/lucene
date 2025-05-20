@@ -150,7 +150,7 @@ public final class TermScorer extends Scorer {
     }
 
     int size = docAndFreqBuffer.size;
-    normValues = ArrayUtil.grow(normValues, size);
+    normValues = ArrayUtil.growNoCopy(normValues, size);
     if (norms == null) {
       Arrays.fill(normValues, 0, size, 1L);
     } else {
