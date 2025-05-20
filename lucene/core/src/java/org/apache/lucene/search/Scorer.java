@@ -80,7 +80,8 @@ public abstract class Scorer extends Scorable {
 
   /**
    * Return a new batch of doc IDs and scores, starting at the current doc ID, and ending before
-   * {@code upTo}.
+   * {@code upTo}. Because it starts on the current doc ID, it is illegal to call this method if the
+   * {@link #docID() current doc ID} is {@code -1}.
    *
    * <p>An empty return value indicates that there are no postings left between the current doc ID
    * and {@code upTo}.

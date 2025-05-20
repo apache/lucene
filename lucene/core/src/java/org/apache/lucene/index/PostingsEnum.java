@@ -101,7 +101,9 @@ public abstract class PostingsEnum extends DocIdSetIterator {
 
   /**
    * Fill a buffer of doc IDs and frequencies with some number of doc IDs and their corresponding
-   * frequencies, starting at the current doc ID, and ending before {@code upTo}.
+   * frequencies, starting at the current doc ID, and ending before {@code upTo}. Because it starts
+   * on the current doc ID, it is illegal to call this method if the {@link #docID() current doc ID}
+   * is {@code -1}.
    *
    * <p>An empty buffer after this method returns indicates that there are no postings left between
    * the current doc ID and {@code upTo}.
