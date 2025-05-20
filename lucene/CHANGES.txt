@@ -111,6 +111,9 @@ Optimizations
 * GITHUB#14609: Optimizes PointRangeQuery by rewriting to MatchAllDocsQuery/FieldExistsQuery/MatchNoDocsQuery if all
   docs in index are contained or excluded (Elliott Bradshaw)
 
+* GITHUB#14679: Optimize exhaustive evaluation of disjunctive queries.
+  (Adrien Grand)
+
 Bug Fixes
 ---------------------
 (No changes)
