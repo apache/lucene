@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Random;
+import org.apache.lucene.search.DocAndScoreAccBuffer;
 import org.apache.lucene.search.DocAndScoreBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterDocIdSetIterator;
@@ -286,6 +287,19 @@ public class AssertingScorer extends Scorer {
       throws IOException {
     assert doc != -1;
     in.nextDocsAndScores(upTo, liveDocs, buffer);
+    if (doc != in.iterator().docID()) {
+      doc = in.iterator().docID();
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        state = IteratorState.FINISHED;
+      } else {
+        state = IteratorState.ITERATING;
+      }
+    }
+  }
+
+  @Override
+  public void applyAsRequiredClause(DocAndScoreAccBuffer buffer) throws IOException {
+    in.applyAsRequiredClause(buffer);
     if (doc != in.iterator().docID()) {
       doc = in.iterator().docID();
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {

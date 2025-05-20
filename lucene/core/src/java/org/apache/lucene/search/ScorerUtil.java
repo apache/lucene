@@ -22,6 +22,7 @@ import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.PriorityQueue;
 
 /** Util class for Scorer related methods */
@@ -116,5 +117,23 @@ class ScorerUtil {
     public int length() {
       return in.length();
     }
+  }
+
+  static void filterCompetitiveHits(
+      DocAndScoreAccBuffer buffer,
+      double maxRemainingScore,
+      float minCompetitiveScore,
+      int numScorers) {
+    int newSize = 0;
+    for (int i = 0; i < buffer.size; ++i) {
+      float maxPossibleScore =
+          (float) MathUtil.sumUpperBound(buffer.scores[i] + maxRemainingScore, numScorers);
+      if (maxPossibleScore >= minCompetitiveScore) {
+        buffer.docs[newSize] = buffer.docs[i];
+        buffer.scores[newSize] = buffer.scores[i];
+        newSize++;
+      }
+    }
+    buffer.size = newSize;
   }
 }

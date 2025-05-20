@@ -25,6 +25,7 @@ import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.LongsRef;
 
 /**
@@ -40,6 +41,7 @@ public final class TermScorer extends Scorer {
   private final ImpactsDISI impactsDisi;
   private final MaxScoreCache maxScoreCache;
   private DocAndFreqBuffer docAndFreqBuffer;
+  private int[] freqs = IntsRef.EMPTY_INTS;
   private long[] normValues = LongsRef.EMPTY_LONGS;
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
@@ -170,6 +172,37 @@ public final class TermScorer extends Scorer {
       // Unless SimScorer#score is megamorphic, SimScorer#score should inline and (part of) score
       // computations should auto-vectorize.
       buffer.scores[i] = scorer.score(docAndFreqBuffer.freqs[i], normValues[i]);
+    }
+  }
+
+  @Override
+  public void applyAsRequiredClause(DocAndScoreAccBuffer buffer) throws IOException {
+    freqs = ArrayUtil.growNoCopy(freqs, buffer.size);
+    normValues = ArrayUtil.growNoCopy(normValues, buffer.size);
+
+    int intersectionSize = 0;
+    int curDoc = iterator.docID();
+    for (int i = 0; i < buffer.size; ++i) {
+      int targetDoc = buffer.docs[i];
+      if (curDoc < targetDoc) {
+        curDoc = iterator.advance(targetDoc);
+      }
+      if (curDoc == targetDoc) {
+        buffer.docs[intersectionSize] = targetDoc;
+        buffer.scores[intersectionSize] = buffer.scores[i];
+        freqs[intersectionSize] = postingsEnum.freq();
+        if (norms == null || norms.advanceExact(targetDoc) == false) {
+          normValues[intersectionSize] = 1L;
+        } else {
+          normValues[intersectionSize] = norms.longValue();
+        }
+        intersectionSize++;
+      }
+    }
+
+    buffer.size = intersectionSize;
+    for (int i = 0; i < intersectionSize; ++i) {
+      buffer.scores[i] += scorer.score(freqs[i], normValues[i]);
     }
   }
 }
