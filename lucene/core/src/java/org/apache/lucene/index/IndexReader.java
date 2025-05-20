@@ -63,7 +63,7 @@ import org.apache.lucene.store.AlreadyClosedException;
  * synchronization, you should <b>not</b> synchronize on the <code>IndexReader</code> instance; use
  * your own (non-Lucene) objects instead.
  */
-public abstract sealed class IndexReader implements Closeable permits CompositeReader, LeafReader {
+public abstract class IndexReader implements Closeable {
 
   private boolean closed = false;
   private boolean closedByChild = false;

@@ -128,15 +128,14 @@ public final class TermScorer extends Scorer {
   }
 
   @Override
-  public DocAndScoreBuffer nextScores(int upTo, Bits liveDocs, DocAndScoreBuffer reuse)
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer)
       throws IOException {
     if (docAndFreqBuffer == null) {
       docAndFreqBuffer = new DocAndFreqBuffer();
     }
 
-    DocAndFreqBuffer docAndFreqBuffer;
     for (; ; ) {
-      docAndFreqBuffer = postingsEnum.nextPostings(upTo, this.docAndFreqBuffer);
+      postingsEnum.nextPostings(upTo, docAndFreqBuffer);
       if (liveDocs != null && docAndFreqBuffer.size != 0) {
         // An empty return value indicates that there are no more docs before upTo. We may be
         // unlucky, and there are docs left, but all docs from the current batch happen to be marked
@@ -164,11 +163,13 @@ public final class TermScorer extends Scorer {
       }
     }
 
-    reuse.grow(size);
-    reuse.size = size;
-    System.arraycopy(docAndFreqBuffer.docs, 0, reuse.docs, 0, size);
-    scorer.score(size, docAndFreqBuffer.freqs, normValues, reuse.scores);
-
-    return reuse;
+    buffer.growNoCopy(size);
+    buffer.size = size;
+    System.arraycopy(docAndFreqBuffer.docs, 0, buffer.docs, 0, size);
+    for (int i = 0; i < size; ++i) {
+      // Unless SimScorer#score is megamorphic, SimScorer#score should inline and (part of) score
+      // computations should auto-vectorize.
+      buffer.scores[i] = scorer.score(docAndFreqBuffer.freqs[i], normValues[i]);
+    }
   }
 }

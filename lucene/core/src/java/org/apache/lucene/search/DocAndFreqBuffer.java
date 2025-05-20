@@ -40,10 +40,10 @@ public final class DocAndFreqBuffer {
   public DocAndFreqBuffer() {}
 
   /** Grow both arrays to ensure that they can store at least the given number of entries. */
-  public void grow(int minSize) {
+  public void growNoCopy(int minSize) {
     if (docs.length < minSize) {
-      docs = ArrayUtil.grow(docs, minSize);
-      freqs = ArrayUtil.growExact(freqs, docs.length);
+      docs = ArrayUtil.growNoCopy(docs, minSize);
+      freqs = new int[docs.length];
     }
   }
 

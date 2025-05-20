@@ -41,10 +41,10 @@ public final class DocAndScoreBuffer {
   public DocAndScoreBuffer() {}
 
   /** Grow both arrays to ensure that they can store at least the given number of entries. */
-  public void grow(int minSize) {
+  public void growNoCopy(int minSize) {
     if (docs.length < minSize) {
-      docs = ArrayUtil.grow(docs, minSize);
-      scores = ArrayUtil.growExact(scores, docs.length);
+      docs = ArrayUtil.growNoCopy(docs, minSize);
+      scores = new float[docs.length];
     }
   }
 }

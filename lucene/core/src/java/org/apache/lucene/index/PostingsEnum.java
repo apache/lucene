@@ -100,42 +100,44 @@ public abstract class PostingsEnum extends DocIdSetIterator {
   public abstract BytesRef getPayload() throws IOException;
 
   /**
-   * Return a new batch of doc IDs and frequencies, starting at the current doc ID, and ending
-   * before {@code upTo}.
+   * Fill a buffer of doc IDs and frequencies with some number of doc IDs and their corresponding
+   * frequencies, starting at the current doc ID, and ending before {@code upTo}.
    *
-   * <p>An empty return value indicates that there are no postings left between the current doc ID
-   * and {@code upTo}.
+   * <p>An empty buffer after this method returns indicates that there are no postings left between
+   * the current doc ID and {@code upTo}.
    *
-   * <p>This method behaves as if implemented as below, which is the default implementation:
+   * <p>Implementations should ideally fill the buffer with a number of entries comprised between 8
+   * and a couple hundreds, to keep heap requirements contained, while still being large enough to
+   * enable operations on the buffer to auto-vectorize efficiently.
+   *
+   * <p>The default implementation is provided below:
    *
    * <pre class="prettyprint">
-   * int batchSize = 16;
-   * reuse.grow(batchSize);
+   * int batchSize = 16; // arbitrary
+   * buffer.growNoCopy(batchSize);
    * int size = 0;
    * for (int doc = docID(); doc &lt; upTo &amp;&amp; size &lt; batchSize; doc = nextDoc()) {
-   *   reuse.docs[size] = doc;
-   *   reuse.freqs[size] = freq();
+   *   buffer.docs[size] = doc;
+   *   buffer.freqs[size] = freq();
    *   ++size;
    * }
-   * reuse.size = size;
-   * return reuse;
+   * buffer.size = size;
    * </pre>
    *
-   * <p><b>NOTE</b>: The returned {@link DocAndFreqBuffer} should not hold references to internal
+   * <p><b>NOTE</b>: The provided {@link DocAndFreqBuffer} should not hold references to internal
    * data structures.
    *
    * @lucene.internal
    */
-  public DocAndFreqBuffer nextPostings(int upTo, DocAndFreqBuffer reuse) throws IOException {
-    int batchSize = 16;
-    reuse.grow(batchSize);
+  public void nextPostings(int upTo, DocAndFreqBuffer buffer) throws IOException {
+    int batchSize = 16; // arbitrary
+    buffer.growNoCopy(batchSize);
     int size = 0;
     for (int doc = docID(); doc < upTo && size < batchSize; doc = nextDoc()) {
-      reuse.docs[size] = doc;
-      reuse.freqs[size] = freq();
+      buffer.docs[size] = doc;
+      buffer.freqs[size] = freq();
       ++size;
     }
-    reuse.size = size;
-    return reuse;
+    buffer.size = size;
   }
 }

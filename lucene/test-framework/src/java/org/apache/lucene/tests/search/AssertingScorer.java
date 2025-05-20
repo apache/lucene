@@ -282,10 +282,10 @@ public class AssertingScorer extends Scorer {
   }
 
   @Override
-  public DocAndScoreBuffer nextScores(int upTo, Bits liveDocs, DocAndScoreBuffer reuse)
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer)
       throws IOException {
     assert doc != -1;
-    DocAndScoreBuffer result = in.nextScores(upTo, liveDocs, reuse);
+    in.nextDocsAndScores(upTo, liveDocs, buffer);
     if (doc != in.iterator().docID()) {
       doc = in.iterator().docID();
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
@@ -294,6 +294,5 @@ public class AssertingScorer extends Scorer {
         state = IteratorState.ITERATING;
       }
     }
-    return result;
   }
 }

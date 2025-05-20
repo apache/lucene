@@ -220,11 +220,15 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     // single essential clause in this window, we can iterate it directly and skip the bitset.
     // this is a common case for 2-clauses queries
-    for (DocAndScoreBuffer buffer = top.scorer.nextScores(upTo, acceptDocs, docAndScoreBuffer);
-        buffer.size > 0;
-        buffer = top.scorer.nextScores(upTo, acceptDocs, docAndScoreBuffer)) {
-      for (int i = 0; i < buffer.size; ++i) {
-        scoreNonEssentialClauses(collector, buffer.docs[i], buffer.scores[i], firstEssentialScorer);
+    for (top.scorer.nextDocsAndScores(upTo, acceptDocs, docAndScoreBuffer);
+        docAndScoreBuffer.size > 0;
+        top.scorer.nextDocsAndScores(upTo, acceptDocs, docAndScoreBuffer)) {
+      for (int i = 0; i < docAndScoreBuffer.size; ++i) {
+        scoreNonEssentialClauses(
+            collector,
+            docAndScoreBuffer.docs[i],
+            docAndScoreBuffer.scores[i],
+            firstEssentialScorer);
       }
     }
 
@@ -308,13 +312,12 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     // Collect matches of essential clauses into a bitset
     do {
-      for (DocAndScoreBuffer buffer =
-              top.scorer.nextScores(innerWindowMax, acceptDocs, docAndScoreBuffer);
-          buffer.size > 0;
-          buffer = top.scorer.nextScores(innerWindowMax, acceptDocs, docAndScoreBuffer)) {
-        for (int index = 0; index < buffer.size; ++index) {
-          final int doc = buffer.docs[index];
-          final float score = buffer.scores[index];
+      for (top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer);
+          docAndScoreBuffer.size > 0;
+          top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer)) {
+        for (int index = 0; index < docAndScoreBuffer.size; ++index) {
+          final int doc = docAndScoreBuffer.docs[index];
+          final float score = docAndScoreBuffer.scores[index];
           final int i = doc - innerWindowMin;
           windowMatches[i >>> 6] |= 1L << i;
           windowScores[i] += score;

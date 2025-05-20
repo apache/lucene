@@ -580,9 +580,9 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public DocAndFreqBuffer nextPostings(int upTo, DocAndFreqBuffer reuse) throws IOException {
+    public void nextPostings(int upTo, DocAndFreqBuffer reuse) throws IOException {
       assert state != DocsEnumState.START : "nextPostings() called before nextDoc()/advance()";
-      DocAndFreqBuffer result = in.nextPostings(upTo, reuse);
+      in.nextPostings(upTo, reuse);
       doc = in.docID();
       if (doc == DocIdSetIterator.NO_MORE_DOCS) {
         state = DocsEnumState.FINISHED;
@@ -591,7 +591,6 @@ public class AssertingLeafReader extends FilterLeafReader {
         state = DocsEnumState.ITERATING;
         positionMax = super.freq();
       }
-      return result;
     }
 
     void reset() {
