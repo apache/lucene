@@ -25,7 +25,13 @@ runs:
         java-version: ${{ inputs.java-version }}
         java-package: jdk
 
-    # This includes "smart" caching of the wrapper and dependencies.
+    - name: Cache gradle-wrapper.jar
+      uses: actions/cache@v4
+      with:
+        path: gradle/wrapper/gradle-wrapper.jar
+        key: gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.jar.sha256') }}
+
+    # This includes "smart" caching of gradle dependencies.
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@v4
       with:
