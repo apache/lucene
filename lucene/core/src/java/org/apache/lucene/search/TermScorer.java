@@ -150,10 +150,14 @@ public final class TermScorer extends Scorer {
     }
 
     int size = docAndFreqBuffer.size;
+    if (normValues.length < size) {
+      normValues = new long[ArrayUtil.oversize(size, Long.BYTES)];
+      if (norms == null) {
+        Arrays.fill(normValues, 1L);
+      }
+    }
     normValues = ArrayUtil.growNoCopy(normValues, size);
-    if (norms == null) {
-      Arrays.fill(normValues, 0, size, 1L);
-    } else {
+    if (norms != null) {
       for (int i = 0; i < size; ++i) {
         if (norms.advanceExact(docAndFreqBuffer.docs[i])) {
           normValues[i] = norms.longValue();

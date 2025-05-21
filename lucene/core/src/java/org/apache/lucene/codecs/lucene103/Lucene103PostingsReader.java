@@ -1057,7 +1057,6 @@ public final class Lucene103PostingsReader extends PostingsReaderBase {
       freq();
 
       int start = docBufferUpto - 1;
-      buffer.size = 0;
       switch (encoding) {
         case PACKED:
           int end = computeBufferEndBoundary(upTo);
