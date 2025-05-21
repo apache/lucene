@@ -39,7 +39,10 @@ public class TestIOContext extends LuceneTestCase {
       assertEquals(context.mergeInfo(), newContext.mergeInfo());
       assertEquals(context.flushInfo(), newContext.flushInfo());
       if (context != newContext) {
+        assertTrue(context.mergeInfo() == null && context.flushInfo() == null);
         assertEquals(Set.of(newHint), newContext.hints());
+      } else {
+        assertTrue(context.mergeInfo() != null || context.flushInfo() != null);
       }
     }
   }
