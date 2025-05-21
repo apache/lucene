@@ -83,7 +83,7 @@ public class PointQueryNode extends QueryNodeImpl implements FieldValuePairQuery
    * @param escaper the {@link EscapeQuerySyntax} used to escape the value {@link String}
    * @return the value converted to {@link String} and escaped
    */
-  protected CharSequence getTermEscaped(EscapeQuerySyntax escaper) {
+  public CharSequence getTermEscaped(EscapeQuerySyntax escaper) {
     return escaper.escape(numberFormat.format(this.value), Locale.ROOT, Type.NORMAL);
   }
 
