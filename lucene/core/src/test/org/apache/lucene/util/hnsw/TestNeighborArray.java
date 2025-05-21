@@ -213,9 +213,217 @@ public class TestNeighborArray extends LuceneTestCase {
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
   }
 
+  public void testMaxSizeAddInOrder() throws IOException {
+    NeighborArray neighbors = new NeighborArray(3, true);
+    neighbors.addInOrder(0, 1.0f);
+    neighbors.addInOrder(1, 0.8f);
+    neighbors.addInOrder(2, 0.6f);
+
+    // Should throw when trying to add beyond max size
+    expectThrows(IllegalStateException.class, () -> neighbors.addInOrder(3, 0.4f));
+
+    assertScoresEqual(new float[] {1.0f, 0.8f, 0.6f}, neighbors);
+    assertNodesEqual(new int[] {0, 1, 2}, neighbors);
+  }
+
+  public void testMaxSizeAddOutOfOrder() throws IOException {
+    NeighborArray neighbors = new NeighborArray(3, true);
+    neighbors.addOutOfOrder(0, 0.8f);
+    neighbors.addOutOfOrder(1, 1.0f);
+    neighbors.addOutOfOrder(2, 0.6f);
+
+    // Should throw when trying to add beyond max size
+    expectThrows(IllegalStateException.class, () -> neighbors.addOutOfOrder(3, 0.4f));
+
+    // Sort to verify contents
+    neighbors.sort(null);
+    assertScoresEqual(new float[] {1.0f, 0.8f, 0.6f}, neighbors);
+    assertNodesEqual(new int[] {1, 0, 2}, neighbors);
+  }
+
+  public void testMaxSizeInsertSorted() throws IOException {
+    NeighborArray neighbors = new NeighborArray(3, true);
+    neighbors.insertSorted(0, 1.0f);
+    neighbors.insertSorted(1, 0.8f);
+    neighbors.insertSorted(2, 0.6f);
+
+    // Should throw when trying to insert beyond max size
+    expectThrows(IllegalStateException.class, () -> neighbors.insertSorted(3, 0.4f));
+
+    assertScoresEqual(new float[] {1.0f, 0.8f, 0.6f}, neighbors);
+    assertNodesEqual(new int[] {0, 1, 2}, neighbors);
+  }
+
+  public void testMaxSizeMixedOperations() throws IOException {
+    NeighborArray neighbors = new NeighborArray(3, true);
+
+    // Add first node
+    neighbors.addInOrder(0, 1.0f);
+
+    // Add second node out of order
+    neighbors.addOutOfOrder(1, 0.8f);
+
+    // Try to add third node in order - should fail because we used addOutOfOrder
+    expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.6f));
+
+    // Add third node out of order
+    neighbors.addOutOfOrder(2, 0.6f);
+
+    // Try to add fourth node - should fail due to max size
+    expectThrows(IllegalStateException.class, () -> neighbors.addOutOfOrder(3, 0.4f));
+
+    // Sort to verify contents
+    neighbors.sort(null);
+    assertScoresEqual(new float[] {1.0f, 0.8f, 0.6f}, neighbors);
+    assertNodesEqual(new int[] {0, 1, 2}, neighbors);
+  }
+
+  public void testBoundaryValues() throws IOException {
+    // Test with empty array
+    NeighborArray neighbors = new NeighborArray(3, true);
+    assertEquals(0, neighbors.size());
+
+    // Test with single element
+    neighbors.addInOrder(0, Float.MAX_VALUE);
+    assertScoresEqual(new float[] {Float.MAX_VALUE}, neighbors);
+    assertNodesEqual(new int[] {0}, neighbors);
+
+    // Test with NaN values
+    neighbors.clear();
+    neighbors.addOutOfOrder(0, Float.NaN);
+    neighbors.addOutOfOrder(1, Float.NaN);
+    assertScoresEqual(new float[] {Float.NaN, Float.NaN}, neighbors);
+    assertNodesEqual(new int[] {0, 1}, neighbors);
+  }
+
+  public void testSortOrder() throws IOException {
+    // Test ascending order
+    NeighborArray ascNeighbors = new NeighborArray(5, false);
+    ascNeighbors.addInOrder(0, 0.1f);
+    ascNeighbors.addInOrder(1, 0.2f);
+    ascNeighbors.addInOrder(2, 0.3f);
+    assertScoresEqual(new float[] {0.1f, 0.2f, 0.3f}, ascNeighbors);
+
+    // Test descending order
+    NeighborArray descNeighbors = new NeighborArray(5, true);
+    descNeighbors.addInOrder(0, 0.3f);
+    descNeighbors.addInOrder(1, 0.2f);
+    descNeighbors.addInOrder(2, 0.1f);
+    assertScoresEqual(new float[] {0.3f, 0.2f, 0.1f}, descNeighbors);
+
+    // Test equal scores
+    NeighborArray equalNeighbors = new NeighborArray(5, true);
+    equalNeighbors.addInOrder(0, 0.5f);
+    equalNeighbors.addInOrder(1, 0.5f);
+    equalNeighbors.addInOrder(2, 0.5f);
+    assertScoresEqual(new float[] {0.5f, 0.5f, 0.5f}, equalNeighbors);
+  }
+
+  public void testRemoveOperations() throws IOException {
+    NeighborArray neighbors = new NeighborArray(5, true);
+    neighbors.addInOrder(0, 1.0f);
+    neighbors.addInOrder(1, 0.8f);
+    neighbors.addInOrder(2, 0.6f);
+    neighbors.addInOrder(3, 0.4f);
+
+    // Test remove last
+    neighbors.removeLast();
+    assertScoresEqual(new float[] {1.0f, 0.8f, 0.6f}, neighbors);
+    assertNodesEqual(new int[] {0, 1, 2}, neighbors);
+
+    // Test remove middle
+    neighbors.removeIndex(1);
+    assertScoresEqual(new float[] {1.0f, 0.6f}, neighbors);
+    assertNodesEqual(new int[] {0, 2}, neighbors);
+
+    // Test remove first
+    neighbors.removeIndex(0);
+    assertScoresEqual(new float[] {0.6f}, neighbors);
+    assertNodesEqual(new int[] {2}, neighbors);
+
+    // Test remove last remaining
+    neighbors.removeLast();
+    assertEquals(0, neighbors.size());
+  }
+
+  public void testClearOperation() throws IOException {
+    NeighborArray neighbors = new NeighborArray(5, true);
+    neighbors.addInOrder(0, 1.0f);
+    neighbors.addInOrder(1, 0.8f);
+    neighbors.addInOrder(2, 0.6f);
+
+    // Test clear
+    neighbors.clear();
+    assertEquals(0, neighbors.size());
+
+    // Test adding after clear
+    neighbors.addInOrder(3, 1.0f);
+    assertScoresEqual(new float[] {1.0f}, neighbors);
+    assertNodesEqual(new int[] {3}, neighbors);
+  }
+
+  public void testComplexOperations() throws IOException {
+    NeighborArray neighbors = new NeighborArray(5, true);
+
+    // Add some nodes in order
+    neighbors.addInOrder(0, 1.0f);
+    neighbors.addInOrder(1, 0.8f);
+
+    // Add some nodes out of order
+    neighbors.addOutOfOrder(2, 0.9f);
+    neighbors.addOutOfOrder(3, 0.7f);
+
+    // Sort and verify
+    neighbors.sort(null);
+    assertScoresEqual(new float[] {1.0f, 0.9f, 0.8f, 0.7f}, neighbors);
+    assertNodesEqual(new int[] {0, 2, 1, 3}, neighbors);
+
+    // Remove some nodes
+    neighbors.removeIndex(1);
+    neighbors.removeLast();
+
+    // Add more nodes
+    neighbors.insertSorted(4, 0.85f);
+    neighbors.insertSorted(5, 0.75f);
+
+    // Final verification
+    assertScoresEqual(new float[] {1.0f, 0.85f, 0.8f, 0.75f}, neighbors);
+    assertNodesEqual(new int[] {0, 4, 1, 5}, neighbors);
+  }
+
+  public void testScorerOperations() throws IOException {
+    NeighborArray neighbors = new NeighborArray(5, true);
+    TestRandomVectorScorer scorer =
+        nodeId -> {
+          switch (nodeId) {
+            case 0:
+              return 1.0f;
+            case 1:
+              return 0.8f;
+            case 2:
+              return 0.9f;
+            case 3:
+              return 0.7f;
+            default:
+              return 0.0f;
+          }
+        };
+
+    // Add nodes with NaN scores
+    neighbors.addOutOfOrder(0, Float.NaN);
+    neighbors.addOutOfOrder(1, Float.NaN);
+    neighbors.addOutOfOrder(2, Float.NaN);
+    neighbors.addOutOfOrder(3, Float.NaN);
+
+    // Sort using scorer
+    neighbors.sort(scorer);
+    assertScoresEqual(new float[] {1.0f, 0.9f, 0.8f, 0.7f}, neighbors);
+    assertNodesEqual(new int[] {0, 2, 1, 3}, neighbors);
+  }
+
   private void assertScoresEqual(float[] scores, NeighborArray neighbors) {
     for (int i = 0; i < scores.length; i++) {
-      assertEquals(scores[i], neighbors.scores()[i], 0.01f);
+      assertEquals(scores[i], neighbors.getScores(i), 0.01f);
     }
   }
 
