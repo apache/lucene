@@ -177,7 +177,7 @@ public class Highlighter {
     fragmentScorer.startFragment(currentFrag);
     docFrags.add(currentFrag);
 
-    FragmentQueue fragQueue = new FragmentQueue(maxNumFragments);
+    PriorityQueue<TextFragment> fragQueue = new FragmentQueue(maxNumFragments);
 
     try {
 
