@@ -303,5 +303,11 @@ public class TestTermScorer extends LuceneTestCase {
         break;
       }
     }
+
+    Scorer scorer3 = weight.scorer(context);
+    scorer3.iterator().nextDoc();
+    scorer3.nextDocsAndScores(
+        DocIdSetIterator.NO_MORE_DOCS, new Bits.MatchNoBits(context.reader().maxDoc()), buffer);
+    assertEquals(0, buffer.size);
   }
 }
