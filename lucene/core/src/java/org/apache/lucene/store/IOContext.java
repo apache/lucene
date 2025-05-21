@@ -25,6 +25,8 @@ import java.util.stream.Stream;
  * passed as a {@code null} parameter to either {@link
  * org.apache.lucene.store.Directory#openInput(String, IOContext)} or {@link
  * org.apache.lucene.store.Directory#createOutput(String, IOContext)}
+ *
+ * <p>Implementations of IOContext are immutable and thread-safe.
  */
 public interface IOContext {
 
@@ -137,6 +139,14 @@ public interface IOContext {
     return hints().stream().filter(cls::isInstance).map(cls::cast);
   }
 
-  /** Sets the hints on this IOContext, if it makes sense to do so for this specific context */
+  /**
+   * Returns an IOContext with the given hints, if it makes sense to do so for this specific
+   * context. Otherwise, returns this context.
+   *
+   * <p>The returned context has the same {@link #context()}, {@link #mergeInfo()}, and {@link
+   * #flushInfo()} as this context.
+   *
+   * <p>This instance is immutable and unaffected by this method call.
+   */
   IOContext withHints(FileOpenHint... hints);
 }
