@@ -156,7 +156,6 @@ public final class TermScorer extends Scorer {
         Arrays.fill(normValues, 1L);
       }
     }
-    normValues = ArrayUtil.growNoCopy(normValues, size);
     if (norms != null) {
       for (int i = 0; i < size; ++i) {
         if (norms.advanceExact(docAndFreqBuffer.docs[i])) {
