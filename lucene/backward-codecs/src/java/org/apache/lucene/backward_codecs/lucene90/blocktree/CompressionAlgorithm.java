@@ -21,7 +21,7 @@ import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.compress.LowercaseAsciiCompression;
 
 /** Compression algorithm used for suffixes of a block of terms. */
-enum CompressionAlgorithm {
+public enum CompressionAlgorithm {
   NO_COMPRESSION(0x00) {
 
     @Override
