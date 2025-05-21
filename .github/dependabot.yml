@@ -7,7 +7,7 @@ updates:
       interval: monthly
     commit-message:
       prefix: ci
-    labels: [dependencies]
+    labels: [dependencies, skip-changelog]
 
   # python dependencies in /dev-tools/scripts
   - package-ecosystem: pip
@@ -17,7 +17,7 @@ updates:
       interval: monthly
     commit-message:
       prefix: build(deps)
-    labels: [dependencies]
+    labels: [dependencies, skip-changelog]
 
   - package-ecosystem: gradle
     directory: /
@@ -27,4 +27,4 @@ updates:
       day: tuesday
     commit-message:
       prefix: deps(java)
-    labels: [dependencies]
+    labels: [dependencies, skip-changelog]
