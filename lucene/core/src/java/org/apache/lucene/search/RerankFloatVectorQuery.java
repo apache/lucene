@@ -54,8 +54,17 @@ public class RerankFloatVectorQuery extends Query {
   }
 
   @Override
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    Query rewritten = indexSearcher.rewrite(in);
+    return new RerankFloatVectorQuery(rewritten, rerankField, target);
+  }
+
+  @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
+    // knn vector queries generate hits during rewrite. we call it here
+    // to protect against cases where createWeight is called without calling rewrite.
+    // this should be lightweight if this.rewrite() has already been called
     Query rewritten = searcher.rewrite(in);
     Weight preRankWeight = rewritten.createWeight(searcher, scoreMode, boost);
 
