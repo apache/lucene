@@ -57,6 +57,9 @@ Optimizations
 * GITHUB#14679: Optimize exhaustive evaluation of disjunctive queries.
   (Adrien Grand)
 
+* GITHUB#14700: Return MatchNoDocsQuery when IndexOrDocValuesQuery::rewrite does not match
+  (Chris Hegarty)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
