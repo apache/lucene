@@ -20,7 +20,6 @@ import static org.hamcrest.Matchers.is;
 
 import java.text.NumberFormat;
 import java.util.Locale;
-import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.core.nodes.FieldQueryNode;
 import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
 import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser;
@@ -52,18 +51,13 @@ public class TestAbstractRangeQueryNode extends LuceneTestCase {
     PointQueryNode lower = new PointQueryNode("FIELD", 1, format);
     PointQueryNode upper = new PointQueryNode("FIELD", 999, format);
 
-    try {
-      PointRangeQueryNode origNode =
-          new PointRangeQueryNode(
-              lower, upper, true, true, new PointsConfig(format, Integer.class));
-      CharSequence queryString = origNode.toQueryString(escaper);
+    PointRangeQueryNode origNode =
+        new PointRangeQueryNode(lower, upper, true, true, new PointsConfig(format, Integer.class));
+    CharSequence queryString = origNode.toQueryString(escaper);
 
-      // query string should have expected format and parse into a valid query
-      assertThat(queryString, is("FIELD:[1 TO 999]"));
-      Query parsedQuery = parser.parse(queryString.toString(), "");
-      assertThat(parsedQuery.toString(), is(queryString));
-    } catch (QueryNodeException e) {
-      fail("testAbstractRangeQueryNode: testNumericRangeQueryNode: \n" + e.getMessage());
-    }
+    // query string should have expected format and parse into a valid query
+    assertThat(queryString, is("FIELD:[1 TO 999]"));
+    Query parsedQuery = parser.parse(queryString.toString(), "");
+    assertThat(parsedQuery.toString(), is(queryString));
   }
 }
