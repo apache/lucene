@@ -96,7 +96,8 @@ public class TestRerankFloatVectorQuery extends LuceneTestCase {
 
       KnnFloatVectorQuery knnQuery =
           new KnnFloatVectorQuery(FIELD, targetVector, k + (int) (k * oversample));
-      RerankFloatVectorQuery query = new RerankFloatVectorQuery(knnQuery, knnQuery.field, targetVector);
+      RerankFloatVectorQuery query =
+          new RerankFloatVectorQuery(knnQuery, knnQuery.field, targetVector);
       TopDocs topDocs = searcher.search(query, k);
 
       // Step 3: Verify that TopDocs scores match similarity with unquantized vectors
