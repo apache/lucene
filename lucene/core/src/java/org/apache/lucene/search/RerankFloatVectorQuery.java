@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.search.AbstractKnnVectorQuery.createRewrittenQuery;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -27,26 +25,29 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
- * A wrapper of KnnFloatVectorQuery which does full-precision reranking.
+ * A wrapper of Query which does full-precision reranking based on a vector field.
  *
  * @lucene.experimental
  */
-public class RerankKnnFloatVectorQuery extends Query {
+public class RerankFloatVectorQuery extends Query {
 
   private final int k;
   private final float[] target;
-  private final KnnFloatVectorQuery query;
+  private final Query query;
+  private final String field;
 
   /**
-   * Execute the KnnFloatVectorQuery and re-rank using full-precision vectors
+   * Execute the inner Query and re-rank using full-precision vectors
    *
-   * @param query the KNN query to execute as initial phase
+   * @param query the query to execute as initial phase
+   * @param field the vector field to use for re-ranking
    * @param target the target of the search
    * @param k the number of documents to find
    * @throws IllegalArgumentException if <code>k</code> is less than 1
    */
-  public RerankKnnFloatVectorQuery(KnnFloatVectorQuery query, float[] target, int k) {
+  public RerankFloatVectorQuery(Query query, String field, float[] target, int k) {
     this.query = query;
+    this.field = field;
     this.target = target;
     this.k = k;
   }
@@ -55,10 +56,6 @@ public class RerankKnnFloatVectorQuery extends Query {
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     IndexReader reader = indexSearcher.getIndexReader();
     Query rewritten = indexSearcher.rewrite(query);
-    // short-circuit: don't re-rank if we already got all possible results
-    if (query.getK() <= k) {
-      return rewritten;
-    }
     Weight weight = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     HitQueue queue = new HitQueue(k, false);
     for (var leaf : reader.leaves()) {
@@ -66,11 +63,11 @@ public class RerankKnnFloatVectorQuery extends Query {
       if (scorer == null) {
         continue;
       }
-      FloatVectorValues floatVectorValues = leaf.reader().getFloatVectorValues(query.getField());
+      FloatVectorValues floatVectorValues = leaf.reader().getFloatVectorValues(field);
       if (floatVectorValues == null) {
         continue;
       }
-      FieldInfo fi = leaf.reader().getFieldInfos().fieldInfo(query.getField());
+      FieldInfo fi = leaf.reader().getFieldInfos().fieldInfo(field);
       if (fi == null) {
         continue;
       }
@@ -88,7 +85,8 @@ public class RerankKnnFloatVectorQuery extends Query {
     for (ScoreDoc topDoc : queue) {
       scoreDocs[i++] = topDoc;
     }
-    return createRewrittenQuery(reader, scoreDocs);
+    TopDocs topDocs = new TopDocs(new TotalHits(k, TotalHits.Relation.EQUAL_TO), scoreDocs);
+    return AbstractKnnVectorQuery.createRewrittenQuery(reader, topDocs, 0);
   }
 
   @Override
@@ -101,8 +99,9 @@ public class RerankKnnFloatVectorQuery extends Query {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    RerankKnnFloatVectorQuery that = (RerankKnnFloatVectorQuery) o;
-    return Objects.equals(query, that.query) && Arrays.equals(target, that.target) && k == that.k;
+    if (o == null || getClass() != o.getClass()) return false;
+    RerankFloatVectorQuery that = (RerankFloatVectorQuery) o;
+    return Objects.equals(query, that.query) && Objects.equals(field, that.field) && Arrays.equals(target, that.target) && k == that.k;
   }
 
   @Override
