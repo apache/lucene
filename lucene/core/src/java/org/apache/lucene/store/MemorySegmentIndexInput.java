@@ -357,7 +357,11 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   @Override
-  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
+  public void updateIOContext(IOContext context) throws IOException {
+    updateReadAdvice(toReadAdvice.apply(context));
+  }
+
+  private void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
       return;
     }

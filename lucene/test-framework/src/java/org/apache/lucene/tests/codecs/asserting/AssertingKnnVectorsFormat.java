@@ -185,7 +185,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public KnnVectorsReader getMergeInstance() {
+    public KnnVectorsReader getMergeInstance() throws IOException {
       assert !mergeInstance;
       var mergeVectorsReader = delegate.getMergeInstance();
       assert mergeVectorsReader != null;
