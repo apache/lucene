@@ -36,24 +36,22 @@ public class RerankFloatVectorQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final Scorer preRankScorer = preRankWeight.scorer(context);
+        if (preRankScorer == null) {
+          return null;
+        }
+        FieldInfo fi = context.reader().getFieldInfos().fieldInfo(rerankField);
+        if (fi == null || fi.hasVectorValues() == false) {
+          // leaf does not have this field indexed
+          return null;
+        }
+        if (fi.getVectorDimension() != target.length) {
+          throw new IllegalArgumentException("dimension for provided target is not compatible " +
+              "with provided field for reranking");
+        }
         return new ScorerSupplier() {
-          final Scorer preRankScorer = preRankWeight.scorer(context);
-
           @Override
           public Scorer get(long leadCost) throws IOException {
-            if (preRankScorer == null) {
-              return null;
-            }
-            FieldInfo fi = context.reader().getFieldInfos().fieldInfo(rerankField);
-            if (fi == null || fi.hasVectorValues() == false) {
-              // leaf does not have this field indexed
-              return null;
-            }
-            if (fi.getVectorDimension() != target.length) {
-              throw new IllegalArgumentException("dimension for provided target is not compatible " +
-                  "with provided field for reranking");
-            }
-
             return new Scorer() {
               // get full precision vector values
               final FloatVectorValues vectorValues = context.reader().getFloatVectorValues(rerankField);
@@ -87,10 +85,7 @@ public class RerankFloatVectorQuery extends Query {
 
           @Override
           public long cost() {
-            if (preRankScorer != null) {
-              return preRankScorer.iterator().cost();
-            }
-            return 0;
+            return preRankScorer.iterator().cost();
           }
         };
       }
