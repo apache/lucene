@@ -33,7 +33,7 @@ allprojects {
         exclusiveContent {
           forRepository {
             ivy {
-              url = 'https://s3.amazonaws.com/lucene-testdata/'
+              url = 'https://s3.amazonaws.com/lucene-testdata/temp-repo/ecj/'
               patternLayout {
                 artifact "[artifact]-[revision](.[ext])"
                 m2compatible = true
