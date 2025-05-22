@@ -29,10 +29,10 @@ import org.apache.lucene.util.VectorUtil;
 /**
  * Rerank documents matched by provided query based on similarity to a provided target vector.
  *
- * <p>NOTE: this query does not perform knn vector search. It simply re-ranks documents based on their
- * similarity to a provided target vector. This is useful if you have already performed a vector search
- * and want to re-rank the results based on a different vector field, or on the same field but with higher
- * fidelity, like full precision vectors.
+ * <p>NOTE: this query does not perform knn vector search. It simply re-ranks documents based on
+ * their similarity to a provided target vector. This is useful if you have already performed a
+ * vector search and want to re-rank the results based on a different vector field, or on the same
+ * field but with higher fidelity, like full precision vectors.
  */
 public class RerankFloatVectorQuery extends Query {
 
@@ -42,6 +42,7 @@ public class RerankFloatVectorQuery extends Query {
 
   /**
    * Reranks hits from a given query using vector similarity from provided field.
+   *
    * @param query Query to rerank
    * @param field Field to use for vector values and vector similarity
    * @param target Target vector to score against
