@@ -24,7 +24,7 @@
 #
 # To use this run:
 #
-#   gradlew :lucene:benchmark:run -Ptask.alg=conf/readContentSource.alg
+#   ./gradlew :lucene:benchmark:run -PtaskAlg=conf/readContentSource.alg
 #
 
 # Where to get documents from:

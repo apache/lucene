@@ -25,7 +25,7 @@
 #
 # To use this, you must first run the createLineFile.alg, then run:
 #
-#   gradlew :lucene:benchmark:run -Ptask.alg=conf/indexLineFile.alg
+#   ./gradlew :lucene:benchmark:run -PtaskAlg=conf/indexLineFile.alg
 #
 
 analyzer=org.apache.lucene.analysis.core.SimpleAnalyzer
