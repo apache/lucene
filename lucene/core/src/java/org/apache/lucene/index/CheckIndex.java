@@ -58,6 +58,7 @@ import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.index.CheckIndex.Status.DocValuesStatus;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.KnnCollector;
@@ -1415,6 +1416,7 @@ public final class CheckIndex implements Closeable {
     int computedFieldCount = 0;
 
     PostingsEnum postings = null;
+    PostingsEnum bulkPostings = null;
 
     String lastField = null;
     for (String field : fields) {
@@ -1610,6 +1612,10 @@ public final class CheckIndex implements Closeable {
         sumDocFreq += docFreq;
 
         postings = termsEnum.postings(postings, PostingsEnum.ALL);
+        bulkPostings = termsEnum.postings(bulkPostings, PostingsEnum.ALL);
+        bulkPostings.nextDoc();
+        DocAndFreqBuffer buffer = new DocAndFreqBuffer();
+        int bufferIndex = 0;
 
         if (hasFreqs == false) {
           if (termsEnum.totalTermFreq() != termsEnum.docFreq()) {
@@ -1658,6 +1664,31 @@ public final class CheckIndex implements Closeable {
             throw new CheckIndexException(
                 "term " + term + ": doc " + doc + ": freq " + freq + " is out of bounds");
           }
+
+          if (bufferIndex == buffer.size) {
+            bulkPostings.nextPostings(
+                (int) Math.min(Integer.MAX_VALUE, bulkPostings.docID() + 64L), buffer);
+            bufferIndex = 0;
+          }
+          if (bufferIndex >= buffer.size) {
+            throw new CheckIndexException("Doc " + doc + " not found by PostingsEnum#nextPostings");
+          }
+          if (doc != buffer.docs[bufferIndex]) {
+            throw new CheckIndexException(
+                "PostingsEnum#nextPostings returns "
+                    + buffer.docs[bufferIndex]
+                    + " as next doc while PostingsEnum#nextDoc returns "
+                    + doc);
+          }
+          if (freq != buffer.freqs[bufferIndex]) {
+            throw new CheckIndexException(
+                "PostingsEnum#nextPostings returns "
+                    + buffer.freqs[bufferIndex]
+                    + " as term freq while PostingsEnum#freq returns "
+                    + freq);
+          }
+          bufferIndex++;
+
           if (hasFreqs == false) {
             // When a field didn't index freq, it must
             // consistently "lie" and pretend that freq was

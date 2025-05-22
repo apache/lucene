@@ -81,6 +81,7 @@ final class BooleanScorer extends BulkScorer {
   final int minShouldMatch;
   final long cost;
   final boolean needsScores;
+  private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
 
   BooleanScorer(Collection<Scorer> scorers, int minShouldMatch, boolean needsScores) {
     if (minShouldMatch < 1 || minShouldMatch > scorers.size()) {
@@ -135,23 +136,35 @@ final class BooleanScorer extends BulkScorer {
       assert w.doc < max;
 
       DocIdSetIterator it = w.iterator;
-      int doc = w.doc;
-      if (doc < min) {
-        doc = it.advance(min);
+      if (w.doc < min) {
+        it.advance(min);
       }
-      if (buckets == null) {
+      if (buckets == null) { // means minShouldMatch=1 and scores are not needed
         // This doesn't apply live docs, so we'll need to apply them later
         it.intoBitSet(max, matching, base);
+      } else if (needsScores) {
+        for (w.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer);
+            docAndScoreBuffer.size > 0;
+            w.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
+          for (int index = 0; index < docAndScoreBuffer.size; ++index) {
+            final int doc = docAndScoreBuffer.docs[index];
+            final float score = docAndScoreBuffer.scores[index];
+            final int d = doc & MASK;
+            matching.set(d);
+            final Bucket bucket = buckets[d];
+            bucket.freq++;
+            bucket.score += score;
+          }
+        }
       } else {
-        for (; doc < max; doc = it.nextDoc()) {
+        // Scores are not needed but we need to keep track of freqs to know which hits match
+        assert minShouldMatch > 1;
+        for (int doc = it.docID(); doc < max; doc = it.nextDoc()) {
           if (acceptDocs == null || acceptDocs.get(doc)) {
             final int d = doc & MASK;
             matching.set(d);
             final Bucket bucket = buckets[d];
             bucket.freq++;
-            if (needsScores) {
-              bucket.score += w.scorable.score();
-            }
           }
         }
       }

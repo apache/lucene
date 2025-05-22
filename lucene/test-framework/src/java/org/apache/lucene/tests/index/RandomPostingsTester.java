@@ -66,6 +66,7 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
@@ -113,6 +114,9 @@ public class RandomPostingsTester {
 
     // Check DocIdSetIterator#intoBitSet
     INTO_BIT_SET,
+
+    // Check PostingsEnum#nextDocsAndFreqs
+    NEXT_DOCS_AND_FREQS,
 
     // Sometimes check payloads
     PAYLOADS,
@@ -1408,6 +1412,57 @@ public class RandomPostingsTester {
         }
         set1.clear();
         set2.clear();
+      }
+    }
+
+    if (options.contains(Option.NEXT_DOCS_AND_FREQS)) {
+      int flags = PostingsEnum.FREQS;
+      if (doCheckPositions) {
+        flags |= PostingsEnum.POSITIONS;
+        if (doCheckOffsets) {
+          flags |= PostingsEnum.OFFSETS;
+        }
+        if (doCheckPayloads) {
+          flags |= PostingsEnum.PAYLOADS;
+        }
+      }
+
+      for (boolean impacts : new boolean[] {false, true}) {
+        PostingsEnum pe1;
+        if (impacts) {
+          pe1 = termsEnum.impacts(flags);
+        } else {
+          pe1 = termsEnum.postings(null, flags);
+          if (random.nextBoolean()) {
+            // test reuse
+            pe1.advance(maxDoc / 2);
+            pe1 = termsEnum.postings(pe1, flags);
+          }
+        }
+        PostingsEnum pe2 = termsEnum.postings(null, flags);
+
+        pe1.nextDoc();
+        pe2.nextDoc();
+        DocAndFreqBuffer buffer = new DocAndFreqBuffer();
+        while (true) {
+          int curDoc = pe1.docID();
+          int upTo =
+              TestUtil.nextInt(random, curDoc, (int) Math.min(Integer.MAX_VALUE, curDoc + 512L));
+          pe1.nextPostings(upTo, buffer);
+          assertEquals(buffer.size == 0, curDoc >= upTo);
+
+          for (int i = 0; i < buffer.size; ++i) {
+            assertTrue(buffer.docs[i] < upTo);
+            assertEquals(pe2.docID(), buffer.docs[i]);
+            assertEquals(pe2.freq(), buffer.freqs[i]);
+            pe2.nextDoc();
+          }
+
+          assertEquals(pe1.docID(), pe2.docID());
+          if (pe1.docID() == DocIdSetIterator.NO_MORE_DOCS) {
+            break;
+          }
+        }
       }
     }
   }

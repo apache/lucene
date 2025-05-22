@@ -19,10 +19,12 @@ package org.apache.lucene.tests.search;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
+import org.apache.lucene.search.DocAndScoreBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /** Wraps a Scorer with additional checks */
@@ -281,5 +283,20 @@ public class AssertingScorer extends Scorer {
         return "AssertingScorer@asTwoPhaseIterator(" + in + ")";
       }
     };
+  }
+
+  @Override
+  public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndScoreBuffer buffer)
+      throws IOException {
+    assert doc != -1;
+    in.nextDocsAndScores(upTo, liveDocs, buffer);
+    if (doc != in.iterator().docID()) {
+      doc = in.iterator().docID();
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        state = IteratorState.FINISHED;
+      } else {
+        state = IteratorState.ITERATING;
+      }
+    }
   }
 }
