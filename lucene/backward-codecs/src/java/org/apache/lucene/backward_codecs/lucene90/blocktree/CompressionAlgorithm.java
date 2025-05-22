@@ -22,6 +22,7 @@ import org.apache.lucene.util.compress.LowercaseAsciiCompression;
 
 /** Compression algorithm used for suffixes of a block of terms. */
 public enum CompressionAlgorithm {
+  /** No compression. */
   NO_COMPRESSION(0x00) {
 
     @Override
@@ -29,7 +30,7 @@ public enum CompressionAlgorithm {
       in.readBytes(out, 0, len);
     }
   },
-
+  /** Lowercase Ascii compression. */
   LOWERCASE_ASCII(0x01) {
 
     @Override
@@ -37,7 +38,7 @@ public enum CompressionAlgorithm {
       LowercaseAsciiCompression.decompress(in, out, len);
     }
   },
-
+  /** LZ4 compression. */
   LZ4(0x02) {
 
     @Override
@@ -62,6 +63,7 @@ public enum CompressionAlgorithm {
     return BY_CODE[code];
   }
 
+  /** Compression code. */
   public final int code;
 
   private CompressionAlgorithm(int code) {

@@ -69,14 +69,15 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
 
   static final BytesRef NO_OUTPUT = FST_OUTPUTS.getNoOutput();
 
-  public static final int OUTPUT_FLAGS_NUM_BITS = 2;
-  public static final int OUTPUT_FLAGS_MASK = 0x3;
-  public static final int OUTPUT_FLAG_IS_FLOOR = 0x1;
-  public static final int OUTPUT_FLAG_HAS_TERMS = 0x2;
+  static final int OUTPUT_FLAGS_NUM_BITS = 2;
+  static final int OUTPUT_FLAGS_MASK = 0x3;
+  static final int OUTPUT_FLAG_IS_FLOOR = 0x1;
+  static final int OUTPUT_FLAG_HAS_TERMS = 0x2;
 
   /** Extension of terms file */
   public static final String TERMS_EXTENSION = "tim";
 
+  /** Extension of terms codec name */
   public static final String TERMS_CODEC_NAME = "BlockTreeTermsDict";
 
   /** Initial terms format. */
@@ -96,11 +97,13 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   /** Extension of terms index file */
   public static final String TERMS_INDEX_EXTENSION = "tip";
 
+  /** Extension of terms index codec name */
   public static final String TERMS_INDEX_CODEC_NAME = "BlockTreeTermsIndex";
 
   /** Extension of terms meta file */
   public static final String TERMS_META_EXTENSION = "tmd";
 
+  /** Extension of terms meta codec name */
   public static final String TERMS_META_CODEC_NAME = "BlockTreeTermsMeta";
 
   // Open input to the main terms dict file (_X.tib)
