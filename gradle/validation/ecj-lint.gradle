@@ -17,41 +17,45 @@
 
 // This adds 'ecjLint' task.
 
-configure(rootProject) {
-  apply plugin: deps.plugins.undercouch.download.get().pluginId
-
-  def ecjVersion = deps.versions.ecjP2Drop.get()
-  def ecjDropJar = project.layout.buildDirectory.file("ecj-drop/${ecjVersion}.jar")
-  def downloadEcjDrop = tasks.register("downloadEcjDrop", Download, {
-    src "https://www.eclipse.org/downloads/download.php?r=1&file=/eclipse/downloads/drops4/S-4.36M1-202504031800/${ecjVersion}.jar"
-    dest project.layout.buildDirectory.dir("ecj-drop")
-    overwrite false
-    onlyIf {
-      !ecjDropJar.get().asFile.exists()
-    }
-  })
-
-  configurations {
-    ecjDropDeps
-  }
-
-  artifacts {
-    add("ecjDropDeps", ecjDropJar, {
-      builtBy downloadEcjDrop
-    })
-  }
-}
-
 def resources = scriptResources(buildscript)
 
 allprojects {
   plugins.withType(JavaPlugin).configureEach {
+
+    // Use Lucene's storage space for "drop" versions that are ahead
+    // of official Maven publications.
+    //
+    // Drop versions are at:
+    // https://www.eclipse.org/downloads/download.php?r=1&file=/eclipse/downloads/drops4/S-4.36M1-202504031800/ecj-${ecjVersion}.jar
+    boolean useDropMirror = deps.versions.ecj.get() in ["4.36M1"]
+    if (useDropMirror) {
+      repositories {
+        exclusiveContent {
+          forRepository {
+            ivy {
+              url = 'https://s3.amazonaws.com/lucene-testdata/temp-repo/ecj/'
+              patternLayout {
+                artifact "[artifact]-[revision](.[ext])"
+                m2compatible = true
+              }
+              metadataSources {
+                it.artifact()
+              }
+            }
+          }
+          filter {
+            includeGroup "org.eclipse.jdt"
+          }
+        }
+      }
+    }
+
     configurations {
       ecjDeps
     }
 
     dependencies {
-      ecjDeps project(path: ":", configuration: "ecjDropDeps")
+      ecjDeps deps.ecj
     }
 
     def ecjConfiguration = configurations.ecjDeps
