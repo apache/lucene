@@ -122,7 +122,7 @@ public class RerankFloatVectorQuery extends Query {
     return "RerankFloatVectorQuery:["
         + this.rerankField
         + "]["
-        + target
+        + target[0]
         + ", ...]["
         + in.getClass()
         + "]";
