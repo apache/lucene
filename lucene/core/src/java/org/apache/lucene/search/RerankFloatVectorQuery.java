@@ -26,12 +26,26 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.VectorUtil;
 
+/**
+ * Rerank documents matched by provided query based on similarity to a provided target vector.
+ *
+ * <p>NOTE: this query does not perform knn vector search. It simply re-ranks documents based on their
+ * similarity to a provided target vector. This is useful if you have already performed a vector search
+ * and want to re-rank the results based on a different vector field, or on the same field but with higher
+ * fidelity, like full precision vectors.
+ */
 public class RerankFloatVectorQuery extends Query {
 
   private final Query in;
   private final String rerankField;
   private final float[] target;
 
+  /**
+   * Reranks hits from a given query using vector similarity from provided field.
+   * @param query Query to rerank
+   * @param field Field to use for vector values and vector similarity
+   * @param target Target vector to score against
+   */
   public RerankFloatVectorQuery(Query query, String field, float[] target) {
     this.in = query;
     this.rerankField = field;
