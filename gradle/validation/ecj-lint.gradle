@@ -21,22 +21,31 @@ def resources = scriptResources(buildscript)
 
 allprojects {
   plugins.withType(JavaPlugin).configureEach {
-    repositories {
-      exclusiveContent {
-        forRepository {
-          ivy {
-            url = 'https://s3.amazonaws.com/lucene-testdata/'
-            patternLayout {
-              artifact "[artifact]-[revision](.[ext])"
-              m2compatible = true
-            }
-            metadataSources {
-              it.artifact()
+
+    // Use Lucene's storage space for "drop" versions that are ahead
+    // of official Maven publications.
+    //
+    // Drop versions are at:
+    // https://www.eclipse.org/downloads/download.php?r=1&file=/eclipse/downloads/drops4/S-4.36M1-202504031800/ecj-${ecjVersion}.jar
+    boolean useDropMirror = deps.versions.ecj.get() in ["4.36M1"]
+    if (useDropMirror) {
+      repositories {
+        exclusiveContent {
+          forRepository {
+            ivy {
+              url = 'https://s3.amazonaws.com/lucene-testdata/'
+              patternLayout {
+                artifact "[artifact]-[revision](.[ext])"
+                m2compatible = true
+              }
+              metadataSources {
+                it.artifact()
+              }
             }
           }
-        }
-        filter {
-          includeGroup "org.eclipse.jdt"
+          filter {
+            includeGroup "org.eclipse.jdt"
+          }
         }
       }
     }
