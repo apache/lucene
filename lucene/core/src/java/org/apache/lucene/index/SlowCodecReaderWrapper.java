@@ -21,6 +21,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -28,6 +29,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 
@@ -187,6 +189,27 @@ public final class SlowCodecReaderWrapper {
       @Override
       public void checkIntegrity() {
         // We already checkIntegrity the entire reader up front
+      }
+
+      @Override
+      public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+        SegmentReader segmentReader = segmentReader(reader);
+        var vectorsReader = segmentReader.getVectorReader();
+        if (vectorsReader instanceof PerFieldKnnVectorsFormat.FieldsReader fieldsReader) {
+          vectorsReader = fieldsReader.getFieldReader(fieldInfo.name);
+        }
+        return vectorsReader.getOffHeapByteSize(fieldInfo);
+      }
+
+      static SegmentReader segmentReader(LeafReader reader) {
+        if (reader instanceof SegmentReader) {
+          return (SegmentReader) reader;
+        } else if (reader instanceof final FilterLeafReader fReader) {
+          return segmentReader(FilterLeafReader.unwrap(fReader));
+        } else if (reader instanceof final FilterCodecReader fReader) {
+          return segmentReader(FilterCodecReader.unwrap(fReader));
+        }
+        throw new AssertionError("unexpected reader [" + reader + "]");
       }
 
       @Override

@@ -22,7 +22,7 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
+import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.LiveFieldValues;
@@ -66,15 +66,15 @@ public class IDVersionPostingsFormat extends PostingsFormat {
 
   public IDVersionPostingsFormat() {
     this(
-        Lucene90BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
-        Lucene90BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
+        Lucene103BlockTreeTermsWriter.DEFAULT_MIN_BLOCK_SIZE,
+        Lucene103BlockTreeTermsWriter.DEFAULT_MAX_BLOCK_SIZE);
   }
 
   public IDVersionPostingsFormat(int minTermsInBlock, int maxTermsInBlock) {
     super("IDVersion");
     this.minTermsInBlock = minTermsInBlock;
     this.maxTermsInBlock = maxTermsInBlock;
-    Lucene90BlockTreeTermsWriter.validateSettings(minTermsInBlock, maxTermsInBlock);
+    Lucene103BlockTreeTermsWriter.validateSettings(minTermsInBlock, maxTermsInBlock);
   }
 
   @Override

@@ -52,33 +52,33 @@ import org.junit.Ignore;
 
 /** Test case for indexing polygons and querying by bounding box */
 public class TestLatLonShape extends LuceneTestCase {
-  protected static String FIELDNAME = "field";
+  private static final String FIELDNAME = "field";
 
   /** quantizes a latitude value to be consistent with index encoding */
-  protected static double quantizeLat(double rawLat) {
+  private static double quantizeLat(double rawLat) {
     return decodeLatitude(encodeLatitude(rawLat));
   }
 
   /** quantizes a longitude value to be consistent with index encoding */
-  protected static double quantizeLon(double rawLon) {
+  private static double quantizeLon(double rawLon) {
     return decodeLongitude(encodeLongitude(rawLon));
   }
 
-  protected void addPolygonsToDoc(String field, Document doc, Polygon polygon) {
+  private void addPolygonsToDoc(String field, Document doc, Polygon polygon) {
     Field[] fields = LatLonShape.createIndexableFields(field, polygon, random().nextBoolean());
     for (Field f : fields) {
       doc.add(f);
     }
   }
 
-  protected void addLineToDoc(String field, Document doc, Line line) {
+  private void addLineToDoc(String field, Document doc, Line line) {
     Field[] fields = LatLonShape.createIndexableFields(field, line);
     for (Field f : fields) {
       doc.add(f);
     }
   }
 
-  protected Query newRectQuery(
+  private Query newRectQuery(
       String field, double minLat, double maxLat, double minLon, double maxLon) {
     return LatLonShape.newBoxQuery(field, QueryRelation.INTERSECTS, minLat, maxLat, minLon, maxLon);
   }

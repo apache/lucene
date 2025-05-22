@@ -178,7 +178,7 @@ public class MatchHighlighter {
       hits.forEach(
           (field, offsets) -> {
             List<QueryOffsetRange> target =
-                matchRanges.computeIfAbsent(field, (fld) -> new ArrayList<>());
+                matchRanges.computeIfAbsent(field, (_) -> new ArrayList<>());
             offsets.forEach(o -> target.add(new QueryOffsetRange(query, o.from, o.to)));
           });
     }
@@ -233,8 +233,8 @@ public class MatchHighlighter {
       highlighter.highlightDocuments(
           topDocs,
           (int docId,
-              LeafReader leafReader,
-              int leafDocId,
+              LeafReader _,
+              int _,
               MatchRegionRetriever.FieldValueProvider fieldValueProvider,
               Map<String, List<OffsetRange>> hits) -> {
             DocHit docHit = docHits.get(docId);

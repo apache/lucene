@@ -203,7 +203,7 @@ public abstract class CopyJob implements Comparable<CopyJob> {
 
     if (prevJob.current != null) {
       IOUtils.closeWhileHandlingException(prevJob.current);
-      if (Node.VERBOSE_FILES) {
+      if (dest.isVerboseFiles()) {
         dest.message("remove partial file " + prevJob.current.tmpName);
       }
       dest.deleter.forceDeleteFile(prevJob.current.tmpName);
@@ -249,7 +249,7 @@ public abstract class CopyJob implements Comparable<CopyJob> {
 
     if (current != null) {
       IOUtils.closeWhileHandlingException(current);
-      if (Node.VERBOSE_FILES) {
+      if (dest.isVerboseFiles()) {
         dest.message("remove partial file " + current.tmpName);
       }
       dest.deleter.forceDeleteFile(current.tmpName);

@@ -748,7 +748,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     AsciiMatchRangeHighlighter formatter = new AsciiMatchRangeHighlighter(analyzer);
 
     MatchRegionRetriever.MatchOffsetsConsumer highlightCollector =
-        (docId, leafReader, leafDocId, fieldValueProvider, fieldHighlights) -> {
+        (_, leafReader, leafDocId, _, fieldHighlights) -> {
           StringBuilder sb = new StringBuilder();
 
           Document document = leafReader.storedFields().document(leafDocId);
@@ -767,8 +767,8 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
           }
         };
 
-    Predicate<String> fieldsToLoadUnconditionally = fieldName -> false;
-    Predicate<String> fieldsToLoadIfWithHits = fieldName -> true;
+    Predicate<String> fieldsToLoadUnconditionally = _ -> false;
+    Predicate<String> fieldsToLoadIfWithHits = _ -> true;
     MatchRegionRetriever highlighter =
         new MatchRegionRetriever(
             searcher,
@@ -781,7 +781,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     highlighter.highlightDocuments(
         Arrays.stream(topDocs.scoreDocs).mapToInt(scoreDoc -> scoreDoc.doc).sorted().iterator(),
         highlightCollector,
-        field -> Integer.MAX_VALUE,
+        _ -> Integer.MAX_VALUE,
         maxBlockSize,
         maxBlocksProcessedInParallel);
 

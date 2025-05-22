@@ -109,7 +109,16 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         }
       }
     }
+    finishMerge(mergeState);
     finish();
+  }
+
+  private void finishMerge(MergeState mergeState) throws IOException {
+    for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
+      if (reader != null) {
+        reader.finishMerge();
+      }
+    }
   }
 
   /** Tracks state of one sub-reader that we are merging */

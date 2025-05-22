@@ -401,14 +401,12 @@ public class TestBooleanRewrites extends LuceneTestCase {
 
     bq =
         new BooleanQuery.Builder()
-            .setMinimumNumberShouldMatch(random().nextInt(5))
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
             .add(new MatchAllDocsQuery(), Occur.FILTER)
             .build();
     Query expected =
         new BooleanQuery.Builder()
-            .setMinimumNumberShouldMatch(bq.getMinimumNumberShouldMatch())
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
             .build();
@@ -476,7 +474,22 @@ public class TestBooleanRewrites extends LuceneTestCase {
       Query query = randomBooleanQuery(random());
       final TopDocs td1 = searcher1.search(query, 100);
       final TopDocs td2 = searcher2.search(query, 100);
-      assertEquals(td1, td2);
+      try {
+        assertEquals(td1, td2);
+      } catch (AssertionError e) {
+        System.out.println(query);
+        Query rewritten = query;
+        do {
+          query = rewritten;
+          rewritten = query.rewrite(searcher1);
+          System.out.println(rewritten);
+          TopDocs tdx = searcher2.search(rewritten, 100);
+          if (td2.totalHits.value() != tdx.totalHits.value()) {
+            System.out.println("Bad");
+          }
+        } while (query != rewritten);
+        throw e;
+      }
     }
 
     searcher1.getIndexReader().close();
@@ -788,6 +801,51 @@ public class TestBooleanRewrites extends LuceneTestCase {
             .add(new TermQuery(new Term("foo", "bar")), Occur.FILTER)
             .add(new TermQuery(new Term("foo", "quux")), Occur.MUST_NOT)
             .add(new TermQuery(new Term("foo", "baz")), Occur.MUST)
+            .build();
+    assertEquals(expectedRewritten, searcher.rewrite(query));
+  }
+
+  public void testFlattenDisjunctionInMustClause() throws IOException {
+    IndexSearcher searcher = newSearcher(new MultiReader());
+
+    Query inner =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .build();
+    Query query =
+        new BooleanQuery.Builder()
+            .add(inner, Occur.MUST)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
+            .build();
+    Query expectedRewritten =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+    assertEquals(expectedRewritten, searcher.rewrite(query));
+
+    inner =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "foo")), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    query =
+        new BooleanQuery.Builder()
+            .add(inner, Occur.MUST)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
+            .build();
+    expectedRewritten =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "quux")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "foo")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.FILTER)
+            .setMinimumNumberShouldMatch(2)
             .build();
     assertEquals(expectedRewritten, searcher.rewrite(query));
   }

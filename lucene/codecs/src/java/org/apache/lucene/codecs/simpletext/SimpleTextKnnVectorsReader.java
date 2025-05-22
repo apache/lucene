@@ -26,6 +26,8 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.VEC
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -273,6 +275,16 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         break;
       }
     }
+  }
+
+  @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    Objects.requireNonNull(fieldInfo);
+    FieldEntry fieldEntry = fieldEntries.get(fieldInfo.number);
+    if (fieldEntry == null) {
+      return null;
+    }
+    return Map.of(); // all in-heap
   }
 
   @Override

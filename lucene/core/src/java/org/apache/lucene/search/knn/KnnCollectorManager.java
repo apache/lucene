@@ -32,7 +32,10 @@ public interface KnnCollectorManager {
    * Return a new {@link KnnCollector} instance.
    *
    * @param visitedLimit the maximum number of nodes that the search is allowed to visit
+   * @param searchStrategy the optional search strategy configuration
    * @param context the leaf reader context
    */
-  KnnCollector newCollector(int visitedLimit, LeafReaderContext context) throws IOException;
+  KnnCollector newCollector(
+      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+      throws IOException;
 }

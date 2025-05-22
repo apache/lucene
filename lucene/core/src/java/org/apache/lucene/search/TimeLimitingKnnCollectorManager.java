@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 
 /** A {@link KnnCollectorManager} that collects results with a timeout. */
 public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
@@ -37,59 +38,29 @@ public class TimeLimitingKnnCollectorManager implements KnnCollectorManager {
   }
 
   @Override
-  public KnnCollector newCollector(int visitedLimit, LeafReaderContext context) throws IOException {
-    KnnCollector collector = delegate.newCollector(visitedLimit, context);
+  public KnnCollector newCollector(
+      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+      throws IOException {
+    KnnCollector collector = delegate.newCollector(visitedLimit, searchStrategy, context);
     if (queryTimeout == null) {
       return collector;
     }
     return new TimeLimitingKnnCollector(collector);
   }
 
-  class TimeLimitingKnnCollector implements KnnCollector {
-    private final KnnCollector collector;
-
-    TimeLimitingKnnCollector(KnnCollector collector) {
-      this.collector = collector;
+  class TimeLimitingKnnCollector extends KnnCollector.Decorator {
+    public TimeLimitingKnnCollector(KnnCollector collector) {
+      super(collector);
     }
 
     @Override
     public boolean earlyTerminated() {
-      return queryTimeout.shouldExit() || collector.earlyTerminated();
-    }
-
-    @Override
-    public void incVisitedCount(int count) {
-      collector.incVisitedCount(count);
-    }
-
-    @Override
-    public long visitedCount() {
-      return collector.visitedCount();
-    }
-
-    @Override
-    public long visitLimit() {
-      return collector.visitLimit();
-    }
-
-    @Override
-    public int k() {
-      return collector.k();
-    }
-
-    @Override
-    public boolean collect(int docId, float similarity) {
-      return collector.collect(docId, similarity);
-    }
-
-    @Override
-    public float minCompetitiveSimilarity() {
-      return collector.minCompetitiveSimilarity();
+      return queryTimeout.shouldExit() || super.earlyTerminated();
     }
 
     @Override
     public TopDocs topDocs() {
-      TopDocs docs = collector.topDocs();
+      TopDocs docs = super.topDocs();
 
       // Mark results as partial if timeout is met
       TotalHits.Relation relation =

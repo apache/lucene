@@ -119,8 +119,7 @@ public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
     assert valid(_prefix, false);
     assert valid(_output, true);
     final Long prefix = (Long) _prefix;
-    if (_output instanceof Long) {
-      final Long output = (Long) _output;
+    if (_output instanceof Long output) {
       if (prefix == NO_OUTPUT) {
         return output;
       } else if (output == NO_OUTPUT) {
@@ -138,8 +137,7 @@ public final class UpToTwoPositiveIntOutputs extends Outputs<Object> {
   @Override
   public void write(Object _output, DataOutput out) throws IOException {
     assert valid(_output, true);
-    if (_output instanceof Long) {
-      final Long output = (Long) _output;
+    if (_output instanceof Long output) {
       out.writeVLong(output << 1);
     } else {
       final TwoLongs output = (TwoLongs) _output;

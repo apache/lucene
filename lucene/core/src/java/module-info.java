@@ -25,13 +25,14 @@ module org.apache.lucene.core {
   exports org.apache.lucene.analysis.tokenattributes;
   exports org.apache.lucene.analysis;
   exports org.apache.lucene.codecs.compressing;
-  exports org.apache.lucene.codecs.lucene90.blocktree;
   exports org.apache.lucene.codecs.lucene90.compressing;
   exports org.apache.lucene.codecs.lucene90;
   exports org.apache.lucene.codecs.lucene94;
   exports org.apache.lucene.codecs.lucene95;
   exports org.apache.lucene.codecs.lucene99;
-  exports org.apache.lucene.codecs.lucene101;
+  exports org.apache.lucene.codecs.lucene102;
+  exports org.apache.lucene.codecs.lucene103.blocktree;
+  exports org.apache.lucene.codecs.lucene103;
   exports org.apache.lucene.codecs.perfield;
   exports org.apache.lucene.codecs;
   exports org.apache.lucene.document;
@@ -63,6 +64,14 @@ module org.apache.lucene.core {
   // Open certain packages for the test framework (ram usage tester).
   opens org.apache.lucene.document to
       org.apache.lucene.test_framework;
+  opens org.apache.lucene.util.fst to
+      org.apache.lucene.test_framework;
+  opens org.apache.lucene.store to
+      org.apache.lucene.test_framework;
+  opens org.apache.lucene.util.automaton to
+      org.apache.lucene.test_framework;
+  opens org.apache.lucene.util to
+      org.apache.lucene.test_framework;
 
   exports org.apache.lucene.util.quantization;
   exports org.apache.lucene.codecs.hnsw;
@@ -70,15 +79,17 @@ module org.apache.lucene.core {
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
   provides org.apache.lucene.codecs.Codec with
-      org.apache.lucene.codecs.lucene101.Lucene101Codec;
+      org.apache.lucene.codecs.lucene103.Lucene103Codec;
   provides org.apache.lucene.codecs.DocValuesFormat with
       org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
   provides org.apache.lucene.codecs.KnnVectorsFormat with
       org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat,
       org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat,
-      org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat;
+      org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat,
+      org.apache.lucene.codecs.lucene102.Lucene102HnswBinaryQuantizedVectorsFormat,
+      org.apache.lucene.codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat;
   provides org.apache.lucene.codecs.PostingsFormat with
-      org.apache.lucene.codecs.lucene101.Lucene101PostingsFormat;
+      org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with
       org.apache.lucene.search.SortField.Provider,
       org.apache.lucene.search.SortedNumericSortField.Provider,

@@ -21,7 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.lucene.internal.tests.TestSecrets;
 
 /**
- * IndexInput implementation that delegates calls to another directory. This class can be used to
+ * IndexInput implementation that delegates calls to another IndexInput. This class can be used to
  * add limitations on top of an existing {@link IndexInput} implementation or to add additional
  * sanity checks for tests. However, if you plan to write your own {@link IndexInput}
  * implementation, you should consider extending directly {@link IndexInput} or {@link DataInput}

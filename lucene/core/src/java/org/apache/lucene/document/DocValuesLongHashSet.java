@@ -119,8 +119,7 @@ final class DocValuesLongHashSet implements Accountable {
 
   @Override
   public boolean equals(Object obj) {
-    if (obj != null && obj instanceof DocValuesLongHashSet) {
-      DocValuesLongHashSet that = (DocValuesLongHashSet) obj;
+    if (obj instanceof DocValuesLongHashSet that) {
       return size == that.size
           && minValue == that.minValue
           && maxValue == that.maxValue

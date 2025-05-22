@@ -27,7 +27,7 @@ import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
 import org.apache.lucene.index.Sorter;
-import org.apache.lucene.misc.index.BPIndexReorderer.NotEnoughRAMException;
+import org.apache.lucene.misc.index.AbstractBPReorderer.NotEnoughRAMException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.SetOnce;
 
@@ -42,7 +42,7 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
   /** Whether a segment has been reordered. */
   static final String REORDERED = "bp.reordered";
 
-  private final BPIndexReorderer reorderer;
+  private final IndexReorderer reorderer;
   private int minNaturalMergeNumDocs = 1;
   private float minNaturalMergeRatioFromBiggestSegment = 0f;
 
@@ -59,7 +59,7 @@ public final class BPReorderingMergePolicy extends FilterMergePolicy {
    * @param in the merge policy to use to compute merges
    * @param reorderer the {@link BPIndexReorderer} to use to renumber doc IDs
    */
-  public BPReorderingMergePolicy(MergePolicy in, BPIndexReorderer reorderer) {
+  public BPReorderingMergePolicy(MergePolicy in, IndexReorderer reorderer) {
     super(in);
     this.reorderer = reorderer;
   }

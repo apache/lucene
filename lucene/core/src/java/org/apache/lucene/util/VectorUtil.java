@@ -214,6 +214,21 @@ public final class VectorUtil {
   }
 
   /**
+   * Dot product computed over int4 (values between [0,15]) bytes and a binary vector.
+   *
+   * @param q the int4 query vector
+   * @param d the binary document vector
+   * @return the dot product
+   */
+  public static long int4BitDotProduct(byte[] q, byte[] d) {
+    if (q.length != d.length * 4) {
+      throw new IllegalArgumentException(
+          "vector dimensions incompatible: " + q.length + "!= " + 4 + " x " + d.length);
+    }
+    return IMPL.int4BitDotProduct(q, d);
+  }
+
+  /**
    * For xorBitCount we stride over the values as either 64-bits (long) or 32-bits (int) at a time.
    * On ARM Long::bitCount is not vectorized, and therefore produces less than optimal code, when
    * compared to Integer::bitCount. While Long::bitCount is optimal on x64. See
@@ -318,5 +333,47 @@ public final class VectorUtil {
   public static int findNextGEQ(int[] buffer, int target, int from, int to) {
     assert IntStream.range(0, to - 1).noneMatch(i -> buffer[i] > buffer[i + 1]);
     return IMPL.findNextGEQ(buffer, target, from, to);
+  }
+
+  /**
+   * Scalar quantizes {@code vector}, putting the result into {@code dest}.
+   *
+   * @param vector the vector to quantize
+   * @param dest the destination vector
+   * @param scale the scaling factor
+   * @param alpha the alpha value
+   * @param minQuantile the lower quantile of the distribution
+   * @param maxQuantile the upper quantile of the distribution
+   * @return the corrective offset that needs to be applied to the score
+   */
+  public static float minMaxScalarQuantize(
+      float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
+    if (vector.length != dest.length)
+      throw new IllegalArgumentException("source and destination arrays should be the same size");
+    return IMPL.minMaxScalarQuantize(vector, dest, scale, alpha, minQuantile, maxQuantile);
+  }
+
+  /**
+   * Recalculates the offset for {@code vector}.
+   *
+   * @param vector the vector to quantize
+   * @param oldAlpha the previous alpha value
+   * @param oldMinQuantile the previous lower quantile
+   * @param scale the scaling factor
+   * @param alpha the alpha value
+   * @param minQuantile the lower quantile of the distribution
+   * @param maxQuantile the upper quantile of the distribution
+   * @return the new corrective offset
+   */
+  public static float recalculateOffset(
+      byte[] vector,
+      float oldAlpha,
+      float oldMinQuantile,
+      float scale,
+      float alpha,
+      float minQuantile,
+      float maxQuantile) {
+    return IMPL.recalculateScalarQuantizationOffset(
+        vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile);
   }
 }

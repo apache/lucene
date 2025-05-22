@@ -49,7 +49,7 @@ import org.junit.Test;
 
 public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
-  private static FacetLabel ILLEGAL_PATH =
+  private static final FacetLabel ILLEGAL_PATH =
       new FacetLabel("PATH_THAT_CAUSED_IllegalArgumentException");
 
   @Test
@@ -662,7 +662,7 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     // adding a smaller bound on ints ensures that we will have some duplicate ordinals in random
     // test cases
     Arrays.setAll(
-        randomArray, i -> Integer.toString(random().nextInt(maxNumberOfUniqueLabelsToIndex)));
+        randomArray, _ -> Integer.toString(random().nextInt(maxNumberOfUniqueLabelsToIndex)));
 
     FacetLabel[] allPaths = new FacetLabel[randomArray.length];
 

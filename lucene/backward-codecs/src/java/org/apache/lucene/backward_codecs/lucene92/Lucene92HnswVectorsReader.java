@@ -17,10 +17,13 @@
 
 package org.apache.lucene.backward_codecs.lucene92;
 
+import static org.apache.lucene.backward_codecs.lucene92.Lucene92HnswVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.backward_codecs.lucene92.Lucene92HnswVectorsFormat.VECTOR_INDEX_EXTENSION;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -264,6 +267,14 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    FieldEntry entry = getFieldEntry(fieldInfo.name);
+    var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
+    var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
+    return Map.ofEntries(raw, graph);
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(vectorData, vectorIndex);
   }
@@ -401,6 +412,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     final int size;
     final long bytesForConns;
     final long bytesForConns0;
+    private final int maxConn;
 
     int arcCount;
     int arcUpTo;
@@ -416,6 +428,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       this.bytesForConns = Math.multiplyExact(Math.addExact(entry.M, 1L), Integer.BYTES);
       this.bytesForConns0 =
           Math.multiplyExact(Math.addExact(Math.multiplyExact(entry.M, 2L), 1), Integer.BYTES);
+      this.maxConn = entry.M;
     }
 
     @Override
@@ -447,6 +460,16 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       ++arcUpTo;
       arc = dataIn.readInt();
       return arc;
+    }
+
+    @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
+    public int maxConn() {
+      return maxConn;
     }
 
     @Override

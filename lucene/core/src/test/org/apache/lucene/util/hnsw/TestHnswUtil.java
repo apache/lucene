@@ -269,6 +269,16 @@ public class TestHnswUtil extends LuceneTestCase {
     }
 
     @Override
+    public int neighborCount() {
+      return nodes[currentLevel][currentNode].length;
+    }
+
+    @Override
+    public int maxConn() {
+      return UNKNOWN_MAX_CONN;
+    }
+
+    @Override
     public NodesIterator getNodesOnLevel(int level) {
 
       int count = 0;

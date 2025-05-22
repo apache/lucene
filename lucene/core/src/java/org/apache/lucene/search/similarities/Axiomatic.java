@@ -70,11 +70,9 @@ public abstract class Axiomatic extends SimilarityBase {
     if (Float.isFinite(k) == false || Float.isNaN(k) || k < 0 || k > 1) {
       throw new IllegalArgumentException("illegal k value: " + k + ", must be between 0 and 1");
     }
-    if (queryLen < 0 || queryLen > Integer.MAX_VALUE) {
+    if (queryLen < 0) {
       throw new IllegalArgumentException(
-          "illegal query length value: "
-              + queryLen
-              + ", must be larger 0 and smaller than MAX_INT");
+          "illegal query length value: " + queryLen + ", must be larger 0");
     }
     this.s = s;
     this.queryLen = queryLen;

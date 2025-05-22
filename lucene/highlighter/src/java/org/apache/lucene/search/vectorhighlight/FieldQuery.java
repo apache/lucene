@@ -85,8 +85,7 @@ public class FieldQuery {
         flatQuery = bq.getQuery();
         boost *= bq.getBoost();
       }
-      if (!phraseHighlight && flatQuery instanceof PhraseQuery) {
-        PhraseQuery pq = (PhraseQuery) flatQuery;
+      if (!phraseHighlight && flatQuery instanceof PhraseQuery pq) {
         if (pq.getTerms().length > 1) {
           for (Term term : pq.getTerms()) rootMap.addTerm(term, boost);
         }
@@ -105,20 +104,17 @@ public class FieldQuery {
   protected void flatten(
       Query sourceQuery, IndexSearcher searcher, Collection<Query> flatQueries, float boost)
       throws IOException {
-    while (sourceQuery instanceof BoostQuery) {
-      BoostQuery bq = (BoostQuery) sourceQuery;
+    while (sourceQuery instanceof BoostQuery bq) {
       sourceQuery = bq.getQuery();
       boost *= bq.getBoost();
     }
-    if (sourceQuery instanceof BooleanQuery) {
-      BooleanQuery bq = (BooleanQuery) sourceQuery;
+    if (sourceQuery instanceof BooleanQuery bq) {
       for (BooleanClause clause : bq) {
         if (!clause.isProhibited()) {
           flatten(clause.query(), searcher, flatQueries, boost);
         }
       }
-    } else if (sourceQuery instanceof DisjunctionMaxQuery) {
-      DisjunctionMaxQuery dmq = (DisjunctionMaxQuery) sourceQuery;
+    } else if (sourceQuery instanceof DisjunctionMaxQuery dmq) {
       for (Query query : dmq) {
         flatten(query, searcher, flatQueries, boost);
       }
@@ -127,13 +123,11 @@ public class FieldQuery {
         sourceQuery = new BoostQuery(sourceQuery, boost);
       }
       if (!flatQueries.contains(sourceQuery)) flatQueries.add(sourceQuery);
-    } else if (sourceQuery instanceof SynonymQuery) {
-      SynonymQuery synQuery = (SynonymQuery) sourceQuery;
+    } else if (sourceQuery instanceof SynonymQuery synQuery) {
       for (Term term : synQuery.getTerms()) {
         flatten(new TermQuery(term), searcher, flatQueries, boost);
       }
-    } else if (sourceQuery instanceof PhraseQuery) {
-      PhraseQuery pq = (PhraseQuery) sourceQuery;
+    } else if (sourceQuery instanceof PhraseQuery pq) {
       if (pq.getTerms().length == 1) sourceQuery = new TermQuery(pq.getTerms()[0]);
       if (boost != 1f) {
         sourceQuery = new BoostQuery(sourceQuery, boost);
@@ -150,16 +144,15 @@ public class FieldQuery {
         flatten(q, searcher, flatQueries, boost);
       }
     } else if (searcher != null) {
-      Query query = sourceQuery;
       Query rewritten;
       if (sourceQuery instanceof MultiTermQuery) {
         rewritten =
             new MultiTermQuery.TopTermsScoringBooleanQueryRewrite(MAX_MTQ_TERMS)
-                .rewrite(searcher, (MultiTermQuery) query);
+                .rewrite(searcher, (MultiTermQuery) sourceQuery);
       } else {
-        rewritten = query.rewrite(searcher);
+        rewritten = sourceQuery.rewrite(searcher);
       }
-      if (rewritten != query) {
+      if (rewritten != sourceQuery) {
         // only rewrite once and then flatten again - the rewritten query could have a speacial
         // treatment
         // if this method is overwritten in a subclass.
@@ -287,8 +280,7 @@ public class FieldQuery {
       query = ((BoostQuery) query).getQuery();
     }
     if (query instanceof TermQuery) return ((TermQuery) query).getTerm().field();
-    else if (query instanceof PhraseQuery) {
-      PhraseQuery pq = (PhraseQuery) query;
+    else if (query instanceof PhraseQuery pq) {
       Term[] terms = pq.getTerms();
       return terms[0].field();
     } else if (query instanceof MultiTermQuery) {
@@ -413,8 +405,7 @@ public class FieldQuery {
       }
       if (query instanceof TermQuery) {
         addTerm(((TermQuery) query).getTerm(), boost);
-      } else if (query instanceof PhraseQuery) {
-        PhraseQuery pq = (PhraseQuery) query;
+      } else if (query instanceof PhraseQuery pq) {
         Term[] terms = pq.getTerms();
         Map<String, QueryPhraseMap> map = subMap;
         QueryPhraseMap qpm = null;

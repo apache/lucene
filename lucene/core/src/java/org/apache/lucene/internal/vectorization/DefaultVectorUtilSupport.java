@@ -17,6 +17,7 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -206,5 +207,106 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       }
     }
     return to;
+  }
+
+  @Override
+  public long int4BitDotProduct(byte[] int4Quantized, byte[] binaryQuantized) {
+    return int4BitDotProductImpl(int4Quantized, binaryQuantized);
+  }
+
+  public static long int4BitDotProductImpl(byte[] q, byte[] d) {
+    assert q.length == d.length * 4;
+    long ret = 0;
+    int size = d.length;
+    for (int i = 0; i < 4; i++) {
+      int r = 0;
+      long subRet = 0;
+      for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
+        subRet +=
+            Integer.bitCount(
+                (int) BitUtil.VH_NATIVE_INT.get(q, i * size + r)
+                    & (int) BitUtil.VH_NATIVE_INT.get(d, r));
+      }
+      for (; r < d.length; r++) {
+        subRet += Integer.bitCount((q[i * size + r] & d[r]) & 0xFF);
+      }
+      ret += subRet << i;
+    }
+    return ret;
+  }
+
+  @Override
+  public float minMaxScalarQuantize(
+      float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
+    return new ScalarQuantizer(alpha, scale, minQuantile, maxQuantile).quantize(vector, dest, 0);
+  }
+
+  @Override
+  public float recalculateScalarQuantizationOffset(
+      byte[] vector,
+      float oldAlpha,
+      float oldMinQuantile,
+      float scale,
+      float alpha,
+      float minQuantile,
+      float maxQuantile) {
+    return new ScalarQuantizer(alpha, scale, minQuantile, maxQuantile)
+        .recalculateOffset(vector, 0, oldAlpha, oldMinQuantile);
+  }
+
+  static class ScalarQuantizer {
+    private final float alpha;
+    private final float scale;
+    private final float minQuantile, maxQuantile;
+
+    ScalarQuantizer(float alpha, float scale, float minQuantile, float maxQuantile) {
+      this.alpha = alpha;
+      this.scale = scale;
+      this.minQuantile = minQuantile;
+      this.maxQuantile = maxQuantile;
+    }
+
+    float quantize(float[] vector, byte[] dest, int start) {
+      assert vector.length == dest.length;
+      float correction = 0;
+      for (int i = start; i < vector.length; i++) {
+        correction += quantizeFloat(vector[i], dest, i);
+      }
+      return correction;
+    }
+
+    float recalculateOffset(byte[] vector, int start, float oldAlpha, float oldMinQuantile) {
+      float correction = 0;
+      for (int i = start; i < vector.length; i++) {
+        // undo the old quantization
+        float v = (oldAlpha * vector[i]) + oldMinQuantile;
+        correction += quantizeFloat(v, null, 0);
+      }
+      return correction;
+    }
+
+    private float quantizeFloat(float v, byte[] dest, int destIndex) {
+      assert dest == null || destIndex < dest.length;
+      // Make sure the value is within the quantile range, cutting off the tails
+      // see first parenthesis in equation: byte = (float - minQuantile) * 127/(maxQuantile -
+      // minQuantile)
+      float dx = v - minQuantile;
+      float dxc = Math.max(minQuantile, Math.min(maxQuantile, v)) - minQuantile;
+      // Scale the value to the range [0, 127], this is our quantized value
+      // scale = 127/(maxQuantile - minQuantile)
+      int roundedDxs = Math.round(scale * dxc);
+      // We multiply by `alpha` here to get the quantized value back into the original range
+      // to aid in calculating the corrective offset
+      float dxq = roundedDxs * alpha;
+      if (dest != null) {
+        dest[destIndex] = (byte) roundedDxs;
+      }
+      // Calculate the corrective offset that needs to be applied to the score
+      // in addition to the `byte * minQuantile * alpha` term in the equation
+      // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized value
+      // will be rounded to the nearest whole number and lose some accuracy
+      // Additionally, we account for the global correction of `minQuantile^2` in the equation
+      return minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
+    }
   }
 }

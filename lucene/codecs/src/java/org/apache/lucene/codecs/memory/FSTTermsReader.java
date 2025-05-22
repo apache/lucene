@@ -39,8 +39,9 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -76,7 +77,7 @@ public class FSTTermsReader extends FieldsProducer {
     this.postingsReader = postingsReader;
     this.fstTermsInput =
         state.directory.openInput(
-            termsFileName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
+            termsFileName, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
 
     IndexInput in = this.fstTermsInput;
 

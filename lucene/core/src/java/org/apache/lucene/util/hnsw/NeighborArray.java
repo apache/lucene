@@ -87,14 +87,15 @@ public class NeighborArray {
    * @param nodeId node Id of the owner of this NeighbourArray
    */
   public void addAndEnsureDiversity(
-      int newNode, float newScore, int nodeId, RandomVectorScorerSupplier scorerSupplier)
+      int newNode, float newScore, int nodeId, UpdateableRandomVectorScorer scorer)
       throws IOException {
     addOutOfOrder(newNode, newScore);
     if (size < nodes.length) {
       return;
     }
     // we're oversize, need to do diversity check and pop out the least diverse neighbour
-    removeIndex(findWorstNonDiverse(nodeId, scorerSupplier));
+    scorer.setScoringOrdinal(nodeId);
+    removeIndex(findWorstNonDiverse(scorer));
     assert size == nodes.length - 1;
   }
 
@@ -235,9 +236,7 @@ public class NeighborArray {
    * Find first non-diverse neighbour among the list of neighbors starting from the most distant
    * neighbours
    */
-  private int findWorstNonDiverse(int nodeOrd, RandomVectorScorerSupplier scorerSupplier)
-      throws IOException {
-    RandomVectorScorer scorer = scorerSupplier.scorer(nodeOrd);
+  private int findWorstNonDiverse(UpdateableRandomVectorScorer scorer) throws IOException {
     int[] uncheckedIndexes = sort(scorer);
     assert uncheckedIndexes != null : "We will always have something unchecked";
     int uncheckedCursor = uncheckedIndexes.length - 1;
@@ -246,7 +245,8 @@ public class NeighborArray {
         // no unchecked node left
         break;
       }
-      if (isWorstNonDiverse(i, uncheckedIndexes, uncheckedCursor, scorerSupplier)) {
+      scorer.setScoringOrdinal(nodes[i]);
+      if (isWorstNonDiverse(i, uncheckedIndexes, uncheckedCursor, scorer)) {
         return i;
       }
       if (i == uncheckedIndexes[uncheckedCursor]) {
@@ -257,13 +257,9 @@ public class NeighborArray {
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex,
-      int[] uncheckedIndexes,
-      int uncheckedCursor,
-      RandomVectorScorerSupplier scorerSupplier)
+      int candidateIndex, int[] uncheckedIndexes, int uncheckedCursor, RandomVectorScorer scorer)
       throws IOException {
     float minAcceptedSimilarity = scores[candidateIndex];
-    RandomVectorScorer scorer = scorerSupplier.scorer(nodes[candidateIndex]);
     if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
       // the candidate itself is unchecked
       for (int i = candidateIndex - 1; i >= 0; i--) {

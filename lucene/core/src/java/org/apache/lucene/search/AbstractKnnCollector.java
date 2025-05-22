@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search;
 
+import org.apache.lucene.search.knn.KnnSearchStrategy;
+
 /**
  * AbstractKnnCollector is the default implementation for a knn collector used for gathering kNN
  * results and providing topDocs from the gathered neighbors
@@ -25,11 +27,17 @@ public abstract class AbstractKnnCollector implements KnnCollector {
 
   protected long visitedCount;
   private final long visitLimit;
+  private final KnnSearchStrategy searchStrategy;
   private final int k;
 
-  protected AbstractKnnCollector(int k, long visitLimit) {
-    this.visitLimit = visitLimit;
+  protected AbstractKnnCollector(int k, long visitLimit, KnnSearchStrategy searchStrategy) {
     this.k = k;
+    this.searchStrategy = searchStrategy;
+    this.visitLimit = visitLimit;
+  }
+
+  protected AbstractKnnCollector(int k, long visitLimit) {
+    this(k, visitLimit, null);
   }
 
   @Override
@@ -68,4 +76,9 @@ public abstract class AbstractKnnCollector implements KnnCollector {
 
   @Override
   public abstract TopDocs topDocs();
+
+  @Override
+  public KnnSearchStrategy getSearchStrategy() {
+    return searchStrategy;
+  }
 }

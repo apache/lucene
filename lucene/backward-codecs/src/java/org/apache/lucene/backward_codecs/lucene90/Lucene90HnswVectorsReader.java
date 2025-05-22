@@ -17,9 +17,12 @@
 
 package org.apache.lucene.backward_codecs.lucene90;
 
+import static org.apache.lucene.backward_codecs.lucene90.Lucene90HnswVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.backward_codecs.lucene90.Lucene90HnswVectorsFormat.VECTOR_INDEX_EXTENSION;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.SplittableRandom;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -307,6 +310,14 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    FieldEntry entry = getFieldEntry(fieldInfo.name);
+    var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
+    var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.indexDataLength);
+    return Map.ofEntries(raw, graph);
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(vectorData, vectorIndex);
   }
@@ -464,8 +475,18 @@ public final class Lucene90HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int maxConn() {
+      return UNKNOWN_MAX_CONN;
+    }
+
+    @Override
     public int size() {
       return entry.size();
+    }
+
+    @Override
+    public int neighborCount() {
+      return arcCount;
     }
 
     @Override

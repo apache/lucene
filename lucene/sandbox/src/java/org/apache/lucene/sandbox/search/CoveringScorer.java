@@ -51,10 +51,10 @@ final class CoveringScorer extends Scorer {
     this.minMatchValues = minMatchValues;
     this.doc = -1;
 
-    subScorers = new DisiPriorityQueue(scorers.size());
+    subScorers = DisiPriorityQueue.ofMaxSize(scorers.size());
 
     for (Scorer scorer : scorers) {
-      subScorers.add(new DisiWrapper(scorer));
+      subScorers.add(new DisiWrapper(scorer, false));
     }
 
     this.cost = scorers.stream().map(Scorer::iterator).mapToLong(DocIdSetIterator::cost).sum();
@@ -210,7 +210,7 @@ final class CoveringScorer extends Scorer {
     setTopListAndFreqIfNecessary();
     double score = 0;
     for (DisiWrapper w = topList; w != null; w = w.next) {
-      score += w.scorer.score();
+      score += w.scorable.score();
     }
     return (float) score;
   }

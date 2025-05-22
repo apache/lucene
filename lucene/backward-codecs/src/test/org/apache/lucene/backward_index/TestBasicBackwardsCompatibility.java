@@ -541,6 +541,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random))
+                .setCodec(TestUtil.getDefaultCodec())
                 .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
                 .setMergePolicy(newLogMergePolicy()));
     // add 10 docs
@@ -579,6 +580,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random))
+                .setCodec(TestUtil.getDefaultCodec())
                 .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
                 .setMergePolicy(newLogMergePolicy()));
     writer.forceMerge(1);
@@ -630,6 +632,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random))
+                .setCodec(TestUtil.getDefaultCodec())
                 .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
     writer.forceMerge(1);
     writer.close();

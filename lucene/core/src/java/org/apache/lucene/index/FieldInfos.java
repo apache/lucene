@@ -410,8 +410,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     /**
-     * Returns the global field number for the given field name. If the name does not exist yet it
-     * tries to add it with the given preferred field number assigned if possible otherwise the
+     * Returns the global field number for the given field name. If the name does not exist yet, it
+     * tries to add it with the given preferred field number assigned, if possible, otherwise the
      * first unassigned field number is used as the field number.
      */
     synchronized int addOrGet(FieldInfo fi) {
@@ -550,9 +550,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     /**
-     * This function is called from {@code IndexWriter} to verify if doc values of the field can be
-     * updated. If the field with this name already exists, we verify that it is doc values only
-     * field. If the field doesn't exists and the parameter fieldMustExist is false, we create a new
+     * This function is called from {@link IndexWriter} to verify if doc values of the field can be
+     * updated. If the field with this name already exists, we verify that it is a doc values-only
+     * field. If the field doesn't exist and the parameter fieldMustExist is false, we create a new
      * field in the global field numbers.
      *
      * @param fieldName - name of the field

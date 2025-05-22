@@ -375,7 +375,6 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
     TieredMergePolicy tmp = new TieredMergePolicy();
     iwc.setMergePolicy(tmp);
-    tmp.setMaxMergeAtOnce(2);
     tmp.setSegmentsPerTier(2);
 
     IndexWriter w = new IndexWriter(dir, iwc);
@@ -418,7 +417,6 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     dir.close();
   }
 
-  @SuppressForbidden(reason = "Thread sleep")
   public void testIntraMergeThreadPoolIsLimitedByMaxThreads() throws IOException {
     ConcurrentMergeScheduler mergeScheduler = new ConcurrentMergeScheduler();
     MergeScheduler.MergeSource mergeSource =
@@ -475,11 +473,12 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
       Executor executor = mergeScheduler.intraMergeExecutor;
       AtomicInteger threadsExecutedOnPool = new AtomicInteger();
       AtomicInteger threadsExecutedOnSelf = new AtomicInteger();
-      for (int i = 0; i < 4; i++) {
+      CountDownLatch latch = new CountDownLatch(1);
+      final int totalThreads = 4;
+      for (int i = 0; i < totalThreads; i++) {
         mergeScheduler.mergeThreads.add(
             mergeScheduler.new MergeThread(mergeSource, merge) {
               @Override
-              @SuppressForbidden(reason = "Thread sleep")
               public void run() {
                 executor.execute(
                     () -> {
@@ -489,7 +488,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
                         threadsExecutedOnPool.incrementAndGet();
                       }
                       try {
-                        Thread.sleep(100);
+                        latch.await();
                       } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                       }
@@ -500,6 +499,10 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
       for (ConcurrentMergeScheduler.MergeThread thread : mergeScheduler.mergeThreads) {
         thread.start();
       }
+      while (threadsExecutedOnSelf.get() + threadsExecutedOnPool.get() < totalThreads) {
+        Thread.yield();
+      }
+      latch.countDown();
       mergeScheduler.sync();
       assertEquals(3, threadsExecutedOnSelf.get());
       assertEquals(1, threadsExecutedOnPool.get());

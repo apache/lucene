@@ -107,7 +107,10 @@ public class TestMaxFailuresRule extends WithNestedTests {
   public static class Nested2 extends WithNestedTests.AbstractNestedTest {
     public static final int TOTAL_ITERS = 10;
     public static CountDownLatch die;
+
+    @SuppressWarnings("NonFinalStaticField")
     public static Thread zombie;
+
     public static int testNum;
 
     @BeforeClass

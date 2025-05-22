@@ -32,11 +32,16 @@ import org.apache.lucene.util.packed.PackedInts;
 /**
  * Handles how documents should be sorted in an index, both within a segment and between segments.
  *
- * <p>Implementers must provide the following methods: {@link #getDocComparator(LeafReader,int)} -
- * an object that determines how documents within a segment are to be sorted {@link
- * #getComparableProviders(List)} - an array of objects that return a sortable long value per
- * document and segment {@link #getProviderName()} - the SPI-registered name of a {@link
- * SortFieldProvider} to serialize the sort
+ * <p>Implementers must provide the following methods:
+ *
+ * <ul>
+ *   <li>{@link #getDocComparator(LeafReader,int)} - an object that determines how documents within
+ *       a segment are to be sorted
+ *   <li>{@link #getComparableProviders(List)} - an array of objects that return a sortable long
+ *       value per document and segment
+ *   <li>{@link #getProviderName()} - the SPI-registered name of a {@link SortFieldProvider} to
+ *       serialize the sort
+ * </ul>
  *
  * <p>The companion {@link SortFieldProvider} should be registered with SPI via {@code
  * META-INF/services}

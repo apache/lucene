@@ -59,11 +59,11 @@ public class JapaneseIterationMarkCharFilter extends CharFilter {
 
   private static final char FULL_STOP_PUNCTUATION = '\u3002'; // 。
 
-  // Hiragana to dakuten map (lookup using code point - 0x30ab（か）*/
-  private static char[] h2d = new char[50];
+  // Hiragana to dakuten map (lookup using code point - 0x30ab（か)
+  private static final char[] h2d = new char[50];
 
-  // Katakana to dakuten map (lookup using code point - 0x30ab（カ
-  private static char[] k2d = new char[50];
+  // Katakana to dakuten map (lookup using code point - 0x30ab（カ)
+  private static final char[] k2d = new char[50];
 
   private final RollingCharBuffer buffer = new RollingCharBuffer();
 

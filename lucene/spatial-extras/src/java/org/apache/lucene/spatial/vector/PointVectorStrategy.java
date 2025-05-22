@@ -86,7 +86,7 @@ public class PointVectorStrategy extends SpatialStrategy {
   //  create more than one Field.
 
   /** pointValues, docValues, and nothing else. */
-  public static FieldType DEFAULT_FIELDTYPE;
+  public static final FieldType DEFAULT_FIELDTYPE;
 
   static {
     // Default: pointValues + docValues
@@ -187,11 +187,9 @@ public class PointVectorStrategy extends SpatialStrategy {
         args.getOperation(), SpatialOperation.Intersects, SpatialOperation.IsWithin))
       throw new UnsupportedSpatialOperation(args.getOperation());
     Shape shape = args.getShape();
-    if (shape instanceof Rectangle) {
-      Rectangle bbox = (Rectangle) shape;
+    if (shape instanceof Rectangle bbox) {
       return new ConstantScoreQuery(makeWithin(bbox));
-    } else if (shape instanceof Circle) {
-      Circle circle = (Circle) shape;
+    } else if (shape instanceof Circle circle) {
       Rectangle bbox = circle.getBoundingBox();
       return new DistanceRangeQuery(
           makeWithin(bbox), makeDistanceValueSource(circle.getCenter()), circle.getRadius());

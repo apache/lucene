@@ -207,10 +207,10 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
 
               ClassLoader loader = layer.findLoader(coreModuleId);
 
-              final Set<Integer> mrJarVersions = Set.of(21);
-              final Integer baseVersion = 21;
+              final Set<Integer> mrJarVersions = Set.of(23);
+              final Integer baseVersion = 23;
 
-              // the Java 21 PanamaVectorizationProvider must always be in main section of JAR file:
+              // the Java 23 PanamaVectorizationProvider must always be in main section of JAR file:
               final String panamaClassName =
                   "org/apache/lucene/internal/vectorization/PanamaVectorizationProvider.class";
               Assertions.assertThat(loader.getResource(panamaClassName)).isNotNull();
@@ -224,11 +224,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
                                 loader.getResource("META-INF/versions/" + v + panamaClassName))
                             .isNotNull();
                       });
-
-              // you must be always able to load MemorySegmentIndexInput:
-              Assertions.assertThat(
-                      loader.loadClass("org.apache.lucene.store.MemorySegmentIndexInput"))
-                  .isNotNull();
             });
   }
 
@@ -305,7 +300,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
           throw new AssertionError("Impossible.");
         }
         String service = matcher.group("serviceName");
-        services.computeIfAbsent(service, k -> new TreeSet<>()).addAll(implementations);
+        services.computeIfAbsent(service, _ -> new TreeSet<>()).addAll(implementations);
       }
     }
 
@@ -319,7 +314,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
             Collectors.toMap(
                 ModuleDescriptor.Provides::service,
                 provides -> new TreeSet<>(provides.providers()),
-                (k, v) -> {
+                (_, _) -> {
                   throw new RuntimeException();
                 },
                 TreeMap::new));
@@ -334,7 +329,7 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   @Test
   public void testAllExportedPackagesInSync() throws IOException {
     for (var module : allLuceneModules) {
-      Set<String> jarPackages = getJarPackages(module, entry -> true);
+      Set<String> jarPackages = getJarPackages(module, _ -> true);
       Set<ModuleDescriptor.Exports> moduleExports = new HashSet<>(module.descriptor().exports());
 
       if (module.descriptor().name().equals("org.apache.lucene.luke")) {

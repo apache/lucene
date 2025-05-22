@@ -23,7 +23,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMathUtil extends LuceneTestCase {
 
-  static long[] PRIMES = new long[] {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
+  private static final long[] PRIMES = new long[] {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
 
   static long randomLong() {
     if (random().nextBoolean()) {

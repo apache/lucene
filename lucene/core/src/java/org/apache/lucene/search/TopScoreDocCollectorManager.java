@@ -125,13 +125,7 @@ public class TopScoreDocCollectorManager
 
   @Override
   public TopScoreDocCollector newCollector() {
-    if (after == null) {
-      return new TopScoreDocCollector.SimpleTopScoreDocCollector(
-          numHits, totalHitsThreshold, minScoreAcc);
-    } else {
-      return new TopScoreDocCollector.PagingTopScoreDocCollector(
-          numHits, after, totalHitsThreshold, minScoreAcc);
-    }
+    return new TopScoreDocCollector(numHits, after, totalHitsThreshold, minScoreAcc);
   }
 
   @Override

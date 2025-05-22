@@ -82,7 +82,7 @@ public class TestAlwaysRefreshDirectoryTaxonomyReader extends FacetTestCase {
     final FacetsConfig config = new FacetsConfig();
     SearcherTaxonomyManager.SearcherAndTaxonomy pair = mgr.acquire();
     final FacetsCollector sfc = new FacetsCollector();
-    /**
+    /*
      * the call flow here initializes {@link DirectoryTaxonomyReader#taxoArrays}. These reused
      * `taxoArrays` form the basis of the inconsistency *
      */

@@ -90,6 +90,10 @@ final class MultiNormsLeafSimScorer {
     }
   }
 
+  SimScorer getSimScorer() {
+    return scorer;
+  }
+
   private long getNormValue(int doc) throws IOException {
     if (norms != null) {
       boolean found = norms.advanceExact(doc);

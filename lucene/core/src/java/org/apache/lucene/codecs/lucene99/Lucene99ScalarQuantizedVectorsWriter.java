@@ -58,8 +58,8 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
-import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
@@ -167,7 +167,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
             state.segmentSuffix,
             Lucene99ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
     this.rawVectorDelegate = rawVectorDelegate;
-    boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
       quantizedVectorData =
@@ -185,11 +184,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           version,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -223,7 +220,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
     // Since we know we will not be searching for additional indexing, we can just write the
-    // the vectors directly to the new segment.
+    // vectors directly to the new segment.
     // No need to use temporary file as we don't have to re-open for reading
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       ScalarQuantizer mergedQuantizationState =
@@ -480,7 +477,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
         segmentWriteState.directory.createTempOutput(
             quantizedVectorData.getName(), "temp", segmentWriteState.context);
     IndexInput quantizationDataInput = null;
-    boolean success = false;
     try {
       MergedQuantizedVectorValues byteVectorValues =
           MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
@@ -507,8 +503,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           mergedQuantizationState.getLowerQuantile(),
           mergedQuantizationState.getUpperQuantile(),
           docsWithField);
-      success = true;
       final IndexInput finalQuantizationDataInput = quantizationDataInput;
+      quantizationDataInput = null;
+
       return new ScalarQuantizedCloseableRandomVectorScorerSupplier(
           () -> {
             IOUtils.close(finalQuantizationDataInput);
@@ -524,13 +521,12 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                   compress,
                   fieldInfo.getVectorSimilarityFunction(),
                   vectorsScorer,
-                  quantizationDataInput)));
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(tempQuantizedVectorData, quantizationDataInput);
-        IOUtils.deleteFilesIgnoringExceptions(
-            segmentWriteState.directory, tempQuantizedVectorData.getName());
-      }
+                  finalQuantizationDataInput)));
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, tempQuantizedVectorData, quantizationDataInput);
+      IOUtils.deleteFilesSuppressingExceptions(
+          t, segmentWriteState.directory, tempQuantizedVectorData.getName());
+      throw t;
     }
   }
 
@@ -1128,8 +1124,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      return supplier.scorer(ord);
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      return supplier.scorer();
     }
 
     @Override

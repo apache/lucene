@@ -14,14 +14,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */ 
+import java.nio.file.Files
+import java.time.temporal.ChronoUnit
+import java.time.Instant
+
 
 // See LUCENE-9471. We redirect temporary location for gradle
 // so that it doesn't pollute user's tmp. Wipe it during a clean though.
-
 configure(rootProject) {
   gradle.buildFinished {
+    // we clean up the java.io.tmpdir we've redirected gradle to use (LUCENE-9471). 
+    // these are still used and populated with junk.
     rootProject.delete fileTree(".gradle/tmp").matching {
       include "gradle-worker-classpath*"
+    }
+
+    // clean up any files older than 3 hours from the user's gradle temp. the time
+    // limit is added so that we don't interfere with any concurrent builds... just in case.
+    Instant deadline = Instant.now().minus(3, ChronoUnit.HOURS);
+    def toDelete = new ArrayList<>()
+
+    def gradleTmp = gradle.gradleUserHomeDir.toPath().resolve(".tmp")
+    if (Files.exists(gradleTmp)) {
+      toDelete.add(Files.list(gradleTmp))
+    }
+    def daemonDir = gradle.gradleUserHomeDir.toPath().resolve("daemon").resolve("${gradle.gradleVersion}")
+    if (Files.exists(daemonDir)) {
+      toDelete.add(Files.list(daemonDir).filter(path -> path.toString().endsWith(".out.log")))
+    }
+
+    try (def stream = toDelete.stream().flatMap(p -> p)) {
+      stream.filter(p -> Files.isRegularFile(p))
+        .filter(p -> Files.getLastModifiedTime(p).toInstant().isBefore(deadline))
+        .forEach(p -> {
+          Files.deleteIfExists(p)
+        })
     }
   }
 }

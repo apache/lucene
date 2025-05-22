@@ -74,7 +74,7 @@ public class TestStoredFieldsConsumer extends LuceneTestCase {
             si,
             new FieldInfos(new FieldInfo[0]),
             null,
-            new IOContext(new FlushInfo(numDocs, 10)));
+            IOContext.flush(new FlushInfo(numDocs, 10)));
     consumer.flush(state, null);
     dir.close();
 

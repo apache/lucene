@@ -44,7 +44,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
 
   /** A singleton instance of "no-reuse" buffer strategy. */
   public static final Consumer<ByteBuffer> NO_REUSE =
-      (bb) -> {
+      (_) -> {
         throw new RuntimeException("reset() is not allowed on this buffer.");
       };
 

@@ -54,7 +54,7 @@ public class TestQueryRescorer extends LuceneTestCase {
     return LuceneTestCase.newIndexWriterConfig().setSimilarity(new ClassicSimilarity());
   }
 
-  static List<String> dictionary =
+  private static final List<String> dictionary =
       Arrays.asList("river", "quick", "brown", "fox", "jumped", "lazy", "fence");
 
   String randomSentence() {

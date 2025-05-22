@@ -37,7 +37,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.lucene.internal.hppc.BitMixer;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntHashSet;
@@ -69,7 +68,10 @@ public final class Operations {
    * Returns an automaton that accepts the concatenation of the languages of the given automata.
    *
    * <p>Complexity: linear in total number of states.
+   *
+   * @deprecated use {@link #concatenate(List)} instead
    */
+  @Deprecated
   public static Automaton concatenate(Automaton a1, Automaton a2) {
     return concatenate(Arrays.asList(a1, a2));
   }
@@ -78,15 +80,17 @@ public final class Operations {
    * Returns an automaton that accepts the concatenation of the languages of the given automata.
    *
    * <p>Complexity: linear in total number of states.
+   *
+   * @param list List of automata to be joined
    */
-  public static Automaton concatenate(List<Automaton> l) {
+  public static Automaton concatenate(List<Automaton> list) {
     Automaton result = new Automaton();
 
     // First pass: create all states
-    for (Automaton a : l) {
+    for (Automaton a : list) {
       if (a.getNumStates() == 0) {
-        result.finishState();
-        return result;
+        // concatenation with empty is empty
+        return Automata.makeEmpty();
       }
       int numStates = a.getNumStates();
       for (int s = 0; s < numStates; s++) {
@@ -98,11 +102,11 @@ public final class Operations {
     // states of A to init state of next A:
     int stateOffset = 0;
     Transition t = new Transition();
-    for (int i = 0; i < l.size(); i++) {
-      Automaton a = l.get(i);
+    for (int i = 0; i < list.size(); i++) {
+      Automaton a = list.get(i);
       int numStates = a.getNumStates();
 
-      Automaton nextA = (i == l.size() - 1) ? null : l.get(i + 1);
+      Automaton nextA = (i == list.size() - 1) ? null : list.get(i + 1);
 
       for (int s = 0; s < numStates; s++) {
         int numTransitions = a.initTransition(s, t);
@@ -127,7 +131,7 @@ public final class Operations {
               if (followA.isAccept(0)) {
                 // Keep chaining if followA accepts empty string
                 followOffset += followA.getNumStates();
-                followA = (upto == l.size() - 1) ? null : l.get(upto + 1);
+                followA = (upto == list.size() - 1) ? null : list.get(upto + 1);
                 upto++;
               } else {
                 break;
@@ -148,8 +152,7 @@ public final class Operations {
     }
 
     result.finishState();
-
-    return result;
+    return Operations.removeDeadStates(result);
   }
 
   /**
@@ -328,7 +331,7 @@ public final class Operations {
       prevAcceptStates = toSet(a, numStates);
     }
 
-    return builder.finish();
+    return Operations.removeDeadStates(builder.finish());
   }
 
   private static IntHashSet toSet(Automaton a, int offset) {
@@ -475,7 +478,10 @@ public final class Operations {
    * Returns an automaton that accepts the union of the languages of the given automata.
    *
    * <p>Complexity: linear in number of states.
+   *
+   * @deprecated use {@link #union(Collection)} instead
    */
+  @Deprecated
   public static Automaton union(Automaton a1, Automaton a2) {
     return union(Arrays.asList(a1, a2));
   }
@@ -484,21 +490,23 @@ public final class Operations {
    * Returns an automaton that accepts the union of the languages of the given automata.
    *
    * <p>Complexity: linear in number of states.
+   *
+   * @param list List of automata to be unioned.
    */
-  public static Automaton union(Collection<Automaton> l) {
+  public static Automaton union(Collection<Automaton> list) {
     Automaton result = new Automaton();
 
     // Create initial state:
     result.createState();
 
     // Copy over all automata
-    for (Automaton a : l) {
+    for (Automaton a : list) {
       result.copy(a);
     }
 
     // Add epsilon transition from new initial state
     int stateOffset = 1;
-    for (Automaton a : l) {
+    for (Automaton a : list) {
       if (a.getNumStates() == 0) {
         continue;
       }
@@ -508,7 +516,7 @@ public final class Operations {
 
     result.finishState();
 
-    return removeDeadStates(result);
+    return mergeAcceptStatesWithNoTransition(removeDeadStates(result));
   }
 
   // Simple custom ArrayList<Transition>
@@ -970,7 +978,7 @@ public final class Operations {
   private static BitSet getLiveStatesToAccept(Automaton a) {
     Automaton.Builder builder = new Automaton.Builder();
 
-    // NOTE: not quite the same thing as what SpecialOperations.reverse does:
+    // NOTE: not quite the same thing as what reverse() does:
     Transition t = new Transition();
     int numStates = a.getNumStates();
     for (int s = 0; s < numStates; s++) {
@@ -1050,6 +1058,82 @@ public final class Operations {
     result.finishState();
     assert hasDeadStates(result) == false;
     return result;
+  }
+
+  /**
+   * Merge all accept states that don't have outgoing transitions to a single shared state. This is
+   * a subset of minimization that is much cheaper. This helper is useful because operations like
+   * concatenation need to connect accept states of an automaton with the start state of the next
+   * one, so having fewer accept states makes the produced automata simpler.
+   */
+  static Automaton mergeAcceptStatesWithNoTransition(Automaton a) {
+    int numStates = a.getNumStates();
+
+    int numAcceptStatesWithNoTransition = 0;
+    int[] acceptStatesWithNoTransition = new int[0];
+
+    BitSet acceptStates = a.getAcceptStates();
+    for (int i = 0; i < numStates; ++i) {
+      if (acceptStates.get(i) && a.getNumTransitions(i) == 0) {
+        acceptStatesWithNoTransition =
+            ArrayUtil.grow(acceptStatesWithNoTransition, 1 + numAcceptStatesWithNoTransition);
+        acceptStatesWithNoTransition[numAcceptStatesWithNoTransition++] = i;
+      }
+    }
+
+    if (numAcceptStatesWithNoTransition <= 1) {
+      // No states to merge
+      return a;
+    }
+
+    // Shrink for simplicity.
+    acceptStatesWithNoTransition =
+        ArrayUtil.copyOfSubArray(acceptStatesWithNoTransition, 0, numAcceptStatesWithNoTransition);
+
+    // Now copy states, preserving accept states.
+    Automaton result = new Automaton();
+    for (int s = 0; s < numStates; s++) {
+      int remappedS = remap(s, acceptStatesWithNoTransition);
+      while (result.getNumStates() <= remappedS) {
+        result.createState();
+      }
+      if (acceptStates.get(s)) {
+        result.setAccept(remappedS, true);
+      }
+    }
+
+    // Now copy transitions, making sure to remap states.
+    Transition t = new Transition();
+    for (int s = 0; s < numStates; ++s) {
+      int remappedSource = remap(s, acceptStatesWithNoTransition);
+      int numTransitions = a.initTransition(s, t);
+      for (int j = 0; j < numTransitions; j++) {
+        a.getNextTransition(t);
+        int remappedDest = remap(t.dest, acceptStatesWithNoTransition);
+        result.addTransition(remappedSource, remappedDest, t.min, t.max);
+      }
+    }
+
+    result.finishState();
+    return result;
+  }
+
+  private static int remap(int s, int[] combinedStates) {
+    int idx = Arrays.binarySearch(combinedStates, s);
+    if (idx >= 0) {
+      // This state is part of the states that get combined, remap to the first one.
+      return combinedStates[0];
+    } else {
+      idx = -1 - idx;
+      if (idx <= 1) {
+        // There is either no combined state before the current state, or only the first one, which
+        // we're preserving: no renumbering needed.
+        return s;
+      } else {
+        // Subtract the number of states that get combined into the first combined state.
+        return s - (idx - 1);
+      }
+    }
   }
 
   /**
@@ -1178,7 +1262,7 @@ public final class Operations {
    */
   public static BytesRef getCommonSuffixBytesRef(Automaton a) {
     // reverse the language of the automaton, then reverse its common prefix.
-    Automaton r = removeDeadStates(reverse(a));
+    Automaton r = reverse(a);
     BytesRef ref = getCommonPrefixBytesRef(r);
     reverseBytes(ref);
     return ref;
@@ -1196,12 +1280,6 @@ public final class Operations {
 
   /** Returns an automaton accepting the reverse language. */
   public static Automaton reverse(Automaton a) {
-    return reverse(a, null);
-  }
-
-  /** Reverses the automaton, returning the new initial states. */
-  public static Automaton reverse(Automaton a, Set<Integer> initialStates) {
-
     if (Operations.isEmpty(a)) {
       return new Automaton();
     }
@@ -1237,15 +1315,12 @@ public final class Operations {
     BitSet acceptStates = a.getAcceptStates();
     while (s < numStates && (s = acceptStates.nextSetBit(s)) != -1) {
       result.addEpsilon(0, s + 1);
-      if (initialStates != null) {
-        initialStates.add(s + 1);
-      }
       s++;
     }
 
     result.finishState();
 
-    return result;
+    return removeDeadStates(result);
   }
 
   /**

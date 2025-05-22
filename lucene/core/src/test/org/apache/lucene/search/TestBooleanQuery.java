@@ -1383,4 +1383,36 @@ public class TestBooleanQuery extends LuceneTestCase {
           }
         });
   }
+
+  public void testClauseSetsImmutability() throws Exception {
+    Term a = new Term("f", "a");
+    Term b = new Term("f", "b");
+    Term c = new Term("f", "c");
+    Term d = new Term("f", "d");
+    BooleanQuery.Builder bqBuilder = new BooleanQuery.Builder();
+    bqBuilder.add(new TermQuery(a), Occur.SHOULD);
+    bqBuilder.add(new TermQuery(a), Occur.SHOULD);
+    bqBuilder.add(new TermQuery(b), Occur.MUST);
+    bqBuilder.add(new TermQuery(b), Occur.MUST);
+    bqBuilder.add(new TermQuery(c), Occur.FILTER);
+    bqBuilder.add(new TermQuery(c), Occur.FILTER);
+    bqBuilder.add(new TermQuery(d), Occur.MUST_NOT);
+    bqBuilder.add(new TermQuery(d), Occur.MUST_NOT);
+    BooleanQuery bq = bqBuilder.build();
+    // should and must are not dedupliacated
+    assertEquals(2, bq.getClauses(Occur.SHOULD).size());
+    assertEquals(2, bq.getClauses(Occur.MUST).size());
+    // filter and must not are deduplicated
+    assertEquals(1, bq.getClauses(Occur.FILTER).size());
+    assertEquals(1, bq.getClauses(Occur.MUST_NOT).size());
+    // check immutability
+    for (var occur : Occur.values()) {
+      assertThrows(
+          UnsupportedOperationException.class,
+          () -> bq.getClauses(occur).add(new MatchNoDocsQuery()));
+    }
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> bq.clauses().add(new BooleanClause(new MatchNoDocsQuery(), Occur.SHOULD)));
+  }
 }

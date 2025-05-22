@@ -386,7 +386,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
           segmentTerms.fieldTermStatesMap.entrySet()) {
         List<SegmentPostings> segmentPostingsList =
             fieldPostingsMap.computeIfAbsent(
-                fieldTermState.getKey(), k -> new ArrayList<>(groupedSegmentTerms.size()));
+                fieldTermState.getKey(), _ -> new ArrayList<>(groupedSegmentTerms.size()));
         segmentPostingsList.add(
             new SegmentPostings(
                 segmentTerms.segmentIndex,

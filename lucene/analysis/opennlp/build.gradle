@@ -26,3 +26,32 @@ dependencies {
 
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+ext {
+  testModelDataDir = file('src/tools/test-model-data')
+  testsUserDir = file('src/test-files')
+  testModelDir = file("${testsUserDir}/org/apache/lucene/analysis/opennlp")
+}
+
+tasks.register('trainTestModels') {
+  description = 'Train all small test models for unit tests'
+  doLast {
+    mkdir testModelDir
+    trainModel('SentenceDetectorTrainer', 'en', 'sentences.txt', 'en-test-sent.bin')
+    trainModel('TokenizerTrainer', 'en', 'tokenizer.txt', 'en-test-tokenizer.bin')
+    trainModel('POSTaggerTrainer', 'en', 'pos.txt', 'en-test-pos-maxent.bin')
+    trainModel('ChunkerTrainerME', 'en', 'chunks.txt', 'en-test-chunker.bin')
+    trainModel('TokenNameFinderTrainer', 'en', 'ner.txt', 'en-test-ner.bin', ['-params', 'ner_TrainerParams.txt'])
+    trainModel('LemmatizerTrainerME', 'en', 'lemmas.txt', 'en-test-lemmatizer.bin')
+  }
+}
+
+def trainModel(String command, String lang, String data, String model, List extraArgs = []) {
+  javaexec {
+    classpath = sourceSets.main.compileClasspath
+    mainClass = 'opennlp.tools.cmdline.CLI'
+    workingDir = testModelDataDir
+    args = [command, '-lang', lang, '-data', data, '-model', "${testModelDir}/${model}"] + extraArgs
+  }
+}
+

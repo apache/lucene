@@ -25,7 +25,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
@@ -116,18 +116,17 @@ final class SortedNumericDocValuesRangeQuery extends Query {
           return null;
         }
 
+        int maxDoc = context.reader().maxDoc();
         DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         if (skipper != null) {
           if (skipper.minValue() > upperValue || skipper.maxValue() < lowerValue) {
             return null;
           }
-          if (skipper.docCount() == context.reader().maxDoc()
+          if (skipper.docCount() == maxDoc
               && skipper.minValue() >= lowerValue
               && skipper.maxValue() <= upperValue) {
-            final var scorer =
-                new ConstantScoreScorer(
-                    score(), scoreMode, DocIdSetIterator.all(skipper.docCount()));
-            return new DefaultScorerSupplier(scorer);
+
+            return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, maxDoc);
           }
         }
 
@@ -139,8 +138,8 @@ final class SortedNumericDocValuesRangeQuery extends Query {
             final DocIdSetIterator psIterator =
                 getDocIdSetIteratorOrNullForPrimarySort(context.reader(), singleton, skipper);
             if (psIterator != null) {
-              return new DefaultScorerSupplier(
-                  new ConstantScoreScorer(score(), scoreMode, psIterator));
+              return ConstantScoreScorerSupplier.fromIterator(
+                  psIterator, score(), scoreMode, maxDoc);
             }
           }
           iterator =
@@ -182,8 +181,8 @@ final class SortedNumericDocValuesRangeQuery extends Query {
         if (skipper != null) {
           iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue, false);
         }
-        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
-        return new DefaultScorerSupplier(scorer);
+        return ConstantScoreScorerSupplier.fromIterator(
+            TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
       }
     };
   }

@@ -424,7 +424,7 @@ public final class ByteBuffersDataInput extends DataInput
   }
 
   public ByteBuffersDataInput slice(long offset, long length) {
-    if (offset < 0 || length < 0 || offset + length > this.length) {
+    if ((length | offset) < 0 || length > this.length - offset) {
       throw new IllegalArgumentException(
           String.format(
               Locale.ROOT,

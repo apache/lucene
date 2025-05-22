@@ -24,6 +24,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
@@ -147,11 +148,18 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
+    public UpdateableRandomVectorScorer scorer() throws IOException {
       final QuantizedByteVectorValues vectorsCopy = values.copy();
-      final byte[] queryVector = values.vectorValue(ord);
-      final float queryOffset = values.getScoreCorrectionConstant(ord);
-      return new RandomVectorScorer.AbstractRandomVectorScorer(vectorsCopy) {
+      byte[] queryVector = new byte[values.dimension()];
+      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectorsCopy) {
+        float queryOffset = 0;
+
+        @Override
+        public void setScoringOrdinal(int node) throws IOException {
+          System.arraycopy(vectorsCopy.vectorValue(node), 0, queryVector, 0, queryVector.length);
+          queryOffset = vectorsCopy.getScoreCorrectionConstant(node);
+        }
+
         @Override
         public float score(int node) throws IOException {
           byte[] nodeVector = vectorsCopy.vectorValue(node);

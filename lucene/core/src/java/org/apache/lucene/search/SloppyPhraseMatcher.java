@@ -589,7 +589,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     HashMap<Term, Integer> tcnt = new HashMap<>();
     for (PhrasePositions pp : phrasePositions) {
       for (Term t : pp.terms) {
-        Integer cnt = tcnt.compute(t, (key, old) -> old == null ? 1 : 1 + old);
+        Integer cnt = tcnt.compute(t, (_, old) -> old == null ? 1 : 1 + old);
         if (cnt == 2) {
           tord.put(t, tord.size());
         }

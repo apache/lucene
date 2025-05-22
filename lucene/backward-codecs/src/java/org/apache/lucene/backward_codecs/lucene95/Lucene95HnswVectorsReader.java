@@ -17,10 +17,13 @@
 
 package org.apache.lucene.backward_codecs.lucene95;
 
+import static org.apache.lucene.backward_codecs.lucene95.Lucene95HnswVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.backward_codecs.lucene95.Lucene95HnswVectorsFormat.VECTOR_INDEX_EXTENSION;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -68,7 +71,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   Lucene95HnswVectorsReader(SegmentReadState state) throws IOException {
     this.fieldInfos = state.fieldInfos;
     int versionMeta = readMetadata(state);
-    boolean success = false;
     try {
       vectorData =
           openDataInput(
@@ -82,11 +84,9 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
               versionMeta,
               Lucene95HnswVectorsFormat.VECTOR_INDEX_EXTENSION,
               Lucene95HnswVectorsFormat.VECTOR_INDEX_CODEC_NAME);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -122,7 +122,6 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, state.context);
-    boolean success = false;
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -143,12 +142,10 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
@@ -235,6 +232,15 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   public void checkIntegrity() throws IOException {
     CodecUtil.checksumEntireFile(vectorData);
     CodecUtil.checksumEntireFile(vectorIndex);
+  }
+
+  private FieldEntry getFieldEntryOrThrow(String field) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
+    }
+    return fieldEntry;
   }
 
   private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
@@ -359,6 +365,14 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
   }
 
   @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
+    var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
+    var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
+    return Map.ofEntries(raw, graph);
+  }
+
+  @Override
   public void close() throws IOException {
     IOUtils.close(vectorData, vectorIndex);
   }
@@ -465,6 +479,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     int arc;
     private final DirectMonotonicReader graphLevelNodeOffsets;
     private final long[] graphLevelNodeIndexOffsets;
+    private final int maxConn;
     // Allocated to be M*2 to track the current neighbors being explored
     private int[] currentNeighborsBuffer;
 
@@ -480,6 +495,7 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
       this.graphLevelNodeOffsets =
           DirectMonotonicReader.getInstance(entry.offsetsMeta, addressesData);
       this.currentNeighborsBuffer = new int[entry.M * 2];
+      this.maxConn = entry.M;
       graphLevelNodeIndexOffsets = new long[numLevels];
       graphLevelNodeIndexOffsets[0] = 0;
       for (int i = 1; i < numLevels; i++) {
@@ -535,6 +551,16 @@ public final class Lucene95HnswVectorsReader extends KnnVectorsReader implements
     @Override
     public int entryNode() throws IOException {
       return entryNode;
+    }
+
+    @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
+    public int maxConn() {
+      return maxConn;
     }
 
     @Override

@@ -68,7 +68,8 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
     }
   }
 
-  private static List<ThrowingBiFunction<DataOutput, Random, IOConsumer<DataInput>>> GENERATORS;
+  private static final List<ThrowingBiFunction<DataOutput, Random, IOConsumer<DataInput>>>
+      GENERATORS;
 
   static {
     GENERATORS = new ArrayList<>();

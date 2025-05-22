@@ -27,6 +27,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -56,6 +57,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.SimilarityBase;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.QueryUtils;
@@ -252,7 +254,17 @@ public class TestBlockJoin extends LuceneTestCase {
     final Directory dir = newDirectory();
     final RandomIndexWriter w =
         new RandomIndexWriter(
-            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
+            random(),
+            dir,
+            newIndexWriterConfig()
+                .setCodec(
+                    new AssertingCodec() {
+                      @Override
+                      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                        return TestUtil.getDefaultKnnVectorsFormat();
+                      }
+                    })
+                .setMergePolicy(newMergePolicy(random(), false)));
 
     final List<Document> docs = new ArrayList<>();
 

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.join;
 
+import static org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -34,6 +36,7 @@ import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
@@ -69,7 +72,30 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
    */
   public DiversifyingChildrenByteKnnVectorQuery(
       String field, byte[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
-    super(field, query, k, childFilter);
+    this(field, query, childFilter, k, parentsFilter, DEFAULT);
+  }
+
+  /**
+   * Create a DiversifyingChildrenByteKnnVectorQuery.
+   *
+   * @param field the query field
+   * @param query the vector query
+   * @param childFilter the child filter
+   * @param k how many parent documents to return given the matching children
+   * @param parentsFilter Filter identifying the parent documents.
+   * @param searchStrategy the search strategy to use. If null, the default strategy will be used.
+   *     The underlying format may not support all strategies and is free to ignore the requested
+   *     strategy.
+   * @lucene.experimental
+   */
+  public DiversifyingChildrenByteKnnVectorQuery(
+      String field,
+      byte[] query,
+      Query childFilter,
+      int k,
+      BitSetProducer parentsFilter,
+      KnnSearchStrategy searchStrategy) {
+    super(field, query, k, childFilter, searchStrategy);
     this.childFilter = childFilter;
     this.parentsFilter = parentsFilter;
     this.k = k;
@@ -144,7 +170,8 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       KnnCollectorManager knnCollectorManager)
       throws IOException {
     ByteVectorValues.checkField(context.reader(), field);
-    KnnCollector collector = knnCollectorManager.newCollector(visitedLimit, context);
+    KnnCollector collector =
+        knnCollectorManager.newCollector(visitedLimit, searchStrategy, context);
     if (collector == null) {
       return NO_RESULTS;
     }

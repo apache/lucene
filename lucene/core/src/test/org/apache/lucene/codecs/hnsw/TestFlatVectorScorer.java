@@ -49,9 +49,9 @@ import org.hamcrest.MatcherAssert;
 
 public class TestFlatVectorScorer extends LuceneTestCase {
 
-  static volatile AtomicInteger count = new AtomicInteger();
-  final FlatVectorsScorer flatVectorsScorer;
-  final ThrowingSupplier<Directory> newDirectory;
+  private static final AtomicInteger count = new AtomicInteger();
+  private final FlatVectorsScorer flatVectorsScorer;
+  private final ThrowingSupplier<Directory> newDirectory;
 
   public TestFlatVectorScorer(
       FlatVectorsScorer flatVectorsScorer, ThrowingSupplier<Directory> newDirectory) {
@@ -102,10 +102,12 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         var vectorValues = byteVectorValues(4, 3, in, EUCLIDEAN);
         var ss = flatVectorsScorer.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
 
-        var scorerAgainstOrd0 = ss.scorer(0);
+        var scorerAgainstOrd0 = ss.scorer();
+        scorerAgainstOrd0.setScoringOrdinal(0);
         var firstScore = scorerAgainstOrd0.score(1);
         @SuppressWarnings("unused")
-        var scorerAgainstOrd2 = ss.scorer(2);
+        var scorerAgainstOrd2 = ss.scorer();
+        scorerAgainstOrd2.setScoringOrdinal(2);
         var scoreAgain = scorerAgainstOrd0.score(1);
 
         assertThat(scoreAgain, equalTo(firstScore));
@@ -128,10 +130,12 @@ public class TestFlatVectorScorer extends LuceneTestCase {
         var vectorValues = floatVectorValues(4, 3, in, EUCLIDEAN);
         var ss = flatVectorsScorer.getRandomVectorScorerSupplier(EUCLIDEAN, vectorValues);
 
-        var scorerAgainstOrd0 = ss.scorer(0);
+        var scorerAgainstOrd0 = ss.scorer();
+        scorerAgainstOrd0.setScoringOrdinal(0);
         var firstScore = scorerAgainstOrd0.score(1);
         @SuppressWarnings("unused")
-        var scorerAgainstOrd2 = ss.scorer(2);
+        var scorerAgainstOrd2 = ss.scorer();
+        scorerAgainstOrd2.setScoringOrdinal(2);
         var scoreAgain = scorerAgainstOrd0.score(1);
 
         assertThat(scoreAgain, equalTo(firstScore));

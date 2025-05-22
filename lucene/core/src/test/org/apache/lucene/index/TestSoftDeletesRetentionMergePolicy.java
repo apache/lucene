@@ -502,7 +502,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     writer
         .getConfig()
         .setMergedSegmentWarmer(
-            sr -> {
+            _ -> {
               if (update.compareAndSet(true, false)) {
                 try {
                   writer.softUpdateDocument(
@@ -575,7 +575,7 @@ public class TestSoftDeletesRetentionMergePolicy extends LuceneTestCase {
     writer
         .getConfig()
         .setMergedSegmentWarmer(
-            sr -> {
+            _ -> {
               if (delete.compareAndSet(true, false)) {
                 try {
                   long seqNo = writer.tryDeleteDocument(reader, 0);

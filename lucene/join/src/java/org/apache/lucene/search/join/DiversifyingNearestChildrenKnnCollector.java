@@ -22,6 +22,7 @@ import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 
@@ -42,7 +43,20 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
    * @param parentBitSet The leaf parent bitset
    */
   public DiversifyingNearestChildrenKnnCollector(int k, int visitLimit, BitSet parentBitSet) {
-    super(k, visitLimit);
+    this(k, visitLimit, null, parentBitSet);
+  }
+
+  /**
+   * Create a new object for joining nearest child kNN documents with a parent bitset
+   *
+   * @param k The number of joined parent documents to collect
+   * @param visitLimit how many child vectors can be visited
+   * @param searchStrategy The search strategy to use
+   * @param parentBitSet The leaf parent bitset
+   */
+  public DiversifyingNearestChildrenKnnCollector(
+      int k, int visitLimit, KnnSearchStrategy searchStrategy, BitSet parentBitSet) {
+    super(k, visitLimit, searchStrategy);
     this.parentBitSet = parentBitSet;
     this.heap = new NodeIdCachingHeap(k);
   }

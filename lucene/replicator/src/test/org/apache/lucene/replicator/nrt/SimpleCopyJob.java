@@ -165,7 +165,7 @@ class SimpleCopyJob extends CopyJob {
       String tmpFileName = ent.getValue();
       String fileName = ent.getKey();
 
-      if (Node.VERBOSE_FILES) {
+      if (dest.isVerboseFiles()) {
         dest.message("rename file " + tmpFileName + " to " + fileName);
       }
 

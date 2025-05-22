@@ -35,7 +35,9 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 /**
  * Standalone class that can be used to download a gradle-wrapper.jar
@@ -60,18 +62,53 @@ public class WrapperDownloader {
 
   public static void checkVersion() {
     int major = Runtime.version().feature();
-    if (major != 21 && major != 22 && major != 23) {
-      throw new IllegalStateException("java version must be 21, 22 or 23, your version: " + major);
+    if (major != 24) {
+      throw new IllegalStateException("java version must be 24, your version: " + major);
     }
   }
 
   public void run(Path destination) throws IOException, NoSuchAlgorithmException {
-    Path checksumPath =
-        destination.resolveSibling(destination.getFileName().toString() + ".sha256");
+    var expectedFileName = destination.getFileName().toString();
+    Path checksumPath = destination.resolveSibling(expectedFileName + ".sha256");
     if (!Files.exists(checksumPath)) {
       throw new IOException("Checksum file not found: " + checksumPath);
     }
-    String expectedChecksum = Files.readString(checksumPath, StandardCharsets.UTF_8).trim();
+
+    String expectedChecksum;
+    try (var lines = Files.lines(checksumPath, StandardCharsets.UTF_8)) {
+      expectedChecksum =
+          lines
+              .map(
+                  line -> {
+                    // "The default mode is to print a line with: checksum, a space,
+                    // a character indicating input mode  ('*' for binary, ' ' for text
+                    // or where binary is insignificant), and name for each FILE."
+                    var spaceIndex = line.indexOf(" ");
+                    if (spaceIndex != -1 && spaceIndex + 2 < line.length()) {
+                      var mode = line.charAt(spaceIndex + 1);
+                      String fileName = line.substring(spaceIndex + 2);
+                      if (mode == '*' && fileName.equals(expectedFileName)) {
+                        return line.substring(0, spaceIndex);
+                      }
+                    }
+
+                    Logger.getLogger(WrapperDownloader.class.getName())
+                        .warning(
+                            "Something is wrong with the checksum file. Regenerate with "
+                                + "'sha256sum -b gradle-wrapper.jar > gradle-wrapper.jar.sha256'");
+                    return null;
+                  })
+              .filter(Objects::nonNull)
+              .findFirst()
+              .orElse(null);
+
+      if (expectedChecksum == null) {
+        throw new IOException(
+            "The checksum file did not contain the expected checksum for '"
+                + expectedFileName
+                + "'?");
+      }
+    }
 
     Path versionPath =
         destination.resolveSibling(destination.getFileName().toString() + ".version");
@@ -122,6 +159,9 @@ public class WrapperDownloader {
         }
 
         switch (connection.getResponseCode()) {
+          case /* TOO_MANY_REQUESTS */ 429:
+          // it may not be possible to recover from this using a short delay
+          // but try anyway.
           case HttpURLConnection.HTTP_INTERNAL_ERROR:
           case HttpURLConnection.HTTP_UNAVAILABLE:
           case HttpURLConnection.HTTP_BAD_GATEWAY:

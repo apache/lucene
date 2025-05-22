@@ -124,7 +124,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   private final int minimumNumberShouldMatch;
   private final List<BooleanClause> clauses; // used for toString() and getClauses()
-  private final Map<Occur, Collection<Query>> clauseSets; // used for equals/hashcode
+  // WARNING: Do not let clauseSets escape from this class as it breaks immutability:
+  private final Map<Occur, Collection<Query>> clauseSets; // used for equals/hashCode
 
   private BooleanQuery(int minimumNumberShouldMatch, BooleanClause[] clauses) {
     this.minimumNumberShouldMatch = minimumNumberShouldMatch;
@@ -153,7 +154,9 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   /** Return the collection of queries for the given {@link Occur}. */
   public Collection<Query> getClauses(Occur occur) {
-    return clauseSets.get(occur);
+    // turn this immutable here, because we need to preserve the correct collection types for
+    // equals/hashCode!
+    return Collections.unmodifiableCollection(clauseSets.get(occur));
   }
 
   /**
@@ -494,8 +497,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       if (musts.size() == 1 && filters.size() > 0) {
         Query must = musts.iterator().next();
         float boost = 1f;
-        if (must instanceof BoostQuery) {
-          BoostQuery boostQuery = (BoostQuery) must;
+        if (must instanceof BoostQuery boostQuery) {
           must = boostQuery.getQuery();
           boost = boostQuery.getBoost();
         }
@@ -604,23 +606,40 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     // Important(this can only be processed after nested clauses have been flattened)
     {
       final Collection<Query> shoulds = clauseSets.get(Occur.SHOULD);
-      if (shoulds.size() > 0) {
-        if (shoulds.size() < minimumNumberShouldMatch) {
-          return new MatchNoDocsQuery("SHOULD clause count less than minimumNumberShouldMatch");
-        }
-
-        if (shoulds.size() == minimumNumberShouldMatch) {
-          BooleanQuery.Builder builder = new BooleanQuery.Builder();
-          for (BooleanClause clause : clauses) {
-            if (clause.occur() == Occur.SHOULD) {
-              builder.add(clause.query(), Occur.MUST);
-            } else {
-              builder.add(clause);
-            }
+      if (shoulds.size() < minimumNumberShouldMatch) {
+        return new MatchNoDocsQuery("SHOULD clause count less than minimumNumberShouldMatch");
+      }
+      if (shoulds.size() > 0 && shoulds.size() == minimumNumberShouldMatch) {
+        BooleanQuery.Builder builder = new BooleanQuery.Builder();
+        for (BooleanClause clause : clauses) {
+          if (clause.occur() == Occur.SHOULD) {
+            builder.add(clause.query(), Occur.MUST);
+          } else {
+            builder.add(clause);
           }
-
-          return builder.build();
         }
+
+        return builder.build();
+      }
+    }
+
+    // Inline SHOULD clauses from the only MUST clause
+    {
+      if (clauseSets.get(Occur.SHOULD).isEmpty()
+          && clauseSets.get(Occur.MUST).size() == 1
+          && clauseSets.get(Occur.MUST).iterator().next() instanceof BooleanQuery inner
+          && inner.clauses.size() == inner.clauseSets.get(Occur.SHOULD).size()) {
+        BooleanQuery.Builder rewritten = new BooleanQuery.Builder();
+        for (BooleanClause clause : clauses) {
+          if (clause.occur() != Occur.MUST) {
+            rewritten.add(clause);
+          }
+        }
+        for (BooleanClause innerClause : inner.clauses()) {
+          rewritten.add(innerClause);
+        }
+        rewritten.setMinimumNumberShouldMatch(Math.max(1, inner.getMinimumNumberShouldMatch()));
+        return rewritten.build();
       }
     }
 

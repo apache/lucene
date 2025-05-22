@@ -35,6 +35,7 @@ import org.apache.lucene.store.MMapDirectory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.openjdk.jmh.annotations.*;
 
 @BenchmarkMode(Mode.Throughput)
@@ -57,7 +58,7 @@ public class VectorScorerBenchmark {
   IndexInput in;
   KnnVectorValues vectorValues;
   byte[] vec1, vec2;
-  RandomVectorScorer scorer;
+  UpdateableRandomVectorScorer scorer;
 
   @Setup(Level.Iteration)
   public void init() throws IOException {
@@ -76,7 +77,8 @@ public class VectorScorerBenchmark {
     scorer =
         FlatVectorScorerUtil.getLucene99FlatVectorsScorer()
             .getRandomVectorScorerSupplier(DOT_PRODUCT, vectorValues)
-            .scorer(0);
+            .scorer();
+    scorer.setScoringOrdinal(0);
   }
 
   @TearDown

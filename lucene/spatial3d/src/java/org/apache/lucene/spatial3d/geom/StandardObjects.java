@@ -29,54 +29,54 @@ import org.apache.lucene.internal.hppc.IntObjectHashMap;
 class StandardObjects {
 
   /** Registry of standard classes to corresponding code */
-  static Map<Class<?>, Integer> classRegsitry = new HashMap<>();
+  static final Map<Class<?>, Integer> CLASS_REGISTRY = new HashMap<>();
 
   /** Registry of codes to corresponding classes */
-  static IntObjectHashMap<Class<?>> codeRegsitry = new IntObjectHashMap<>();
+  static final IntObjectHashMap<Class<?>> CODE_REGISTRY = new IntObjectHashMap<>();
 
   static {
-    classRegsitry.put(GeoPoint.class, 0);
-    classRegsitry.put(GeoRectangle.class, 1);
-    classRegsitry.put(GeoStandardCircle.class, 2);
-    classRegsitry.put(GeoStandardPath.class, 3);
-    classRegsitry.put(GeoConvexPolygon.class, 4);
-    classRegsitry.put(GeoConcavePolygon.class, 5);
-    classRegsitry.put(GeoComplexPolygon.class, 6);
-    classRegsitry.put(GeoCompositePolygon.class, 7);
-    classRegsitry.put(GeoCompositeMembershipShape.class, 8);
-    classRegsitry.put(GeoCompositeAreaShape.class, 9);
-    classRegsitry.put(GeoDegeneratePoint.class, 10);
-    classRegsitry.put(GeoDegenerateHorizontalLine.class, 11);
-    classRegsitry.put(GeoDegenerateLatitudeZone.class, 12);
-    classRegsitry.put(GeoDegenerateLongitudeSlice.class, 13);
-    classRegsitry.put(GeoDegenerateVerticalLine.class, 14);
-    classRegsitry.put(GeoLatitudeZone.class, 15);
-    classRegsitry.put(GeoLongitudeSlice.class, 16);
-    classRegsitry.put(GeoNorthLatitudeZone.class, 17);
-    classRegsitry.put(GeoNorthRectangle.class, 18);
-    classRegsitry.put(GeoSouthLatitudeZone.class, 19);
-    classRegsitry.put(GeoSouthRectangle.class, 20);
-    classRegsitry.put(GeoWideDegenerateHorizontalLine.class, 21);
-    classRegsitry.put(GeoWideLongitudeSlice.class, 22);
-    classRegsitry.put(GeoWideNorthRectangle.class, 23);
-    classRegsitry.put(GeoWideRectangle.class, 24);
-    classRegsitry.put(GeoWideSouthRectangle.class, 25);
-    classRegsitry.put(GeoWorld.class, 26);
-    classRegsitry.put(dXdYdZSolid.class, 27);
-    classRegsitry.put(dXdYZSolid.class, 28);
-    classRegsitry.put(dXYdZSolid.class, 29);
-    classRegsitry.put(dXYZSolid.class, 30);
-    classRegsitry.put(XdYdZSolid.class, 31);
-    classRegsitry.put(XdYZSolid.class, 32);
-    classRegsitry.put(XYdZSolid.class, 33);
-    classRegsitry.put(StandardXYZSolid.class, 34);
-    classRegsitry.put(PlanetModel.class, 35);
-    classRegsitry.put(GeoDegeneratePath.class, 36);
-    classRegsitry.put(GeoExactCircle.class, 37);
-    classRegsitry.put(GeoS2Shape.class, 38);
+    CLASS_REGISTRY.put(GeoPoint.class, 0);
+    CLASS_REGISTRY.put(GeoRectangle.class, 1);
+    CLASS_REGISTRY.put(GeoStandardCircle.class, 2);
+    CLASS_REGISTRY.put(GeoStandardPath.class, 3);
+    CLASS_REGISTRY.put(GeoConvexPolygon.class, 4);
+    CLASS_REGISTRY.put(GeoConcavePolygon.class, 5);
+    CLASS_REGISTRY.put(GeoComplexPolygon.class, 6);
+    CLASS_REGISTRY.put(GeoCompositePolygon.class, 7);
+    CLASS_REGISTRY.put(GeoCompositeMembershipShape.class, 8);
+    CLASS_REGISTRY.put(GeoCompositeAreaShape.class, 9);
+    CLASS_REGISTRY.put(GeoDegeneratePoint.class, 10);
+    CLASS_REGISTRY.put(GeoDegenerateHorizontalLine.class, 11);
+    CLASS_REGISTRY.put(GeoDegenerateLatitudeZone.class, 12);
+    CLASS_REGISTRY.put(GeoDegenerateLongitudeSlice.class, 13);
+    CLASS_REGISTRY.put(GeoDegenerateVerticalLine.class, 14);
+    CLASS_REGISTRY.put(GeoLatitudeZone.class, 15);
+    CLASS_REGISTRY.put(GeoLongitudeSlice.class, 16);
+    CLASS_REGISTRY.put(GeoNorthLatitudeZone.class, 17);
+    CLASS_REGISTRY.put(GeoNorthRectangle.class, 18);
+    CLASS_REGISTRY.put(GeoSouthLatitudeZone.class, 19);
+    CLASS_REGISTRY.put(GeoSouthRectangle.class, 20);
+    CLASS_REGISTRY.put(GeoWideDegenerateHorizontalLine.class, 21);
+    CLASS_REGISTRY.put(GeoWideLongitudeSlice.class, 22);
+    CLASS_REGISTRY.put(GeoWideNorthRectangle.class, 23);
+    CLASS_REGISTRY.put(GeoWideRectangle.class, 24);
+    CLASS_REGISTRY.put(GeoWideSouthRectangle.class, 25);
+    CLASS_REGISTRY.put(GeoWorld.class, 26);
+    CLASS_REGISTRY.put(dXdYdZSolid.class, 27);
+    CLASS_REGISTRY.put(dXdYZSolid.class, 28);
+    CLASS_REGISTRY.put(dXYdZSolid.class, 29);
+    CLASS_REGISTRY.put(dXYZSolid.class, 30);
+    CLASS_REGISTRY.put(XdYdZSolid.class, 31);
+    CLASS_REGISTRY.put(XdYZSolid.class, 32);
+    CLASS_REGISTRY.put(XYdZSolid.class, 33);
+    CLASS_REGISTRY.put(StandardXYZSolid.class, 34);
+    CLASS_REGISTRY.put(PlanetModel.class, 35);
+    CLASS_REGISTRY.put(GeoDegeneratePath.class, 36);
+    CLASS_REGISTRY.put(GeoExactCircle.class, 37);
+    CLASS_REGISTRY.put(GeoS2Shape.class, 38);
 
-    for (Map.Entry<Class<?>, Integer> entry : classRegsitry.entrySet()) {
-      codeRegsitry.put(entry.getValue(), entry.getKey());
+    for (Map.Entry<Class<?>, Integer> entry : CLASS_REGISTRY.entrySet()) {
+      CODE_REGISTRY.put(entry.getValue(), entry.getKey());
     }
   }
 }
