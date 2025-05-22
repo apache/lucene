@@ -71,11 +71,11 @@ class AssertingWeight extends FilterWeight {
         assert getCalled == false;
         getCalled = true;
         assert leadCost >= 0 : leadCost;
+        boolean canScore = scoreMode.needsScores();
+        boolean canSetMinCompetitiveScore =
+            scoreMode == ScoreMode.TOP_SCORES && topLevelScoringClause;
         return AssertingScorer.wrap(
-            new Random(random.nextLong()),
-            inScorerSupplier.get(leadCost),
-            scoreMode,
-            topLevelScoringClause);
+            inScorerSupplier.get(leadCost), canScore, canSetMinCompetitiveScore);
       }
 
       @Override

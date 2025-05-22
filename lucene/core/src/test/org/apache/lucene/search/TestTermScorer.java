@@ -39,6 +39,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
 
 public class TestTermScorer extends LuceneTestCase {
   protected Directory directory;
@@ -268,5 +269,45 @@ public class TestTermScorer extends LuceneTestCase {
     }
     reader.close();
     dir.close();
+  }
+
+  public void testNextDocsAndScores() throws IOException {
+    Term allTerm = new Term(FIELD, "all");
+    TermQuery termQuery = new TermQuery(allTerm);
+    Weight weight = indexSearcher.createWeight(termQuery, ScoreMode.TOP_SCORES, 1f);
+    LeafReaderContext context = indexSearcher.getIndexReader().leaves().get(0);
+    Bits liveDocs = context.reader().getLiveDocs();
+    Scorer scorer1 = weight.scorer(context);
+    Scorer scorer2 = weight.scorer(context);
+    scorer1.iterator().nextDoc();
+    scorer2.iterator().nextDoc();
+    DocAndScoreBuffer buffer = new DocAndScoreBuffer();
+    while (true) {
+      int curDoc = scorer2.iterator().docID();
+      int upTo =
+          TestUtil.nextInt(random(), curDoc, (int) Math.min(Integer.MAX_VALUE, curDoc + 512L));
+      scorer1.nextDocsAndScores(upTo, liveDocs, buffer);
+      assertEquals(buffer.size == 0, curDoc >= upTo);
+
+      for (int i = 0; i < buffer.size; ++i) {
+        while (liveDocs != null && liveDocs.get(scorer2.iterator().docID()) == false) {
+          scorer2.iterator().nextDoc();
+        }
+        assertEquals(scorer2.iterator().docID(), buffer.docs[i]);
+        assertEquals(scorer2.score(), buffer.scores[i], 0f);
+        scorer2.iterator().nextDoc();
+      }
+
+      assertEquals(scorer2.iterator().docID(), scorer1.iterator().docID());
+      if (scorer1.iterator().docID() == DocIdSetIterator.NO_MORE_DOCS) {
+        break;
+      }
+    }
+
+    Scorer scorer3 = weight.scorer(context);
+    scorer3.iterator().nextDoc();
+    scorer3.nextDocsAndScores(
+        DocIdSetIterator.NO_MORE_DOCS, new Bits.MatchNoBits(context.reader().maxDoc()), buffer);
+    assertEquals(0, buffer.size);
   }
 }

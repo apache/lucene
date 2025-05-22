@@ -94,8 +94,13 @@ public class HnswQueueSaturationCollector extends KnnCollector.Decorator {
   @Override
   public KnnSearchStrategy getSearchStrategy() {
     KnnSearchStrategy delegateStrategy = delegate.getSearchStrategy();
-    assert delegateStrategy instanceof KnnSearchStrategy.Hnsw;
-    return new KnnSearchStrategy.Patience(
-        this, ((KnnSearchStrategy.Hnsw) delegateStrategy).filteredSearchThreshold());
+    if (delegateStrategy instanceof KnnSearchStrategy.Hnsw hnswStrategy) {
+      return new KnnSearchStrategy.Patience(this, hnswStrategy.filteredSearchThreshold());
+    } else if (delegateStrategy instanceof KnnSearchStrategy.Seeded seededStrategy) {
+      if (seededStrategy.originalStrategy() instanceof KnnSearchStrategy.Hnsw hnswStrategy) {
+        return new KnnSearchStrategy.Patience(this, hnswStrategy.filteredSearchThreshold());
+      }
+    }
+    return delegateStrategy;
   }
 }

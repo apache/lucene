@@ -8,8 +8,8 @@ assertj = "3.27.3"
 commons-codec = "1.18.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.27.1"
-# @keep This version refers to ECJ batch compiler from p2 repositories ("drops").
-ecjP2Drop = "ecj-4.36M1"
+# See ecj-lint.gradle (used for more linting).
+ecj = "4.36M1"
 # java linting
 errorprone = "2.38.0"
 # markdown documentation generation
@@ -27,7 +27,7 @@ javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
 # gradle checkWorkingCopy support
-jgit = "7.2.0.202503040940-r"
+jgit = "7.2.1.202505142326-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -67,6 +67,7 @@ antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 assertj = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+ecj = { module = "org.eclipse.jdt:ecj", version.ref = "ecj" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 flexmark-core = { module = "com.vladsch.flexmark:flexmark", version.ref = "flexmark" }
 flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbreviation", version.ref = "flexmark" }

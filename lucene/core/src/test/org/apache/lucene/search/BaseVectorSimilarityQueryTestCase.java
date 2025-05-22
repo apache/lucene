@@ -491,6 +491,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
     try (Directory indexStore = getIndexStore(vectors);
         IndexReader reader = DirectoryReader.open(indexStore)) {
+      assumeTrue("graph is fully reachable", HnswUtil.graphIsRooted(reader, vectorField));
       IndexSearcher searcher = newSearcher(reader);
 
       // This query is cacheable, explicitly prevent it
@@ -504,7 +505,6 @@ abstract class BaseVectorSimilarityQueryTestCase<
                   Float.NEGATIVE_INFINITY,
                   Float.NEGATIVE_INFINITY,
                   null));
-
       assertEquals(numDocs, searcher.count(query)); // Expect some results without timeout
 
       searcher.setTimeout(() -> true); // Immediately timeout
