@@ -23,7 +23,6 @@ import java.util.BitSet;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /** Base test class for {@link DocIdSet}s. */
@@ -160,23 +159,6 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
           assertEquals(doc, it2.advance(target));
           assertEquals(doc, it2.docID());
         }
-      }
-    }
-
-    // bits()
-    final Bits bits = ds2.bits();
-    if (bits != null) {
-      // test consistency between bits and iterator
-      it2 = ds2.iterator();
-      for (int previousDoc = -1, doc = it2.nextDoc(); ; previousDoc = doc, doc = it2.nextDoc()) {
-        final int max = doc == DocIdSetIterator.NO_MORE_DOCS ? bits.length() : doc;
-        for (int i = previousDoc + 1; i < max; ++i) {
-          assertEquals(false, bits.get(i));
-        }
-        if (doc == DocIdSetIterator.NO_MORE_DOCS) {
-          break;
-        }
-        assertEquals(true, bits.get(doc));
       }
     }
   }

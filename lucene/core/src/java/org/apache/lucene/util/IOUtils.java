@@ -95,7 +95,49 @@ public final class IOUtils {
   }
 
   /**
-   * Closes all given <code>Closeable</code>s, suppressing all thrown exceptions. Some of the <code>
+   * Closes all given <code>Closeable</code>s, suppressing all thrown Throwables in {@code ex}. Some
+   * of the <code>
+   * Closeable</code>s may be null, they are ignored.
+   *
+   * @param objects objects to call <code>close()</code> on
+   */
+  public static void closeWhileSuppressingExceptions(Throwable ex, Closeable... objects) {
+    closeWhileSuppressingExceptions(ex, Arrays.asList(objects));
+  }
+
+  /**
+   * Closes all given <code>Closeable</code>s, suppressing all thrown Throwables in {@code ex}. Even
+   * if a {@link Error} is thrown all given closeable are closed.
+   *
+   * @see #closeWhileHandlingException(Closeable...)
+   */
+  public static void closeWhileSuppressingExceptions(
+      Throwable ex, Iterable<? extends Closeable> objects) {
+    Error firstError = ex instanceof Error err ? err : null;
+
+    for (Closeable object : objects) {
+      try {
+        if (object != null) {
+          object.close();
+        }
+      } catch (Throwable e) {
+        if (firstError == null && e instanceof Error err) {
+          // don't try and suppress it - this Error should be the thing that is thrown
+          firstError = err;
+          firstError.addSuppressed(ex);
+        } else {
+          ex.addSuppressed(e);
+        }
+      }
+    }
+
+    if (firstError != null) {
+      throw firstError;
+    }
+  }
+
+  /**
+   * Closes all given <code>Closeable</code>s, ignoring all thrown exceptions. Some of the <code>
    * Closeable</code>s may be null, they are ignored.
    *
    * @param objects objects to call <code>close()</code> on
@@ -105,7 +147,7 @@ public final class IOUtils {
   }
 
   /**
-   * Closes all given <code>Closeable</code>s, suppressing all thrown non {@link Error} exceptions.
+   * Closes all given <code>Closeable</code>s, ignoring all thrown non {@link Error} exceptions.
    * Even if a {@link Error} is thrown all given closeable are closed.
    *
    * @see #closeWhileHandlingException(Closeable...)
@@ -174,7 +216,7 @@ public final class IOUtils {
   }
 
   /**
-   * Deletes all given files, suppressing all thrown IOExceptions.
+   * Deletes all given files, ignoring all thrown Throwables.
    *
    * <p>Note that the files should not be null.
    */
@@ -190,8 +232,51 @@ public final class IOUtils {
     }
   }
 
+  /**
+   * Deletes all given files, ignoring all thrown Throwables.
+   *
+   * <p>Note that the files should not be null.
+   */
   public static void deleteFilesIgnoringExceptions(Directory dir, String... files) {
     deleteFilesIgnoringExceptions(dir, Arrays.asList(files));
+  }
+
+  /**
+   * Deletes all given files, suppressing all thrown Throwables in {@code ex}.
+   *
+   * <p>Note that the files should not be null.
+   */
+  public static void deleteFilesSuppressingExceptions(
+      Throwable ex, Directory dir, Collection<String> files) {
+    Error firstError = ex instanceof Error err ? err : null;
+
+    for (String name : files) {
+      try {
+        dir.deleteFile(name);
+      } catch (Throwable d) {
+        if (firstError == null && d instanceof Error err) {
+          // don't try and suppress it - this Error should be the thing that is thrown
+          firstError = err;
+          firstError.addSuppressed(ex);
+        } else {
+          ex.addSuppressed(d);
+        }
+      }
+    }
+
+    if (firstError != null) {
+      throw firstError;
+    }
+  }
+
+  /**
+   * Deletes all given files, suppressing all thrown Throwables in {@code ex}.
+   *
+   * <p>Note that the files should not be null.
+   */
+  public static void deleteFilesSuppressingExceptions(
+      Throwable ex, Directory dir, String... files) {
+    deleteFilesSuppressingExceptions(ex, dir, Arrays.asList(files));
   }
 
   /**
@@ -220,7 +305,7 @@ public final class IOUtils {
   }
 
   /**
-   * Deletes all given files, suppressing all thrown IOExceptions.
+   * Deletes all given files, ignoring all thrown Throwables.
    *
    * <p>Some of the files may be null, if so they are ignored.
    */
@@ -229,7 +314,7 @@ public final class IOUtils {
   }
 
   /**
-   * Deletes all given files, suppressing all thrown IOExceptions.
+   * Deletes all given files, ignoring all thrown Throwables.
    *
    * <p>Some of the files may be null, if so they are ignored.
    */
@@ -242,6 +327,33 @@ public final class IOUtils {
             @SuppressWarnings("unused")
             Throwable ignored) {
           // ignore
+        }
+      }
+    }
+  }
+
+  /**
+   * Deletes all given files, suppressing all thrown Throwables in {@code ex}.
+   *
+   * <p>Some of the files may be null, if so they are ignored.
+   */
+  public static void deleteFilesSuppressingExceptions(Throwable ex, Path... files) {
+    deleteFilesSuppressingExceptions(ex, Arrays.asList(files));
+  }
+
+  /**
+   * Deletes all given files, suppressing all thrown Throwables in {@code ex}.
+   *
+   * <p>Some of the files may be null, if so they are ignored.
+   */
+  public static void deleteFilesSuppressingExceptions(
+      Throwable ex, Collection<? extends Path> files) {
+    for (Path name : files) {
+      if (name != null) {
+        try {
+          Files.delete(name);
+        } catch (Throwable d) {
+          ex.addSuppressed(d);
         }
       }
     }

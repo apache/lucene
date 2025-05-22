@@ -69,6 +69,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     this.maxDoc = maxDoc;
   }
 
+  private long computeShouldCost() {
+    final Collection<ScorerSupplier> optionalScorers = subs.get(Occur.SHOULD);
+    return ScorerUtil.costWithMinShouldMatch(
+        optionalScorers.stream().mapToLong(ScorerSupplier::cost),
+        optionalScorers.size(),
+        minShouldMatch);
+  }
+
   private long computeCost() {
     OptionalLong minRequiredCost =
         Stream.concat(subs.get(Occur.MUST).stream(), subs.get(Occur.FILTER).stream())
@@ -77,18 +85,13 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     if (minRequiredCost.isPresent() && minShouldMatch == 0) {
       return minRequiredCost.getAsLong();
     } else {
-      final Collection<ScorerSupplier> optionalScorers = subs.get(Occur.SHOULD);
-      final long shouldCost =
-          ScorerUtil.costWithMinShouldMatch(
-              optionalScorers.stream().mapToLong(ScorerSupplier::cost),
-              optionalScorers.size(),
-              minShouldMatch);
+      final long shouldCost = computeShouldCost();
       return Math.min(minRequiredCost.orElse(Long.MAX_VALUE), shouldCost);
     }
   }
 
   @Override
-  public void setTopLevelScoringClause() throws IOException {
+  public void setTopLevelScoringClause() {
     topLevelScoringClause = true;
     if (subs.get(Occur.SHOULD).size() + subs.get(Occur.MUST).size() == 1) {
       // If there is a single scoring clause, propagate the call.
@@ -293,9 +296,10 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return new MaxScoreBulkScorer(maxDoc, optionalScorers, null);
     }
 
+    long shouldCost = computeShouldCost();
     List<Scorer> optional = new ArrayList<Scorer>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
-      optional.add(ss.get(Long.MAX_VALUE));
+      optional.add(ss.get(shouldCost));
     }
 
     return new BooleanScorer(optional, Math.max(1, minShouldMatch), scoreMode.needsScores());
@@ -332,10 +336,9 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       assert scoreMode.needsScores() == false;
       filters.add(new DisjunctionSumScorer(optionalScorers, scoreMode, cost));
 
-      if (filters.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)
-          && maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
+      if (maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
           && cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
-        return new DenseConjunctionBulkScorer(filters.stream().map(Scorer::iterator).toList());
+        return DenseConjunctionBulkScorer.of(filters, maxDoc, 0f);
       }
 
       return new DefaultBulkScorer(new ConjunctionScorer(filters, Collections.emptyList()));
@@ -360,10 +363,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return scorer;
     }
 
-    long leadCost =
+    long mustLeadCost =
         subs.get(Occur.MUST).stream().mapToLong(ScorerSupplier::cost).min().orElse(Long.MAX_VALUE);
-    leadCost =
-        subs.get(Occur.FILTER).stream().mapToLong(ScorerSupplier::cost).min().orElse(leadCost);
+    long filterLeadCost =
+        subs.get(Occur.FILTER).stream()
+            .mapToLong(ScorerSupplier::cost)
+            .min()
+            .orElse(Long.MAX_VALUE);
+    long leadCost = Math.min(mustLeadCost, filterLeadCost);
 
     List<Scorer> requiredNoScoring = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
@@ -391,14 +398,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
     if (scoreMode != ScoreMode.TOP_SCORES
         && requiredScoring.size() + requiredNoScoring.size() >= 2
-        && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)
-        && requiredNoScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
+        && requiredScoring.stream().map(Scorer::twoPhaseIterator).allMatch(Objects::isNull)) {
       if (requiredScoring.isEmpty()
           && maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE
           && leadCost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
-        return new DenseConjunctionBulkScorer(
-            requiredNoScoring.stream().map(Scorer::iterator).toList());
-      } else {
+        return DenseConjunctionBulkScorer.of(requiredNoScoring, maxDoc, 0f);
+      } else if (requiredNoScoring.stream()
+          .map(Scorer::twoPhaseIterator)
+          .allMatch(Objects::isNull)) {
         return new ConjunctionBulkScorer(requiredScoring, requiredNoScoring);
       }
     }

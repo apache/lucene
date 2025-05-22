@@ -350,7 +350,7 @@ public abstract class MultiRangeQuery extends Query implements Cloneable {
         } else {
           return new ScorerSupplier() {
 
-            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+            final DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
             final PointValues.IntersectVisitor visitor = getIntersectVisitor(result, range);
             long cost = -1;
 

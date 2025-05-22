@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.Bits;
 
 /** A query that matches all documents. */
 public final class MatchAllDocsQuery extends Query {
@@ -33,49 +32,7 @@ public final class MatchAllDocsQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        return new ScorerSupplier() {
-
-          @Override
-          public Scorer get(long leadCost) throws IOException {
-            return new ConstantScoreScorer(
-                score(), scoreMode, DocIdSetIterator.all(context.reader().maxDoc()));
-          }
-
-          @Override
-          public BulkScorer bulkScorer() throws IOException {
-            if (scoreMode.isExhaustive() == false) {
-              return super.bulkScorer();
-            }
-            final float score = score();
-            final int maxDoc = context.reader().maxDoc();
-            return new BulkScorer() {
-              @Override
-              public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
-                  throws IOException {
-                max = Math.min(max, maxDoc);
-                Score scorer = new Score();
-                scorer.score = score;
-                collector.setScorer(scorer);
-                for (int doc = min; doc < max; ++doc) {
-                  if (acceptDocs == null || acceptDocs.get(doc)) {
-                    collector.collect(doc);
-                  }
-                }
-                return max == maxDoc ? DocIdSetIterator.NO_MORE_DOCS : max;
-              }
-
-              @Override
-              public long cost() {
-                return maxDoc;
-              }
-            };
-          }
-
-          @Override
-          public long cost() {
-            return context.reader().maxDoc();
-          }
-        };
+        return ConstantScoreScorerSupplier.matchAll(score(), scoreMode, context.reader().maxDoc());
       }
 
       @Override

@@ -39,7 +39,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestSweetSpotSimilarity extends LuceneTestCase {
 
   private static float computeNorm(Similarity sim, String field, int length) throws IOException {
-    String value = IntStream.range(0, length).mapToObj(i -> "a").collect(Collectors.joining(" "));
+    String value = IntStream.range(0, length).mapToObj(_ -> "a").collect(Collectors.joining(" "));
     Directory dir = new ByteBuffersDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig().setSimilarity(sim));
     w.addDocument(Collections.singleton(newTextField(field, value, Store.NO)));

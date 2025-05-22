@@ -40,7 +40,7 @@ class QueryAnalyzer {
   }
 
   QueryAnalyzer() {
-    this.unknownQueryMapper = (q, w) -> null;
+    this.unknownQueryMapper = (_, _) -> null;
   }
 
   private static BiFunction<Query, TermWeightor, QueryTree> buildMapper(
@@ -85,7 +85,7 @@ class QueryAnalyzer {
           long positiveCount =
               bq.clauses().stream().filter(c -> c.occur() != BooleanClause.Occur.MUST_NOT).count();
           if (positiveCount == 0) {
-            children.add(w -> QueryTree.anyTerm("PURE NEGATIVE QUERY[" + parent + "]"));
+            children.add(_ -> QueryTree.anyTerm("PURE NEGATIVE QUERY[" + parent + "]"));
           }
         }
         return QueryVisitor.EMPTY_VISITOR;

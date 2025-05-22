@@ -53,7 +53,7 @@ public final class SimpleBindings extends Bindings {
 
   /** Bind a {@link DoubleValuesSource} directly to the given name. */
   public void add(String name, DoubleValuesSource source) {
-    map.put(name, bindings -> source);
+    map.put(name, _ -> source);
   }
 
   /**

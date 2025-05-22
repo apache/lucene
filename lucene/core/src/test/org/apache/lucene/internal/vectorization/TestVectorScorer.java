@@ -59,8 +59,8 @@ public class TestVectorScorer extends LuceneTestCase {
 
   private static final double DELTA = 1e-5;
 
-  static final FlatVectorsScorer DEFAULT_SCORER = DefaultFlatVectorScorer.INSTANCE;
-  static final FlatVectorsScorer MEMSEG_SCORER =
+  private static final FlatVectorsScorer DEFAULT_SCORER = DefaultFlatVectorScorer.INSTANCE;
+  private static final FlatVectorsScorer MEMSEG_SCORER =
       VectorizationProvider.lookup(true).getLucene99FlatVectorsScorer();
 
   @BeforeClass
@@ -307,7 +307,7 @@ public class TestVectorScorer extends LuceneTestCase {
   }
 
   // Tests with a large amount of data (> 2GB), which ensures that data offsets do not overflow
-  @Nightly
+  @Monster(value = "requires gigabytes of disk space")
   public void testLarge() throws IOException {
     try (Directory dir = new MMapDirectory(createTempDir("testLarge"))) {
       final int dims = 8192;
@@ -448,7 +448,7 @@ public class TestVectorScorer extends LuceneTestCase {
     return RandomNumbers.randomLongBetween(random(), minInclusive, maxInclusive);
   }
 
-  static Function<Integer, byte[]> BYTE_ARRAY_RANDOM_FUNC =
+  private static final Function<Integer, byte[]> BYTE_ARRAY_RANDOM_FUNC =
       size -> {
         byte[] ba = new byte[size];
         for (int i = 0; i < size; i++) {
@@ -457,19 +457,19 @@ public class TestVectorScorer extends LuceneTestCase {
         return ba;
       };
 
-  static Function<Integer, byte[]> BYTE_ARRAY_MAX_FUNC =
+  private static final Function<Integer, byte[]> BYTE_ARRAY_MAX_FUNC =
       size -> {
         byte[] ba = new byte[size];
         Arrays.fill(ba, Byte.MAX_VALUE);
         return ba;
       };
 
-  static Function<Integer, byte[]> BYTE_ARRAY_MIN_FUNC =
+  private static final Function<Integer, byte[]> BYTE_ARRAY_MIN_FUNC =
       size -> {
         byte[] ba = new byte[size];
         Arrays.fill(ba, Byte.MIN_VALUE);
         return ba;
       };
 
-  static final int TIMES = 100; // a loop iteration times
+  private static final int TIMES = 100; // a loop iteration times
 }

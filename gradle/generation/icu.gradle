@@ -282,3 +282,37 @@ configure(project(":lucene:analysis:common")) {
           mustRunBefore: [ "compileJava" ]
   ])
 }
+
+// Regenerates CaseFolding.java
+configure(project(":lucene:core")) {
+  task generateUnicodePropsInternal() {
+    def icuConfig = rootProject.configurations.icu_current
+    def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
+
+    description "Regenerate ${outputFile} (with ${icuConfig.name})"
+    group "generation"
+
+    dependsOn icuConfig
+
+    inputs.property "icuConfig", provider { icuVersionFromConfiguration(icuConfig) }
+    outputs.file outputFile
+
+    doFirst {
+      project.javaexec {
+        main "groovy.lang.GroovyShell"
+        classpath icuConfig, rootProject.configurations.groovy
+
+        args = [
+            "--encoding", "UTF-8",
+            file("${resources}/GenerateCaseFolding.groovy"),
+            outputFile
+        ]
+      }
+    }
+  }
+
+  regenerate.dependsOn wrapWithPersistentChecksums(generateUnicodePropsInternal, [
+          andThenTasks: ["spotlessJava", "spotlessJavaApply"],
+          mustRunBefore: [ "compileJava" ]
+  ])
+}

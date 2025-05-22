@@ -49,7 +49,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
   private Directory dir;
   private SegmentCommitInfo seg;
   private FieldInfos fieldInfos = FieldInfos.EMPTY;
-  private static int TERM_FREQ = 3;
+  private static final int TERM_FREQ = 3;
 
   private static class TestToken implements Comparable<TestToken> {
     String text;

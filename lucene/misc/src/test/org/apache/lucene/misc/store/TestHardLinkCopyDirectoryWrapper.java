@@ -33,7 +33,6 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.tests.mockfile.WindowsFS;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 
 // See: https://issues.apache.org/jira/browse/SOLR-12028 Tests cannot remove files on Windows
@@ -104,8 +103,6 @@ public class TestHardLinkCopyDirectoryWrapper extends BaseDirectoryTestCase {
   }
 
   public void testRenameWithHardLink() throws Exception {
-    // irony: currently we don't emulate windows well enough to work on windows!
-    assumeFalse("windows is not supported", Constants.WINDOWS);
     Path path = createTempDir();
     WindowsFS provider = new WindowsFS(path.getFileSystem());
     Directory dir1 = new NIOFSDirectory(provider.wrapPath(path));

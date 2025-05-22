@@ -259,7 +259,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
 
   /** Guard against opts. */
   @SuppressWarnings("unused")
-  private static volatile int guard;
+  private volatile int guard;
 
   private static class BenchmarkResult {
     /** Average time per round (ms). */

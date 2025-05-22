@@ -39,6 +39,7 @@ class WordDictionary extends AbstractDictionary {
 
   private WordDictionary() {}
 
+  @SuppressWarnings("NonFinalStaticField")
   private static WordDictionary singleInstance;
 
   /** Large prime number for hash function */
@@ -359,7 +360,7 @@ class WordDictionary extends AbstractDictionary {
    * then initialize the value of that position in the address table.
    */
   private boolean setTableIndex(char c, int j) {
-    int index = getAvaliableTableIndex(c);
+    int index = getAvailableTableIndex(c);
     if (index != -1) {
       charIndexTable[index] = c;
       wordIndexTable[index] = (short) j;
@@ -367,7 +368,7 @@ class WordDictionary extends AbstractDictionary {
     } else return false;
   }
 
-  private short getAvaliableTableIndex(char c) {
+  private short getAvailableTableIndex(char c) {
     int hash1 = (int) (hash1(c) % PRIME_INDEX_LENGTH);
     int hash2 = hash2(c) % PRIME_INDEX_LENGTH;
     if (hash1 < 0) hash1 = PRIME_INDEX_LENGTH + hash1;

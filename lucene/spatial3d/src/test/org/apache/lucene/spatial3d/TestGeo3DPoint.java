@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.IntSupplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.PointsFormat;
@@ -154,7 +155,15 @@ public class TestGeo3DPoint extends LuceneTestCase {
   }
 
   private static class Cell {
-    static int nextCellID;
+    static final IntSupplier nextCellID =
+        new IntSupplier() {
+          int counter = 0;
+
+          @Override
+          public int getAsInt() {
+            return counter++;
+          }
+        };
 
     final Cell parent;
     final int cellID;
@@ -181,7 +190,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
       this.yMaxEnc = yMaxEnc;
       this.zMinEnc = zMinEnc;
       this.zMaxEnc = zMaxEnc;
-      this.cellID = nextCellID++;
+      this.cellID = nextCellID.getAsInt();
       this.splitCount = splitCount;
       this.planetModel = planetModel;
     }
@@ -1183,8 +1192,8 @@ public class TestGeo3DPoint extends LuceneTestCase {
     }
   }
 
-  protected static double MINIMUM_EDGE_ANGLE = toRadians(5.0);
-  protected static double MINIMUM_ARC_ANGLE = toRadians(1.0);
+  private static final double MINIMUM_EDGE_ANGLE = toRadians(5.0);
+  private static final double MINIMUM_ARC_ANGLE = toRadians(1.0);
 
   /**
    * Cook up a random Polygon that makes sense, with possible nested polygon within. This is part of

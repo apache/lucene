@@ -146,6 +146,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    *
    * @see #setInfoStream
    */
+  @SuppressWarnings("NonFinalStaticField")
   private static PrintStream infoStream;
 
   /** Id for this commit; only written starting with Lucene 5.0 */

@@ -32,11 +32,12 @@ import org.apache.lucene.internal.hppc.ObjectCursor;
  */
 class BiSegGraph {
 
-  private IntObjectHashMap<ArrayList<SegTokenPair>> tokenPairListTable = new IntObjectHashMap<>();
+  private final IntObjectHashMap<ArrayList<SegTokenPair>> tokenPairListTable =
+      new IntObjectHashMap<>();
 
   private List<SegToken> segTokenList;
 
-  private static BigramDictionary bigramDict = BigramDictionary.getInstance();
+  private static final BigramDictionary bigramDict = BigramDictionary.getInstance();
 
   public BiSegGraph(SegGraph segGraph) {
     segTokenList = segGraph.makeIndex();

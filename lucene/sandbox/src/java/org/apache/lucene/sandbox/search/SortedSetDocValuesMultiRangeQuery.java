@@ -105,7 +105,9 @@ public class SortedSetDocValuesMultiRangeQuery extends Query {
         case FOUND, NOT_FOUND:
           lowerOrd = termsEnum.ord();
       }
-      seekStatus = termsEnum.seekCeil(range.upper);
+      if (range.lower != range.upper) { // just a quick reference check, equality is too rare
+        seekStatus = termsEnum.seekCeil(range.upper);
+      }
       long upperOrd = -1;
       switch (seekStatus) {
         case TermsEnum.SeekStatus.END:

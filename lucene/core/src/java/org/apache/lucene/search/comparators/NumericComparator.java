@@ -30,6 +30,7 @@ import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.IntsRef;
 
 /**
  * Abstract numeric comparator for comparing numeric values. This comparator provides a skipping
@@ -107,7 +108,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     private long minValueAsLong = Long.MIN_VALUE;
     private long maxValueAsLong = Long.MAX_VALUE;
 
-    private DocIdSetIterator competitiveIterator;
+    private final UpdateableDocIdSetIterator competitiveIterator;
     private long iteratorCost = -1;
     private int maxDocVisited = -1;
     private int updateCounter = 0;
@@ -142,12 +143,14 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         }
         this.enableSkipping = true; // skipping is enabled when points are available
         this.maxDoc = context.reader().maxDoc();
-        this.competitiveIterator = DocIdSetIterator.all(maxDoc);
+        this.competitiveIterator = new UpdateableDocIdSetIterator();
+        this.competitiveIterator.update(DocIdSetIterator.all(maxDoc));
         if (leafTopSet) {
           encodeTop();
         }
       } else {
         this.enableSkipping = false;
+        this.competitiveIterator = null;
         this.maxDoc = 0;
       }
     }
@@ -251,6 +254,19 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
             }
 
             @Override
+            public void visit(DocIdSetIterator iterator) throws IOException {
+              if (iterator.advance(maxDocVisited + 1) != DocIdSetIterator.NO_MORE_DOCS) {
+                adder.add(iterator.docID());
+                adder.add(iterator);
+              }
+            }
+
+            @Override
+            public void visit(IntsRef ref) {
+              adder.add(ref, maxDocVisited + 1);
+            }
+
+            @Override
             public PointValues.Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
               long min = sortableBytesToLong(minPackedValue);
               long max = sortableBytesToLong(maxPackedValue);
@@ -279,13 +295,13 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
         updateSkipInterval(false);
         if (pointValues.getDocCount() < iteratorCost) {
           // Use the set of doc with values to help drive iteration
-          competitiveIterator = getNumericDocValues(context, field);
+          competitiveIterator.update(getNumericDocValues(context, field));
           iteratorCost = pointValues.getDocCount();
         }
         return;
       }
       pointValues.intersect(visitor);
-      competitiveIterator = result.build().iterator();
+      competitiveIterator.update(result.build().iterator());
       iteratorCost = competitiveIterator.cost();
       updateSkipInterval(true);
     }
@@ -389,30 +405,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     public DocIdSetIterator competitiveIterator() {
-      if (enableSkipping == false) return null;
-      return new DocIdSetIterator() {
-        private int docID = competitiveIterator.docID();
-
-        @Override
-        public int nextDoc() throws IOException {
-          return advance(docID + 1);
-        }
-
-        @Override
-        public int docID() {
-          return docID;
-        }
-
-        @Override
-        public long cost() {
-          return competitiveIterator.cost();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return docID = competitiveIterator.advance(target);
-        }
-      };
+      return competitiveIterator;
     }
 
     protected abstract long bottomAsComparableLong();

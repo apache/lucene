@@ -56,6 +56,7 @@ import org.apache.lucene.util.NumericUtils;
 /** Factory of doc values dialog */
 public final class DocValuesDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static DocValuesDialogFactory instance;
 
   private final Preferences prefs;
@@ -190,7 +191,7 @@ public final class DocValuesDialogFactory implements DialogOpener.DialogFactory 
 
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setMargin(new Insets(3, 0, 3, 0));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     footer.add(closeBtn);
 
     return footer;

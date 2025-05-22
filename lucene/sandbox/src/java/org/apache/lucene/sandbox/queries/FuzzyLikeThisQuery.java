@@ -67,13 +67,13 @@ public class FuzzyLikeThisQuery extends Query {
   // a better way might be to convert this into multitermquery rewrite methods.
   // the rewrite method can 'average' the TermStates's term statistics (docfreq,totalTermFreq)
   // provided to TermQuery, so that the general idea is agnostic to any scoring system...
-  static TFIDFSimilarity sim = new ClassicSimilarity();
+  private static final TFIDFSimilarity sim = new ClassicSimilarity();
   ArrayList<FieldVals> fieldVals = new ArrayList<>();
   Analyzer analyzer;
 
   int MAX_VARIANTS_PER_TERM = 50;
   boolean ignoreTF = false;
-  private int maxNumTerms;
+  private final int maxNumTerms;
 
   @Override
   public int hashCode() {

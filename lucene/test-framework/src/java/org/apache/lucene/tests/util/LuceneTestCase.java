@@ -205,6 +205,8 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
+import org.hamcrest.Matcher;
+import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -544,6 +546,7 @@ public abstract class LuceneTestCase extends Assert {
   static final TestRuleSetupAndRestoreClassEnv classEnvRule;
 
   /** Suite failure marker (any error in the test or suite scope). */
+  @SuppressWarnings("NonFinalStaticField")
   protected static TestRuleMarkFailure suiteFailureMarker;
 
   /** Temporary files cleanup rule. */
@@ -608,7 +611,7 @@ public abstract class LuceneTestCase extends Assert {
    * This controls how suite-level rules are nested. It is important that _all_ rules declared in
    * {@link LuceneTestCase} are executed in proper order if they depend on each other.
    */
-  @ClassRule public static TestRule classRules;
+  @ClassRule public static final TestRule classRules;
 
   static {
     RuleChain r =
@@ -679,6 +682,7 @@ public abstract class LuceneTestCase extends Assert {
   }
 
   /** Set by TestRuleSetupAndRestoreClassEnv */
+  @SuppressWarnings("NonFinalStaticField")
   static LiveIWCFlushMode liveIWCFlushMode;
 
   static void setLiveIWCFlushMode(LiveIWCFlushMode flushMode) {
@@ -1578,14 +1582,26 @@ public abstract class LuceneTestCase extends Assert {
         availableLanguageTags[random.nextInt(availableLanguageTags.length)]);
   }
 
+  /** Time zone IDs that cause a deprecation warning in JDK 25. */
+  private static final Set<String> DEPRECATED_TIME_ZONE_IDS_JDK25 =
+      Set.of(
+          "ACT", "AET", "AGT", "ART", "AST", "BET", "BST", "CAT", "CNT", "CST", "CTT", "EAT", "ECT",
+          "EST", "HST", "IET", "IST", "JST", "MIT", "MST", "NET", "NST", "PLT", "PNT", "PRT", "PST",
+          "SST", "VST");
+
   /**
    * Return a random TimeZone from the available timezones on the system
    *
    * @see <a href="http://issues.apache.org/jira/browse/LUCENE-4020">LUCENE-4020</a>
    */
   public static TimeZone randomTimeZone(Random random) {
-    String[] tzIds = TimeZone.getAvailableIDs();
-    return TimeZone.getTimeZone(tzIds[random.nextInt(tzIds.length)]);
+    List<String> tzIds = Arrays.asList(TimeZone.getAvailableIDs());
+    // Remove time zones that cause deprecation warnings as these can break
+    // certain tests that expect exact output.
+    if (Runtime.version().feature() >= 25) {
+      tzIds = tzIds.stream().filter(id -> !DEPRECATED_TIME_ZONE_IDS_JDK25.contains(id)).toList();
+    }
+    return TimeZone.getTimeZone(RandomPicks.randomFrom(random, tzIds));
   }
 
   /** return a Locale object equivalent to its programmatic name */
@@ -1800,13 +1816,13 @@ public abstract class LuceneTestCase extends Assert {
     if (oldContext.flushInfo() != null) {
       // Always return at least the estimatedSegmentSize of
       // the incoming IOContext:
-      return new IOContext(
+      return IOContext.flush(
           new FlushInfo(
               randomNumDocs, Math.max(oldContext.flushInfo().estimatedSegmentSize(), size)));
     } else if (oldContext.mergeInfo() != null) {
       // Always return at least the estimatedMergeBytes of
       // the incoming IOContext:
-      return new IOContext(
+      return IOContext.merge(
           new MergeInfo(
               randomNumDocs,
               Math.max(oldContext.mergeInfo().estimatedMergeBytes(), size),
@@ -1820,10 +1836,10 @@ public abstract class LuceneTestCase extends Assert {
           context = IOContext.DEFAULT;
           break;
         case 1:
-          context = new IOContext(new MergeInfo(randomNumDocs, size, true, -1));
+          context = IOContext.merge(new MergeInfo(randomNumDocs, size, true, -1));
           break;
         case 2:
-          context = new IOContext(new FlushInfo(randomNumDocs, size));
+          context = IOContext.flush(new FlushInfo(randomNumDocs, size));
           break;
         default:
           context = IOContext.DEFAULT;
@@ -1847,7 +1863,7 @@ public abstract class LuceneTestCase extends Assert {
     // we need to reset the query cache in an @BeforeClass so that tests that
     // instantiate an IndexSearcher in an @BeforeClass method use a fresh new cache
     IndexSearcher.setDefaultQueryCache(
-        new LRUQueryCache(10000, 1 << 25, context -> true, Float.POSITIVE_INFINITY));
+        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY));
     IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
   }
 
@@ -2070,6 +2086,15 @@ public abstract class LuceneTestCase extends Assert {
   /** Gets a resource from the test's classpath as {@link InputStream}. */
   protected InputStream getDataInputStream(String name) throws IOException {
     return IOUtils.requireResourceNonNull(this.getClass().getResourceAsStream(name), name);
+  }
+
+  // these hide the deprecated Assert.assertThat method
+  public static <T> void assertThat(T actual, Matcher<? super T> matcher) {
+    MatcherAssert.assertThat(actual, matcher);
+  }
+
+  public static <T> void assertThat(String reason, T actual, Matcher<? super T> matcher) {
+    MatcherAssert.assertThat(reason, actual, matcher);
   }
 
   public void assertReaderEquals(String info, IndexReader leftReader, IndexReader rightReader)

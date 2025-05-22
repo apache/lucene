@@ -22,6 +22,7 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -39,6 +40,9 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.ReadAdvice;
@@ -65,7 +69,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     super(scorer);
     int versionMeta = readMetadata(state);
     this.fieldInfos = state.fieldInfos;
-    boolean success = false;
     try {
       vectorData =
           openDataInput(
@@ -75,12 +78,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
               // Flat formats are used to randomly access vectors from their node ID that is stored
               // in the HNSW graph.
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+              state.context.withHints(
+                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -120,7 +122,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
-    boolean success = false;
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -141,12 +142,10 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
@@ -167,6 +166,12 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    final FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
+    return Map.of(Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION, entry.vectorDataLength());
+  }
+
+  @Override
   public void checkIntegrity() throws IOException {
     CodecUtil.checksumEntireFile(vectorData);
   }
@@ -182,12 +187,17 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     }
   }
 
-  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+  private FieldEntry getFieldEntryOrThrow(String field) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry;
-    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
+    final FieldEntry entry;
+    if (info == null || (entry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
+    return entry;
+  }
+
+  private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
+    final FieldEntry fieldEntry = getFieldEntryOrThrow(field);
     if (fieldEntry.vectorEncoding != expectedEncoding) {
       throw new IllegalArgumentException(
           "field=\""

@@ -16,14 +16,17 @@
  */
 package org.apache.lucene.tests.store;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import java.nio.file.Path;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.ReadAdvice;
 
 public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
 
@@ -40,24 +43,24 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
         }
       }
       try (IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.NORMAL))) {
+          dir.openInput("test", IOContext.DEFAULT.withHints(DataAccessHint.SEQUENTIAL))) {
         in.readByte();
         long count = dir.count();
         while (in.getFilePointer() < in.length()) {
           in.readByte();
         }
         // Sequential reads are free with the normal advice
-        assertEquals(count, dir.count());
+        assertThat(dir.count(), equalTo(count));
       }
       try (IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.RANDOM))) {
+          dir.openInput("test", IOContext.DEFAULT.withHints(DataAccessHint.RANDOM))) {
         in.readByte();
         long count = dir.count();
         while (in.getFilePointer() < in.length()) {
           in.readByte();
         }
         // But not with the random advice
-        assertFalse(count == dir.count());
+        assertThat(dir.count(), not(equalTo(count)));
       }
     }
   }
@@ -70,7 +73,7 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
         }
       }
       try (IndexInput in =
-          dir.openInput("test", IOContext.DEFAULT.withReadAdvice(ReadAdvice.RANDOM))) {
+          dir.openInput("test", IOContext.DEFAULT.withHints(DataAccessHint.RANDOM))) {
         long count = dir.count();
 
         // count is incremented on the first prefetch

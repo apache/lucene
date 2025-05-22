@@ -376,7 +376,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
     SegmentWriteState writeState =
         new SegmentWriteState(
-            null, dir, segmentInfo, fieldInfos, null, new IOContext(new FlushInfo(1, 20)));
+            null, dir, segmentInfo, fieldInfos, null, IOContext.flush(new FlushInfo(1, 20)));
 
     SegmentReadState readState =
         new SegmentReadState(dir, segmentInfo, fieldInfos, IOContext.DEFAULT);
@@ -869,7 +869,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     public IndexInput openInput(String name, IOContext context) throws IOException {
       IndexInput in = super.openInput(name, context);
       final FixedBitSet set =
-          readBytes.computeIfAbsent(name, n -> new FixedBitSet(Math.toIntExact(in.length())));
+          readBytes.computeIfAbsent(name, _ -> new FixedBitSet(Math.toIntExact(in.length())));
       if (set.length() != in.length()) {
         throw new IllegalStateException();
       }
@@ -880,7 +880,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     public ChecksumIndexInput openChecksumInput(String name) throws IOException {
       ChecksumIndexInput in = super.openChecksumInput(name);
       final FixedBitSet set =
-          readBytes.computeIfAbsent(name, n -> new FixedBitSet(Math.toIntExact(in.length())));
+          readBytes.computeIfAbsent(name, _ -> new FixedBitSet(Math.toIntExact(in.length())));
       if (set.length() != in.length()) {
         throw new IllegalStateException();
       }

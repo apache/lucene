@@ -122,7 +122,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     uhBuilder.withCacheFieldValCharsThreshold(random().nextInt(100));
     if (requireFieldMatch == Boolean.FALSE
         || (requireFieldMatch == null && random().nextBoolean())) {
-      uhBuilder.withFieldMatcher(f -> true); // requireFieldMatch==false
+      uhBuilder.withFieldMatcher(_ -> true); // requireFieldMatch==false
     }
     return overriddenBuilderForTests(uhBuilder, mandatoryFlags).build();
   }
@@ -1176,7 +1176,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     IndexReader ir = indexSomeFields();
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighterNoFieldMatch =
-        UnifiedHighlighter.builder(searcher, indexAnalyzer).withFieldMatcher(qf -> true).build();
+        UnifiedHighlighter.builder(searcher, indexAnalyzer).withFieldMatcher(_ -> true).build();
     UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     UnifiedHighlighter highlighterFieldMatch =
         overrideFieldMatcherForTests(randomUnifiedHighlighter(uhBuilder), null, "text");
@@ -1263,7 +1263,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     IndexReader ir = indexSomeFields();
     IndexSearcher searcher = newSearcher(ir);
     UnifiedHighlighter highlighterNoFieldMatch =
-        UnifiedHighlighter.builder(searcher, indexAnalyzer).withFieldMatcher(qf -> true).build();
+        UnifiedHighlighter.builder(searcher, indexAnalyzer).withFieldMatcher(_ -> true).build();
     UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     UnifiedHighlighter highlighterFieldMatch =
         overrideFieldMatcherForTests(
@@ -1487,7 +1487,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     UnifiedHighlighter highlighterNoFieldMatch =
         UnifiedHighlighter.builder(searcher, indexAnalyzer)
             // requireFieldMatch=false
-            .withFieldMatcher(qf -> true)
+            .withFieldMatcher(_ -> true)
             .build();
     UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
     UnifiedHighlighter highlighterFieldMatch =

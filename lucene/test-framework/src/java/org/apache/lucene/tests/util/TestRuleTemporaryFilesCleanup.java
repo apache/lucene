@@ -43,7 +43,6 @@ import org.apache.lucene.tests.mockfile.WindowsFS;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressFileSystems;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressFsync;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressTempFileChecks;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -157,11 +156,8 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
         fs = new HandleLimitFS(fs, limit).getFileSystem(null);
       }
       // windows is currently slow
-      if (random.nextInt(10) == 0) {
-        // don't try to emulate windows on windows: they don't get along
-        if (!Constants.WINDOWS && allowed(avoid, WindowsFS.class)) {
-          fs = new WindowsFS(fs).getFileSystem(null);
-        }
+      if (random.nextInt(10) == 0 && allowed(avoid, WindowsFS.class)) {
+        fs = new WindowsFS(fs).getFileSystem(null);
       }
       if (allowed(avoid, ExtrasFS.class)) {
         fs = new ExtrasFS(fs, random.nextInt(4) == 0, random.nextBoolean()).getFileSystem(null);

@@ -99,7 +99,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
   private final Map<IndexReader.CacheKey, LeafCache> cache;
   private final ReentrantReadWriteLock.ReadLock readLock;
   private final ReentrantReadWriteLock.WriteLock writeLock;
-  private final float skipCacheFactor;
+  private volatile float skipCacheFactor;
   private final LongAdder hitCount;
   private final LongAdder missCount;
 
@@ -140,6 +140,25 @@ public class LRUQueryCache implements QueryCache, Accountable {
     ramBytesUsed = 0;
     hitCount = new LongAdder();
     missCount = new LongAdder();
+  }
+
+  /**
+   * Get the skip cache factor
+   *
+   * @return #setSkipCacheFactor
+   */
+  public float getSkipCacheFactor() {
+    return skipCacheFactor;
+  }
+
+  /**
+   * This setter enables the skipCacheFactor to be updated dynamically.
+   *
+   * @param skipCacheFactor clauses whose cost is {@code skipCacheFactor} times more than the cost
+   *     of the top-level query will not be cached in order to not slow down queries too much.
+   */
+  public void setSkipCacheFactor(float skipCacheFactor) {
+    this.skipCacheFactor = skipCacheFactor;
   }
 
   /**
@@ -706,13 +725,12 @@ public class LRUQueryCache implements QueryCache, Accountable {
     private boolean cacheEntryHasReasonableWorstCaseSize(int maxDoc) {
       // The worst-case (dense) is a bit set which needs one bit per document
       final long worstCaseRamUsage = maxDoc / 8;
-      final long totalRamAvailable = maxRamBytesUsed;
       // Imagine the worst-case that a cache entry is large than the size of
       // the cache: not only will this entry be trashed immediately but it
       // will also evict all current entries from the cache. For this reason
       // we only cache on an IndexReader if we have available room for
       // 5 different filters on this reader to avoid excessive trashing
-      return worstCaseRamUsage * 5 < totalRamAvailable;
+      return worstCaseRamUsage * 5 < maxRamBytesUsed;
     }
 
     /** Check whether this segment is eligible for caching, regardless of the query. */
@@ -757,6 +775,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
         readLock.unlock();
       }
 
+      int maxDoc = context.reader().maxDoc();
       if (cached == null) {
         if (policy.shouldCache(in.getQuery())) {
           final ScorerSupplier supplier = in.scorerSupplier(context);
@@ -766,15 +785,15 @@ public class LRUQueryCache implements QueryCache, Accountable {
           }
 
           final long cost = supplier.cost();
-          return new ScorerSupplier() {
+          return new ConstantScoreScorerSupplier(0f, ScoreMode.COMPLETE_NO_SCORES, maxDoc) {
             @Override
-            public Scorer get(long leadCost) throws IOException {
+            public DocIdSetIterator iterator(long leadCost) throws IOException {
               // skip cache operation which would slow query down too much
               if (cost / skipCacheFactor > leadCost) {
-                return supplier.get(leadCost);
+                return supplier.get(leadCost).iterator();
               }
 
-              CacheAndCount cached = cacheImpl(supplier.bulkScorer(), context.reader().maxDoc());
+              CacheAndCount cached = cacheImpl(supplier.bulkScorer(), maxDoc);
               putIfAbsent(in.getQuery(), cached, cacheHelper);
               DocIdSetIterator disi = cached.iterator();
               if (disi == null) {
@@ -783,7 +802,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
                 disi = DocIdSetIterator.empty();
               }
 
-              return new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, disi);
+              return disi;
             }
 
             @Override
@@ -805,17 +824,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
         return null;
       }
 
-      return new ScorerSupplier() {
-        @Override
-        public Scorer get(long LeadCost) throws IOException {
-          return new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, disi);
-        }
-
-        @Override
-        public long cost() {
-          return disi.cost();
-        }
-      };
+      return ConstantScoreScorerSupplier.fromIterator(
+          disi, 0f, ScoreMode.COMPLETE_NO_SCORES, maxDoc);
     }
 
     @Override

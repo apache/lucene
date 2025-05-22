@@ -792,7 +792,7 @@ public class GeoTestUtil {
 
   private static class Loader {
 
-    static Loader LOADER = new Loader();
+    static final Loader LOADER = new Loader();
 
     String readShape(String name) throws IOException {
       InputStream is = getClass().getResourceAsStream(name);

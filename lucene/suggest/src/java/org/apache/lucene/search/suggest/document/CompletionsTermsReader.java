@@ -19,7 +19,6 @@ package org.apache.lucene.search.suggest.document;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
-import org.apache.lucene.search.suggest.document.CompletionPostingsFormat.FSTLoadMode;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 
@@ -41,8 +40,6 @@ public final class CompletionsTermsReader implements Accountable {
   private final IndexInput dictIn;
   private final long offset;
 
-  private final FSTLoadMode fstLoadMode;
-
   private NRTSuggester suggester;
 
   /**
@@ -50,12 +47,7 @@ public final class CompletionsTermsReader implements Accountable {
    * </code> with <code>offset</code>
    */
   CompletionsTermsReader(
-      IndexInput dictIn,
-      long offset,
-      long minWeight,
-      long maxWeight,
-      byte type,
-      FSTLoadMode fstLoadMode) {
+      IndexInput dictIn, long offset, long minWeight, long maxWeight, byte type) {
     assert minWeight <= maxWeight;
     assert offset >= 0l && offset < dictIn.length();
     this.dictIn = dictIn;
@@ -63,7 +55,6 @@ public final class CompletionsTermsReader implements Accountable {
     this.minWeight = minWeight;
     this.maxWeight = maxWeight;
     this.type = type;
-    this.fstLoadMode = fstLoadMode;
   }
 
   /**
@@ -73,7 +64,7 @@ public final class CompletionsTermsReader implements Accountable {
   public synchronized NRTSuggester suggester() throws IOException {
     if (suggester == null) {
       IndexInput indexInput = dictIn.slice("NRTSuggester", offset, dictIn.length() - offset);
-      suggester = NRTSuggester.load(indexInput, fstLoadMode);
+      suggester = NRTSuggester.load(indexInput);
     }
     return suggester;
   }

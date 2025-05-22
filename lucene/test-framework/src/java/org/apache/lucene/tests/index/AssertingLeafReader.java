@@ -50,9 +50,11 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.internal.tests.IndexPackageAccess;
 import org.apache.lucene.internal.tests.TestSecrets;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.VirtualMethod;
@@ -578,6 +580,38 @@ public class AssertingLeafReader extends FilterLeafReader {
       return payload;
     }
 
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assertThread("Docs enums", creationThread);
+      assert state != DocsEnumState.START : "intoBitSet() called before nextDoc()/advance()";
+      in.intoBitSet(upTo, bitSet, offset);
+      assert in.docID() >= upTo;
+      assert in.docID() >= doc;
+      doc = in.docID();
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        state = DocsEnumState.FINISHED;
+        positionMax = 0;
+      } else {
+        state = DocsEnumState.ITERATING;
+        positionMax = super.freq();
+      }
+      positionCount = 0;
+    }
+
+    @Override
+    public void nextPostings(int upTo, DocAndFreqBuffer buffer) throws IOException {
+      assert state != DocsEnumState.START : "nextPostings() called before nextDoc()/advance()";
+      in.nextPostings(upTo, buffer);
+      doc = in.docID();
+      if (doc == DocIdSetIterator.NO_MORE_DOCS) {
+        state = DocsEnumState.FINISHED;
+        positionMax = 0;
+      } else {
+        state = DocsEnumState.ITERATING;
+        positionMax = super.freq();
+      }
+    }
+
     void reset() {
       state = DocsEnumState.START;
       doc = in.docID();
@@ -768,6 +802,28 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assertThread("Numeric doc values", creationThread);
+      assert exists || docID() == NO_MORE_DOCS;
+      assert docID() != -1;
+      assert offset <= docID();
+      in.intoBitSet(upTo, bitSet, offset);
+      assert docID() >= upTo;
+      lastDocID = docID();
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      assertThread("Numeric doc values", creationThread);
+      assert docID() != -1;
+      assert docID() != DocIdSetIterator.NO_MORE_DOCS;
+      assert exists;
+      int nextNonMatchingDocID = in.docIDRunEnd();
+      assert nextNonMatchingDocID > docID();
+      return nextNonMatchingDocID;
+    }
+
+    @Override
     public long cost() {
       assertThread("Numeric doc values", creationThread);
       long cost = in.cost();
@@ -836,7 +892,7 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      assertThread("Numeric doc values", creationThread);
+      assertThread("Binary doc values", creationThread);
       assert target >= 0;
       assert target >= in.docID();
       assert target < maxDoc;
@@ -844,6 +900,28 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert in.docID() == target;
       lastDocID = target;
       return exists;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assertThread("Binary doc values", creationThread);
+      assert exists || docID() == NO_MORE_DOCS;
+      assert docID() != -1;
+      assert offset <= docID();
+      in.intoBitSet(upTo, bitSet, offset);
+      assert docID() >= upTo;
+      lastDocID = docID();
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      assertThread("Binary doc values", creationThread);
+      assert docID() != -1;
+      assert docID() != DocIdSetIterator.NO_MORE_DOCS;
+      assert exists;
+      int nextNonMatchingDocID = in.docIDRunEnd();
+      assert nextNonMatchingDocID > docID();
+      return nextNonMatchingDocID;
     }
 
     @Override
@@ -916,7 +994,7 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      assertThread("Numeric doc values", creationThread);
+      assertThread("Sorted doc values", creationThread);
       assert target >= 0;
       assert target >= in.docID();
       assert target < maxDoc;
@@ -924,6 +1002,28 @@ public class AssertingLeafReader extends FilterLeafReader {
       assert in.docID() == target;
       lastDocID = target;
       return exists;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assertThread("Sorted doc values", creationThread);
+      assert exists || docID() == NO_MORE_DOCS;
+      assert docID() != -1;
+      assert offset <= docID();
+      in.intoBitSet(upTo, bitSet, offset);
+      assert docID() >= upTo;
+      lastDocID = docID();
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      assertThread("Sorted doc values", creationThread);
+      assert docID() != -1;
+      assert docID() != DocIdSetIterator.NO_MORE_DOCS;
+      assert exists;
+      int nextNonMatchingDocID = in.docIDRunEnd();
+      assert nextNonMatchingDocID > docID();
+      return nextNonMatchingDocID;
     }
 
     @Override
@@ -1031,7 +1131,7 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      assertThread("Numeric doc values", creationThread);
+      assertThread("Sorted numeric doc values", creationThread);
       assert target >= 0;
       assert target >= in.docID();
       assert target < maxDoc;
@@ -1040,6 +1140,29 @@ public class AssertingLeafReader extends FilterLeafReader {
       lastDocID = target;
       valueUpto = 0;
       return exists;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assertThread("Sorted numeric doc values", creationThread);
+      assert exists || docID() == NO_MORE_DOCS;
+      assert docID() != -1;
+      assert offset <= docID();
+      in.intoBitSet(upTo, bitSet, offset);
+      assert docID() >= upTo;
+      lastDocID = docID();
+      valueUpto = 0;
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      assertThread("Sorted numeric doc values", creationThread);
+      assert docID() != -1;
+      assert docID() != DocIdSetIterator.NO_MORE_DOCS;
+      assert exists;
+      int nextNonMatchingDocID = in.docIDRunEnd();
+      assert nextNonMatchingDocID > docID();
+      return nextNonMatchingDocID;
     }
 
     @Override
@@ -1132,7 +1255,7 @@ public class AssertingLeafReader extends FilterLeafReader {
 
     @Override
     public boolean advanceExact(int target) throws IOException {
-      assertThread("Numeric doc values", creationThread);
+      assertThread("Sorted numeric doc values", creationThread);
       assert target >= 0;
       assert target >= in.docID();
       assert target < maxDoc;
@@ -1141,6 +1264,29 @@ public class AssertingLeafReader extends FilterLeafReader {
       lastDocID = target;
       ordsRetrieved = 0;
       return exists;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      assertThread("Sorted set doc values", creationThread);
+      assert exists || docID() == NO_MORE_DOCS;
+      assert docID() != -1;
+      assert offset <= docID();
+      in.intoBitSet(upTo, bitSet, offset);
+      assert docID() >= upTo;
+      lastDocID = docID();
+      ordsRetrieved = 0;
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      assertThread("Sorted set doc values", creationThread);
+      assert docID() != -1;
+      assert docID() != DocIdSetIterator.NO_MORE_DOCS;
+      assert exists;
+      int nextNonMatchingDocID = in.docIDRunEnd();
+      assert nextNonMatchingDocID > docID();
+      return nextNonMatchingDocID;
     }
 
     @Override

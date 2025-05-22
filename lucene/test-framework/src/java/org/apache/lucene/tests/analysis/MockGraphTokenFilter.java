@@ -31,7 +31,7 @@ import org.apache.lucene.tests.util.TestUtil;
 public final class MockGraphTokenFilter
     extends LookaheadTokenFilter<LookaheadTokenFilter.Position> {
 
-  private static boolean DEBUG = false;
+  private static final boolean DEBUG = false;
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 

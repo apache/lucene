@@ -18,6 +18,7 @@
 package org.apache.lucene.tests.codecs.asserting;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
@@ -108,8 +109,10 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
   }
 
-  static class AssertingKnnVectorsReader extends KnnVectorsReader implements HnswGraphProvider {
-    final KnnVectorsReader delegate;
+  /** Wraps a AssertingKnnVectorsReader providing additional assertions. */
+  public static class AssertingKnnVectorsReader extends KnnVectorsReader
+      implements HnswGraphProvider {
+    public final KnnVectorsReader delegate;
     final FieldInfos fis;
     final boolean mergeInstance;
     AtomicInteger mergeInstanceCount = new AtomicInteger();
@@ -216,6 +219,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       assert mergeInstance;
       delegate.finishMerge();
       finishMergeCount.incrementAndGet();
+    }
+
+    @Override
+    public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+      return delegate.getOffHeapByteSize(fieldInfo);
     }
 
     @Override

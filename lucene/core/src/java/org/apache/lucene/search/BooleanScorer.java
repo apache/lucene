@@ -81,49 +81,7 @@ final class BooleanScorer extends BulkScorer {
   final int minShouldMatch;
   final long cost;
   final boolean needsScores;
-
-  final class DocIdStreamView extends DocIdStream {
-
-    int base;
-
-    @Override
-    public void forEach(CheckedIntConsumer<IOException> consumer) throws IOException {
-      FixedBitSet matching = BooleanScorer.this.matching;
-      Bucket[] buckets = BooleanScorer.this.buckets;
-      int base = this.base;
-      long[] bitArray = matching.getBits();
-      for (int idx = 0; idx < bitArray.length; idx++) {
-        long bits = bitArray[idx];
-        while (bits != 0L) {
-          int ntz = Long.numberOfTrailingZeros(bits);
-          if (buckets != null) {
-            final int indexInWindow = (idx << 6) | ntz;
-            final Bucket bucket = buckets[indexInWindow];
-            if (bucket.freq >= minShouldMatch) {
-              score.score = (float) bucket.score;
-              consumer.accept(base | indexInWindow);
-            }
-            bucket.freq = 0;
-            bucket.score = 0;
-          } else {
-            consumer.accept(base | (idx << 6) | ntz);
-          }
-          bits ^= 1L << ntz;
-        }
-      }
-    }
-
-    @Override
-    public int count() throws IOException {
-      if (minShouldMatch > 1) {
-        // We can't just count bits in that case
-        return super.count();
-      }
-      return matching.cardinality();
-    }
-  }
-
-  private final DocIdStreamView docIdStreamView = new DocIdStreamView();
+  private final DocAndScoreBuffer docAndScoreBuffer = new DocAndScoreBuffer();
 
   BooleanScorer(Collection<Scorer> scorers, int minShouldMatch, boolean needsScores) {
     if (minShouldMatch < 1 || minShouldMatch > scorers.size()) {
@@ -178,23 +136,35 @@ final class BooleanScorer extends BulkScorer {
       assert w.doc < max;
 
       DocIdSetIterator it = w.iterator;
-      int doc = w.doc;
-      if (doc < min) {
-        doc = it.advance(min);
+      if (w.doc < min) {
+        it.advance(min);
       }
-      if (buckets == null) {
+      if (buckets == null) { // means minShouldMatch=1 and scores are not needed
         // This doesn't apply live docs, so we'll need to apply them later
         it.intoBitSet(max, matching, base);
+      } else if (needsScores) {
+        for (w.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer);
+            docAndScoreBuffer.size > 0;
+            w.scorer.nextDocsAndScores(max, acceptDocs, docAndScoreBuffer)) {
+          for (int index = 0; index < docAndScoreBuffer.size; ++index) {
+            final int doc = docAndScoreBuffer.docs[index];
+            final float score = docAndScoreBuffer.scores[index];
+            final int d = doc & MASK;
+            matching.set(d);
+            final Bucket bucket = buckets[d];
+            bucket.freq++;
+            bucket.score += score;
+          }
+        }
       } else {
-        for (; doc < max; doc = it.nextDoc()) {
+        // Scores are not needed but we need to keep track of freqs to know which hits match
+        assert minShouldMatch > 1;
+        for (int doc = it.docID(); doc < max; doc = it.nextDoc()) {
           if (acceptDocs == null || acceptDocs.get(doc)) {
             final int d = doc & MASK;
             matching.set(d);
             final Bucket bucket = buckets[d];
             bucket.freq++;
-            if (needsScores) {
-              bucket.score += w.scorable.score();
-            }
           }
         }
       }
@@ -202,13 +172,32 @@ final class BooleanScorer extends BulkScorer {
       w.doc = it.docID();
     }
 
-    if (buckets == null && acceptDocs != null) {
-      // In this case, live docs have not been applied yet.
-      acceptDocs.applyMask(matching, base);
+    if (buckets == null) {
+      if (acceptDocs != null) {
+        // In this case, live docs have not been applied yet.
+        acceptDocs.applyMask(matching, base);
+      }
+      collector.collect(new BitSetDocIdStream(matching, base));
+    } else {
+      FixedBitSet matching = BooleanScorer.this.matching;
+      Bucket[] buckets = BooleanScorer.this.buckets;
+      long[] bitArray = matching.getBits();
+      for (int idx = 0; idx < bitArray.length; idx++) {
+        long bits = bitArray[idx];
+        while (bits != 0L) {
+          int ntz = Long.numberOfTrailingZeros(bits);
+          final int indexInWindow = (idx << 6) | ntz;
+          final Bucket bucket = buckets[indexInWindow];
+          if (bucket.freq >= minShouldMatch) {
+            score.score = (float) bucket.score;
+            collector.collect(base | indexInWindow);
+          }
+          bucket.freq = 0;
+          bucket.score = 0;
+          bits ^= 1L << ntz;
+        }
+      }
     }
-
-    docIdStreamView.base = base;
-    collector.collect(docIdStreamView);
 
     matching.clear();
   }

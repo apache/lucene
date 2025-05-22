@@ -77,7 +77,7 @@ public class BBoxStrategy extends SpatialStrategy {
   //  create more than one Field.
 
   /** pointValues, docValues, and nothing else. */
-  public static FieldType DEFAULT_FIELDTYPE;
+  public static final FieldType DEFAULT_FIELDTYPE;
 
   static {
     // Default: pointValues + docValues

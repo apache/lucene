@@ -42,7 +42,7 @@ package org.apache.lucene.analysis.en;
 class KStemData7 {
   private KStemData7() {}
 
-  static String[] data = {
+  static final String[] data = {
     "rupee", "rupture", "rural", "ruritanian", "ruse",
     "rush", "rushes", "rushlight", "rusk", "russet",
     "rust", "rustic", "rusticate", "rustication", "rustle",

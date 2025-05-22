@@ -166,6 +166,17 @@ public class TermQuery extends Query {
         }
 
         @Override
+        public BulkScorer bulkScorer() throws IOException {
+          if (scoreMode.needsScores() == false) {
+            DocIdSetIterator iterator = get(Long.MAX_VALUE).iterator();
+            int maxDoc = context.reader().maxDoc();
+            return ConstantScoreScorerSupplier.fromIterator(iterator, 0f, scoreMode, maxDoc)
+                .bulkScorer();
+          }
+          return super.bulkScorer();
+        }
+
+        @Override
         public long cost() {
           try {
             TermsEnum te = getTermsEnum();
@@ -176,7 +187,7 @@ public class TermQuery extends Query {
         }
 
         @Override
-        public void setTopLevelScoringClause() throws IOException {
+        public void setTopLevelScoringClause() {
           topLevelScoringClause = true;
         }
       };

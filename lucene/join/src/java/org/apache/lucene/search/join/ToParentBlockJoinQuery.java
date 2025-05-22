@@ -180,7 +180,7 @@ public class ToParentBlockJoinQuery extends Query {
         }
 
         @Override
-        public void setTopLevelScoringClause() throws IOException {
+        public void setTopLevelScoringClause() {
           if (scoreMode == ScoreMode.Max) {
             childScorerSupplier.setTopLevelScoringClause();
           }

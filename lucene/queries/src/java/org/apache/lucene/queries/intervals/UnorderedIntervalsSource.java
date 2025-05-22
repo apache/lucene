@@ -43,7 +43,7 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
   private static List<IntervalsSource> deduplicate(List<IntervalsSource> sources) {
     Map<IntervalsSource, Integer> counts = new LinkedHashMap<>(); // preserve order for testing
     for (IntervalsSource source : sources) {
-      counts.compute(source, (k, v) -> v == null ? 1 : v + 1);
+      counts.compute(source, (_, v) -> v == null ? 1 : v + 1);
     }
     List<IntervalsSource> deduplicated = new ArrayList<>();
     for (IntervalsSource source : counts.keySet()) {

@@ -209,6 +209,7 @@ public class IndexWriter
 
   // Use package-private instance var to enforce the limit so testing
   // can use less electricity:
+  @SuppressWarnings("NonFinalStaticField")
   private static int actualMaxDocs = MAX_DOCS;
 
   /** Used only for testing. */
@@ -1427,6 +1428,25 @@ public class IndexWriter
   }
 
   /**
+   * If {@link SegmentInfos#counter} is below {@code newCounter} then update it to this value.
+   *
+   * @lucene.internal
+   */
+  public synchronized void advanceSegmentInfosCounter(long newCounter) {
+    this.ensureOpen();
+    if (segmentInfos.counter < newCounter) {
+      segmentInfos.counter = newCounter;
+    }
+    changed();
+  }
+
+  /** Returns the {@link SegmentInfos#counter}. */
+  public long getSegmentInfosCounter() {
+    this.ensureOpen();
+    return segmentInfos.counter;
+  }
+
+  /**
    * Returns true if this index has deletions (including buffered deletions). Note that this will
    * return true if there are buffered Term/Query deletions, even if it turns out those buffered
    * deletions don't match any documents.
@@ -2632,7 +2652,8 @@ public class IndexWriter
      */
     try {
       synchronized (fullFlushLock) {
-        try (Closeable finalizer = docWriter.lockAndAbortAll()) {
+        try (@SuppressWarnings("unused")
+            Closeable finalizer = docWriter.lockAndAbortAll()) {
           processEvents(false);
           synchronized (this) {
             try {
@@ -3056,7 +3077,7 @@ public class IndexWriter
             }
 
             IOContext context =
-                new IOContext(new FlushInfo(info.info.maxDoc(), info.sizeInBytes()));
+                IOContext.flush(new FlushInfo(info.info.maxDoc(), info.sizeInBytes()));
 
             FieldInfos fis = readFieldInfos(info);
             for (FieldInfo fi : fis) {
@@ -3331,7 +3352,7 @@ public class IndexWriter
                 infoStream.message("IW", "now abort pending addIndexes merge");
               }
               merge.setAborted();
-              merge.close(false, false, mr -> {});
+              merge.close(false, false, _ -> {});
               onMergeFinished(merge);
             });
         pendingAddIndexesMerges.clear();
@@ -3348,7 +3369,7 @@ public class IndexWriter
         handleMergeException(t, merge);
       } finally {
         synchronized (IndexWriter.this) {
-          merge.close(success, false, mr -> {});
+          merge.close(success, false, _ -> {});
           onMergeFinished(merge);
         }
       }
@@ -3398,7 +3419,7 @@ public class IndexWriter
     testReserveDocs(numDocs);
 
     final IOContext context =
-        new IOContext(
+        IOContext.merge(
             new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
 
     TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(mergeDirectory);
@@ -3729,7 +3750,7 @@ public class IndexWriter
                 // necessary files to disk and checkpointed them.
                 pointInTimeMerges =
                     preparePointInTimeMerge(
-                        toCommit, stopAddingMergedSegments::get, MergeTrigger.COMMIT, sci -> {});
+                        toCommit, stopAddingMergedSegments::get, MergeTrigger.COMMIT, _ -> {});
               }
             }
             success = true;
@@ -3948,7 +3969,7 @@ public class IndexWriter
       boolean closeReaders = true;
       try {
         for (MergePolicy.OneMerge merge : pointInTimeMerges.merges) {
-          IOContext context = new IOContext(merge.getStoreMergeInfo());
+          IOContext context = IOContext.merge(merge.getStoreMergeInfo());
           merge.initMergeReaders(
               sci -> {
                 final ReadersAndUpdates rld = getPooledInstance(sci, true);
@@ -4674,7 +4695,7 @@ public class IndexWriter
       deleteNewFiles(merge.info.files());
     }
 
-    try (Closeable finalizer = this::checkpoint) {
+    try (Closeable _ = this::checkpoint) {
       // Must close before checkpoint, otherwise IFD won't be
       // able to delete the held-open files from the merge
       // readers:
@@ -5137,7 +5158,7 @@ public class IndexWriter
     merge.checkAborted();
 
     Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
-    IOContext context = new IOContext(merge.getStoreMergeInfo());
+    IOContext context = IOContext.merge(merge.getStoreMergeInfo());
 
     final TrackingDirectoryWrapper dirWrapper = new TrackingDirectoryWrapper(mergeDirectory);
 

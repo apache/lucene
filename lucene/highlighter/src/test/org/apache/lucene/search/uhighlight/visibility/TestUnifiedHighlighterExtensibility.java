@@ -64,7 +64,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
         new FieldOffsetStrategy(
             new UHComponents(
                 "field",
-                (s) -> false,
+                (_) -> false,
                 new MatchAllDocsQuery(),
                 new BytesRef[0],
                 PhraseHelper.NONE,

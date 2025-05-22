@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.backward_index;
 
+import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -63,7 +64,7 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
   }
 
   /** Provides all sorted versions to the test-framework */
-  @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
+  @ParametersFactory(argumentFormatting = "Lucene-Version: '%1$s'; Pattern: '%2$s'")
   public static Iterable<Object[]> testVersionsFactory() throws IllegalAccessException {
     return allVersion(INDEX_NAME, SUFFIX);
   }
@@ -155,7 +156,9 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
     mp.setNoCFSRatio(1.0);
     mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     MockAnalyzer analyzer = new MockAnalyzer(random());
-    analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
+
+    // Don't filter out tokens that are too short because we use those tokens in assertions (#14344)
+    analyzer.setMaxTokenLength(RandomizedTest.randomIntBetween(5, IndexWriter.MAX_TERM_LENGTH));
 
     // TODO: remove randomness
     IndexWriterConfig conf = new IndexWriterConfig(analyzer);

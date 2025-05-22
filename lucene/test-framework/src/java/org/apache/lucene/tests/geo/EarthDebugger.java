@@ -82,7 +82,7 @@ public class EarthDebugger {
     }
   }
 
-  private static double MAX_KM_PER_STEP = 100.0;
+  private static final double MAX_KM_PER_STEP = 100.0;
 
   // Web GL earth connects dots by tunneling under the earth, so we approximate a great circle by
   // sampling it, to minimize how deep in the
