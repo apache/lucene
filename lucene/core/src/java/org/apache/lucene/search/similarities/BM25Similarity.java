@@ -220,7 +220,9 @@ public class BM25Similarity extends Similarity {
       this.weight = boost * idf.getValue().floatValue();
     }
 
-    private float score(float freq, float normInverse) {
+    // Don't call it `score` to avoid mistakenly calling score(float, float) instead of score(float,
+    // long) or vice-versa.
+    private float doScore(float freq, float normInverse) {
       // In order to guarantee monotonicity with both freq and norm without
       // promoting to doubles, we rewrite freq / (freq + norm) to
       // 1 - 1 / (1 + freq * 1/norm).
@@ -245,7 +247,7 @@ public class BM25Similarity extends Similarity {
       // Finally we expand weight * (1 - 1 / (1 + freq * 1/norm)) to
       // weight - weight / (1 + freq * 1/norm), which runs slightly faster.
       float normInverse = cache[((byte) encodedNorm) & 0xFF];
-      return score(freq, normInverse);
+      return doScore(freq, normInverse);
     }
 
     @Override
@@ -255,7 +257,7 @@ public class BM25Similarity extends Similarity {
         float normInverse = cache[1];
         // The below loop should auto-vectorize.
         for (int i = 0; i < buffer.size; ++i) {
-          scores[i] = score(buffer.freqs[i], normInverse);
+          scores[i] = doScore(buffer.freqs[i], normInverse);
         }
       } else {
         // Use the scores array to store norm inverses.
@@ -274,7 +276,7 @@ public class BM25Similarity extends Similarity {
 
         // The below loop should auto-vectorize
         for (int i = 0; i < buffer.size; ++i) {
-          scores[i] = score(buffer.freqs[i], normInverses[i]);
+          scores[i] = doScore(buffer.freqs[i], normInverses[i]);
         }
       }
     }
