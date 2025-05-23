@@ -17,14 +17,13 @@
 
 plugins {
   id "lucene.root-project.check-environment"
+  id "lucene.all-projects.conventions"
+  id "lucene.java-projects.conventions"
+
+  id "lucene.validation.spotless-java"
+
   id "java-library"
 }
 
 group = "org.apache.lucene.tools"
 description = 'Doclet-based javadoc validation'
-
-tasks.register("foo", {
-  doFirst {
-    println(project.group)
-  }
-})

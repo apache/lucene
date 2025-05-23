@@ -90,28 +90,3 @@ configure(project(":lucene:core")) {
     apijars = layout.projectDirectory.dir("src/generated/jdk")
   }
 }
-
-//
-// Register utility tasks on the root project.
-//
-tasks.register("checkJdkInternalsExportedToGradle", {
-  doFirst {
-    def jdkCompilerModule = ModuleLayer.boot().findModule("jdk.compiler").orElseThrow()
-    def gradleModule = getClass().module
-    def internalsExported = [
-      "com.sun.tools.javac.api",
-      "com.sun.tools.javac.file",
-      "com.sun.tools.javac.parser",
-      "com.sun.tools.javac.tree",
-      "com.sun.tools.javac.util"
-    ].stream()
-    .allMatch({ pkg -> jdkCompilerModule.isExported(pkg, gradleModule) })
-
-    if (!internalsExported) {
-      throw new GradleException(
-      "Certain gradle tasks and plugins require access to jdk.compiler" +
-      " internals, your gradle.properties might have just been generated or could be" +
-      " out of sync (see gradle/template.gradle.properties)")
-    }
-  }
-})

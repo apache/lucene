@@ -46,7 +46,9 @@ if (Runtime.version().pre().isPresent()) {
   + "[${System.getProperty('java.vm.name')} ${System.getProperty('java.vm.version')}]")
 }
 
+//
 // Skip this check if we're regenerating the wrapper.
+//
 if (!gradle.startParameter.taskNames.contains("wrapper")) {
   GradleVersion currentGradleVersion = GradleVersion.current()
   if (currentGradleVersion != GradleVersion.version(expectedGradleVersion)) {
@@ -59,3 +61,28 @@ if (!gradle.startParameter.taskNames.contains("wrapper")) {
     }
   }
 }
+
+//
+// Register this utility task on the root project.
+//
+tasks.register("checkJdkInternalsExportedToGradle", {
+  doFirst {
+    def jdkCompilerModule = ModuleLayer.boot().findModule("jdk.compiler").orElseThrow()
+    def gradleModule = getClass().module
+    def internalsExported = [
+      "com.sun.tools.javac.api",
+      "com.sun.tools.javac.file",
+      "com.sun.tools.javac.parser",
+      "com.sun.tools.javac.tree",
+      "com.sun.tools.javac.util"
+    ].stream()
+    .allMatch({ pkg -> jdkCompilerModule.isExported(pkg, gradleModule) })
+
+    if (!internalsExported) {
+      throw new GradleException(
+      "Certain gradle tasks and plugins require access to jdk.compiler" +
+      " internals, your gradle.properties might have just been generated or could be" +
+      " out of sync (see gradle/template.gradle.properties)")
+    }
+  }
+})

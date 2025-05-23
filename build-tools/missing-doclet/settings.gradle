@@ -21,7 +21,9 @@ pluginManagement {
         gradlePluginPortal()
     }
 
-    includeBuild("../build-tools/build-infra")
+    includeBuild("../build-infra") {
+        name "build-infra-alias"
+    }
 }
 
 dependencyResolutionManagement {
