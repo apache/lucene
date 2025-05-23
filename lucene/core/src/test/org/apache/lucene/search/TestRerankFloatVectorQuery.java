@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
@@ -28,6 +30,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
@@ -63,7 +66,7 @@ public class TestRerankFloatVectorQuery extends LuceneTestCase {
 
   @Test
   public void testTwoPhaseKnnVectorQuery() throws Exception {
-    Map<Integer, float[]> vectors = new HashMap<>();
+    List<float[]> vectors = new ArrayList<>();
 
     Random random = random();
 
@@ -72,19 +75,19 @@ public class TestRerankFloatVectorQuery extends LuceneTestCase {
 
     // Step 1: Index random vectors in quantized format
     try (IndexWriter writer = new IndexWriter(directory, config)) {
+      int id = 0;
       for (int j = 0; j < numSegments; j++) {
         for (int i = 0; i < numVectors; i++) {
           float[] vector = randomFloatVector(VECTOR_DIMENSION, random);
+          vectors.add(vector);
           Document doc = new Document();
-          int id = j * numVectors + i;
-          doc.add(new IntField("id", id, Field.Store.YES));
+          doc.add(new IntField("id", id++, Field.Store.YES));
           doc.add(new KnnFloatVectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
           writer.addDocument(doc);
-          vectors.put(id, vector);
-
           writer.flush();
         }
       }
+      System.out.println("=> written " + id + " vectors");
     }
 
     // Step 2: Run TwoPhaseKnnVectorQuery with a random target vector
@@ -99,11 +102,12 @@ public class TestRerankFloatVectorQuery extends LuceneTestCase {
       RerankFloatVectorQuery query =
           new RerankFloatVectorQuery(knnQuery, knnQuery.field, targetVector);
       TopDocs topDocs = searcher.search(query, k);
+      System.out.println("=> rerank query completed. topDocs: " + topDocs.scoreDocs.length);
 
       // Step 3: Verify that TopDocs scores match similarity with unquantized vectors
+      StoredFields storedFields = searcher.storedFields();
       for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
-        Document retrievedDoc = searcher.storedFields().document(scoreDoc.doc);
-        int id = retrievedDoc.getField("id").numericValue().intValue();
+        int id = Integer.parseInt(storedFields.document(scoreDoc.doc).get("id"));
         float[] docVector = vectors.get(id);
         assert docVector != null : "Vector for id " + id + " not found";
         float expectedScore = VECTOR_SIMILARITY_FUNCTION.compare(targetVector, docVector);

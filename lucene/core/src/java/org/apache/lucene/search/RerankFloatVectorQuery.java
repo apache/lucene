@@ -36,7 +36,7 @@ import org.apache.lucene.util.VectorUtil;
  */
 public class RerankFloatVectorQuery extends Query {
 
-  private final Query in;
+  private Query in;
   private final String rerankField;
   private final float[] target;
 
@@ -55,8 +55,8 @@ public class RerankFloatVectorQuery extends Query {
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    Query rewritten = indexSearcher.rewrite(in);
-    return new RerankFloatVectorQuery(rewritten, rerankField, target);
+    in = indexSearcher.rewrite(in);
+    return this;
   }
 
   @Override
