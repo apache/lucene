@@ -387,7 +387,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
   }
 
-  protected Query createRewrittenQuery(IndexReader reader, TopDocs topK, int reentryCount) {
+  static Query createRewrittenQuery(IndexReader reader, TopDocs topK, int reentryCount) {
     int len = topK.scoreDocs.length;
     assert len > 0;
     float maxScore = topK.scoreDocs[0].score;
