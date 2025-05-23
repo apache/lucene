@@ -27,11 +27,11 @@ plugins {
   id "lucene.root-project.setup"
 
   id "lucene.all-projects.conventions"
-  id "lucene.java-projects.conventions"
-
-  id "lucene.java.alternative-jdk-support"
 
   id "lucene.help"
+
+  id "lucene.java-projects.conventions"
+  id "lucene.java.alternative-jdk-support"
 
   id "lucene.validation.spotless-groovy"
   id "lucene.validation.spotless-java"
