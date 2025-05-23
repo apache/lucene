@@ -211,9 +211,6 @@ public class BM25Similarity extends Similarity {
     /** weight (idf * boost) */
     private final float weight;
 
-    /** Temporary array to store norm factors to help auto-vectorization. */
-    private float[] normInverses;
-
     BM25Scorer(float boost, float k1, float b, Explanation idf, float avgdl, float[] cache) {
       this.boost = boost;
       this.idf = idf;
@@ -262,9 +259,8 @@ public class BM25Similarity extends Similarity {
           scores[i] = score(buffer.freqs[i], normInverse);
         }
       } else {
-        if (normInverses == null || normInverses.length < buffer.size) {
-          normInverses = new float[ArrayUtil.oversize(buffer.size, Float.BYTES)];
-        }
+        // Use the scores array to store norm inverses.
+        float[] normInverses = scores;
 
         for (int i = 0; i < buffer.size; ++i) {
           if (norms.advanceExact(buffer.docs[i])) {
