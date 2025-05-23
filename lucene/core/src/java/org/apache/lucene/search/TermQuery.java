@@ -173,6 +173,9 @@ public class TermQuery extends Query {
             return ConstantScoreScorerSupplier.fromIterator(iterator, 0f, scoreMode, maxDoc)
                 .bulkScorer();
           }
+          if (scoreMode == ScoreMode.COMPLETE) {
+            return new CompleteBulkScorer(get(Long.MAX_VALUE));
+          }
           return super.bulkScorer();
         }
 
