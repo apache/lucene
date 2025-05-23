@@ -114,19 +114,13 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       implements HnswGraphProvider {
     public final KnnVectorsReader delegate;
     final FieldInfos fis;
-    final boolean mergeInstance;
     AtomicInteger mergeInstanceCount = new AtomicInteger();
     AtomicInteger finishMergeCount = new AtomicInteger();
 
     AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
-      this(delegate, fis, false);
-    }
-
-    AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis, boolean mergeInstance) {
       assert delegate != null;
       this.delegate = delegate;
       this.fis = fis;
-      this.mergeInstance = mergeInstance;
     }
 
     @Override
@@ -165,7 +159,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert !mergeInstance;
+      assert mergeInstanceCount.get() == finishMergeCount.get() : "There is an open merge instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -176,7 +170,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
         throws IOException {
-      assert !mergeInstance;
+      assert mergeInstanceCount.get() == finishMergeCount.get() : "There is an open merge instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -186,14 +180,26 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public KnnVectorsReader getMergeInstance() throws IOException {
-      assert !mergeInstance;
       var mergeVectorsReader = delegate.getMergeInstance();
       assert mergeVectorsReader != null;
       mergeInstanceCount.incrementAndGet();
+      AtomicInteger parentMergeFinishCount = this.finishMergeCount;
 
-      final var parent = this;
-      return new AssertingKnnVectorsReader(
-          mergeVectorsReader, AssertingKnnVectorsReader.this.fis, true) {
+      return new AssertingKnnVectorsReader(mergeVectorsReader, AssertingKnnVectorsReader.this.fis) {
+        private boolean finished;
+
+        @Override
+        public void search(
+            String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+          assert false : "This instance should only be used for merging";
+        }
+
+        @Override
+        public void search(
+            String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
+          assert false : "This instance should only be used for merging";
+        }
+
         @Override
         public KnnVectorsReader getMergeInstance() {
           assert false; // merging from a merge instance it not allowed
@@ -202,9 +208,10 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
         @Override
         public void finishMerge() throws IOException {
-          assert mergeInstance;
+          assert !finished : "Merging already finished";
+          finished = true;
           delegate.finishMerge();
-          parent.finishMergeCount.incrementAndGet();
+          parentMergeFinishCount.incrementAndGet();
         }
 
         @Override
@@ -216,9 +223,7 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public void finishMerge() throws IOException {
-      assert mergeInstance;
-      delegate.finishMerge();
-      finishMergeCount.incrementAndGet();
+      assert false; // can only finish merge on the merge instance
     }
 
     @Override
@@ -228,10 +233,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public void close() throws IOException {
-      assert !mergeInstance;
+      assert mergeInstanceCount.get() == finishMergeCount.get();
       delegate.close();
-      delegate.close();
-      assert finishMergeCount.get() <= 0 || mergeInstanceCount.get() == finishMergeCount.get();
     }
 
     @Override
