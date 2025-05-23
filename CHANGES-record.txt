@@ -39,3 +39,7 @@ using any of build option plugin's methods (see above).
 ```RUNTIME_JAVA_HOME``` env. variable has been implemented for backward
 compatibility.
 
+* ```build-tools/missing-doclet``` is now a regular project within Lucene (not
+an included composite project). This simplifies the build and ensures we apply
+the same checks to this subproject as we do to everything else.
+
