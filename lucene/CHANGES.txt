@@ -23,8 +23,11 @@ Bug Fixes
   removing co-planar points to do it once after all holes are removed instead of doing it for each
   removed hole
 
-======================== Lucene 9.12.2 =======================
+* GITHUB#14627, GITHUB#11920, GITHUB#14706: Fix mock filesystem WindowsFS to also
+  work on Windows. This is required to make tests pass on Windows 11 which no
+  longer has all limitations of previous Windows versions.  (Uwe Schindler)
 
+======================== Lucene 9.12.2 =======================
 
 Bug Fixes
 ---------------------
