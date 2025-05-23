@@ -21,7 +21,7 @@ import static org.apache.lucene.index.IndexFileNames.CODEC_FILE_PATTERN;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.nio.channels.ClosedChannelException; // javadoc @link
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Path;
@@ -98,6 +98,13 @@ public class MMapDirectory extends FSDirectory {
    * opening them.
    */
   public static final BiPredicate<String, IOContext> NO_FILES = (_, _) -> false;
+
+  /**
+   * Argument for {@link #setPreload(BiPredicate)} that configures files to be preloaded when they
+   * are hinted to do so.
+   */
+  public static final BiPredicate<String, IOContext> PRELOAD_HINT =
+      (_, c) -> c.hints().contains(PreloadHint.INSTANCE);
 
   /**
    * This sysprop allows to control the total maximum number of mmapped files that can be associated
@@ -233,6 +240,7 @@ public class MMapDirectory extends FSDirectory {
    * @param preload a {@link BiPredicate} whose first argument is the file name, and second argument
    *     is the {@link IOContext} used to open the file
    * @see #ALL_FILES
+   * @see #PRELOAD_HINT
    * @see #NO_FILES
    */
   public void setPreload(BiPredicate<String, IOContext> preload) {
@@ -277,6 +285,22 @@ public class MMapDirectory extends FSDirectory {
     return 1L << chunkSizePower;
   }
 
+  private static ReadAdvice toReadAdvice(IOContext context) {
+    if (context.context() == IOContext.Context.MERGE
+        || context.context() == IOContext.Context.FLUSH) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    if (context.hints().contains(DataAccessHint.RANDOM)) {
+      return ReadAdvice.RANDOM;
+    }
+    if (context.hints().contains(DataAccessHint.SEQUENTIAL)) {
+      return ReadAdvice.SEQUENTIAL;
+    }
+
+    return Constants.DEFAULT_READADVICE;
+  }
+
   /** Creates an IndexInput for the file with the given name. */
   @Override
   public IndexInput openInput(String name, IOContext context) throws IOException {
@@ -290,10 +314,8 @@ public class MMapDirectory extends FSDirectory {
 
     boolean success = false;
     final boolean confined = context == IOContext.READONCE;
-    final ReadAdvice readAdvice =
-        readAdviceOverride
-            .apply(name, context)
-            .orElseGet(() -> context.readAdvice().orElse(Constants.DEFAULT_READADVICE));
+    Function<IOContext, ReadAdvice> toReadAdvice =
+        c -> readAdviceOverride.apply(name, c).orElseGet(() -> toReadAdvice(c));
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
@@ -305,13 +327,14 @@ public class MMapDirectory extends FSDirectory {
                   arena,
                   resourceDescription,
                   fc,
-                  readAdvice,
+                  toReadAdvice.apply(context),
                   chunkSizePower,
                   preload.test(name, context),
                   fileSize),
               fileSize,
               chunkSizePower,
-              confined);
+              confined,
+              toReadAdvice);
       success = true;
       return in;
     } finally {
