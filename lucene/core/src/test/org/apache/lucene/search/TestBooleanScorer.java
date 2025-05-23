@@ -201,7 +201,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
     ss = weight.scorerSupplier(ctx);
     scorer = ((BooleanScorerSupplier) ss).booleanScorer();
-    assertThat(scorer, instanceOf(DefaultBulkScorer.class)); // term scorer
+    assertThat(scorer, instanceOf(CompleteBulkScorer.class)); // term scorer
 
     w.close();
     reader.close();
