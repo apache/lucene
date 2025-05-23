@@ -30,13 +30,6 @@ repositories {
 
 group = "org.apache"
 
-// Make sure the build environment is consistent.
-apply from: file('../../gradle/_to-remove/conventions.gradle')
-
-// Add spotless/ tidy.
-tasks.register("checkJdkInternalsExportedToGradle") {}
-apply from: file('../../gradle/validation/forbidden-apis.gradle')
-
 java {
   sourceCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())
   targetCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())
