@@ -688,7 +688,7 @@ public class OfflineSorter {
 
       PriorityQueue<FileAndTop> queue =
           PriorityQueue.usingComparator(
-              segmentsToMerge.size(), Comparator.comparing(ft -> ft.current));
+              segmentsToMerge.size(), Comparator.comparing(ft -> ft.current, comparator));
 
       ByteSequencesReader[] streams = new ByteSequencesReader[segmentsToMerge.size()];
 

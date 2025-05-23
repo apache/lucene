@@ -809,7 +809,7 @@ public abstract class MergePolicy {
   /**
    * If a merged segment will be more than this percentage of the total size of the index, leave the
    * segment as non-compound file even if compound file is enabled. Set to 1.0 to always use CFS
-   * regardless of merge size.ue.
+   * regardless of merge size.
    */
   public void setNoCFSRatio(double noCFSRatio) {
     if (noCFSRatio < 0.0 || noCFSRatio > 1.0) {
