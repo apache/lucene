@@ -74,6 +74,24 @@ ext {
 }
 
 //
+// Set certain root project properties eagerly so that plugins
+// and scripts have them available.
+//
+ext {
+  isIdea = Boolean.parseBoolean(System.getProperty("idea.active", "false"))
+  isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"))
+  isIdeaBuild = (isIdea && !isIdeaSync)
+}
+
+// TODO: this shouldn't be here but it's used in multiple scripts that are racy in lazy-evaluation.
+configure(project(":lucene:core")) {
+  ext {
+    mrjarJavaVersions = [24]
+    apijars = layout.projectDirectory.dir("src/generated/jdk")
+  }
+}
+
+//
 // Register utility tasks on the root project.
 //
 tasks.register("checkJdkInternalsExportedToGradle", {

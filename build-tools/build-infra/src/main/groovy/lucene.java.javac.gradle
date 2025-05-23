@@ -17,76 +17,72 @@
 
 def minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
 
-allprojects {project ->
-  plugins.withType(JavaPlugin).configureEach {
-    Provider<Boolean> failOnWarningsOption = buildOptions.addBooleanOption("javac.failOnWarnings", "Triggers failures on javac warnings.", true)
+Provider<Boolean> failOnWarningsOption = buildOptions.addBooleanOption("javac.failOnWarnings", "Triggers failures on javac warnings.", true)
 
-    sourceCompatibility = minJavaVersion
-    targetCompatibility = minJavaVersion
+java {
+  sourceCompatibility = minJavaVersion
+  targetCompatibility = minJavaVersion
+}
 
-    tasks.withType(JavaCompile).configureEach {
-      // Use 'release' flag instead of 'source' and 'target'
-      options.compilerArgs += [
-        "--release",
-        minJavaVersion.toString()
-      ]
+tasks.withType(JavaCompile).configureEach {
+  // Use 'release' flag instead of 'source' and 'target'
+  options.compilerArgs += [
+    "--release",
+    minJavaVersion.toString()
+  ]
 
-      // Configure warnings.
-      // Use 'javac --help-lint' to get the supported list
-      options.encoding = "UTF-8"
-      options.compilerArgs += [
-        "-Xlint:auxiliaryclass",
-        "-Xlint:cast",
-        "-Xlint:classfile",
-        "-Xlint:-deprecation",
-        "-Xlint:dep-ann",
-        "-Xlint:divzero",
-        "-Xlint:empty",
-        // TODO: uh-oh we have broken APIs.
-        "-Xlint:-exports",
-        "-Xlint:fallthrough",
-        "-Xlint:finally",
-        // TODO: untested
-        "-Xlint:-missing-explicit-ctor",
-        "-Xlint:module",
-        "-Xlint:opens",
-        "-Xlint:options",
-        "-Xlint:overloads",
-        "-Xlint:overrides",
-        // TODO: some tests seem to have bad classpaths?
-        // this check seems to be a good sanity check for gradle?
-        "-Xlint:-path",
-        "-Xlint:processing",
-        "-Xlint:rawtypes",
-        "-Xlint:removal",
-        "-Xlint:requires-automatic",
-        "-Xlint:requires-transitive-automatic",
-        "-Xlint:-serial",
-        "-Xlint:static",
-        "-Xlint:strictfp",
-        "-Xlint:synchronization",
-        "-Xlint:text-blocks",
-        "-Xlint:try",
-        "-Xlint:unchecked",
-        "-Xlint:varargs",
-        "-Xlint:preview",
-        "-Xdoclint:all/protected",
-        "-Xdoclint:-missing",
-        "-Xdoclint:-accessibility"
-      ]
+  // Configure warnings.
+  // Use 'javac --help-lint' to get the supported list
+  options.encoding = "UTF-8"
+  options.compilerArgs += [
+    "-Xlint:auxiliaryclass",
+    "-Xlint:cast",
+    "-Xlint:classfile",
+    "-Xlint:-deprecation",
+    "-Xlint:dep-ann",
+    "-Xlint:divzero",
+    "-Xlint:empty",
+    // TODO: uh-oh we have broken APIs.
+    "-Xlint:-exports",
+    "-Xlint:fallthrough",
+    "-Xlint:finally",
+    // TODO: untested
+    "-Xlint:-missing-explicit-ctor",
+    "-Xlint:module",
+    "-Xlint:opens",
+    "-Xlint:options",
+    "-Xlint:overloads",
+    "-Xlint:overrides",
+    // TODO: some tests seem to have bad classpaths?
+    // this check seems to be a good sanity check for gradle?
+    "-Xlint:-path",
+    "-Xlint:processing",
+    "-Xlint:rawtypes",
+    "-Xlint:removal",
+    "-Xlint:requires-automatic",
+    "-Xlint:requires-transitive-automatic",
+    "-Xlint:-serial",
+    "-Xlint:static",
+    "-Xlint:strictfp",
+    "-Xlint:synchronization",
+    "-Xlint:text-blocks",
+    "-Xlint:try",
+    "-Xlint:unchecked",
+    "-Xlint:varargs",
+    "-Xlint:preview",
+    "-Xdoclint:all/protected",
+    "-Xdoclint:-missing",
+    "-Xdoclint:-accessibility"
+  ]
 
-      if (project.path == ":lucene:benchmark-jmh") {
-        // JMH benchmarks use JMH preprocessor and incubating modules.
-      } else {
-        // proc:none was added because of LOG4J2-1925 / JDK-8186647
-        options.compilerArgs += [
-          "-proc:none"
-        ]
+  if (project.path == ":lucene:benchmark-jmh") {
+    // JMH benchmarks use JMH preprocessor and incubating modules.
+  } else {
+    // proc:none was added because of LOG4J2-1925 / JDK-8186647
+    options.compilerArgs += ["-proc:none"]
 
-        if (failOnWarningsOption.get()) {
-          options.compilerArgs += "-Werror"
-        }
-      }
+    if (failOnWarningsOption.get()) {
+      options.compilerArgs += "-Werror"
     }
   }
 }

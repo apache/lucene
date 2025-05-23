@@ -16,11 +16,6 @@
  */
 
 // Try to detect IntelliJ model loader project structure "sync"
-//
-rootProject.ext.isIdea = Boolean.parseBoolean(System.getProperty("idea.active", "false"))
-rootProject.ext.isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"))
-rootProject.ext.isIdeaBuild = (isIdea && !isIdeaSync)
-
 if (isIdea) {
   logger.warn("IntelliJ Idea IDE detected.")
 

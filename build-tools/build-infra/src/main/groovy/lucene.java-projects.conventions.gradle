@@ -15,31 +15,12 @@
  * limitations under the License.
  */
 
-sourceSets {
-  main.java.srcDirs = ['src/java']
-  main.resources.srcDirs = ['src/resources']
-  test.java.srcDirs = ['src/test']
-  test.resources.srcDirs = ['src/test-files']
-}
+allprojects { project ->
+  if (project.file("src/java").exists()) {
+    plugins.apply("java-library")
 
-tasks.named('processTestResources').configure {
-  from('src/test') {
-    exclude '**/*.java'
-  }
-}
-
-// if 'src/tools' exists, add it as a separate sourceSet.
-if (project.file('src/tools/java').exists()) {
-  sourceSets {
-    tools {
-      java {
-        srcDirs = ['src/tools/java']
-      }
-    }
-  }
-
-  // Inherit any dependencies for this source set from the main source set.
-  configurations {
-    toolsImplementation.extendsFrom implementation
+    plugins.apply("lucene.java.folder-layout")
+    plugins.apply("lucene.java.javac")
+    plugins.apply("lucene.java.jar-manifest")
   }
 }

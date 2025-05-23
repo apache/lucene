@@ -24,12 +24,12 @@ plugins {
   // Apply convention plugins from the composite build-infra project.
   // The order of plugins does matter (most of the time).
   id "lucene.root-project.check-environment"
-  id "lucene.root-project.conventions"
-  id "lucene.all-projects.conventions"
+  id "lucene.root-project.setup"
 
-  id "lucene.java.folder-layout"
-  id "lucene.java.javac"
-  id "lucene.java.jar-manifest"
+  id "lucene.all-projects.conventions"
+  id "lucene.java-projects.conventions"
+
+  id "lucene.java.alternative-jdk-support"
 
   id "lucene.help"
 
@@ -106,7 +106,6 @@ apply from: file('gradle/java/core-mrjar.gradle')
 apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')
-apply from: file('gradle/testing/alternative-jdk-support.gradle')
 apply from: file('gradle/java/modules.gradle')
 
 // IDE support, settings and specials.

@@ -56,7 +56,7 @@ gradlePlugin {
 // Convert a plugin dependency to a regular dependency so that we can
 // use [plugins] section in the top-level toml but declare regular
 // project dependencies here.
-def Provider<String> plugin(Provider<PluginDependency> plugin) {
+static Provider<String> plugin(Provider<PluginDependency> plugin) {
   return plugin.map {
     if (it.pluginId == "com.carrotsearch.gradle.buildinfra") {
       return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()

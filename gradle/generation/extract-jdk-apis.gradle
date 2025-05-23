@@ -18,11 +18,6 @@
 def resources = scriptResources(buildscript)
 
 configure(project(":lucene:core")) {
-  ext {
-    apijars = layout.projectDirectory.dir("src/generated/jdk")
-    mrjarJavaVersions = [ 24 ]
-  }
-  
   plugins.withType(JavaPlugin) {
     mrjarJavaVersions.each { jdkVersion ->
       def task = tasks.create(name: "generateJdkApiJar${jdkVersion}", type: JavaExec) {
