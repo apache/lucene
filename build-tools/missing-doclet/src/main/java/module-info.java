@@ -15,8 +15,9 @@
  * limitations under the License.
  */
 
-plugins {
-  id "java-library"
+/** Internal Lucene build tool (checks for missing javadocs). */
+module org.apache.lucene.missingdoclet {
+  requires java.compiler;
+  requires jdk.compiler;
+  requires jdk.javadoc;
 }
-
-description = 'Doclet-based javadoc validation'

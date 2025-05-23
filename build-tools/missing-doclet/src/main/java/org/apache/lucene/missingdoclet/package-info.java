@@ -15,21 +15,5 @@
  * limitations under the License.
  */
 
-pluginManagement {
-    repositories {
-        mavenCentral()
-        gradlePluginPortal()
-    }
-
-    includeBuild("../build-infra") {
-        name "build-infra-alias"
-    }
-}
-
-dependencyResolutionManagement {
-    versionCatalogs {
-        deps {
-            from(files('../../gradle/libs.versions.toml'))
-        }
-    }
-}
+/** Lucene internal build tool for detecting missing Javadocs. */
+package org.apache.lucene.missingdoclet;

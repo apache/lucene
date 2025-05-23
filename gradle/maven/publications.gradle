@@ -47,7 +47,9 @@ configure(rootProject) {
 
       // Exclude all subprojects that are modular test projects and those explicitly
       // excluded above.
-      return !(subproject.path.endsWith(".tests") || subproject.path in excluded)
+      return !(subproject.path.endsWith(".tests")
+              || subproject.path.startsWith(":lucene:build-tools:")
+              || subproject.path in excluded)
     }
   }
 }

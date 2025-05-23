@@ -82,7 +82,6 @@ allprojects {
                     // The root project also includes patterns for the include composite
                     // projects. Include their sources in the scan.
                     include "build-tools/build-infra/src/**"
-                    include "build-tools/missing-doclet/src/**"
 
                     // do not let RAT attempt to scan a python venv, it gets lost and confused...
                     exclude "dev-tools/aws-jmh/build/**"

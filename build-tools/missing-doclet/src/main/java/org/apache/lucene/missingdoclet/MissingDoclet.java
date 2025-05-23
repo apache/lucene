@@ -101,7 +101,7 @@ public class MissingDoclet extends StandardDoclet {
 
           @Override
           public boolean process(String option, List<String> arguments) {
-            switch (arguments.get(0)) {
+            switch (arguments.getFirst()) {
               case "package":
                 level = PACKAGE;
                 return true;
@@ -266,6 +266,7 @@ public class MissingDoclet extends StandardDoclet {
           checkComment(element);
         }
         break;
+      // $CASES-OMITTED$
       default:
         error(element, "I don't know how to analyze " + element.getKind() + " yet.");
     }
@@ -453,6 +454,7 @@ public class MissingDoclet extends StandardDoclet {
         fullMessage.append(".");
         fullMessage.append(element.getSimpleName());
         break;
+      // $CASES-OMITTED$
       default:
         // for anything else, use a simple name
         fullMessage.append(element.getSimpleName());
