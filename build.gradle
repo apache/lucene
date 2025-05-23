@@ -98,7 +98,13 @@ dependencies {
 // The order of inclusion of these files shouldn't matter (but may
 // if the build file is incorrectly written and evaluates something
 // eagerly).
-apply from: file('gradle/_to-remove/conventions.gradle')
+configure(rootProject) {
+  ext {
+    scriptResources = { buildscript ->
+      return file(buildscript.sourceFile.absolutePath.replaceAll('.gradle$', ""))
+    }
+  }
+}
 
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
