@@ -26,9 +26,16 @@ all options and their values, including their source (where their
 value is defined). For example:
 
 ./gradlew :buildOptions
+./gradlew -p lucene/core buildOptions
 
 
 * Lucene's "base" version is now a build option. The default
 value is in build-options.properties. You can override
-any of 'version.suffix', 'version.base' or 'version.release'
+any of ```version.suffix```, ```version.base``` or ```version.release```
 using any of build option plugin's methods (see above).
+
+
+* ```runtime.java.home``` is a build option now but the support for
+```RUNTIME_JAVA_HOME``` env. variable has been implemented for backward
+compatibility.
+
