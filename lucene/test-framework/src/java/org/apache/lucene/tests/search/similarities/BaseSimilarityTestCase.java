@@ -17,12 +17,15 @@
 package org.apache.lucene.tests.search.similarities;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.IndriDirichletSimilarity;
@@ -33,6 +36,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.SmallFloat;
@@ -520,5 +524,98 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
         System.out.println("freq=" + freq);
       }
     }
+  }
+
+  private void doTestBulkScoring(boolean hasNorms) throws IOException {
+    Random random = random();
+    Similarity similarity = getSimilarity(random);
+    CollectionStatistics corpus = newCorpus(random, hasNorms ? 1 : 0);
+    TermStatistics term = newTerm(random, corpus);
+    SimScorer scorer = similarity.scorer(random().nextFloat(5f), corpus, term);
+    int freqUpperBound =
+        Math.toIntExact(Math.min(term.totalTermFreq() - term.docFreq() + 1, Integer.MAX_VALUE));
+    DocAndFreqBuffer buffer = new DocAndFreqBuffer();
+    int iters = atLeast(3);
+    for (int iter = 0; iter < iters; ++iter) {
+      int size = TestUtil.nextInt(random, 0, 200);
+      buffer.growNoCopy(size);
+      long[] norms;
+      if (hasNorms) {
+        norms = new long[size];
+      } else {
+        norms = null;
+      }
+      int prevDoc = -1;
+      for (int i = 0; i < size; ++i) {
+        buffer.docs[i] = prevDoc + TestUtil.nextInt(random, 1, 5);
+        prevDoc = buffer.docs[i];
+        buffer.freqs[i] = TestUtil.nextInt(random, 1, freqUpperBound);
+        if (hasNorms) {
+          norms[i] = TestUtil.nextLong(random, 1, 255);
+        }
+      }
+      buffer.size = size;
+      NumericDocValues normValues = null;
+      if (hasNorms) {
+        normValues =
+            new NumericDocValues() {
+
+              private int index = -1;
+
+              @Override
+              public int nextDoc() throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int docID() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public long cost() {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public int advance(int target) throws IOException {
+                throw new UnsupportedOperationException();
+              }
+
+              @Override
+              public boolean advanceExact(int target) throws IOException {
+                index = Arrays.binarySearch(buffer.docs, 0, buffer.size, target);
+                assertTrue(
+                    "Looking up unrelated doc: "
+                        + target
+                        + " not in "
+                        + Arrays.toString(ArrayUtil.copyOfSubArray(buffer.docs, 0, buffer.size)),
+                    index >= 0);
+                return true;
+              }
+
+              @Override
+              public long longValue() throws IOException {
+                return norms[index];
+              }
+            };
+      }
+
+      float[] actualScores = new float[size];
+      scorer.score(buffer, normValues, actualScores);
+      float[] expectedScores = new float[size];
+      for (int i = 0; i < size; ++i) {
+        expectedScores[i] = scorer.score(buffer.freqs[i], hasNorms ? norms[i] : 1L);
+      }
+      assertArrayEquals(expectedScores, actualScores, 0f);
+    }
+  }
+
+  public void testBulkScoringNoNorms() throws IOException {
+    doTestBulkScoring(false);
+  }
+
+  public void testBulkScoringWithNorms() throws IOException {
+    doTestBulkScoring(true);
   }
 }

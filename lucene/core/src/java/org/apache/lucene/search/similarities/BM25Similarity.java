@@ -16,11 +16,15 @@
  */
 package org.apache.lucene.search.similarities;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -207,6 +211,9 @@ public class BM25Similarity extends Similarity {
     /** weight (idf * boost) */
     private final float weight;
 
+    /** Temporary array to store norm factors to help auto-vectorization. */
+    private float[] normInverses;
+
     BM25Scorer(float boost, float k1, float b, Explanation idf, float avgdl, float[] cache) {
       this.boost = boost;
       this.idf = idf;
@@ -215,6 +222,19 @@ public class BM25Similarity extends Similarity {
       this.b = b;
       this.cache = cache;
       this.weight = boost * idf.getValue().floatValue();
+    }
+
+    private float score(float freq, float normInverse) {
+      // In order to guarantee monotonicity with both freq and norm without
+      // promoting to doubles, we rewrite freq / (freq + norm) to
+      // 1 - 1 / (1 + freq * 1/norm).
+      // freq * 1/norm is guaranteed to be monotonic for both freq and norm due
+      // to the fact that multiplication and division round to the nearest
+      // float. And then monotonicity is preserved through composition via
+      // x -> 1 + x and x -> 1 - 1/x.
+      // Finally we expand weight * (1 - 1 / (1 + freq * 1/norm)) to
+      // weight - weight / (1 + freq * 1/norm), which runs slightly faster.
+      return weight - weight / (1f + freq * normInverse);
     }
 
     @Override
@@ -229,7 +249,39 @@ public class BM25Similarity extends Similarity {
       // Finally we expand weight * (1 - 1 / (1 + freq * 1/norm)) to
       // weight - weight / (1 + freq * 1/norm), which runs slightly faster.
       float normInverse = cache[((byte) encodedNorm) & 0xFF];
-      return weight - weight / (1f + freq * normInverse);
+      return score(freq, normInverse);
+    }
+
+    @Override
+    public void score(DocAndFreqBuffer buffer, NumericDocValues norms, float[] scores)
+        throws IOException {
+      if (norms == null) {
+        float normInverse = cache[1];
+        // The below loop should auto-vectorize.
+        for (int i = 0; i < buffer.size; ++i) {
+          scores[i] = score(buffer.freqs[i], normInverse);
+        }
+      } else {
+        if (normInverses == null || normInverses.length < buffer.size) {
+          normInverses = new float[ArrayUtil.oversize(buffer.size, Float.BYTES)];
+        }
+
+        for (int i = 0; i < buffer.size; ++i) {
+          if (norms.advanceExact(buffer.docs[i])) {
+            // If norms#longValue gets inlined, the JVM compiler should hopefully detect that a byte
+            // is expanded to a long and then casted back to the same original byte, and ignore
+            // these operations.
+            normInverses[i] = cache[((byte) norms.longValue()) & 0xFF];
+          } else {
+            normInverses[i] = cache[1];
+          }
+        }
+
+        // The below loop should auto-vectorize
+        for (int i = 0; i < buffer.size; ++i) {
+          scores[i] = score(buffer.freqs[i], normInverses[i]);
+        }
+      }
     }
 
     @Override
