@@ -50,6 +50,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.store.ByteArrayRandomAccessInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
@@ -61,6 +62,7 @@ import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.BytesRefHash.DirectBytesStartArray;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
+import org.apache.lucene.util.RandomAccessInputRef;
 import org.apache.lucene.util.RecyclingByteBlockAllocator;
 import org.apache.lucene.util.RecyclingIntBlockAllocator;
 import org.apache.lucene.util.Version;
@@ -1485,6 +1487,42 @@ public class MemoryIndex {
     };
   }
 
+  private static BinaryDocValues binaryDocValues(BytesRef value) {
+    MemoryDocValuesIterator it = new MemoryDocValuesIterator();
+    return new BinaryDocValues() {
+      @Override
+      public RandomAccessInputRef randomAccessInputValue() {
+        return new RandomAccessInputRef(
+            new ByteArrayRandomAccessInput(value.bytes), value.offset, value.length);
+      }
+
+      @Override
+      public boolean advanceExact(int target) {
+        return it.advance(target) == target;
+      }
+
+      @Override
+      public int docID() {
+        return it.docId();
+      }
+
+      @Override
+      public int nextDoc() {
+        return it.nextDoc();
+      }
+
+      @Override
+      public int advance(int target) {
+        return it.advance(target);
+      }
+
+      @Override
+      public long cost() {
+        return 1;
+      }
+    };
+  }
+
   private static SortedSetDocValues sortedSetDocValues(BytesRefHash values, int[] bytesIds) {
     MemoryDocValuesIterator it = new MemoryDocValuesIterator();
     BytesRef scratch = new BytesRef();
@@ -1621,42 +1659,11 @@ public class MemoryIndex {
 
     @Override
     public BinaryDocValues getBinaryDocValues(String field) {
-      final SortedDocValues in = getSortedDocValues(field, DocValuesType.BINARY);
-      if (in == null) {
+      final Info info = getInfoForExpectedDocValuesType(field, DocValuesType.BINARY);
+      if (info == null) {
         return null;
       }
-      // wraps a SortedDocValues and makes it look like its binary
-      return new BinaryDocValues() {
-        @Override
-        public BytesRef binaryValue() throws IOException {
-          return in.lookupOrd(in.ordValue());
-        }
-
-        @Override
-        public boolean advanceExact(int target) throws IOException {
-          return in.advanceExact(target);
-        }
-
-        @Override
-        public int docID() {
-          return in.docID();
-        }
-
-        @Override
-        public int nextDoc() throws IOException {
-          return in.nextDoc();
-        }
-
-        @Override
-        public int advance(int target) throws IOException {
-          return in.advance(target);
-        }
-
-        @Override
-        public long cost() {
-          return in.cost();
-        }
-      };
+      return binaryDocValues(info.binaryProducer.dvBytesValuesSet);
     }
 
     @Override
