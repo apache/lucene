@@ -113,14 +113,21 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
   public static class AssertingKnnVectorsReader extends KnnVectorsReader
       implements HnswGraphProvider {
     public final KnnVectorsReader delegate;
-    final FieldInfos fis;
-    AtomicInteger mergeInstanceCount = new AtomicInteger();
-    AtomicInteger finishMergeCount = new AtomicInteger();
+    private final FieldInfos fis;
+    private final boolean mergeInstance;
+    private final AtomicInteger mergeInstanceCount = new AtomicInteger();
+    private final AtomicInteger finishMergeCount = new AtomicInteger();
 
-    AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
+    private AssertingKnnVectorsReader(KnnVectorsReader delegate, FieldInfos fis) {
+      this(delegate, fis, false);
+    }
+
+    private AssertingKnnVectorsReader(
+        KnnVectorsReader delegate, FieldInfos fis, boolean mergeInstance) {
       assert delegate != null;
       this.delegate = delegate;
       this.fis = fis;
+      this.mergeInstance = mergeInstance;
     }
 
     @Override
@@ -130,6 +137,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      assert mergeInstanceCount.get() == finishMergeCount.get() || mergeInstance
+          : "Called on the wrong instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -144,6 +153,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      assert mergeInstanceCount.get() == finishMergeCount.get() || mergeInstance
+          : "Called on the wrong instance";
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null
           && fi.getVectorDimension() > 0
@@ -185,7 +196,8 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       mergeInstanceCount.incrementAndGet();
       AtomicInteger parentMergeFinishCount = this.finishMergeCount;
 
-      return new AssertingKnnVectorsReader(mergeVectorsReader, AssertingKnnVectorsReader.this.fis) {
+      return new AssertingKnnVectorsReader(
+          mergeVectorsReader, AssertingKnnVectorsReader.this.fis, true) {
         private boolean finished;
 
         @Override
