@@ -39,6 +39,8 @@ plugins {
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.gradlew-scripts-customizations"
 
+  id "lucene.java.core.mrjar"
+
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
 
@@ -108,7 +110,6 @@ configure(rootProject) {
 
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
-apply from: file('gradle/java/core-mrjar.gradle')
 apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')

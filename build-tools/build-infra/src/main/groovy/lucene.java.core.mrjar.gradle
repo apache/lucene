@@ -18,27 +18,30 @@
 // Produce an MR-JAR for panama vector implementations
 
 configure(project(":lucene:core")) {
-  plugins.withType(JavaPlugin) {
+  plugins.withType(JavaPlugin).configureEach {
     mrjarJavaVersions.each { jdkVersion ->
       sourceSets.create("main${jdkVersion}") {
         java {
           srcDirs = ["src/java${jdkVersion}"]
         }
       }
-      configurations["main${jdkVersion}Implementation"].extendsFrom(configurations['implementation'])
+
+      configurations["main${jdkVersion}Implementation"].extendsFrom(configurations.maybeCreate("implementation"))
       dependencies.add("main${jdkVersion}Implementation", sourceSets.main.output)
 
       tasks.named("compileMain${jdkVersion}Java").configure {
         def apijar = apijars.file("jdk${jdkVersion}.apijar")
-        
+
         int releaseIndex = options.compilerArgs.indexOf("--release")
         options.compilerArgs.removeAt(releaseIndex)
         options.compilerArgs.removeAt(releaseIndex)
         options.compilerArgs += [
           "-Xlint:-options",
-          "--add-exports", "java.base/java.lang.foreign=ALL-UNNAMED",
+          "--add-exports",
+          "java.base/java.lang.foreign=ALL-UNNAMED",
           // for compilation we patch the incubator packages into java.base, this has no effect on resulting class files:
-          "--add-exports", "java.base/jdk.incubator.vector=ALL-UNNAMED",
+          "--add-exports",
+          "java.base/jdk.incubator.vector=ALL-UNNAMED",
         ]
 
         def argsProvider = objects.newInstance(CompilerArgsProvider)
@@ -46,13 +49,13 @@ configure(project(":lucene:core")) {
         options.compilerArgumentProviders.add(argsProvider)
       }
     }
-    
+
     tasks.named('jar').configure {
       boolean needMRJAR = false;
       mrjarJavaVersions.each { jdkVersion ->
         // the sourceSet which corresponds to the minimum/base Java version
         // will copy its output to root of JAR, all other sourceSets will go into MR-JAR folders:
-        boolean isBaseVersion = (jdkVersion.toString() as int <= rootProject.minJavaVersion.toString() as int)
+        boolean isBaseVersion = (jdkVersion.toString() as int) <= (rootProject.minJavaVersion.toString() as int)
         into(isBaseVersion ? '' : "META-INF/versions/${jdkVersion}") {
           from sourceSets["main${jdkVersion}"].output
         }
@@ -61,8 +64,8 @@ configure(project(":lucene:core")) {
 
       if (needMRJAR) {
         manifest.attributes(
-          'Multi-Release': 'true'
-        )
+            'Multi-Release': 'true'
+            )
       }
     }
   }
@@ -75,6 +78,9 @@ abstract class CompilerArgsProvider implements CommandLineArgumentProvider {
 
   @Override
   Iterable<String> asArguments() {
-    return ["--patch-module", "java.base=${apiJarFile.get().asFile.absolutePath}".toString()]
+    return [
+      "--patch-module",
+      "java.base=${apiJarFile.get().asFile.absolutePath}".toString()
+    ]
   }
 }
