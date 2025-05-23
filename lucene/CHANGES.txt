@@ -119,6 +119,9 @@ Optimizations
 * GITHUB#14700: Return MatchNoDocsQuery when IndexOrDocValuesQuery::rewrite does not match
   (Chris Hegarty)
 
+* GITHUB#14701: Optimize top-n bulk scorers by evaluating scoring windows in a
+  term-at-a-time fashion instead of doc-at-a-time. (Adrien Grand)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
