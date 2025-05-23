@@ -24,7 +24,6 @@ import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.DocAndFreqBuffer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.SmallFloat;
 
 /**
