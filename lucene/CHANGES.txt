@@ -116,6 +116,9 @@ Optimizations
 * GITHUB#14679: Optimize exhaustive evaluation of disjunctive queries.
   (Adrien Grand)
 
+* GITHUB#14700: Return MatchNoDocsQuery when IndexOrDocValuesQuery::rewrite does not match
+  (Chris Hegarty)
+
 * GITHUB#14701: Optimize top-n bulk scorers by evaluating scoring windows in a
   term-at-a-time fashion instead of doc-at-a-time. (Adrien Grand)
 
