@@ -371,6 +371,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     for (int i = numNonEssentialClauses - 1; i >= 0; --i) {
       DisiWrapper scorer = allScorers[i];
+      assert minCompetitiveScore > 0
+          : "All clauses are essential if minCompetitiveScore is equal to zero";
       ScorerUtil.filterCompetitiveHits(
           buffer, maxScoreSums[i], minCompetitiveScore, allScorers.length);
       ScorerUtil.applyOptionalClause(buffer, scorer.iterator, scorer.scorable);

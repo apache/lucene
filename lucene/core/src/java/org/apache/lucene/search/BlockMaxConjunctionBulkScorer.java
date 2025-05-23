@@ -37,7 +37,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   private final Scorer[] scorers;
   private final Scorable[] scorables;
   private final DocIdSetIterator[] iterators;
-  private final DocIdSetIterator lead1;
+  private final DocIdSetIterator lead;
   private final DocAndScore scorable = new DocAndScore();
   private final double[] sumOfOtherClauses;
   private final int maxDoc;
@@ -54,11 +54,9 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         Arrays.stream(this.scorers).map(ScorerUtil::likelyTermScorer).toArray(Scorable[]::new);
     this.iterators =
         Arrays.stream(this.scorers).map(Scorer::iterator).toArray(DocIdSetIterator[]::new);
-    lead1 = ScorerUtil.likelyImpactsEnum(iterators[0]);
+    lead = ScorerUtil.likelyImpactsEnum(iterators[0]);
     this.sumOfOtherClauses = new double[this.scorers.length];
-    for (int i = 0; i < sumOfOtherClauses.length; i++) {
-      sumOfOtherClauses[i] = Double.POSITIVE_INFINITY;
-    }
+    Arrays.fill(sumOfOtherClauses, Double.POSITIVE_INFINITY);
     this.maxDoc = maxDoc;
   }
 
@@ -83,7 +81,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     collector.setScorer(scorable);
 
-    int windowMin = Math.max(lead1.docID(), min);
+    int windowMin = Math.max(lead.docID(), min);
     while (windowMin < max) {
       // Use impacts of the least costly scorer to compute windows
       // NOTE: windowMax is inclusive
@@ -94,7 +92,7 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
         maxWindowScore = computeMaxScore(windowMin, windowMax);
       }
       scoreWindow(collector, acceptDocs, windowMin, windowMax + 1, maxWindowScore);
-      windowMin = Math.max(lead1.docID(), windowMax + 1);
+      windowMin = Math.max(lead.docID(), windowMax + 1);
     }
 
     return windowMin >= maxDoc ? DocIdSetIterator.NO_MORE_DOCS : windowMin;
@@ -108,10 +106,10 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
       return;
     }
 
-    if (lead1.docID() < min) {
-      lead1.advance(min);
+    if (lead.docID() < min) {
+      lead.advance(min);
     }
-    if (lead1.docID() >= max) {
+    if (lead.docID() >= max) {
       return;
     }
 
@@ -140,17 +138,17 @@ final class BlockMaxConjunctionBulkScorer extends BulkScorer {
     }
 
     int maxOtherDoc = -1;
-    for (int i = 0; i < iterators.length; ++i) {
+    for (int i = 1; i < iterators.length; ++i) {
       maxOtherDoc = Math.max(iterators[i].docID(), maxOtherDoc);
     }
-    if (lead1.docID() < maxOtherDoc) {
-      lead1.advance(maxOtherDoc);
+    if (lead.docID() < maxOtherDoc) {
+      lead.advance(maxOtherDoc);
     }
   }
 
   @Override
   public long cost() {
-    return lead1.cost();
+    return lead.cost();
   }
 
   private static class DocAndScore extends Scorable {
