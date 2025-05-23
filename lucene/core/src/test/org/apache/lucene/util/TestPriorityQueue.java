@@ -101,11 +101,16 @@ public class TestPriorityQueue extends LuceneTestCase {
   }
 
   public void testPQ() throws Exception {
-    testPQ(atLeast(10000), random());
+    int size = atLeast(10000);
+    testPQ(new IntegerQueue(size), size, random());
   }
 
-  public static void testPQ(int count, Random gen) {
-    PriorityQueue<Integer> pq = new IntegerQueue(count);
+  public void testComparatorPQ() throws Exception {
+    int size = atLeast(10000);
+    testPQ(PriorityQueue.usingComparator(size, Integer::compareTo), size, random());
+  }
+
+  public static void testPQ(PriorityQueue<Integer> pq, int count, Random gen) {
     int sum = 0, sum2 = 0;
 
     for (int i = 0; i < count; i++) {

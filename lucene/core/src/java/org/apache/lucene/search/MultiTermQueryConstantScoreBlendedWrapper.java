@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -58,12 +59,8 @@ final class MultiTermQueryConstantScoreBlendedWrapper<Q extends MultiTermQuery>
           throws IOException {
         DocIdSetBuilder otherTerms = new DocIdSetBuilder(context.reader().maxDoc(), terms);
         PriorityQueue<PostingsEnum> highFrequencyTerms =
-            new PriorityQueue<>(collectedTerms.size()) {
-              @Override
-              protected boolean lessThan(PostingsEnum a, PostingsEnum b) {
-                return a.cost() < b.cost();
-              }
-            };
+            PriorityQueue.usingComparator(
+                collectedTerms.size(), Comparator.comparingLong(PostingsEnum::cost));
 
         // Handle the already-collected terms:
         PostingsEnum reuse = null;

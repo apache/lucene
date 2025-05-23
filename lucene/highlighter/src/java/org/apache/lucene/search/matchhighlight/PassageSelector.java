@@ -93,13 +93,7 @@ public class PassageSelector {
     int pqSize = Math.max(16, maxPassages);
 
     // Best passages so far.
-    PriorityQueue<Passage> pq =
-        new PriorityQueue<>(pqSize) {
-          @Override
-          protected boolean lessThan(Passage a, Passage b) {
-            return passageScorer.compare(a, b) < 0;
-          }
-        };
+    PriorityQueue<Passage> pq = PriorityQueue.usingComparator(pqSize, passageScorer);
 
     markers = splitOrTruncateToWindows(markers, maxPassageWindow, permittedPassageRanges);
 

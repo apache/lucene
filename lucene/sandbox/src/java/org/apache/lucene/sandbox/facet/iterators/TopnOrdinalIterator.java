@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.facet.iterators;
 
 import java.io.IOException;
+import java.util.Comparator;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -50,7 +51,8 @@ public final class TopnOrdinalIterator<T extends Comparable<T>> implements Ordin
     //  probably doesn't make sense for large enough taxonomy indexes?
     //  e.g. TopOrdAndIntQueue q = new TopComparableQueue(Math.min(taxoReader.getSize(), topN));
     // TODO: create queue lazily - skip if first nextOrd is NO_MORE_ORDS ?
-    TopComparableQueue<T> queue = new TopComparableQueue<>(topN);
+    PriorityQueue<OrdComparablePair<T>> queue =
+        PriorityQueue.usingComparator(topN, Comparator.comparing(p -> p.comparable));
     OrdComparablePair<T> reuse = null;
     for (int ord = sourceOrds.nextOrd(); ord != NO_MORE_ORDS; ord = sourceOrds.nextOrd()) {
       if (reuse == null) {
@@ -81,21 +83,6 @@ public final class TopnOrdinalIterator<T extends Comparable<T>> implements Ordin
     return result[currentIndex++];
   }
 
-  /** Keeps top N results ordered by Comparable. */
-  private static class TopComparableQueue<T extends Comparable<T>>
-      extends PriorityQueue<OrdComparablePair<T>> {
-
-    /** Sole constructor. */
-    public TopComparableQueue(int topN) {
-      super(topN);
-    }
-
-    @Override
-    protected boolean lessThan(OrdComparablePair<T> a, OrdComparablePair<T> b) {
-      return a.lessThan(b);
-    }
-  }
-
   /** Pair of ordinal and comparable to use in TopComparableQueue */
   private static class OrdComparablePair<T extends Comparable<T>> {
     int ordinal;
@@ -104,10 +91,6 @@ public final class TopnOrdinalIterator<T extends Comparable<T>> implements Ordin
     private OrdComparablePair(int ordinal, T comparable) {
       this.ordinal = ordinal;
       this.comparable = comparable;
-    }
-
-    boolean lessThan(OrdComparablePair<T> other) {
-      return comparable.compareTo(other.comparable) < 0;
     }
   }
 }
