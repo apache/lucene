@@ -98,9 +98,13 @@ public final class ImpactsDISI extends FilterDocIdSetIterator {
     }
   }
 
+
   @Override
   public int advance(int target) throws IOException {
-    return in.advance(advanceTarget(target));
+    int advanceTarget = advanceTarget(target);
+    if (advanceTarget > docID()) {
+      return in.advance(advanceTarget);
+    }
   }
 
   @Override
