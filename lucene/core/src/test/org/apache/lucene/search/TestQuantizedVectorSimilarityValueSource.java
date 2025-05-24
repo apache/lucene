@@ -148,8 +148,10 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
       float[] queryVector = TestVectorUtil.randomVector(VECTOR_DIMENSION);
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
-          DoubleValues fpSimValues = FloatVectorSimilarityValuesSource.fullPrecisionScores(ctx, queryVector, KNN_FIELD);
-          DoubleValues quantizedSimValues = DoubleValuesSource.similarityToQueryVector(ctx, queryVector, KNN_FIELD);
+          DoubleValues fpSimValues =
+              FloatVectorSimilarityValuesSource.fullPrecisionScores(ctx, queryVector, KNN_FIELD);
+          DoubleValues quantizedSimValues =
+              DoubleValuesSource.similarityToQueryVector(ctx, queryVector, KNN_FIELD);
           // validate when segment has no vectors
           if (fpSimValues == DoubleValues.EMPTY || quantizedSimValues == DoubleValues.EMPTY) {
             assertEquals(fpSimValues, quantizedSimValues);
@@ -195,9 +197,9 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
 
       // index some 4 bit quantized vectors
       try (IndexWriter w =
-               new IndexWriter(
-                   dir,
-                   newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(4))))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(4))))) {
         for (int j = 0; j < numSegments; j++) {
           for (int i = 0; i < numVectors; i++) {
             Document doc = new Document();
@@ -226,9 +228,9 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
 
       // index some 7 bit quantized vectors
       try (IndexWriter w =
-               new IndexWriter(
-                   dir,
-                   newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(7))))) {
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(7))))) {
         for (int j = 0; j < numSegments; j++) {
           for (int i = 0; i < numVectors; i++) {
             Document doc = new Document();
@@ -258,8 +260,10 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
       byte[] queryVector = TestVectorUtil.randomVectorBytes(VECTOR_DIMENSION);
       try (IndexReader reader = DirectoryReader.open(dir)) {
         for (LeafReaderContext ctx : reader.leaves()) {
-          DoubleValues fpSimValues = ByteVectorSimilarityValuesSource.fullPrecisionScores(ctx, queryVector, KNN_FIELD);
-          DoubleValues quantizedSimValues = DoubleValuesSource.similarityToQueryVector(ctx, queryVector, KNN_FIELD);
+          DoubleValues fpSimValues =
+              ByteVectorSimilarityValuesSource.fullPrecisionScores(ctx, queryVector, KNN_FIELD);
+          DoubleValues quantizedSimValues =
+              DoubleValuesSource.similarityToQueryVector(ctx, queryVector, KNN_FIELD);
           // validate when segment has no vectors
           if (fpSimValues == DoubleValues.EMPTY || quantizedSimValues == DoubleValues.EMPTY) {
             assertEquals(fpSimValues, quantizedSimValues);
