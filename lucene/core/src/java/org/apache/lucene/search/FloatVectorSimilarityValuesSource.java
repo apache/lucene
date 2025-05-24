@@ -79,15 +79,7 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
       FloatVectorValues.checkField(ctx.reader(), fieldName);
       return null;
     }
-
     final FieldInfo fi = ctx.reader().getFieldInfos().fieldInfo(fieldName);
-    if (fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
-      throw new IllegalArgumentException(
-          "Field "
-              + fieldName
-              + " does not have the expected vector encoding: "
-              + VectorEncoding.FLOAT32);
-    }
     if (fi.getVectorDimension() != queryVector.length) {
       throw new IllegalArgumentException(
           "Query vector dimension does not match field dimension: "
