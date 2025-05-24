@@ -1352,7 +1352,7 @@ def main():
 
 
 sys.path.append(os.path.dirname(__file__))
-current_git_root = Path(os.path.join(Path(os.path.dirname(__file__)).resolve(), os.path.pardir, os.path.pardir)).resolve()
+current_git_root: str = str(Path(os.path.join(Path(os.path.dirname(__file__)).resolve(), os.path.pardir, os.path.pardir)).resolve())
 
 dry_run = False
 
