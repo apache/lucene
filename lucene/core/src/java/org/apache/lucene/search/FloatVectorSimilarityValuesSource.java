@@ -33,6 +33,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  */
 class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
 
+  /** Creates a {@link FloatVectorSimilarityValuesSource} that scores on full precision vector values */
   public static DoubleValues fullPrecisionScores(
       LeafReaderContext ctx, float[] queryVector, String vectorField) throws IOException {
     return new FloatVectorSimilarityValuesSource(queryVector, vectorField, true).getValues(ctx, null);

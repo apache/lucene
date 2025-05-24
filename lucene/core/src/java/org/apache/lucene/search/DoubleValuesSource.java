@@ -250,14 +250,6 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    */
   public static DoubleValues similarityToQueryVector(
       LeafReaderContext ctx, byte[] queryVector, String vectorField) throws IOException {
-    if (ctx.reader().getFieldInfos().fieldInfo(vectorField).getVectorEncoding()
-        != VectorEncoding.BYTE) {
-      throw new IllegalArgumentException(
-          "Field "
-              + vectorField
-              + " does not have the expected vector encoding: "
-              + VectorEncoding.BYTE);
-    }
     return new ByteVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
   }
 
