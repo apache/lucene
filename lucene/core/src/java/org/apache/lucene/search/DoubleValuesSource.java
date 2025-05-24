@@ -281,7 +281,7 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
               + " does not have the expected vector encoding: "
               + VectorEncoding.FLOAT32);
     }
-    return new FloatVectorSimilarityValuesSource(queryVector, vectorField, true).getValues(ctx, null);
+    return new FloatVectorSimilarityValuesSource(queryVector, vectorField).getValues(ctx, null);
   }
 
   /**

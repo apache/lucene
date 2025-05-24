@@ -20,7 +20,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
@@ -39,6 +38,7 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
   /**
    * Creates a {@link DoubleValuesSource} that returns vector similarity score between provided
    * query vector and field for documents. Uses the scorer exposed by configured vectors reader.
+   *
    * @param vector the query vector
    * @param fieldName the field name of the {@link org.apache.lucene.document.KnnFloatVectorField}
    */
@@ -52,10 +52,11 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
    *
    * @param vector the query vector
    * @param fieldName the field name of the {@link org.apache.lucene.document.KnnFloatVectorField}
-   * @param useFullPrecision uses full precision raw vectors for similarity computation if true, otherwise
-   *                         the configured vectors reader is used, which may be quantized or full precision.
+   * @param useFullPrecision uses full precision raw vectors for similarity computation if true,
+   *     otherwise the configured vectors reader is used, which may be quantized or full precision.
    */
-  public FloatVectorSimilarityValuesSource(float[] vector, String fieldName, boolean useFullPrecision) {
+  public FloatVectorSimilarityValuesSource(
+      float[] vector, String fieldName, boolean useFullPrecision) {
     super(fieldName);
     this.queryVector = vector;
     this.useFullPrecision = useFullPrecision;
@@ -89,7 +90,8 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
 
       @Override
       public float score() throws IOException {
-        return vectorSimilarityFunction.compare(queryVector, vectorValues.vectorValue(iterator.index()));
+        return vectorSimilarityFunction.compare(
+            queryVector, vectorValues.vectorValue(iterator.index()));
       }
 
       @Override
