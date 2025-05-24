@@ -22,6 +22,7 @@
 
 import os
 import sys
+from pathlib import Path
 
 sys.path.append(os.path.dirname(__file__))
 import argparse
@@ -188,7 +189,7 @@ http://wiki.apache.org/lucene-java/ReleaseTodo#Generate_Backcompat_Indexes
 def main():
   c = read_config()
   if not os.path.exists(c.temp_dir):
-    os.makedirs(c.temp_dir)
+    Path(c.temp_dir).mkdir(parents=True)
 
   print("\nCreating backwards compatibility indexes")
   source = download_release(c.version, c.temp_dir, c.force)
