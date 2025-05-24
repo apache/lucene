@@ -64,7 +64,7 @@ public final class ImpactsDISI extends FilterDocIdSetIterator {
     }
   }
 
-  private int advanceTarget(int target) throws IOException {
+  int advanceTarget(int target) throws IOException {
     if (target <= upTo) {
       // we are still in the current block, which is considered competitive
       // according to impacts, no skipping
