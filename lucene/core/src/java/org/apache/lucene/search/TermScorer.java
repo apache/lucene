@@ -134,10 +134,8 @@ public final class TermScorer extends Scorer {
       docAndFreqBuffer = new DocAndFreqBuffer();
     }
 
-
     if (impactsDisi != null) {
-      // jump to next competitive doc.
-      impactsDisi.advance(docID());
+      impactsDisi.ensureCompetitive();
     }
 
     for (; ; ) {
