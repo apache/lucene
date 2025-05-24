@@ -79,15 +79,7 @@ class ByteVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
       ByteVectorValues.checkField(ctx.reader(), fieldName);
       return null;
     }
-
     final FieldInfo fi = ctx.reader().getFieldInfos().fieldInfo(fieldName);
-    if (fi.getVectorEncoding() != VectorEncoding.BYTE) {
-      throw new IllegalArgumentException(
-          "Field "
-              + fieldName
-              + " does not have the expected vector encoding: "
-              + VectorEncoding.BYTE);
-    }
     if (fi.getVectorDimension() != queryVector.length) {
       throw new IllegalArgumentException(
           "Query vector dimension does not match field dimension: "
