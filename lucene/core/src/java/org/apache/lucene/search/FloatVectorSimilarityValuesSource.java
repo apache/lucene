@@ -24,6 +24,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 
 /**
@@ -31,6 +32,11 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  * and the {@link org.apache.lucene.document.KnnFloatVectorField} for documents.
  */
 class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
+
+  public static DoubleValues fullPrecisionScores(
+      LeafReaderContext ctx, float[] queryVector, String vectorField) throws IOException {
+    return new FloatVectorSimilarityValuesSource(queryVector, vectorField, true).getValues(ctx, null);
+  }
 
   private final float[] queryVector;
   private final boolean useFullPrecision;
@@ -69,8 +75,15 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
       FloatVectorValues.checkField(ctx.reader(), fieldName);
       return null;
     }
+
     final FieldInfo fi = ctx.reader().getFieldInfos().fieldInfo(fieldName);
-    final VectorSimilarityFunction vectorSimilarityFunction = fi.getVectorSimilarityFunction();
+    if (fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException(
+          "Field "
+              + fieldName
+              + " does not have the expected vector encoding: "
+              + VectorEncoding.FLOAT32);
+    }
     if (fi.getVectorDimension() != queryVector.length) {
       throw new IllegalArgumentException(
           "Query vector dimension does not match field dimension: "
@@ -79,12 +92,12 @@ class FloatVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
               + fi.getVectorDimension());
     }
 
+    // default vector scorer
     if (useFullPrecision == false) {
-      // use default VectorScorer for configured reader
       return vectorValues.scorer(queryVector);
     }
 
-    // return a full precision vector scorer
+    final VectorSimilarityFunction vectorSimilarityFunction = fi.getVectorSimilarityFunction();
     return new VectorScorer() {
       final KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
 
