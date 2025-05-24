@@ -1,5 +1,7 @@
 package org.apache.lucene.search;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswScalarQuantizedVectorsFormat;
@@ -20,9 +22,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.TestVectorUtil;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
 
@@ -77,13 +76,17 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
     int numVectors = atLeast(NUM_VECTORS);
     int numSegments = random().nextInt(2, 10);
     final VectorSimilarityFunction vectorSimilarityFunction =
-        VectorSimilarityFunction.values()[random().nextInt(VectorSimilarityFunction.values().length)];
+        VectorSimilarityFunction.values()[
+            random().nextInt(VectorSimilarityFunction.values().length)];
 
     try (Directory dir = newDirectory()) {
       int id = 0;
 
       // index some 4 bit quantized vectors
-      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(4))))) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(4))))) {
         for (int j = 0; j < numSegments; j++) {
           for (int i = 0; i < numVectors; i++) {
             Document doc = new Document();
@@ -111,7 +114,10 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
       }
 
       // index some 7 bit quantized vectors
-      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(7))))) {
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              newIndexWriterConfig().setCodec(TestUtil.alwaysKnnVectorsFormat(getKnnFormat(7))))) {
         for (int j = 0; j < numSegments; j++) {
           for (int i = 0; i < numVectors; i++) {
             Document doc = new Document();
@@ -139,12 +145,14 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
       }
 
       float[] queryVector = TestVectorUtil.randomVector(VECTOR_DIMENSION);
-      FloatVectorSimilarityValuesSource fpSimValueSource = new FloatVectorSimilarityValuesSource(queryVector, KNN_FIELD, true);
-      FloatVectorSimilarityValuesSource quantizedSimValueSource = new FloatVectorSimilarityValuesSource(queryVector, KNN_FIELD);
+      FloatVectorSimilarityValuesSource fpSimValueSource =
+          new FloatVectorSimilarityValuesSource(queryVector, KNN_FIELD, true);
+      FloatVectorSimilarityValuesSource quantizedSimValueSource =
+          new FloatVectorSimilarityValuesSource(queryVector, KNN_FIELD);
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
         FieldExistsQuery query = new FieldExistsQuery(KNN_FIELD);
-        for (LeafReaderContext ctx: reader.leaves()) {
+        for (LeafReaderContext ctx : reader.leaves()) {
           DoubleValues fpSimValues = fpSimValueSource.getValues(ctx, null);
           DoubleValues quantizedSimValues = quantizedSimValueSource.getValues(ctx, null);
           // validate when segment has no vectors
@@ -154,7 +162,8 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
             continue;
           }
           StoredFields storedFields = ctx.reader().storedFields();
-          VectorScorer quantizedScorer = ctx.reader().getFloatVectorValues(KNN_FIELD).scorer(queryVector);
+          VectorScorer quantizedScorer =
+              ctx.reader().getFloatVectorValues(KNN_FIELD).scorer(queryVector);
           DocIdSetIterator disi = quantizedScorer.iterator();
           while (disi.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
             int doc = disi.docID();
