@@ -169,6 +169,8 @@ public class AbstractRangeQueryNode<T extends FieldValuePairQueryNode<?>> extend
     T lower = getLowerBound();
     T upper = getUpperBound();
 
+    sb.append(getField()).append(":");
+
     if (lowerInclusive) {
       sb.append('[');
 
@@ -177,16 +179,16 @@ public class AbstractRangeQueryNode<T extends FieldValuePairQueryNode<?>> extend
     }
 
     if (lower != null) {
-      sb.append(lower.toQueryString(escapeSyntaxParser));
+      sb.append(lower.getTermEscaped(escapeSyntaxParser));
 
     } else {
       sb.append("...");
     }
 
-    sb.append(' ');
+    sb.append(" TO ");
 
     if (upper != null) {
-      sb.append(upper.toQueryString(escapeSyntaxParser));
+      sb.append(upper.getTermEscaped(escapeSyntaxParser));
 
     } else {
       sb.append("...");

@@ -16,10 +16,14 @@
  */
 package org.apache.lucene.queryparser.flexible.core.nodes;
 
+import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
+
 /** This interface should be implemented by {@link QueryNode} that holds an arbitrary value. */
 public interface ValueQueryNode<T extends Object> extends QueryNode {
 
   public void setValue(T value);
 
   public T getValue();
+
+  public CharSequence getTermEscaped(EscapeQuerySyntax escaper);
 }
