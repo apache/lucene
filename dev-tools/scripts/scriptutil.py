@@ -22,6 +22,7 @@ import time
 import urllib.request
 from collections.abc import Callable
 from enum import Enum
+from pathlib import Path
 from re import Match, Pattern
 from typing import Self, override
 
@@ -188,7 +189,7 @@ version_prop_re = re.compile(r'baseVersion\s*=\s*([\'"])(.*)\1')
 
 def find_current_version():
   script_path = os.path.dirname(os.path.realpath(__file__))
-  top_level_dir = os.path.join(os.path.abspath("%s/" % script_path), os.path.pardir, os.path.pardir)
+  top_level_dir = os.path.join(Path("%s/" % script_path).resolve(), os.path.pardir, os.path.pardir)
   match = version_prop_re.search(open("%s/build.gradle" % top_level_dir).read())
   assert match
   return match.group(2).strip()
