@@ -145,16 +145,11 @@ public class TestQuantizedVectorSimilarityValueSource extends LuceneTestCase {
       }
 
       float[] queryVector = TestVectorUtil.randomVector(VECTOR_DIMENSION);
-      FloatVectorSimilarityValuesSource fpSimValueSource =
-          new FloatVectorSimilarityValuesSource(queryVector, KNN_FIELD, true);
-      FloatVectorSimilarityValuesSource quantizedSimValueSource =
-          new FloatVectorSimilarityValuesSource(queryVector, KNN_FIELD);
-
       try (IndexReader reader = DirectoryReader.open(dir)) {
         FieldExistsQuery query = new FieldExistsQuery(KNN_FIELD);
         for (LeafReaderContext ctx : reader.leaves()) {
-          DoubleValues fpSimValues = fpSimValueSource.getValues(ctx, null);
-          DoubleValues quantizedSimValues = quantizedSimValueSource.getValues(ctx, null);
+          DoubleValues fpSimValues = FloatVectorSimilarityValuesSource.fullPrecisionScores(ctx, queryVector, KNN_FIELD);
+          DoubleValues quantizedSimValues = DoubleValuesSource.similarityToQueryVector(ctx, queryVector, KNN_FIELD);
           // validate when segment has no vectors
           if (fpSimValues == DoubleValues.EMPTY || quantizedSimValues == DoubleValues.EMPTY) {
             assertEquals(fpSimValues, quantizedSimValues);
