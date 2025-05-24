@@ -24,7 +24,6 @@ import java.util.function.LongToDoubleFunction;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.comparators.DoubleComparator;
 import org.apache.lucene.util.NumericUtils;
 

@@ -33,10 +33,13 @@ import org.apache.lucene.index.VectorSimilarityFunction;
  */
 class ByteVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
 
-  /** Creates a {@link ByteVectorSimilarityValuesSource} that scores on full precision vector values */
+  /**
+   * Creates a {@link ByteVectorSimilarityValuesSource} that scores on full precision vector values
+   */
   public static DoubleValues fullPrecisionScores(
       LeafReaderContext ctx, byte[] queryVector, String vectorField) throws IOException {
-    return new ByteVectorSimilarityValuesSource(queryVector, vectorField, true).getValues(ctx, null);
+    return new ByteVectorSimilarityValuesSource(queryVector, vectorField, true)
+        .getValues(ctx, null);
   }
 
   private final byte[] queryVector;
@@ -62,7 +65,8 @@ class ByteVectorSimilarityValuesSource extends VectorSimilarityValuesSource {
    * @param useFullPrecision uses full precision raw vectors for similarity computation if true,
    *     otherwise the configured vectors reader is used, which may be quantized or full precision.
    */
-  public ByteVectorSimilarityValuesSource(byte[] vector, String fieldName, boolean useFullPrecision) {
+  public ByteVectorSimilarityValuesSource(
+      byte[] vector, String fieldName, boolean useFullPrecision) {
     super(fieldName);
     this.queryVector = vector;
     this.useFullPrecision = useFullPrecision;
