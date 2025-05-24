@@ -48,6 +48,7 @@ import urllib.request
 from collections import OrderedDict
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Self, TextIO, cast, override
 
 import yaml
@@ -1282,7 +1283,7 @@ def main():
       if root.startswith("~/"):
         release_root = os.path.expanduser(root)
       else:
-        release_root = os.path.abspath(root)
+        release_root = str(Path(root).resolve())
     if not os.path.exists(release_root):
       try:
         print("Creating release root %s" % release_root)
@@ -1305,7 +1306,7 @@ def main():
     y = yaml.load(open(os.path.join(script_path, "releaseWizard.yaml")), Loader=yaml.Loader)
     templates = y.get("templates")
     todo_list = y.get("groups")
-    state = ReleaseState(release_root, release_version, getScriptVersion())
+    state = ReleaseState(str(release_root), release_version, getScriptVersion())
     state.init_todos(bootstrap_todos(todo_list))
     state.load()
   except Exception as e:
@@ -1351,7 +1352,7 @@ def main():
 
 
 sys.path.append(os.path.dirname(__file__))
-current_git_root = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), os.path.pardir, os.path.pardir))
+current_git_root = Path(os.path.join(Path(os.path.dirname(__file__)).resolve(), os.path.pardir, os.path.pardir)).resolve()
 
 dry_run = False
 
