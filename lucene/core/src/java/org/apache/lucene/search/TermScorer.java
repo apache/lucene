@@ -134,6 +134,10 @@ public final class TermScorer extends Scorer {
       docAndFreqBuffer = new DocAndFreqBuffer();
     }
 
+    if (impactsDisi != null) {
+      impactsDisi.ensureCompetitive();
+    }
+
     for (; ; ) {
       postingsEnum.nextPostings(upTo, docAndFreqBuffer);
       if (liveDocs != null && docAndFreqBuffer.size != 0) {
