@@ -18,14 +18,17 @@
 package org.apache.lucene.search;
 
 import java.util.concurrent.atomic.LongAccumulator;
+import org.apache.lucene.util.NumericUtils;
 
 /** Maintains the maximum score and its corresponding document id concurrently */
 final class MaxScoreAccumulator {
   // we use 2^10-1 to check the remainder with a bitwise operation
-  static final int DEFAULT_INTERVAL = 0x3ff;
+  private static final int DEFAULT_INTERVAL = 0x3ff;
+  private static final int POS_INF_TO_SORTABLE_INT = NumericUtils.floatToSortableInt(Float.POSITIVE_INFINITY);
+  static final long LEAST_COMPETITIVE_CODE = encode(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
 
   // scores are always positive
-  final LongAccumulator acc = new LongAccumulator(MaxScoreAccumulator::maxEncode, Long.MIN_VALUE);
+  final LongAccumulator acc = new LongAccumulator(Math::max, Long.MIN_VALUE);
 
   // non-final and visible for tests
   long modInterval;
@@ -34,35 +37,41 @@ final class MaxScoreAccumulator {
     this.modInterval = DEFAULT_INTERVAL;
   }
 
-  /**
-   * Return the max encoded docId and score found in the two longs, following the encoding in {@link
-   * #accumulate}.
-   */
-  private static long maxEncode(long v1, long v2) {
-    float score1 = Float.intBitsToFloat((int) (v1 >> 32));
-    float score2 = Float.intBitsToFloat((int) (v2 >> 32));
-    int cmp = Float.compare(score1, score2);
-    if (cmp == 0) {
-      // tie-break on the minimum doc base
-      return (int) v1 < (int) v2 ? v1 : v2;
-    } else if (cmp > 0) {
-      return v1;
-    }
-    return v2;
-  }
-
   void accumulate(int docId, float score) {
     assert docId >= 0 && score >= 0;
-    long encode = (((long) Float.floatToIntBits(score)) << 32) | docId;
-    acc.accumulate(encode);
+    acc.accumulate(encode(docId, score));
   }
 
-  public static float toScore(long value) {
-    return Float.intBitsToFloat((int) (value >> 32));
+  void accumulateIntScore(int docId, int score) {
+    assert docId >= 0 && score >= 0;
+    acc.accumulate(encodeIntScore(docId, score));
   }
 
-  public static int docId(long value) {
-    return (int) value;
+  static long encode(int docId, float score) {
+    return encodeIntScore(docId, NumericUtils.floatToSortableInt(score));
+  }
+
+  static long encodeIntScore(int docId, int score) {
+    return (((long) score) << 32) | (Integer.MAX_VALUE - docId);
+  }
+
+  static float toScore(long value) {
+    return NumericUtils.sortableIntToFloat(toIntScore(value));
+  }
+
+  static int toIntScore(long value) {
+    return (int) (value >>> 32);
+  }
+
+  static int docId(long value) {
+    return Integer.MAX_VALUE - ((int) value);
+  }
+
+  static int nextUp(int intScore) {
+    assert intScore <= POS_INF_TO_SORTABLE_INT;
+    int nextUp = Math.min(POS_INF_TO_SORTABLE_INT, intScore + 1);
+    assert nextUp == NumericUtils.floatToSortableInt(Math.nextUp(NumericUtils.sortableIntToFloat(intScore)));
+    return nextUp;
   }
 
   long getRaw() {

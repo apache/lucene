@@ -17,7 +17,10 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.stream.IntStream;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.util.LongHeap;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * A {@link Collector} implementation that collects the top-scoring hits, returning them as a {@link
@@ -32,29 +35,19 @@ import org.apache.lucene.index.LeafReaderContext;
 public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
   private final ScoreDoc after;
+  private final LongHeap heap;
   final int totalHitsThreshold;
   final MaxScoreAccumulator minScoreAcc;
 
   // prevents instantiation
   TopScoreDocCollector(
       int numHits, ScoreDoc after, int totalHitsThreshold, MaxScoreAccumulator minScoreAcc) {
-    super(new HitQueue(numHits, true));
+    super(null);
+    this.heap = new LongHeap(numHits);
+    IntStream.range(0, numHits).forEach(_ -> heap.push(MaxScoreAccumulator.LEAST_COMPETITIVE_CODE));
     this.after = after;
     this.totalHitsThreshold = totalHitsThreshold;
     this.minScoreAcc = minScoreAcc;
-  }
-
-  @Override
-  protected int topDocsSize() {
-    // Note: this relies on sentinel values having Integer.MAX_VALUE as a doc ID.
-    int[] validTopHitCount = new int[1];
-    pq.forEach(
-        scoreDoc -> {
-          if (scoreDoc.doc != Integer.MAX_VALUE) {
-            validTopHitCount[0]++;
-          }
-        });
-    return validTopHitCount[0];
   }
 
   @Override
@@ -73,23 +66,32 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
     final int docBase = context.docBase;
     final ScoreDoc after = this.after;
-    final float afterScore;
+    final int afterScore;
     final int afterDoc;
     if (after == null) {
-      afterScore = Float.POSITIVE_INFINITY;
+      afterScore = NumericUtils.floatToSortableInt(Float.POSITIVE_INFINITY);
       afterDoc = DocIdSetIterator.NO_MORE_DOCS;
     } else {
-      afterScore = after.score;
+      afterScore = NumericUtils.floatToSortableInt(after.score);
       afterDoc = after.doc - context.docBase;
     }
+//    final long afterEncode;
+//    if (after == null) {
+//      afterEncode =
+//      MaxScoreAccumulator.encode(DocIdSetIterator.NO_MORE_DOCS, Float.POSITIVE_INFINITY);
+//    } else {
+//      afterEncode =
+//      MaxScoreAccumulator.encode(after.doc, after.score);
+//    }
 
     return new LeafCollector() {
 
       private Scorable scorer;
       // HitQueue implements getSentinelObject to return a ScoreDoc, so we know
       // that at this point top() is already initialized.
-      private ScoreDoc pqTop = pq.top();
-      private float minCompetitiveScore;
+      private int topDoc = MaxScoreAccumulator.docId(heap.top());
+      private int topScore = MaxScoreAccumulator.toIntScore(heap.top());;
+      private int minCompetitiveScore;
 
       @Override
       public void setScorer(Scorable scorer) throws IOException {
@@ -103,7 +105,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
       @Override
       public void collect(int doc) throws IOException {
-        float score = scorer.score();
+        final int score = NumericUtils.floatToSortableInt(scorer.score());
 
         int hitCountSoFar = ++totalHits;
 
@@ -121,7 +123,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           return;
         }
 
-        if (score <= pqTop.score) {
+        if (score <= topScore) {
           // Note: for queries that match lots of hits, this is the common case: most hits are not
           // competitive.
           if (hitCountSoFar == totalHitsThreshold + 1) {
@@ -138,10 +140,11 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
         }
       }
 
-      private void collectCompetitiveHit(int doc, float score) throws IOException {
-        pqTop.doc = doc + docBase;
-        pqTop.score = score;
-        pqTop = pq.updateTop();
+      private void collectCompetitiveHit(int doc, int score) throws IOException {
+        final long encode = MaxScoreAccumulator.encodeIntScore(doc + docBase, score);
+        long topEncode = heap.updateTop(encode);
+        topDoc = MaxScoreAccumulator.docId(topEncode);
+        topScore = MaxScoreAccumulator.toIntScore(topEncode);
         updateMinCompetitiveScore(scorer);
       }
 
@@ -152,10 +155,10 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           // since we tie-break on doc id and collect in doc id order we can require
           // the next float if the global minimum score is set on a document id that is
           // smaller than the ids in the current leaf
-          float score = MaxScoreAccumulator.toScore(maxMinScore);
-          score = docBase >= MaxScoreAccumulator.docId(maxMinScore) ? Math.nextUp(score) : score;
+          int score = MaxScoreAccumulator.toIntScore(maxMinScore);
+          score = docBase >= MaxScoreAccumulator.docId(maxMinScore) ? MaxScoreAccumulator.nextUp(score) : score;
           if (score > minCompetitiveScore) {
-            scorer.setMinCompetitiveScore(score);
+            scorer.setMinCompetitiveScore(NumericUtils.sortableIntToFloat(score));
             minCompetitiveScore = score;
             totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
           }
@@ -164,23 +167,78 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
       private void updateMinCompetitiveScore(Scorable scorer) throws IOException {
         if (totalHits > totalHitsThreshold) {
-          // since we tie-break on doc id and collect in doc id order, we can require the next float
-          // pqTop is never null since TopScoreDocCollector fills the priority queue with sentinel
-          // values if the top element is a sentinel value, its score will be -Infty and the below
-          // logic is still valid
-          float localMinScore = Math.nextUp(pqTop.score);
-          if (localMinScore > minCompetitiveScore) {
-            scorer.setMinCompetitiveScore(localMinScore);
+          if (topScore >= minCompetitiveScore) {
+            minCompetitiveScore = MaxScoreAccumulator.nextUp(topScore);
+            scorer.setMinCompetitiveScore(NumericUtils.sortableIntToFloat(minCompetitiveScore));
             totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
-            minCompetitiveScore = localMinScore;
             if (minScoreAcc != null) {
               // we don't use the next float but we register the document id so that other leaves or
               // leaf partitions can require it if they are after the current maximum
-              minScoreAcc.accumulate(pqTop.doc, pqTop.score);
+              minScoreAcc.accumulateIntScore(topDoc, topScore);
             }
           }
         }
       }
     };
+  }
+
+  @Override
+  protected int topDocsSize() {
+    int cnt = 0;
+    for (int i = 1; i <= heap.size(); i++) {
+      if (heap.get(i) != MaxScoreAccumulator.LEAST_COMPETITIVE_CODE) {
+        cnt++;
+      }
+    }
+    return cnt;
+  }
+
+  @Override
+  protected void populateResults(ScoreDoc[] results, int howMany) {
+    for (int i = howMany - 1; i >= 0; i--) {
+      long encode = heap.pop();
+      results[i] =
+          new ScoreDoc(MaxScoreAccumulator.docId(encode), MaxScoreAccumulator.toScore(encode));
+    }
+  }
+
+  @Override
+  public TopDocs topDocs(int start, int howMany) {
+    // In case pq was populated with sentinel values, there might be less
+    // results than pq.size(). Therefore return all results until either
+    // pq.size() or totalHits.
+    int size = topDocsSize();
+
+    if (howMany < 0) {
+      throw new IllegalArgumentException(
+          "Number of hits requested must be greater than 0 but value was " + howMany);
+    }
+
+    if (start < 0) {
+      throw new IllegalArgumentException(
+          "Expected value of starting position is between 0 and " + size + ", got " + start);
+    }
+
+    if (start >= size || howMany == 0) {
+      return newTopDocs(null, start);
+    }
+
+    // We know that start < pqsize, so just fix howMany.
+    howMany = Math.min(size - start, howMany);
+    ScoreDoc[] results = new ScoreDoc[howMany];
+
+    // pq's pop() returns the 'least' element in the queue, therefore need
+    // to discard the first ones, until we reach the requested range.
+    // Note that this loop will usually not be executed, since the common usage
+    // should be that the caller asks for the last howMany results. However it's
+    // needed here for completeness.
+    for (int i = heap.size() - start - howMany; i > 0; i--) {
+      heap.pop();
+    }
+
+    // Get the requested results from pq.
+    populateResults(results, howMany);
+
+    return newTopDocs(results, start);
   }
 }
