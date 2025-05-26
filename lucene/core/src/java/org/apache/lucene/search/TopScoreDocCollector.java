@@ -82,7 +82,6 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       // that at this point top() is already initialized.
       private long topCode = heap.top();
       private int topScore = DocScoreEncoder.toIntScore(topCode);
-      ;
       private int minCompetitiveScore;
 
       @Override
