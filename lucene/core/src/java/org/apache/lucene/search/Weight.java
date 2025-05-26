@@ -231,16 +231,9 @@ public abstract class Weight implements SegmentCacheable {
     private final Scorer scorer;
     private final DocIdSetIterator iterator;
     private final TwoPhaseIterator twoPhase;
-    private final ScoreMode scoreMode;
-    private DocAndScoreBuffer buffer;
 
     /** Sole constructor. */
     public DefaultBulkScorer(Scorer scorer) {
-      this(scorer, null);
-    }
-
-    /** Sole constructor. */
-    public DefaultBulkScorer(Scorer scorer, ScoreMode scoreMode) {
       this.scorer = Objects.requireNonNull(scorer);
       this.twoPhase = scorer.twoPhaseIterator();
       if (twoPhase == null) {
@@ -248,7 +241,6 @@ public abstract class Weight implements SegmentCacheable {
       } else {
         this.iterator = twoPhase.approximation();
       }
-      this.scoreMode = scoreMode;
     }
 
     @Override
@@ -259,13 +251,8 @@ public abstract class Weight implements SegmentCacheable {
     @Override
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {
-      DocIdSetIterator competitiveIterator = collector.competitiveIterator();
-
-      if (scoreMode != null && scoreMode.needsScores() && competitiveIterator == null) {
-        return batchScore(collector, acceptDocs, min, max);
-      }
-
       collector.setScorer(scorer);
+      DocIdSetIterator competitiveIterator = collector.competitiveIterator();
 
       if (competitiveIterator != null) {
         if (competitiveIterator.docID() > min) {
@@ -301,35 +288,6 @@ public abstract class Weight implements SegmentCacheable {
       }
 
       return iterator.docID();
-    }
-
-    private int batchScore(LeafCollector collector, Bits acceptDocs, int min, int max)
-        throws IOException {
-      if (buffer == null) {
-        buffer = new DocAndScoreBuffer();
-      }
-
-      SimpleScorable scorable = new SimpleScorable();
-      collector.setScorer(scorable);
-      scorer.setMinCompetitiveScore(scorable.minCompetitiveScore);
-
-      if (scorer.docID() < min) {
-        scorer.iterator().advance(min);
-      }
-
-      for (scorer.nextDocsAndScores(max, acceptDocs, buffer);
-          buffer.size > 0;
-          scorer.nextDocsAndScores(max, acceptDocs, buffer)) {
-        for (int i = 0, size = buffer.size; i < size; i++) {
-          float score = scorable.score = buffer.scores[i];
-          if (score >= scorable.minCompetitiveScore) {
-            collector.collect(buffer.docs[i]);
-          }
-        }
-        scorer.setMinCompetitiveScore(scorable.minCompetitiveScore);
-      }
-
-      return scorer.docID();
     }
 
     private static void scoreIterator(
