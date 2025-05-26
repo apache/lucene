@@ -135,6 +135,10 @@ public final class TermScorer extends Scorer {
     }
 
     for (; ; ) {
+      if (impactsDisi != null) {
+        impactsDisi.ensureCompetitive();
+      }
+
       postingsEnum.nextPostings(upTo, docAndFreqBuffer);
       if (liveDocs != null && docAndFreqBuffer.size != 0) {
         // An empty return value indicates that there are no more docs before upTo. We may be

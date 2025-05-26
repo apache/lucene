@@ -63,6 +63,8 @@ Optimizations
 * GITHUB#14701: Optimize top-n bulk scorers by evaluating scoring windows in a
   term-at-a-time fashion instead of doc-at-a-time. (Adrien Grand)
 
+* GITHUB#14709: Speed up TermQuery by Scorer#nextDocsAndScores. (Guo Feng)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
