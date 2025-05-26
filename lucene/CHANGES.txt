@@ -124,6 +124,8 @@ Optimizations
 
 * GITHUB#14709: Speed up TermQuery by Scorer#nextDocsAndScores. (Guo Feng)
 
+* GITHUB#14674: Optimize AbstractKnnVectorQuery#createBitSet with intoBitset. (Guo Feng)
+
 Bug Fixes
 ---------------------
 * GITHUB#14654: ValueSource.fromDoubleValuesSource(dvs).getSortField() would throw errors when
