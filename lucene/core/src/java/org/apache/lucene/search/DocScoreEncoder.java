@@ -1,12 +1,15 @@
 package org.apache.lucene.search;
 
-import java.util.Comparator;
 import org.apache.lucene.util.NumericUtils;
 
 /**
  * An encoder do encode (doc, score) pair as a long whose sort order is same as {@code (o1, o2) ->
  * Float.compare(o1.score, o2.score)).thenComparing(Comparator.comparingInt((ScoreDoc o) ->
  * o.doc).reversed())}
+ *
+ * <p>Note that negative score is allowed but relationship between two codes encoded by negative
+ * scores is undefined. The only thing guaranteed is codes encoded from negative score are smaller
+ * than codes encoded from non-negative score.
  */
 class DocScoreEncoder {
 

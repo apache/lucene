@@ -22,28 +22,28 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestMaxScoreAccumulator extends LuceneTestCase {
   public void testSimple() {
     MaxScoreAccumulator acc = new MaxScoreAccumulator();
-    acc.accumulate(0, 0f);
+    acc.accumulate(DocScoreEncoder.encode(0, 0f));
     assertEquals(0f, DocScoreEncoder.toScore(acc.getRaw()), 0);
     assertEquals(0, DocScoreEncoder.docId(acc.getRaw()), 0);
-    acc.accumulate(10, 0f);
+    acc.accumulate(DocScoreEncoder.encode(10, 0f));
     assertEquals(0f, DocScoreEncoder.toScore(acc.getRaw()), 0);
     assertEquals(0, DocScoreEncoder.docId(acc.getRaw()), 0);
-    acc.accumulate(100, 1000f);
+    acc.accumulate(DocScoreEncoder.encode(100, 1000f));
     assertEquals(1000f, DocScoreEncoder.toScore(acc.getRaw()), 0);
     assertEquals(100, DocScoreEncoder.docId(acc.getRaw()), 0);
-    acc.accumulate(1000, 5f);
+    acc.accumulate(DocScoreEncoder.encode(1000, 5f));
     assertEquals(1000f, DocScoreEncoder.toScore(acc.getRaw()), 0);
     assertEquals(100, DocScoreEncoder.docId(acc.getRaw()), 0);
-    acc.accumulate(99, 1000f);
+    acc.accumulate(DocScoreEncoder.encode(99, 1000f));
     assertEquals(1000f, DocScoreEncoder.toScore(acc.getRaw()), 0);
     assertEquals(99, DocScoreEncoder.docId(acc.getRaw()), 0);
-    acc.accumulate(1000, 1001f);
+    acc.accumulate(DocScoreEncoder.encode(1000, 1001f));
     assertEquals(1001f, DocScoreEncoder.toScore(acc.getRaw()), 0);
     assertEquals(1000, DocScoreEncoder.docId(acc.getRaw()), 0);
-    acc.accumulate(10, 1001f);
+    acc.accumulate(DocScoreEncoder.encode(10, 1001f));
     assertEquals(1001f, DocScoreEncoder.toScore(acc.getRaw()), 0);
     assertEquals(10, DocScoreEncoder.docId(acc.getRaw()), 0);
-    acc.accumulate(100, 1001f);
+    acc.accumulate(DocScoreEncoder.encode(100, 1001f));
     assertEquals(1001f, DocScoreEncoder.toScore(acc.getRaw()), 0);
     assertEquals(10, DocScoreEncoder.docId(acc.getRaw()), 0);
   }

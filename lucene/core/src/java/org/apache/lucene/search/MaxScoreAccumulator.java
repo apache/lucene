@@ -34,11 +34,6 @@ final class MaxScoreAccumulator {
     this.modInterval = DEFAULT_INTERVAL;
   }
 
-  void accumulate(int docId, float score) {
-    assert docId >= 0 && score >= 0;
-    acc.accumulate(DocScoreEncoder.encode(docId, score));
-  }
-
   void accumulate(long code) {
     acc.accumulate(code);
   }

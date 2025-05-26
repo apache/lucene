@@ -1,38 +1,71 @@
 package org.apache.lucene.search;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.NumericUtils;
 
 public class TestDocScoreEncoder extends LuceneTestCase {
 
-  public void testFloat() {
-    for (int i = 0; i < 100; i++) {
-      doAssert(Float.intBitsToFloat(random().nextInt()), Float.intBitsToFloat(random().nextInt()));
+  public void testRandom() {
+    for (int i = 0; i < 1000; i++) {
+      doAssert(
+          Float.intBitsToFloat(random().nextInt()),
+          random().nextInt(Integer.MAX_VALUE),
+          Float.intBitsToFloat(random().nextInt()),
+          random().nextInt(Integer.MAX_VALUE)
+      );
     }
   }
 
-  private void doAssert(float f1, float f2) {
-    if (Float.isNaN(f1) || Float.isNaN(f2)) {
+  public void testSameDoc() {
+    for (int i = 0; i < 1000; i++) {
+      doAssert(
+          Float.intBitsToFloat(random().nextInt()),
+          1,
+          Float.intBitsToFloat(random().nextInt()),
+          1
+      );
+    }
+  }
+
+  public void testSameScore() {
+    for (int i = 0; i < 1000; i++) {
+      doAssert(
+          1f,
+          random().nextInt(Integer.MAX_VALUE),
+          1f,
+          random().nextInt(Integer.MAX_VALUE)
+      );
+    }
+  }
+
+  private void doAssert(float score1, int doc1, float score2, int doc2) {
+    if (Float.isNaN(score1) || Float.isNaN(score2)) {
       return;
     }
 
-    int rawInt1 = Float.floatToRawIntBits(f1);
-    int rawInt2 = Float.floatToRawIntBits(f2);
-    int sortInt1 = NumericUtils.floatToSortableInt(f1);
-    int sortInt2 = NumericUtils.floatToSortableInt(f2);
+    long code1 = DocScoreEncoder.encode(doc1, score1);
+    long code2 = DocScoreEncoder.encode(doc2, score2);
 
-    if (f1 > 0) {
-      assertTrue(rawInt1 > 0);
-      assertEquals(rawInt1, sortInt1);
+    assertEquals(doc1, DocScoreEncoder.docId(code1));
+    assertEquals(doc2, DocScoreEncoder.docId(code2));
+    assertEquals(score1, DocScoreEncoder.toScore(code1), 0f);
+    assertEquals(score2, DocScoreEncoder.toScore(code2), 0f);
+
+    if (score1 < 0 && score2 < 0) {
+      return;
     }
 
-    //        System.out.println("f1: " + f1);
-    //        System.out.println("rawInt1: " + rawInt1);
-    //        System.out.println("sortInt1: " + sortInt1);
-    //        System.out.println("f2: " + f2);
-    //        System.out.println("rawInt2: " + rawInt2);
-    //        System.out.println("sortInt2: " + sortInt2);
-    //        System.out.println();
-
+    if (score1 < 0) {
+      assertTrue(code1 < code2);
+    } else if (score2 < 0) {
+      assertTrue(code2 < code1);
+    } else if (score1 == score2 && doc1 == doc2) {
+      assertEquals(code1, code2);
+    } else if (score1 < score2) {
+      assertTrue(code1 < code2);
+    } else if (score1 > score2) {
+      assertTrue(code1 > code2);
+    } else {
+      assertEquals(code1 > code2, doc1 < doc2);
+    }
   }
 }
