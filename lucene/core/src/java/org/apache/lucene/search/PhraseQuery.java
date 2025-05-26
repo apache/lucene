@@ -23,11 +23,9 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsFormat;
 import org.apache.lucene.codecs.lucene103.Lucene103PostingsReader;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.TermStates;
@@ -312,16 +310,13 @@ public class PhraseQuery extends Query {
    */
   public static class PostingsAndFreq implements Comparable<PostingsAndFreq> {
     final PostingsEnum postings;
-    final ImpactsEnum impacts;
     final int position;
     final Term[] terms;
     final int nTerms; // for faster comparisons
 
     /** Creates PostingsAndFreq instance */
-    public PostingsAndFreq(
-        PostingsEnum postings, ImpactsEnum impacts, int position, Term... terms) {
+    public PostingsAndFreq(PostingsEnum postings, int position, Term... terms) {
       this.postings = postings;
-      this.impacts = impacts;
       this.position = position;
       nTerms = terms == null ? 0 : terms.length;
       if (nTerms > 0) {
@@ -338,10 +333,8 @@ public class PhraseQuery extends Query {
       }
     }
 
-    public PostingsAndFreq(
-        PostingsEnum postings, ImpactsEnum impacts, int position, List<Term> terms) {
+    public PostingsAndFreq(PostingsEnum postings, int position, List<Term> terms) {
       this.postings = postings;
-      this.impacts = impacts;
       this.position = position;
       nTerms = terms == null ? 0 : terms.size();
       if (nTerms > 0) {
@@ -507,17 +500,15 @@ public class PhraseQuery extends Query {
           }
           te.seekExact(t.bytes(), state);
           PostingsEnum postingsEnum;
-          ImpactsEnum impactsEnum;
-          if (scoreMode == ScoreMode.TOP_SCORES) {
-            postingsEnum =
-                impactsEnum =
-                    te.impacts(exposeOffsets ? PostingsEnum.OFFSETS : PostingsEnum.POSITIONS);
-          } else {
-            postingsEnum =
-                te.postings(null, exposeOffsets ? PostingsEnum.OFFSETS : PostingsEnum.POSITIONS);
-            impactsEnum = new SlowImpactsEnum(postingsEnum);
+          int flags = PostingsEnum.POSITIONS;
+          if (exposeOffsets) {
+            flags |= PostingsEnum.OFFSETS;
           }
-          postingsFreqs[i] = new PostingsAndFreq(postingsEnum, impactsEnum, positions[i], t);
+          if (scoreMode == ScoreMode.TOP_SCORES) {
+            flags |= PostingsEnum.IMPACTS;
+          }
+          postingsEnum = te.postings(null, flags);
+          postingsFreqs[i] = new PostingsAndFreq(postingsEnum, positions[i], t);
           totalMatchCost += termPositionsCost(te);
         }
 

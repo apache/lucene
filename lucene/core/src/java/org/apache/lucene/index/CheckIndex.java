@@ -2074,7 +2074,7 @@ public final class CheckIndex implements Closeable {
           if (level >= Level.MIN_LEVEL_FOR_SLOW_CHECKS) {
             int max = -1;
             int maxFreq = 0;
-            ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
+            PostingsEnum impactsEnum = termsEnum.postings(null, PostingsEnum.IMPACTS);
             postings = termsEnum.postings(postings, PostingsEnum.FREQS);
             for (int doc = impactsEnum.nextDoc(); ; doc = impactsEnum.nextDoc()) {
               if (postings.nextDoc() != doc) {
@@ -2107,7 +2107,7 @@ public final class CheckIndex implements Closeable {
           }
 
           // Now check advancing
-          ImpactsEnum impactsEnum = termsEnum.impacts(PostingsEnum.FREQS);
+          PostingsEnum impactsEnum = termsEnum.postings(null, PostingsEnum.IMPACTS);
           postings = termsEnum.postings(postings, PostingsEnum.FREQS);
 
           int max = -1;
@@ -2538,6 +2538,7 @@ public final class CheckIndex implements Closeable {
 
     int docIdUpTo0 = impacts.getDocIdUpTo(0);
     if (docIdUpTo0 < lastTarget) {
+      impacts.getDocIdUpTo(0);
       throw new CheckIndexException(
           "getDocIdUpTo returned "
               + docIdUpTo0

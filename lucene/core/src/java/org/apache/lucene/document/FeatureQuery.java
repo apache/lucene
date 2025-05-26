@@ -19,7 +19,6 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.document.FeatureField.FeatureFunction;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
@@ -133,7 +132,7 @@ final class FeatureQuery extends Query {
           @Override
           public Scorer get(long leadCost) throws IOException {
             final SimScorer scorer = function.scorer(boost);
-            final ImpactsEnum impacts = termsEnum.impacts(PostingsEnum.FREQS);
+            final PostingsEnum impacts = termsEnum.postings(null, PostingsEnum.IMPACTS);
             return new TermScorer(impacts, scorer, null, topLevelScoringClause);
           }
 

@@ -272,11 +272,6 @@ class FreqProxFields extends Fields {
       return docsEnum;
     }
 
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
     /**
      * Expert: Returns the TermsEnums internal state to position the TermsEnum without re-seeking
      * the term dictionary.

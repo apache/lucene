@@ -18,10 +18,8 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
@@ -45,8 +43,7 @@ public final class TermScorer extends Scorer {
   /** Construct a {@link TermScorer} that will iterate all documents. */
   public TermScorer(PostingsEnum postingsEnum, SimScorer scorer, NumericDocValues norms) {
     iterator = this.postingsEnum = postingsEnum;
-    ImpactsEnum impactsEnum = new SlowImpactsEnum(postingsEnum);
-    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
+    maxScoreCache = new MaxScoreCache(postingsEnum, scorer);
     impactsDisi = null;
     this.scorer = scorer;
     this.norms = norms;
@@ -57,7 +54,7 @@ public final class TermScorer extends Scorer {
    * documents.
    */
   public TermScorer(
-      ImpactsEnum impactsEnum,
+      PostingsEnum impactsEnum,
       SimScorer scorer,
       NumericDocValues norms,
       boolean topLevelScoringClause) {

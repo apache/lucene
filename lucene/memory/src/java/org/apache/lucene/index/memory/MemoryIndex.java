@@ -1924,11 +1924,6 @@ public class MemoryIndex {
       }
 
       @Override
-      public ImpactsEnum impacts(int flags) throws IOException {
-        return new SlowImpactsEnum(postings(null, flags));
-      }
-
-      @Override
       public void seekExact(BytesRef term, TermState state) throws IOException {
         assert state != null;
         this.seekExact(((OrdTermState) state).ord);

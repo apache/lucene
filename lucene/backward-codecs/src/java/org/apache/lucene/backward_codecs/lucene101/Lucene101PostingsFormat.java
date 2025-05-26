@@ -24,7 +24,6 @@ import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -347,16 +346,6 @@ public class Lucene101PostingsFormat extends PostingsFormat {
   public static final int LEVEL1_NUM_DOCS = LEVEL1_FACTOR * BLOCK_SIZE;
 
   static final int LEVEL1_MASK = LEVEL1_NUM_DOCS - 1;
-
-  /**
-   * Return the class that implements {@link ImpactsEnum} in this {@link PostingsFormat}. This is
-   * internally used to help the JVM make good inlining decisions.
-   *
-   * @lucene.internal
-   */
-  public static Class<? extends ImpactsEnum> getImpactsEnumImpl() {
-    return Lucene101PostingsReader.BlockPostingsEnum.class;
-  }
 
   static final String TERMS_CODEC = "Lucene90PostingsWriterTerms";
   static final String META_CODEC = "Lucene101PostingsWriterMeta";

@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.index.BaseTermsEnum;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.store.ByteArrayDataInput;
@@ -1119,19 +1118,6 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     // System.out.println("  state=" + currentFrame.state);
     // }
     return fr.parent.postingsReader.postings(fr.fieldInfo, currentFrame.state, reuse, flags);
-  }
-
-  @Override
-  public ImpactsEnum impacts(int flags) throws IOException {
-    assert !eof;
-    // if (DEBUG) {
-    // System.out.println("BTTR.docs seg=" + segment);
-    // }
-    currentFrame.decodeMetaData();
-    // if (DEBUG) {
-    // System.out.println("  state=" + currentFrame.state);
-    // }
-    return fr.parent.postingsReader.impacts(fr.fieldInfo, currentFrame.state, flags);
   }
 
   @Override

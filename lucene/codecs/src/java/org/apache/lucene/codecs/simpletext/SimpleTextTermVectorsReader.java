@@ -16,7 +16,22 @@
  */
 package org.apache.lucene.codecs.simpletext;
 
-import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.*;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.DOC;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.END;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.ENDOFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELD;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDNAME;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDOFFSETS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDPAYLOADS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDPOSITIONS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.FIELDTERMCOUNT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.NUMFIELDS;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.PAYLOAD;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.POSITION;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.STARTOFFSET;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.TERMFREQ;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.TERMTEXT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.VECTORS_EXTENSION;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -27,11 +42,9 @@ import java.util.TreeMap;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.Fields;
-import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
-import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -414,11 +427,6 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
               ? 1
               : current.getValue().freq);
       return e;
-    }
-
-    @Override
-    public ImpactsEnum impacts(int flags) throws IOException {
-      return new SlowImpactsEnum(postings(null, PostingsEnum.FREQS));
     }
   }
 
