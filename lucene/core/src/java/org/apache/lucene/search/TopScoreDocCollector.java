@@ -78,8 +78,6 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     return new LeafCollector() {
 
       private Scorable scorer;
-      // HitQueue implements getSentinelObject to return a ScoreDoc, so we know
-      // that at this point top() is already initialized.
       private long topCode = heap.top();
       private int topScore = DocScoreEncoder.toIntScore(topCode);
       private int minCompetitiveScore;
