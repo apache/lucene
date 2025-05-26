@@ -233,7 +233,6 @@ public abstract class Weight implements SegmentCacheable {
     private final TwoPhaseIterator twoPhase;
     private final ScoreMode scoreMode;
     private DocAndScoreBuffer buffer;
-    private SimpleScorable scorable;
 
     /** Sole constructor. */
     public DefaultBulkScorer(Scorer scorer) {
@@ -309,10 +308,8 @@ public abstract class Weight implements SegmentCacheable {
       if (buffer == null) {
         buffer = new DocAndScoreBuffer();
       }
-      if (scorable == null) {
-        scorable = new SimpleScorable();
-      }
 
+      SimpleScorable scorable = new SimpleScorable();
       collector.setScorer(scorable);
       scorer.setMinCompetitiveScore(scorable.minCompetitiveScore);
 
