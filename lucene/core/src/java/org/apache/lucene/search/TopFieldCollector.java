@@ -367,7 +367,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
       long maxMinScore = minScoreAcc.getRaw();
       float score;
       if (maxMinScore != Long.MIN_VALUE
-          && (score = MaxScoreAccumulator.toScore(maxMinScore)) > minCompetitiveScore) {
+          && (score = DocScoreEncoder.toScore(maxMinScore)) > minCompetitiveScore) {
         scorer.setMinCompetitiveScore(score);
         minCompetitiveScore = score;
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;

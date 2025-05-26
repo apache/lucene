@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.stream.IntStream;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.LongHeap;
-import org.apache.lucene.util.NumericUtils;
 
 /**
  * A {@link Collector} implementation that collects the top-scoring hits, returning them as a {@link
@@ -44,7 +43,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       int numHits, ScoreDoc after, int totalHitsThreshold, MaxScoreAccumulator minScoreAcc) {
     super(null);
     this.heap = new LongHeap(numHits);
-    IntStream.range(0, numHits).forEach(_ -> heap.push(MaxScoreAccumulator.LEAST_COMPETITIVE_CODE));
+    IntStream.range(0, numHits).forEach(_ -> heap.push(DocScoreEncoder.LEAST_COMPETITIVE_CODE));
     this.after = after;
     this.totalHitsThreshold = totalHitsThreshold;
     this.minScoreAcc = minScoreAcc;
@@ -69,28 +68,21 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     final int afterScore;
     final int afterDoc;
     if (after == null) {
-      afterScore = NumericUtils.floatToSortableInt(Float.POSITIVE_INFINITY);
+      afterScore = Integer.MAX_VALUE;
       afterDoc = DocIdSetIterator.NO_MORE_DOCS;
     } else {
-      afterScore = NumericUtils.floatToSortableInt(after.score);
+      afterScore = DocScoreEncoder.scoreToSortableInt(after.score);
       afterDoc = after.doc - context.docBase;
     }
-//    final long afterEncode;
-//    if (after == null) {
-//      afterEncode =
-//      MaxScoreAccumulator.encode(DocIdSetIterator.NO_MORE_DOCS, Float.POSITIVE_INFINITY);
-//    } else {
-//      afterEncode =
-//      MaxScoreAccumulator.encode(after.doc, after.score);
-//    }
 
     return new LeafCollector() {
 
       private Scorable scorer;
       // HitQueue implements getSentinelObject to return a ScoreDoc, so we know
       // that at this point top() is already initialized.
-      private int topDoc = MaxScoreAccumulator.docId(heap.top());
-      private int topScore = MaxScoreAccumulator.toIntScore(heap.top());;
+      private long topCode = heap.top();
+      private int topScore = DocScoreEncoder.toIntScore(topCode);
+      ;
       private int minCompetitiveScore;
 
       @Override
@@ -105,7 +97,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
       @Override
       public void collect(int doc) throws IOException {
-        final int score = NumericUtils.floatToSortableInt(scorer.score());
+        final int score = DocScoreEncoder.scoreToSortableInt(scorer.score());
 
         int hitCountSoFar = ++totalHits;
 
@@ -141,10 +133,9 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       }
 
       private void collectCompetitiveHit(int doc, int score) throws IOException {
-        final long encode = MaxScoreAccumulator.encodeIntScore(doc + docBase, score);
-        long topEncode = heap.updateTop(encode);
-        topDoc = MaxScoreAccumulator.docId(topEncode);
-        topScore = MaxScoreAccumulator.toIntScore(topEncode);
+        final long code = DocScoreEncoder.encodeIntScore(doc + docBase, score);
+        topCode = heap.updateTop(code);
+        topScore = DocScoreEncoder.toIntScore(topCode);
         updateMinCompetitiveScore(scorer);
       }
 
@@ -155,10 +146,11 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           // since we tie-break on doc id and collect in doc id order we can require
           // the next float if the global minimum score is set on a document id that is
           // smaller than the ids in the current leaf
-          int score = MaxScoreAccumulator.toIntScore(maxMinScore);
-          score = docBase >= MaxScoreAccumulator.docId(maxMinScore) ? MaxScoreAccumulator.nextUp(score) : score;
+          int score = DocScoreEncoder.toIntScore(maxMinScore);
+          score =
+              docBase >= DocScoreEncoder.docId(maxMinScore) ? DocScoreEncoder.nextUp(score) : score;
           if (score > minCompetitiveScore) {
-            scorer.setMinCompetitiveScore(NumericUtils.sortableIntToFloat(score));
+            scorer.setMinCompetitiveScore(DocScoreEncoder.sortableIntToScore(score));
             minCompetitiveScore = score;
             totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
           }
@@ -168,13 +160,13 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
       private void updateMinCompetitiveScore(Scorable scorer) throws IOException {
         if (totalHits > totalHitsThreshold) {
           if (topScore >= minCompetitiveScore) {
-            minCompetitiveScore = MaxScoreAccumulator.nextUp(topScore);
-            scorer.setMinCompetitiveScore(NumericUtils.sortableIntToFloat(minCompetitiveScore));
+            minCompetitiveScore = DocScoreEncoder.nextUp(topScore);
+            scorer.setMinCompetitiveScore(DocScoreEncoder.sortableIntToScore(minCompetitiveScore));
             totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
             if (minScoreAcc != null) {
               // we don't use the next float but we register the document id so that other leaves or
               // leaf partitions can require it if they are after the current maximum
-              minScoreAcc.accumulateIntScore(topDoc, topScore);
+              minScoreAcc.accumulate(topCode);
             }
           }
         }
@@ -186,7 +178,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   protected int topDocsSize() {
     int cnt = 0;
     for (int i = 1; i <= heap.size(); i++) {
-      if (heap.get(i) != MaxScoreAccumulator.LEAST_COMPETITIVE_CODE) {
+      if (heap.get(i) != DocScoreEncoder.LEAST_COMPETITIVE_CODE) {
         cnt++;
       }
     }
@@ -197,8 +189,7 @@ public class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   protected void populateResults(ScoreDoc[] results, int howMany) {
     for (int i = howMany - 1; i >= 0; i--) {
       long encode = heap.pop();
-      results[i] =
-          new ScoreDoc(MaxScoreAccumulator.docId(encode), MaxScoreAccumulator.toScore(encode));
+      results[i] = new ScoreDoc(DocScoreEncoder.docId(encode), DocScoreEncoder.toScore(encode));
     }
   }
 

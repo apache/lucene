@@ -18,14 +18,11 @@
 package org.apache.lucene.search;
 
 import java.util.concurrent.atomic.LongAccumulator;
-import org.apache.lucene.util.NumericUtils;
 
 /** Maintains the maximum score and its corresponding document id concurrently */
 final class MaxScoreAccumulator {
   // we use 2^10-1 to check the remainder with a bitwise operation
   private static final int DEFAULT_INTERVAL = 0x3ff;
-  private static final int POS_INF_TO_SORTABLE_INT = NumericUtils.floatToSortableInt(Float.POSITIVE_INFINITY);
-  static final long LEAST_COMPETITIVE_CODE = encode(Integer.MAX_VALUE, Float.NEGATIVE_INFINITY);
 
   // scores are always positive
   final LongAccumulator acc = new LongAccumulator(Math::max, Long.MIN_VALUE);
@@ -39,39 +36,11 @@ final class MaxScoreAccumulator {
 
   void accumulate(int docId, float score) {
     assert docId >= 0 && score >= 0;
-    acc.accumulate(encode(docId, score));
+    acc.accumulate(DocScoreEncoder.encode(docId, score));
   }
 
-  void accumulateIntScore(int docId, int score) {
-    assert docId >= 0 && score >= 0;
-    acc.accumulate(encodeIntScore(docId, score));
-  }
-
-  static long encode(int docId, float score) {
-    return encodeIntScore(docId, NumericUtils.floatToSortableInt(score));
-  }
-
-  static long encodeIntScore(int docId, int score) {
-    return (((long) score) << 32) | (Integer.MAX_VALUE - docId);
-  }
-
-  static float toScore(long value) {
-    return NumericUtils.sortableIntToFloat(toIntScore(value));
-  }
-
-  static int toIntScore(long value) {
-    return (int) (value >>> 32);
-  }
-
-  static int docId(long value) {
-    return Integer.MAX_VALUE - ((int) value);
-  }
-
-  static int nextUp(int intScore) {
-    assert intScore <= POS_INF_TO_SORTABLE_INT;
-    int nextUp = Math.min(POS_INF_TO_SORTABLE_INT, intScore + 1);
-    assert nextUp == NumericUtils.floatToSortableInt(Math.nextUp(NumericUtils.sortableIntToFloat(intScore)));
-    return nextUp;
+  void accumulate(long code) {
+    acc.accumulate(code);
   }
 
   long getRaw() {
