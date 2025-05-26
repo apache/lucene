@@ -83,6 +83,16 @@ ext {
   isIdeaBuild = (isIdea && !isIdeaSync)
 }
 
+ext {
+  // also change this in extractor tool: ExtractForeignAPI
+  vectorIncubatorJavaVersions = [
+    JavaVersion.VERSION_21,
+    JavaVersion.VERSION_22,
+    JavaVersion.VERSION_23,
+    JavaVersion.VERSION_24
+  ] as Set
+}
+
 // TODO: this shouldn't be here but it's used in multiple scripts that are racy in lazy-evaluation.
 configure(project(":lucene:core")) {
   ext {

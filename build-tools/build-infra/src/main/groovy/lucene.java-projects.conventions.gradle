@@ -16,11 +16,15 @@
  */
 
 allprojects { project ->
-  if (project.file("src/java").exists()) {
+  if (['src/java', 'src/test'].any {path ->
+        project.file(path).exists()
+      }) {
     plugins.apply("java-library")
 
     plugins.apply("lucene.java.folder-layout")
     plugins.apply("lucene.java.javac")
     plugins.apply("lucene.java.jar-manifest")
+
+    plugins.apply("lucene.java.test-defaults")
   }
 }

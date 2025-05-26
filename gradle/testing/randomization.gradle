@@ -61,7 +61,10 @@ allprojects {
 
 // Configure test property defaults and their descriptions.
 allprojects {
-  plugins.withType(JavaPlugin) {
+  plugins.withType(JavaPlugin).configureEach {
+    if (!project.ext.hasProperty("testOptions")) {
+      project.ext.set("testOptions", [])
+    }
     project.ext {
       String randomVectorSize = RandomPicks.randomFrom(new Random(projectSeedLong), ["default", "128", "256", "512"])
       testOptions += [

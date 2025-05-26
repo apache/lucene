@@ -30,8 +30,8 @@ plugins {
 
   id "lucene.help"
 
-  id "lucene.java-projects.conventions"
   id "lucene.java.alternative-jdk-support"
+  id "lucene.java-projects.conventions"
 
   id "lucene.validation.spotless-groovy"
   id "lucene.validation.spotless-java"
@@ -64,13 +64,6 @@ apply from: file('gradle/_to-remove/globals.gradle')
 ext {
   // Minimum Java version required to compile and run Lucene.
   minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
-
-  // also change this in extractor tool: ExtractForeignAPI
-  vectorIncubatorJavaVersions = [
-    JavaVersion.VERSION_21,
-    JavaVersion.VERSION_22,
-    JavaVersion.VERSION_23,
-    JavaVersion.VERSION_24 ] as Set
 
   // Build timestamp.
   def tstamp = ZonedDateTime.now()
@@ -110,7 +103,6 @@ configure(rootProject) {
 
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
-apply from: file('gradle/testing/defaults-tests.gradle')
 apply from: file('gradle/testing/randomization.gradle')
 apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/java/modules.gradle')
