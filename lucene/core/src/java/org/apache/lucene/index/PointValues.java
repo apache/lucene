@@ -352,6 +352,7 @@ public abstract class PointValues {
   }
 
   private static void intersect(IntersectVisitor visitor, PointTree pointTree) throws IOException {
+    boolean matched = false;
     while (true) {
       Relation compare =
           visitor.compare(pointTree.getMinPackedValue(), pointTree.getMaxPackedValue());
@@ -359,6 +360,7 @@ public abstract class PointValues {
         // This cell is fully inside the query shape: recursively add all points in this cell
         // without filtering
         pointTree.visitDocIDs(visitor);
+        matched = true;
       } else if (compare == Relation.CELL_CROSSES_QUERY) {
         // The cell crosses the shape boundary, or the cell fully contains the query, so we fall
         // through and do full filtering:
@@ -369,6 +371,10 @@ public abstract class PointValues {
         // claimed?
         // Leaf node; scan and filter all points in this block:
         pointTree.visitDocValues(visitor);
+        matched = true;
+      }
+      if (matched) {
+        return;
       }
       while (pointTree.moveToSibling() == false) {
         if (pointTree.moveToParent() == false) {

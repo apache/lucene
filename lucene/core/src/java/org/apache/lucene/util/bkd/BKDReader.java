@@ -908,7 +908,9 @@ public class BKDReader extends PointValues {
               config.bytesPerDim() - prefix);
         }
         scratchIterator.reset(i, length);
-        visitor.visit(scratchIterator, scratchPackedValue);
+        if (visitor.compare(scratchPackedValue, scratchPackedValue) != PointValues.Relation.CELL_OUTSIDE_QUERY) {
+          visitor.visit(new IntsRef(scratchIterator.docIDs, i, length));
+        }
         i += length;
       }
       if (i != count) {
@@ -954,7 +956,9 @@ public class BKDReader extends PointValues {
                 dim * config.bytesPerDim() + prefix,
                 config.bytesPerDim() - prefix);
           }
-          visitor.visit(scratchIterator.docIDs[i + j], scratchPackedValue);
+          if (visitor.compare(scratchPackedValue, scratchPackedValue) != PointValues.Relation.CELL_OUTSIDE_QUERY) {
+            visitor.visit(new IntsRef(scratchIterator.docIDs, i, runLen));
+          }
         }
         i += runLen;
       }
