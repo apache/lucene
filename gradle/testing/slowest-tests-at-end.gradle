@@ -21,16 +21,12 @@ def allTests = []
 def allSuites = []
 
 allprojects {
-  plugins.withType(JavaPlugin) {
-    project.ext {
-      testOptions += [
-          [propName: 'tests.slowestTests', value: true, description: "Print the summary of the slowest tests."],
-          [propName: 'tests.slowestSuites', value: true, description: "Print the summary of the slowest suites."]
-      ]
-    }
+  plugins.withType(JavaPlugin).configureEach {
+    Provider<Boolean> slowestTestsOption = buildOptions.addBooleanOption("tests.slowestTests", "Print the summary of the slowest tests.", true)
+    Provider<Boolean> slowestSuitesOption = buildOptions.addBooleanOption("tests.slowestSuites", "Print the summary of the slowest suites.", true)
 
-    tasks.withType(Test) { task ->
-      if (resolvedTestOption("tests.slowestTests").toBoolean()) {
+    tasks.withType(Test).configureEach { task ->
+      if (slowestTestsOption.get()) {
         afterTest { desc, result ->
           def duration = (result.getEndTime() - result.getStartTime())
 
@@ -41,7 +37,7 @@ allprojects {
         }
       }
 
-      if (resolvedTestOption("tests.slowestSuites").toBoolean()) {
+      if (slowestSuitesOption.get()) {
         afterSuite { desc, result ->
           // Gradle reports runner times as well, omit anything that isn't attached to a concrete class.
           if (desc.className != null) {

@@ -24,52 +24,50 @@
 // TODO: this is a somewhat related issue: https://github.com/gradle/test-retry-gradle-plugin/issues/29
 
 def beastingMode = gradle.startParameter.taskNames.any{ name -> name == 'beast' || name.endsWith(':beast') }
+def rootSeedUserProvided = rootProject.ext.rootSeedUserProvided
 
-allprojects {
-  plugins.withType(JavaPlugin) {
-    project.ext {
-      testOptions += [
-          [propName: 'tests.dups', value: 0, description: "Reiterate runs of entire test suites ('beast' task)."]
-      ]
-    }
+if (beastingMode) {
+  if (rootSeedUserProvided) {
+    rootProject.tasks.register("warnAboutConstantSeed", {
+      doFirst {
+        logger.warn("Root randomization seed is externally provided, all duplicated runs will use the same starting seed.")
+      }
+    })
   }
 }
 
-if (beastingMode) {
-  if (rootProject.rootSeedUserProvided) {
-    logger.warn("Root randomization seed is externally provided, all duplicated runs will use the same starting seed.")
-  }
+allprojects {
+  plugins.withType(JavaPlugin).configureEach {
+    Provider<Integer> dupsOption = buildOptions.addIntOption("tests.dups", "Reiterate runs of entire test suites this many times ('beast' task).")
 
-  allprojects {
-    plugins.withType(JavaPlugin) {
-      task beast(type: BeastTask) {
-        description "Run a test suite (or a set of tests) many times over (duplicate 'test' task)."
-        group "Verification"
-      }
+    if (beastingMode) {
+      def beastTask = tasks.register("beast", BeastTask, {
+        description = "Run a test suite (or a set of tests) many times over (duplicate 'test' task)."
+        group = "Verification"
+      })
 
-      def dups = Integer.parseInt(resolvedTestOption("tests.dups") as String)
-      if (dups <= 0) {
+      if (!dupsOption.isPresent()) {
         throw new GradleException("Specify -Ptests.dups=[count] for beast task.")
       }
 
       // generate N test tasks and attach them to the beasting task for this project;
       // the test filter will be applied by the beast task once it is received from
       // command line.
-      def subtasks = (1..dups).collect { value ->
-        return tasks.create(name: "test_${value}", type: Test, {
+      def subtasks = (1..dupsOption.get()).collect { value ->
+        return tasks.register("test_${value}", Test, {
           failFast = true
           doFirst {
             // If there is a global root seed, use it (all duplicated tasks will run
             // from the same starting seed). Otherwise pick a sequential derivative.
-            if (!rootProject.rootSeedUserProvided) {
+            if (!rootSeedUserProvided) {
               systemProperty("tests.seed",
-                  String.format("%08X", new Random(rootProject.rootSeedLong + value).nextLong()))
+                      String.format("%08X", new Random(rootProject.ext.rootSeedLong + value).nextLong()))
             }
           }
         })
       }
 
-      beast.dependsOn subtasks
+      beastTask.dependsOn subtasks
     }
   }
 }

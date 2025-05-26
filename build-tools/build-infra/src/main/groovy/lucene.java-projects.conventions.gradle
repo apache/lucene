@@ -25,6 +25,6 @@ allprojects { project ->
     plugins.apply("lucene.java.javac")
     plugins.apply("lucene.java.jar-manifest")
 
-    plugins.apply("lucene.java.test-defaults")
+    plugins.apply("lucene.java.tests-and-randomization")
   }
 }

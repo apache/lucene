@@ -43,3 +43,6 @@ compatibility.
 an included composite project). This simplifies the build and ensures we apply
 the same checks to this subproject as we do to everything else.
 
+* ```tests.neverUpToDate``` option is renamed ```tests.rerun```; value of
+```true``` indicates test tasks will re-run even if nothing has changed.
+

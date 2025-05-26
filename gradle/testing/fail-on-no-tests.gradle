@@ -18,8 +18,8 @@
 // If we run the test task with a filter we want to fail if no test actually ran (everything was excluded).
 
 configure(allprojects) {
-  plugins.withType(JavaPlugin) {
-    tasks.withType(Test) {
+  plugins.withType(JavaPlugin).configureEach {
+    tasks.withType(Test).configureEach {
       filter {
         failOnNoMatchingTests = false
       }

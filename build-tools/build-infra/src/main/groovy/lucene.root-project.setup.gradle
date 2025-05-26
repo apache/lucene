@@ -15,8 +15,10 @@
  * limitations under the License.
  */
 
+import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionValueSource
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin
 import com.carrotsearch.gradle.buildinfra.environment.GitInfoPlugin
+import com.carrotsearch.randomizedtesting.SeedUtils
 
 // Prepare the root project and some global infrastructure.
 
@@ -84,6 +86,7 @@ ext {
 }
 
 ext {
+  // JDK versions where the vector module is still incubating;
   // also change this in extractor tool: ExtractForeignAPI
   vectorIncubatorJavaVersions = [
     JavaVersion.VERSION_21,
@@ -92,6 +95,27 @@ ext {
     JavaVersion.VERSION_24
   ] as Set
 }
+
+// Pick the "root" seed from which everything else that is randomized is derived.
+Provider<String> rootSeedOption = buildOptions.addOption("tests.seed", "The \"root\" randomization seed for options and test parameters.", provider {
+  return String.format("%08X", new Random().nextLong())
+})
+ext {
+  rootSeed = rootSeedOption.get()
+  rootSeedUserProvided = buildOptions.getOption("tests.seed").getValue().get().source() == BuildOptionValueSource.COMPUTED_VALUE
+  rootSeedLong = SeedUtils.parseSeedChain(rootSeed)[0]
+}
+allprojects {
+  ext {
+    projectSeedLong = rootProject.rootSeedLong ^ project.path.hashCode()
+  }
+}
+
+tasks.register("showTestsSeed", {
+  doFirst {
+    logger.lifecycle("Running tests with root randomization seed: tests.seed=${rootProject.ext.rootSeed}")
+  }
+})
 
 // TODO: this shouldn't be here but it's used in multiple scripts that are racy in lazy-evaluation.
 configure(project(":lucene:core")) {

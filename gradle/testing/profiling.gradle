@@ -18,17 +18,13 @@
 def recordings = files()
 
 allprojects {
-  plugins.withType(JavaPlugin) {
-    project.ext {
-      testOptions += [
-          [propName: 'tests.profile', value: false, description: "Enable Java Flight Recorder profiling."]
-      ]
-    }
+  plugins.withType(JavaPlugin).configureEach {
+    Provider<Boolean> profileOption = buildOptions.addBooleanOption("tests.profile", "Enable Java Flight Recorder profiling.", false)
 
-    if (resolvedTestOption("tests.profile").toBoolean()) {
+    if (profileOption.get()) {
       def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map(this.class.module::canRead).orElse(false)
       if (hasJavaFlightRecorder) {
-        tasks.withType(Test) {
+        tasks.withType(Test).configureEach {
           jvmArgs("-XX:StartFlightRecording=dumponexit=true,maxsize=250M,settings=" + rootProject.file("gradle/testing/profiling.jfc"),
               "-XX:+UnlockDiagnosticVMOptions",
               "-XX:+DebugNonSafepoints")
@@ -49,7 +45,7 @@ allprojects {
 
 gradle.buildFinished {
   if (!recordings.isEmpty()) {
-    def pr = org.apache.lucene.gradle.ProfileResults;
+    def pr = org.apache.lucene.gradle.ProfileResults
     pr.printReport(recordings.getFiles().collect { it.toString() },
         propertyOrDefault(pr.MODE_KEY, pr.MODE_DEFAULT) as String,
         Integer.parseInt(propertyOrDefault(pr.STACKSIZE_KEY, pr.STACKSIZE_DEFAULT)),
