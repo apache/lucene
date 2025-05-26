@@ -35,30 +35,20 @@ public class TestDocScoreEncoder extends LuceneTestCase {
           Float.intBitsToFloat(random().nextInt()),
           random().nextInt(Integer.MAX_VALUE),
           Float.intBitsToFloat(random().nextInt()),
-          random().nextInt(Integer.MAX_VALUE)
-      );
+          random().nextInt(Integer.MAX_VALUE));
     }
   }
 
   public void testSameDoc() {
     for (int i = 0; i < 1000; i++) {
       doAssert(
-          Float.intBitsToFloat(random().nextInt()),
-          1,
-          Float.intBitsToFloat(random().nextInt()),
-          1
-      );
+          Float.intBitsToFloat(random().nextInt()), 1, Float.intBitsToFloat(random().nextInt()), 1);
     }
   }
 
   public void testSameScore() {
     for (int i = 0; i < 1000; i++) {
-      doAssert(
-          1f,
-          random().nextInt(Integer.MAX_VALUE),
-          1f,
-          random().nextInt(Integer.MAX_VALUE)
-      );
+      doAssert(1f, random().nextInt(Integer.MAX_VALUE), 1f, random().nextInt(Integer.MAX_VALUE));
     }
   }
 
