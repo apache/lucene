@@ -634,6 +634,7 @@ public class AssertingLeafReader extends FilterLeafReader {
       state = DocsEnumState.START;
       doc = in.docID();
       positionCount = positionMax = 0;
+      lastShallowTarget = -1;
     }
   }
 

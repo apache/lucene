@@ -42,11 +42,7 @@ public final class TermScorer extends Scorer {
 
   /** Construct a {@link TermScorer} that will iterate all documents. */
   public TermScorer(PostingsEnum postingsEnum, SimScorer scorer, NumericDocValues norms) {
-    iterator = this.postingsEnum = postingsEnum;
-    maxScoreCache = new MaxScoreCache(postingsEnum, scorer);
-    impactsDisi = null;
-    this.scorer = scorer;
-    this.norms = norms;
+    this(postingsEnum, scorer, norms, false);
   }
 
   /**
@@ -54,18 +50,18 @@ public final class TermScorer extends Scorer {
    * documents.
    */
   public TermScorer(
-      PostingsEnum impactsEnum,
+      PostingsEnum postingsEnum,
       SimScorer scorer,
       NumericDocValues norms,
       boolean topLevelScoringClause) {
-    postingsEnum = impactsEnum;
-    maxScoreCache = new MaxScoreCache(impactsEnum, scorer);
+    this.postingsEnum = postingsEnum;
+    maxScoreCache = new MaxScoreCache(postingsEnum, scorer);
     if (topLevelScoringClause) {
-      impactsDisi = new ImpactsDISI(impactsEnum, maxScoreCache);
+      impactsDisi = new ImpactsDISI(postingsEnum, maxScoreCache);
       iterator = impactsDisi;
     } else {
       impactsDisi = null;
-      iterator = impactsEnum;
+      iterator = postingsEnum;
     }
     this.scorer = scorer;
     this.norms = norms;
