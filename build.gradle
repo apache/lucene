@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 
-import com.diffplug.gradle.spotless.SpotlessPlugin
-
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
@@ -33,13 +31,14 @@ plugins {
   id "lucene.java.alternative-jdk-support"
   id "lucene.java-projects.conventions"
 
+  id "lucene.java.core.mrjar"
+  id "lucene.java.fail-on-no-tests"
+
   id "lucene.validation.spotless-groovy"
   id "lucene.validation.spotless-java"
   id "lucene.validation.lockfile"
   id "lucene.validation.gradle-versions-cleanup"
   id "lucene.validation.gradlew-scripts-customizations"
-
-  id "lucene.java.core.mrjar"
 
   // perhaps move this to a convention plugin or remove entirely?
   id "lucene.build-infra"
@@ -103,7 +102,6 @@ configure(rootProject) {
 
 // Set up defaults and configure aspects for certain modules or functionality
 // (java, tests)
-apply from: file('gradle/testing/fail-on-no-tests.gradle')
 apply from: file('gradle/java/modules.gradle')
 
 // IDE support, settings and specials.

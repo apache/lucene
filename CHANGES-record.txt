@@ -46,3 +46,5 @@ the same checks to this subproject as we do to everything else.
 * ```tests.neverUpToDate``` option is renamed ```tests.rerun```; value of
 ```true``` indicates test tasks will re-run even if nothing has changed.
 
+* parts of the build supporting security manager settings have been just
+removed, without any replacement.
