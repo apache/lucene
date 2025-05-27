@@ -72,7 +72,9 @@ dependencies {
   implementation plugin(deps.plugins.spotless)
 }
 
-def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map(this.class.module::canRead).orElse(false)
+def hasJavaFlightRecorder = ModuleLayer.boot().findModule('jdk.jfr').map{ otherModule ->
+  this.getClass().module.canRead(otherModule)
+}.orElse(false)
 if (!hasJavaFlightRecorder) {
   logger.warn('Module jdk.jfr is not available; skipping compilation of Java Flight Recorder support.')
   tasks.named('compileJava').configure {

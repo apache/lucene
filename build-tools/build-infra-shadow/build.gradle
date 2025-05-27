@@ -18,57 +18,62 @@ import com.diffplug.gradle.spotless.SpotlessTask
  */
 
 plugins {
-    id "java-gradle-plugin"
+  id "java-gradle-plugin"
 }
 
 repositories {
-    mavenCentral()
-    gradlePluginPortal()
+  mavenCentral()
+  gradlePluginPortal()
 }
 
 static Provider<String> plugin(Provider<PluginDependency> plugin) {
-    return plugin.map {
-        if (it.pluginId == "com.carrotsearch.gradle.buildinfra") {
-            return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
-        } else if (it.pluginId == "de.thetaphi.forbiddenapis") {
-            return "de.thetaphi:forbiddenapis:${it.version}".toString()
-        } else {
-            return "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
-        }
+  return plugin.map {
+    if (it.pluginId == "com.carrotsearch.gradle.buildinfra") {
+      return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
+    } else if (it.pluginId == "de.thetaphi.forbiddenapis") {
+      return "de.thetaphi:forbiddenapis:${it.version}".toString()
+    } else {
+      return "${it.pluginId}:${it.pluginId.replaceFirst(".*\\.", "")}-plugin-gradle:${it.version}".toString()
     }
+  }
 }
 
 dependencies {
-    implementation gradleApi()
-    implementation localGroovy()
-    implementation deps.commons.codec
-    implementation deps.randomizedtesting.runner
+  implementation gradleApi()
+  implementation localGroovy()
+  implementation deps.commons.codec
+  implementation deps.randomizedtesting.runner
 
-    implementation plugin(deps.plugins.carrotsearch.buildinfra)
-    implementation plugin(deps.plugins.forbiddenapis)
-    implementation plugin(deps.plugins.spotless)
+  implementation plugin(deps.plugins.carrotsearch.buildinfra)
+  implementation plugin(deps.plugins.forbiddenapis)
+  implementation plugin(deps.plugins.spotless)
 }
 
 tasks.matching {
-    it.name in [
-            "renderSiteJavadoc",
-            "renderJavadoc",
-            "validateJarChecksums", "validateJarLicenses", "collectJarInfos",
-            "compileJava", "compileTestJava", "assemble"]
+  it.name in [
+    "renderSiteJavadoc",
+    "renderJavadoc",
+    "validateJarChecksums",
+    "validateJarLicenses",
+    "collectJarInfos",
+    "compileJava",
+    "compileTestJava",
+    "assemble"
+  ]
 }.configureEach {
-    enabled = false
+  enabled = false
 }
 
 // check spotless and other tasks into thinking their sources
 // are from build-infra.
 if (!isIdea) {
-    plugins.withType(JavaPlugin).configureEach {
-        SourceSet main = sourceSets.main
-        main.java.srcDirs = rootProject.files("build-tools/build-infra/src/main/java")
-    }
+  plugins.withType(JavaPlugin).configureEach {
+    SourceSet main = sourceSets.main
+    main.java.srcDirs = rootProject.files("build-tools/build-infra/src/main/java")
+  }
 
-    tasks.withType(SpotlessTask).configureEach {
-        it.projectDir.set(rootProject.file("build-tools/build-infra"))
-        it.target
-    }
+  tasks.withType(SpotlessTask).configureEach {
+    it.projectDir.set(rootProject.file("build-tools/build-infra"))
+    it.target
+  }
 }
