@@ -18,12 +18,16 @@
 // This adds 'beast' task which clones tests a given number of times (preferably
 // constrained with a filtering pattern passed via '--tests').
 
+if (project != project.rootProject) {
+  throw new GradleException("Applicable to rootProject only: " + project.path)
+}
+
 // TODO: subtasks are not run in parallel (sigh, gradle removed this capability for intra-project tasks).
 // TODO: maybe it would be better to take a deeper approach and just feed the task
 //       runner duplicated suite names (much like https://github.com/gradle/test-retry-gradle-plugin)
 // TODO: this is a somewhat related issue: https://github.com/gradle/test-retry-gradle-plugin/issues/29
 
-def beastingMode = gradle.startParameter.taskNames.any{ name -> name == 'beast' || name.endsWith(':beast') }
+def beastingMode = gradle.startParameter.taskNames.any { name -> name == 'beast' || name.endsWith(':beast') }
 def rootSeedUserProvided = rootProject.ext.rootSeedUserProvided
 
 if (beastingMode) {
@@ -61,13 +65,15 @@ allprojects {
             // from the same starting seed). Otherwise pick a sequential derivative.
             if (!rootSeedUserProvided) {
               systemProperty("tests.seed",
-                      String.format("%08X", new Random(rootProject.ext.rootSeedLong + value).nextLong()))
+                  String.format("%08X", new Random(rootProject.ext.rootSeedLong + value).nextLong()))
             }
           }
         })
       }
 
-      beastTask.dependsOn subtasks
+      beastTask.configure {
+        dependsOn subtasks
+      }
     }
   }
 }
@@ -76,7 +82,7 @@ allprojects {
  * We have to declare a dummy task here to be able to reuse the same syntax for 'test' task
  * filter option.
  */
-class BeastTask extends DefaultTask {
+abstract class BeastTask extends DefaultTask {
   @Option(option = "tests", description = "Sets test class or method name to be included, '*' is supported.")
   public void setTestNamePatterns(List<String> patterns) {
     taskDependencies.getDependencies(this).each { subtask ->
