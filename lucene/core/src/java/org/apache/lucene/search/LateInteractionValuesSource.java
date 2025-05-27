@@ -32,6 +32,10 @@ public class LateInteractionValuesSource extends DoubleValuesSource {
   private final VectorSimilarityFunction vectorSimilarityFunction;
   private final ScoreFunction scoreFunction;
 
+  public LateInteractionValuesSource(String fieldName, float[][] queryVector) {
+    this(fieldName, queryVector, VectorSimilarityFunction.COSINE, ScoreFunction.SUM_MAX_SIM);
+  }
+
   public LateInteractionValuesSource(
       String fieldName, float[][] queryVector, VectorSimilarityFunction vectorSimilarityFunction) {
     this(fieldName, queryVector, vectorSimilarityFunction, ScoreFunction.SUM_MAX_SIM);
@@ -45,13 +49,33 @@ public class LateInteractionValuesSource extends DoubleValuesSource {
     if (fieldName == null) {
       throw new IllegalArgumentException("fieldName must not be null");
     }
-    if (queryVector == null || queryVector.length == 0) {
-      throw new IllegalArgumentException("queryVector must not be null or empty");
+    validateQueryVector(queryVector);
+    if (vectorSimilarityFunction == null) {
+      throw new IllegalArgumentException("vectorSimilarityFunction must not be null");
+    }
+    if (scoreFunction == null) {
+      throw new IllegalArgumentException("scoreFunction must not be null");
     }
     this.fieldName = fieldName;
     this.queryVector = queryVector;
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.scoreFunction = scoreFunction;
+  }
+
+  private void validateQueryVector(float[][] queryVector) {
+    if (queryVector == null || queryVector.length == 0) {
+      throw new IllegalArgumentException("queryVector must not be null or empty");
+    }
+    if (queryVector[0] == null || queryVector[0].length == 0) {
+      throw new IllegalArgumentException(
+          "composing token vectors in provided query vector should not be null or empty");
+    }
+    for (int i = 1; i < queryVector.length; i++) {
+      if (queryVector[i] == null || queryVector[i].length != queryVector[0].length) {
+        throw new IllegalArgumentException(
+            "all composing token vectors in provided query vector should have the same length");
+      }
+    }
   }
 
   @Override
