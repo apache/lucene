@@ -32,7 +32,10 @@ spotless.format("gradleScripts", GroovyGradleExtension.class, { ext ->
   ext.leadingTabsToSpaces(2)
   ext.trimTrailingWhitespace()
   ext.endWithNewline()
-  ext.target("build-tools/**/*.gradle")
+  ext.target([
+    "build-tools/**/*.gradle",
+    "build-tools/**/*.groovy"
+  ])
 })
 
 tasks.named("spotlessGradleScripts").configure {
