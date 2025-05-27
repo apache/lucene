@@ -86,7 +86,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   }
 
   /**
-   * Returns the {@link NeighborQueue} connected to the given node.
+   * Returns the {@link NeighborArray} connected to the given node.
    *
    * @param level level of the graph
    * @param node the node whose neighbors are returned, represented as an ordinal on the level 0.
